@@ -237,8 +237,7 @@ final class Vendetta implements Listener {
             if (ai != null && ai.getModifier(stunKey) == null) ai.addTransientModifier(new AttributeModifier(stunKey, -1.0, AttributeModifier.Operation.MULTIPLY_SCALAR_1));
         }
         e.getWorld().playSound(e.getLocation(), Sound.ENTITY_PLAYER_ATTACK_CRIT, 1f, 0.5f);
-        if (e instanceof Player p) p.showTitle(Title.title(net.kyori.adventure.text.Component.empty(), legacy(ChatColor.YELLOW + "" + ChatColor.BOLD + "STUNNED"),
-                Title.Times.times(java.time.Duration.ZERO, java.time.Duration.ofMillis(ticks * 50L), java.time.Duration.ofMillis(150))));
+        if (e instanceof Player p) p.sendActionBar(legacy(ChatColor.YELLOW + "" + ChatColor.BOLD + "STUNNED"));
     }
 
     void unstun(LivingEntity e) {
@@ -268,6 +267,7 @@ final class Vendetta implements Listener {
                 }
             }
             if (le instanceof org.bukkit.entity.Mob mob) mob.setTarget(null);
+            if (le instanceof Player sp && (en.getValue() - now) % 20 == 0) sp.sendActionBar(legacy(ChatColor.YELLOW + "" + ChatColor.BOLD + "STUNNED"));
         }
         stunImmune.values().removeIf(v -> v < now);
     }
@@ -392,10 +392,9 @@ final class Vendetta implements Listener {
 
         abstract void clamp();
 
+        /** A fight line, at the bottom of the screen like the Kraken's (titles in the middle got in the way). */
         void say(String text, int stay) {
-            for (Player p : world.getPlayers()) if (p.getLocation().toVector().distanceSquared(pos) < 80 * 80)
-                p.showTitle(Title.title(net.kyori.adventure.text.Component.empty(), legacy(text),
-                        Title.Times.times(java.time.Duration.ofMillis(150), java.time.Duration.ofMillis(stay * 50L), java.time.Duration.ofMillis(300))));
+            for (Player p : world.getPlayers()) if (p.getLocation().toVector().distanceSquared(pos) < 80 * 80) p.sendActionBar(legacy(text));
         }
 
 
@@ -618,9 +617,7 @@ final class Vendetta implements Listener {
         }
 
         void shout(String big, String small, int stay) {
-            for (Player p : world.getPlayers()) if (p.getLocation().toVector().distanceSquared(pos) < 80 * 80)
-                p.showTitle(Title.title(legacy(big), legacy(small),
-                        Title.Times.times(java.time.Duration.ZERO, java.time.Duration.ofMillis(stay * 50L), java.time.Duration.ofMillis(300))));
+            say(big + (small.isEmpty() ? "" : "  " + small), stay);
         }
 
         double speed() {
@@ -1089,6 +1086,9 @@ final class Vendetta implements Listener {
                 world.playSound(loc(), Sound.ENTITY_PLAYER_DEATH, 2f, 0.6f);
                 world.spawnParticle(Particle.DUST, loc().add(0, 1, 0), 80, 0.6, 1, 0.6, 0, new Particle.DustOptions(Color.fromRGB(150, 50, 200), 2f));
                 Bukkit.broadcastMessage(ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + "Rocco Vendetta " + ChatColor.GRAY + "has fallen!");
+                for (Player p : world.getPlayers()) if (p.getLocation().toVector().distanceSquared(pos) < 80 * 80)
+                    p.showTitle(Title.title(legacy(ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + "ROCCO VENDETTA HAS FALLEN"), legacy(ChatColor.GRAY + "The debt is paid."),
+                            Title.Times.times(java.time.Duration.ofMillis(300), java.time.Duration.ofMillis(3000), java.time.Duration.ofMillis(800))));
                 if (!rewarded) { rewarded = true; rewards(); }
                 Bukkit.getScheduler().runTask(pl, () -> { if (hitbox.isValid()) hitbox.setHealth(0); }); // the kill (for the Index)
             }
@@ -1723,8 +1723,7 @@ final class Vendetta implements Listener {
                 setTattoos(p, 0);
                 p.setVelocity(new Vector(0, 1.6, 0));
                 w.playSound(p.getLocation(), Sound.ENTITY_WITHER_SHOOT, 1f, 0.6f);
-                p.showTitle(Title.title(legacy(ChatColor.DARK_RED + "" + ChatColor.BOLD + "COMPLETE AND TOTAL"), legacy(ChatColor.DARK_RED + "" + ChatColor.BOLD + "EXTERMINATION!!!"),
-                        Title.Times.times(java.time.Duration.ZERO, java.time.Duration.ofMillis(1500), java.time.Duration.ofMillis(300))));
+                p.sendActionBar(legacy(ChatColor.DARK_RED + "" + ChatColor.BOLD + "COMPLETE AND TOTAL EXTERMINATION!!!"));
             }
             case 9 -> {
                 p.addPotionEffect(new PotionEffect(PotionEffectType.REGENERATION, 160, 0));
@@ -1774,8 +1773,7 @@ final class Vendetta implements Listener {
                 }
                 case 5 -> { // MY HAIR COUPONS!!!: 2 seconds of charge, then the blast
                     double r = c("fist.coupons-radius", 6);
-                    if (a.t == 0) p.showTitle(Title.title(net.kyori.adventure.text.Component.empty(), legacy(ChatColor.DARK_RED + "" + ChatColor.BOLD + "MY HAIR COUPOOOOOOOOOOONS!!!"),
-                            Title.Times.times(java.time.Duration.ZERO, java.time.Duration.ofMillis(2000), java.time.Duration.ofMillis(200))));
+                    if (a.t == 0) p.sendActionBar(legacy(ChatColor.DARK_RED + "" + ChatColor.BOLD + "MY HAIR COUPOOOOOOOOOOONS!!!"));
                     if (a.t < 40 && a.t % 2 == 0) {
                         double rr = r * (a.t + 4) / 44.0;
                         for (int i = 0; i < 20; i++) { double ang = Math.PI * 2 * i / 20; w.spawnParticle(Particle.DUST, p.getLocation().add(Math.cos(ang) * rr, 0.15, Math.sin(ang) * rr), 1, 0, 0, 0, 0, new Particle.DustOptions(Color.fromRGB(255, 200, 80), 1.2f)); }

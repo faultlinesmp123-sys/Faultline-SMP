@@ -33,7 +33,7 @@ and stops when he falls or leaves. `rocco.music.enabled/volume/length-seconds` i
 | 1+ | Kick | Front kick, HEAVY (a shield halves it), 3s stun |
 | 1+ | Punch | Step-in straight, blockable, 3s stun |
 | 1+ | Payback | 2s guard. Hit him and he blinks behind you and uppercuts (more with tattoos) |
-| 1+ | Assemble | Vendetta Enforcers (vindicators): 2 + one per fighter, max 6 alive, 30s cooldown |
+| 1+ | Assemble | Vendetta Enforcers, his family's muscle (a rigged `vendetta_goon` model over an invisible vindicator; fists, 6 damage): 2 + one per fighter, max 8 alive, 30s cooldown |
 | 1+ | Watch Your Back! | Blinks behind you, hits, blinks behind you again, hits |
 | 2+ | MY HAIR COUPOOOOOOOOOOONS!!! | 2.5s charge, a 14-block-wide blast: half your current health + 1s stun |
 | 2+ | Swear Vengeance | Dodges everything for 5s, then 15s of +25% damage, +40% speed, 25% less damage taken |

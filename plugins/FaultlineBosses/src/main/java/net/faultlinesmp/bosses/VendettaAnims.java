@@ -176,6 +176,18 @@ final class VendettaAnims {
         return keys(t, new int[]{0, 16, 30, 36, 42, 48, 60, 70}, new Pose[]{low, low, up, crackL, crackL, crackR, up, roccoStance((int) t)}, "EESEEEE");
     }
 
+    // ======================================================================== THE FAMILY (Vendetta Enforcers)
+
+    /** The family's muscle: a squared-up brawler's guard, a little looser than Rocco's. */
+    static Pose goonStance(int t, int seed) {
+        float b = sin(t * 0.24 + seed), s = sin(t * 0.12 + seed);
+        return new Pose()
+                .set(ARM_R, -48 + b * 3, 34, 4).set(ARM_L, -62 - b * 3, -26, -4)
+                .set(BODY, 12, -12 + s * 5, 0).set(HEAD, 4, 12 - s * 4, 0)
+                .set(LEG_R, 14, 0, -4).set(LEG_L, -16, 0, 5)
+                .drop(-0.06f - Math.abs(b) * 0.03f);
+    }
+
     // ======================================================================== WERNER: quick, cocky, a street fighter
 
     /** Loose and low, weight forward, right fist cocked, left hand hanging, rolling his shoulders. */

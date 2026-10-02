@@ -94,6 +94,9 @@ def brother(seed, p):
     s.px(fx + 2, fy + 6, SKD); s.fill(fx + 3, fy + 6, 2, 1, p["mouth"], 3); s.px(fx + 5, fy + 6, SKD)
     if p["stubble"]: s.fill(fx + 1, fy + 7, 6, 1, p["stubble"], 4); s.px(fx + 1, fy + 6, p["stubble"]); s.px(fx + 6, fy + 6, p["stubble"])
     for (sx, sy) in p["scar"]: s.px(fx + sx, fy + sy, p["scar_col"])
+    if p.get("shades"):  # dark glasses across the eyes
+        s.fill(fx + 1, fy + 3, 6, 2, (16, 14, 20), 2); s.px(fx + 2, fy + 3, (80, 70, 100)); s.px(fx + 5, fy + 3, (80, 70, 100))
+        s.px(fx, fy + 3, (40, 36, 44)); s.px(fx + 7, fy + 3, (40, 36, 44))
     # hat layer: hair volume
     hh = faces(HAT, 8, 8, 8)
     hx, hy, _, _ = hh["front"]
@@ -177,6 +180,13 @@ ROCCO = dict(skin=(188, 142, 112), skin_dk=(150, 108, 86), hair=(26, 22, 32), ha
              shirt=(112, 40, 146), pants=(56, 30, 72), pants_dk=(38, 20, 50), shoes=(18, 16, 20),
              brow=(20, 16, 24), eye=(150, 30, 40), mouth=(110, 64, 60), stubble=(140, 104, 84),
              scar=[(2, 2), (2, 3), (2, 5), (3, 6)], scar_col=(116, 60, 60), slick=True, spiky=False, angry=True, arm_chain=False)
+
+# The family's muscle (Assemble): a plainer purple coat, slicked hair, dark glasses, one gold chain
+GOON = dict(skin=(176, 132, 104), skin_dk=(140, 102, 82), hair=(44, 32, 30), hair_dk=(70, 52, 46),
+            coat=(92, 34, 118), coat_dk=(58, 20, 76), coat_hi=(132, 62, 164), fur=(20, 18, 22), fur_hi=(40, 36, 44),
+            shirt=(28, 24, 32), pants=(36, 32, 42), pants_dk=(24, 20, 28), shoes=(16, 14, 18),
+            brow=(30, 24, 24), eye=(30, 24, 30), mouth=(104, 64, 58), stubble=(132, 98, 80),
+            scar=[], scar_col=(0, 0, 0), slick=True, spiky=False, angry=True, arm_chain=False, shades=True)
 
 # ------------------------------------------------------------------ rig models (Don's geometry, a new skin)
 
@@ -321,6 +331,8 @@ def main():
     werner, rocco = brother(31, WERNER), brother(32, ROCCO)
     write_rig(pack, "werner", werner)
     write_rig(pack, "rocco", rocco)
+    goon = brother(34, GOON)
+    write_rig(pack, "vendetta_goon", goon)
     fa, fel = fist(33)
     write_tex(pack, "vendetta_fist", fa)
     write_model(pack, "vendetta_fist", "vendetta_fist", fel, FIST_DISPLAY)
@@ -330,7 +342,7 @@ def main():
                      ("items/vendetta_contract.json", {"model": {"type": "minecraft:model", "model": f"{NS}:item/vendetta_contract"}})):
         with open(os.path.join(A, sub), "w") as fh: json.dump(obj, fh, indent=1)
     idx = os.path.join(A, "textures/index"); os.makedirs(idx, exist_ok=True)
-    icons = {"rocco_vendetta": face_icon(rocco), "werner": face_icon(werner), "vendetta_enforcer": enforcer_icon(),
+    icons = {"rocco_vendetta": face_icon(rocco), "werner": face_icon(werner), "vendetta_enforcer": face_icon(goon),
              "vendetta_fist": fist_icon(), "vendetta_contract": ct}
     for k, im in icons.items(): im.save(os.path.join(idx, k + ".png"))
     if prev:
@@ -348,7 +360,7 @@ def main():
         ch_img = np.asarray(ca.save_tex(ch_a)).astype(float); bk_img = np.asarray(ca.save_tex(bk_a)).astype(float)
         set_anchor(0.85)
         figs = []
-        for skin, extra in ((rocco, [(ch_el, ch_img), (bk_el, bk_img)]), (werner, [(ch_el, ch_img)])):
+        for skin, extra in ((rocco, [(ch_el, ch_img), (bk_el, bk_img)]), (werner, [(ch_el, ch_img)]), (goon, [])):
             simg = np.asarray(skin).astype(float)
             placed = []
             for piece, (frm, to, net, onet, w, h, d, g) in RIG.items():

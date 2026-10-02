@@ -535,7 +535,7 @@ entries:
     icon: vendetta_enforcer
     detect-tag: faultline_vendetta_fam
     where: Rocco Vendetta's family. They show up when he calls "Assemble!"
-    does: A purple-coated vindicator with an iron sword. Each one that dies makes Werner stronger.
+    does: 'The family''s muscle: purple coat, gold chain, dark glasses. They fight with their fists. Each one that dies makes Werner stronger.'
     drops:
     - Nothing|-
   - chapter: consumables

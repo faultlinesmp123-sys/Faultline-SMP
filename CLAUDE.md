@@ -111,7 +111,7 @@ Diamond Jacob's knight, blaze form, hawk, and war mace (jacob_hammer) are genera
 Run `python3 tools/jacob_models.py <unpacked-pack-dir> --preview tools/previews`, zip the output into
 `FaultlineSMP.zip`, and update the hash. The preview PNGs show the result without launching the game.
 
-Rocco Vendetta and Werner (skins → 6-piece rigs), the Vendetta Fist, the Vendetta Contract and their Index icons come from
+Rocco Vendetta, Werner and the Vendetta Enforcers (`vendetta_goon`; skins → 6-piece rigs), the Vendetta Fist, the Vendetta Contract and their Index icons come from
 `python3 tools/vendetta_models.py <unpacked-pack-dir> --preview tools/previews` (it reuses `jacob_models.py` and `cosmetics_assets.py`).
 New Index icons also need a glyph in `FaultlineIndex/glyphs.yml` and two bitmap providers in `assets/faultline/font/index.json`.
 

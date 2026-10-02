@@ -137,6 +137,7 @@ final class Vendetta implements Listener {
         for (Werner w : new ArrayList<>(allies)) pl.bossPart("Werner (ally)", "tick", w::tick);
         allies.removeIf(w -> w.gone);
         if (now % 20 == 0) pl.bossPart("Rocco Vendetta", "fam", this::famTick);
+        pl.bossPart("Rocco Vendetta", "family looks", this::goonTick);
         if (now % 10 == 0) pl.bossPart("Vendetta Fist", "hud", this::fistHud);
         pl.bossPart("Vendetta Fist", "moves", this::fistTick);
     }
@@ -146,6 +147,8 @@ final class Vendetta implements Listener {
         rocco = null;
         for (Werner w : allies) w.remove();
         allies.clear();
+        for (Goon g : goons.values()) g.remove(false);
+        goons.clear();
         for (UUID id : new ArrayList<>(stunned.keySet())) { Entity e = Bukkit.getEntity(id); if (e instanceof LivingEntity le) unstun(le); }
         stunned.clear();
         for (World w : Bukkit.getWorlds()) for (Entity e : w.getEntities()) if (ours(e)) e.remove();
@@ -1167,6 +1170,85 @@ final class Vendetta implements Listener {
     // =====================================================================================================
     //  the family: Vendetta Enforcers (Assemble). His are hostile; the Fist's fight for its holder.
     // =====================================================================================================
+    /**
+     * A family member's look: a 6-piece rig (the vendetta_goon skin) drawn over an invisible vindicator, which does the
+     * walking, pathfinding and fighting. They fight with their fists: a punch plays whenever one lands a hit.
+     */
+    final class Goon {
+        final Vindicator body;
+        final ItemDisplay[] parts = new ItemDisplay[6];
+        final int seed = random.nextInt(100);
+        Pose shown = standPose();
+        Vector last;
+        float stride, moveAmt, flinchSide;
+        int ticks, punchT = -1, flinch;
+        boolean leftNext;
+
+        Goon(Vindicator body) {
+            this.body = body;
+            String[] pieces = {"_leg_r", "_leg_l", "_body", "_arm_r", "_arm_l", "_head"};
+            for (int i = 0; i < 6; i++) { parts[i] = pl.spawnDisplay(body.getLocation(), "vendetta_goon" + pieces[i], 1f, 2, Display.Billboard.FIXED); parts[i].setViewRange(4f); }
+            pl.proxy(body, body, EntityType.VINDICATOR, 1.0); // Bedrock players (no models) see a vindicator
+        }
+
+        void tick() {
+            ticks++;
+            if (!body.hasPotionEffect(PotionEffectType.INVISIBILITY))
+                body.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, PotionEffect.INFINITE_DURATION, 0, false, false, false));
+            Location at = body.getLocation();
+            double moved = last == null ? 0 : Math.hypot(at.getX() - last.getX(), at.getZ() - last.getZ());
+            last = at.toVector();
+            if (moved < 1.5) stride += (float) (moved * 2.6);
+            moveAmt += ((float) Math.min(1, moved < 1.5 ? moved / 0.25 : 0) - moveAmt) * 0.3f;
+            Pose p = punchT >= 0 ? VendettaAnims.roccoPunch(punchT, leftNext) : VendettaAnims.goonStance(ticks, seed);
+            if (punchT >= 0 && ++punchT >= 18) punchT = -1;
+            if (moveAmt > 0.04f) { // the legs follow the ground covered
+                float sw = (float) Math.sin(stride), a = Math.min(1, moveAmt * 1.2f);
+                p.r[LEG_R][0] += (sw * 40 - p.r[LEG_R][0]) * a;
+                p.r[LEG_L][0] += (-sw * 40 - p.r[LEG_L][0]) * a;
+                p.r[LEG_R][2] *= 1 - a; p.r[LEG_L][2] *= 1 - a;
+                p.add(BODY, 6 * a, sw * 5 * a, 0);
+                p.drop += (float) -Math.abs(Math.cos(stride)) * 0.07f * a;
+            }
+            if (body.isOnGround() == false && moveAmt < 0.04f) p.add(LEG_R, -20, 0, 0).add(LEG_L, 10, 0, 0);
+            if (flinch > 0) { p.add(BODY, -flinch * 2.4f, flinchSide * flinch * 2.6f, 0).add(HEAD, -flinch * 2f, 0, 0); flinch--; }
+            shown = Pose.lerp(shown, p, punchT >= 0 ? 0.6f : 0.4f);
+            pl.renderRig(parts, null, at, body.getBodyYaw(), 1f, shown);
+        }
+
+        void punch() { leftNext = !leftNext; punchT = 4; }
+
+        void remove(boolean puff) {
+            for (ItemDisplay d : parts) if (d != null && d.isValid()) {
+                if (puff) d.getWorld().spawnParticle(Particle.LARGE_SMOKE, d.getLocation(), 3, 0.1, 0.1, 0.1, 0.01);
+                d.remove();
+            }
+        }
+    }
+
+    final Map<UUID, Goon> goons = new HashMap<>();
+
+    void goonTick() {
+        for (Iterator<Goon> it = goons.values().iterator(); it.hasNext(); ) {
+            Goon g = it.next();
+            if (!g.body.isValid() || g.body.isDead()) { g.remove(true); it.remove(); continue; }
+            g.tick();
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onGoonHit(EntityDamageByEntityEvent event) {
+        Goon by = goons.get(event.getDamager().getUniqueId());
+        if (by != null) by.punch();
+        Goon hit = goons.get(event.getEntity().getUniqueId());
+        if (hit != null) {
+            hit.flinch = 6;
+            Vector to = event.getDamager().getLocation().toVector().subtract(hit.body.getLocation().toVector()).setY(0);
+            Vector f = flatDir(hit.body.getLocation()), left = new Vector(-f.getZ(), 0, f.getX());
+            hit.flinchSide = to.lengthSquared() < 1e-4 ? 0 : -(float) Math.signum(to.dot(left));
+        }
+    }
+
     LivingEntity spawnFam(Location at, Player owner) {
         Vindicator v = at.getWorld().spawn(at, Vindicator.class, m -> {
             m.setPersistent(false);
@@ -1178,14 +1260,17 @@ final class Vendetta implements Listener {
             m.setCustomNameVisible(owner != null);
             AttributeInstance hp = m.getAttribute(Attribute.MAX_HEALTH);
             if (hp != null) { hp.setBaseValue(c("assemble.health", 30)); m.setHealth(hp.getValue()); }
-            ItemStack chest = new ItemStack(Material.LEATHER_CHESTPLATE), legs = new ItemStack(Material.LEATHER_LEGGINGS), boots = new ItemStack(Material.LEATHER_BOOTS);
-            for (ItemStack s : List.of(chest, legs, boots)) { LeatherArmorMeta lm = (LeatherArmorMeta) s.getItemMeta(); lm.setColor(s == chest ? Color.fromRGB(112, 40, 146) : Color.fromRGB(30, 26, 34)); s.setItemMeta(lm); }
-            m.getEquipment().setChestplate(chest); m.getEquipment().setLeggings(legs); m.getEquipment().setBoots(boots);
-            m.getEquipment().setItemInMainHand(new ItemStack(Material.IRON_SWORD));
+            AttributeInstance dmg = m.getAttribute(Attribute.ATTACK_DAMAGE);
+            if (dmg != null) dmg.setBaseValue(c("assemble.damage", 6)); // bare fists
+            // the vindicator is only the "legs": invisible, empty-handed, no armor; the family member's model is drawn over it
+            m.getEquipment().clear();
             for (EquipmentSlot s : EquipmentSlot.values()) { try { m.getEquipment().setDropChance(s, 0f); } catch (IllegalArgumentException ignored) { } }
+            m.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, PotionEffect.INFINITE_DURATION, 0, false, false, false));
+            m.setSilent(false);
             if (owner != null) m.getPersistentDataContainer().set(ownerKey, PersistentDataType.STRING, owner.getUniqueId() + ":" + (now + (int) c("fist.assemble-seconds", 30) * 20));
         });
         at.getWorld().spawnParticle(Particle.LARGE_SMOKE, at.clone().add(0, 1, 0), 20, 0.3, 0.6, 0.3, 0.02);
+        if (v.isValid()) goons.put(v.getUniqueId(), new Goon(v));
         return v;
     }
 

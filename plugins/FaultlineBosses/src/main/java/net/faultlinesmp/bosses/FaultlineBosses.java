@@ -1841,7 +1841,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         ItemMeta meta = item.getItemMeta();
         meta.setItemModel(new NamespacedKey("faultline", "twin_eye_staff"));
         meta.setDisplayName(ChatColor.RED + "" + ChatColor.BOLD + "Twin Eye Staff");
-        meta.setLore(List.of(ChatColor.GRAY + "Right-click to summon two small eyes", ChatColor.GRAY + "that fight for you for 30 seconds.",
+        meta.setLore(List.of(ChatColor.GRAY + "Right-click to summon two small eyes", ChatColor.GRAY + "that fight monsters for you for 30 seconds.",
                 ChatColor.DARK_GRAY + "60 second cooldown. From the Demon Eye."));
         meta.setMaxStackSize(1);
         meta.getPersistentDataContainer().set(staffKey, PersistentDataType.BYTE, (byte) 1);
@@ -2034,7 +2034,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 m.vel.add(want.subtract(m.vel).multiply(0.3));
                 m.pos.add(m.vel);
                 if (target != null && now >= m.nextHit && target.getLocation().toVector().add(new Vector(0, target.getHeight() * 0.6, 0)).distanceSquared(m.pos) < 1.4 * 1.4) {
-                    target.damage(cfg("twin-staff.damage", 4), p); // dealt as the owner, so no-PvP zones still apply
+                    target.damage(cfg("twin-staff.damage", 4), abilityDamage(p)); // credited to the owner (kills, loot)
                     m.nextHit = now + 800;
                     m.vel = m.vel.clone().multiply(-0.7).add(new Vector(0, 0.3, 0)); // bounce back off
                 }
@@ -2047,17 +2047,14 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         }
     }
 
+    /**
+     * The eyes only fight hostile mobs now (PvE only: they were too strong in PvP), never a player and never their owner.
+     */
     private LivingEntity minionTarget(Player owner, long now) {
-        UUID opp = lastOpponent.get(owner.getUniqueId());
-        if (opp != null && now - lastOpponentAt.getOrDefault(owner.getUniqueId(), 0L) < 15000) {
-            Player enemy = Bukkit.getPlayer(opp);
-            if (enemy != null && !enemy.isDead() && enemy.getWorld().equals(owner.getWorld())
-                    && enemy.getLocation().distanceSquared(owner.getLocation()) < 24 * 24) return enemy;
-        }
         LivingEntity best = null;
         double bestDist = 16 * 16;
         for (Entity e : owner.getNearbyEntities(16, 8, 16)) {
-            if (!(e instanceof org.bukkit.entity.Enemy) || !(e instanceof LivingEntity le) || le.isDead()) continue;
+            if (!(e instanceof org.bukkit.entity.Enemy) || !(e instanceof LivingEntity le) || le.isDead() || e instanceof Player) continue;
             if (e.getScoreboardTags().contains("faultline_summon") || e.getScoreboardTags().contains(TWIN_EYE_TAG)) continue; // other players' minions
             double d = e.getLocation().distanceSquared(owner.getLocation());
             if (d < bestDist) { bestDist = d; best = le; }
@@ -10219,6 +10216,15 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
     }
 
     // ===================== REWARDS & COMMAND =====================
+
+    /**
+     * Damage from a player's ability (Twin Eye Staff eyes, the Vendetta Fist, a helper): credited to the player, but typed
+     * as magic. BUG FIX: it used to be dealt as a plain hit FROM the player, and a Guardian (or Elder Guardian) hit that
+     * way spikes back at whoever hit it directly, from any distance: the staff's eyes and the Fist "attacked" their own user.
+     */
+    static org.bukkit.damage.DamageSource abilityDamage(Player p) {
+        return org.bukkit.damage.DamageSource.builder(org.bukkit.damage.DamageType.MAGIC).withCausingEntity(p).withDirectEntity(p).build();
+    }
 
     /** Drops an item at a spot, bursting outward, pick-up-able only by `owner`. */
     void dropLocked(Location at, Player owner, ItemStack item) {

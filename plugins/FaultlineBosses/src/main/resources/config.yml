@@ -342,10 +342,10 @@ jacob:
 # Rocco Vendetta: summoned with a Vendetta Contract (Gold Blocks, Netherite Scrap and a Book) on open, flat ground.
 # Tuned for a group: 7 players is the recommended size. His (and Werner's) health grows with every fighter.
 rocco:
-  health: 4000                # with ONE fighter; +35% per extra fighter (7 players: 12,400). 3 phases at 2/3 and 1/3
-  health-per-extra-fighter: 0.35
+  health: 4000                # with ONE fighter; each extra fighter adds 1/6 of that (7 players: 8,000). 3 phases at 2/3 and 1/3
+  health-per-extra-fighter: 0.1667
   max-scaled-fighters: 12     # more players than this don't add more health
-  defense: 0.15               # 15% less damage taken
+  defense: 0.1                # 10% less damage taken
   damage-multiplier: 1.0      # everything he and Werner deal
   spread-chance: 0.4          # in a group, 2 moves in 5 go after a random player instead of the closest
   scale: 1.2
@@ -373,7 +373,7 @@ rocco:
     height: 22
     dodge-ticks: 20           # the red ring locks 1 second before he lands: get out of it or die
     splash-damage: 8
-    cooldown-seconds: 40      # at least this long between two Exterminations
+    cooldown-seconds: 50      # at least this long between two Exterminations
   vengeance:
     dodge-ticks: 100          # Swear Vengeance: dodges everything for 5 seconds...
     buff-ticks: 300           # ...and for 15 seconds: +25% damage, +40% speed, 25% less damage taken

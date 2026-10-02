@@ -500,7 +500,7 @@ final class Vendetta implements Listener {
             if (e instanceof Player p && credit == null) { hit(p, dmg, guard, stunTicks, knock); return; }
             if (hitCd.containsKey(e.getUniqueId())) return;
             hitCd.put(e.getUniqueId(), 8);
-            if (credit != null) e.damage(dmg * damageScale(), credit); else e.damage(dmg * damageScale(), hitbox);
+            if (credit != null) e.damage(dmg * damageScale(), abilityDamage(credit)); else e.damage(dmg * damageScale(), hitbox);
             if (stunTicks > 0) stun(e, stunTicks);
             if (knock > 0) {
                 Vector kb = e.getLocation().toVector().subtract(pos).setY(0);
@@ -592,7 +592,7 @@ final class Vendetta implements Listener {
             if (n <= scaledFor) return;
             double frac = hp / maxHp;
             scaledFor = n;
-            maxHp = c("health", 4000) * (1 + c("health-per-extra-fighter", 0.35) * (n - 1));
+            maxHp = c("health", 4000) * (1 + c("health-per-extra-fighter", 1 / 6.0) * (n - 1));
             hp = maxHp * frac;
         }
 
@@ -953,7 +953,7 @@ final class Vendetta implements Listener {
                     } else if (d < 7) hit(p, c("extermination.splash-damage", 8), Guard.UNBLOCKABLE, 0, 1.2);
                 }
                 tattoos = 0;
-                extermCd = (int) (c("extermination.cooldown-seconds", 40) * 20);
+                extermCd = (int) (c("extermination.cooldown-seconds", 50) * 20);
             }
             if (t > 70 + dodge) pose = VendettaAnims.roccoSlamLand((t - 70 - dodge) * 40f / 32f); // the opening to punish him
             if (t >= 102 + dodge) end(20);
@@ -1021,7 +1021,7 @@ final class Vendetta implements Listener {
             event.setDamage(0.001); // the hit lands (the Index credits it); his real health is tracked here
             if (by != null) fighters.add(by.getUniqueId());
             if (vengeance > 0) dmg *= 1 - c("vengeance.damage-reduction", 0.25);
-            hp -= dmg * (1 - c("defense", 0.15));
+            hp -= dmg * (1 - c("defense", 0.1));
             if (attack != M_EXTERMINATE) flinchFrom(by); else hitFlash = 3;
             if (tattooCd <= 0 && tattoos < c("max-tattoos", 50)) {
                 tattoos++; tattooCd = (int) c("tattoo-cooldown-ticks", 10);
@@ -1562,6 +1562,7 @@ final class Vendetta implements Listener {
     final Map<UUID, long[]> fistCd = new HashMap<>();
     final Map<UUID, Integer> payback = new HashMap<>(), sworn = new HashMap<>(), tattooCd = new HashMap<>();
     final Map<UUID, Long> wernerCd = new HashMap<>();
+    final Map<UUID, Integer> noFall = new HashMap<>(); // Extermination launched you: no fall damage from it
     /** A move that plays out over several ticks: (player, move, clock, target). */
     final class FistAct { final Player p; final int move; int t; LivingEntity target; Vector spot; FistAct(Player p, int move) { this.p = p; this.move = move; } }
     final List<FistAct> acts = new ArrayList<>();
@@ -1633,6 +1634,7 @@ final class Vendetta implements Listener {
             }
         }
         payback.replaceAll((k, v) -> v - 10); payback.values().removeIf(v -> v <= 0);
+        noFall.values().removeIf(v -> v < now);
         sworn.replaceAll((k, v) -> v - 10); sworn.values().removeIf(v -> v <= 0);
         tattooCd.replaceAll((k, v) -> v - 10); tattooCd.values().removeIf(v -> v <= 0);
     }
@@ -1671,7 +1673,7 @@ final class Vendetta implements Listener {
     void fistDamage(Player p, LivingEntity e, double dmg) {
         boolean boss = bossLike(e);
         if (boss) dmg = Math.min(dmg, c("fist.boss-damage-cap", 60));
-        e.damage(dmg, p);
+        e.damage(dmg, abilityDamage(p)); // (a plain hit from p made Guardians spike the Fist's user)
     }
 
     boolean startFist(Player p, int sel) {
@@ -1804,7 +1806,7 @@ final class Vendetta implements Listener {
                 }
                 case 8 -> { // EXTERMINATION: up, then down onto the target
                     LivingEntity e = a.target;
-                    if (e == null || !e.isValid() || !e.getWorld().equals(w)) { acts.remove(a); continue; }
+                    if (e == null || !e.isValid() || !e.getWorld().equals(w)) { acts.remove(a); p.setFallDistance(0); noFall.put(p.getUniqueId(), now + 60); continue; }
                     if (a.t < 24 && a.t % 3 == 0) {
                         for (int i = 0; i < 16; i++) { double ang = Math.PI * 2 * i / 16; w.spawnParticle(Particle.DUST, e.getLocation().add(Math.cos(ang) * 1.8, 0.15, Math.sin(ang) * 1.8), 1, 0, 0, 0, 0, new Particle.DustOptions(Color.fromRGB(255, 30, 30), 1.4f)); }
                     }
@@ -1813,6 +1815,7 @@ final class Vendetta implements Listener {
                         to.setDirection(p.getLocation().getDirection());
                         p.teleport(to.add(0, 0.2, 0));
                         p.setFallDistance(0);
+                        noFall.put(p.getUniqueId(), now + 40);
                         w.playSound(to, Sound.ENTITY_GENERIC_EXPLODE, 2f, 0.5f);
                         w.spawnParticle(Particle.EXPLOSION_EMITTER, to, 1);
                         boolean boss = bossLike(e);
@@ -1827,10 +1830,34 @@ final class Vendetta implements Listener {
         }
     }
 
+    /**
+     * PvE only (it was too strong in PvP): against a player the Fist hits like a bare hand. Its moves never touch
+     * players, and tattoos, Payback and Werner only come from monsters and bosses.
+     */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onFistPvp(EntityDamageByEntityEvent event) {
+        if (!(event.getEntity() instanceof Player) || !(event.getDamager() instanceof Player d) || !holdingFist(d)) return;
+        event.setDamage(Math.min(event.getDamage(), 1.0));
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onNoFall(EntityDamageEvent event) {
+        if (event.getCause() != EntityDamageEvent.DamageCause.FALL || !(event.getEntity() instanceof Player p)) return;
+        Integer until = noFall.get(p.getUniqueId());
+        if (until != null && now <= until) event.setCancelled(true);
+    }
+
+    static boolean fromPlayer(EntityDamageEvent event) {
+        if (!(event instanceof EntityDamageByEntityEvent ev)) return false;
+        Entity d = ev.getDamager();
+        return d instanceof Player || (d instanceof Projectile pr && pr.getShooter() instanceof Player);
+    }
+
     /** The holder's side: Vengeance Tattoos, Payback, Swear Vengeance dodges, and Werner coming to help. */
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onHolderHurt(EntityDamageEvent event) {
         if (!(event.getEntity() instanceof Player p)) return;
+        if (fromPlayer(event)) return; // PvE only
         if (sworn.containsKey(p.getUniqueId())) { event.setCancelled(true); p.getWorld().playSound(p.getLocation(), Sound.ENTITY_BREEZE_JUMP, 0.8f, 1.5f); return; }
         if (payback.containsKey(p.getUniqueId()) && event instanceof EntityDamageByEntityEvent ev) {
             Entity d = ev.getDamager();

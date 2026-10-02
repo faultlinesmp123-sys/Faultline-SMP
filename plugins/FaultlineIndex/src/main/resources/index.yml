@@ -142,7 +142,7 @@ entries:
      does: "Shoots a glob of silk. Whatever it hits is webbed and slowed for 3 seconds. 8 second cooldown."}
   - {chapter: weapons, name: "Twin Eye Staff", icon: twin_eye_staff, detect: "faultlinebosses:twin_eye_staff",
      how: "20% from the Demon Eye.",
-     does: "Summons two small eyes that dive at whoever you're fighting for 30 seconds. Other players can hit the eyes off (5 hearts each). 60 second cooldown."}
+     does: "Summons two small eyes that dive at hostile mobs near you for 30 seconds (PvE only: they never attack players). Other players can hit the eyes off (5 hearts each). 60 second cooldown."}
   - {chapter: weapons, name: "Shield of the Demon Eye", icon: demon_eye_shield, detect: "faultlinebosses:demon_eye_shield",
      how: "25% from the Demon Eye.",
      does: "A shield. Press F while holding it to dash forward; players you slam into get knocked back. 20 second cooldown."}
@@ -514,7 +514,7 @@ entries:
     name: Rocco Vendetta
     icon: rocco_vendetta
     detect-tag: faultline_rocco
-    where: 'Sign a Vendetta Contract on open, flat ground. Bring a group: 7 players is the recommended size. 4,000 health plus 35% for every extra fighter (12,400 for 7), over 3 phases. Every hit on him adds a Vengeance Tattoo (max 50, each +1% damage). At half health his little brother Werner joins in.'
+    where: 'Sign a Vendetta Contract on open, flat ground. Bring a group: 7 players is the recommended size. 4,000 health, 8,000 with 7 players, over 3 phases. Every hit on him adds a Vengeance Tattoo (max 50, each +1% damage). At half health his little brother Werner joins in.'
     does: 'Phase 1: Kick and Punch (both stun you for 3 seconds), Payback (a counter stance: do NOT hit him), Assemble (Vendetta Enforcers show up) and Watch Your Back! (he blinks behind you twice). Phase 2 adds MY HAIR COUPONS!!! (a 14-block blast that takes half your health: run!), Swear Vengeance (he dodges everything for 5 seconds, then hits harder and faster) and No More Tests (three blinks, three hits). At 50 tattoos: COMPLETE AND TOTAL EXTERMINATION!!! He leaps into the sky and lands on someone. The red ring locks a second before he lands: get out or die, totem or not. Phase 3: all of it, faster.'
     drops:
     - Vendetta Fist|100%
@@ -549,4 +549,4 @@ entries:
     icon: vendetta_fist
     detect: faultlinebosses:vendetta_item=fist
     how: Dropped by Rocco Vendetta.
-    does: '+8 attack damage, fast. Sneak + right-click to pick a move, right-click to use it: Kick and Punch (stun), Payback, Assemble (two Enforcers fight for you), Watch Your Back!, MY HAIR COUPONS!!!, Swear Vengeance, No More Tests, COMPLETE AND TOTAL EXTERMINATION!!! (needs 50 tattoos), Mercy of the Big Brother, TRICKED ME, DID YOU??!! and Ah, You Were One of the Fam (a big shield for some health). Getting hit while holding it gives you Vengeance Tattoos, and when you drop below half health, Werner comes to help for 30 seconds (every 5 minutes). Fist moves can''t hit players.'
+    does: '+8 attack damage, fast. Sneak + right-click to pick a move, right-click to use it: Kick and Punch (stun), Payback, Assemble (two Enforcers fight for you), Watch Your Back!, MY HAIR COUPONS!!!, Swear Vengeance, No More Tests, COMPLETE AND TOTAL EXTERMINATION!!! (needs 50 tattoos), Mercy of the Big Brother, TRICKED ME, DID YOU??!! and Ah, You Were One of the Fam (a big shield for some health). Getting hit while holding it gives you Vengeance Tattoos, and when you drop below half health, Werner comes to help for 30 seconds (every 5 minutes). PvE only: its moves never hit players, and against a player it hits like a bare hand.'

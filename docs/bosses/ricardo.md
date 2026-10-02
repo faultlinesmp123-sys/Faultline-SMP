@@ -16,10 +16,10 @@ and stops when he falls or leaves. `rocco.music.enabled/volume/length-seconds` i
   (same check as Don Lorenzo: no buildings, no villagers). 15 minute cooldown after he falls.
 
 ## Fight
-- Built for **7 players**. 4,000 health +35% per extra fighter (12,400 for 7; it grows if more people join mid-fight),
-  **3 phases** (2/3 and 1/3 start the next phase, with a short invulnerable roar and shockwave). 15% defense.
+- Built for **7 players**. 4,000 health solo, 8,000 with 7 (+1/6 of the base per extra fighter; it grows if more people join mid-fight),
+  **3 phases** (2/3 and 1/3 start the next phase, with a short invulnerable roar and shockwave). 10% defense.
 - In a group, 2 moves in 5 go after a random player instead of the closest. Payback has an 8s cooldown and
-  Extermination 40s.
+  Extermination 50s.
 - Animations live in `VendettaAnims.java` (each move is a pure function of its clock). Preview them without a server:
   `tools/anim/preview.sh <unpacked FaultlineSMP.zip> <out-dir> [anim...]`.
 - **At half health** Werner (300 HP) joins.
@@ -57,7 +57,7 @@ a 1 in 3 chance at a cosmetic ("his coat, book and chains").
 - **One cosmetic** they don't have yet: Golden Chains, Book or Coat (`cosmetic unlock` in FaultlineCosmetics).
 
 ## Vendetta Fist ("his passives")
-+8 attack damage, fast swing. Sneak + right-click picks a move, right-click uses it (each has its own cooldown). Moves never hit players.
++8 attack damage, fast swing. Sneak + right-click picks a move, right-click uses it (each has its own cooldown). PvE only: moves never hit players, and against a player it hits like a bare hand.
 Kick, Punch (stun mobs), Payback (the next mob hit on you is thrown back x1.5), Assemble (2 friendly Enforcers for 30s),
 Watch Your Back!, MY HAIR COUPONS!!! (half a mob's health), Swear Vengeance (5s untouchable + Strength, Speed, Resistance),
 No More Tests (3 hits), COMPLETE AND TOTAL EXTERMINATION!!! (needs 50 tattoos: kills a mob, 250 to a boss), plus

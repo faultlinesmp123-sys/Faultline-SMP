@@ -3169,22 +3169,41 @@ public final class FaultlineItems extends JavaPlugin {
             this.plugin = plugin;
         }
 
-        public void applyTextures(Player player) {
-            if (!plugin.getConfig().getBoolean("item-textures.enabled", false)) return;
+        /** Sends the pack; returns a short status line (also logged) so a missing pack is easy to track down. */
+        public String applyTextures(Player player) {
+            String cfgFile = new File(plugin.getDataFolder(), "config.yml").getPath();
+            if (!plugin.getConfig().getBoolean("item-textures.enabled", false)) {
+                String why = "not sent: item-textures.enabled is false in " + cfgFile;
+                plugin.getLogger().info("[Resource pack] " + player.getName() + ": " + why);
+                return why;
+            }
 
             String url = plugin.getConfig().getString("item-textures.url", "");
             String hashHex = plugin.getConfig().getString("item-textures.hash", "");
-            if (url == null || url.isBlank()) return;
+            if (url == null || url.isBlank()) {
+                String why = "not sent: item-textures.url is empty in " + cfgFile;
+                plugin.getLogger().warning("[Resource pack] " + player.getName() + ": " + why);
+                return why;
+            }
 
             try {
-                byte[] hashBytes = (hashHex == null || hashHex.isBlank())
-                        ? new byte[0]
-                        : HexFormat.of().parseHex(hashHex);
+                String hex = hashHex == null ? "" : hashHex.trim();
+                if (!hex.isEmpty() && !hex.matches("[0-9a-fA-F]{40}")) {
+                    String why = "not sent: item-textures.hash isn't a 40-character SHA-1 (got \"" + hex + "\") in " + cfgFile;
+                    plugin.getLogger().warning("[Resource pack] " + player.getName() + ": " + why);
+                    return why;
+                }
+                byte[] hashBytes = hex.isEmpty() ? new byte[0] : HexFormat.of().parseHex(hex);
                 player.addResourcePack(PACK_ID, url, hashBytes, null, false);
+                plugin.getLogger().info("[Resource pack] sent to " + player.getName() + " (hash " + (hex.isEmpty() ? "none" : hex) + ")");
+                return "sent (hash " + (hex.isEmpty() ? "none" : hex) + ")";
             } catch (Exception e) {
                 plugin.getLogger().log(Level.WARNING, "Failed to send item texture pack to " + player.getName(), e);
+                return "failed: " + e.getMessage();
             }
         }
+
+        static UUID packId() { return PACK_ID; }
     }
 
 
@@ -3202,6 +3221,24 @@ public final class FaultlineItems extends JavaPlugin {
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 if (player.isOnline()) plugin.getItemTextureManager().applyTextures(player);
             }, 60L); // 3 seconds
+        }
+
+        /** What each player's game did with the pack: DECLINED means their server entry has resource packs turned off. */
+        @EventHandler
+        public void onPackStatus(org.bukkit.event.player.PlayerResourcePackStatusEvent event) {
+            if (!ItemTextureManager.packId().equals(event.getID())) return;
+            var st = event.getStatus();
+            String hint = switch (st) {
+                case DECLINED -> " (their game has Server Resource Packs set to Disabled: Multiplayer > Edit server > Enabled)";
+                case FAILED_DOWNLOAD -> " (couldn't download it, or the hash doesn't match the file at the url)";
+                case INVALID_URL -> " (the url in item-textures.url is wrong)";
+                case FAILED_RELOAD -> " (downloaded, but the game couldn't load it)";
+                default -> "";
+            };
+            java.util.logging.Level lvl = (st == org.bukkit.event.player.PlayerResourcePackStatusEvent.Status.SUCCESSFULLY_LOADED
+                    || st == org.bukkit.event.player.PlayerResourcePackStatusEvent.Status.ACCEPTED
+                    || st == org.bukkit.event.player.PlayerResourcePackStatusEvent.Status.DOWNLOADED) ? java.util.logging.Level.INFO : java.util.logging.Level.WARNING;
+            plugin.getLogger().log(lvl, "[Resource pack] " + event.getPlayer().getName() + ": " + st + hint);
         }
     }
 
@@ -6946,6 +6983,11 @@ public final class FaultlineItems extends JavaPlugin {
 
             plugin.reloadConfig();
             sender.sendMessage(ChatColor.GREEN + "Faultline SMP Items config reloaded.");
+            // the resource pack is only sent on join, so a changed url/hash/enabled used to need everyone to rejoin
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                String status = plugin.getItemTextureManager().applyTextures(p);
+                sender.sendMessage(ChatColor.GRAY + "Resource pack -> " + p.getName() + ": " + status);
+            }
             return true;
         }
     }

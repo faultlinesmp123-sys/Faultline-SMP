@@ -438,3 +438,73 @@ entries:
     detect: faultlineitems:abyssal_diving_suit
     how: 40% from the Kraken.
     does: Breathe underwater, immune to Crush Depth, everything the Abyssal Diving Gear does, and 3 plates that each absorb 15% of a hit underwater (a broken plate regrows after 20 seconds).
+  # ---------------------------------------------------------------- DIAMOND JACOB
+  - chapter: bosses
+    name: Diamond Jacob
+    icon: diamond_jacob
+    detect-tag: faultline_jacob
+    where: 'Blow a Diamond War Horn on a mountain peak (Jagged, Frozen, or Stony Peaks). 4,000 health over 4 phases of 1,000. A pink orb rises every 20 seconds: hit it into him for 100 damage.'
+    does: 'Phase 1: he rides his Great Hawk overhead and only arrows reach him: Piercing Arrow, Arrow Volley, Talon Dive, and Arrow Rain (get out of the red rings). Phase 2: the hawk is shot down and he pulls a war hammer from the ground: Hammer Slam (jump the shockwave), Pearl Strike (he pearls behind you), Whirlwind, Hammer Throw, and spiders from his staff. Phase 3: he blows his horn and his army rides in: soldiers on armored horses, Cavalry Charge (more riders arrive if his army is thin), and Spear Wall. Phase 4 arrives in a later update.'
+    drops:
+    - 20 Mythic Goodie Bags|100%
+    - 20-30 Diamonds|100%
+    - Jacob's War Hammer|100%
+    - Ember Blade|100%
+    - All five of his charms|100%
+    - 2,500 XP|100%
+  - chapter: enemies
+    name: Jacob's Soldier
+    icon: jacob_soldier
+    detect-name: Jacob's Soldier
+    where: Rides in on an armored horse when Diamond Jacob blows his horn (phase 3).
+    does: 'Iron armor and a spear. Rides you down in Cavalry Charges. Kill the soldier and his horse leaves too.'
+    drops:
+    - Nothing|-
+  - chapter: consumables
+    name: Diamond War Horn
+    icon: jacob_horn
+    detect: faultlinebosses:jacob_item=horn
+    how: 'Craft a Goat Horn with 4 Gold Ingots and 4 Diamond Blocks around it.'
+    does: Blow it on a mountain peak to summon Diamond Jacob (15 minute cooldown after he falls).
+  - chapter: weapons
+    name: Jacob's War Hammer
+    icon: jacob_hammer
+    detect: faultlinebosses:jacob_item=hammer
+    how: Dropped by Diamond Jacob.
+    does: 'A huge, slow, heavy-hitting hammer. Right-click: Ground Slam (10s cooldown).'
+  - chapter: weapons
+    name: Ember Blade
+    icon: jacob_sword
+    detect: faultlinebosses:jacob_item=sword
+    how: Dropped by Diamond Jacob.
+    does: 'A burning sword with Fire Aspect II. Right-click: Ember Dash (8s cooldown).'
+  - chapter: accessories
+    name: Falconer's Quiver
+    icon: falconers_quiver
+    detect: faultlineitems:falconers_quiver
+    how: Dropped by Diamond Jacob.
+    does: '+20% arrow damage against anything airborne (his hawk in phase 1).'
+  - chapter: accessories
+    name: Ender Anchor
+    icon: ender_anchor
+    detect: faultlineitems:ender_anchor
+    how: Dropped by Diamond Jacob.
+    does: 'See a purple ring where Diamond Jacob is about to pearl to, and his Pearl Strike deals half damage to you.'
+  - chapter: accessories
+    name: Banner of Defiance
+    icon: banner_of_defiance
+    detect: faultlineitems:banner_of_defiance
+    how: Dropped by Diamond Jacob.
+    does: 'His army deals 30% less damage to you, and their hits and horses can''t knock you back.'
+  - chapter: accessories
+    name: Ember Ward
+    icon: ember_ward
+    detect: faultlineitems:ember_ward
+    how: Dropped by Diamond Jacob.
+    does: 'You can''t be set on fire, and you take 25% less fire damage (his flames too).'
+  - chapter: accessories
+    name: Diamond Heart
+    icon: diamond_heart
+    detect: faultlineitems:diamond_heart
+    how: Dropped by Diamond Jacob.
+    does: +2 hearts of max health.

@@ -11,6 +11,26 @@ commands:
     description: "Admin: summon or remove the Demon Eye, or give Suspicious Eyes"
     usage: /demoneye <summon|kill|give> [amount] [player]
     permission: bosses.admin
+  frostbeard:
+    description: "Admin: summon or remove Frostbeard the Snow Wizard"
+    aliases: [mortimer]
+    usage: /frostbeard <summon|kill|egg> [amount] [player]
+    permission: bosses.admin
+  dune:
+    description: "Admin: summon or remove the Dune Devourer, or give its spawn egg"
+    usage: /dune <summon|kill|egg|item|vulture> ...
+    permission: bosses.admin
+  jacob:
+    description: "Admin: summon or remove Diamond Jacob, skip to a phase, or give his items"
+    usage: /jacob <summon|kill|phase|item>
+    permission: bosses.admin
+  kraken:
+    description: "Admin: summon or remove the Kraken, force a phase, spawn a pink bubble, or get a Bait Worm"
+    usage: /kraken <summon|kill|phase|bubble|worm>
+    permission: bosses.admin
+  don:
+    description: "Don Lorenzo (admin: summon, kill, phase2, speech, armband, ball)"
+    usage: /don <summon|kill|phase2|speech|armband|ball>
 
 permissions:
   bosses.admin:

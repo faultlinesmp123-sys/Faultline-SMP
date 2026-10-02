@@ -102,6 +102,7 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
         String id, chapter, name, icon, how, does, where, tag, nameMatch;
         NamespacedKey key;
         Integer keyValue;
+        String keyText; // "<plugin>:<key>=<word>": items tagged with a text value (e.g. Diamond Jacob's items)
         EntityType type;
         List<String> drops = List.of();
         boolean creature;
@@ -176,7 +177,9 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
             if (detect != null) {
                 String[] kv = detect.split("=");
                 e.key = NamespacedKey.fromString(kv[0]);
-                if (kv.length > 1) e.keyValue = Integer.parseInt(kv[1]);
+                if (kv.length > 1) {
+                    try { e.keyValue = Integer.parseInt(kv[1]); } catch (NumberFormatException ex) { e.keyText = kv[1]; }
+                }
                 byKey.computeIfAbsent(e.key, k -> new ArrayList<>()).add(e);
             }
             e.tag = str(m, "detect-tag");
@@ -301,7 +304,9 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
             List<Entry> list = byKey.get(k);
             if (list == null) continue;
             for (Entry e : list) {
-                if (e.keyValue == null) {
+                if (e.keyText != null) {
+                    if (pdc.has(k, PersistentDataType.STRING) && e.keyText.equals(pdc.get(k, PersistentDataType.STRING))) result.add(e);
+                } else if (e.keyValue == null) {
                     result.add(e);
                 } else {
                     Integer v = pdc.get(k, PersistentDataType.INTEGER);

@@ -3,11 +3,14 @@
 # The boss resource pack (3D model, textures, sounds). Upload FaultlineBossesPack.zip
 # to your GitHub repo and paste its RAW link here. The hash is already correct.
 resource-pack:
+  # Leave blank: the boss models, sounds, and music are in the ONE combined pack (FaultlineSMP.zip),
+  # which FaultlineItems sends. Only fill these in to send a separate boss pack.
   url: ""
-  hash: "2819a61ef27104347ee4f3d92d7ff60189478a58"
+  hash: ""
 
 demon-eye:
   health: 1000
+  damage-multiplier: 1.3     # all of its attacks (1.0 = the original damage)
   phase-2-at: 0.80           # mouth form, Spin Dash, Tooth Vomit
   phase-3-at: 0.35           # Blood Shots
   phase-4-at: 0.15           # everything faster
@@ -21,12 +24,315 @@ demon-eye:
   max-servants: 14           # lag safety
   max-projectiles: 160       # lag safety
   summon-item-drop-chance: 0.0005   # Suspicious Eye, from vanilla mobs only
+  charge-speed: 0.75         # speed of all its dashes (1.0 = original, lower = easier to hit)
+  recovery-ticks: 30         # after each Hover Charge it hangs still this long (20 ticks = 1 second)
+  tooth-spread: 2.5          # Tooth Vomit teeth land within this many blocks of each player
+  tooth-flight-ticks: 30     # how long teeth are in the air (more = slower, higher arcs)
   model-scale: 3.0
-  # If the eye looks backwards or upside-down in game, fix it here
-  # (e.g. model-yaw-offset: 180, or model-pitch-sign: -1). No rebuild needed.
+  # The eye model is flipped to face forward (item displays draw models turned
+  # around). If it ever looks backwards or upside-down, adjust these with /freload.
+  model-flip: true
   model-yaw-offset: 0
   model-pitch-sign: 1
+  music:                     # boss theme (in the resource pack)
+    enabled: true
+    radius: 64               # everyone within this many blocks of the eye hears it
+    volume: 0.8              # uses the Jukebox/Note Blocks volume slider
+    intense-speed: 1.0       # phases 3-4 speed-up (1.0 = off; speeding up a real song shifts its pitch)
+    length-seconds: 316.42   # "It Sees Everything" (5:16) — must match the track's length for clean looping
+  # Demon Eye gear (dropped as loot)
+  twin-staff:
+    seconds: 30              # how long the two eyes fight for you
+    cooldown-seconds: 60
+    damage: 4                # per dive hit
+    dive-speed: 0.8
+    eye-scale: 0.55
+    eye-health: 10           # other players can hit the eyes off (the owner's hits pass through)
+  shield:
+    cooldown-seconds: 20     # F to dash
+    dash-speed: 1.8
+    dash-damage: 2           # players you slam into (then knocked back)
+    knockback: 1.5
+  unholy-arrow:
+    damage-multiplier: 2.0
   rewards:                   # every player who fought
     mythic-bags: 10
     netherite-chance: 0.5    # 1-3 Netherite Ingots
+    shield-chance: 0.25      # Shield of the Demon Eye
+    twin-staff-chance: 0.20  # Twin Eye Staff
+    # always: 32-64 Unholy Arrows. All loot drops on the ground where the eye died,
+    # locked so only that fighter can pick it up.
     xp: 1000                 # also always: 12-16 Diamonds and 2 Zombie Omens (IV or V)
+
+# Frostbeard the Snow Wizard. Spawns in snow biomes, or anywhere snowy on a
+# Snowy Day: every 30 seconds each player in the snow has this chance; he snuffs out a torch
+# near them and appears from it (no torch nearby = no spawn).
+mortimer:                     # Frostbeard the Snow Wizard (the section keeps its old name)
+  enabled: true
+  damage-multiplier: 1.3      # all of his attacks (1.0 = the original damage)
+  hail-damage: 3              # Hailstorm pellets (blockable by looking up)
+  nova-damage: 9              # Frost Nova ring (jump over it)
+  nova-radius: 14
+  spawn-chance: 0.005
+  torch-radius: 16
+  cooldown-minutes: 30        # after he's beaten or leaves
+  health: 700
+  damage-reduction: 0.40      # takes 40% less damage from everything
+  armor: 15
+  armor-toughness: 8
+  phase-2-at: 0.66            # Snow Monster
+  phase-3-at: 0.33            # Snowflake
+  parry-damage: 25            # block his pink orb with a shield and it flies back into him
+  whale-damage: 12            # unblockable: get out of the shadow
+  roll-damage: 10
+  roll-speed: 0.75
+  spike-damage: 8             # unblockable
+  cube-damage: 6
+  small-cube-damage: 3
+  shard-damage: 5
+  shards-per-ring: 12
+  icicle-damage: 7            # blockable by looking up with a shield
+  beam-damage: 4              # heavy; also freezes and slows
+  runner-health: 12
+  wizard-scale: 2.2
+  monster-scale: 3.0
+  fridge-scale: 2.6
+  flake-scale: 4.0
+  whale-scale: 3.0
+  rewards:                    # every fighter; dropped where he melts, locked to that player
+    mythic-bags: 3
+    frost-flare-chance: 0.25
+    xp: 500                   # also always: 8-14 Diamonds and 16 Blue Ice
+
+# Bedrock players (Geyser) can't see the custom models, so they see a vanilla stand-in instead
+# (Java players never see these). Sizes of the stand-ins:
+#   demon-eye.bedrock.eye-scale (Guardian, 3.2), demon-eye.bedrock.mouth-scale (Elder Guardian, 1.4)
+#   mortimer.bedrock.wizard-scale (Evoker, 1.6), .monster-scale (Snow Golem, 2.0), .flake-scale (Breeze, 2.0)
+
+# How far away a survival player can be and still get pulled into a boss fight automatically
+# (anyone who hits the boss joins too, from any distance):
+#   demon-eye.engage-radius: 48      mortimer.engage-radius: 48
+
+# Balance knobs (added later, so your server's config may not have them yet; these are the defaults):
+#   demon-eye.damage-multiplier: 1.0      demon-eye.hover-height-scale: 0.6 (lower = closer to the ground)
+#   mortimer.damage-multiplier: 1.5       mortimer.health: 700
+
+# The Dune Devourer (Sandstorm, deserts/badlands) and its frozen variant the Frostmaw (Snowy Day,
+# anywhere snowy) share these settings: every 30s each player standing in it has this chance.
+dune:
+  enabled: true
+  spawn-chance: 0.005
+  cooldown-minutes: 30
+  health: 1100
+  damage-multiplier: 1.2
+  defense: 0.35              # takes 35% less damage
+  phase-2-at: 0.55           # + Ground Slam with Sandnadoes
+  phase-3-at: 0.25           # + Vultures
+  segments: 22               # head + body + tail (about 39 blocks long)
+  spacing: 1.8
+  model-scale: 2.2
+  hitbox-scale: 1.25
+  body-hit-multiplier: 1.2   # hits on the body (a bit more than a normal hit)
+  body-hitbox-scale: 1.5
+  rush-depth: 1.0            # how deep it skims during Sand Rush
+  travel-depth: 2.5          # how deep it travels under the ground while chasing you
+  ambush-warning-ticks: 22   # how long the bulge tracks you before Ambush erupts (20 = 1 second)
+  ambush-damage: 12
+  tremor-damage: 7           # jump over the shockwave to dodge it
+  breath-damage: 3           # per blast in the Breath cone
+  max-burrow-depth: 3        # it's pushed back up if it digs deeper than this
+  head-damage: 10            # heavy (a shield only halves it)
+  body-damage: 5
+  blast-damage: 6            # Sand Blasts (blockable)
+  sandnado-damage: 4         # unblockable, and it lifts you
+  sandnado-speed: 0.08
+  spit-speed: 0.75
+  spit-spread-degrees: 40      # Sand Spit fires a fan of 7 aimed at you
+  sandstorm-blast-speed: 0.6
+  sandstorm-prowl-speed: 0.6   # how fast it circles you during the Sandstorm attack
+  rush-speed: 1.0
+  max-speed: 1.3
+  gravity: 0.045             # how hard it arcs back down when it leaves the ground
+  vulture-health: 14
+  engage-radius: 48
+  music:
+    enabled: true
+    radius: 64
+    volume: 0.8
+    length-seconds: 304.2
+  rewards:                   # every fighter; dropped where it dies, locked to that player
+    mythic-bags: 3
+    xp: 600                  # also always: 8-14 Diamonds
+    ankh-chance: 0.0001      # 0.01% Ankh Shield
+
+# Wild Vultures over deserts and badlands (open sky). Every 20 seconds per player out there:
+vultures:
+  model-scale: 1.3           # size of the Vulture / Snow Owl model
+  enabled: true
+  chance: 0.25               # chance a few show up (normal day or night)
+  sandstorm-chance: 0.5      # during a Sandstorm
+  max-nearby: 3
+  health: 14
+  talon-chance: 0.5          # Talon drop (the Dune Devourer's summoned Vultures drop nothing)
+
+# Pieces of the Ankh Shield (each fighter rolls separately; dropped where the boss dies, locked to them):
+#   demon-eye.rewards.ankh-piece-chance: 0.5    the Ankh, from the Demon Eye
+#   dune.rewards.cross-chance: 0.5              the Cross, from the Dune Devourer and the Frostmaw
+
+# Don Lorenzo. Summoned with a Captain's Armband (1% from wild animals) in the daytime, on flat, open ground.
+don:
+  armband-chance: 0.01
+  flatness: 2                  # how many blocks of height difference the 36x36 area can have
+  talk-timeout-seconds: 180    # nobody talks to him: he leaves
+  phase1-health: 500
+  phase1-threshold: 50         # the cutscene starts here (he can't drop below it in phase 1)
+  phase1-speed: 0.22
+  phase1:
+    slash-damage: 5
+    kick-damage: 6
+  phase2-health: 1500
+  phase2-health-per-extra-fighter: 0.4   # +40% for each extra player in the fight
+  phase2-defense: 0.05
+  phase2-speed: 0.95
+  damage-multiplier: 1.3       # all his damage
+  phase2:
+    blink-damage: 9
+    rush-damage: 8
+    rush-speed: 1.6
+    recovery-scale: 0.75       # his pauses between attacks (lower = fewer openings)
+    dribble-damage: 9          # Zombie Dribble (he's untouchable while dribbling)
+    dribble-speed: 0.75
+    dribble-ticks: 45
+    crash-damage: 14           # Ace Eater: Undead Crash shot
+    crash-speed: 1.5
+    crash-shot-speed: 1.7
+    soulless-damage: 16        # Ace Eater: Soulless Strike
+    shot-damage: 10
+    shot-speed: 1.4
+    ricochet-damage: 6
+    ricochet-speed: 0.8
+    shockwave-damage: 8
+    counter-damage: 12
+  orb-interval-ticks: 200      # a pink orb every 10 seconds
+  orb-damage-min: 100          # each orb hit deals a random amount in this range (exactly, his defense doesn't shrink it)
+  orb-damage-max: 150
+  orb-life-ticks: 180
+  price-check-ticks: 120       # how long a Price Check mark lasts (marked: 22% slower, +20% damage from him)
+  price-check-bonus: 1.2
+  ace-eater-below: 0.6         # Ace Eater unlocks below 60% health
+  box-material: PINK_STAINED_GLASS
+  music-offset-ticks: 0        # if the 0:22 drop lands early/late for you, shift the timeline (20 = 1 second later)
+  music:
+    volume: 1.0
+  ball:                        # Lorenzo's Ball (the weapon)
+    damage: 18
+    player-damage-multiplier: 1.0
+    frostbite-damage: 1
+    cooldown-ticks: 40
+    speed: 1.3
+    range: 24
+  rewards:
+    mythic-bags: 15
+    ball-chance: 0.5
+    diamonds-min: 12
+    diamonds-extra: 9
+    xp: 1500
+
+# ---------------- THE KRAKEN (drop a Bait Worm into a Deep Ocean) ----------------
+kraken:
+  health: 2200
+  defense: 0.3
+  damage-multiplier: 1.2      # all his damage (+20%)
+  scale: 4.0                  # model size (4 = a head about 9 blocks tall)
+  min-depth: 15               # blocks of water needed to summon him
+  sink-ticks: 160             # the worm sinks for 8 seconds before he comes
+  cooldown-minutes: 10
+  arena-radius: 24            # how far he swims from where he rose
+  phase2-at: 0.66
+  phase3-at: 0.33
+  phase1-speed: 0.6           # slow: you can read and dodge everything
+  phase2-speed: 0.85
+  phase3-speed: 1.05
+  pink-bubble-seconds: 15
+  pink-damage-min: 150        # exact damage (his defense doesn't reduce it)
+  pink-damage-max: 200
+  tentacle-hit-multiplier: 0.5
+  air-bubble-scale: 3.0
+  eel-health: 8
+  eel-every-ticks: 200
+  max-eels: 6
+  out-of-water:               # leave the water and he smashes you
+    warn-ticks: 30
+    smash-ticks: 50
+    smash-fraction: 0.55      # of your max health, ignoring armor: two smashes kill
+  damage:
+    slam: 22
+    bite: 20
+    grip-per-second: 4
+    whirlpool-bite: 8
+    barnacle: 8
+    surge: 15
+    barrage: 17
+    eel-zap: 5
+    crush-per-second: 4
+  rewards:
+    mythic-bags: 18
+    diamonds-min: 16
+    diamonds-extra: 9
+    xp: 2000
+    suit-chance: 0.4          # the Abyssal Diving Suit
+  bedrock:
+    squid-scale: 10           # Bedrock players see a giant glow squid
+  music:
+    enabled: true             # "Outcast of the Sulphurous Seas" (the Aquatic Scourge theme)
+    volume: 1.0
+    length-seconds: 397.22
+
+# ---------------- DIAMOND JACOB (blow a Diamond War Horn on a mountain peak) ----------------
+jacob:
+  health: 4000                # 4 phases of 1,000
+  defense: 0.0
+  damage-multiplier: 1.0
+  scale: 1.15
+  walk-speed: 0.3
+  phase4-speed: 0.42
+  cooldown-minutes: 15
+  orb-damage: 100             # pink orbs (phases 1-3): exact damage
+  orb-every-seconds: 20
+  max-phase: 3               # built one phase at a time: after this phase he withdraws (no loot) until the next is unlocked
+  bird-scale: 5.0
+  bird-clearance: 8           # the hawk always stays at least this far above the ground under it
+  bird-height: 14
+  bird-radius: 12
+  bird-circle-speed: 0.018
+  spider-every-ticks: 240
+  max-spiders: 6
+  army-size: 15
+  reinforce-below: 4          # phase 3: if fewer soldiers than this are left, his Cavalry Charge horn calls more
+  reinforcements: 5
+  damage:
+    piercing-arrow: 15
+    volley-arrow: 7
+    talon-dive: 16
+    arrow-rain: 9
+    hammer-slam: 16
+    pearl-strike: 14
+    whirlwind: 8
+    hammer-throw: 12
+    cavalry: 9
+    spear-wall: 12
+    ember-flurry: 9
+    phoenix-leap: 18
+    inferno-pillar: 12
+    burning-brand: 14
+    diamond-shard: 7
+  rewards:
+    mythic-bags: 20
+    diamonds-min: 20
+    diamonds-extra: 11
+    xp: 2500
+  music:
+    enabled: false            # turn on once both tracks are in the resource pack
+    volume: 1.0
+    length1-seconds: 180      # track 1 (phases 1-3)
+    length2-seconds: 180      # track 2 (the third cutscene + phase 4)

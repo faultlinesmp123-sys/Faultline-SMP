@@ -4,11 +4,17 @@ Inspired by the Roaring Knight (Deltarune). The last, hardest boss. **Status: mo
 nothing else coded yet.**
 
 ## Look
-Completely black plate armor, an imposing knight. You can't see his face at all: inside the helm there's only darkness.
-Tall pointed helm with a spire and swept-back horns, a high collar, huge spiked pauldrons, clawed gauntlets, a long torn
-cape, and a broad black greatsword with white edges and a white point. Rig: `explorer_{head,body,arm_r,arm_l,leg_r,leg_l}`
-(same joints as Jacob/Don, so `renderRig` draws it), texture `explorer_armor`; sword `explorer_blade`.
-Previews: `tools/previews/explorer*.png`. Not merged into FaultlineSMP.zip yet (that happens with the boss code).
+Completely black plate armor, an imposing knight, detailed like Elden Ring's Godfrey but all in black. You can't see his
+face at all: inside the helm there's only darkness. Tall pointed helm with a circlet of points, a spire and swept-back
+horns, a wild black mane down his back, a fur mantle, a high collar, engraved scrollwork on every plate, a tiger
+medallion on the chest (and on the belt, knees and mantle clasps), a cloth tabard, huge pauldrons with fur ruffs and
+raking spikes, clawed gauntlets, and a long torn cape.
+- Rig: `explorer_{head,body,arm_r,arm_l,leg_r,leg_l}` (same joints as Jacob/Don, so `renderRig` draws it), texture `explorer_armor`.
+- Weapons: `explorer_axe` (a great axe with double crescent heads and white edges) and `explorer_blade` (greatsword).
+- **His black tiger** (comes in phase 2, sits behind him): `explorer_tiger_{body,head,jaw,tail}`, texture `explorer_tiger`,
+  joints in `TIGER_JOINT` in the script (head/jaw/tail can move separately for roars and tail swishes).
+- Previews: `tools/previews/explorer*.png` (`explorer_scene.png` is him with the axe and the tiger behind him).
+  Not merged into FaultlineSMP.zip yet (that happens with the boss code).
 
 ## The fight (from the owner)
 - 3 phases. He can three-shot you.

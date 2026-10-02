@@ -5022,8 +5022,10 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         if (pinkBox) { event.setCancelled(true); kraken.popPink(by); return; }
         // BUG FIX: cancelling every hit meant the Index never saw who fought him (it ignores cancelled hits), so nobody
         // got credit for the kill. Like Don: the hit lands for almost nothing, and his real health is tracked separately.
-        event.setDamage(0.001);
+        // BUG FIX: the damage was read AFTER shrinking the hit, so every sword hit and arrow did 0.001 to him; only the
+        // pink bubbles could hurt him. Read it first (like Don and Diamond Jacob).
         double dmg = event.getDamage();
+        event.setDamage(0.001);
         if (arm) {
             for (Kraken.Arm a : kraken.arms) if (a.tip == event.getEntity() && a.index == kraken.gripArm) kraken.gripHits++;
             dmg *= kcfg("tentacle-hit-multiplier", 0.5);
@@ -5041,7 +5043,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
     private long jacobCooldownUntil;
     private final org.bukkit.NamespacedKey JACOB_ITEM_KEY = new org.bukkit.NamespacedKey(this, "jacob_item");
     private static final org.bukkit.NamespacedKey JACOB_COUNTERS_KEY = new org.bukkit.NamespacedKey("faultlineitems", "jacob_counters");
-    private final Map<UUID, Long> jacobItemCooldown = new HashMap<>();
+    private final Map<UUID, Long> jacobItemCooldown = new HashMap<>(), jacobHammerCooldown = new HashMap<>(); // blade, hammer
 
     private double jcfg(String path, double def) { return getConfig().getDouble("jacob." + path, def); }
 
@@ -5115,6 +5117,10 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         Player p = event.getPlayer();
         String type = jacobItemType(p.getInventory().getItemInMainHand());
         if (type == null) return;
+        // BUG FIX: every right-click was swallowed, so holding his hammer, blade, or horn you couldn't open a door,
+        // chest, or crafting table (and clicking one fired the ability). Usable blocks work normally now; sneak to override.
+        if (event.getAction() == org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK && event.getClickedBlock() != null
+                && event.getClickedBlock().getType().isInteractable() && !p.isSneaking()) return;
         event.setCancelled(true);
         long now = System.currentTimeMillis();
         switch (type) {
@@ -5126,14 +5132,14 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 summonJacob(p.getLocation(), p);
             }
             case "hammer" -> { // Ground Slam
-                if (now < jacobItemCooldown.getOrDefault(p.getUniqueId(), 0L)) return;
-                jacobItemCooldown.put(p.getUniqueId(), now + 10000);
+                if (now < jacobHammerCooldown.getOrDefault(p.getUniqueId(), 0L)) return;
+                jacobHammerCooldown.put(p.getUniqueId(), now + 10000);
                 Location at = p.getLocation();
                 at.getWorld().playSound(at, Sound.BLOCK_ANVIL_LAND, 1.2f, 0.6f);
                 at.getWorld().spawnParticle(Particle.EXPLOSION, at, 3, 1.5, 0.2, 1.5, 0);
                 at.getWorld().spawnParticle(Particle.BLOCK, at, 60, 2.5, 0.1, 2.5, 0, at.clone().subtract(0, 1, 0).getBlock().getBlockData());
                 for (Entity e : at.getWorld().getNearbyEntities(at, 5, 3, 5)) {
-                    if (!(e instanceof LivingEntity le) || e == p || e instanceof Player || e.getScoreboardTags().contains(DISPLAY_TAG)) continue;
+                    if (!(e instanceof LivingEntity le) || e == p || e instanceof Player || e.getScoreboardTags().contains(DISPLAY_TAG) || spareFromAbility(e)) continue;
                     le.damage(10, p);
                     le.setVelocity(le.getLocation().toVector().subtract(at.toVector()).setY(0).multiply(0.3).setY(0.6));
                 }
@@ -5151,13 +5157,18 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                     Location l = start.clone().add(dir.clone().multiply(i));
                     p.getWorld().spawnParticle(Particle.FLAME, l.clone().add(0, 0.5, 0), 6, 0.3, 0.2, 0.3, 0.02);
                     for (Entity e : p.getWorld().getNearbyEntities(l, 1.5, 1.5, 1.5)) {
-                        if (!(e instanceof LivingEntity le) || e == p || e instanceof Player || e.getScoreboardTags().contains(DISPLAY_TAG)) continue;
+                        if (!(e instanceof LivingEntity le) || e == p || e instanceof Player || e.getScoreboardTags().contains(DISPLAY_TAG) || spareFromAbility(e)) continue;
                         le.damage(8, p); le.setFireTicks(80);
                     }
                 }
             }
             default -> { }
         }
+    }
+
+    /** BUG FIX: Ground Slam and Ember Dash smashed armor stands and set people's tamed wolves, cats, and horses on fire. */
+    static boolean spareFromAbility(Entity e) {
+        return e instanceof org.bukkit.entity.ArmorStand || (e instanceof org.bukkit.entity.Tameable t && t.isTamed());
     }
 
     void summonJacob(Location at, Player by) {
@@ -5508,7 +5519,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         // ---------- music: track 1 for phases 1-3 (silent in cutscenes), track 2 from the third cutscene ----------
         void playMusic(int which) {
             stopMusic();
-            if (!getConfig().getBoolean("jacob.music.enabled", false)) { musicStart = System.currentTimeMillis(); track = which; return; } // still keeps time for the cutscene
+            if (!getConfig().getBoolean("jacob.music.enabled", true)) { musicStart = System.currentTimeMillis(); track = which; return; } // still keeps time for the cutscene
             track = which; musicStart = System.currentTimeMillis();
             for (Player p : world.getPlayers()) {
                 if (p.getLocation().toVector().distanceSquared(pos) > 96 * 96) continue;
@@ -5523,7 +5534,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         }
         void musicTick() {
             if (musicStart < 0 || track == 0 || cut != null) return;
-            if (System.currentTimeMillis() - musicStart > jcfg("music.length" + track + "-seconds", 180) * 1000) playMusic(track);
+            if (System.currentTimeMillis() - musicStart > jcfg("music.length" + track + "-seconds", track == 2 ? 287 : 315) * 1000) playMusic(track);
         }
         int songTicks() { return musicStart < 0 ? 0 : (int) ((System.currentTimeMillis() - musicStart) / 50); }
 
@@ -9744,9 +9755,11 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
     }
 
     private void console(String command, Player p, Location dropAt) {
-        String pluginName = command.startsWith("zraid") ? "FaultlineRaids" : "FaultlineItems";
+        boolean index = command.startsWith("index ");
+        String pluginName = command.startsWith("zraid") ? "FaultlineRaids" : index ? "FaultlineIndex" : "FaultlineItems";
         Plugin other = Bukkit.getPluginManager().getPlugin(pluginName);
         boolean ok = other != null && other.isEnabled() && Bukkit.dispatchCommand(Bukkit.getConsoleSender(), command);
+        if (!ok && index) return; // just an Index unlock: nothing to make up for
         if (!ok) {
             getLogger().warning("Couldn't run '" + command + "' (is " + pluginName + " installed?) — gave diamonds instead.");
             if (dropAt != null) dropLocked(dropAt, p, new ItemStack(Material.DIAMOND, 4));

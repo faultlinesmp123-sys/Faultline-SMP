@@ -99,8 +99,17 @@ final class JacobGear implements Listener {
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onHit(EntityDamageByEntityEvent event) {
         Entity damager = event.getDamager();
-        if (damager instanceof AbstractArrow arrow && arrow.getShooter() instanceof Player by && has(by, Piece.QUIVER) && !event.getEntity().isOnGround())
+        if (damager instanceof AbstractArrow arrow && arrow.getShooter() instanceof Player by && has(by, Piece.QUIVER) && airborne(event.getEntity()))
             event.setDamage(event.getDamage() * 1.2);
+    }
+
+    /**
+     * BUG FIX: "not on the ground" was true for every boss hitbox (they hover a little and have no gravity), so the Quiver
+     * gave +20% against Diamond Jacob on foot, the Kraken underwater, and so on. Now there has to be open air below it.
+     */
+    static boolean airborne(Entity e) {
+        if (e.isOnGround() || e.isInWater()) return false;
+        return e.getLocation().clone().subtract(0, 0.6, 0).getBlock().isPassable();
     }
 
     /** Ember Ward: no burning, 25% less fire damage. */

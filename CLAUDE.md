@@ -83,3 +83,5 @@ Run `python3 tools/jacob_models.py <unpacked-pack-dir> --preview tools/previews`
 ## Building in Claude Code cloud sessions
 Maven must reach `repo.papermc.io` to download paper-api. If the build fails with
 `403 Forbidden` on that host, add `repo.papermc.io` to the environment's allowed network domains.
+Without it, run `tools/compile_check.sh` to compile every plugin against the real Paper 1.21.11 API
+(it builds paper-api from PaperMC's GitHub source + Maven Central). Run it before pushing Java changes.

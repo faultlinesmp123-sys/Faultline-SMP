@@ -300,6 +300,8 @@ jacob:
   orb-damage: 100             # pink orbs (phases 1-3): exact damage
   orb-every-seconds: 20
   max-phase: 4               # built one phase at a time: after this phase he withdraws (no loot) until the next is unlocked
+  hitbox-scale: 2.3            # his invisible hitbox (1.0 = about 1 block; 2.3 covers his whole ~2.4-block body)
+  bird-hitbox-scale: 1.4       # the hawk's hitbox in phase 1
   bird-scale: 5.0
   bird-clearance: 8           # the hawk always stays at least this far above the ground under it
   bird-height: 14

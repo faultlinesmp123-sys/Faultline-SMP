@@ -3513,7 +3513,16 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         if (attacker == null) return;
         for (Proxy px : proxies.values()) {
             if (px.stand.equals(event.getEntity())) {
-                if (px.anchor.isValid()) px.anchor.damage(event.getDamage(), attacker);
+                if (!px.anchor.isValid()) return;
+                // BUG FIX: an ARROW that hit a stand-in was passed on as a punch from the player, so a boss that only takes
+                // arrows (Diamond Jacob on his hawk) threw it out. The stand-ins are hidden from Java players but still
+                // physically there, so Java players' arrows hit them too. Arrows now arrive as arrows.
+                if (d instanceof Projectile) {
+                    px.anchor.damage(event.getDamage(), org.bukkit.damage.DamageSource.builder(org.bukkit.damage.DamageType.ARROW)
+                            .withDirectEntity(d).withCausingEntity(attacker).build());
+                } else {
+                    px.anchor.damage(event.getDamage(), attacker);
+                }
                 return;
             }
         }
@@ -5439,9 +5448,15 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             hitbox = (Slime) world.spawnEntity(pos.toLocation(world), EntityType.SLIME, false);
             hitbox.setSize(2);
             setupHitbox(hitbox, 1000, JACOB_TAG, "Diamond Jacob");
+            // BUG FIX: a size-2 slime is ~1 block, so his hitbox only covered his feet and knees: swords and arrows aimed
+            // at his body or head (he's ~2.4 blocks tall) went straight through him. Scaled up to cover his whole body.
+            AttributeInstance hs = hitbox.getAttribute(Attribute.SCALE);
+            if (hs != null) hs.setBaseValue(jcfg("hitbox-scale", 2.3) * scale / 1.15);
             birdBox = (Slime) world.spawnEntity(birdPos.toLocation(world), EntityType.SLIME, false);
             birdBox.setSize(5);
             setupHitbox(birdBox, 1000, JACOB_BIRD_TAG, "Jacob's Great Hawk");
+            AttributeInstance bs0 = birdBox.getAttribute(Attribute.SCALE);
+            if (bs0 != null) bs0.setBaseValue(jcfg("bird-hitbox-scale", 1.4)); // ~3.6 blocks: its whole body, not just the middle
             parts = rig("jacob_armor", true);
             float bs = (float) jcfg("bird-scale", 5.0);
             bird = spawnDisplay(birdPos.toLocation(world), "jacob_bird_body", bs, 2, Display.Billboard.FIXED);

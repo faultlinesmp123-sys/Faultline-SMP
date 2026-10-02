@@ -11,7 +11,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PAPER="${PAPER:-26.2}"
 case "$PAPER" in
   26.2)    GUAVA=33.6.0-jre GSON=2.14.0 FASTUTIL=8.5.18 LOG4J=2.26.0 SLF4J=2.0.17 ADVENTURE=5.2.0 ;;
-  1.21.11) GUAVA=$GUAVA GSON=2.11.0 FASTUTIL=$FASTUTIL LOG4J=2.24.1 SLF4J=2.0.16 ADVENTURE=4.26.1 ;;
+  1.21.11) GUAVA=33.3.1-jre GSON=2.11.0 FASTUTIL=8.5.15 LOG4J=2.24.1 SLF4J=2.0.16 ADVENTURE=4.26.1 ;;
   *) echo "PAPER must be 26.2 or 1.21.11"; exit 2 ;;
 esac
 CACHE="${CACHE:-${TMPDIR:-/tmp}/faultline-paper-api}/$PAPER"

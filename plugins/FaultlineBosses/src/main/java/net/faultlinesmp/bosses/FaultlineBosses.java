@@ -223,6 +223,9 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         lorenzoBallKey = new NamespacedKey(this, "lorenzos_ball");
         restoreBoxFromFile(); // a Don arena left over from a crash
         registerJacobRecipe();
+        getCommand("bossmorph").setExecutor(this::morphCommand);
+        getCommand("bossmorph").setTabCompleter((sender, command, label, args) ->
+                args.length == 1 ? MORPH_KINDS.stream().filter(k -> k.startsWith(args[0].toLowerCase())).toList() : List.of());
         getCommand("jacob").setExecutor((sender, command, label, args) -> {
             String sub = args.length > 0 ? args[0].toLowerCase() : "";
             Player self = sender instanceof Player pl ? pl : null;
@@ -331,6 +334,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             safely("Don Lorenzo", () -> { if (don != null) don.tick(); });
             safely("Kraken", () -> { if (kraken != null) kraken.tick(); });
             safely("Diamond Jacob", () -> { if (jacob != null) jacob.tick(); });
+            safely("Boss form", this::morphTick);
             safely("Kraken bait", this::baitTick);
             safely("Lorenzo's Ball", this::ballTick);
             safely("Bedrock stand-ins", this::proxyTick);
@@ -438,6 +442,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
 
     @Override
     public void onDisable() {
+        safely("shutdown: boss form", () -> { if (morph != null) endMorph(false, ChatColor.GRAY + "The server is stopping: you're yourself again."); });
         // BUG FIX: these ran in a row, so ONE error left every boss after it frozen in the world
         // (and still glowing). Each runs on its own now, and a final sweep removes anything left.
         safely("shutdown: Don Lorenzo", () -> { if (don != null) don.cleanup(); }); // restores the arena and anyone mid-cutscene
@@ -459,7 +464,8 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
     }
 
     private static boolean survival(Player p) {
-        return p.getGameMode() == GameMode.SURVIVAL || p.getGameMode() == GameMode.ADVENTURE;
+        // an admin playing a boss (/bossmorph) is never a fighter: no boss targets, hurts, or films them
+        return (p.getGameMode() == GameMode.SURVIVAL || p.getGameMode() == GameMode.ADVENTURE) && !MORPHED.contains(p.getUniqueId());
     }
 
     private static boolean isNight(World world) {
@@ -1014,7 +1020,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 if (survival(p) && !p.isDead() && p.getLocation().toVector().distanceSquared(pos) < engage * engage) join(p);
             }
             List<Player> active = activeFighters();
-            if (active.isEmpty()) {
+            if (active.isEmpty() && pilot(this) == null) {
                 if (++lonelyTicks > 200) { // nobody left in the fight for 10 seconds
                     leave(ChatColor.DARK_RED + "The Demon Eye has lost interest...");
                     return;
@@ -1030,9 +1036,13 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 if (transitionTicks > 0) {
                     transitionTick();
                 } else {
-                    Player target = targetPlayer();
-                    if (target != null) runAttack(target);
-                    else vel.multiply(0.9);
+                    Player pl = pilot(this);
+                    if (pl != null && attack == Attack.HOVER) pilotIdle(pl, active); // boss form: it floats in front of the admin
+                    else {
+                        Player target = pl != null ? pilotTarget(pl, active) : targetPlayer();
+                        if (target != null) runAttack(target);
+                        else vel.multiply(0.9);
+                    }
                 }
                 eyeFails = 0;
             } catch (RuntimeException e) {
@@ -1046,7 +1056,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             bossPart("Demon Eye", "contact damage", () -> contactDamage(active));
             bossPart("Demon Eye", "servants", this::tickServants);
             bossPart("Demon Eye", "shots", this::tickShots);
-            bossPart("Demon Eye", "progress watchdog", () -> eyeWatchdog(active));
+            if (pilot(this) == null) bossPart("Demon Eye", "progress watchdog", () -> eyeWatchdog(active));
             updateBar();
             if (ticksAlive % 10 == 0) musicTick();
             render();
@@ -1116,9 +1126,21 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             return new Vector(d.getX() / ticks, vy, d.getZ() / ticks);
         }
 
+        /** Boss form, between moves: float a few blocks in front of the admin, watching what they're looking at. */
+        void pilotIdle(Player pl, List<Player> active) {
+            Location e = pl.getEyeLocation();
+            Vector goal = e.toVector().add(e.getDirection().multiply(5)).add(new Vector(0, 0.4, 0));
+            Vector want = goal.subtract(pos);
+            if (want.length() > 1.2) want.normalize().multiply(1.2);
+            vel.multiply(0.5).add(want.multiply(0.5));
+            Player aim = pilotTarget(pl, active);
+            look(aim == pl ? e.toVector().add(e.getDirection().multiply(30)) : eyeOf(aim));
+            if (morphQueued(this)) nextAttack();
+        }
+
         void nextAttack() {
-            patternIndex = (patternIndex + 1) % pattern.length;
-            attack = pattern[patternIndex];
+            if (pilot(this) != null) { int q = takeMove(this); attack = q >= 0 ? Attack.values()[q] : Attack.HOVER; } // boss form: the admin's pick
+            else { patternIndex = (patternIndex + 1) % pattern.length; attack = pattern[patternIndex]; }
             t = 0;
             contact = false;
             vanished = false;
@@ -2366,7 +2388,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 if (survival(p) && !p.isDead() && p.getLocation().toVector().distanceSquared(pos) < engage * engage) join(p);
             }
             List<Player> a = active();
-            if (a.isEmpty()) {
+            if (a.isEmpty() && pilot(this) == null) {
                 vel.multiply(0.8); // settle in place instead of drifting on old momentum
                 if (++lonely > 400) { leave(ChatColor.AQUA + "Frostbeard grows bored and vanishes in a flurry of snow."); return; }
             } else {
@@ -2378,8 +2400,12 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             try {
                 if (transition > 0) transitionTick();
                 else {
-                    Player target = current();
-                    if (target != null) attackTick(target);
+                    Player pl = pilot(this);
+                    if (pl != null && attack < 0) pilotIdle(pl, a); // boss form: he hovers by the admin
+                    else {
+                        Player target = pl != null ? pilotTarget(pl, a) : current();
+                        if (target != null) attackTick(target);
+                    }
                 }
                 failStreak = 0;
             } catch (RuntimeException e) {
@@ -2391,7 +2417,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             pos.add(vel);
             if (contact) part("ram", () -> ramDamage(a));
             part("projectiles", () -> tickShots(a));
-            part("progress watchdog", () -> progressWatchdog(a));
+            if (pilot(this) == null) part("progress watchdog", () -> progressWatchdog(a));
             // BUG FIX: Runners that vanished (despawned, /kill, unloaded) were dropped from this list, but
             // their ice models were left standing in the world, frozen, forever.
             for (LivingEntity r : new ArrayList<>(runners)) {
@@ -2494,7 +2520,22 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             if (d.lengthSquared() > 0.01) lastLook = d.normalize();
         }
 
+        void pilotIdle(Player pl, List<Player> a) {
+            Location e = pl.getEyeLocation();
+            Vector ahead = e.getDirection().setY(0);
+            Vector goal = e.toVector().add(ahead.lengthSquared() > 1e-4 ? ahead.normalize().multiply(4) : new Vector());
+            fly(goal, 0.9, 0.3);
+            Player aim = pilotTarget(pl, a);
+            look(aim == pl ? e.toVector().add(e.getDirection().multiply(20)) : eye(aim));
+            if (morphQueued(this)) next();
+        }
+
         void next() {
+            if (pilot(this) != null) { // boss form: the admin's pick, or nothing (he waits by them)
+                attack = takeMove(this); t = 0; count = 0; contact = false; spinning = phase == 3; target = null;
+                if (phase == 2 && !"mf_snow_monster".equals(currentModel)) setModel("mf_snow_monster", mcfg("monster-scale", 3.0));
+                return;
+            }
             int[] pool = phase == 1 ? new int[]{0, 1, 2, 2, 9, 10} : phase == 2 ? new int[]{3, 4, 5, 11} : new int[]{6, 7, 8, 0, 9, 10};
             int pick;
             do pick = pool[random.nextInt(pool.length)]; while (pick == attack && pool.length > 1);
@@ -4132,13 +4173,13 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             if (leaving) { bossPart("Kraken", "leaving", this::leaveTick); if (kraken != this) return; renderAll(); return; }
             for (Player p : world.getPlayers()) if (survival(p) && !p.isDead() && p.getLocation().toVector().distanceSquared(pos) < 48 * 48) join(p);
             List<Player> a = active();
-            if (a.isEmpty()) {
+            if (a.isEmpty() && pilot(this) == null) {
                 if (++lonely > 400) { leave(ChatColor.DARK_AQUA + "The Kraken sinks back into the abyss..."); return; }
             } else lonely = 0;
             try {
                 if (intro > 0) introTick();
                 else if (transition > 0) transitionTick();
-                else if (!a.isEmpty()) attackTick(a);
+                else if (!a.isEmpty() || pilot(this) != null) attackTick(a);
                 failStreak = 0;
             } catch (RuntimeException e) {
                 logBossPart("Kraken", "move " + attack + " (step " + sub + ", tick " + t + ")", e);
@@ -4154,7 +4195,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             bossPart("Kraken", "eels", () -> eelTick(a));
             bossPart("Kraken", "ink", () -> inkTick(a));
             bossPart("Kraken", "grip", this::gripTick);
-            bossPart("Kraken", "watchdog", () -> watchdog(a));
+            if (pilot(this) == null) bossPart("Kraken", "watchdog", () -> watchdog(a));
             renderAll();
             minions.removeIf(m -> !m.isValid() || m.isDead());
             hitCooldown.replaceAll((k, v) -> v - 1);
@@ -4224,6 +4265,18 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         void swim(List<Player> a) {
             Player target = nearest(a);
             double sp = speed();
+            Player pl = pilot(this);
+            if (pl != null) target = pilotTarget(pl, a);
+            if (pl != null && attack < 0 && intro <= 0 && !dying) { // boss form: he swims to a spot in front of the admin
+                Location e = pl.getEyeLocation();
+                Vector station = e.toVector().add(e.getDirection().multiply(14));
+                Vector to = station.subtract(pos);
+                vel.add(safeDir(to, new Vector()).multiply(Math.min(0.12, to.length() * 0.012)));
+                float want = (float) Math.toDegrees(Math.atan2(-e.getDirection().getX(), e.getDirection().getZ()));
+                float diff = ((want - yaw) % 360 + 540) % 360 - 180;
+                yaw += (float) Math.max(-4, Math.min(4, diff));
+                target = null; // skip the hunting below
+            }
             if (target != null && intro <= 0 && !dying) {
                 Vector tp = target.getLocation().toVector();
                 Vector to = tp.clone().subtract(pos);
@@ -4423,6 +4476,13 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
 
         void attackTick(List<Player> a) {
             idleArms();
+            Player pl = pilot(this);
+            if (pl != null) { // boss form: the admin's pick (no waiting between moves), at whoever they're looking at
+                Player target = pilotTarget(pl, a);
+                if (attack < 0) { int q = takeMove(this); if (q < 0) return; attack = q; lastAttack = q; t = 0; sub = 0; count = 0; }
+                runKrakenMove(target, a);
+                return;
+            }
             if (recover > 0) { recover--; return; }
             Player target = nearest(a);
             if (target == null) return;
@@ -4434,6 +4494,10 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 do pick = pool.get(random.nextInt(pool.size())); while (pick == lastAttack && pool.size() > 1);
                 attack = pick; lastAttack = pick; t = 0; sub = 0; count = 0;
             }
+            runKrakenMove(target, a);
+        }
+
+        void runKrakenMove(Player target, List<Player> a) {
             switch (attack) {
                 case 1 -> tentacleSlam(target, a);
                 case 2 -> crushingGrip(target);
@@ -5693,7 +5757,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             if (birdBox != null && birdBox.isValid() && birdBox.getHealth() < 900) birdBox.setHealth(1000);
             List<Player> a = active();
             for (Player p : a) fighters.add(p.getUniqueId());
-            if (a.isEmpty() && cut == null && state != DEFEAT && st > 100) {
+            if (a.isEmpty() && cut == null && state != DEFEAT && st > 100 && pilot(this) == null) {
                 if (++lonelyT > 600) { leave(); return; }
             } else lonelyT = 0;
             try {
@@ -5753,16 +5817,24 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
 
         // ---------- the fight ----------
         void fightTick(List<Player> a) {
+            Player pl = pilot(this);
             if (state == P1) birdFly();
             if (flinch > 0) flinch--;
-            if (a.isEmpty()) return;
-            Player target = nearest(a);
+            if (a.isEmpty() && pl == null) return;
+            Player target = pl != null ? pilotTarget(pl, a) : nearest(a);
             int ph = phase();
-            // pink orbs: phases 1-3, every 20 seconds
-            if (ph <= 3 && --orbTimer <= 0) { orbTimer = (int) (jcfg("orb-every-seconds", 20) * 20); spawnOrb(a); }
-            // spiders from his staff: phases 2-3
-            if ((state == P2 || state == P3) && --spiderTimer <= 0 && attack < 0) { spiderTimer = (int) jcfg("spider-every-ticks", 240); attack = 99; t = 0; }
-            if (state != P1) walk(target);
+            // pink orbs: phases 1-3, every 20 seconds (only when there's someone to hit them)
+            if (ph <= 3 && !a.isEmpty() && --orbTimer <= 0) { orbTimer = (int) (jcfg("orb-every-seconds", 20) * 20); spawnOrb(a); }
+            // spiders from his staff: phases 2-3 (in boss form, only when the admin calls them)
+            if (pl == null && (state == P2 || state == P3) && --spiderTimer <= 0 && attack < 0) { spiderTimer = (int) jcfg("spider-every-ticks", 240); attack = 99; t = 0; }
+            if (pl != null) { // boss form: he walks where the admin walks, faces where they face, and uses the move they pick
+                if (state != P1) { if (attack < 0) pilotWalk(pl); else faceToward(target); }
+                if (attack < 0) {
+                    int q = takeMove(this);
+                    if (q < 0) return;
+                    attack = q; lastAttack = q; t = 0; lock = null; marks.clear();
+                }
+            } else if (state != P1) walk(target);
             if (attack < 0) {
                 if (recover > 0) { recover--; return; }
                 List<Integer> pool = switch (state) {
@@ -5795,7 +5867,31 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 default -> end(20);
             }
             t++;
-            bossPart("Diamond Jacob", "watchdog", () -> watchdog(a));
+            if (pl == null) bossPart("Diamond Jacob", "watchdog", () -> watchdog(a));
+        }
+
+        /** Boss form, between moves: he follows the admin on foot and faces where they face. */
+        void pilotWalk(Player pl) {
+            Vector to = pl.getLocation().toVector().subtract(pos).setY(0);
+            float want = pl.getLocation().getYaw();
+            float diff = ((want - yaw) % 360 + 540) % 360 - 180;
+            yaw += Math.max(-15, Math.min(15, diff));
+            double d = to.length();
+            if (d > 0.2) {
+                stepTo(safeDir(to, fwd()).multiply(Math.min(d, speed() * 1.8)));
+                pose = Pose.lerp(pose, stridePose(phase() == 4 ? 1.3f : 1f), 0.35f);
+            } else {
+                pose = Pose.lerp(pose, readyPose(), 0.2f);
+                settle();
+            }
+        }
+
+        void faceToward(Player target) {
+            Vector to = target.getLocation().toVector().subtract(pos).setY(0);
+            if (to.lengthSquared() < 0.01) return;
+            float want = (float) Math.toDegrees(Math.atan2(-to.getX(), to.getZ()));
+            float diff = ((want - yaw) % 360 + 540) % 360 - 180;
+            yaw += Math.max(-12, Math.min(12, diff));
         }
 
         void end(int rest) {
@@ -5807,6 +5903,14 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         // ---------- phase 1: the hawk ----------
         void birdFly() {
             if (attack == 3) return; // the dive moves the bird itself
+            Player pl = pilot(this);
+            if (pl != null) { // boss form: the hawk carries him wherever the admin flies (he sits where they are)
+                Vector want = pl.getLocation().toVector().add(new Vector(0, -1.7, 0)).subtract(birdPos).multiply(0.3);
+                if (want.length() > 1.4) want = want.normalize().multiply(1.4);
+                birdVel = want;
+                birdPos.add(birdVel);
+                return;
+            }
             circle += jcfg("bird-circle-speed", 0.018);
             // BUG FIX: it circled the SUMMON point at a fixed height, so on a mountain it flew straight into the slopes (and
             // kept circling an empty spot if you moved). It circles the player it's hunting now, always above the terrain.
@@ -6942,13 +7046,14 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             double engage = dcfg("engage-radius", 48);
             for (Player p : world.getPlayers()) if (survival(p) && !p.isDead() && p.getLocation().toVector().distanceSquared(hp()) < engage * engage) join(p);
             List<Player> a = active();
-            if (a.isEmpty()) {
+            if (a.isEmpty() && pilot(this) == null) {
                 vel.multiply(0.9);
                 if (++lonely > 400) { leave(tint() + name() + " loses interest and burrows away."); return; }
             } else lonely = 0;
 
             if (ticksAlive % 10 == 0) part("music", this::musicTick); // first: nothing below can ever stop the music
-            Player target = current();
+            Player pl = pilot(this);
+            Player target = pl != null ? pilotTarget(pl, a) : current();
             // BUG FIX: an error partway through a move used to freeze the whole worm FOREVER (the move's timer only
             // advances at its end, so the same step failed every tick, and nothing after it (physics, projectiles,
             // drawing) ever ran again). Now a failing move is logged and skipped, and every part below runs on its own.
@@ -6957,6 +7062,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 else {
                     checkPhase();
                     if (transition > 0) { transition--; steer(target == null ? hp() : eye(target).add(new Vector(0, -2, 0)), 0.4, 0.08); }
+                    else if (pl != null && attack < 0) pilotIdle(pl); // boss form: it tunnels along under the admin
                     else if (target != null) attackTick(target);
                     else flying = false; // no target: never left hovering mid-move (the frozen "pillar")
                 }
@@ -6982,8 +7088,8 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 v.setAnchorLocation(f.getLocation().add(0, 8, 0));
             }
             part("drawing", this::render);
-            part("watchdog", () -> watchdog(a));
-            part("progress watchdog", () -> progressWatchdog(a));
+            if (pilot(this) == null) part("watchdog", () -> watchdog(a));
+            if (pilot(this) == null) part("progress watchdog", () -> progressWatchdog(a));
             hitCooldown.replaceAll((k, v) -> v - 1);
             hitCooldown.values().removeIf(v -> v <= 0);
             part("boss bar", this::updateBar);
@@ -7074,7 +7180,18 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             }
         }
 
+        void pilotIdle(Player pl) {
+            flying = false;
+            Location f = pl.getLocation();
+            Vector ahead = f.getDirection().setY(0);
+            Vector goal = f.toVector().add(ahead.lengthSquared() > 1e-4 ? ahead.normalize().multiply(3) : new Vector());
+            goal.setY(groundY(goal.getX(), goal.getZ(), f.getY()) - dcfg("travel-depth", 2.5));
+            steer(goal, dcfg("max-speed", 0.8) * 0.8, 0.12);
+            if (morphQueued(this)) next();
+        }
+
         void next() {
+            if (pilot(this) != null) { attack = takeMove(this); t = 0; sub = 0; count = 0; flying = false; target = null; return; } // boss form
             int[] pool = phase == 1 ? new int[]{0, 0, 1, 2, 5} : phase == 2 ? new int[]{0, 1, 2, 3, 3, 5, 6} : new int[]{0, 1, 2, 3, 4, 5, 6, 7, 7};
             int pick;
             do pick = pool[random.nextInt(pool.length)]; while (pick == attack && pool.length > 1);
@@ -8759,6 +8876,28 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             p.playSound(p.getLocation(), org.bukkit.Sound.ENTITY_VILLAGER_AMBIENT, 1f, 0.6f);
         }
 
+        /** Boss form: no challenge, no entrance: straight into phase 1 against everyone nearby. */
+        void startPiloted() {
+            lift = 0; ballAt = null;
+            token = "used";
+            for (Player q : world.getPlayers()) if (survival(q) && q.getLocation().toVector().distanceSquared(pos) < 32 * 32) join(q);
+            for (Player q : active()) bar.addPlayer(q);
+            state = PHASE1;
+            hp = maxHp = ncfg("phase1-health", 500);
+            attack = -1; recover = 0;
+        }
+
+        /** Boss form, between moves: he goes where the admin goes and faces where they face. */
+        void pilotFollow(Player pl) {
+            Vector to = pl.getLocation().toVector();
+            double d = to.clone().subtract(pos).setY(0).length();
+            face(pos.clone().add(pl.getLocation().getDirection().setY(0).multiply(5)));
+            if (d > 0.2) {
+                moveToward(to, Math.min(d, state == PHASE2 ? ncfg("phase2-speed", 0.95) : 0.4));
+                pose = state == PHASE2 ? runPose(ticks, (float) Math.min(1, d)) : walkPose(ticks, 1);
+            } else pose = Pose.lerp(pose, idlePose(ticks), 0.3f);
+        }
+
         void answer(Player p, boolean yes, String tok) {
             if (state != TALK || !token.equals(tok)) { p.sendMessage(ChatColor.GRAY + "That question isn't open anymore."); return; }
             if (talker == null || !talker.equals(p.getUniqueId())) { p.sendMessage(ChatColor.GRAY + "He didn't ask you."); return; }
@@ -8784,6 +8923,12 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             List<Player> a = active();
             for (Player p : world.getPlayers()) if (survival(p) && p.getLocation().toVector().distanceSquared(pos) < 24 * 24) join(p);
             Player target = nearest();
+            Player pl = pilot(this);
+            if (pl != null) { // boss form: the admin's pick, at whoever they're looking at
+                target = pilotTarget(pl, a);
+                lookAt = target == pl ? null : target;
+                if (attack < 0) { pilotFollow(pl); int q = takeMove(this); if (q < 0) return; attack = q; t = 0; recover = 0; }
+            }
             if (target == null) { if (++lonely > 1200) vanish(ChatColor.LIGHT_PURPLE + "Don Lorenzo " + ChatColor.GRAY + "left."); pose = idlePose(ticks); return; }
             lonely = 0;
             Vector tp = target.getLocation().toVector();
@@ -8892,11 +9037,21 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         void phase2Tick() {
             markTick();
             if (mt >= T_SPEECH) { unmark(); startSpeech(); return; }
-            if (active().isEmpty()) { vanish(ChatColor.LIGHT_PURPLE + "Don Lorenzo: " + ChatColor.WHITE + "...Too easy."); return; }
+            if (active().isEmpty() && pilot(this) == null) { vanish(ChatColor.LIGHT_PURPLE + "Don Lorenzo: " + ChatColor.WHITE + "...Too easy."); return; }
             int every = (int) ncfg("orb-interval-ticks", 200);
             if (mt > T_FIGHT && (mt - T_FIGHT) / every > Math.max(0, mtPrev - T_FIGHT) / every) spawnOrb();
             List<Player> a = active();
             Player target = nearest();
+            Player pl = pilot(this);
+            if (pl != null) {
+                target = pilotTarget(pl, a);
+                if (attack < 0 && stagger <= 0) {
+                    pilotFollow(pl);
+                    int q = takeMove(this);
+                    if (q < 0) return;
+                    attack = q; count = q; t = 0; sub = 0; guarding = false; recover = 0;
+                }
+            }
             if (target == null) return;
             Player m = marked != null ? Bukkit.getPlayer(marked) : null; // Price Check: he goes after the marked player
             if (m != null && a.contains(m)) target = m;
@@ -10034,6 +10189,390 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             if (dropAt != null) dropLocked(dropAt, p, new ItemStack(Material.DIAMOND, 4));
             else give(p, new ItemStack(Material.DIAMOND, 4));
         }
+    }
+
+
+    // =====================================================================================================
+    //  BOSS FORM (/bossmorph): an admin plays a boss. They turn invisible and untouchable, the boss follows
+    //  them, and their hotbar becomes the boss's moves (right-click one to use it on whoever they're looking at).
+    //  Everyone else fights it like the real thing: its health, phases, cutscenes, and defeat all work normally.
+    // =====================================================================================================
+    static final Set<UUID> MORPHED = new HashSet<>();
+    static final List<String> MORPH_KINDS = List.of("demoneye", "frostbeard", "dune", "frostmaw", "kraken", "jacob", "don", "off", "release");
+    private Morph morph;
+    private final NamespacedKey MORPH_MOVE_KEY = new NamespacedKey(this, "morph_move");
+    java.io.File morphFile() { return new java.io.File(getDataFolder(), "boss_form.yml"); }
+
+    record MoveSlot(int id, String name, Material icon) {}
+
+    final class Morph {
+        final UUID player; final String kind; Object boss; int queued = -1; String shown = ""; int ticks;
+        Morph(UUID player, String kind) { this.player = player; this.kind = kind; }
+    }
+
+    /** The admin playing this boss, or null. */
+    Player pilot(Object boss) {
+        if (morph == null || boss == null || morph.boss != boss) return null;
+        Player p = Bukkit.getPlayer(morph.player);
+        return p != null && p.isOnline() ? p : null;
+    }
+
+    /** The move the admin picked (and clears it), or -1. */
+    int takeMove(Object boss) {
+        if (morph == null || morph.boss != boss) return -1;
+        int q = morph.queued; morph.queued = -1; return q;
+    }
+
+    boolean morphQueued(Object boss) { return morph != null && morph.boss == boss && morph.queued >= 0; }
+
+    /** Who the admin's move goes at: the fighter they're looking at, else the nearest one, else the admin's own spot. */
+    Player pilotTarget(Player pilot, List<Player> fighters) {
+        Vector eye = pilot.getEyeLocation().toVector(), dir = pilot.getEyeLocation().getDirection();
+        Player best = null, near = null; double bestDot = Math.cos(Math.toRadians(22)), nearD = 64 * 64;
+        for (Player f : fighters) {
+            Vector to = f.getEyeLocation().toVector().subtract(eye);
+            double d2 = to.lengthSquared();
+            if (d2 < nearD) { nearD = d2; near = f; }
+            if (d2 > 64 * 64 || d2 < 0.01) continue;
+            double dot = to.normalize().dot(dir);
+            if (dot > bestDot) { bestDot = dot; best = f; }
+        }
+        return best != null ? best : near != null ? near : pilot;
+    }
+
+    /** The current boss's moves for its current phase (what goes on the hotbar). */
+    List<MoveSlot> morphMoves() {
+        List<MoveSlot> m = new ArrayList<>();
+        if (morph == null) return m;
+        Object b = morph.boss;
+        if (b == eye && eye != null) {
+            m.add(new MoveSlot(Attack.SERVANTS.ordinal(), "Servants of the Eye", Material.ROTTEN_FLESH));
+            m.add(new MoveSlot(Attack.BLOOD_CHARGE.ordinal(), "Blood Charge", Material.REDSTONE));
+            if (eye.phase >= 2) {
+                m.add(new MoveSlot(Attack.SPIN_DASH.ordinal(), "Spin Dash", Material.TRIDENT));
+                m.add(new MoveSlot(Attack.TOOTH_VOMIT.ordinal(), "Tooth Vomit", Material.BONE));
+                m.add(new MoveSlot(Attack.BLOOD_RAIN.ordinal(), "Blood Rain", Material.RED_DYE));
+            }
+            if (eye.phase >= 3) {
+                m.add(new MoveSlot(Attack.BLOOD_SHOTS.ordinal(), "Blood Shots", Material.FIRE_CHARGE));
+                m.add(new MoveSlot(Attack.PHANTOM_DASH.ordinal(), "Phantom Dash", Material.PHANTOM_MEMBRANE));
+            }
+        } else if (b == mortimer && mortimer != null) {
+            int ph = mortimer.phase;
+            if (ph == 1 || ph == 3) {
+                m.add(new MoveSlot(0, "Icicle Runners", Material.ICE));
+                m.add(new MoveSlot(9, "Taunt", Material.SNOWBALL));
+                m.add(new MoveSlot(10, "Hailstorm", Material.PACKED_ICE));
+            }
+            if (ph == 1) {
+                m.add(new MoveSlot(1, "Winter Whale", Material.COD));
+                m.add(new MoveSlot(2, "Ice Orbs", Material.HEART_OF_THE_SEA));
+            }
+            if (ph == 2) {
+                m.add(new MoveSlot(3, "Roll", Material.SNOW_BLOCK));
+                m.add(new MoveSlot(4, "Ground Pound", Material.ANVIL));
+                m.add(new MoveSlot(5, "Fridge", Material.IRON_BLOCK));
+                m.add(new MoveSlot(11, "Frost Nova", Material.BLUE_ICE));
+            }
+            if (ph == 3) {
+                m.add(new MoveSlot(6, "Ice Shard Rings", Material.PRISMARINE_SHARD));
+                m.add(new MoveSlot(7, "Icicle Rain", Material.POINTED_DRIPSTONE));
+                m.add(new MoveSlot(8, "Freezing Beam", Material.END_ROD));
+            }
+        } else if (b == dune && dune != null) {
+            m.add(new MoveSlot(0, "Sand Spit", Material.SAND));
+            m.add(new MoveSlot(1, "Sand Rush", Material.SANDSTONE));
+            m.add(new MoveSlot(2, dune.frost ? "Blizzard" : "Sandstorm", Material.STRING));
+            m.add(new MoveSlot(5, "Ambush", Material.SUSPICIOUS_SAND));
+            if (dune.phase >= 2) {
+                m.add(new MoveSlot(3, dune.frost ? "Avalanche Slam" : "Ground Slam", Material.ANVIL));
+                m.add(new MoveSlot(6, "Tremor", Material.COBBLESTONE));
+            }
+            if (dune.phase >= 3) {
+                m.add(new MoveSlot(4, dune.frost ? "Snow Owls" : "Vultures", Material.FEATHER));
+                m.add(new MoveSlot(7, dune.frost ? "Frost Breath" : "Sand Breath", Material.WIND_CHARGE));
+            }
+        } else if (b == kraken && kraken != null) {
+            m.add(new MoveSlot(1, "Tentacle Slam", Material.INK_SAC));
+            m.add(new MoveSlot(2, "Crushing Grip", Material.LEAD));
+            m.add(new MoveSlot(3, "Ink Cloud", Material.BLACK_DYE));
+            m.add(new MoveSlot(4, "Whirlpool", Material.HEART_OF_THE_SEA));
+            m.add(new MoveSlot(5, "Beak Bite", Material.BONE));
+            m.add(new MoveSlot(6, "Barnacle Barrage", Material.NAUTILUS_SHELL));
+            m.add(new MoveSlot(7, "Tidal Surge", Material.WATER_BUCKET));
+            if (kraken.phase < 3) m.add(new MoveSlot(8, "Spawn of the Deep", Material.DROWNED_SPAWN_EGG));
+            else {
+                m.add(new MoveSlot(9, "Abyssal Vortex", Material.ENDER_EYE));
+                m.add(new MoveSlot(10, "Eight-Arm Barrage", Material.TRIDENT));
+                m.add(new MoveSlot(11, "Crushing Depths", Material.ANVIL));
+            }
+        } else if (b == jacob && jacob != null) {
+            switch (jacob.phase()) {
+                case 1 -> {
+                    m.add(new MoveSlot(1, "Piercing Arrow", Material.SPECTRAL_ARROW));
+                    m.add(new MoveSlot(2, "Arrow Volley", Material.ARROW));
+                    m.add(new MoveSlot(3, "Talon Dive", Material.FEATHER));
+                    m.add(new MoveSlot(4, "Arrow Rain", Material.TIPPED_ARROW));
+                }
+                case 2, 3 -> {
+                    m.add(new MoveSlot(10, "Hammer Slam", Material.MACE));
+                    m.add(new MoveSlot(11, "Pearl Strike", Material.ENDER_PEARL));
+                    m.add(new MoveSlot(12, "Whirlwind", Material.WIND_CHARGE));
+                    m.add(new MoveSlot(13, "Hammer Throw", Material.NETHERITE_AXE));
+                    m.add(new MoveSlot(99, "Summon Spiders", Material.SPIDER_EYE));
+                    if (jacob.phase() == 3) {
+                        m.add(new MoveSlot(20, "Cavalry Charge", Material.GOAT_HORN));
+                        m.add(new MoveSlot(21, "Spear Wall", Material.IRON_SPEAR));
+                    }
+                }
+                default -> {
+                    m.add(new MoveSlot(30, "Ember Flurry", Material.BLAZE_POWDER));
+                    m.add(new MoveSlot(31, "Phoenix Leap", Material.FIRE_CHARGE));
+                    m.add(new MoveSlot(32, "Inferno Pillars", Material.BLAZE_ROD));
+                    m.add(new MoveSlot(33, "Burning Brand", Material.MAGMA_CREAM));
+                    m.add(new MoveSlot(34, "Diamond Shatter", Material.DIAMOND));
+                }
+            }
+        } else if (b == don && don != null) {
+            if (don.state == PHASE1) {
+                m.add(new MoveSlot(0, "Rapid Fire", Material.SLIME_BALL));
+                m.add(new MoveSlot(1, "Ball Kick", Material.SNOWBALL));
+            } else if (don.state == PHASE2) {
+                m.add(new MoveSlot(1, "Blink Slash", Material.IRON_SWORD));
+                m.add(new MoveSlot(2, "Overtime Rush", Material.SUGAR));
+                m.add(new MoveSlot(3, "Direct Shot", Material.ARROW));
+                m.add(new MoveSlot(4, "Ricochet", Material.SLIME_BALL));
+                m.add(new MoveSlot(5, "Ground Spike", Material.POINTED_DRIPSTONE));
+                m.add(new MoveSlot(6, "Zombie Guard", Material.SHIELD));
+                m.add(new MoveSlot(7, "Price Check", Material.GOLD_NUGGET));
+                m.add(new MoveSlot(8, "Zombie Dribble", Material.ZOMBIE_HEAD));
+                m.add(new MoveSlot(9, "Ace Eater", Material.ROTTEN_FLESH));
+            }
+        }
+        return m.size() > 8 ? m.subList(0, 8) : m;
+    }
+
+    ItemStack moveItem(MoveSlot mv) {
+        ItemStack it = new ItemStack(mv.icon());
+        ItemMeta meta = it.getItemMeta();
+        meta.setDisplayName(ChatColor.GOLD + "" + ChatColor.BOLD + mv.name());
+        meta.setLore(List.of(ChatColor.GRAY + "Right-click: use it on the player", ChatColor.GRAY + "you're looking at (or the nearest)."));
+        meta.getPersistentDataContainer().set(MORPH_MOVE_KEY, PersistentDataType.INTEGER, mv.id());
+        meta.setMaxStackSize(1);
+        it.setItemMeta(meta);
+        return it;
+    }
+
+    ItemStack leaveItem() {
+        ItemStack it = new ItemStack(Material.BARRIER);
+        ItemMeta meta = it.getItemMeta();
+        meta.setDisplayName(ChatColor.RED + "" + ChatColor.BOLD + "Leave boss form");
+        meta.setLore(List.of(ChatColor.GRAY + "Right-click: the boss leaves and you're", ChatColor.GRAY + "yourself again. (/bossmorph release lets it fight on alone.)"));
+        meta.getPersistentDataContainer().set(MORPH_MOVE_KEY, PersistentDataType.INTEGER, -2);
+        it.setItemMeta(meta);
+        return it;
+    }
+
+    void refreshMorphHotbar(Player p) {
+        List<MoveSlot> moves = morphMoves();
+        String sig = moves.toString();
+        if (sig.equals(morph.shown)) return;
+        boolean first = morph.shown.isEmpty();
+        morph.shown = sig;
+        p.getInventory().clear();
+        for (int i = 0; i < moves.size(); i++) p.getInventory().setItem(i, moveItem(moves.get(i)));
+        p.getInventory().setItem(8, leaveItem());
+        if (!first) p.sendActionBar(legacy(ChatColor.GOLD + "New phase: your moves changed!"));
+    }
+
+    boolean morphCommand(CommandSender sender, Command command, String label, String[] args) {
+        if (!sender.hasPermission("bosses.admin")) { sender.sendMessage(ChatColor.RED + "You don't have permission to do that."); return true; }
+        String kind = args.length > 0 ? args[0].toLowerCase() : "";
+        if (kind.equals("off") || kind.equals("release")) {
+            if (morph == null) { sender.sendMessage(ChatColor.GRAY + "Nobody is in boss form."); return true; }
+            endMorph(kind.equals("off"), ChatColor.GREEN + (kind.equals("off") ? "You're yourself again (the boss left)." : "You're yourself again. The boss fights on alone!"));
+            sender.sendMessage(ChatColor.GREEN + "Done.");
+            return true;
+        }
+        if (!(sender instanceof Player p)) { sender.sendMessage("Players only."); return true; }
+        if (morph != null) { sender.sendMessage(ChatColor.RED + "Someone is already in boss form. (/bossmorph off)"); return true; }
+        if (!MORPH_KINDS.contains(kind) || kind.equals("off") || kind.equals("release")) {
+            sender.sendMessage(ChatColor.YELLOW + "/bossmorph <demoneye|frostbeard|dune|frostmaw|kraken|jacob|don>  |  /bossmorph off  |  /bossmorph release");
+            return true;
+        }
+        boolean busy = switch (kind) {
+            case "demoneye" -> eye != null; case "frostbeard" -> mortimer != null; case "dune", "frostmaw" -> dune != null;
+            case "kraken" -> kraken != null; case "jacob" -> jacob != null; default -> don != null;
+        };
+        if (busy) { sender.sendMessage(ChatColor.RED + "That boss is already out. Remove it first (/" + (kind.equals("frostmaw") ? "dune" : kind) + " kill)."); return true; }
+        startMorph(p, kind);
+        return true;
+    }
+
+    void startMorph(Player p, String kind) {
+        // save everything about them first (to a file too, so a crash can't eat their inventory)
+        org.bukkit.configuration.file.YamlConfiguration y = new org.bukkit.configuration.file.YamlConfiguration();
+        y.set("uuid", p.getUniqueId().toString());
+        y.set("inventory", Arrays.asList(p.getInventory().getContents()));
+        y.set("mode", p.getGameMode().name());
+        y.set("allow-flight", p.getAllowFlight());
+        y.set("flying", p.isFlying());
+        y.set("invulnerable", p.isInvulnerable());
+        y.set("collidable", p.isCollidable());
+        try { getDataFolder().mkdirs(); y.save(morphFile()); } catch (Exception e) { p.sendMessage(ChatColor.RED + "Couldn't save your inventory, so boss form was cancelled."); return; }
+
+        MORPHED.add(p.getUniqueId());
+        morph = new Morph(p.getUniqueId(), kind);
+        p.getInventory().clear();
+        p.setGameMode(GameMode.ADVENTURE);
+        p.setAllowFlight(true);
+        if (!kind.equals("don")) p.setFlying(true);
+        p.setInvulnerable(true);
+        p.setCollidable(false);
+        p.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, PotionEffect.INFINITE_DURATION, 0, false, false, false));
+        p.setFireTicks(0);
+
+        Location at = p.getLocation();
+        Vector look = at.getDirection().setY(0);
+        if (look.lengthSquared() < 1e-4) look = new Vector(0, 0, 1);
+        look.normalize();
+        try {
+            switch (kind) {
+                case "demoneye" -> {
+                    eye = new DemonEye(p.getEyeLocation().add(look.clone().multiply(5)), p);
+                    morph.boss = eye;
+                    Bukkit.broadcastMessage(ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + "The Demon Eye has awoken!");
+                }
+                case "frostbeard" -> { summonMortimer(at.clone().add(look.clone().multiply(3)).getBlock(), p); morph.boss = mortimer; }
+                case "dune", "frostmaw" -> { summonDune(p, kind.equals("frostmaw")); morph.boss = dune; }
+                case "kraken" -> { summonKraken(at.clone().add(look.clone().multiply(14)), null); morph.boss = kraken; }
+                case "jacob" -> { summonJacob(at, null); morph.boss = jacob; }
+                default -> {
+                    summonDon(at, p);
+                    morph.boss = don;
+                    if (don != null) don.startPiloted();
+                }
+            }
+        } catch (RuntimeException e) {
+            getLogger().log(Level.WARNING, "Boss form: couldn't summon " + kind, e);
+        }
+        if (morph.boss == null) { endMorph(false, ChatColor.RED + "The boss couldn't appear here (mob spawning blocked?)."); return; }
+        refreshMorphHotbar(p);
+        p.sendMessage(ChatColor.GOLD + "" + ChatColor.BOLD + "You are the boss! " + ChatColor.GRAY + "It follows you; right-click a move on your hotbar to use it on "
+                + "whoever you're looking at. Press F5 for a better view. Slot 9 (or /bossmorph off) to stop.");
+    }
+
+    /** Puts them back exactly as they were. leave = the boss goes too; otherwise it fights on with its own AI. */
+    void endMorph(boolean leave, String message) {
+        Morph m = morph;
+        morph = null;
+        if (m == null) return;
+        MORPHED.remove(m.player);
+        if (leave && m.boss != null) {
+            String cmd = m.boss == eye ? "demoneye kill" : m.boss == mortimer ? "frostbeard kill" : m.boss == dune ? "dune kill"
+                    : m.boss == kraken ? "kraken kill" : m.boss == jacob ? "jacob kill" : m.boss == don ? "don kill" : null;
+            if (cmd != null) Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd);
+        }
+        Player p = Bukkit.getPlayer(m.player);
+        if (p != null) { restoreMorphed(p); if (message != null) p.sendMessage(message); }
+    }
+
+    void restoreMorphed(Player p) {
+        java.io.File f = morphFile();
+        if (!f.exists()) return;
+        org.bukkit.configuration.file.YamlConfiguration y = org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(f);
+        if (!p.getUniqueId().toString().equals(y.getString("uuid"))) return;
+        MORPHED.remove(p.getUniqueId());
+        p.getInventory().clear();
+        List<?> inv = y.getList("inventory", List.of());
+        ItemStack[] items = new ItemStack[p.getInventory().getSize()];
+        for (int i = 0; i < Math.min(items.length, inv.size()); i++) items[i] = inv.get(i) instanceof ItemStack is ? is : null;
+        p.getInventory().setContents(items);
+        p.removePotionEffect(PotionEffectType.INVISIBILITY);
+        try { p.setGameMode(GameMode.valueOf(y.getString("mode", "SURVIVAL"))); } catch (IllegalArgumentException e) { p.setGameMode(GameMode.SURVIVAL); }
+        p.setAllowFlight(y.getBoolean("allow-flight") || p.getGameMode() == GameMode.CREATIVE || p.getGameMode() == GameMode.SPECTATOR);
+        p.setFlying(y.getBoolean("flying") && p.getAllowFlight());
+        p.setInvulnerable(y.getBoolean("invulnerable"));
+        p.setCollidable(y.getBoolean("collidable", true));
+        p.setFallDistance(0);
+        f.delete();
+    }
+
+    /** Every tick: is the boss still around? Hotbar matches its phase? Still invisible and fed? */
+    void morphTick() {
+        if (morph == null) return;
+        Player p = Bukkit.getPlayer(morph.player);
+        if (p == null) { endMorph(true, null); return; }
+        boolean alive = morph.boss != null && (morph.boss == eye || morph.boss == mortimer || morph.boss == dune
+                || morph.boss == kraken || morph.boss == jacob || morph.boss == don);
+        if (!alive) { endMorph(false, ChatColor.GOLD + "Your boss was defeated! You're yourself again."); return; }
+        if (++morph.ticks % 10 == 0) {
+            refreshMorphHotbar(p);
+            if (!p.hasPotionEffect(PotionEffectType.INVISIBILITY))
+                p.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, PotionEffect.INFINITE_DURATION, 0, false, false, false));
+            p.setFoodLevel(20); p.setFireTicks(0);
+            if (morph.queued < 0) {
+                List<MoveSlot> mv = morphMoves();
+                p.sendActionBar(legacy(ChatColor.GOLD + "Boss form" + ChatColor.GRAY + "  |  " + mv.size() + " moves  |  slot 9 to leave"));
+            }
+        }
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onMorphUse(PlayerInteractEvent event) {
+        if (morph == null || !event.getPlayer().getUniqueId().equals(morph.player)) return;
+        event.setCancelled(true);
+        if (event.getHand() != EquipmentSlot.HAND) return;
+        if (event.getAction() != Action.RIGHT_CLICK_AIR && event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
+        ItemStack it = event.getItem();
+        if (it == null || !it.hasItemMeta()) return;
+        Integer id = it.getItemMeta().getPersistentDataContainer().get(MORPH_MOVE_KEY, PersistentDataType.INTEGER);
+        if (id == null) return;
+        if (id == -2) { endMorph(true, ChatColor.GREEN + "You're yourself again."); return; }
+        morph.queued = id;
+        event.getPlayer().sendActionBar(legacy(ChatColor.GOLD + "" + ChatColor.BOLD + ChatColor.stripColor(it.getItemMeta().getDisplayName()) + "!"));
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onMorphEntityUse(org.bukkit.event.player.PlayerInteractEntityEvent event) {
+        if (morph != null && event.getPlayer().getUniqueId().equals(morph.player)) event.setCancelled(true);
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onMorphAttack(EntityDamageByEntityEvent event) { // the boss does the fighting, not the invisible admin
+        if (morph != null && event.getDamager().getUniqueId().equals(morph.player)) event.setCancelled(true);
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onMorphDrop(org.bukkit.event.player.PlayerDropItemEvent event) {
+        if (morph != null && event.getPlayer().getUniqueId().equals(morph.player)) event.setCancelled(true);
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onMorphPickup(org.bukkit.event.entity.EntityPickupItemEvent event) {
+        if (morph != null && event.getEntity().getUniqueId().equals(morph.player)) event.setCancelled(true);
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onMorphInventory(org.bukkit.event.inventory.InventoryClickEvent event) {
+        if (morph != null && event.getWhoClicked().getUniqueId().equals(morph.player)) event.setCancelled(true);
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onMorphSwap(org.bukkit.event.player.PlayerSwapHandItemsEvent event) {
+        if (morph != null && event.getPlayer().getUniqueId().equals(morph.player)) event.setCancelled(true);
+    }
+
+    @EventHandler
+    public void onMorphQuit(org.bukkit.event.player.PlayerQuitEvent event) {
+        if (morph != null && event.getPlayer().getUniqueId().equals(morph.player)) endMorph(true, null); // restored before their data saves
+    }
+
+    /** After a crash mid-boss-form: give them their stuff back when they rejoin. */
+    @EventHandler
+    public void onMorphRejoin(PlayerJoinEvent event) {
+        if (morph != null && event.getPlayer().getUniqueId().equals(morph.player)) return;
+        restoreMorphed(event.getPlayer());
     }
 
     private class BossCommand implements CommandExecutor {

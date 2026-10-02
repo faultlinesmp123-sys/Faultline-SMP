@@ -310,12 +310,10 @@ boots:
   rocket-lift: 0.42          # upward push while a charge burns
   spectre-anvil-levels: 10   # XP levels to combine Hermes + Rocket into Spectre Boots
 
-# Item textures (Golden Ring, Magic Mirror) — DISABLED by default. Upload
-# FaultlineItemTextures.zip somewhere public (GitHub, same as the heart
-# packs), paste the URL below, then flip enabled to true. The hash is
-# already correct for the exact zip generated for you.
+# The server's resource pack (every custom item, boss, and the Index): FaultlineSMP.zip on GitHub (main).
+# Keep this ENABLED. If the pack changes, put its new SHA-1 in hash (sha1sum FaultlineSMP.zip).
 item-textures:
-  enabled: false
+  enabled: true
   url: "https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/main/FaultlineSMP.zip"
   hash: "a669333ad7e0882605c19eb452a76c7530983531"
 

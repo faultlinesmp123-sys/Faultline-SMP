@@ -57,6 +57,8 @@ Notes:
 1. **Every new item, boss, or enemy must be added to the Faultline Index.**
 2. **Every new boss must be added to `/itemsmenu`** (a spawn egg or summon item).
 3. If textures/models change, update the resource pack zip **and** its SHA-1 hash in config.
+4. **Keep `item-textures.enabled: true`** in FaultlineItems' config (and the code default true). The pack
+   must always be sent. Note the server's own `plugins/FaultlineItems/config.yml` overrides the jar's default.
 
 ## Repo contents
 | File | What it is |

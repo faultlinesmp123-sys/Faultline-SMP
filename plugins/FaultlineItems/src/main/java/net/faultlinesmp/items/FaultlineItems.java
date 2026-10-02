@@ -3172,7 +3172,7 @@ public final class FaultlineItems extends JavaPlugin {
         /** Sends the pack; returns a short status line (also logged) so a missing pack is easy to track down. */
         public String applyTextures(Player player) {
             String cfgFile = new File(plugin.getDataFolder(), "config.yml").getPath();
-            if (!plugin.getConfig().getBoolean("item-textures.enabled", false)) {
+            if (!plugin.getConfig().getBoolean("item-textures.enabled", true)) {
                 String why = "not sent: item-textures.enabled is false in " + cfgFile;
                 plugin.getLogger().info("[Resource pack] " + player.getName() + ": " + why);
                 return why;

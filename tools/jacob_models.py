@@ -453,11 +453,96 @@ def hawk(seed):
     parts["wing_l"] = make_wing(-1)
     return atlas, parts
 
+# ------------------------------------------------------------------ his weapon: a flanged war mace
+
+MACE = dict(base=(74, 208, 208), light=(170, 250, 240), dark=(22, 110, 122), hi=(235, 255, 252),
+            gold=(226, 178, 40), gold_hi=(255, 236, 130), gold_dark=(140, 92, 12),
+            leather=(86, 52, 28), leather_hi=(130, 84, 46), steel=(60, 66, 80), steel_hi=(110, 120, 138))
+
+# how it sits in a player's hand / the inventory (same as the old hammer, whose handle was in the same place)
+MACE_DISPLAY = {
+    "thirdperson_righthand": {"rotation": [0, -90, 55], "translation": [0, 4, 0.5], "scale": [0.85, 0.85, 0.85]},
+    "thirdperson_lefthand": {"rotation": [0, 90, -55], "translation": [0, 4, 0.5], "scale": [0.85, 0.85, 0.85]},
+    "firstperson_righthand": {"rotation": [0, -90, 25], "translation": [1.13, 3.2, 1.13], "scale": [0.68, 0.68, 0.68]},
+    "firstperson_lefthand": {"rotation": [0, 90, -25], "translation": [1.13, 3.2, 1.13], "scale": [0.68, 0.68, 0.68]},
+    "gui": {"rotation": [30, 225, 0], "translation": [0, -0.5, 0], "scale": [0.55, 0.55, 0.55]},
+    "ground": {"translation": [0, 3, 0], "scale": [0.5, 0.5, 0.5]},
+    "fixed": {"scale": [0.8, 0.8, 0.8]},
+}
+
+
+def mace(seed):
+    """Handle along +y (grip low, at model y ~1.5, where FaultlineBosses' Grip expects it); the flanged head on top."""
+    atlas = Atlas(256, 4)
+    rng = random.Random(seed)
+    P = MACE
+
+    def diamond(reg, face, wu, hu):
+        plate(reg, P, rng, sparkle=0.05)
+
+    def gold(reg, face, wu, hu):
+        noise_fill(reg, P["gold"], rng, 8)
+        reg[0, :, :3] = P["gold_hi"]; reg[-1, :, :3] = P["gold_dark"]
+
+    def grip(reg, face, wu, hu):  # leather wrapped in a spiral
+        h, w = reg.shape[:2]
+        noise_fill(reg, P["leather"], rng, 6)
+        for y in range(h):
+            for x in range(w):
+                if (y + x) % 4 == 0: reg[y, x, :3] = P["leather_hi"]
+
+    def steel(reg, face, wu, hu):
+        noise_fill(reg, P["steel"], rng, 5)
+        reg[:, 0, :3] = P["steel_hi"]
+
+    def flange(reg, face, wu, hu):  # a diamond blade with a bright cutting edge
+        plate(reg, P, rng, sparkle=0.03)
+        if face in ("east", "west", "north", "south"):
+            h, w = reg.shape[:2]
+            reg[:, -1 if face in ("east", "south") else 0, :3] = P["hi"]
+
+    el = [
+        box(atlas, (-1.3, -11, -1.3), (1.3, -9.4, 1.3), gold),          # pommel
+        box(atlas, (-0.75, -9.4, -0.75), (0.75, -1.0, 0.75), grip),    # leather grip
+        box(atlas, (-1.25, -1.0, -1.25), (1.25, 0.0, 1.25), gold),      # collar
+        box(atlas, (-0.7, 0.0, -0.7), (0.7, 4.6, 0.7), steel),          # shaft
+        box(atlas, (-2.2, 4.6, -2.2), (2.2, 11.0, 2.2), diamond),       # head core
+        box(atlas, (-2.45, 4.6, -2.45), (2.45, 5.4, 2.45), gold),       # lower band
+        box(atlas, (-2.45, 10.2, -2.45), (2.45, 11.0, 2.45), gold),     # upper band
+        box(atlas, (-0.65, 11.0, -0.65), (0.65, 13.4, 0.65), diamond),  # top spike
+        box(atlas, (-0.9, 11.0, -0.9), (0.9, 11.6, 0.9), gold),
+    ]
+    # eight flanges: four straight, four turned 45 degrees
+    for rot in (0, 45):
+        for f, t in (((2.2, 5.4, -0.45), (4.4, 10.2, 0.45)), ((-4.4, 5.4, -0.45), (-2.2, 10.2, 0.45)),
+                     ((-0.45, 5.4, 2.2), (0.45, 10.2, 4.4)), ((-0.45, 5.4, -4.4), (0.45, 10.2, -2.2))):
+            e = box(atlas, f, t, flange)
+            if rot: e["rotation"] = {"angle": 45, "axis": "y", "origin": [8, 8, 8]}
+            el.append(e)
+    return atlas, el
+
+
+def mace_icon(atlas_img):
+    """The 16x16 picture for the Index: a diagonal flanged mace in the knight's colors."""
+    P = MACE
+    img = np.zeros((16, 16, 4))
+    def px(x, y, c): img[y, x, :3] = c; img[y, x, 3] = 255
+    for i in range(2, 10):           # handle, bottom-left to the middle
+        px(i - 1, 16 - i, P["leather"] if i < 7 else P["steel"])
+    px(0, 15, P["gold"]); px(1, 15, P["gold_dark"]); px(0, 14, P["gold_hi"])
+    head = [(9, 6), (10, 5), (11, 4), (8, 5), (9, 4), (10, 3), (10, 6), (11, 5), (12, 4), (9, 5), (10, 4), (11, 3)]
+    for x, y in head: px(x, y, P["base"])
+    for x, y in [(7, 4), (8, 3), (9, 2), (12, 7), (13, 6), (14, 5), (8, 7), (12, 2), (13, 3), (7, 6), (11, 7)]: px(x, y, P["light"])
+    for x, y in [(7, 5), (11, 8), (13, 4), (9, 1)]: px(x, y, P["dark"])
+    px(8, 8, P["gold"]); px(12, 1, P["hi"]); px(13, 1, P["hi"])
+    return Image.fromarray(img.astype(np.uint8), "RGBA")
+
 # ------------------------------------------------------------------ writing
 
-def write_model(pack, name, tex, elements):
+def write_model(pack, name, tex, elements, display=None):
     path = os.path.join(pack, "assets/faultline/models/item", name + ".json")
     m = {"textures": {"t": "faultline:item/" + tex, "particle": "faultline:item/" + tex}, "elements": elements}
+    if display: m["display"] = display
     with open(path, "w") as f: json.dump(m, f, indent=1)
     items = os.path.join(pack, "assets/faultline/items", name + ".json")
     if not os.path.exists(items):
@@ -502,9 +587,20 @@ def render(placed, yaw, pitch, scale, size):
     for els, tex, off in placed:
         th, tw = tex.shape[:2]
         for e in els:
-            f = [e["from"][i] - C + off[i] for i in range(3)]; t = [e["to"][i] - C + off[i] for i in range(3)]
+            f = [e["from"][i] - C for i in range(3)]; t = [e["to"][i] - C for i in range(3)]
+            rot = e.get("rotation")
+
+            def place(q, rot=rot, off=off):  # element rotation (about its origin), then the part's offset
+                q = list(q)
+                if rot:
+                    o = [v - C for v in rot["origin"]]; a = math.radians(rot["angle"])
+                    ax = {"x": (1, 2), "y": (2, 0), "z": (0, 1)}[rot["axis"]]
+                    u, v = q[ax[0]] - o[ax[0]], q[ax[1]] - o[ax[1]]
+                    q[ax[0]] = o[ax[0]] + u * math.cos(a) - v * math.sin(a)
+                    q[ax[1]] = o[ax[1]] + u * math.sin(a) + v * math.cos(a)
+                return [q[i] + off[i] for i in range(3)]
             for face, fd in e["faces"].items():
-                tl, tr, bl = [proj(p) for p in CORNERS[face](f, t)]
+                tl, tr, bl = [proj(place(p)) for p in CORNERS[face](f, t)]
                 u1, v1, u2, v2 = [v * tw / 16 for v in fd["uv"]]
                 ex, ey = tr - tl, bl - tl
                 det = ex[0] * ey[1] - ex[1] * ey[0]
@@ -565,6 +661,15 @@ def main():
             set_anchor(0.97)
             preview(prev, "jacob_" + form, {k: parts[v] for k, v in names.items()}, img, JOINT,
                     [(20, 12), (160, 12), (-35, 25)], 9, (360, 520))
+    atlas, el = mace(13)
+    img = write_tex(pack, "jacob_hammer", atlas)
+    write_model(pack, "jacob_hammer", "jacob_hammer", el, MACE_DISPLAY)
+    os.makedirs(os.path.join(pack, "assets/faultline/textures/index"), exist_ok=True)
+    mace_icon(img).save(os.path.join(pack, "assets/faultline/textures/index/jacob_hammer.png"))
+    if prev:
+        set_anchor(0.75)
+        preview(prev, "jacob_mace", {"m": el}, img, {"m": (0, 0, 0)}, [(30, 15), (75, 10), (0, 70)], 14, (300, 360))
+        mace_icon(img).resize((128, 128), Image.NEAREST).save(os.path.join(prev, "jacob_mace_icon.png"))
     atlas, parts = hawk(5)
     img = write_tex(pack, "jacob_bird", atlas)
     for part in ("body", "head", "tail", "wing_r", "wing_l"): write_model(pack, "jacob_bird_" + part, "jacob_bird", parts[part])

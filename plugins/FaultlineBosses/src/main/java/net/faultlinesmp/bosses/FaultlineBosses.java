@@ -5154,10 +5154,10 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             case "hammer" -> {
                 s = new ItemStack(Material.NETHERITE_AXE); m = s.getItemMeta();
                 m.setDisplayName(ChatColor.AQUA + "" + ChatColor.BOLD + "Jacob's War Hammer");
-                m.setLore(List.of(ChatColor.GRAY + "Pulled from the ground, still humming with power.", ChatColor.GREEN + "Right-click: Ground Slam " + ChatColor.DARK_GRAY + "(10s cooldown)",
+                m.setLore(List.of(ChatColor.GRAY + "A flanged war mace, pulled from the ground,", ChatColor.GRAY + "still humming with power. Heavy and slow.", ChatColor.GREEN + "Right-click: Ground Slam " + ChatColor.DARK_GRAY + "(10s cooldown)",
                         ChatColor.DARK_GRAY + "Dropped by Diamond Jacob."));
                 m.setItemModel(new org.bukkit.NamespacedKey("faultline", "jacob_hammer"));
-                m.addAttributeModifier(Attribute.ATTACK_DAMAGE, new org.bukkit.attribute.AttributeModifier(new org.bukkit.NamespacedKey(this, "jacob_hammer_damage"), 14, org.bukkit.attribute.AttributeModifier.Operation.ADD_NUMBER, org.bukkit.inventory.EquipmentSlotGroup.MAINHAND));
+                m.addAttributeModifier(Attribute.ATTACK_DAMAGE, new org.bukkit.attribute.AttributeModifier(new org.bukkit.NamespacedKey(this, "jacob_hammer_damage"), 10, org.bukkit.attribute.AttributeModifier.Operation.ADD_NUMBER, org.bukkit.inventory.EquipmentSlotGroup.MAINHAND));
                 m.addAttributeModifier(Attribute.ATTACK_SPEED, new org.bukkit.attribute.AttributeModifier(new org.bukkit.NamespacedKey(this, "jacob_hammer_speed"), -3.2, org.bukkit.attribute.AttributeModifier.Operation.ADD_NUMBER, org.bukkit.inventory.EquipmentSlotGroup.MAINHAND));
                 m.setEnchantmentGlintOverride(true);
             }
@@ -5168,7 +5168,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                         ChatColor.DARK_GRAY + "Dropped by Diamond Jacob."));
                 m.setItemModel(new org.bukkit.NamespacedKey("faultline", "jacob_sword"));
                 m.addEnchant(org.bukkit.enchantments.Enchantment.FIRE_ASPECT, 2, true);
-                m.addAttributeModifier(Attribute.ATTACK_DAMAGE, new org.bukkit.attribute.AttributeModifier(new org.bukkit.NamespacedKey(this, "jacob_sword_damage"), 10, org.bukkit.attribute.AttributeModifier.Operation.ADD_NUMBER, org.bukkit.inventory.EquipmentSlotGroup.MAINHAND));
+                m.addAttributeModifier(Attribute.ATTACK_DAMAGE, new org.bukkit.attribute.AttributeModifier(new org.bukkit.NamespacedKey(this, "jacob_sword_damage"), 9, org.bukkit.attribute.AttributeModifier.Operation.ADD_NUMBER, org.bukkit.inventory.EquipmentSlotGroup.MAINHAND));
                 m.addAttributeModifier(Attribute.ATTACK_SPEED, new org.bukkit.attribute.AttributeModifier(new org.bukkit.NamespacedKey(this, "jacob_sword_speed"), -2.2, org.bukkit.attribute.AttributeModifier.Operation.ADD_NUMBER, org.bukkit.inventory.EquipmentSlotGroup.MAINHAND));
             }
             default -> {

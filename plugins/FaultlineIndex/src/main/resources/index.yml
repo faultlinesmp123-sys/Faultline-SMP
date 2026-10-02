@@ -471,13 +471,13 @@ entries:
     icon: jacob_hammer
     detect: faultlinebosses:jacob_item=hammer
     how: Dropped by Diamond Jacob.
-    does: 'A huge, slow, heavy-hitting hammer. Right-click: Ground Slam (10s cooldown).'
+    does: 'A flanged war mace: +10 attack damage, but a slow swing. Right-click: Ground Slam (10s cooldown).'
   - chapter: weapons
     name: Ember Blade
     icon: jacob_sword
     detect: faultlinebosses:jacob_item=sword
     how: Dropped by Diamond Jacob.
-    does: 'A burning sword with Fire Aspect II. Right-click: Ember Dash (8s cooldown).'
+    does: 'A burning sword: +9 attack damage and Fire Aspect II. Right-click: Ember Dash (8s cooldown).'
   - chapter: accessories
     name: Falconer's Quiver
     icon: falconers_quiver

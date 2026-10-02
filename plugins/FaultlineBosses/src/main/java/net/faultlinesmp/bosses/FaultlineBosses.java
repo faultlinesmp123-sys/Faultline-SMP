@@ -5493,10 +5493,62 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             if (held == null || !held.isValid()) {
                 held = world.spawn(pos.toLocation(world), ItemDisplay.class, d -> {
                     d.setPersistent(false); d.addScoreboardTag(DISPLAY_TAG); d.setTeleportDuration(2); d.setInterpolationDuration(2);
-                    d.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.THIRDPERSON_RIGHTHAND);
+                    // BUG FIX: THIRDPERSON_RIGHTHAND plus the rig's spear math (tuned for Don) left his sword, hammer, and bow
+                    // sticking out at odd angles. He places his weapon himself now (renderWeapon), from a grip per item.
+                    d.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.NONE);
                 });
             }
             held.setItemStack(item);
+            grip = Grip.of(item);
+        }
+
+        Grip grip;
+
+        /** Where his hand closes on an item (model pixels) and which way it points: axis = toward the tip, face = the flat side. */
+        record Grip(Vector3f at, Vector3f axis, Vector3f face, float size) {
+            static final Vector3f DIAG = new Vector3f(1, 1, 0).normalize(), FLAT = new Vector3f(0, 0, 1);
+            static Grip of(ItemStack item) {
+                if (item == null || item.getType().isAir()) return null;
+                org.bukkit.NamespacedKey m = item.hasItemMeta() ? item.getItemMeta().getItemModel() : null;
+                String key = m != null ? m.getKey() : item.getType().getKey().getKey();
+                return switch (key) {
+                    case "jacob_hammer" -> new Grip(new Vector3f(8, 1.5f, 8), new Vector3f(0, 1, 0), new Vector3f(0, 0, 1), 1.0f); // handle up, head across
+                    case "bow" -> new Grip(new Vector3f(4.5f, 9.5f, 8), DIAG, FLAT, 1.0f);   // middle of the limb; tips along the arm's forward
+                    case "goat_horn" -> new Grip(new Vector3f(4, 3.5f, 8), DIAG, FLAT, 0.8f);
+                    default -> new Grip(new Vector3f(3, 3, 8), DIAG, FLAT, 1.0f);            // swords, staffs: handle at the bottom-left
+                };
+            }
+            /** Item model directions -> his arm's frame (axis -> forward out of the fist, face -> sideways). */
+            Quaternionf toArm() {
+                Vector3f third = new Vector3f(axis).cross(face);
+                org.joml.Matrix3f src = new org.joml.Matrix3f(axis, face, third);
+                org.joml.Matrix3f dst = new org.joml.Matrix3f(new Vector3f(0, 0, 1), new Vector3f(1, 0, 0), new Vector3f(0, 1, 0));
+                return new Quaternionf().setFromNormalized(dst.mul(src.transpose()));
+            }
+        }
+
+        /** His weapon in his right fist, using the same joints and pose as renderRig. */
+        void renderWeapon(Location root, float yaw, float scale, Pose pose) {
+            if (held == null || !held.isValid()) return;
+            if (grip == null) { held.setTransformation(new Transformation(new Vector3f(), new Quaternionf(), new Vector3f(), new Quaternionf())); return; }
+            Quaternionf qYaw = new Quaternionf().rotateY((float) -Math.toRadians(yaw));
+            Quaternionf qBody = euler(pose.r[BODY]);
+            Vector3f hips = new Vector3f(0, 12, 0);
+            Vector3f shoulder = new Vector3f(JOINT[ARM_R][0], JOINT[ARM_R][1], JOINT[ARM_R][2]).sub(hips);
+            qBody.transform(shoulder).add(hips);
+            Quaternionf qArm = new Quaternionf(qBody).mul(euler(pose.r[ARM_R]));
+            Vector3f hand = qArm.transform(new Vector3f(0, -10.6f, 0.4f)).add(shoulder).mul(scale / 16f);
+            qYaw.transform(hand);
+            Quaternionf rot = new Quaternionf(qYaw).mul(qArm).mul(grip.toArm());
+            float size = scale * grip.size();
+            // put the grip point (not the model's middle) in his fist
+            Vector3f g = new Vector3f(grip.at()).sub(8, 8, 8).mul(size / 16f);
+            rot.transform(g);
+            Location at = root.clone().add(hand.x - g.x, hand.y - g.y + pose.drop, hand.z - g.z);
+            at.setYaw(0); at.setPitch(0);
+            held.teleport(at);
+            held.setInterpolationDelay(0);
+            held.setTransformation(new Transformation(new Vector3f(), new Quaternionf(rot).mul(facing(0)), new Vector3f(size, size, size), new Quaternionf()));
         }
 
         ItemStack model(Material base, String name, boolean glint) {
@@ -5749,7 +5801,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         void end(int rest) {
             attack = -1; t = 0;
             recover = (int) Math.round(rest * (phase() == 4 ? 0.6 : phase() == 3 ? 0.8 : 1.0));
-            pose = state == P1 ? riderPose(false) : standPose();
+            pose = state == P1 ? riderPose(false) : readyPose();
         }
 
         // ---------- phase 1: the hawk ----------
@@ -5766,17 +5818,72 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             if (birdPos.getY() < ground) birdPos.setY(ground);
         }
 
+        /** Riding the hawk: knees gripping, swaying with its wingbeats. Drawing: bow arm out, string pulled to his cheek. */
         Pose riderPose(boolean drawing) {
-            Pose p = new Pose().set(LEG_R, -75, 0, -12).set(LEG_L, -75, 0, 12).drop(-0.5f);
-            if (drawing) p.set(ARM_L, -90, 0, 6).set(ARM_R, -90, -30, 0).set(HEAD, 6, 0, 0); else p.set(ARM_L, -40, 0, 8).set(ARM_R, -20, 0, -8);
+            float b = (float) Math.sin(ticks * 0.11);
+            Pose p = new Pose().set(LEG_R, -72, 0, -16).set(LEG_L, -72, 0, 16).drop(-0.5f).set(BODY, 6 + b * 1.5f, 0, b * 1.5f);
+            if (drawing) p.set(ARM_R, -90, -16, 0).set(ARM_L, -86, 40, 0).set(BODY, 4, 16, 0).set(HEAD, 2, -14, 0);
+            else p.set(ARM_R, -34 + b * 3, 0, -12).set(ARM_L, -42 - b * 3, 0, 12).set(HEAD, 6, 0, 0);
             return p;
         }
+
+        // ---------- animation ----------
+        float stride, headYaw;      // walk cycle (advanced by the distance he actually covers), where his head looks
+        int recoilT;                // a pink orb rocks him back
+        Vector lastDrawPos;
+
+        /** Combat-ready idle: feet apart, weight shifting, breathing, weapon up. Ablaze: hunched forward, blade low. */
+        Pose readyPose() {
+            float b = (float) Math.sin(ticks * 0.09), w = (float) Math.sin(ticks * 0.045);
+            Pose p = new Pose().set(LEG_R, -8, 0, -7).set(LEG_L, 10, 0, 7).drop(-0.06f + b * 0.015f).set(HEAD, -6 - b, -6, 0);
+            if (ablaze) return p.set(BODY, 16 + b * 2, 10 + w * 3, 0).set(ARM_R, -40 + b * 3, -10, -16).set(ARM_L, -18 - b * 3, 0, 22);
+            return p.set(BODY, 7 + b * 1.5f, 6 + w * 3, 0).set(ARM_R, -32 + b * 2, 0, -10).set(ARM_L, -16 - b * 2, 18, 14);
+        }
+
+        /** A heavy armored stride, synced to the ground he covers (no sliding feet). a > 1 = a sprint. */
+        Pose stridePose(float a) {
+            float sn = (float) Math.sin(stride), cs = (float) Math.cos(stride);
+            return new Pose().set(LEG_R, sn * 34 * a, 0, -3).set(LEG_L, -sn * 34 * a, 0, 3)
+                    .set(ARM_R, (ablaze ? -46 : -30) - sn * 10 * a, 0, -12).set(ARM_L, sn * 32 * a - 8, 0, 12)
+                    .set(BODY, 9 * a + 2, -sn * 7 * a, 0).set(HEAD, -7 * a, sn * 5 * a, 0)
+                    .drop(-(float) Math.abs(cs) * 0.08f * a);
+        }
+
+        Pose p(float[]... parts) { // compact builder: {part, x, y, z}..., last {-1, drop}
+            Pose q = new Pose();
+            for (float[] f : parts) { if (f[0] < 0) q.drop(f[1]); else q.set((int) f[0], f[1], f[2], f[3]); }
+            return q;
+        }
+        // hammer: two-handed overhead slam
+        Pose liftPose()     { return p(new float[]{ARM_R, -100, 0, -10}, new float[]{ARM_L, -92, 22, 10}, new float[]{BODY, -2, 0, 0}, new float[]{-1, -0.05f}); }
+        Pose overheadPose() { return p(new float[]{ARM_R, -176, 0, -8}, new float[]{ARM_L, -166, 16, 8}, new float[]{BODY, -15, 0, 0}, new float[]{HEAD, -14, 0, 0},
+                                       new float[]{LEG_R, 10, 0, -6}, new float[]{LEG_L, -14, 0, 6}, new float[]{-1, 0.05f}); }
+        Pose slamPose()     { return p(new float[]{ARM_R, -36, 0, -4}, new float[]{ARM_L, -32, 18, 4}, new float[]{BODY, 36, 0, 0}, new float[]{HEAD, 14, 0, 0},
+                                       new float[]{LEG_R, -32, 0, -8}, new float[]{LEG_L, 26, 0, 8}, new float[]{-1, -0.34f}); }
+        // one-handed: big overhead chop, a throw, a catch
+        Pose chopWindupPose() { return p(new float[]{ARM_R, -168, 0, -18}, new float[]{ARM_L, -40, 0, 26}, new float[]{BODY, -10, 24, 0}, new float[]{HEAD, -6, -18, 0},
+                                         new float[]{LEG_R, 18, 0, -4}, new float[]{LEG_L, -16, 0, 4}); }
+        Pose chopPose()       { return p(new float[]{ARM_R, -34, 0, 12}, new float[]{ARM_L, 22, 0, 18}, new float[]{BODY, 30, -26, 0}, new float[]{HEAD, 10, 20, 0},
+                                         new float[]{LEG_R, -34, 0, -6}, new float[]{LEG_L, 24, 0, 6}, new float[]{-1, -0.22f}); }
+        Pose throwPose()      { return p(new float[]{ARM_R, -60, 0, -8}, new float[]{ARM_L, 18, 0, 22}, new float[]{BODY, 24, -30, 0}, new float[]{HEAD, 4, 24, 0},
+                                         new float[]{LEG_R, -30, 0, -6}, new float[]{LEG_L, 22, 0, 6}, new float[]{-1, -0.12f}); }
+        Pose catchPose()      { return p(new float[]{ARM_R, -128, 0, -14}, new float[]{ARM_L, -20, 0, 18}, new float[]{BODY, -6, 0, 0}, new float[]{HEAD, -18, 0, 0}); }
+        // the blade (phase 4): forehand and backhand cuts, both with the sword arm
+        Pose foreWindup()  { return p(new float[]{ARM_R, -150, 0, -42}, new float[]{ARM_L, -30, 0, 26}, new float[]{BODY, 8, 30, 0}, new float[]{LEG_R, 16, 0, -4}, new float[]{LEG_L, -14, 0, 4}); }
+        Pose foreSlash()   { return p(new float[]{ARM_R, -48, 0, 26}, new float[]{ARM_L, 20, 0, 22}, new float[]{BODY, 18, -32, 0}, new float[]{HEAD, 6, 22, 0},
+                                      new float[]{LEG_R, -30, 0, -6}, new float[]{LEG_L, 22, 0, 6}, new float[]{-1, -0.16f}); }
+        Pose backWindup()  { return p(new float[]{ARM_R, -92, 52, 0}, new float[]{ARM_L, -40, 0, 30}, new float[]{BODY, 10, -26, 0}, new float[]{LEG_R, -12, 0, -4}, new float[]{LEG_L, 14, 0, 4}); }
+        Pose backSlash()   { return p(new float[]{ARM_R, -92, -72, 0}, new float[]{ARM_L, 10, 0, 30}, new float[]{BODY, 16, 32, 0}, new float[]{HEAD, 4, -20, 0},
+                                      new float[]{LEG_R, 22, 0, -6}, new float[]{LEG_L, -30, 0, 6}, new float[]{-1, -0.16f}); }
+        Pose skyPose()     { return p(new float[]{ARM_R, -172, 0, -14}, new float[]{ARM_L, -168, 0, 14}, new float[]{BODY, -14, 0, 0}, new float[]{HEAD, -32, 0, 0},
+                                      new float[]{LEG_R, 0, 0, -10}, new float[]{LEG_L, 0, 0, 10}); }
 
         Vector bowAt() { return pos.clone().add(new Vector(0, 1.4 * scale, 0)).add(fwd().multiply(0.6)); }
 
         void piercingArrow(Player target) {
             int w = 22;
-            pose = riderPose(t > 4);
+            pose = t <= w ? Pose.lerp(riderPose(false), riderPose(true), Math.min(1, t / 8f))
+                    : Pose.lerp(riderPose(true).set(ARM_L, -62, 70, -18), riderPose(false), Math.min(1, (t - w) / 10f)); // the string snaps forward
             if (t == w) {
                 Vector aim = safeDir(eye(target).subtract(bowAt()), fwd());
                 shots.add(new JShot(bowAt(), aim.multiply(2.4), Material.SPECTRAL_ARROW, jcfg("damage.piercing-arrow", 15), true, false, Guard.UNBLOCKABLE, 0.0));
@@ -5786,7 +5893,8 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         }
 
         void arrowVolley(Player target) {
-            pose = riderPose(true);
+            int c = t % 16; // draw, loose, draw, loose
+            pose = c < 12 ? riderPose(true) : riderPose(true).set(ARM_L, -64, 66, -16);
             if (t == 16 || t == 32) {
                 Vector aim = safeDir(eye(target).subtract(bowAt()), fwd());
                 for (int i = -2; i <= 2; i++) shots.add(new JShot(bowAt(), aim.clone().rotateAroundY(Math.toRadians(i * 11)).multiply(1.6), Material.ARROW, jcfg("damage.volley-arrow", 7), false, false, Guard.BLOCKABLE, 0.01));
@@ -5796,7 +5904,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         }
 
         void talonDive(Player target, List<Player> a) {
-            pose = riderPose(false);
+            pose = t < 20 ? riderPose(false) : riderPose(false).add(BODY, 26, 0, 0).set(ARM_R, -64, 0, -8).set(ARM_L, -64, 0, 8).set(HEAD, -20, 0, 0); // flattened on its back for the dive
             if (t == 0) lock = target.getLocation().toVector();
             if (t < 20) { // climbs and marks where it'll strike
                 birdPos.add(new Vector(0, 0.25, 0));
@@ -5818,7 +5926,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         }
 
         void arrowRain(List<Player> a) {
-            pose = riderPose(true);
+            pose = Pose.lerp(riderPose(false), riderPose(true).set(ARM_R, -158, -10, -8).set(ARM_L, -150, 34, 0).set(HEAD, -34, -10, 0).set(BODY, -10, 10, 0), Math.min(1, t / 10f)); // bow to the sky
             if (t == 0) for (Player p : a) { marks.add(p.getLocation().toVector()); if (marks.size() >= 4) break; }
             if (t < 30 && t % 3 == 0) for (Vector m : marks) ring(m, 3, Color.fromRGB(220, 40, 40));
             if (t == 30) {
@@ -5841,18 +5949,19 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             if (attack < 0 && d > 18 && pearlCd <= 0) { pearlCd = 80; attack = 11; t = 0; return; } // far away: he pearls toward you
             if (attack < 0 && d > 3.2) {
                 stepTo(safeDir(to, fwd()).multiply(Math.min(speed(), d - 3)));
-                pose = Pose.lerp(pose, runPose(ticks, phase() == 4 ? 1f : 0.7f), 0.4f);
+                pose = Pose.lerp(pose, stridePose(phase() == 4 ? 1.3f : 1f), 0.35f);
                 // blocked by a wall or cliff for a moment: he pearls over it (and lands behind you)
                 if (blocked > 15 && pearlCd <= 0) { blocked = 0; pearlCd = 80; attack = 11; t = 0; return; }
-            } else if (attack < 0) pose = Pose.lerp(pose, standPose(), 0.2f);
+            } else if (attack < 0) pose = Pose.lerp(pose, readyPose(), 0.2f);
             settle();
         }
 
         void hammerSlam(List<Player> a) {
             int w = 18;
-            if (t < w) pose = anim(t, new int[]{0, w}, new Pose[]{standPose(), slashWindupPose()});
+            pose = anim(t, new int[]{0, 7, 14, 16, 18, 30, 44}, new Pose[]{readyPose(), liftPose(), overheadPose(), overheadPose().add(BODY, -3, 0, 0), slamPose(), slamPose(), readyPose()});
+            if (t < w) { }
             else if (t == w) {
-                pose = slashPose(); lock = pos.clone();
+                lock = pos.clone();
                 world.playSound(loc(), Sound.BLOCK_ANVIL_LAND, 2f, 0.5f);
                 world.spawnParticle(Particle.EXPLOSION, loc().add(fwd().multiply(1.5)), 2, 0.4, 0.1, 0.4, 0);
             } else if (t < w + 20) {
@@ -5895,12 +6004,13 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 Vector behind = target.getLocation().getDirection().setY(0);
                 behind = safeDir(behind, new Vector(1, 0, 0));
                 pearlTo(target.getLocation().toVector().subtract(behind.multiply(2.2)));
-                pose = Pose.lerp(standPose(), handOutPose(), 1f);
             }
+            // flicks the pearl off his off hand, appears crouched behind you, rises into a chop
+            Pose flick = readyPose().set(ARM_L, -118, 0, 8).set(BODY, 4, -12, 0);
+            pose = anim(t, new int[]{0, 3, 10, 12, 17, 20, 34}, new Pose[]{readyPose(), flick, readyPose(), crouchPose(), chopWindupPose(), chopPose(), readyPose()});
             if (t <= 12) { if (pearlFly(t, 12)) { Vector to = target.getLocation().toVector().subtract(pos); yaw = (float) Math.toDegrees(Math.atan2(-to.getX(), to.getZ())); } }
-            else if (t < 20) pose = anim(t, new int[]{12, 20}, new Pose[]{crouchPose(), slashWindupPose()});
+            else if (t < 20) { }
             else if (t == 20) {
-                pose = slashPose();
                 world.playSound(loc(), Sound.ENTITY_PLAYER_ATTACK_SWEEP, 1.6f, 0.6f);
                 for (Player p : a) if (inFront(p, 3.6)) strike(p, jcfg("damage.pearl-strike", 14) * (jacobCounter(p, "ender_anchor") ? 0.5 : 1), Guard.HEAVY, pos, false, false); // Ender Anchor: half
             } else if (t > 34) end(30);
@@ -5913,10 +6023,12 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         }
 
         void whirlwind(Player target, List<Player> a) {
-            if (t < 10) pose = anim(t, new int[]{0, 10}, new Pose[]{standPose(), crouchPose()});
+            if (t < 10) pose = anim(t, new int[]{0, 10}, new Pose[]{readyPose(), crouchPose()});
             else if (t < 70) {
                 yaw += 38;
-                pose = spreadPose();
+                float bob = (float) Math.sin(t * 0.8) * 3; // hammer out at arm's length, leaning into the spin
+                pose = p(new float[]{ARM_R, -14 + bob, 0, -86}, new float[]{ARM_L, -14 - bob, 0, 80}, new float[]{BODY, 14, 0, -6},
+                         new float[]{HEAD, -10, 0, 0}, new float[]{LEG_R, -10, 0, -12}, new float[]{LEG_L, 10, 0, 12}, new float[]{-1, -0.1f});
                 Vector to = target.getLocation().toVector().subtract(pos).setY(0);
                 if (to.length() > 1) stepTo(safeDir(to, fwd()).multiply(0.22)); // (same step-up/fall rules as walking)
                 else settle();
@@ -5929,14 +6041,18 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         }
 
         void hammerThrow(Player target) {
-            if (t < 14) pose = anim(t, new int[]{0, 14}, new Pose[]{standPose(), slashWindupPose()});
+            if (t < 14) pose = anim(t, new int[]{0, 5, 14}, new Pose[]{readyPose(), crouchPose().set(ARM_R, 30, 0, -20), chopWindupPose()});
+            else if (thrownHammer != null) { // follow-through, then reaching up to catch it as it spins back
+                boolean incoming = hammerBack && hammerPos != null && hammerPos.distanceSquared(pos) < 6 * 6;
+                pose = Pose.lerp(pose, incoming ? catchPose() : throwPose(), incoming ? 0.35f : 0.25f);
+            }
             if (t == 14) {
-                pose = slashPose();
+                pose = throwPose();
                 hammerPos = pos.clone().add(new Vector(0, 1.6, 0));
                 hammerVel = safeDir(eye(target).subtract(hammerPos), fwd()).multiply(1.1);
                 hammerBack = false;
                 thrownHammer = world.spawn(hammerPos.toLocation(world), ItemDisplay.class, d -> { d.setItemStack(model(Material.NETHERITE_AXE, "jacob_hammer", true)); d.setPersistent(false); d.addScoreboardTag(DISPLAY_TAG); d.setTeleportDuration(1); });
-                if (held != null && held.isValid()) held.setItemStack(new ItemStack(Material.AIR));
+                hold(new ItemStack(Material.AIR));
                 world.playSound(loc(), Sound.ITEM_TRIDENT_THROW, 1.6f, 0.6f);
             }
             if (t > 14 && thrownHammer == null) { hold(model(Material.NETHERITE_AXE, "jacob_hammer", true)); end(30); }
@@ -5961,7 +6077,9 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
 
         void summonSpiders() {
             if (t == 0) hold(model(Material.STICK, "spider_staff", false)); // his staff
-            pose = anim(t, new int[]{0, 8, 30}, new Pose[]{standPose(), pointPose(), pointPose()});
+            Pose raise = readyPose().set(ARM_R, -165, 0, -10).set(HEAD, -20, 0, 0).set(BODY, -6, 0, 0); // staff to the sky...
+            Pose plant = crouchPose().set(ARM_R, -52, 0, -6).set(ARM_L, -30, 0, 20);                    // ...and driven into the ground
+            pose = anim(t, new int[]{0, 7, 10, 22, 30}, new Pose[]{readyPose(), raise, plant, plant, readyPose()});
             if (t == 10) {
                 world.playSound(loc(), Sound.ENTITY_SPIDER_AMBIENT, 2f, 0.6f);
                 for (int i = 0; i < 3 && minions.size() < (int) jcfg("max-spiders", 6); i++) {
@@ -5978,7 +6096,11 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
 
         // ---------- phase 3: the army ----------
         void cavalryCharge(Player target, List<Player> a) {
-            pose = anim(t, new int[]{0, 10, 40}, new Pose[]{standPose(), slashWindupPose(), slashWindupPose()});
+            Pose rally = p(new float[]{ARM_R, -168, 0, -16}, new float[]{ARM_L, -36, 0, 30}, new float[]{BODY, -10, 0, 0}, new float[]{HEAD, -26, 0, 0},
+                           new float[]{LEG_R, 0, 0, -10}, new float[]{LEG_L, 0, 0, 10});                                   // weapon raised: "CHARGE!"
+            Pose lead = p(new float[]{ARM_R, -108, 0, -6}, new float[]{ARM_L, 12, 0, 20}, new float[]{BODY, 14, 0, 0}, new float[]{HEAD, -6, 0, 0},
+                          new float[]{LEG_R, -24, 0, -4}, new float[]{LEG_L, 20, 0, 4});                                     // pointing them at you
+            pose = anim(t, new int[]{0, 9, 15, 44, 55}, new Pose[]{readyPose(), rally, lead, lead, readyPose()});
             if (t == 12) {
                 world.playSound(loc(), Sound.ITEM_GOAT_HORN_SOUND_2, 3f, 0.9f); say(ChatColor.AQUA + "CHARGE!", 30);
                 // his army thinned out: the horn calls reinforcements (so the charge always has riders)
@@ -6003,7 +6125,9 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         }
 
         void spearWall(Player target, List<Player> a) {
-            pose = anim(t, new int[]{0, 10, 24, 34}, new Pose[]{standPose(), slashWindupPose(), slashPose(), standPose()});
+            Pose thrust = p(new float[]{ARM_R, -84, 0, -4}, new float[]{ARM_L, 24, 0, 18}, new float[]{BODY, 22, -12, 0}, new float[]{HEAD, 2, 10, 0},
+                            new float[]{LEG_R, -36, 0, -6}, new float[]{LEG_L, 26, 0, 6}, new float[]{-1, -0.2f});
+            pose = anim(t, new int[]{0, 12, 20, 22, 30, 40}, new Pose[]{readyPose(), chopWindupPose(), chopWindupPose().add(BODY, -4, 4, 0), thrust, thrust, readyPose()});
             if (t == 0) {
                 Vector dir = safeDir(target.getLocation().toVector().subtract(pos).setY(0), fwd());
                 for (int s = -1; s <= 1; s++) marks.add(dir.clone().rotateAroundY(Math.toRadians(s * 22)));
@@ -6034,14 +6158,14 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 yaw = (float) Math.toDegrees(Math.atan2(-to.getX(), to.getZ()));
                 if (to.length() > 2) stepTo(safeDir(to, fwd()).multiply(0.9)); // (steps up a block at most, stops at walls)
                 else settle();
-                pose = runPose(ticks * 2, 1.2f);
+                pose = Pose.lerp(stridePose(1.5f), n % 2 == 0 ? foreWindup() : backWindup(), c / 6f); // dash in, blade drawn back
                 world.spawnParticle(Particle.FLAME, loc().add(0, 0.6, 0), 4, 0.3, 0.3, 0.3, 0.01);
             } else if (c == 6) {
-                pose = n % 2 == 0 ? slashPose() : mirror(slashPose());
+                pose = n % 2 == 0 ? foreSlash() : backSlash(); // forehand, backhand, forehand
                 world.playSound(loc(), Sound.ENTITY_PLAYER_ATTACK_SWEEP, 1.6f, 0.8f);
                 world.spawnParticle(Particle.FLAME, loc().add(fwd().multiply(1.5)).add(0, 1, 0), 20, 0.8, 0.4, 0.8, 0.02);
                 for (Player p : a) if (inFront(p, 3.4)) strike(p, jcfg("damage.ember-flurry", 9), Guard.BLOCKABLE, pos, true, false);
-            } else pose = Pose.lerp(pose, slashWindupPose(), 0.3f);
+            } else pose = Pose.lerp(pose, n % 2 == 0 ? foreSlash() : backSlash(), 0.3f); // holds the follow-through
         }
 
         void phoenixLeap(Player target, List<Player> a) {
@@ -6057,7 +6181,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 world.spawnParticle(Particle.FLAME, loc().add(0, 1, 0), 6, 0.3, 0.5, 0.3, 0.02);
             } else if (t == 32) {
                 pos.setY(floorY(pos.getX(), pos.getZ(), pos.getY() + 1));
-                pose = landPose();
+                pose = landPose().set(ARM_R, -40, 0, -6).set(HEAD, 14, 0, 0); // lands blade-first
                 world.playSound(loc(), Sound.ENTITY_GENERIC_EXPLODE, 2f, 0.7f);
                 for (int i = 0; i < 30; i++) { double ang = Math.PI * 2 * i / 30; world.spawnParticle(Particle.FLAME, loc().add(Math.cos(ang) * 4, 0.3, Math.sin(ang) * 4), 3, 0.2, 0.2, 0.2, 0.02); }
                 for (Player p : a) if (p.getLocation().toVector().distanceSquared(pos) < 5 * 5) strike(p, jcfg("damage.phoenix-leap", 18), Guard.HEAVY, pos, true, false);
@@ -6065,7 +6189,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         }
 
         void infernoPillar(List<Player> a) {
-            pose = anim(t, new int[]{0, 10, 26}, new Pose[]{standPose(), spreadPose(), spreadPose()});
+            pose = anim(t, new int[]{0, 10, 24, 26, 36, 44}, new Pose[]{readyPose(), skyPose(), skyPose().add(BODY, -4, 0, 0), slamPose(), slamPose(), readyPose()}); // calls the fire down
             if (t == 0) for (Player p : a) { marks.add(p.getLocation().toVector()); marks.add(p.getLocation().toVector().add(new Vector(random.nextGaussian() * 3, 0, random.nextGaussian() * 3))); if (marks.size() >= 6) break; }
             if (t < 26 && t % 3 == 0) for (Vector m : marks) ring(m, 1.8, Color.fromRGB(255, 120, 30));
             if (t >= 26 && t < 40) {
@@ -6079,7 +6203,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         }
 
         void burningBrand(Player target) {
-            pose = anim(t, new int[]{0, 8, 20}, new Pose[]{standPose(), pointPose(), pointPose()});
+            pose = anim(t, new int[]{0, 8, 20}, new Pose[]{readyPose(), pointPose(), pointPose()});
             if (t == 8) {
                 branded = target.getUniqueId(); brandT = 70;
                 target.sendActionBar(legacy(ChatColor.GOLD + "" + ChatColor.BOLD + "BRANDED! " + ChatColor.GRAY + "Get away from everyone: it's about to explode!"));
@@ -6105,7 +6229,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         }
 
         void diamondShatter() {
-            pose = anim(t, new int[]{0, 14, 18, 30}, new Pose[]{standPose(), crouchPose(), spreadPose(), standPose()});
+            pose = anim(t, new int[]{0, 14, 17, 30}, new Pose[]{readyPose(), crouchPose(), spreadPose().add(HEAD, -10, 0, 0).drop(0.08f), readyPose()});
             if (t < 14 && t % 2 == 0) world.spawnParticle(Particle.END_ROD, loc().add(0, 1, 0), 4, 0.5, 0.8, 0.5, 0.02);
             if (t == 16) {
                 world.playSound(loc(), Sound.BLOCK_GLASS_BREAK, 2f, 0.6f);
@@ -6172,6 +6296,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                         world.spawnParticle(Particle.DUST, o.pos.toLocation(world), 40, 0.8, 0.8, 0.8, 0, new Particle.DustOptions(Color.fromRGB(255, 110, 200), 1.8f));
                         world.playSound(o.pos.toLocation(world), Sound.BLOCK_AMETHYST_BLOCK_BREAK, 2f, 0.7f);
                         damage(jcfg("orb-damage", 100), o.by, true);
+                        recoilT = 14;
                         o.remove(); it.remove(); continue;
                     }
                     o.pos.add(safeDir(to, new Vector(0, 1, 0)).multiply(1.4));
@@ -6268,6 +6393,26 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             return l;
         }
 
+        Vector fallVel = new Vector();
+        boolean birdDown;
+        int crashT;
+
+        Vector birdFwd() { return new Vector(-Math.sin(Math.toRadians(birdYaw)), 0, Math.cos(Math.toRadians(birdYaw))); }
+
+        /** The hawk hits the ground: dust and feathers, and he's thrown off beside it. */
+        void crash() {
+            birdDown = true; crashT = st; fallVel = new Vector(); birdVel = new Vector();
+            Location at = birdPos.toLocation(world);
+            world.playSound(at, Sound.ENTITY_GENERIC_EXPLODE, 1.6f, 0.6f);
+            world.playSound(at, Sound.ENTITY_PARROT_DEATH, 2.5f, 0.4f);
+            world.spawnParticle(Particle.BLOCK, at, 90, 2.2, 0.4, 2.2, 0.1, at.clone().subtract(0, 1.2, 0).getBlock().getBlockData());
+            world.spawnParticle(Particle.ITEM, at, 40, 1.5, 0.5, 1.5, 0.12, new ItemStack(Material.FEATHER));
+            world.spawnParticle(Particle.CLOUD, at, 20, 1.5, 0.3, 1.5, 0.03);
+            Vector side = new Vector(birdFwd().getZ(), 0, -birdFwd().getX());
+            pos = birdPos.clone().add(side.multiply(3.0)); pos.setY(floorY(pos.getX(), pos.getZ(), pos.getY() + 2));
+            hold(new ItemStack(Material.AIR));
+        }
+
         /** Cutscene 1: an arrow takes down the hawk; he pulls an enchanted hammer from the ground. */
         void cut1Tick() {
             if (cut == null) return;
@@ -6275,24 +6420,30 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             if (k == 2) black(8, 22, 10);
             if (k < 40) cut.shot(camAt(birdPos, 11, 2, 70));
             if (k == 30) shots.add(new JShot(birdPos.clone().add(new Vector(20, 6, 0)), new Vector(-2.0, -0.6, 0), Material.SPECTRAL_ARROW, 0, false, false, Guard.BLOCKABLE, 0));
-            if (k == 40) { // the hit
+            if (k == 40) { // the hit: it jolts up and to the side, still carried forward by its speed
                 world.playSound(birdPos.toLocation(world), Sound.ENTITY_PARROT_HURT, 3f, 0.4f);
+                world.playSound(birdPos.toLocation(world), Sound.ENTITY_PHANTOM_HURT, 2.5f, 0.5f);
                 world.spawnParticle(Particle.CLOUD, birdPos.toLocation(world), 30, 1.2, 0.6, 1.2, 0.05);
+                world.spawnParticle(Particle.ITEM, birdPos.toLocation(world), 25, 1.0, 0.6, 1.0, 0.08, new ItemStack(Material.FEATHER));
                 clearShots();
+                fallVel = birdFwd().multiply(0.6).setY(0.28);
             }
-            if (k >= 40 && k < 76) { // the hawk falls; he falls with it
-                birdPos.add(new Vector(0.05, -0.55, 0.02));
-                birdPos.setY(Math.max(birdPos.getY(), floorY(birdPos.getX(), birdPos.getZ(), birdPos.getY()) + 0.5));
-                cut.shot(camAt(birdPos, 12, 5, 40));
+            // BUG FIX: the hawk used to spin like a drill all the way down (and kept spinning on the ground). Now it noses over
+            // and falls in an arc with its wings flailing, crashes, and lies still on its side.
+            if (k > 40 && !birdDown) {
+                fallVel.multiply(0.96).setY(Math.max(-1.15, fallVel.getY() - 0.07));
+                birdPos.add(fallVel);
+                double ground = floorY(birdPos.getX(), birdPos.getZ(), birdPos.getY() + 2) + 0.9;
+                if (birdPos.getY() <= ground || k >= 76) { birdPos.setY(ground); crash(); }
+                else if (k % 3 == 0) world.spawnParticle(Particle.ITEM, birdPos.toLocation(world), 3, 0.8, 0.4, 0.8, 0.03, new ItemStack(Material.FEATHER));
+                cut.shot(camAt(birdPos, 13, 5, 40));
             }
-            if (k == 76) {
-                world.playSound(birdPos.toLocation(world), Sound.ENTITY_GENERIC_EXPLODE, 1.6f, 0.6f);
-                world.spawnParticle(Particle.BLOCK, birdPos.toLocation(world), 80, 2, 0.4, 2, 0.1, birdPos.toLocation(world).subtract(0, 1, 0).getBlock().getBlockData());
-                pos = birdPos.clone().add(new Vector(2.5, 0, 0)); pos.setY(floorY(pos.getX(), pos.getZ(), pos.getY() + 1));
-                if (held != null && held.isValid()) held.setItemStack(new ItemStack(Material.AIR));
+            if (birdDown && k <= 76) {
+                cut.shot(camAt(birdPos, 11, 3.5, 40));
+                if (k > crashT + 2) pose = landPose().drop(-0.6f).set(BODY, 50, 0, 0); // thrown clear, on his hands and knees
             }
             if (k > 76 && k < 150) cut.shot(camAt(pos, 4.5, 1.2, 15));
-            if (k > 76 && k < 96) pose = kneelPose(ticks);
+            if (k > 76 && k < 96) pose = Pose.lerp(pose, kneelPose(ticks), 0.2f);
             if (k >= 96 && k < 112) { // reaches down and pulls the hammer out of the ground
                 pose = Pose.lerp(kneelPose(ticks), standPose().set(ARM_R, 10, 0, 0), (k - 96) / 16f);
                 world.spawnParticle(Particle.ENCHANT, loc().add(fwd().multiply(0.8)).add(0, 0.6, 0), 12, 0.3, 0.6, 0.3, 0.5);
@@ -6497,23 +6648,26 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 // ---- the great hawk: faces where it flies, noses into climbs and dives, banks into turns ----
                 double flat = Math.hypot(birdVel.getX(), birdVel.getZ());
                 boolean falling = state == CUT1 && st >= 40;
-                if (flat > 0.03) {
+                if (falling && !birdDown) birdVel = fallVel.clone(); // pitch follows the real fall (noses over as it drops)
+                if (flat > 0.03 && !falling) {
                     float want = (float) Math.toDegrees(Math.atan2(-birdVel.getX(), birdVel.getZ()));
                     float diff = ((want - birdYaw) % 360 + 540) % 360 - 180;
                     birdYaw += Math.max(-7, Math.min(7, diff));
                     if (!falling) birdRoll += ((float) Math.max(-0.6, Math.min(0.6, -diff * 0.035)) - birdRoll) * 0.12f;
                 }
-                if (falling) birdRoll = st * 0.25f; // tumbling out of the sky
-                birdPitch += ((float) Math.max(-0.7, Math.min(0.9, -Math.atan2(birdVel.getY(), Math.max(0.2, flat)))) - birdPitch) * 0.15f;
+                if (falling) birdRoll += ((birdDown ? 1.35f : 0.75f) - birdRoll) * (birdDown ? 0.3f : 0.07f); // keels over (once), then lies on its side
+                float wantPitch = birdDown ? 0.1f : (float) Math.max(-0.7, Math.min(0.9, -Math.atan2(birdVel.getY(), Math.max(0.2, Math.hypot(birdVel.getX(), birdVel.getZ())))));
+                birdPitch += (wantPitch - birdPitch) * (birdDown ? 0.3f : 0.15f);
                 // the wings: glide, beat hard to climb, fold back to dive, flail as it falls
                 boolean diving = state == P1 && attack == 3 && t >= 20 && t < 36;
                 boolean climbing = birdVel.getY() > 0.05 || (attack == 3 && t < 20);
-                flapPh += diving ? 0.05f : falling ? 0.9f : climbing ? 0.38f : 0.12f;
-                float amp = diving ? 0.05f : falling ? 0.45f : climbing ? 0.6f : 0.15f;
-                flapA += ((float) (Math.sin(flapPh) * amp + (diving ? -0.25 : 0.08)) - flapA) * 0.5f;
-                sweepA += ((diving ? 0.9f : falling ? 0.3f : 0f) - sweepA) * 0.15f;
+                flapPh += birdDown ? 0 : diving ? 0.05f : falling ? 0.75f : climbing ? 0.38f : 0.12f;
+                float amp = birdDown ? 0 : diving ? 0.05f : falling ? 0.5f * Math.max(0.3f, 1 - (st - 40) / 40f) : climbing ? 0.6f : 0.15f; // flailing weakens as it drops
+                flapA += ((float) (Math.sin(flapPh) * amp + (birdDown ? -0.42 : diving ? -0.25 : 0.08)) - flapA) * (birdDown ? 0.25f : 0.5f);
+                sweepA += ((birdDown ? 0.35f : diving ? 0.9f : falling ? 0.3f : 0f) - sweepA) * 0.15f;
                 tailFanB += ((float) Math.min(0.5, Math.abs(birdRoll) * 0.8) - tailFanB) * 0.1f;
                 Player look = nearest(active()); // its head tracks who it's hunting
+                if (birdDown) birdHeadYaw += (0.55f - birdHeadYaw) * 0.2f; // head lolls to one side
                 if (look != null && !falling) {
                     Vector to = eye(look).subtract(birdAt(0, 2, 7));
                     Vector3f local = new Quaternionf(birdBase()).conjugate().transform(new Vector3f((float) to.getX(), (float) to.getY(), (float) to.getZ()));
@@ -6528,18 +6682,38 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 drawPart(birdWingR, birdAt(3, 2.5f, 1).toLocation(world), new Quaternionf(bb).rotateY(-sweepA).rotateZ(flapA).mul(flip), bs, bs);
                 drawPart(birdWingL, birdAt(-3, 2.5f, 1).toLocation(world), new Quaternionf(bb).rotateY(sweepA).rotateZ(-flapA).mul(flip), bs, bs);
                 if (birdBox != null && birdBox.isValid()) birdBox.teleport(bl.clone().subtract(0, birdBox.getHeight() / 2, 0));
-                if (state == P1 || state == ARRIVE || (state == CUT1 && st < 76)) { // he rides on its back (and tilts with it)
+                if (state == P1 || state == ARRIVE || (state == CUT1 && !birdDown)) { // he rides on its back (and tilts with it)
                     pos = birdAt(0, 5.5f, -1.5f);
                     yaw = birdYaw;
                     if (state == P1 && attack >= 1 && attack <= 4) { Player tgt = nearest(active()); if (tgt != null) { Vector to = tgt.getLocation().toVector().subtract(pos); yaw = (float) Math.toDegrees(Math.atan2(-to.getX(), to.getZ())); } }
                 }
             }
             hitbox.teleport(pos.toLocation(world).add(0, 0.2, 0));
+            // the walk cycle follows the ground he actually covers (a pearl or a cutscene jump doesn't count)
+            if (lastDrawPos != null) {
+                double moved = Math.hypot(pos.getX() - lastDrawPos.getX(), pos.getZ() - lastDrawPos.getZ());
+                if (moved < 1.5) stride += (float) (moved * 2.9);
+            }
+            lastDrawPos = pos.clone();
             Pose p = pose.copy();
             p.add(BODY, (float) Math.sin(ticks * 0.08) * 1.5f, 0, 0);
             if (flinch > 0) p.add(BODY, -flinch * 2f, 0, 0).add(HEAD, -flinch * 2f, 0, 0);
+            if (recoilT > 0) { p = Pose.lerp(p, recoilPose(), recoilT / 14f * 0.85f); recoilT--; } // a pink orb rocks him back
+            // he watches whoever he's fighting: head (and a little of his chest) turn toward them
+            float wantHead = 0;
+            if (cut == null && state != DEFEAT && state != ARRIVE && attack != 12) {
+                Player look = nearest(active());
+                if (look != null) {
+                    Vector to = look.getLocation().toVector().subtract(pos);
+                    float a = (float) Math.toDegrees(Math.atan2(-to.getX(), to.getZ()));
+                    wantHead = Math.max(-55, Math.min(55, ((a - yaw) % 360 + 540) % 360 - 180));
+                }
+            }
+            headYaw += (wantHead - headYaw) * 0.18f;
+            p.add(HEAD, 0, -headYaw * 0.8f, 0).add(BODY, 0, -headYaw * 0.2f, 0);
             shown = Pose.lerp(shown, p, 0.45f);
-            renderRig(parts, held, pos.toLocation(world), yaw, scale, shown);
+            renderRig(parts, null, pos.toLocation(world), yaw, scale, shown);
+            renderWeapon(pos.toLocation(world), yaw, scale, shown);
             if (ablaze && state != DEFEAT && ticks % 2 == 0) world.spawnParticle(Particle.FLAME, loc().add(0, 1.1, 0), 3, 0.35, 0.8, 0.35, 0.01);
         }
 

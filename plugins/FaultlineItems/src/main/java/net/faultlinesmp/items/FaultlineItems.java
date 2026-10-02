@@ -300,7 +300,7 @@ public final class FaultlineItems extends JavaPlugin {
         jacobGear = new JacobGear(this);
         getServer().getPluginManager().registerEvents(jacobGear, this);
         getCommand("givejacob").setExecutor(new GiveItemCommand(this, "items.givejacob",
-                "/givejacob <hawkeye_charm|pearl_charm|arachnid_bane|lance_breaker|ember_heart> [amount] [player]", jacobGear.catalog(), "hawkeye_charm"));
+                "/givejacob <falconers_quiver|ender_anchor|banner_of_defiance|ember_ward|diamond_heart> [amount] [player]", jacobGear.catalog(), "falconers_quiver"));
         krakenGear = new KrakenGear(this);
         getServer().getPluginManager().registerEvents(krakenGear, this);
         getCommand("givekraken").setExecutor(new GiveItemCommand(this, "items.givekraken",
@@ -6522,11 +6522,11 @@ public final class FaultlineItems extends JavaPlugin {
                 pl -> pl.getKrakenGear().counter(KrakenGear.Counter.GLOW_GLAND),
                 pl -> pl.getKrakenGear().counter(KrakenGear.Counter.EELSKIN_WRAP),
                 // Diamond Jacob's accessories
-                pl -> pl.getJacobGear().item(JacobGear.Piece.HAWKEYE),
-                pl -> pl.getJacobGear().item(JacobGear.Piece.PEARL),
-                pl -> pl.getJacobGear().item(JacobGear.Piece.ARACHNID),
-                pl -> pl.getJacobGear().item(JacobGear.Piece.LANCE),
-                pl -> pl.getJacobGear().item(JacobGear.Piece.EMBER));
+                pl -> pl.getJacobGear().item(JacobGear.Piece.QUIVER),
+                pl -> pl.getJacobGear().item(JacobGear.Piece.ANCHOR),
+                pl -> pl.getJacobGear().item(JacobGear.Piece.BANNER),
+                pl -> pl.getJacobGear().item(JacobGear.Piece.EMBER),
+                pl -> pl.getJacobGear().item(JacobGear.Piece.HEART));
 
         static Map<String, Function<FaultlineItems, ItemStack>> single(Function<FaultlineItems, ItemStack> factory) {
             return Map.of("", factory);

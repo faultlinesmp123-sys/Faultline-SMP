@@ -100,7 +100,7 @@ commands:
     permission: items.givekraken
   givejacob:
     description: Give one of Diamond Jacob's accessories
-    usage: /givejacob <hawkeye_charm|pearl_charm|arachnid_bane|lance_breaker|ember_heart> [amount] [player]
+    usage: /givejacob <falconers_quiver|ender_anchor|banner_of_defiance|ember_ward|diamond_heart> [amount] [player]
     permission: items.givejacob
 permissions:
   items.givejacob:

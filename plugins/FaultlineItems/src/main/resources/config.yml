@@ -1,0 +1,396 @@
+# Faultline SMP - Faultline SMP Items configuration (Magic Mirror + Cloud Potion + Darkness Potion + Golden Ring + Goodie Bag)
+
+# How long (in seconds) the teleport takes to channel. Cancels if the
+# player moves or takes damage during this window.
+teleport-delay-seconds: 3
+
+# Seconds a player must wait between successful teleports.
+cooldown-seconds: 10
+
+# How many successful teleports the mirror can be used for before it
+# shatters. Repair it in an anvil with a gold ingot to reset this.
+max-uses: 10
+
+# Seconds after taking damage from another player before the mirror can
+# be used again. Prevents tanking a hit, waiting out the channel-cancel,
+# and immediately escaping with the mirror.
+combat-lock-seconds: 10
+
+# World + coordinates the "Black Market" option teleports to.
+black-market:
+  world: "world"
+  x: -3226
+  y: 65
+  z: 353
+
+# World the "Nether" option picks a random safe spot in.
+# radius is measured from x=0,z=0 in that world.
+nether:
+  world: "world_nether"
+  radius: 5000
+
+# Cloud Potion settings
+cloud-potion:
+  duration-seconds: 35
+  # Cooldown between individual double-jumps while the effect is active,
+  # so holding/mashing space mid-air can't chain into infinite hover.
+  per-jump-cooldown-ms: 500
+  # Upward velocity applied on each double-jump (vanilla jump is ~0.42).
+  jump-velocity: 0.65
+
+# Darkness Potion settings
+darkness-potion:
+  duration-seconds: 25
+
+# Golden Ring settings
+golden-ring:
+  exp-multiplier: 2.0
+  # Blocks, measured from the ring-carrier, that a natural mob spawn has
+  # to happen within to be eligible for the bonus-spawn roll below.
+  mob-spawn-radius: 64
+  # Chance for an EXTRA copy of a natural spawn to appear nearby a
+  # ring-carrier. 0.5 (50%) averages out to roughly 1.5x total spawns.
+  mob-spawn-extra-chance: 0.5
+
+# Goodie Bag settings
+goodie-bag:
+  mob-kill-drop-chance: 0.05
+  diamond-min: 3
+  diamond-max: 5
+  elytra-chance: 0.0001
+  # Mobs from spawners don't drop Goodie Bags by default, since a spawner
+  # grinder would otherwise print diamonds. Set to false to let them count.
+  exclude-spawner-mobs: true
+
+# Mythic Goodie Bag — boss-only drop (player kill required). Loot table
+# (one roll per bag): 0.1% Elytra, 10% Netherite Block, 20% 5 Diamond
+# Blocks, 20% Totem, 20% 2 Ancient Debris, 15% 16 XP Bottles + 2 Golden
+# Apples, 14.9% 16 Ender Pearls.
+mythic-goodie-bag:
+  warden-drop-chance: 0.10
+  wither-drop-chance: 0.125
+
+# Bezoar settings — drops from Bees or Cave Spiders
+bezoar:
+  drop-chance: 0.02
+
+# Discount Card settings — drops from killing a Villager
+discount-card:
+  drop-chance: 0.10
+  discount-percent: 17.5
+
+# Life Jelly settings — drops from Glow Squids
+life-jelly:
+  drop-chance: 0.05
+  # heal-percent is hardcoded to 2% of max health, applied every 2
+  # seconds, per spec — edit LifeJellyListener.java directly if you want
+  # this configurable instead.
+
+# Shield of the Ocean — 100% guaranteed drop from Elder Guardians, no
+# config needed for the drop chance.
+shield-of-the-ocean:
+  # Land movement speed boost (percentage, e.g. 0.10 = +10%).
+  move-speed-boost: 0.10
+  # Swim boost via WATER_MOVEMENT_EFFICIENCY (0-1 range, added directly —
+  # NOT a percentage/multiplier, since that attribute defaults to 0).
+  # 0.3 is roughly one level of Depth Strider. Nerfed down from the
+  # original full Dolphin's Grace effect, which was way too fast — lower
+  # this further if it's still too much.
+  swim-efficiency-boost: 0.3
+
+# Mobs from spawners never drop Lava Charms, Black Belts, Moon Stones,
+# Ranger Emblems, or Necromancer Staffs (otherwise a grinder farms them).
+drops:
+  exclude-spawner-mobs: true
+
+# Lava Charm (accessory) — first touch of lava/fire gives immunity, then cooldown.
+lava-charm:
+  immunity-seconds: 7
+  cooldown-seconds: 60
+  bat-drop-chance: 0.05
+  blaze-drop-chance: 0.10
+
+# Black Belt (accessory)
+black-belt:
+  damage-reduction: 0.05
+  speed-penalty: 0.025
+  # Zombies (incl. Husks, Drowned, Zombie Villagers) and Skeletons (incl. Strays)
+  drop-chance: 0.01
+
+# Moon Stone (accessory) — vampire while equipped.
+moon-stone:
+  # Heals this fraction of the melee damage you deal.
+  lifesteal: 0.05
+  # At night, heal this fraction of max health every N seconds.
+  night-regen-percent: 0.05
+  night-regen-interval-seconds: 5
+  bat-drop-chance: 0.01
+  phantom-drop-chance: 0.05
+  # Shift + F (or /batform) with the Moon Stone equipped: become a bat and fly.
+  bat-form:
+    seconds: 20
+    cooldown-seconds: 120    # starts when the bat form ends
+    hearts: 2                # max health while a bat
+    fly-speed: 0.12          # normal creative flight is 0.1
+    scale: 0.35              # how small you get
+
+# Ranger Emblem (accessory)
+ranger-emblem:
+  damage-bonus: 0.10
+  pillager-drop-chance: 0.02
+
+# Necromancer Staff — needs the Necromancer's Trial quest (LimboBlackMarket) to use.
+necromancer-staff:
+  cooldown-seconds: 90
+  min-minions: 6
+  max-minions: 9
+  minion-lifetime-seconds: 30
+  # How recently you must have hit (or been hit by) a player for minions to attack them.
+  combat-window-seconds: 15
+  # Lag safety: total minions allowed on the whole server at once.
+  max-minions-server: 60
+  wither-skeleton-drop-chance: 0.005
+  skeleton-drop-chance: 0.001
+  # With no player fight going on, minions hunt hostile mobs within this range
+  # (and follow you around when there's nothing to fight). Also used by the Spider Staff.
+  hunt-radius: 16
+
+# Bloody Wolf Scarf (accessory)
+bloody-wolf-scarf:
+  damage-reduction: 0.05
+  melee-bonus: 0.025
+  drop-chance: 0.05          # Piglin Brutes
+
+# Frost Flare (accessory)
+frost-flare:
+  slowness-seconds: 3        # Slowness I on every hit
+  speed-bonus: 0.05
+  mob-spawn-radius: 64       # natural spawns are doubled within this range of a wearer
+  extra-exhaustion-per-second: 0.05   # 4.0 exhaustion = 1 hunger point
+  snow-golem-drop-chance: 0.0075
+
+# Spelunker's Amulet (accessory)
+spelunker-amulet:
+  mining-speed-bonus: 0.02
+  ore-drop-chance: 0.005     # any natural ore; player-placed ores never count
+
+# Harpy Ring (accessory, crafted)
+harpy-ring:
+  speed-bonus: 0.10
+  elytra-durability-save-chance: 0.5
+
+# Custom fishing loot (only for players who moved/looked around recently).
+# The item chances are doubled in rain/thunder and again during Lantern Night.
+fishing:
+  afk-minutes: 5
+  storm-luck-multiplier: 2.0
+  ankh-shield-chance: 0.001
+  mythic-goodie-bag-chance: 0.025
+  goodie-bag-chance: 0.075
+  potion-chance: 0.05        # Darkness or Cloud Potion
+  mob-chance: 0.05           # not affected by luck
+  dangerous-mob-share: 0.1   # of mob catches: Wither/Warden/10 Vexes/Charged Creeper/3 Vindicators
+
+# Lantern Night (FaultlineEvents) bonuses applied by this plugin
+lantern-night:
+  drop-multiplier: 2.0
+  villager-discount-percent: 10
+
+# Vampire (custom mob) — hides among cave bats, turns into a vampire when close.
+vampire:
+  bat-chance: 0.025          # share of naturally spawning bats that are secretly vampires
+  max-alive: 15              # lag safety: most vampires on the server at once
+  notice-range: 16           # how close a player has to get before the bat hunts them
+  transform-range: 2.5       # bat turns into a vampire this close to you
+  flee-range: 12             # vampire turns back into a bat if you get this far away
+  bat-speed: 0.5
+  health: 40                 # shared between bat and vampire form
+  hit-damage: 9              # per claw hit (no weapon)
+  speed: 0.28
+  bleed-seconds: 4
+  bleed-damage: 1.0          # per second (1.0 = half a heart)
+  xp: 30
+  gunpowder-chance: 0.5      # 3-6 gunpowder
+  diamond-chance: 0.05       # 2-6 diamonds
+  accessory-chance: 0.025    # a Moon Stone or a Spelunker's Amulet (50/50)
+  # During a Blood Moon (FaultlineEvents), Vampires also hunt on the surface.
+  blood-moon:
+    enabled: true
+    spawn-interval-seconds: 20   # each player can get a new Vampire this often
+    per-player: 2                # at most this many Vampires within 48 blocks of a player
+    max-alive: 25                # server-wide cap during a Blood Moon
+  # Face texture (the hash at the end of a textures.minecraft.net URL, e.g.
+  # from minecraft-heads.com). Default: "Dracula".
+  head-texture: "14d412d8a6b96cd7aaa8322ef75ff5f44c7888cf32240ad8c923a58cea7407a6"
+
+# Frost Wraith (custom mob) — only spawns during a Snowy Day (FaultlineEvents),
+# outside Deserts and Badlands.
+frost-wraith:
+  skeleton-to-stray-chance: 0.5   # during a Snowy Day, this share of Skeleton spawns become Strays
+  stray-to-wraith-chance: 0.08    # share of those Strays that are Frost Wraiths
+  max-alive: 10
+  health: 30
+  slow-seconds: 3                 # its arrows: Slowness II + freezing for this long
+  xp: 15
+  bow-or-book-chance: 0.30        # a plain Bow or a Power I book (50/50)
+  frost-flare-chance: 0.025
+
+# Snowy Day surface spawns. Hostile mobs normally can't spawn in daylight, so
+# during a Snowy Day this spawns Strays and Zombies on the surface near players
+# (where snow falls). They don't burn in the sun. Strays can become Frost Wraiths.
+snowy-day-mobs:
+  spawn-interval-seconds: 5   # each player gets a spawn attempt this often
+  per-player-cap: 8           # max of these mobs within 48 blocks of a player
+  server-cap: 60
+  min-distance: 16
+  max-distance: 32
+  stray-share: 0.5            # the rest are Zombies
+
+# Spider Staff — summons spiders that fight for you (same rules as Necromancer minions).
+spider-staff:
+  min-minions: 3
+  max-minions: 5
+  cave-spider-share: 0.35      # the rest are regular Spiders
+  minion-lifetime-seconds: 30
+  cooldown-seconds: 60
+  spider-drop-chance: 0.0001   # 0.01% from regular spiders (not spawner spiders)
+
+# Queen Spider — cave boss. (This section replaces the old "queen-spider" one;
+# a leftover old section on your server is simply ignored.)
+queen-spider-boss:
+  spawn-chance: 0.01           # of spiders spawning underground (no sky above)
+  max-alive: 2
+  health: 500
+  bite-damage: 12
+  poison-seconds: 7            # Poison II on every bite
+  brood-seconds: 8             # calls 3 Cave Spiders + 2 Spiders this often
+  max-brood: 14
+  stomp-cooldown-seconds: 7
+  stomp-radius: 6
+  stomp-damage: 10
+  pounce-cooldown-seconds: 9   # leaps onto you from 6-16 blocks away
+  pounce-damage: 10
+  spit-cooldown-seconds: 5     # Venom Spit: Poison III + Nausea
+  spit-damage: 4
+  web-cooldown-seconds: 14     # Web Trap: webs all around you
+  web-seconds: 5
+  egg-sac-cooldown-seconds: 22 # sacs hatch into 3 Cave Spiders after 6s unless broken
+  # Enraged at half health: faster, and every cooldown above is halved.
+  xp: 300
+  diamond-chance: 0.5          # 5-10 diamonds
+  spider-staff-chance: 0.10
+
+# Boss-only loot.
+boss-loot:
+  grappling-hook-chance: 0.10      # from Captain Rotbeard (the Zombie Raid boss)
+  grapple-cooldown-seconds: 1.5
+  grapple-max-speed: 2.6
+  queen-silk-chance: 0.05          # from the Queen Spider
+  silk-cooldown-seconds: 8
+  silk-web-seconds: 3              # how long its webs (and the Slowness) last
+
+# Cleft Horn (accessory) — armor penetration
+cleft-horn:
+  armor-penetration: 0.05    # your hits ignore this much of the target's armor protection
+  goat-drop-chance: 0.02
+
+# A Weird Clock... (accessory) — immune to Slowness
+weird-clock:
+  cave-drop-chance: 0.01     # hostile mobs killed in caves
+  max-y: 50                  # "in caves" = no open sky above AND below this height (keeps dark mob farms out)
+
+# Hermes / Rocket / Spectre Boots (real boots-slot armor, unbreakable)
+boots:
+  hermes-drop-chance: 0.005  # from any vanilla mob (not spawners/spawn eggs/plugin mobs)
+  rocket-drop-chance: 0.005
+  hermes-trade-emeralds: 45  # Armorer trade: this + 1 Green Dye
+  rocket-trade-emeralds: 60  # Armorer trade: this + 1 Harpy Ring
+  rocket-charges: 7          # flight "charges" per jump (like Terraria)
+  rocket-charge-ticks: 3     # length of each charge (20 ticks = 1 second; 0.17s is about 3)
+  rocket-lift: 0.42          # upward push while a charge burns
+  spectre-anvil-levels: 10   # XP levels to combine Hermes + Rocket into Spectre Boots
+
+# Item textures (Golden Ring, Magic Mirror) — DISABLED by default. Upload
+# FaultlineItemTextures.zip somewhere public (GitHub, same as the heart
+# packs), paste the URL below, then flip enabled to true. The hash is
+# already correct for the exact zip generated for you.
+item-textures:
+  enabled: false
+  url: "https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/main/FaultlineSMP.zip"
+  hash: "738f455fc162546762f7d50be09c32ff9038cb15"
+
+
+# Immunity charms: one accessory per debuff (Guardian Scale, Ginger Root, Blindfold, Salt Ration,
+# Vitamins, Soul Ward, Gravity Stone, Four-Leaf Clover, Night Lens, Wind Ward, Silk Ward, Slime Ward,
+# Pest Charm). Each drops from the mob that causes its debuff. Override a drop chance like:
+#   immunity-charms:
+#     guardianscale-chance-guardian: 0.03
+#     nightlens-chance-warden: 0.5
+
+# The Ankh Shield only works on a shield: put a Shield (or the Shield of the Demon Eye) and the
+# Ankh Shield in an anvil. While holding the imbued shield:
+ankh-shield:
+  anvil-levels: 15
+  damage-resistance: 0.05     # 5% less damage taken
+  speed-bonus: 0.15           # +15% speed
+  melee-damage-bonus: 0.025   # +2.5% melee damage
+
+# ---------------- The Skeleton Wanderer (a cave trader who sells accessories) ----------------
+cave-trader:
+  enabled: true
+  chance: 0.05              # every check, each player underground has this chance of him showing up nearby
+  check-seconds: 120
+  below-y: 50               # "underground" = below this height with no sky above
+  max-traders: 3            # on the whole server at once
+  lifetime-minutes: 8       # then he packs up and wanders off
+  offers: 5                 # how many different wares he has
+  scale: 1.0
+  # id:emeralds:diamonds:weight (higher weight = shows up more often)
+  stock:
+    - "guardian_scale:14:0:5"
+    - "ginger_root:12:0:5"
+    - "blindfold:14:0:5"
+    - "salt_ration:12:0:5"
+    - "vitamins:14:0:5"
+    - "soul_ward:18:0:4"
+    - "gravity_stone:16:0:4"
+    - "four_leaf_clover:14:0:5"
+    - "night_lens:20:0:3"
+    - "wind_ward:16:0:4"
+    - "silk_ward:12:0:5"
+    - "slime_ward:12:0:5"
+    - "pest_charm:12:0:5"
+    - "golden_ring:24:0:3"
+    - "climbing_claws:28:0:3"
+    - "bezoar:24:0:3"
+    - "discount_card:32:0:2"
+    - "life_jelly:30:0:2"
+    - "shield_of_the_ocean:36:2:2"
+    - "lava_charm:30:0:3"
+    - "black_belt:28:0:3"
+    - "spelunker_amulet:24:0:4"
+    - "harpy_ring:30:0:3"
+    - "ranger_emblem:34:1:2"
+    - "diving_helmet:22:0:5"
+    - "flipper:22:0:5"
+    - "depths_charm:40:4:1"
+    - "kraken_worm:16:0:3"
+
+# ---------------- Diving gear (after Calamity's) ----------------
+diving:
+  drops:
+    helmet-from-drowned: 0.015
+    flipper-from-guardians: 0.02
+    depths-charm-from-elder-guardians: 0.33
+  crush-depth:              # deep underwater AND out of breath hurts (for a future underwater boss)
+    enabled: true
+    below-y: 0
+    damage: 2.0             # per second (halved by the Depths Charm or Abyssal Diving Gear)
+
+# ---------------- The Kraken's items ----------------
+kraken-gear:
+  worm-from-dirt: 0.005       # chance per dirt/grass/coarse dirt/rooted dirt/mud/podzol block you dig
+  drops:
+    coral-lung-from-pufferfish: 0.03
+    glow-gland-from-glow-squid: 0.04
+    eelskin-wrap-from-drowned: 0.02

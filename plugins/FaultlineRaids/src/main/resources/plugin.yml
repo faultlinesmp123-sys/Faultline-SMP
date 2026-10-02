@@ -1,0 +1,18 @@
+name: FaultlineRaids
+version: '1.0.0'
+main: net.faultlinesmp.raids.FaultlineRaids
+api-version: '1.21'
+author: FaultlineSMP
+description: Zombie Raids for Faultline SMP — Zombie Omens, Zombie Captains, and waves of special zombies
+softdepend: [FaultlineItems]
+
+commands:
+  zraid:
+    description: "Admin: start or stop Zombie Raids, spawn a Captain, open the raid items menu, or give eggs/Omens"
+    usage: /zraid <start|stop|captain|menu|egg|omen> ...
+    permission: zraid.admin
+
+permissions:
+  zraid.admin:
+    description: Allows controlling Zombie Raids
+    default: op

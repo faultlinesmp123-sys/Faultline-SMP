@@ -1,0 +1,168 @@
+name: FaultlineItems
+version: '1.0.0'
+main: net.faultlinesmp.items.FaultlineItems
+api-version: '1.21'
+author: FaultlineSMP
+description: Custom items for Faultline SMP — Magic Mirror, Cloud Potion, Darkness Potion, Golden Ring, Goodie Bag
+
+commands:
+  givemirror:
+    description: Give yourself or another player a Magic Mirror
+    usage: /givemirror [amount] [player]
+    permission: items.givemirror
+  givecloudpotion:
+    description: Give yourself or another player a Cloud Potion
+    usage: /givecloudpotion [amount] [player]
+    permission: items.givecloudpotion
+  givedarkness:
+    description: Give yourself or another player a darkness potion at any brewing stage
+    usage: /givedarkness [final|stage1|stage2] [amount] [player]
+    permission: items.givedarkness
+  givegoldenring:
+    description: Give yourself or another player a Golden Ring
+    usage: /givegoldenring [amount] [player]
+    permission: items.givegoldenring
+  givegoodiebag:
+    description: Give yourself or another player a Goodie Bag
+    usage: /givegoodiebag [amount] [player]
+    permission: items.givegoodiebag
+  givemythicbag:
+    description: Give yourself or another player a Mythic Goodie Bag
+    usage: /givemythicbag [amount] [player]
+    permission: items.givemythicbag
+  itemsreload:
+    description: "Admin: reload config.yml without restarting the server"
+    usage: /itemsreload
+    permission: items.reload
+  accessories:
+    description: Open your 2-slot Accessories menu
+    usage: /accessories
+  giveaccessory:
+    description: Give yourself or another player any accessory (for testing)
+    usage: /giveaccessory <name> [amount] [player]   (see /giveaccessory for the list)
+    permission: items.giveaccessory
+  testtexture:
+    description: "Debug: gives a test Stick with the Golden Ring's item_model applied"
+    usage: /testtexture
+
+  givenecrostaff:
+    description: Give yourself or another player a Necromancer Staff
+    usage: /givenecrostaff [amount] [player]
+    permission: items.givenecrostaff
+  unlocknecromancer:
+    description: "Admin: let a player use the Necromancer Staff (normally unlocked by the quest)"
+    usage: /unlocknecromancer <player>
+    permission: items.unlocknecromancer
+  givevampireegg:
+    description: Give yourself or another player a Vampire Spawn Egg
+    usage: /givevampireegg [amount] [player]
+    permission: items.givevampireegg
+  givefrostwraithegg:
+    description: Give yourself or another player a Frost Wraith Spawn Egg
+    usage: /givefrostwraithegg [amount] [player]
+    permission: items.givefrostwraithegg
+  givespiderstaff:
+    description: Give yourself or another player a Spider Staff
+    usage: /givespiderstaff [amount] [player]
+    permission: items.givespiderstaff
+  givequeenspideregg:
+    description: Give yourself or another player a Queen Spider Spawn Egg
+    usage: /givequeenspideregg [amount] [player]
+    permission: items.givequeenspideregg
+  batform:
+    description: Turn into a bat with the Moon Stone (same as Shift + F)
+    usage: /batform
+  givegrapplinghook:
+    description: Give yourself or another player Rotbeard's Grappling Hook
+    usage: /givegrapplinghook [amount] [player]
+    permission: items.givegrapplinghook
+  givequeensilk:
+    description: Give yourself or another player the Queen's Silk
+    usage: /givequeensilk [amount] [player]
+    permission: items.givequeensilk
+  itemsmenu:
+    description: "Admin: open a menu with every Faultline item"
+    usage: /itemsmenu
+    aliases: [fitems]
+    permission: items.menu
+
+  givediving:
+    description: Give diving gear (helmet, flipper, gear, depths charm, abyssal)
+    usage: /givediving <helmet|flipper|gear|depths|abyssal> [amount] [player]
+    permission: items.givediving
+  cavetrader:
+    description: Spawn, remove, or reroll the Skeleton Wanderer
+    usage: /cavetrader <spawn|kill|reroll>
+    permission: items.cavetrader
+  givekraken:
+    description: Give a Bait Worm or one of the Kraken counter accessories
+    usage: /givekraken <worm|coral_lung|glow_gland|eelskin_wrap> [amount] [player]
+    permission: items.givekraken
+  givejacob:
+    description: Give one of Diamond Jacob's accessories
+    usage: /givejacob <hawkeye_charm|pearl_charm|arachnid_bane|lance_breaker|ember_heart> [amount] [player]
+    permission: items.givejacob
+permissions:
+  items.givejacob:
+    description: Allows giving Diamond Jacob's accessories
+    default: op
+  items.givekraken:
+    description: Allows giving Kraken items
+    default: op
+  items.givediving:
+    description: Allows giving diving gear
+    default: op
+  items.cavetrader:
+    description: Allows managing the Skeleton Wanderer
+    default: op
+  items.givegrapplinghook:
+    description: Allows giving Rotbeard's Grappling Hook
+    default: op
+  items.givequeensilk:
+    description: Allows giving the Queen's Silk
+    default: op
+  items.givespiderstaff:
+    description: Allows giving Spider Staffs
+    default: op
+  items.givequeenspideregg:
+    description: Allows giving Queen Spider Spawn Eggs
+    default: op
+  items.givefrostwraithegg:
+    description: Allows giving Frost Wraith Spawn Eggs
+    default: op
+  items.givevampireegg:
+    description: Allows giving Vampire Spawn Eggs
+    default: op
+  items.givenecrostaff:
+    description: Allows giving Necromancer Staffs
+    default: op
+  items.unlocknecromancer:
+    description: Allows unlocking the Necromancer Staff for a player
+    default: op
+  items.menu:
+    description: Allows opening the Faultline item menu
+    default: op
+  items.givemirror:
+    description: Allows giving Magic Mirrors
+    default: op
+  items.givecloudpotion:
+    description: Allows giving Cloud Potions
+    default: op
+  items.givedarkness:
+    description: Allows giving darkness potions
+    default: op
+  items.givegoldenring:
+    description: Allows giving Golden Rings
+    default: op
+  items.givegoodiebag:
+    description: Allows giving Goodie Bags
+    default: op
+  items.givemythicbag:
+    description: Allows giving Mythic Goodie Bags
+    default: op
+  items.reload:
+    description: Allows reloading the Faultline SMP Items config
+    default: op
+  items.giveaccessory:
+    description: Allows giving accessory items
+    default: op

@@ -1,0 +1,17 @@
+name: FaultlineIndex
+version: '1.0.0'
+main: net.faultlinesmp.index.FaultlineIndex
+api-version: '1.21'
+author: FaultlineSMP
+description: The Faultline Index — every item, boss, and enemy on the server
+softdepend: [FaultlineItems, FaultlineBosses, FaultlineRaids, LimboBlackMarket]
+
+commands:
+  index:
+    description: Open your Faultline Index
+    usage: /index [give|reset] [player]
+
+permissions:
+  faultlineindex.admin:
+    description: Give Index books and reset players' Index progress
+    default: op

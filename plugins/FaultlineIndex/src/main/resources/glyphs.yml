@@ -1,0 +1,327 @@
+ankh_shield:
+  large: 58368
+  small: 57344
+baby_bomber:
+  large: 58369
+  small: 57345
+bezoar:
+  large: 58370
+  small: 57346
+black_belt:
+  large: 58371
+  small: 57347
+bloody_wolf_scarf:
+  large: 58372
+  small: 57348
+bomber_zombie:
+  large: 58373
+  small: 57349
+box:
+  large: 58374
+  small: 57350
+captain_rotbeard:
+  large: 58375
+  small: 57351
+check:
+  large: 58376
+  small: 57352
+cleft_horn:
+  large: 58377
+  small: 57353
+climbing_claws:
+  large: 58378
+  small: 57354
+cloud_potion:
+  large: 58379
+  small: 57355
+darkness_potion:
+  large: 58380
+  small: 57356
+demon_eye:
+  large: 58381
+  small: 57357
+demon_eye_shield:
+  large: 58382
+  small: 57358
+discount_card:
+  large: 58383
+  small: 57359
+faultline_index:
+  large: 58384
+  small: 57360
+flying_zombie:
+  large: 58385
+  small: 57361
+frost_flare:
+  large: 58386
+  small: 57362
+frost_wraith:
+  large: 58387
+  small: 57363
+golden_ring:
+  large: 58388
+  small: 57364
+goodie_bag:
+  large: 58389
+  small: 57365
+grappling_hook:
+  large: 58390
+  small: 57366
+harpy_ring:
+  large: 58391
+  small: 57367
+hermes_boots:
+  large: 58392
+  small: 57368
+iron_stick:
+  large: 58393
+  small: 57369
+lava_charm:
+  large: 58394
+  small: 57370
+life_jelly:
+  large: 58395
+  small: 57371
+magic_mirror:
+  large: 58396
+  small: 57372
+moon_stone:
+  large: 58397
+  small: 57373
+mythic_goodie_bag:
+  large: 58398
+  small: 57374
+necromancer_staff:
+  large: 58399
+  small: 57375
+pirate_crew:
+  large: 58400
+  small: 57376
+potion_of_the_abyss:
+  large: 58401
+  small: 57377
+potion_of_whispers:
+  large: 58402
+  small: 57378
+queen_silk:
+  large: 58403
+  small: 57379
+queen_spider:
+  large: 58404
+  small: 57380
+quest_book:
+  large: 58405
+  small: 57381
+raid_witch:
+  large: 58406
+  small: 57382
+ranger_emblem:
+  large: 58407
+  small: 57383
+rocket_boots:
+  large: 58408
+  small: 57384
+servant_eye:
+  large: 58409
+  small: 57385
+shield_of_the_ocean:
+  large: 58410
+  small: 57386
+spectre_boots:
+  large: 58411
+  small: 57387
+spelunker_amulet:
+  large: 58412
+  small: 57388
+spider_staff:
+  large: 58413
+  small: 57389
+suspicious_eye:
+  large: 58414
+  small: 57390
+twin_eye_staff:
+  large: 58415
+  small: 57391
+unholy_arrow:
+  large: 58416
+  small: 57392
+unknown:
+  large: 58417
+  small: 57393
+vampire:
+  large: 58418
+  small: 57394
+zombie_archer:
+  large: 58419
+  small: 57395
+zombie_bat:
+  large: 58420
+  small: 57396
+zombie_brute:
+  large: 58421
+  small: 57397
+zombie_captain:
+  large: 58422
+  small: 57398
+zombie_horseman:
+  large: 58423
+  small: 57399
+zombie_mage:
+  large: 58424
+  small: 57400
+zombie_omen:
+  large: 58425
+  small: 57401
+mortimer_freeze:
+  large: 59136
+  small: 58112
+icicle_runner:
+  large: 59137
+  small: 58113
+weird_clock:
+  large: 58426
+  small: 57402
+dune_devourer:
+  large: 59138
+  small: 58114
+vulture:
+  large: 59139
+  small: 58115
+talon:
+  large: 59140
+  small: 58116
+dune_idol:
+  large: 59141
+  small: 58117
+frostmaw:
+  large: 59142
+  small: 58118
+snow_owl:
+  large: 59143
+  small: 58119
+skeleton_soldier:
+  large: 59144
+  small: 58120
+frost_archer:
+  large: 59145
+  small: 58121
+bog_archer:
+  large: 59146
+  small: 58122
+shieldbearer:
+  large: 59147
+  small: 58123
+bone_rider:
+  large: 59148
+  small: 58124
+wither_brute:
+  large: 59149
+  small: 58125
+bone_commander:
+  large: 59150
+  small: 58126
+skeleton_omen:
+  large: 59151
+  small: 58127
+guardian_scale:
+  large: 58427
+  small: 57403
+ginger_root:
+  large: 58428
+  small: 57404
+blindfold:
+  large: 58429
+  small: 57405
+salt_ration:
+  large: 58430
+  small: 57406
+vitamins:
+  large: 58431
+  small: 57407
+soul_ward:
+  large: 58432
+  small: 57408
+gravity_stone:
+  large: 58433
+  small: 57409
+four_leaf_clover:
+  large: 58434
+  small: 57410
+night_lens:
+  large: 58435
+  small: 57411
+wind_ward:
+  large: 58436
+  small: 57412
+silk_ward:
+  large: 58437
+  small: 57413
+slime_ward:
+  large: 58438
+  small: 57414
+pest_charm:
+  large: 58439
+  small: 57415
+nightwatch_charm:
+  large: 58440
+  small: 57416
+wayfarer_charm:
+  large: 58441
+  small: 57417
+fortune_charm:
+  large: 58442
+  small: 57418
+ankh_piece:
+  large: 58443
+  small: 57419
+ankh_cross:
+  large: 58444
+  small: 57420
+don_lorenzo:
+  large: 59152
+  small: 58128
+captains_armband:
+  large: 59153
+  small: 58129
+lorenzos_ball:
+  large: 59154
+  small: 58130
+diving_helmet:
+  large: 59155
+  small: 58131
+flipper:
+  large: 59156
+  small: 58132
+diving_gear:
+  large: 59157
+  small: 58133
+depths_charm:
+  large: 59158
+  small: 58134
+abyssal_diving_gear:
+  large: 59159
+  small: 58135
+skeleton_wanderer:
+  large: 59160
+  small: 58136
+kraken:
+  large: 59161
+  small: 58137
+kraken_eel:
+  large: 59162
+  small: 58138
+kraken_worm:
+  large: 59163
+  small: 58139
+coral_lung:
+  large: 59164
+  small: 58140
+glow_gland:
+  large: 59165
+  small: 58141
+eelskin_wrap:
+  large: 59166
+  small: 58142
+abyssal_diving_suit:
+  large: 59167
+  small: 58143

@@ -1,0 +1,45 @@
+name: LimboBlackMarket
+version: '1.0.0'
+main: net.limbosmp.blackmarket.LimboBlackMarket
+api-version: '1.21'
+author: LimboSMP
+description: Player-head tier economy for the Limbo SMP Black Market
+
+commands:
+  tier:
+    description: Manage a player's Black Market tier
+    usage: /tier <set|get> <player> [tier]
+    permission: limbomarket.tier
+  markethelp:
+    description: Show Black Market help
+    usage: /markethelp
+  stats:
+    description: View your or another player's kill/death stats
+    usage: /stats [player]
+  leaderboard:
+    description: Show the top players by kills
+    usage: /leaderboard
+  tierleaderboard:
+    description: Show every assigned player grouped by tier
+    usage: /tierleaderboard
+  faultlinereload:
+    description: "Admin: reload the config of every Faultline plugin at once"
+    usage: /faultlinereload
+    permission: limbomarket.reload
+    aliases: [freload]
+
+  givequestbook:
+    description: Give yourself or another player a Quest Book
+    usage: /givequestbook [amount] [player]
+    permission: limbomarket.givequestbook
+
+permissions:
+  limbomarket.givequestbook:
+    description: Allows giving Quest Books
+    default: op
+  limbomarket.tier:
+    description: Allows setting/viewing player tiers
+    default: op
+  limbomarket.reload:
+    description: Allows reloading config for all Faultline SMP plugins
+    default: op

@@ -1,0 +1,18 @@
+name: FaultlineBosses
+version: '1.0.0'
+main: net.faultlinesmp.bosses.FaultlineBosses
+api-version: '1.21'
+author: FaultlineSMP
+description: Summonable bosses for Faultline SMP — The Demon Eye
+softdepend: [FaultlineItems, FaultlineRaids]
+
+commands:
+  demoneye:
+    description: "Admin: summon or remove the Demon Eye, or give Suspicious Eyes"
+    usage: /demoneye <summon|kill|give> [amount] [player]
+    permission: bosses.admin
+
+permissions:
+  bosses.admin:
+    description: Allows controlling bosses
+    default: op

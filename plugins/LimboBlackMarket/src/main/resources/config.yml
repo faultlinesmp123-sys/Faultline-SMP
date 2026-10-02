@@ -1,0 +1,69 @@
+# Limbo SMP - Black Market configuration
+#
+# Tiers are whatever your staff use in /tier set <player> <tier>.
+# Each tier just needs a display-name (used in lore on tagged heads
+# and in /tier get / chat messages). The plugin does NOT auto-generate
+# shulker boxes — you hand those out manually, so what goes in each
+# box lives in your head, not in this file.
+#
+# 1 = worst, 8 = best (reserved for MC Comp-level players).
+
+default-tier: "1"
+
+# How long (in minutes) a killer must wait before killing the SAME victim
+# again counts toward kills/streaks/quest progress. Stops kill-farming
+# (two players, or a player + an alt, repeatedly trading kills). The kill
+# still happens normally in-game either way — this only gates rewards.
+anti-farm-cooldown-minutes: 10
+
+tiers:
+  "1":
+    display-name: "&7Tier 1"
+  "2":
+    display-name: "&fTier 2"
+  "3":
+    display-name: "&aTier 3"
+  "4":
+    display-name: "&2Tier 4"
+  "5":
+    display-name: "&bTier 5"
+  "6":
+    display-name: "&9Tier 6"
+  "7":
+    display-name: "&5Tier 7"
+  "8":
+    display-name: "&6&lTier 8"
+
+# Kill streak announcements — broadcast to the whole server the moment a
+# player's consecutive-kills-without-dying count exactly hits one of these
+# numbers. Add/remove/edit entries freely; {player} and {streak} get
+# replaced automatically. A streak resets to 0 the instant that player dies.
+kill-streaks:
+  "3": "&e%player% is on a killing spree! (%streak% kills)"
+  "5": "&6%player% is dominating! (%streak% kills)"
+  "10": "&c&l%player% is UNSTOPPABLE! (%streak% kills)"
+  "15": "&4&lGODLIKE! %player% has %streak% kills without dying!"
+
+# Quests are opened with the craftable Quest Book (Book + Iron Ingot).
+# One quest at a time, and nothing counts until a quest is accepted.
+# Steps and rewards live in QuestRegistry.java. Here you can change how
+# many hours each quest's cooldown lasts after completing it (0 = none).
+# The Elytra Quest is one-time only, so it has no cooldown setting.
+quests:
+  zombie-slayer:
+    cooldown-hours: 0
+  daily:
+    cooldown-hours: 12
+  golden-apple:
+    cooldown-hours: 1
+  raid-breaker:
+    cooldown-hours: 24
+  nether-conqueror:
+    cooldown-hours: 24
+  end-walker:
+    cooldown-hours: 24
+  bounty-hunter:
+    cooldown-hours: 72
+  warden-slayer:
+    cooldown-hours: 72
+

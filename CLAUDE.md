@@ -26,19 +26,25 @@ is wrong, prefers concrete/data-backed answers over generic advice.
 - **Faultline Index**: in-game item & creature codex. Crafted from Leather + Book, and given
   on first join.
 
-## Custom plugins (Java, Maven, package `net.faultlinesmp.*`)
-- **LimboBlackMarket**: `/tier set|get` for staff-assigned tiers. Tags dropped player
-  heads with the victim's tier via lore. Does NOT auto-generate shulker boxes; staff hand those out.
-- Four custom plugins were produced in earlier chats, with features including accessory items +
-  accessories GUI, custom items, breach events/raids, Kingdom End teleporters,
-  custom brewing chains, per-phase resource packs, and saved progression. Known names:
-  **FaultlineItems**, **FaultlineRaids**, **FaultlineBosses**.
-- **FaultlineBosses** (source in `FaultlineBosses.zip`): summonable bosses, starting with
-  **The Demon Eye** (1000 HP, 4 phases, servants, tooth/blood projectiles, summoned with
-  a Suspicious Eye). Command: `/demoneye <summon|kill|give> [amount] [player]`
-  (perm `bosses.admin`). `softdepend: [FaultlineItems, FaultlineRaids]`. Tunables in `config.yml`.
+## Custom plugins: source in `plugins/`
+All are Maven projects: Java 21, `paper-api 1.21.11-R0.1-SNAPSHOT`. Build with
+`cd plugins/<Name> && mvn package`; the jar lands in `target/`.
+
+| Plugin | Package | What it does | Commands |
+|---|---|---|---|
+| **LimboBlackMarket** | `net.limbosmp.blackmarket` | Head-tier economy, kill/death stats, kill streaks, anti-farm, quests + Quest Book, friendly-fire logging, global reload | `/tier`, `/markethelp`, `/stats`, `/leaderboard`, `/tierleaderboard`, `/faultlinereload` (`/freload`), `/givequestbook` |
+| **FaultlineItems** | `net.faultlinesmp.items` | All custom items + accessories (2-slot `/accessories` GUI), staffs, spawn eggs, diving gear, Kraken & Diamond Jacob gear, Skeleton Wanderer cave trader, admin `/itemsmenu` | many `/give*` commands, `/itemsmenu` (`/fitems`), `/itemsreload`, `/cavetrader`, `/batform` |
+| **FaultlineRaids** | `net.faultlinesmp.raids` | Zombie Raids: Zombie Omens, Zombie Captains, waves of special zombies | `/zraid <start\|stop\|captain\|menu\|egg\|omen>` |
+| **FaultlineBosses** | `net.faultlinesmp.bosses` | Summonable bosses, starting with **The Demon Eye** (1000 HP, 4 phases, summoned with a Suspicious Eye) | `/demoneye <summon\|kill\|give>` |
+| **FaultlineIndex** | `net.faultlinesmp.index` | The Faultline Index codex. Entries live in `src/main/resources/index.yml`, font glyphs in `glyphs.yml` | `/index [give\|reset] [player]` |
+
+Notes:
+- `FaultlineItems.java` is very large (~350 KB). Search it instead of reading it all.
+- Soft dependencies: Bosses → Items, Raids; Raids → Items; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.
+- Earlier chats mentioned Kingdom End teleporters, permadeath phases, and per-phase
+  resource packs. Check the source before assuming those still exist.
 
 ## Standing rules when updating plugins
 1. **Every new item, boss, or enemy must be added to the Faultline Index.**
@@ -52,13 +58,14 @@ is wrong, prefers concrete/data-backed answers over generic advice.
 | `FaultlineItemTextures.zip` | Custom item textures pack (accessories, potions, staffs, etc.) |
 | `FaultlineBossesPack.zip` | Boss models/sounds pack (Demon Eye, Dune, Frostmaw, mf_* models) |
 | `FaultlineBloodMoon.zip` | Blood Moon pack: replaces moon phase textures |
-| `FaultlineBosses.zip` | **Source code** for the FaultlineBosses plugin (Maven project) |
+| `FaultlineBosses.zip` | Old zip of the FaultlineBosses source; the live copy is `plugins/FaultlineBosses/` |
+| `plugins/` | Source code for all five custom plugins (edit these) |
 
 Resource packs are served from raw GitHub links on `main`, e.g.
 `https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/main/FaultlineBossesPack.zip`
 (same pattern for `FaultlineItemTextures.zip`, `FaultlineBloodMoon.zip`, `FaultlineSMP.zip`).
 Changing a zip changes its hash: recompute with `sha1sum <file>.zip` and update the plugin config.
 
-## Missing
-Source for LimboBlackMarket, FaultlineItems, FaultlineRaids, and the other plugins is
-**not in this repo yet**. Upload those projects (or their jars) so they can be edited here.
+## Building in Claude Code cloud sessions
+Maven must reach `repo.papermc.io` to download paper-api. If the build fails with
+`403 Forbidden` on that host, add `repo.papermc.io` to the environment's allowed network domains.

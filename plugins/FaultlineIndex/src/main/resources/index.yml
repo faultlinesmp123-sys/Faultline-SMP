@@ -1,0 +1,440 @@
+# ============================================================================
+# THE FAULTLINE INDEX — every item, boss, and enemy on the server.
+# When a plugin update adds something new, add its entry here.
+#
+# Items:     detect: "<plugin>:<key>" (the item's hidden tag), or "<plugin>:<key>=<number>"
+#            They're always readable; the check turns green once the player has held one.
+# Creatures: detect-tag (scoreboard tag), detect-name (its name), detect-type (mob type).
+#            Every listed condition must match. Shown as ??? until the player defeats one.
+# icon:      a picture from the resource pack's Index font (assets/faultline/textures/index/)
+# ============================================================================
+
+chapters:
+  - {id: accessories, title: "Accessories", kind: item, icon: golden_ring}
+  - {id: weapons, title: "Weapons & Tools", kind: item, icon: necromancer_staff}
+  - {id: consumables, title: "Potions & Bags", kind: item, icon: mythic_goodie_bag}
+  - {id: armor, title: "Armor", kind: item, icon: spectre_boots}
+  - {id: bosses, title: "Bosses", kind: creature, icon: demon_eye}
+  - {id: enemies, title: "Enemies", kind: creature, icon: vampire}
+  - {id: friends, title: "Friendly Faces", kind: creature, icon: skeleton_wanderer}
+
+entries:
+  # ---------------------------------------------------------------- ACCESSORIES
+  - {chapter: accessories, name: "Golden Ring", icon: golden_ring, detect: "faultlineitems:golden_ring",
+     how: "Craft it: a Diamond on top, Gold Ingots on the other three sides.",
+     does: "Double XP from kills, but hostile mobs spawn 1.5x more around you."}
+  - {chapter: accessories, name: "Climbing Claws", icon: climbing_claws, detect: "faultlineitems:climbing_claws",
+     how: "Can't be found yet. Only given out by staff.",
+     does: "Hold jump against a wall to climb straight up it."}
+  - {chapter: accessories, name: "Bezoar", icon: bezoar, detect: "faultlineitems:bezoar",
+     how: "2% from Bees and Cave Spiders.",
+     does: "You're immune to Poison."}
+  - {chapter: accessories, name: "Discount Card", icon: discount_card, detect: "faultlineitems:discount_card",
+     how: "10% from Villagers.",
+     does: "Villager trades cost 17.5% less. Stacks with Lantern Night."}
+  - {chapter: accessories, name: "Life Jelly", icon: life_jelly, detect: "faultlineitems:life_jelly",
+     how: "5% from Glow Squids.",
+     does: "Heals 2% of your max health every 2 seconds."}
+  - {chapter: accessories, name: "Shield of the Ocean", icon: shield_of_the_ocean, detect: "faultlineitems:shield_of_the_ocean",
+     how: "Always dropped by Elder Guardians.",
+     does: "+10% movement speed and faster swimming."}
+  - {chapter: accessories, name: "Lava Charm", icon: lava_charm, detect: "faultlineitems:lava_charm",
+     how: "5% from Bats, 10% from Blazes.",
+     does: "Touching lava or fire makes you immune to it for 7 seconds. 60 second cooldown."}
+  - {chapter: accessories, name: "Black Belt", icon: black_belt, detect: "faultlineitems:black_belt",
+     how: "1% from Zombies and Skeletons.",
+     does: "Take 5% less damage, but move 2.5% slower."}
+  - {chapter: accessories, name: "Moon Stone", icon: moon_stone, detect: "faultlineitems:moon_stone",
+     how: "1% from Bats, 5% from Phantoms, 2.5% from Vampires.",
+     does: "You become a vampire. Always: hits heal you. Night: Strength and Regeneration. Day: Weakness, and sunlight burns you (rain stops it). Shift + F: turn into a bat and fly for 20 seconds (2 hearts, 2 minute cooldown)."}
+  - {chapter: accessories, name: "Ranger Emblem", icon: ranger_emblem, detect: "faultlineitems:ranger_emblem",
+     how: "2% from Pillagers.",
+     does: "+10% bow and crossbow damage."}
+  - {chapter: accessories, name: "Bloody Wolf Scarf", icon: bloody_wolf_scarf, detect: "faultlineitems:bloody_wolf_scarf",
+     how: "5% from Piglin Brutes.",
+     does: "Take 5% less damage and deal 2.5% more melee damage."}
+  - {chapter: accessories, name: "Frost Flare", icon: frost_flare, detect: "faultlineitems:frost_flare",
+     how: "0.75% from Snow Golems, 2.5% from Frost Wraiths.",
+     does: "Your hits slow enemies, you're immune to Slowness, and you move 5% faster. But hostile mobs spawn twice as much and you get hungry faster."}
+  - {chapter: accessories, name: "Spelunker's Amulet", icon: spelunker_amulet, detect: "faultlineitems:spelunker_amulet",
+     how: "0.5% when mining natural ores. Sometimes dropped by Vampires.",
+     does: "+2% mining speed, and falling sand and gravel can't hurt you."}
+  - {chapter: accessories, name: "Harpy Ring", icon: harpy_ring, detect: "faultlineitems:harpy_ring",
+     how: "Craft it: Gold Ingots in the corners, Diamonds on the edges, a Netherite Block in the middle.",
+     does: "+10% movement speed, and your Elytra lasts 50% longer."}
+  - {chapter: accessories, name: "Ankh Shield", icon: ankh_shield, detect: "faultlineitems:ankh_shield",
+     how: "Craft it: Netherite Blocks in the corners, the Cross in the middle, the Ankh below it, and the three combination charms (Nightwatch, Wayfarer's, Fortune's) on the left, right, and top. Also 0.1% while fishing, and a rare Zombie Raid reward.",
+     does: "Does nothing on its own: put a Shield (a regular one or the Shield of the Demon Eye) and the Ankh Shield in an anvil (15 levels). While you hold that shield: immune to every debuff, freezing, and fire, no knockback, +5% damage resistance, +15% speed, and +2.5% melee damage."}
+  - {chapter: accessories, name: "Cleft Horn", icon: cleft_horn, detect: "faultlineitems:cleft_horn",
+     how: "2% from Goats.",
+     does: "Your hits ignore 5% of your target's armor."}
+
+  - {chapter: accessories, name: "A Weird Clock...", icon: weird_clock, detect: "faultlineitems:weird_clock",
+     how: "1% from hostile mobs killed deep in caves (underground, below Y=50).",
+     does: "You're immune to Slowness."}
+  - {chapter: accessories, name: "Guardian Scale", icon: guardian_scale, detect: "faultlineitems:guardian_scale",
+     how: "3% from Guardians, 100% from Elder Guardians.",
+     does: "Immune to Mining Fatigue. Also clears it if you already have it when you put this on."}
+  - {chapter: accessories, name: "Ginger Root", icon: ginger_root, detect: "faultlineitems:ginger_root",
+     how: "8% from Pufferfish, 1% from Drowned.",
+     does: "Immune to Nausea. Also clears it if you already have it when you put this on."}
+  - {chapter: accessories, name: "Blindfold", icon: blindfold, detect: "faultlineitems:blindfold",
+     how: "1.5% from Endermen.",
+     does: "Immune to Blindness. Also clears it if you already have it when you put this on."}
+  - {chapter: accessories, name: "Salt Ration", icon: salt_ration, detect: "faultlineitems:salt_ration",
+     how: "2% from Husks.",
+     does: "Immune to Hunger. Also clears it if you already have it when you put this on."}
+  - {chapter: accessories, name: "Vitamins", icon: vitamins, detect: "faultlineitems:vitamins",
+     how: "3% from Witches.",
+     does: "Immune to Weakness. Also clears it if you already have it when you put this on."}
+  - {chapter: accessories, name: "Soul Ward", icon: soul_ward, detect: "faultlineitems:soul_ward",
+     how: "2.5% from Wither Skeletons, 100% from the Wither.",
+     does: "Immune to Wither. Also clears it if you already have it when you put this on."}
+  - {chapter: accessories, name: "Gravity Stone", icon: gravity_stone, detect: "faultlineitems:gravity_stone",
+     how: "4% from Shulkers.",
+     does: "Immune to Levitation. Also clears it if you already have it when you put this on."}
+  - {chapter: accessories, name: "Four-Leaf Clover", icon: four_leaf_clover, detect: "faultlineitems:four_leaf_clover",
+     how: "3% from Rabbits.",
+     does: "Immune to Bad Luck. Also clears it if you already have it when you put this on."}
+  - {chapter: accessories, name: "Night Lens", icon: night_lens, detect: "faultlineitems:night_lens",
+     how: "50% from the Warden.",
+     does: "Immune to Darkness. Also clears it if you already have it when you put this on."}
+  - {chapter: accessories, name: "Wind Ward", icon: wind_ward, detect: "faultlineitems:wind_ward",
+     how: "5% from Breezes.",
+     does: "Immune to Wind Charged. Also clears it if you already have it when you put this on."}
+  - {chapter: accessories, name: "Silk Ward", icon: silk_ward, detect: "faultlineitems:silk_ward",
+     how: "1.5% from Spiders, 1% from Cave Spiders.",
+     does: "Immune to Weaving. Also clears it if you already have it when you put this on."}
+  - {chapter: accessories, name: "Slime Ward", icon: slime_ward, detect: "faultlineitems:slime_ward",
+     how: "2% from Slimes and Magma Cubes.",
+     does: "Immune to Oozing. Also clears it if you already have it when you put this on."}
+  - {chapter: accessories, name: "Pest Charm", icon: pest_charm, detect: "faultlineitems:pest_charm",
+     how: "4% from Silverfish and Endermites.",
+     does: "Immune to Infested. Also clears it if you already have it when you put this on."}
+  - {chapter: accessories, name: "Nightwatch Charm", icon: nightwatch_charm, detect: "faultlineitems:nightwatch_charm",
+     how: "Craft it: a Blindfold, Salt Ration, Vitamins, Soul Ward, and Night Lens in an X (four corners + middle).",
+     does: "Immune to Blindness, Hunger, Weakness, Wither, and Darkness. One of the three charms in the Ankh Shield recipe."}
+  - {chapter: accessories, name: "Wayfarer's Charm", icon: wayfarer_charm, detect: "faultlineitems:wayfarer_charm",
+     how: "Craft it: A Weird Clock, Bezoar, Guardian Scale, Ginger Root, and Gravity Stone in an X (four corners + middle).",
+     does: "Immune to Slowness, Poison, Mining Fatigue, Nausea, and Levitation. One of the three charms in the Ankh Shield recipe."}
+  - {chapter: accessories, name: "Fortune's Charm", icon: fortune_charm, detect: "faultlineitems:fortune_charm",
+     how: "Craft it: a Four-Leaf Clover, Wind Ward, Silk Ward, Slime Ward, and Pest Charm in an X (four corners + middle).",
+     does: "Immune to Bad Luck, Wind Charged, Weaving, Oozing, and Infested. One of the three charms in the Ankh Shield recipe."}
+
+  # ---------------------------------------------------------------- WEAPONS & TOOLS
+  - {chapter: weapons, name: "Magic Mirror", icon: magic_mirror, detect: "faultlineitems:magic_mirror",
+     how: "Craft it: Glass in the corners, Gold Ingots on the edges, an Eye of Ender in the middle.",
+     does: "Teleports you home, to the Black Market, or to the Nether. 10 uses; repair it with a Gold Ingot in an anvil."}
+  - {chapter: weapons, name: "Necromancer Staff", icon: necromancer_staff, detect: "faultlineitems:necromancer_staff",
+     how: "Craft it from a Nether Star, a Wither Skeleton Skull, and Iron Sticks. Rarely dropped by Wither Skeletons (0.5%) and Skeletons (0.1%). You must finish the Necromancer's Trial quest to use it.",
+     does: "Summons 6-9 zombie minions that fight for you for 30 seconds. 90 second cooldown."}
+  - {chapter: weapons, name: "Iron Stick", icon: iron_stick, detect: "faultlineitems:iron_stick",
+     how: "Craft it: an Iron Ingot above a Stick.",
+     does: "An ingredient for the Necromancer Staff."}
+  - {chapter: weapons, name: "Spider Staff", icon: spider_staff, detect: "faultlineitems:spider_staff",
+     how: "10% from the Queen Spider. Very rarely from Spiders (0.01%).",
+     does: "Summons 3-5 spiders that fight for you for 30 seconds. 60 second cooldown."}
+  - {chapter: weapons, name: "Rotbeard's Grappling Hook", icon: grappling_hook, detect: "faultlineitems:grappling_hook",
+     how: "10% from Captain Rotbeard.",
+     does: "Cast it at a wall, ceiling, or ledge, then reel in to launch yourself there. No fall damage from the landing. Never breaks."}
+  - {chapter: weapons, name: "Queen's Silk", icon: queen_silk, detect: "faultlineitems:queen_silk",
+     how: "5% from the Queen Spider.",
+     does: "Shoots a glob of silk. Whatever it hits is webbed and slowed for 3 seconds. 8 second cooldown."}
+  - {chapter: weapons, name: "Twin Eye Staff", icon: twin_eye_staff, detect: "faultlinebosses:twin_eye_staff",
+     how: "20% from the Demon Eye.",
+     does: "Summons two small eyes that dive at whoever you're fighting for 30 seconds. Other players can hit the eyes off (5 hearts each). 60 second cooldown."}
+  - {chapter: weapons, name: "Shield of the Demon Eye", icon: demon_eye_shield, detect: "faultlinebosses:demon_eye_shield",
+     how: "25% from the Demon Eye.",
+     does: "A shield. Press F while holding it to dash forward; players you slam into get knocked back. 20 second cooldown."}
+  - {chapter: weapons, name: "Unholy Arrow", icon: unholy_arrow, detect: "faultlinebosses:unholy_arrow",
+     how: "32-64 every time you beat the Demon Eye.",
+     does: "Deals twice the damage of a normal arrow, with a purple trail."}
+  - {chapter: weapons, name: "Quest Book", icon: quest_book, detect: "limboblackmarket:quest_book",
+     how: "Craft it: a Book and an Iron Ingot.",
+     does: "Opens the quest list. Take one quest at a time for rewards."}
+  - {chapter: weapons, name: "Faultline Index", icon: faultline_index, detect: "faultlineindex:index_book",
+     how: "Everyone gets one when they first join. Craft another with Leather and a Book.",
+     does: "This book! It records every item you find and every creature you defeat."}
+  - {chapter: weapons, name: "Lorenzo's Ball", icon: lorenzos_ball, detect: "faultlinebosses:lorenzos_ball",
+     how: "50% from Don Lorenzo (each fighter rolls).",
+     does: "Right-click to kick it: about 18 damage (3x an arrow) plus Frostbite (frozen, Slowness II, 1 damage a second for 4 seconds). It always comes back to you. 2-second cooldown."}
+
+  # ---------------------------------------------------------------- POTIONS & BAGS
+  - {chapter: consumables, name: "Cloud Potion", icon: cloud_potion, detect: "faultlineitems:cloud_potion",
+     how: "Brew an Awkward Potion with a Rabbit's Foot.",
+     does: "Lets you double jump for 35 seconds."}
+  - {chapter: consumables, name: "Potion of Whispers", icon: potion_of_whispers, detect: "faultlineitems:darkness_stage=1",
+     how: "Brew an Awkward Potion with a Ghast Tear.",
+     does: "Step 1 of the Darkness Potion. Brew it with a Fermented Spider Eye next."}
+  - {chapter: consumables, name: "Potion of the Abyss", icon: potion_of_the_abyss, detect: "faultlineitems:darkness_stage=2",
+     how: "Brew a Potion of Whispers with a Fermented Spider Eye.",
+     does: "Step 2 of the Darkness Potion. Brew it with a Wither Rose next."}
+  - {chapter: consumables, name: "Darkness Potion", icon: darkness_potion, detect: "faultlineitems:darkness_stage=3",
+     how: "Brew a Potion of the Abyss with a Wither Rose.",
+     does: "A splash potion. Everyone it hits gets Darkness and Blindness for 25 seconds."}
+  - {chapter: consumables, name: "Goodie Bag", icon: goodie_bag, detect: "faultlineitems:goodie_bag",
+     how: "5% from any mob you kill, 7.5% while fishing. Also from quests and raids.",
+     does: "Open it for 3-5 Diamonds and a random bonus. Tiny chance of an Elytra!"}
+  - {chapter: consumables, name: "Mythic Goodie Bag", icon: mythic_goodie_bag, detect: "faultlineitems:mythic_goodie_bag",
+     how: "Wardens 10%, Withers 12.5%, fishing 2.5%. Also from bosses, raids, and hard quests.",
+     does: "Open it for top-tier loot: Netherite, Totems, enchanted gear, and more."}
+  - {chapter: consumables, name: "Zombie Omen", icon: zombie_omen, detect: "faultlineraids:zombie_omen",
+     how: "Always dropped by Zombie Captains. 10% from Trial Chamber chests and vaults. The Demon Eye drops two.",
+     does: "Drink it near a village to start a Zombie Raid (levels I-V). Win for big rewards."}
+  - {chapter: consumables, name: "Suspicious Eye", icon: suspicious_eye, detect: "faultlinebosses:suspicious_eye",
+     how: "0.05% from any mob.",
+     does: "Use it at night in the Overworld to summon the Demon Eye."}
+
+  - {chapter: consumables, name: "Talon", icon: talon, detect: "faultlinebosses:talon",
+     how: "50% from wild Vultures, which circle over deserts and badlands (more during a Sandstorm).",
+     does: "A crafting ingredient: Talon + Netherite Ingot + Diamond makes a Dune Idol."}
+  - {chapter: consumables, name: "Dune Idol", icon: dune_idol, detect: "faultlinebosses:dune_idol",
+     how: "Craft it: a Talon, a Netherite Ingot, and a Diamond.",
+     does: "In a desert or badlands, it summons the Dune Devourer. In a snowy area, it summons the Frostmaw."}
+
+  - {chapter: consumables, name: "Skeleton Omen", icon: skeleton_omen, detect: "faultlineraids:skeleton_omen",
+     how: "Always dropped by Bone Commanders (the leaders of Skeleton Armies).",
+     does: "Drink it near a village to start a Skeleton Raid (levels I-V): waves of archers behind a wall of shields. Win for big rewards."}
+
+  - {chapter: consumables, name: "Ankh", icon: ankh_piece, detect: "faultlineitems:ankh_piece",
+     how: "50% from the Demon Eye (each fighter rolls).",
+     does: "A piece of the Ankh Shield: it goes right below the Cross in the recipe."}
+  - {chapter: consumables, name: "Cross", icon: ankh_cross, detect: "faultlineitems:ankh_cross",
+     how: "50% from the Dune Devourer or the Frostmaw (each fighter rolls).",
+     does: "A piece of the Ankh Shield: it goes in the middle of the recipe."}
+
+  - {chapter: consumables, name: "Captain's Armband", icon: captains_armband, detect: "faultlinebosses:captains_armband",
+     how: "1% from wild animals (not bred, spawner, or spawn-egg animals).",
+     does: "Summons Don Lorenzo. Only works in the daytime, on flat, open ground with no buildings or villagers nearby (it tells you why if a spot doesn't work, and isn't used up)."}
+
+  # ---------------------------------------------------------------- ARMOR
+  - {chapter: armor, name: "Hermes Boots", icon: hermes_boots, detect: "faultlineitems:hermes_boots",
+     how: "0.5% from any mob, or buy from an Armorer for 45 Emeralds and a Green Dye.",
+     does: "Boots: +3 armor and +15% movement speed. Never break."}
+  - {chapter: armor, name: "Rocket Boots", icon: rocket_boots, detect: "faultlineitems:rocket_boots",
+     how: "0.5% from any mob, or buy from an Armorer for 60 Emeralds and a Harpy Ring.",
+     does: "Boots: +2 armor. Double-tap jump to fly (hold to keep going), in 7 short bursts that recharge when you land. Never break. While rocket-flying (until you land) you can only hit with swords or axes, and you can't swap armor."}
+  - {chapter: armor, name: "Spectre Boots", icon: spectre_boots, detect: "faultlineitems:spectre_boots",
+     how: "Combine Hermes Boots and Rocket Boots in an anvil.",
+     does: "Boots: +3 armor, +15% speed, AND rocket flight. Never break. While rocket-flying (until you land) you can only hit with swords or axes, and you can't swap armor."}
+
+  # ---------------------------------------------------------------- BOSSES
+  - {chapter: bosses, name: "The Demon Eye", icon: demon_eye, detect-tag: faultline_demon_eye,
+     where: "Summoned with a Suspicious Eye at night. 1,000 health.",
+     does: "Four phases. Rams you, births Servants, drops Tooth Balls, then splits into a toothy mouth that spin-dashes, rains teeth, and rains blood from overhead. Later it fires homing blood and vanishes to reappear and charge from the side. Everyone fighting can be targeted, and it enrages if the fight reaches morning.",
+     drops: ["10 Mythic Goodie Bags|100%", "12-16 Diamonds|100%", "2 Zombie Omens (IV-V)|100%", "Ankh|50%", "32-64 Unholy Arrows|100%",
+             "1-3 Netherite Ingots|50%", "Shield of the Demon Eye|25%", "Twin Eye Staff|20%", "1,000 XP|100%"]}
+  - {chapter: bosses, name: "Queen Spider", icon: queen_spider, detect-tag: faultline_queen_spider,
+     where: "Deep in caves: 1% of spiders spawning underground. 500 health.",
+     does: "Poison bites, Venom Spit, a pounce, a ground stomp, webs around every player, and swarms of brood. Enrages at half health.",
+     drops: ["10 Spider Eyes|100%", "5-10 Diamonds|50%", "Spider Staff|10%", "Queen's Silk|5%", "300 XP|100%"]}
+  - {chapter: bosses, name: "Captain Rotbeard", icon: captain_rotbeard, detect-tag: faultline_rotbeard,
+     where: "Appears at the end of level IV and V Zombie Raids. 500 health.",
+     does: "A pirate captain: Cutlass Sweep, Flintlock shots, a Cannon Barrage, a Grappling Hook that pulls you in, an Anchor Slam, and he calls his crew.",
+     drops: ["Rotbeard's Grappling Hook|10%", "Winning the raid: Goodie & Mythic Bags|100%"]}
+
+  - {chapter: bosses, id: mortimer_freeze, name: "Frostbeard", icon: mortimer_freeze, detect-tag: faultline_mortimer,
+     where: "In snow biomes, or anywhere snowy on a Snowy Day. He snuffs out a torch near a player and appears from it. 700 health, and very tanky.",
+     does: "A frost wizard with three forms. The Wizard summons Icicle Runners, drops his Winter Whale, throws ice orbs (hit the pink orb to send it back into him!), calls a Hailstorm, and sometimes lands to taunt you. The Snow Brute rolls as a giant snowball, ground-pounds ice spikes, sends out a Frost Nova (jump over it), and turns into a fridge that lobs ice cubes. The Blizzard fires rings of ice shards, rains icicles and hail, and sweeps a freezing beam. Maces are deflected, and fire does nothing to him.",
+     drops: ["3 Mythic Goodie Bags|100%", "8-14 Diamonds|100%", "16 Blue Ice|100%", "Frost Flare|25%", "500 XP|100%"]}
+
+  - {chapter: bosses, name: "The Dune Devourer", icon: dune_devourer, detect-tag: faultline_dune, detect-name: "The Dune Devourer",
+     where: "Rises from below during a Sandstorm in deserts and badlands, or summon it with a Dune Idol in a desert. The ground rumbles first. 1,100 health, 35% defense.",
+     does: "A giant burrowing worm that travels underground and surfaces to strike. Sand Spit (a fan of Sand Blasts), Sand Rush (charges under the surface spraying blasts up), Sandstorm (blasts sweep in from the sides), and Ambush (a bulge tracks under your feet, then it erupts: keep moving). Below 55%: Ground Slam (blasts and two Sandnadoes) and Tremor (a shockwave rolls along the ground: jump it). Below 25%: Vultures and Sand Breath (a cone of sand). Hit any part of its body to hurt it.",
+     drops: ["3 Mythic Goodie Bags|100%", "8-14 Diamonds|100%", "600 XP|100%", "Cross|50%", "Ankh Shield|0.01%"]}
+
+  - {chapter: bosses, name: "The Frostmaw", icon: frostmaw, detect-tag: faultline_dune, detect-name: "The Frostmaw",
+     where: "Rises from below on a Snowy Day anywhere snowy, or summon it with a Dune Idol in a snowy area. The ground rumbles first. 1,100 health, 35% defense.",
+     does: "The Dune Devourer's frozen cousin: its hits freeze and slow you. Frost Spit, Glacier Rush (icicles launch out of the ground), Blizzard (ice from the sides in a whiteout), and Ambush (a bulge tracks under your feet, then it erupts). Below 55%: Avalanche Slam (ice shards and two Frost Vortexes) and Tremor (a freezing shockwave: jump it). Below 25%: Snow Owls and Frost Breath (a freezing cone).",
+     drops: ["3 Mythic Goodie Bags|100%", "8-14 Diamonds|100%", "600 XP|100%", "Cross|50%", "Ankh Shield|0.01%"]}
+
+  - {chapter: bosses, name: "Don Lorenzo", icon: don_lorenzo, detect-tag: faultline_don,
+     where: "Summoned with a Captain's Armband, only in the daytime, on flat, open ground with no buildings or villagers nearby. Right-click him to accept his challenge.",
+     does: "Phase 1: 500 health, all ball: Rapid Fire (three quick shots) and a big kick. At 50 health, a cutscene, and the music starts. At the beat drop, a 32x32 box slams up around you. Phase 2: 1,500 health, 5% defense, extremely fast, with Blink Shot, Overtime Rush, Direct Shot, Ricochet, Ground Spike (jump it), Zombie Guard (don't hit him while he guards), Price Check (marks you: slower, and he hunts you), Zombie Dribble (untouchable: get out of his way), and below 60% health, Ace Eater (Feeding time... then Undead Crash and Soulless Strike). A pink orb rises every 10 seconds: hit it into him for 100-150 damage. Not dead by 2:43 of the song? At 3:05 the ceiling comes down, and nothing saves you.",
+     drops: ["15 Mythic Goodie Bags|100%", "12-20 Diamonds|100%", "Lorenzo's Ball|50%", "1,500 XP|100%"]}
+
+  # ---------------------------------------------------------------- ENEMIES
+  - {chapter: enemies, name: "Vampire", icon: vampire, detect-tag: faultline_vampire,
+     where: "Disguised as a cave bat (2.5% of bats). Hunts the surface during Blood Moons.",
+     does: "Turns from a bat into a vampire when you get close. Its claws make you bleed.",
+     drops: ["1-3 Spider Eyes|100%", "3-6 Gunpowder|50%", "2-6 Diamonds|5%", "Moon Stone or Spelunker's Amulet|2.5%", "30 XP|100%"]}
+  - {chapter: enemies, name: "Frost Wraith", icon: frost_wraith, detect-tag: faultline_frost_wraith,
+     where: "Only on Snowy Days, outside deserts and badlands.",
+     does: "An icy skeleton archer. Its arrows slow and freeze you.",
+     drops: ["2-3 Bones|100%", "Power I book or bow|30%", "Frost Flare|2.5%", "15 XP|100%"]}
+  - {chapter: enemies, name: "Zombie Captain", icon: zombie_captain, detect-tag: faultline_zombie_captain,
+     where: "Some nights (5% per player), with an army of 3-5 zombies.",
+     does: "Leads his army toward you. Tough, with an iron sword and a black banner.",
+     drops: ["Zombie Omen|100%", "Goodie Bag|5%"]}
+  - {chapter: enemies, name: "Servant of the Eye", icon: servant_eye, detect-tag: faultline_demon_servant,
+     where: "Born from the Demon Eye during its fight.",
+     does: "Chases one player and bites. Dies if it hits a wall, so use the terrain.",
+     drops: ["Nothing|-"]}
+  - {chapter: enemies, name: "Zombie Archer", icon: zombie_archer, detect-name: "Zombie Archer",
+     where: "Zombie Raids, and Zombie Captain armies.",
+     does: "Shoots arrows from a distance.",
+     drops: ["Normal zombie drops|100%", "Goodie Bag|5%"]}
+  - {chapter: enemies, name: "Zombie Brute", icon: zombie_brute, detect-name: "Zombie Brute",
+     where: "Zombie Raids.",
+     does: "Huge, armored, and three times as tough as a zombie.",
+     drops: ["Normal zombie drops|100%", "Goodie Bag|5%"]}
+  - {chapter: enemies, name: "Bomber Zombie", icon: bomber_zombie, detect-name: "Bomber Zombie",
+     where: "Zombie Raids.",
+     does: "Carries a bomb. Explodes when it reaches you, or a second after it dies. Never breaks blocks.",
+     drops: ["Nothing (it explodes)|-"]}
+  - {chapter: enemies, name: "Baby Bomber", icon: baby_bomber, detect-name: "Baby Bomber",
+     where: "The Baby Wave of Zombie Raids, and Rotbeard's crew.",
+     does: "A tiny, fast Bomber Zombie. Same explosion.",
+     drops: ["Nothing (it explodes)|-"]}
+  - {chapter: enemies, name: "Zombie Bat", icon: zombie_bat, detect-type: BAT, detect-tag: faultline_raid_mob,
+     where: "Zombie Raids.",
+     does: "Dives at you and bites, giving you Hunger.",
+     drops: ["Goodie Bag|5%"]}
+  - {chapter: enemies, name: "Flying Zombie", icon: flying_zombie, detect-name: "Flying Zombie",
+     where: "Zombie Raids.",
+     does: "Flies on Elytra wings, circles overhead, then dives at you.",
+     drops: ["Normal zombie drops|100%", "Goodie Bag|5%"]}
+  - {chapter: enemies, name: "Zombie Mage", icon: zombie_mage, detect-name: "Zombie Mage",
+     where: "Zombie Raids.",
+     does: "Casts poisonous green orbs at you.",
+     drops: ["Normal zombie drops|100%", "Goodie Bag|5%"]}
+  - {chapter: enemies, name: "Zombie Horseman", icon: zombie_horseman, detect-name: "Zombie Horseman",
+     where: "Zombie Raids.",
+     does: "Charges in on a Zombie Horse, spear first.",
+     drops: ["Normal zombie drops|100%", "Goodie Bag|5%"]}
+  - {chapter: enemies, name: "Raid Witch", icon: raid_witch, detect-type: WITCH, detect-tag: faultline_raid_mob,
+     where: "Zombie Raids.",
+     does: "Throws harmful potions from behind the zombies.",
+     drops: ["Normal witch drops|100%", "Goodie Bag|5%"]}
+  - {chapter: enemies, name: "Pirate Crew", icon: pirate_crew, detect-name: "Pirate Crew",
+     where: "Called in by Captain Rotbeard.",
+     does: "Rotbeard's undead deckhands.",
+     drops: ["Normal zombie drops|100%", "Goodie Bag|5%"]}
+  - {chapter: enemies, name: "Icicle Runner", icon: icicle_runner, detect-name: "Icicle Runner",
+     where: "Summoned by Frostbeard.",
+     does: "A little ice minion that runs at you. Its bite slows you down.",
+     drops: ["Nothing|-"]}
+  - {chapter: enemies, name: "Vulture", icon: vulture, detect-name: "Vulture",
+     where: "Circles over deserts and badlands in the open (more during a Sandstorm). The Dune Devourer also calls them in.",
+     does: "Circles overhead and swoops down at you. The ones the Dune Devourer summons drop nothing.",
+     drops: ["Talon|50%", "5 XP|100%"]}
+  - {chapter: enemies, name: "Snow Owl", icon: snow_owl, detect-name: "Snow Owl",
+     where: "Called in by the Frostmaw.",
+     does: "Circles overhead and dives at you.",
+     drops: ["Nothing|-"]}
+  - {chapter: enemies, name: "Bone Commander", icon: bone_commander, detect-tag: faultline_bone_commander,
+     where: "Some nights (5% per player), leading a Skeleton Army of 3-5 soldiers. A champion Bone Commander ends level IV and V Skeleton Raids.",
+     does: "80 health (the raid champion has 300). Five moves: War Horn (his army gets Speed and Strength), Arrow Rain (a red ring marks where arrows fall: get out), Piercing Shot (he draws, then fires a heavy arrow that pierces, knocks you back, and slows you), Call to Arms (a Shieldbearer and a Soldier climb out of the ground), and Disengage (get close and he leaps back, shooting).",
+     drops: ["Skeleton Omen|100%", "Goodie Bag|100%", "6-12 Bones|100%", "16-32 Arrows|100%", "Commander's Bow (Power IV)|35%"]}
+  - {chapter: enemies, name: "Skeleton Soldier", icon: skeleton_soldier, detect-name: "Skeleton Soldier",
+     where: "Skeleton Armies and Skeleton Raids.",
+     does: "A disciplined archer (30 health, arrows hit 30% harder).",
+     drops: ["Normal skeleton drops|100%", "Goodie Bag|5%"]}
+  - {chapter: enemies, name: "Frost Archer", icon: frost_archer, detect-name: "Frost Archer",
+     where: "Skeleton Armies and Skeleton Raids.",
+     does: "An icy archer whose arrows slow you.",
+     drops: ["Normal stray drops|100%", "Goodie Bag|5%"]}
+  - {chapter: enemies, name: "Bog Archer", icon: bog_archer, detect-name: "Bog Archer",
+     where: "Skeleton Raids.",
+     does: "A mossy archer whose arrows poison you.",
+     drops: ["Normal bogged drops|100%", "Goodie Bag|5%"]}
+  - {chapter: enemies, name: "Shieldbearer", icon: shieldbearer, detect-name: "Shieldbearer",
+     where: "Skeleton Armies and Skeleton Raids.",
+     does: "Holds the front line with a sword and shield. Blocks arrows from the front, so flank it or fight it up close.",
+     drops: ["Normal skeleton drops|100%", "Goodie Bag|5%"]}
+  - {chapter: enemies, name: "Bone Rider", icon: bone_rider, detect-name: "Bone Rider",
+     where: "Skeleton Armies and Skeleton Raids.",
+     does: "An archer riding a skeleton horse.",
+     drops: ["Normal skeleton drops|100%", "Goodie Bag|5%"]}
+  - {chapter: enemies, name: "Wither Brute", icon: wither_brute, detect-name: "Wither Brute",
+     where: "Skeleton Raids.",
+     does: "A huge, tough Wither Skeleton (60 health) that withers whatever it hits.",
+     drops: ["Normal wither skeleton drops|100%", "Goodie Bag|5%"]}
+  - chapter: accessories
+    name: Diving Helmet
+    icon: diving_helmet
+    detect: faultlineitems:diving_helmet
+    how: 1.5% from Drowned. The Skeleton Wanderer sometimes sells one.
+    does: 3x longer breath underwater. Combine with a Flipper to make Diving Gear.
+  - chapter: accessories
+    name: Flipper
+    icon: flipper
+    detect: faultlineitems:flipper
+    how: 2% from Guardians. The Skeleton Wanderer sometimes sells one.
+    does: Swim much faster (Dolphin's Grace in water). Combine with a Diving Helmet to make Diving Gear.
+  - chapter: accessories
+    name: Diving Gear
+    icon: diving_gear
+    detect: faultlineitems:diving_gear
+    how: Craft a Diving Helmet and a Flipper together.
+    does: 3x longer breath underwater and much faster swimming, in one accessory slot.
+  - chapter: accessories
+    name: Depths Charm
+    icon: depths_charm
+    detect: faultlineitems:depths_charm
+    how: 33% from Elder Guardians. The Skeleton Wanderer rarely sells one.
+    does: Halves Crush Depth damage (deep underwater, below y=0, while out of breath).
+  - chapter: accessories
+    name: Abyssal Diving Gear
+    icon: abyssal_diving_gear
+    detect: faultlineitems:abyssal_diving_gear
+    how: Craft Diving Gear, a Depths Charm, and a Heart of the Sea together.
+    does: 6x longer breath, 83% less drowning damage, much faster swimming, clear sight underwater, and half Crush Depth damage.
+  - chapter: friends
+    name: Skeleton Wanderer
+    icon: skeleton_wanderer
+    detect-tag: faultline_cave_trader
+    where: 'Sets up shop in caves: every 2 minutes, anyone underground (no sky above, below y=50) has a 5% chance of him appearing nearby. He stays for 8 minutes.'
+    does: 'Trades accessories for emeralds (rarer ones cost diamonds too): immunity charms, rings, the Spelunker Amulet, diving gear, and more. Five wares at a time, changing with every visit. He can''t be
+      hurt.'
+  - chapter: bosses
+    name: The Kraken
+    icon: kraken
+    detect-tag: faultline_kraken
+    where: Drop a Bait Worm into a Deep Ocean with at least 15 blocks of water. It sinks for 8 seconds, vanishes... then he rises.
+    does: '2,200 health, 30% defense, the hardest boss so far. Stay near his air bubbles to breathe, and pop the pink bubble (every 15 seconds) for 150-200 damage. Leave the water and he smashes you for over
+      half your health: twice and you''re dead. Phase 1 is slow: Tentacle Slam, Crushing Grip (hit the tentacle to break free), Ink Cloud, Whirlpool, Beak Bite, Barnacle Barrage, Tidal Surge (pops air bubbles),
+      and Spawn of the Deep. Phase 2 (66%) is faster. Phase 3 (33%) brings eels and three more moves: Abyssal Vortex, Eight-Arm Barrage, and Crushing Depths (only the air bubbles are safe).'
+    drops:
+    - 18 Mythic Goodie Bags|100%
+    - 16-24 Diamonds|100%
+    - Abyssal Diving Suit|40%
+    - 2,000 XP|100%
+  - chapter: enemies
+    name: Kraken Eel
+    icon: kraken_eel
+    detect-tag: faultline_kraken_eel
+    where: Summoned by the Kraken in his third phase.
+    does: Swims straight at you and zaps you (with a short slow). Dies in a hit or two.
+    drops:
+    - Nothing|-
+  - chapter: consumables
+    name: Bait Worm
+    icon: kraken_worm
+    detect: faultlineitems:kraken_worm
+    how: 0.5% from digging dirt, grass, coarse dirt, rooted dirt, mud, or podzol. The Skeleton Wanderer sometimes sells one.
+    does: Drop it into a Deep Ocean (15+ blocks of water) to summon the Kraken.
+  - chapter: accessories
+    name: Coral Lung
+    icon: coral_lung
+    detect: faultlineitems:coral_lung
+    how: 3% from Pufferfish.
+    does: 'Kraken counter: his air bubbles refill all of your air at once and give 5 seconds of Water Breathing.'
+  - chapter: accessories
+    name: Glow Gland
+    icon: glow_gland
+    detect: faultlineitems:glow_gland
+    how: 4% from Glow Squid.
+    does: 'Kraken counter: immune to his ink (no Darkness or Blindness from it), and you can see clearly inside the cloud.'
+  - chapter: accessories
+    name: Eelskin Wrap
+    icon: eelskin_wrap
+    detect: faultlineitems:eelskin_wrap
+    how: 2% from Drowned.
+    does: 'Kraken counter: break free of his grip 3x faster, his whirlpools pull you 50% less, and his eels deal half damage.'
+  - chapter: accessories
+    name: Abyssal Diving Suit
+    icon: abyssal_diving_suit
+    detect: faultlineitems:abyssal_diving_suit
+    how: 40% from the Kraken.
+    does: Breathe underwater, immune to Crush Depth, everything the Abyssal Diving Gear does, and 3 plates that each absorb 15% of a hit underwater (a broken plate regrows after 20 seconds).

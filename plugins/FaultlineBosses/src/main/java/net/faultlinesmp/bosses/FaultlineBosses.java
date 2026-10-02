@@ -294,7 +294,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 case "summon" -> {
                     if (self == null) { sender.sendMessage("Players only."); return true; }
                     if (r != null) { sender.sendMessage(ChatColor.GRAY + "Rocco Vendetta is already here."); return true; }
-                    vendetta.summon(self.getLocation().add(self.getLocation().getDirection().setY(0).normalize().multiply(6)), self);
+                    vendetta.summon(self.getLocation().add(Vendetta.flatDir(self.getLocation()).multiply(6)), self);
                     sender.sendMessage(ChatColor.GRAY + "(Fight him in survival; creative players don't count as fighters.)");
                 }
                 case "kill" -> { if (r != null) { r.leave(null); sender.sendMessage(ChatColor.GREEN + "Removed Rocco Vendetta."); } else sender.sendMessage(ChatColor.GRAY + "He isn't here."); }
@@ -10510,7 +10510,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 case "rocco" -> {
                     vendetta.summon(at.clone().add(look.clone().multiply(3)), null);
                     morph.boss = vendetta.rocco;
-                    if (vendetta.rocco != null) { vendetta.rocco.state = Vendetta.FIGHT; vendetta.rocco.st = 0; } // no entrance
+                    if (vendetta.rocco != null) { vendetta.rocco.state = Vendetta.FIGHT; vendetta.rocco.st = 0; vendetta.rocco.playMusic(); } // no entrance
                 }
                 default -> {
                     summonDon(at, p);

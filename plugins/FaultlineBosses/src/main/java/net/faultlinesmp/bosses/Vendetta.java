@@ -102,6 +102,21 @@ final class Vendetta implements Listener {
 
     double c(String path, double def) { return pl.getConfig().getDouble("rocco." + path, def); }
 
+    /**
+     * Where a location faces, flattened. BUG FIX: looking straight up or down flattens to a zero vector, and normalizing
+     * that gave NaN coordinates (a contract used looking at your feet tried to spawn him at NaN, NaN, NaN).
+     */
+    static Vector flatDir(Location l) {
+        Vector d = l.getDirection().setY(0);
+        if (d.lengthSquared() < 1e-4) d = new Vector(-Math.sin(Math.toRadians(l.getYaw())), 0, Math.cos(Math.toRadians(l.getYaw())));
+        return d.lengthSquared() < 1e-4 ? new Vector(0, 0, 1) : d.normalize();
+    }
+
+    static Vector flat(Vector v, Vector fallback) {
+        Vector d = v.clone().setY(0);
+        return d.lengthSquared() < 1e-4 ? fallback.clone() : d.normalize();
+    }
+
     static boolean ours(Entity e) {
         for (String t : TAGS) if (e.getScoreboardTags().contains(t)) return true;
         return false;
@@ -200,7 +215,7 @@ final class Vendetta implements Listener {
         String problem = pl.flatProblem(p.getLocation());
         if (problem != null) { p.sendMessage(ChatColor.RED + problem.replace("He ", "Rocco ") + ChatColor.GRAY + " (The contract wasn't used.)"); return; }
         if (p.getGameMode() != GameMode.CREATIVE) p.getInventory().getItemInMainHand().setAmount(p.getInventory().getItemInMainHand().getAmount() - 1);
-        summon(p.getLocation().add(p.getLocation().getDirection().setY(0).normalize().multiply(6)), p);
+        summon(p.getLocation().add(flatDir(p.getLocation()).multiply(6)), p);
     }
 
     // =====================================================================================================
@@ -213,8 +228,10 @@ final class Vendetta implements Listener {
     void stun(LivingEntity e, int ticks) {
         if (ticks <= 0 || e.isDead() || MORPHED.contains(e.getUniqueId())) return; // never the admin playing a boss
         if (now < stunImmune.getOrDefault(e.getUniqueId(), 0)) return; // just got out of one: can't be chain-stunned forever
-        int until = Math.max(stunned.getOrDefault(e.getUniqueId(), 0), now + ticks);
-        stunned.put(e.getUniqueId(), until);
+        // BUG FIX: a hit on someone already stunned used to EXTEND the stun, so back-to-back kicks kept you stunned forever.
+        // A stun now runs out on time; the next one can only land after the immunity window.
+        if (stunned.containsKey(e.getUniqueId())) return;
+        stunned.put(e.getUniqueId(), now + ticks);
         for (Attribute a : List.of(Attribute.MOVEMENT_SPEED, Attribute.JUMP_STRENGTH)) {
             AttributeInstance ai = e.getAttribute(a);
             if (ai != null && ai.getModifier(stunKey) == null) ai.addTransientModifier(new AttributeModifier(stunKey, -1.0, AttributeModifier.Operation.MULTIPLY_SCALAR_1));
@@ -348,20 +365,27 @@ final class Vendetta implements Listener {
             pos.setY(Math.max(floor, pos.getY() - fallV));
         }
 
-        /** Teleports (blinks) to a spot on the ground. */
-        void blinkTo(Vector to) {
+        /**
+         * Teleports (blinks) to a spot on the ground. BUG FIX: a blink behind someone standing against a wall put him
+         * inside the wall, then on top of it. If the spot isn't open, or its floor is far off, he lands at `fallback`.
+         */
+        void blinkTo(Vector to, Vector fallback) {
             afterimage();
             world.spawnParticle(Particle.DUST, loc().add(0, 1, 0), 14, 0.3, 0.8, 0.3, 0, new Particle.DustOptions(Color.fromRGB(150, 50, 200), 1.3f));
-            pos = to.clone();
-            clamp();
-            pos.setY(floorY(pos.getX(), pos.getZ(), pos.getY() + 1.5));
+            Vector want = to.clone();
+            clamp0(want);
+            double floor = floorY(want.getX(), want.getZ(), want.getY() + 1.5);
+            boolean open = world.getBlockAt(want.getBlockX(), (int) Math.floor(floor), want.getBlockZ()).isPassable()
+                    && world.getBlockAt(want.getBlockX(), (int) Math.floor(floor) + 1, want.getBlockZ()).isPassable();
+            if (!open || Math.abs(floor - to.getY()) > 2.5) { want = fallback.clone(); clamp0(want); floor = floorY(want.getX(), want.getZ(), want.getY() + 1); }
+            pos = want; pos.setY(floor); fallV = 0;
             world.playSound(loc(), Sound.ENTITY_ENDERMAN_TELEPORT, 1.1f, 1.3f);
         }
 
+        void clamp0(Vector v) { }
+
         Vector behind(LivingEntity target, double dist) {
-            Vector dir = target.getLocation().getDirection().setY(0);
-            if (dir.lengthSquared() < 0.01) dir = new Vector(1, 0, 0);
-            return target.getLocation().toVector().subtract(dir.normalize().multiply(dist));
+            return target.getLocation().toVector().subtract(flatDir(target.getLocation()).multiply(dist));
         }
 
         abstract void clamp();
@@ -511,10 +535,13 @@ final class Vendetta implements Listener {
         LivingEntity victim; Vector lock;  // Extermination
         double rage = 1;                  // Werner died: he hits harder
         final BossBar bar;
+        final Set<UUID> listeners = new HashSet<>();
+        long musicStart = -1;
 
         Rocco(Location at, Player by) {
             super(at, "rocco", (float) c("scale", 1.2), ROCCO_TAG, "Rocco Vendetta", c("hitbox-scale", 2.25), true, Color.fromRGB(190, 80, 255));
-            home = at.clone();
+            pos.setY(floorY(pos.getX(), pos.getZ(), pos.getY() + 2)); // BUG FIX: on a slope he hung in the air or stood in the hill
+            home = pos.toLocation(world);
             if (by != null) { fighters.add(by.getUniqueId()); faceNow(by.getLocation().toVector()); }
             maxHp = hp = c("health", 5000);
             pl.proxy(hitbox, parts[2], EntityType.VINDICATOR, scale);
@@ -527,7 +554,7 @@ final class Vendetta implements Listener {
         @Override void clamp() { clamp0(pos); }
 
         /** Keeps a point inside his arena (Werner uses it too). */
-        void clamp0(Vector v) {
+        @Override void clamp0(Vector v) {
             double r = c("arena-radius", 40);
             v.setX(Math.max(home.getX() - r, Math.min(home.getX() + r, v.getX())));
             v.setZ(Math.max(home.getZ() - r, Math.min(home.getZ() + r, v.getZ())));
@@ -564,6 +591,32 @@ final class Vendetta implements Listener {
             return vengeance > 0 ? s * (1 + c("vengeance.speed-bonus", 0.4)) : s;
         }
 
+        // ---------- music: his battle theme (3:10), looped for the whole fight ----------
+        void playMusic() {
+            musicStart = System.currentTimeMillis();
+            if (!pl.getConfig().getBoolean("rocco.music.enabled", true)) return;
+            for (Player p : world.getPlayers()) if (p.getLocation().toVector().distanceSquared(pos) < 96 * 96) listen(p);
+        }
+
+        void listen(Player p) {
+            p.stopSound(org.bukkit.SoundCategory.MUSIC);
+            p.playSound(p, "faultline:rocco.music", org.bukkit.SoundCategory.RECORDS, (float) c("music.volume", 1.0), 1f);
+            listeners.add(p.getUniqueId());
+        }
+
+        void stopMusic() {
+            for (UUID id : listeners) { Player p = Bukkit.getPlayer(id); if (p != null) p.stopSound("faultline:rocco.music", org.bukkit.SoundCategory.RECORDS); }
+            listeners.clear();
+            musicStart = -1;
+        }
+
+        void musicTick() {
+            if (musicStart < 0 || !pl.getConfig().getBoolean("rocco.music.enabled", true)) return;
+            if (System.currentTimeMillis() - musicStart > c("music.length-seconds", 190) * 1000) { stopMusic(); playMusic(); return; }
+            for (Player p : world.getPlayers()) // someone who walks up mid-fight hears it too
+                if (!listeners.contains(p.getUniqueId()) && survival(p) && p.getLocation().toVector().distanceSquared(pos) < 64 * 64) listen(p);
+        }
+
         // ---------- the update ----------
         void tick() {
             tickCommon(); st++;
@@ -595,6 +648,7 @@ final class Vendetta implements Listener {
             fam.removeIf(m -> !m.isValid() || m.isDead());
             pl.bossPart("Rocco Vendetta", "drawing", () -> render(state == FIGHT ? nearest(a) : null));
             if (ticks % 5 == 0) pl.bossPart("Rocco Vendetta", "boss bar", this::updateBar);
+            if (ticks % 20 == 0 && state != DEFEAT) pl.bossPart("Rocco Vendetta", "music", this::musicTick);
         }
 
         void arriveTick(List<Player> a) {
@@ -609,7 +663,8 @@ final class Vendetta implements Listener {
                 world.playSound(home, Sound.ENTITY_EVOKER_PREPARE_SUMMON, 2f, 0.6f);
             }
             if (st == 50) say(ChatColor.LIGHT_PURPLE + "\"You signed. Now you pay.\"", 50);
-            if (st >= 70) { state = FIGHT; st = 0; recover = 10; pose = powerPose(); }
+            settle();
+            if (st >= 70) { state = FIGHT; st = 0; recover = 10; pose = powerPose(); playMusic(); }
         }
 
         void fightTick(List<Player> a) {
@@ -718,7 +773,7 @@ final class Vendetta implements Listener {
 
         void counter(Player p) {
             guarding = false;
-            blinkTo(behind(p, 1.6));
+            blinkTo(behind(p, 1.6), p.getLocation().toVector());
             faceNow(p.getLocation().toVector());
             pose = uppercutPose();
             world.playSound(loc(), Sound.ENTITY_PLAYER_ATTACK_CRIT, 1.6f, 0.5f);
@@ -752,7 +807,7 @@ final class Vendetta implements Listener {
 
         // ---------- 5) Watch Your Back!: behind you, a hit, behind you again, another hit ----------
         void watchYourBack(Player target) {
-            if (t == 0) { say(ChatColor.LIGHT_PURPLE + "\"Watch your back!\"", 25); blinkTo(behind(target, 2.0)); faceNow(target.getLocation().toVector()); pose = punchWindPose(); }
+            if (t == 0) { say(ChatColor.LIGHT_PURPLE + "\"Watch your back!\"", 25); blinkTo(behind(target, 2.0), target.getLocation().toVector()); faceNow(target.getLocation().toVector()); pose = punchWindPose(); }
             if (t == 6 || t == 20) {
                 faceNow(target.getLocation().toVector());
                 pose = t == 6 ? punchPose() : hookPose();
@@ -760,7 +815,7 @@ final class Vendetta implements Listener {
                 hitCd.remove(target.getUniqueId());
                 if (target.getLocation().toVector().distanceSquared(pos) < 3.6 * 3.6) hit(target, c("back-damage", 8), Guard.BLOCKABLE, 0, 0.6);
             }
-            if (t == 14) { blinkTo(behind(target, 2.0)); faceNow(target.getLocation().toVector()); pose = mirror(punchWindPose()); }
+            if (t == 14) { blinkTo(behind(target, 2.0), target.getLocation().toVector()); faceNow(target.getLocation().toVector()); pose = mirror(punchWindPose()); }
             if (t > 20 && t < 30) pose = Pose.lerp(pose, standPose(), 0.25f);
             if (t >= 30) end(14);
         }
@@ -821,6 +876,9 @@ final class Vendetta implements Listener {
             }
             if (t == 70) {
                 lock = victim.getLocation().toVector();
+                // BUG FIX: a stun from Werner (or a kick) could pin the victim in the locked ring: certain death, no dodge.
+                if (stunned.remove(victim.getUniqueId()) != null) unstun(victim);
+                stunImmune.put(victim.getUniqueId(), now + dodge + 5);
                 if (victim instanceof Player vp) vp.sendActionBar(legacy(ChatColor.RED + "" + ChatColor.BOLD + "MOVE! " + ChatColor.GRAY + "Get out of the red ring!"));
             }
             if (t == 70 + dodge) { // the slam
@@ -875,8 +933,8 @@ final class Vendetta implements Listener {
             LivingEntity tg = targets.get(i % targets.size());
             if (!tg.isValid() || tg.isDead()) return;
             if (k == 0) {
-                Vector front = tg.getLocation().toVector().add(tg.getLocation().getDirection().setY(0).normalize().multiply(1.8));
-                blinkTo(front); faceNow(tg.getLocation().toVector()); pose = i % 2 == 0 ? punchWindPose() : mirror(punchWindPose());
+                Vector front = tg.getLocation().toVector().add(flatDir(tg.getLocation()).multiply(1.8));
+                blinkTo(front, tg.getLocation().toVector()); faceNow(tg.getLocation().toVector()); pose = i % 2 == 0 ? punchWindPose() : mirror(punchWindPose());
             }
             if (k == 5) {
                 pose = i % 2 == 0 ? punchPose() : hookPose();
@@ -954,6 +1012,7 @@ final class Vendetta implements Listener {
         // ---------- defeat ----------
         void defeat() {
             state = DEFEAT; st = 0; attack = -1; guarding = false; lift = 0; sworn = 0; keepAlive = false;
+            stopMusic();
             bar.removeAll();
             for (LivingEntity m : fam) if (m.isValid()) m.remove();
             fam.clear();
@@ -1018,6 +1077,7 @@ final class Vendetta implements Listener {
         void removeEverything() {
             if (state == DEFEAT && !rewarded) { rewarded = true; try { rewards(); } catch (RuntimeException e) { pl.logBossPart("Rocco Vendetta", "rewards", e); } }
             bar.removeAll();
+            stopMusic();
             if (werner != null) { werner.remove(); werner = null; }
             for (LivingEntity m : fam) if (m.isValid()) m.remove();
             fam.clear();
@@ -1080,10 +1140,10 @@ final class Vendetta implements Listener {
                 v.remove();
                 continue;
             }
-            if (v.getTarget() instanceof Monster m && m.isValid() && !ours(m)) continue;
+            if (v.getTarget() instanceof Monster m && m.isValid() && !m.getScoreboardTags().contains(FAM_ALLY_TAG)) continue;
             LivingEntity best = null; double bd = 16 * 16;
             for (Entity e : owner.getNearbyEntities(16, 8, 16)) {
-                if (!(e instanceof Monster m) || ours(m) || m.isDead()) continue;
+                if (!(e instanceof Monster m) || m.getScoreboardTags().contains(FAM_ALLY_TAG) || m.isDead()) continue;
                 double d = m.getLocation().distanceSquared(owner.getLocation());
                 if (d < bd) { bd = d; best = m; }
             }
@@ -1097,7 +1157,7 @@ final class Vendetta implements Listener {
         Entity e = event.getEntity();
         LivingEntity tg = event.getTarget();
         if (tg == null) return;
-        if (e.getScoreboardTags().contains(FAM_ALLY_TAG) && (tg instanceof Player || ours(tg) || (tg instanceof org.bukkit.entity.Tameable tm && tm.isTamed()))) event.setCancelled(true);
+        if (e.getScoreboardTags().contains(FAM_ALLY_TAG) && (tg instanceof Player || tg.getScoreboardTags().contains(FAM_ALLY_TAG) || (tg instanceof org.bukkit.entity.Tameable tm && tm.isTamed()))) event.setCancelled(true);
         if (e.getScoreboardTags().contains(FAM_TAG) && ours(tg)) event.setCancelled(true);
         if (isBody(tg) || tg.getScoreboardTags().contains(PROXY_TAG)) event.setCancelled(true);
     }
@@ -1105,7 +1165,7 @@ final class Vendetta implements Listener {
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onFamFriendlyFire(EntityDamageByEntityEvent event) {
         Entity d = event.getDamager();
-        if (d.getScoreboardTags().contains(FAM_ALLY_TAG) && (event.getEntity() instanceof Player || ours(event.getEntity()))) event.setCancelled(true);
+        if (d.getScoreboardTags().contains(FAM_ALLY_TAG) && (event.getEntity() instanceof Player || event.getEntity().getScoreboardTags().contains(FAM_ALLY_TAG))) event.setCancelled(true);
         if (d.getScoreboardTags().contains(FAM_TAG) && ours(event.getEntity())) event.setCancelled(true);
     }
 
@@ -1146,9 +1206,8 @@ final class Vendetta implements Listener {
             world.spawnParticle(Particle.LARGE_SMOKE, at.clone().add(0, 1, 0), 40, 0.5, 1, 0.5, 0.02);
         }
 
-        @Override void clamp() {
-            if (brother != null) brother.clamp0(pos);
-        }
+        @Override void clamp() { clamp0(pos); }
+        @Override void clamp0(Vector v) { if (brother != null) brother.clamp0(v); }
 
         @Override double damageScale() {
             return (1 + members * c("werner.member-bonus", 0.15)) * (gutBuff > 0 ? 1 + c("werner.gut-crush-bonus", 0.25) : 1);
@@ -1164,7 +1223,7 @@ final class Vendetta implements Listener {
         List<LivingEntity> enemies() {
             List<LivingEntity> out = new ArrayList<>();
             if (owner == null) { if (brother != null) out.addAll(brother.active()); return out; }
-            for (Entity e : owner.getNearbyEntities(16, 8, 16)) if (e instanceof Monster m && !ours(m) && !m.isDead()) out.add(m);
+            for (Entity e : owner.getNearbyEntities(16, 8, 16)) if (e instanceof Monster m && !m.getScoreboardTags().contains(FAM_ALLY_TAG) && !m.isDead()) out.add(m);
             return out;
         }
 
@@ -1215,7 +1274,7 @@ final class Vendetta implements Listener {
                 if (awaitsCd <= 0) pool.add(W_AWAITS);
                 int pick = pool.get(random.nextInt(pool.size()));
                 if (pick != W_SEIZE && pick != W_AWAITS && to.length() > 2.6) {
-                    if (!step(to.normalize().multiply(c("werner.speed", 0.36)))) { blinkTo(target.getLocation().toVector().subtract(to.normalize().multiply(1.5))); }
+                    if (!step(to.normalize().multiply(c("werner.speed", 0.36)))) { blinkTo(target.getLocation().toVector().subtract(to.normalize().multiply(1.5)), target.getLocation().toVector()); }
                     pose = runPose(ticks, 1f);
                     return;
                 }
@@ -1282,9 +1341,17 @@ final class Vendetta implements Listener {
                             }
                             if (isStunned(e)) debuffs++;
                             double dmg = c("werner.awaits-damage", 8) * (1 + debuffs * c("werner.awaits-per-debuff", 0.25));
-                            if (weak) dmg = Math.max(dmg, e.getHealth() / 2 / Math.max(0.1, damageScale())); // weakened: half your health
                             hitCd.remove(e.getUniqueId());
-                            hitAny(e, dmg, Guard.UNBLOCKABLE, (int) c("werner.awaits-stun-ticks", 60), 0.6, credit);
+                            if (weak && e instanceof Player wp && credit == null) {
+                                // BUG FIX: "half your health" went through armor, so armored players lost far less than half
+                                if (!survival(wp)) continue;
+                                wp.setHealth(Math.max(0.5, wp.getHealth() / 2));
+                                wp.playHurtAnimation(0);
+                                stun(wp, (int) c("werner.awaits-stun-ticks", 60));
+                            } else {
+                                if (weak) dmg = Math.max(dmg, e.getHealth() / 2 / Math.max(0.1, damageScale()));
+                                hitAny(e, dmg, Guard.UNBLOCKABLE, (int) c("werner.awaits-stun-ticks", 60), 0.6, credit);
+                            }
                             e.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 100, 1));
                             e.addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS, 100, 1));
                         }
@@ -1313,7 +1380,7 @@ final class Vendetta implements Listener {
 
         void counter(Player p) {
             guarding = false;
-            blinkTo(behind(p, 1.5)); faceNow(p.getLocation().toVector());
+            blinkTo(behind(p, 1.5), p.getLocation().toVector()); faceNow(p.getLocation().toVector());
             pose = uppercutPose();
             world.playSound(loc(), Sound.ENTITY_PLAYER_ATTACK_CRIT, 1.5f, 0.8f);
             hitCd.remove(p.getUniqueId());
@@ -1413,7 +1480,25 @@ final class Vendetta implements Listener {
     int tattoos(Player p) { return p.getPersistentDataContainer().getOrDefault(tattooKey, PersistentDataType.INTEGER, 0); }
     void setTattoos(Player p, int n) { p.getPersistentDataContainer().set(tattooKey, PersistentDataType.INTEGER, Math.max(0, Math.min((int) c("max-tattoos", 50), n))); }
 
+    final Map<UUID, Integer> lastFistUse = new HashMap<>();
+
+    /**
+     * BUG FIX: right-clicking a MOB with the Fist is an entity click, not an item use, so Kick and Punch (which you aim at
+     * a mob in reach) never went off. Entity clicks use the Fist too.
+     */
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onFistEntity(org.bukkit.event.player.PlayerInteractEntityEvent event) {
+        if (event.getHand() != EquipmentSlot.HAND) return;
+        Player p = event.getPlayer();
+        if (!holdingFist(p)) return;
+        event.setCancelled(true);
+        fistUse(p);
+    }
+
     void fistUse(Player p) {
+        // one use per click: a click on a mob can also arrive as an item use the same tick (it cycled moves twice)
+        if (lastFistUse.getOrDefault(p.getUniqueId(), -10) >= now - 1) return;
+        lastFistUse.put(p.getUniqueId(), now);
         ItemStack it = p.getInventory().getItemInMainHand();
         ItemMeta m = it.getItemMeta();
         int sel = Math.floorMod(m.getPersistentDataContainer().getOrDefault(moveKey, PersistentDataType.INTEGER, 0), FIST_MOVES.size());
@@ -1482,9 +1567,18 @@ final class Vendetta implements Listener {
         return out;
     }
 
+    /**
+     * A boss (or a boss's part): Fist damage to it is capped and it can't be stunned. BUG FIX: any "faultline_" tag counted,
+     * so Rocco's own Enforcers (and other plain minions) were treated as bosses: capped, and immune to Kick/Punch stuns.
+     */
+    static boolean bossLike(Entity e) {
+        for (String t : e.getScoreboardTags()) if (t.startsWith("faultline_") && !t.equals(FAM_TAG) && !t.equals(FAM_ALLY_TAG) && !t.equals("faultline_summon")) return true;
+        return false;
+    }
+
     /** Damage from the Fist: bosses (their hitboxes) take a capped amount, so nothing one-shots a boss. */
     void fistDamage(Player p, LivingEntity e, double dmg) {
-        boolean boss = e.getScoreboardTags().stream().anyMatch(s -> s.startsWith("faultline_"));
+        boolean boss = bossLike(e);
         if (boss) dmg = Math.min(dmg, c("fist.boss-damage-cap", 60));
         e.damage(dmg, p);
     }
@@ -1496,7 +1590,7 @@ final class Vendetta implements Listener {
                 LivingEntity e = aimed(p, 4);
                 if (e == null) { p.sendActionBar(legacy(ChatColor.GRAY + "Nothing in reach.")); return false; }
                 fistDamage(p, e, sel == 0 ? c("fist.kick-damage", 10) : c("fist.punch-damage", 9));
-                if (!e.getScoreboardTags().stream().anyMatch(s -> s.startsWith("faultline_"))) stun(e, (int) c("stun-ticks", 60));
+                if (!bossLike(e)) stun(e, (int) c("stun-ticks", 60));
                 Vector kb = e.getLocation().toVector().subtract(p.getLocation().toVector()).setY(0);
                 if (kb.lengthSquared() > 0.01) e.setVelocity(kb.normalize().multiply(sel == 0 ? 1.0 : 0.6).setY(0.3));
                 w.playSound(p.getLocation(), sel == 0 ? Sound.ENTITY_PLAYER_ATTACK_KNOCKBACK : Sound.ENTITY_PLAYER_ATTACK_STRONG, 1.2f, 0.7f);
@@ -1611,7 +1705,7 @@ final class Vendetta implements Listener {
                         List<LivingEntity> foes = near(p, 8);
                         if (i >= 3 || foes.isEmpty()) { acts.remove(a); continue; }
                         LivingEntity e = foes.get(i % foes.size());
-                        Location to = e.getLocation().add(e.getLocation().toVector().subtract(p.getLocation().toVector()).setY(0).normalize().multiply(-1.4));
+                        Location to = e.getLocation().add(flat(e.getLocation().toVector().subtract(p.getLocation().toVector()), flatDir(p.getLocation())).multiply(-1.4));
                         to.setDirection(e.getLocation().toVector().subtract(to.toVector()));
                         if (to.getBlock().isPassable() && to.clone().add(0, 1, 0).getBlock().isPassable()) p.teleport(to);
                         fistDamage(p, e, c("fist.tests-damage", 10));
@@ -1632,7 +1726,7 @@ final class Vendetta implements Listener {
                         p.setFallDistance(0);
                         w.playSound(to, Sound.ENTITY_GENERIC_EXPLODE, 2f, 0.5f);
                         w.spawnParticle(Particle.EXPLOSION_EMITTER, to, 1);
-                        boolean boss = e.getScoreboardTags().stream().anyMatch(s -> s.startsWith("faultline_"));
+                        boolean boss = bossLike(e);
                         fistDamage(p, e, boss ? c("fist.extermination-boss-damage", 250) : Math.max(1000, e.getHealth() + 1));
                         for (LivingEntity o : near(p, 4)) if (!o.equals(e)) fistDamage(p, o, 10);
                         acts.remove(a);
@@ -1656,7 +1750,7 @@ final class Vendetta implements Listener {
                 payback.remove(p.getUniqueId());
                 event.setCancelled(true);
                 fistDamage(p, le, event.getDamage() * c("fist.payback-multiplier", 1.5));
-                if (!le.getScoreboardTags().stream().anyMatch(s -> s.startsWith("faultline_"))) stun(le, 40);
+                if (!bossLike(le)) stun(le, 40);
                 p.getWorld().playSound(p.getLocation(), Sound.ENTITY_PLAYER_ATTACK_CRIT, 1.2f, 0.6f);
                 p.sendActionBar(legacy(ChatColor.LIGHT_PURPLE + "" + ChatColor.BOLD + "PAYBACK!"));
                 return;
@@ -1674,7 +1768,7 @@ final class Vendetta implements Listener {
         if (after > 0 && after <= max / 2 && System.currentTimeMillis() > wernerCd.getOrDefault(p.getUniqueId(), 0L)) {
             for (Werner w : allies) if (w.owner != null && w.owner.equals(p)) return;
             wernerCd.put(p.getUniqueId(), System.currentTimeMillis() + (long) (c("fist.werner-cooldown-seconds", 300) * 1000));
-            Location at = p.getLocation().add(p.getLocation().getDirection().setY(0).normalize().multiply(-2));
+            Location at = p.getLocation().add(flatDir(p.getLocation()).multiply(-2));
             Bukkit.getScheduler().runTask(pl, () -> {
                 if (!p.isOnline() || p.isDead()) return;
                 allies.add(new Werner(at, null, p));

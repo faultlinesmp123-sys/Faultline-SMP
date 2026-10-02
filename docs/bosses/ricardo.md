@@ -6,6 +6,11 @@ Bosses config. Admin command: `/rocco <summon|kill|phase <2|3>|tattoos [n]|werne
 Art: `tools/vendetta_models.py` (skins, rigs, Fist, Contract, Index icons). Werner's look follows the owner's reference
 picture (white hair, purple coat with black fur, gold chains, white trousers); Rocco is the darker big brother.
 
+## Music
+His battle theme (Limbus Company OST, Canto IX Boss 6, 3:10) is `sounds/rocco/music.ogg` in FaultlineSMP.zip
+(`faultline:rocco.music`). It starts when the fight does, loops every 190 seconds, reaches anyone who walks up mid-fight,
+and stops when he falls or leaves. `rocco.music.enabled/volume/length-seconds` in the Bosses config.
+
 ## Summoning
 - **Vendetta Contract**: craft a Book with 4 Gold Blocks (corners) and 4 Netherite Scrap (sides). Use it on open, flat ground
   (same check as Don Lorenzo: no buildings, no villagers). 15 minute cooldown after he falls.

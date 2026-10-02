@@ -386,6 +386,10 @@ rocco:
     cosmetic-chance: 0.33     # killing Werner: a 1 in 3 chance at one of the cosmetics
     death-rage: 0.15          # Rocco hits 15% harder once Werner is down
   cooldown-minutes: 15
+  music:
+    enabled: true             # his battle theme: sounds/rocco/music.ogg in FaultlineSMP.zip (3:10, loops)
+    volume: 1.0
+    length-seconds: 190
   rewards:
     mythic-bags-min: 50
     mythic-bags-extra: 101    # 50-150 Mythic Goodie Bags

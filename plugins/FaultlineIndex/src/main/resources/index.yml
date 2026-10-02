@@ -226,7 +226,7 @@ entries:
              "1-3 Netherite Ingots|50%", "Shield of the Demon Eye|25%", "Twin Eye Staff|20%", "1,000 XP|100%"]}
   - {chapter: bosses, name: "Queen Spider", icon: queen_spider, detect-tag: faultline_queen_spider,
      where: "Deep in caves: 1% of spiders spawning underground. 500 health.",
-     does: "Poison bites, Venom Spit, a pounce, a ground stomp, webs around every player, and swarms of brood. Enrages at half health.",
+     does: "Poison bites, Venom Spit, a pounce, a ground stomp, webs around every player, swarms of brood, and egg sacs (big eggs in a web: break the web before they hatch into Cave Spiders). Enrages at half health.",
      drops: ["10 Spider Eyes|100%", "5-10 Diamonds|50%", "Spider Staff|10%", "Queen's Silk|5%", "300 XP|100%"]}
   - {chapter: bosses, name: "Captain Rotbeard", icon: captain_rotbeard, detect-tag: faultline_rotbeard,
      where: "Appears at the end of level IV and V Zombie Raids. 500 health.",

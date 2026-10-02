@@ -275,6 +275,8 @@ queen-spider-boss:
   web-cooldown-seconds: 14     # Web Trap: webs all around you
   web-seconds: 5
   egg-sac-cooldown-seconds: 22 # sacs hatch into 3 Cave Spiders after 6s unless broken
+  egg-sacs: 3                  # egg sacs per lay (big eggs in a web, 3-7 blocks from her: break the web)
+  egg-sac-hatch-seconds: 6
   # Enraged at half health: faster, and every cooldown above is halved.
   xp: 300
   diamond-chance: 0.5          # 5-10 diamonds

@@ -5356,6 +5356,7 @@ public final class FaultlineItems extends JavaPlugin {
         private final Map<UUID, Queen> queens = new HashMap<>();
         private final Set<Block> webs = new HashSet<>();
         private final Map<Block, UUID> eggSacs = new HashMap<>(); // sac block -> its queen
+        private final Map<Block, org.bukkit.entity.ItemDisplay> sacLooks = new HashMap<>(); // the egg you can see on each sac
 
         QueenSpiderManager(FaultlineItems plugin) {
             this.plugin = plugin;
@@ -5522,16 +5523,16 @@ public final class FaultlineItems extends JavaPlugin {
 
                 // Egg Sacs: hatch into Cave Spiders unless broken first
                 if (now >= q.nextSacs) {
-                    for (int i = 0; i < 2; i++) {
-                        Block spot = queen.getLocation().add(random.nextInt(9) - 4, 0, random.nextInt(9) - 4).getBlock();
-                        if (!spot.getType().isAir()) continue;
-                        spot.setType(Material.COBWEB);
-                        eggSacs.put(spot, queen.getUniqueId());
-                        spot.getWorld().spawnParticle(Particle.ITEM_SLIME, spot.getLocation().add(0.5, 0.5, 0.5), 12, 0.3, 0.3, 0.3, 0);
-                        Bukkit.getScheduler().runTaskLater(plugin, () -> hatch(spot), 6 * 20L);
-                    }
-                    for (Player p : near) p.sendActionBar(legacy(ChatColor.DARK_PURPLE + "The Queen lays egg sacs... break them before they hatch!"));
-                    q.nextSacs = now + cd(q, "egg-sac-cooldown-seconds", 22);
+                    int laid = laySacs(queen, target, (int) cfg("egg-sacs", 3));
+                    if (laid > 0) {
+                        queen.getWorld().playSound(queen.getLocation(), Sound.ENTITY_TURTLE_LAY_EGG, 2f, 0.5f);
+                        queen.getWorld().playSound(queen.getLocation(), Sound.ENTITY_SPIDER_AMBIENT, 2f, 0.6f);
+                        for (Player p : near) {
+                            p.sendMessage(ChatColor.DARK_PURPLE + "The Queen Spider lays " + laid + " egg sacs! " + ChatColor.GRAY + "Break them before they hatch.");
+                            p.sendActionBar(legacy(ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + "EGG SACS! " + ChatColor.GRAY + "Break them before they hatch!"));
+                        }
+                        q.nextSacs = now + cd(q, "egg-sac-cooldown-seconds", 22);
+                    } else q.nextSacs = now + 2000; // nowhere to put them right now: try again soon
                 }
             }
         }
@@ -5547,7 +5548,79 @@ public final class FaultlineItems extends JavaPlugin {
             }
         }
 
+        /**
+         * Lays egg sacs on open floor around her: a big egg you can see, wrapped in web (break the web to destroy it).
+         * BUG FIX: they used to be plain cobwebs dropped within 4 blocks of her, at her feet height. She's 3x a spider's
+         * size, so they mostly ended up under her own body, and with only an action bar line it looked like she never
+         * laid any. Now they go on real floor 3-7 blocks out (toward whoever she's fighting), with a sound and a chat line.
+         */
+        private int laySacs(Spider queen, Player target, int count) {
+            Location c = queen.getLocation();
+            Vector toTarget = target.getLocation().toVector().subtract(c.toVector()).setY(0);
+            double base = toTarget.lengthSquared() > 0.01 ? Math.atan2(toTarget.getZ(), toTarget.getX()) : random.nextDouble() * Math.PI * 2;
+            int laid = 0;
+            for (int tries = 0; tries < 24 && laid < count; tries++) {
+                double ang = base + (random.nextDouble() - 0.5) * Math.PI * 1.4;
+                double r = 3 + random.nextDouble() * 4;
+                Block spot = null;
+                Block col = c.clone().add(Math.cos(ang) * r, 0, Math.sin(ang) * r).getBlock();
+                for (int dy = 2; dy >= -3; dy--) { // find the floor near her height
+                    Block b = col.getRelative(0, dy, 0);
+                    if (b.getType().isAir() && b.getRelative(0, -1, 0).getType().isSolid()) { spot = b; break; }
+                }
+                if (spot == null || eggSacs.containsKey(spot)) continue;
+                spot.setType(Material.COBWEB);
+                eggSacs.put(spot, queen.getUniqueId());
+                Location eggAt = spot.getLocation().add(0.5, 0.45, 0.5);
+                org.bukkit.entity.ItemDisplay egg = spot.getWorld().spawn(eggAt, org.bukkit.entity.ItemDisplay.class, d -> {
+                    d.setItemStack(new ItemStack(Material.SNIFFER_EGG));
+                    d.setPersistent(false);
+                    d.setBrightness(new org.bukkit.entity.Display.Brightness(12, 12));
+                    d.setTransformation(new org.bukkit.util.Transformation(new org.joml.Vector3f(), new org.joml.Quaternionf(),
+                            new org.joml.Vector3f(0.75f, 0.75f, 0.75f), new org.joml.Quaternionf()));
+                    d.setInterpolationDuration(10);
+                    d.addScoreboardTag(TAG + "_sac");
+                });
+                sacLooks.put(spot, egg);
+                spot.getWorld().spawnParticle(Particle.ITEM_SLIME, eggAt, 16, 0.3, 0.3, 0.3, 0);
+                long hatchTicks = (long) (cfg("egg-sac-hatch-seconds", 6) * 20);
+                for (long k = 10; k < hatchTicks; k += 10) { // it swells and throbs faster as it gets ready to hatch
+                    final float f = (float) k / hatchTicks;
+                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                        if (!egg.isValid()) return;
+                        float sz = 0.75f + 0.35f * f + (float) Math.sin(f * 30) * 0.05f;
+                        egg.setInterpolationDelay(0);
+                        egg.setTransformation(new org.bukkit.util.Transformation(new org.joml.Vector3f(), new org.joml.Quaternionf(),
+                                new org.joml.Vector3f(sz, sz, sz), new org.joml.Quaternionf()));
+                        if (f > 0.6) egg.getWorld().playSound(egg.getLocation(), Sound.ENTITY_TURTLE_EGG_CRACK, 0.6f, 0.7f + f * 0.4f);
+                    }, k);
+                }
+                final Block sac = spot;
+                Bukkit.getScheduler().runTaskLater(plugin, () -> hatch(sac), hatchTicks);
+                laid++;
+            }
+            return laid;
+        }
+
+        private void removeSacLook(Block sac) {
+            org.bukkit.entity.ItemDisplay egg = sacLooks.remove(sac);
+            if (egg != null && egg.isValid()) egg.remove();
+        }
+
+        /** Breaking the web destroys the egg inside (and nothing hatches). */
+        @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+        public void onSacBreak(BlockBreakEvent event) {
+            Block b = event.getBlock();
+            if (!eggSacs.containsKey(b)) return;
+            eggSacs.remove(b);
+            event.setDropItems(false);
+            b.getWorld().playSound(b.getLocation(), Sound.ENTITY_TURTLE_EGG_BREAK, 1.5f, 0.6f);
+            b.getWorld().spawnParticle(Particle.ITEM_SLIME, b.getLocation().add(0.5, 0.4, 0.5), 20, 0.3, 0.3, 0.3, 0);
+            removeSacLook(b);
+        }
+
         private void hatch(Block sac) {
+            removeSacLook(sac);
             UUID queenId = eggSacs.remove(sac);
             if (queenId == null || sac.getType() != Material.COBWEB) return; // broken in time
             sac.setType(Material.AIR);
@@ -5660,7 +5733,12 @@ public final class FaultlineItems extends JavaPlugin {
             if (!isQueen(dead)) return;
             Queen q = queens.remove(dead.getUniqueId());
             if (q != null) q.bar.removeAll();
-            eggSacs.values().removeIf(id -> id.equals(dead.getUniqueId())); // her unhatched sacs stay as plain webs, cleared below
+            for (Map.Entry<Block, UUID> e : new ArrayList<>(eggSacs.entrySet())) { // her unhatched sacs die with her
+                if (!e.getValue().equals(dead.getUniqueId())) continue;
+                eggSacs.remove(e.getKey());
+                removeSacLook(e.getKey());
+                if (e.getKey().getType() == Material.COBWEB) e.getKey().setType(Material.AIR);
+            }
             event.getDrops().clear();
             event.setDroppedExp(0);
             Player killer = dead.getKiller();
@@ -5714,6 +5792,7 @@ public final class FaultlineItems extends JavaPlugin {
             new ArrayList<>(webs).forEach(this::clearWeb);
             for (Block sac : new ArrayList<>(eggSacs.keySet())) {
                 if (sac.getType() == Material.COBWEB) sac.setType(Material.AIR);
+                removeSacLook(sac);
             }
             eggSacs.clear();
         }

@@ -89,6 +89,8 @@ Resource packs are served from raw GitHub links on `main`, e.g.
 The server sends **FaultlineSMP.zip** (set in FaultlineItems `config.yml` → `item-textures`).
 Changing a zip changes its hash: recompute with `sha1sum <file>.zip` and update the plugin config.
 Players download the pack from `main`, so a new hash only works once the new zip is merged to `main`.
+Keep `FaultlineSMP.zip` **under 25 MB**: the owner uploads it through GitHub's web page, which refuses bigger files.
+Almost all of its size is boss music: encode new tracks as Ogg Vorbis at `ffmpeg -c:a libvorbis -q:a 1 -ar 44100` (~80 kbps).
 
 ## Cosmetics (FaultlineCosmetics)
 - Unlock from console or another plugin: `cosmetic unlock <player> <id> [silent]` (Rocco Vendetta will drop `rocco_chains`, `rocco_book`, `rocco_coat`).

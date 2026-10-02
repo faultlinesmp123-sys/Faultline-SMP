@@ -5926,8 +5926,8 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             Vector to = target.getLocation().toVector().subtract(pos).setY(0);
             if (c < 6) {
                 yaw = (float) Math.toDegrees(Math.atan2(-to.getX(), to.getZ()));
-                if (to.length() > 2) pos.add(safeDir(to, fwd()).multiply(0.9));
-                pos.setY(floorY(pos.getX(), pos.getZ(), pos.getY() + 0.5));
+                if (to.length() > 2) stepTo(safeDir(to, fwd()).multiply(0.9)); // (steps up a block at most, stops at walls)
+                else settle();
                 pose = runPose(ticks * 2, 1.2f);
                 world.spawnParticle(Particle.FLAME, loc().add(0, 0.6, 0), 4, 0.3, 0.3, 0.3, 0.01);
             } else if (c == 6) {
@@ -6095,7 +6095,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             if (state == P1 && hp <= maxHp - per) {
                 hp = maxHp - per;
                 // built one phase at a time: until phase 2 is unlocked (max-phase), he withdraws here (no loot)
-                if (jcfg("max-phase", 3) < 2) {
+                if (jcfg("max-phase", 4) < 2) {
                     Bukkit.getScheduler().runTask(FaultlineBosses.this, () -> { if (jacob == this) {
                         Bukkit.broadcastMessage(ChatColor.AQUA + "Diamond Jacob " + ChatColor.GRAY + "pulls his hawk out of the fight... " + ChatColor.DARK_GRAY + "(Phase 2 arrives in the next update.)");
                         leave();
@@ -6106,7 +6106,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             }
             else if (state == P2 && hp <= maxHp - 2 * per) {
                 hp = maxHp - 2 * per;
-                if (jcfg("max-phase", 3) < 3) { // built one phase at a time: until phase 3 is unlocked, he withdraws here (no loot)
+                if (jcfg("max-phase", 4) < 3) { // built one phase at a time: until phase 3 is unlocked, he withdraws here (no loot)
                     Bukkit.getScheduler().runTask(FaultlineBosses.this, () -> { if (jacob == this) {
                         Bukkit.broadcastMessage(ChatColor.AQUA + "Diamond Jacob " + ChatColor.GRAY + "staggers back and retreats... " + ChatColor.DARK_GRAY + "(Phase 3 arrives in the next update.)");
                         leave();
@@ -6117,7 +6117,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             }
             else if (state == P3 && hp <= maxHp - 3 * per) {
                 hp = maxHp - 3 * per;
-                if (jcfg("max-phase", 3) < 4) { // built one phase at a time: until phase 4 is unlocked, he withdraws here (no loot)
+                if (jcfg("max-phase", 4) < 4) { // built one phase at a time: until phase 4 is unlocked, he withdraws here (no loot)
                     Bukkit.getScheduler().runTask(FaultlineBosses.this, () -> { if (jacob == this) {
                         Bukkit.broadcastMessage(ChatColor.AQUA + "Diamond Jacob " + ChatColor.GRAY + "sounds the retreat, and his army rides off with him... " + ChatColor.DARK_GRAY + "(Phase 4 arrives in the next update.)");
                         leave();
@@ -6136,6 +6136,12 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             for (JOrb o : orbs) o.remove();
             orbs.clear();
             branded = null;
+            if (which == CUT3) { // he falls: his army and spiders scatter (phase 4 is him alone, ablaze)
+                for (LivingEntity m : minions) if (m.isValid()) { world.spawnParticle(Particle.CLOUD, m.getLocation().add(0, 0.5, 0), 10, 0.3, 0.3, 0.3, 0.02); m.remove(); }
+                for (LivingEntity s : army) { if (s.getVehicle() != null) s.getVehicle().remove(); if (s.isValid()) { world.spawnParticle(Particle.CLOUD, s.getLocation().add(0, 1, 0), 16, 0.5, 0.8, 0.5, 0.02); s.remove(); } }
+                for (LivingEntity h : mounts) if (h.isValid()) h.remove();
+                minions.clear(); army.clear(); mounts.clear();
+            }
             Bukkit.getScheduler().runTask(FaultlineBosses.this, () -> { if (jacob == this && state == which && cut == null) cut = new JCut(this); });
         }
 

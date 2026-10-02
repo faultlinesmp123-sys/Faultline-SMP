@@ -41,8 +41,8 @@ All are Maven projects: Java 21, `paper-api 1.21.11-R0.1-SNAPSHOT`. Build with
 Notes:
 - `FaultlineItems.java` (~350 KB) and `FaultlineBosses.java` (~585 KB) are huge. Search them instead of reading them whole.
 - **Diamond Jacob** is being built one phase at a time, gated by `jacob.max-phase` in the Bosses config.
-  Phases 1-3 are live (`max-phase: 3`); at the end of a locked phase he withdraws with no loot.
-  Phase 4 (ablaze, cutscene 3, music track 2) is written but locked. His 5 counter charms live in
+  All 4 phases are live (`max-phase: 4`); lowering it makes him withdraw (no loot) at the end of that phase.
+  Music is on: `music1.ogg` (5:15, phases 1-3) and `music2.ogg` (4:46, cutscene 3 + phase 4). His 5 counter charms live in
   `FaultlineItems/JacobGear.java` (Falconer's Quiver, Ender Anchor, Banner of Defiance, Ember Ward, Diamond Heart);
   Bosses reads which ones a player wears from the `faultlineitems:jacob_counters` tag.
 - Changing a plugin's default `config.yml` does NOT update the copy already on the server. Tell the owner

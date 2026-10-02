@@ -3565,9 +3565,23 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         if (anchor == null || !anchor.isValid()) return;
         Proxy old = proxies.remove(anchor.getUniqueId());
         if (old != null && old.stand.isValid()) old.stand.remove();
-        Entity raw = anchor.getWorld().spawnEntity(anchor.getLocation(), type, false);
+        Class<? extends Entity> cls = type.getEntityClass();
+        if (cls == null) return;
+        // BUG FIX: the stand-in used to spawn visible to everyone and was hidden from Java players a moment later, and a
+        // Java player who wasn't hidden from it in time (or came into range from elsewhere) could see a plain zombie or
+        // vindicator standing inside Don, Jacob or Rocco. It's now invisible to everyone from the moment it exists, and
+        // only Bedrock players are shown it.
+        java.util.function.Consumer<Entity> init = e -> {
+            e.setVisibleByDefault(false);
+            e.setPersistent(false);
+            e.setSilent(true);
+            if (e instanceof org.bukkit.entity.Mob mob) mob.setAI(false);
+            if (e instanceof Zombie z) { z.setShouldBurnInDay(false); z.setCanPickupItems(false); }
+            if (e instanceof LivingEntity le) { le.getEquipment().clear(); le.setCanPickupItems(false); }
+        };
+        Entity raw = anchor.getWorld().spawn(anchor.getLocation(), cls, init);
         if (!(raw instanceof LivingEntity stand)) { raw.remove(); return; }
-        for (Player p : Bukkit.getOnlinePlayers()) if (!bedrock(p)) p.hideEntity(this, stand); // Java players never see it
+        for (Player p : Bukkit.getOnlinePlayers()) if (bedrock(p)) p.showEntity(this, stand); // only Bedrock players see it
         if (stand instanceof org.bukkit.entity.Mob mob) mob.setAI(false);
         stand.setGravity(false);
         stand.setSilent(true);
@@ -3583,7 +3597,11 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
     /** Every tick: stand-ins follow their hitboxes (feet to feet) and face where the model faces. */
     private void proxyTick() {
         if (++proxyTicks % 40 == 0) { // safety net: Java players never see a Bedrock stand-in
-            for (Player p : Bukkit.getOnlinePlayers()) if (!bedrock(p)) for (Proxy px : proxies.values()) if (px.stand.isValid()) p.hideEntity(this, px.stand);
+            for (Player p : Bukkit.getOnlinePlayers()) for (Proxy px : proxies.values()) {
+                if (!px.stand.isValid()) continue;
+                if (bedrock(p)) { if (!p.canSee(px.stand)) p.showEntity(this, px.stand); }
+                else if (p.canSee(px.stand)) p.hideEntity(this, px.stand);
+            }
         }
         for (Iterator<Map.Entry<UUID, Proxy>> it = proxies.entrySet().iterator(); it.hasNext(); ) {
             Proxy px = it.next().getValue();
@@ -3638,8 +3656,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
     @EventHandler
     public void onProxyJoin(PlayerJoinEvent event) {
         Player p = event.getPlayer();
-        if (bedrock(p)) return;
-        for (Proxy px : proxies.values()) if (px.stand.isValid()) p.hideEntity(this, px.stand);
+        for (Proxy px : proxies.values()) if (px.stand.isValid()) { if (bedrock(p)) p.showEntity(this, px.stand); else p.hideEntity(this, px.stand); }
     }
 
     /** Projectiles are item displays too: give Bedrock players a trail to see (and dodge). */

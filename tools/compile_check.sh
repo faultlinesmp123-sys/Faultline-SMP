@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Compiles every plugin in plugins/ against the real Paper 1.21.11 API, for environments that can't reach
+# Compiles every plugin in plugins/ against the real Paper API (default 26.2, what the server runs; PAPER=1.21.11
+# for the version the poms target), for environments that can't reach
 # repo.papermc.io (Claude Code cloud sessions). It builds paper-api from PaperMC's GitHub source and pulls its
 # dependencies from Maven Central, caching everything in $CACHE. This only checks that the code compiles;
 # build the real jars with `mvn package` on the server.
@@ -7,27 +8,33 @@
 # Usage: tools/compile_check.sh [PluginName ...]     (default: all plugins)
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-CACHE="${CACHE:-${TMPDIR:-/tmp}/faultline-paper-api}"
+PAPER="${PAPER:-26.2}"
+case "$PAPER" in
+  26.2)    GUAVA=33.6.0-jre GSON=2.14.0 FASTUTIL=8.5.18 LOG4J=2.26.0 SLF4J=2.0.17 ADVENTURE=5.2.0 ;;
+  1.21.11) GUAVA=$GUAVA GSON=2.11.0 FASTUTIL=$FASTUTIL LOG4J=2.24.1 SLF4J=2.0.16 ADVENTURE=4.26.1 ;;
+  *) echo "PAPER must be 26.2 or 1.21.11"; exit 2 ;;
+esac
+CACHE="${CACHE:-${TMPDIR:-/tmp}/faultline-paper-api}/$PAPER"
 mkdir -p "$CACHE"
 
 if [ ! -f "$CACHE/papi.ok" ]; then
-  echo "Building paper-api 1.21.11 into $CACHE (one time)..."
+  echo "Building paper-api $PAPER into $CACHE (one time)..."
   rm -rf "$CACHE/paper" "$CACHE/brig" "$CACHE/papi" "$CACHE/deps"
-  git clone -q --depth 1 --filter=blob:none --sparse -b ver/1.21.11 https://github.com/PaperMC/Paper.git "$CACHE/paper"
+  git clone -q --depth 1 --filter=blob:none --sparse -b "ver/$PAPER" https://github.com/PaperMC/Paper.git "$CACHE/paper"
   (cd "$CACHE/paper" && git sparse-checkout set paper-api)
   mkdir -p "$CACHE/deps"
-  cat > "$CACHE/deps/pom.xml" <<'EOF'
+  cat > "$CACHE/deps/pom.xml" <<EOF
 <project xmlns="http://maven.apache.org/POM/4.0.0"><modelVersion>4.0.0</modelVersion>
 <groupId>x</groupId><artifactId>deps</artifactId><version>1</version>
-<dependencyManagement><dependencies><dependency><groupId>net.kyori</groupId><artifactId>adventure-bom</artifactId><version>4.26.1</version><type>pom</type><scope>import</scope></dependency></dependencies></dependencyManagement>
+<dependencyManagement><dependencies><dependency><groupId>net.kyori</groupId><artifactId>adventure-bom</artifactId><version>$ADVENTURE</version><type>pom</type><scope>import</scope></dependency></dependencies></dependencyManagement>
 <dependencies>
-<dependency><groupId>com.google.guava</groupId><artifactId>guava</artifactId><version>33.3.1-jre</version></dependency>
-<dependency><groupId>com.google.code.gson</groupId><artifactId>gson</artifactId><version>2.11.0</version></dependency>
+<dependency><groupId>com.google.guava</groupId><artifactId>guava</artifactId><version>$GUAVA</version></dependency>
+<dependency><groupId>com.google.code.gson</groupId><artifactId>gson</artifactId><version>$GSON</version></dependency>
 <dependency><groupId>org.yaml</groupId><artifactId>snakeyaml</artifactId><version>2.2</version></dependency>
 <dependency><groupId>org.joml</groupId><artifactId>joml</artifactId><version>1.10.8</version></dependency>
-<dependency><groupId>it.unimi.dsi</groupId><artifactId>fastutil</artifactId><version>8.5.15</version></dependency>
-<dependency><groupId>org.apache.logging.log4j</groupId><artifactId>log4j-api</artifactId><version>2.24.1</version></dependency>
-<dependency><groupId>org.slf4j</groupId><artifactId>slf4j-api</artifactId><version>2.0.16</version></dependency>
+<dependency><groupId>it.unimi.dsi</groupId><artifactId>fastutil</artifactId><version>$FASTUTIL</version></dependency>
+<dependency><groupId>org.apache.logging.log4j</groupId><artifactId>log4j-api</artifactId><version>$LOG4J</version></dependency>
+<dependency><groupId>org.slf4j</groupId><artifactId>slf4j-api</artifactId><version>$SLF4J</version></dependency>
 <dependency><groupId>net.md-5</groupId><artifactId>bungeecord-chat</artifactId><version>1.21-R0.2</version></dependency>
 <dependency><groupId>net.kyori</groupId><artifactId>adventure-api</artifactId></dependency>
 <dependency><groupId>net.kyori</groupId><artifactId>adventure-text-minimessage</artifactId></dependency>

@@ -145,6 +145,85 @@ import org.bukkit.event.inventory.InventoryAction;
 import org.bukkit.inventory.EquipmentSlotGroup;
 
 public final class FaultlineItems extends JavaPlugin {
+
+    /**
+     * Every config load (startup, /itemsreload, /freload) checks config.yml first. One mis-indented line makes Bukkit
+     * ignore the WHOLE file and silently use the defaults (that's how a pasted, indented "item-textures:" turned the
+     * resource pack off). A section name that belongs at the start of a line but got indented is moved back, the
+     * original is kept as config.yml.broken-<time>, and the console says exactly what was fixed.
+     */
+    @Override
+    public void reloadConfig() {
+        try {
+            repairConfigFile();
+        } catch (Exception e) {
+            getLogger().log(Level.WARNING, "Couldn't check config.yml for formatting problems", e);
+        }
+        super.reloadConfig();
+    }
+
+    private void repairConfigFile() throws IOException {
+        File file = new File(getDataFolder(), "config.yml");
+        if (!file.exists()) return;
+        String text = java.nio.file.Files.readString(file.toPath(), StandardCharsets.UTF_8);
+        String problem = yamlProblem(text);
+        if (problem == null) return;
+
+        String defaults;
+        try (java.io.InputStream in = getResource("config.yml")) {
+            if (in == null) return;
+            defaults = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+        }
+        List<String> changes = new ArrayList<>();
+        String result = repairYaml(text, defaults, changes);
+        String stamp = new java.text.SimpleDateFormat("yyyyMMdd-HHmmss").format(new java.util.Date());
+        File backup = new File(getDataFolder(), "config.yml.broken-" + stamp);
+        if (!changes.isEmpty() && yamlProblem(result) == null) {
+            java.nio.file.Files.copy(file.toPath(), backup.toPath());
+            java.nio.file.Files.writeString(file.toPath(), result, StandardCharsets.UTF_8);
+            getLogger().warning("config.yml had a formatting error, so it was FIXED automatically (original saved as " + backup.getName() + "):");
+            for (String c : changes) getLogger().warning("  - " + c);
+        } else {
+            getLogger().severe("config.yml has a formatting error that couldn't be fixed automatically, so the plugin is using its"
+                    + " DEFAULT settings until it's fixed: " + problem);
+        }
+    }
+
+    /** Moves top-level section names (per the default config) back to column 0 and replaces tabs; lists what changed. */
+    static String repairYaml(String text, String defaults, List<String> changes) {
+        // section names that sit at the start of a line in the default config, and are never used as nested keys
+        java.util.Set<String> topLevel = new java.util.HashSet<>(), nested = new java.util.HashSet<>();
+        java.util.regex.Pattern key = java.util.regex.Pattern.compile("^(\\s*)([A-Za-z0-9_-]+):");
+        for (String line : defaults.split("\\R")) {
+            java.util.regex.Matcher m = key.matcher(line);
+            if (m.find()) (m.group(1).isEmpty() ? topLevel : nested).add(m.group(2));
+        }
+        topLevel.removeAll(nested);
+        StringBuilder fixed = new StringBuilder();
+        String[] lines = text.split("\\R", -1);
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i].replace("\t", "  ");
+            if (!line.equals(lines[i])) changes.add("line " + (i + 1) + ": replaced tabs with spaces");
+            java.util.regex.Matcher m = key.matcher(line);
+            if (m.find() && !m.group(1).isEmpty() && topLevel.contains(m.group(2))) {
+                line = line.substring(m.group(1).length());
+                changes.add("line " + (i + 1) + ": moved '" + m.group(2) + ":' back to the start of the line");
+            }
+            fixed.append(line);
+            if (i < lines.length - 1) fixed.append('\n');
+        }
+        return fixed.toString();
+    }
+
+    /** null if the text is valid YAML, otherwise the parser's message (it names the line). */
+    static String yamlProblem(String text) {
+        try {
+            new YamlConfiguration().loadFromString(text);
+            return null;
+        } catch (org.bukkit.configuration.InvalidConfigurationException e) {
+            return e.getMessage() == null ? "unknown error" : e.getMessage().replaceAll("\\s+", " ");
+        }
+    }
     /** Adds a recipe, replacing any copy left over from before a reload ("Duplicate recipe" would stop the plugin from starting). */
     static void addRecipeSafely(org.bukkit.inventory.Recipe recipe) {
         if (recipe instanceof org.bukkit.Keyed keyed) org.bukkit.Bukkit.removeRecipe(keyed.getKey());
@@ -211,6 +290,7 @@ public final class FaultlineItems extends JavaPlugin {
     @Override
     public void onEnable() {
         saveDefaultConfig();
+        reloadConfig(); // runs the config repair below before anything reads the config
 
         this.magicMirrorKey = new NamespacedKey(this, "magic_mirror");
         this.usesKey = new NamespacedKey(this, "magic_mirror_uses");

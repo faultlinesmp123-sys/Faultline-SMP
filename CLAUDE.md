@@ -9,8 +9,10 @@ is wrong, prefers concrete/data-backed answers over generic advice.
 
 ## Server setup
 - **Paper** server, with **Geyser** (Bedrock players) and **ViaVersion**.
-- Paper API target: `1.21.11-R0.1-SNAPSHOT`, `api-version: '1.21'`. Resource packs use
-  `pack_format` 75 (FaultlineSMP.zip supports 69–75).
+- The server runs **Paper 26.2** (new Minecraft version numbering). The poms still compile against
+  `paper-api 1.21.11-R0.1-SNAPSHOT` (`api-version: '1.21'`), and the plugins also compile cleanly against 26.2.
+  Resource packs use `pack_format` 75 (FaultlineSMP.zip supports 69–75); if 26.2 clients call the pack
+  incompatible, raise `max_format` in its pack.mcmeta.
 - Hosting: moved from Apex Hosting to a **self-managed OVHcloud VPS**.
   (Apex/Bisect are competitors — Faultline can't appear in BisectHosting sponsor content.)
 - Third-party plugin: **DropHeads** by EvModder.
@@ -85,5 +87,5 @@ Run `python3 tools/jacob_models.py <unpacked-pack-dir> --preview tools/previews`
 ## Building in Claude Code cloud sessions
 Maven must reach `repo.papermc.io` to download paper-api. If the build fails with
 `403 Forbidden` on that host, add `repo.papermc.io` to the environment's allowed network domains.
-Without it, run `tools/compile_check.sh` to compile every plugin against the real Paper 1.21.11 API
+Without it, run `tools/compile_check.sh` to compile every plugin against the real Paper 26.2 API (`PAPER=1.21.11` for the old one)
 (it builds paper-api from PaperMC's GitHub source + Maven Central). Run it before pushing Java changes.

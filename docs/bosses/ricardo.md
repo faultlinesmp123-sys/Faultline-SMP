@@ -16,7 +16,12 @@ and stops when he falls or leaves. `rocco.music.enabled/volume/length-seconds` i
   (same check as Don Lorenzo: no buildings, no villagers). 15 minute cooldown after he falls.
 
 ## Fight
-- 5,000 health, **3 phases** (2/3 and 1/3 start the next phase, with a short invulnerable roar and shockwave).
+- Built for **7 players**. 4,000 health +35% per extra fighter (12,400 for 7; it grows if more people join mid-fight),
+  **3 phases** (2/3 and 1/3 start the next phase, with a short invulnerable roar and shockwave). 15% defense.
+- In a group, 2 moves in 5 go after a random player instead of the closest. Payback has an 8s cooldown and
+  Extermination 40s.
+- Animations live in `VendettaAnims.java` (each move is a pure function of its clock). Preview them without a server:
+  `tools/anim/preview.sh <unpacked FaultlineSMP.zip> <out-dir> [anim...]`.
 - **At half health** Werner (300 HP) joins.
 - **Vengeance Tattoo:** every hit he takes adds one (at most every 10 ticks), max 50, each +1% damage. At 50 (phase 2+)
   his next move is COMPLETE AND TOTAL EXTERMINATION!!!, which resets them.
@@ -35,14 +40,14 @@ and stops when he falls or leaves. `rocco.music.enabled/volume/length-seconds` i
 | 2+ | No More Tests | Blinks to 3 people (or the same one again) and hits each |
 | 50 tattoos | COMPLETE AND TOTAL EXTERMINATION!!! | Leaps 22 blocks, a ring follows a random player, locks 1s before he lands: inside = dead (no totem) |
 
-## Werner (300 HP)
+## Werner (300 HP +50% per extra fighter; 1,200 for 7)
 | Move | What it does |
 |---|---|
 | Aim for the Solar Plexus | Body blow, 1s stun |
 | Right in the Dome | Headbutt, Weakness II (a shield blocks it) |
 | Gut Crush | Two punches, then +25% damage for 10s |
 | Vengeance Awaits You All! | Slam: half your health if you have Weakness, +25% damage per debuff, then 3s stun, Slowness II, Weakness II |
-| Counter - Seize ya Chance | Guard: hit him and he counters with Weakness II |
+| Counter - Seize ya Chance | Guard (only when someone is right on him, 12s cooldown): hit him and he counters once with a backfist and Weakness II |
 
 Passive: every Vendetta Enforcer that dies gives him +15% damage. If he dies, Rocco gets +15% damage, and each fighter has
 a 1 in 3 chance at a cosmetic ("his coat, book and chains").

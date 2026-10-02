@@ -514,7 +514,7 @@ entries:
     name: Rocco Vendetta
     icon: rocco_vendetta
     detect-tag: faultline_rocco
-    where: 'Sign a Vendetta Contract on open, flat ground. 5,000 health over 3 phases. Every hit on him adds a Vengeance Tattoo (max 50, each +1% damage). At half health his little brother Werner joins in.'
+    where: 'Sign a Vendetta Contract on open, flat ground. Bring a group: 7 players is the recommended size. 4,000 health plus 35% for every extra fighter (12,400 for 7), over 3 phases. Every hit on him adds a Vengeance Tattoo (max 50, each +1% damage). At half health his little brother Werner joins in.'
     does: 'Phase 1: Kick and Punch (both stun you for 3 seconds), Payback (a counter stance: do NOT hit him), Assemble (Vendetta Enforcers show up) and Watch Your Back! (he blinks behind you twice). Phase 2 adds MY HAIR COUPONS!!! (a 14-block blast that takes half your health: run!), Swear Vengeance (he dodges everything for 5 seconds, then hits harder and faster) and No More Tests (three blinks, three hits). At 50 tattoos: COMPLETE AND TOTAL EXTERMINATION!!! He leaps into the sky and lands on someone. The red ring locks a second before he lands: get out or die, totem or not. Phase 3: all of it, faster.'
     drops:
     - Vendetta Fist|100%
@@ -526,7 +526,7 @@ entries:
     name: Werner
     icon: werner
     detect-tag: faultline_werner
-    where: 'Rocco Vendetta''s little brother. Joins the fight when Rocco drops to half health. 300 health.'
+    where: 'Rocco Vendetta''s little brother. Joins the fight when Rocco drops to half health. 300 health plus 50% for every extra fighter (1,200 for 7).'
     does: 'Aim for the Solar Plexus (a body blow: stunned for a second), Right in the Dome (a headbutt: Weakness II, a shield blocks it), Gut Crush (two punches, then he hits harder for 10 seconds), Vengeance Awaits You All! (a slam: half your health if you have Weakness, more damage for every debuff, then a 3 second stun, Slowness II and Weakness II) and Counter - Seize ya Chance (a guard: hit him and he counters). Every Vendetta Enforcer that dies makes him 15% stronger. Kill him and Rocco hits 15% harder.'
     drops:
     - 'A cosmetic: Golden Chains, Book, or Coat|33%'

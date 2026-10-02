@@ -300,7 +300,9 @@ final class Vendetta implements Listener {
         Pose pose = standPose(), shown = standPose();
         int ticks, flinch, hitFlash, attack = -1, t, recover = 20, lastAttack = -1;
         double lift, fallV;
-        boolean flashing, keepAlive = true;
+        boolean flashing, keepAlive = true, walking;
+        float stride, moveAmt, flinchSide;
+        Vector lastDraw;
         final Color flashColor;
         final Map<UUID, Integer> hitCd = new HashMap<>();
 
@@ -435,8 +437,25 @@ final class Vendetta implements Listener {
                 float pitch = (float) -Math.toDegrees(Math.atan2(to.getY(), Math.max(0.5, Math.hypot(to.getX(), to.getZ()))));
                 p.add(HEAD, Math.max(-30, Math.min(30, pitch)), -Math.max(-50, Math.min(50, rel)), 0);
             }
-            if (flinch > 0) { p.add(BODY, -flinch * 2.2f, 0, 0).add(HEAD, -flinch * 2f, 0, 0); flinch--; }
-            shown = Pose.lerp(shown, p, 0.45f);
+            // locomotion: the legs follow the ground actually covered (no more sliding feet), with a bob and a sway
+            double moved = lastDraw == null ? 0 : Math.hypot(pos.getX() - lastDraw.getX(), pos.getZ() - lastDraw.getZ());
+            lastDraw = pos.clone();
+            if (moved < 1.5) stride += (float) (moved * 2.5 / scale);   // a blink doesn't count as steps
+            moveAmt += ((float) Math.min(1, moved < 1.5 ? moved / (0.3 * scale) : 0) - moveAmt) * 0.3f;
+            if ((walking || attack < 0) && moveAmt > 0.04f) {
+                float sw = (float) Math.sin(stride), a = Math.min(1, moveAmt * 1.2f);
+                float legSwing = 26 + 18 * a;
+                p.r[LEG_R][0] += (sw * legSwing - p.r[LEG_R][0]) * a;
+                p.r[LEG_L][0] += (-sw * legSwing - p.r[LEG_L][0]) * a;
+                p.r[LEG_R][2] *= 1 - a; p.r[LEG_L][2] *= 1 - a;
+                p.add(BODY, 7 * a, sw * 6 * a, 0).add(ARM_R, -sw * 9 * a, 0, 0).add(ARM_L, sw * 9 * a, 0, 0).add(HEAD, -4 * a, 0, 0);
+                p.drop += (float) -Math.abs(Math.cos(stride)) * 0.08f * a;
+            }
+            walking = false;
+            // a hit rocks him back, twisting away from the side it came from
+            if (flinch > 0) { p.add(BODY, -flinch * 2.4f, flinchSide * flinch * 2.6f, flinchSide * flinch * 1.2f).add(HEAD, -flinch * 2.2f, flinchSide * flinch * 2f, 0); flinch--; }
+            // moves are keyframed already: follow them closely; idling and walking ease more softly
+            shown = Pose.lerp(shown, p, attack >= 0 ? 0.62f : 0.38f);
             pl.renderRig(parts, null, root, yaw, scale, shown);
             for (ItemDisplay d : worn) attach(d, root, shown);
             boolean want = hitFlash > 0;
@@ -492,6 +511,15 @@ final class Vendetta implements Listener {
 
         double damageScale() { return 1; }
 
+        /** Rocks the body away from whoever hit it. */
+        void flinchFrom(Entity by) {
+            flinch = 6; hitFlash = 3;
+            if (by == null) { flinchSide = 0; return; }
+            Vector to = by.getLocation().toVector().subtract(pos).setY(0);
+            Vector left = new Vector(-fwd().getZ(), 0, fwd().getX());
+            flinchSide = to.lengthSquared() < 1e-4 ? 0 : -(float) Math.signum(to.dot(left));
+        }
+
         void tickCommon() {
             ticks++;
             hitCd.replaceAll((k, v) -> v - 1);
@@ -506,22 +534,14 @@ final class Vendetta implements Listener {
         }
     }
 
-    // ---- poses of their own (punches, a headbutt, the coupon charge); the rest come from Don's library ----
-    static Pose punchWindPose() { return new Pose().set(ARM_R, 40, 0, -12).set(ARM_L, -75, -25, 0).set(BODY, 6, 32, 0).set(LEG_R, 14, 0, 0).set(LEG_L, -12, 0, 0).set(HEAD, 4, -20, 0); }
-    static Pose punchPose() { return new Pose().set(ARM_R, -95, -12, 0).set(ARM_L, -55, 30, 0).set(BODY, 10, -28, 0).set(LEG_R, -18, 0, 0).set(LEG_L, 16, 0, 0).set(HEAD, 4, 20, 0); }
-    static Pose hookPose() { return mirror(punchPose()); }
-    static Pose uppercutPose() { return new Pose().set(ARM_R, -165, -10, -10).set(ARM_L, -40, 0, 20).set(BODY, -14, -20, 0).set(HEAD, -18, 0, 0).set(LEG_R, -10, 0, 0).drop(0.08f); }
-    static Pose headbuttWindPose() { return new Pose().set(BODY, -18, 0, 0).set(HEAD, -22, 0, 0).set(ARM_R, 30, 0, -30).set(ARM_L, 30, 0, 30); }
-    static Pose headbuttPose() { return new Pose().set(BODY, 28, 0, 0).set(HEAD, 26, 0, 0).set(ARM_R, 20, 0, -40).set(ARM_L, 20, 0, 40).set(LEG_R, -14, 0, 0); }
-    static Pose chargePose(int t) { float q = (float) Math.sin(t * 0.8) * 5; return new Pose().set(ARM_R, -150 + q, 0, -30).set(ARM_L, -150 - q, 0, 30).set(BODY, -14, 0, 0).set(HEAD, -28, 0, 0).set(LEG_R, 0, 0, -14).set(LEG_L, 0, 0, 14); }
-    static Pose slamPose() { return new Pose().drop(-0.3f).set(ARM_R, -40, 0, -10).set(ARM_L, -40, 0, 10).set(BODY, 34, 0, 0).set(HEAD, 10, 0, 0).set(LEG_R, -34, 0, -6).set(LEG_L, 24, 0, 8); }
-    static Pose overheadPose() { return new Pose().set(ARM_R, -175, 0, -8).set(ARM_L, -175, 0, 8).set(BODY, -16, 0, 0).set(HEAD, -10, 0, 0); }
+    // ---- the poses themselves live in VendettaAnims (tools/anim/preview.sh renders them) ----
 
     // =====================================================================================================
     //  ROCCO VENDETTA
     // =====================================================================================================
     static final int ARRIVE = 0, FIGHT = 1, TRANSITION = 2, DEFEAT = 3, GONE = 4;
-    static final int M_KICK = 1, M_PUNCH = 2, M_PAYBACK = 3, M_ASSEMBLE = 4, M_BEHIND = 5, M_COUPONS = 6, M_EXTERMINATE = 7, M_VENGEANCE = 8, M_TESTS = 9;
+    static final int M_KICK = 1, M_PUNCH = 2, M_PAYBACK = 3, M_ASSEMBLE = 4, M_BEHIND = 5, M_COUPONS = 6, M_EXTERMINATE = 7, M_VENGEANCE = 8, M_TESTS = 9,
+            M_COUNTER = 10;
 
     final class Rocco extends Body {
         final Location home;
@@ -533,6 +553,10 @@ final class Vendetta implements Listener {
         final List<LivingEntity> targets = new ArrayList<>(); // No More Tests
         Werner werner;
         LivingEntity victim; Vector lock;  // Extermination
+        Player focus;                      // who this move is aimed at
+        Player counterOn;                  // Payback's victim
+        int scaledFor = 1, paybackCd, extermCd;
+        boolean leftNext;                  // punches alternate hands
         double rage = 1;                  // Werner died: he hits harder
         final BossBar bar;
         final Set<UUID> listeners = new HashSet<>();
@@ -543,7 +567,7 @@ final class Vendetta implements Listener {
             pos.setY(floorY(pos.getX(), pos.getZ(), pos.getY() + 2)); // BUG FIX: on a slope he hung in the air or stood in the hill
             home = pos.toLocation(world);
             if (by != null) { fighters.add(by.getUniqueId()); faceNow(by.getLocation().toVector()); }
-            maxHp = hp = c("health", 5000);
+            maxHp = hp = c("health", 4000);
             pl.proxy(hitbox, parts[2], EntityType.VINDICATOR, scale);
             bar = Bukkit.createBossBar(ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + "Rocco Vendetta", BarColor.PURPLE, BarStyle.SEGMENTED_20);
             lift = 0;
@@ -558,6 +582,19 @@ final class Vendetta implements Listener {
             double r = c("arena-radius", 40);
             v.setX(Math.max(home.getX() - r, Math.min(home.getX() + r, v.getX())));
             v.setZ(Math.max(home.getZ() - r, Math.min(home.getZ() + r, v.getZ())));
+        }
+
+        /**
+         * Built for a group (7 is the recommended size): his health grows with every fighter, and grows again if more
+         * people join mid-fight (it never shrinks, and the bar keeps its fill).
+         */
+        void scaleFor(int n) {
+            n = Math.max(1, Math.min(n, (int) c("max-scaled-fighters", 12)));
+            if (n <= scaledFor) return;
+            double frac = hp / maxHp;
+            scaledFor = n;
+            maxHp = c("health", 4000) * (1 + c("health-per-extra-fighter", 0.35) * (n - 1));
+            hp = maxHp * frac;
         }
 
         @Override double damageScale() {
@@ -626,6 +663,9 @@ final class Vendetta implements Listener {
             if (a.isEmpty() && state == FIGHT && pl.pilot(this) == null) { if (++lonely > 600) { leave(ChatColor.DARK_PURPLE + "Rocco Vendetta " + ChatColor.GRAY + "lost interest and left."); return; } }
             else lonely = 0;
             if (sworn > 0) sworn--;
+            if (paybackCd > 0) paybackCd--;
+            if (extermCd > 0) extermCd--;
+            if (state == FIGHT && ticks % 100 == 0) scaleFor(a.size());
             if (vengeance > 0) { vengeance--; if (ticks % 3 == 0) world.spawnParticle(Particle.DUST, loc().add(0, 1.2 * scale, 0), 2, 0.4, 0.8, 0.4, 0, new Particle.DustOptions(Color.fromRGB(200, 30, 60), 1.1f)); }
             if (tattooCd > 0) tattooCd--;
             if (assembleCd > 0) assembleCd--;
@@ -654,8 +694,7 @@ final class Vendetta implements Listener {
         void arriveTick(List<Player> a) {
             Player n = nearest(a);
             if (n != null) face(n.getLocation().toVector(), 10);
-            if (st < 20) pose = Pose.lerp(pose, crouchPose(), 0.3f);
-            else if (st < 40) pose = Pose.lerp(pose, foldArmsPose(), 0.3f);
+            pose = VendettaAnims.roccoArrive(st);
             if (st == 2) {
                 for (Player p : world.getPlayers()) if (p.getLocation().distanceSquared(home) < 96 * 96)
                     p.showTitle(Title.title(legacy(ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + "ROCCO VENDETTA"), legacy(ChatColor.GRAY + "Big brother of the Vendetta family"),
@@ -664,27 +703,31 @@ final class Vendetta implements Listener {
             }
             if (st == 50) say(ChatColor.LIGHT_PURPLE + "\"You signed. Now you pay.\"", 50);
             settle();
-            if (st >= 70) { state = FIGHT; st = 0; recover = 10; pose = powerPose(); playMusic(); }
+            if (st >= 70) { state = FIGHT; st = 0; recover = 10; scaleFor(a.size()); playMusic(); }
         }
 
         void fightTick(List<Player> a) {
             Player pilotP = pl.pilot(this);
             if (a.isEmpty() && pilotP == null) { pose = Pose.lerp(pose, foldArmsPose(), 0.2f); return; }
-            Player target = pilotP != null ? pl.pilotTarget(pilotP, a) : nearest(a);
+            Player target = pilotP != null ? pl.pilotTarget(pilotP, a) : focus != null && a.contains(focus) ? focus : nearest(a);
             if (target == null) return;
             if (pilotP != null && attack < 0) { // boss form: follows the admin and uses the move they pick
                 Vector to = pilotP.getLocation().toVector().subtract(pos).setY(0);
                 face(pos.clone().add(pilotP.getLocation().getDirection().setY(0).multiply(5)), 15);
-                if (to.length() > 0.3) { step(to.normalize().multiply(Math.min(to.length(), speed() * 1.6))); pose = Pose.lerp(pose, walkPose(ticks, 1), 0.35f); }
-                else pose = Pose.lerp(pose, idlePose(ticks), 0.2f);
+                if (to.length() > 0.3) { step(to.normalize().multiply(Math.min(to.length(), speed() * 1.6))); walking = true; }
+                pose = VendettaAnims.roccoStance(ticks);
                 int q = pl.takeMove(this);
                 if (q < 0) return;
                 startMove(q);
             }
             if (attack < 0) {
                 face(target.getLocation().toVector(), 14);
-                if (recover > 0) { recover--; pose = Pose.lerp(pose, idlePose(ticks), 0.25f); settle(); return; }
+                if (recover > 0) { recover--; pose = VendettaAnims.roccoStance(ticks); settle(); return; }
                 startMove(pickMove());
+                // with a crowd he spreads the pain: about 2 moves in 5 go after someone other than the closest
+                // and a move stays on whoever it started on (Watch Your Back! used to switch victims halfway through)
+                focus = a.size() > 1 && random.nextDouble() < c("spread-chance", 0.4) ? a.get(random.nextInt(a.size())) : target;
+                target = focus;
             }
             switch (attack) {
                 case M_KICK -> kick(target, a);
@@ -696,15 +739,17 @@ final class Vendetta implements Listener {
                 case M_EXTERMINATE -> exterminate(a);
                 case M_VENGEANCE -> swearVengeance();
                 case M_TESTS -> noMoreTests(a);
+                case M_COUNTER -> counterTick();
                 default -> end(10);
             }
             t++;
         }
 
         int pickMove() {
-            if (tattoos >= c("max-tattoos", 50) && phase >= 2) return M_EXTERMINATE;
-            List<Integer> pool = new ArrayList<>(List.of(M_KICK, M_PUNCH, M_KICK, M_PUNCH, M_PAYBACK, M_BEHIND));
-            if (assembleCd <= 0 && fam.size() < c("assemble.max-alive", 6)) pool.add(M_ASSEMBLE);
+            if (tattoos >= c("max-tattoos", 50) && phase >= 2 && extermCd <= 0) return M_EXTERMINATE;
+            List<Integer> pool = new ArrayList<>(List.of(M_KICK, M_PUNCH, M_KICK, M_PUNCH, M_BEHIND));
+            if (paybackCd <= 0) pool.add(M_PAYBACK);
+            if (assembleCd <= 0 && fam.size() < c("assemble.max-alive", 8)) pool.add(M_ASSEMBLE);
             if (phase >= 2) pool.addAll(List.of(M_COUPONS, M_VENGEANCE, M_TESTS, M_TESTS));
             if (phase >= 3) pool.addAll(List.of(M_BEHIND, M_COUPONS, M_TESTS));
             if (vengeance > 0) pool.removeIf(m -> m == M_VENGEANCE);
@@ -729,7 +774,8 @@ final class Vendetta implements Listener {
             if (to.length() <= reach) return true;
             face(target.getLocation().toVector(), 18);
             if (!step(to.normalize().multiply(speed())) || ++chaseT > 60) { attack = M_BEHIND; t = -1; return false; } // (t++ makes it 0)
-            pose = phase >= 2 ? runPose(ticks, 1f) : walkPose(ticks, 1f);
+            pose = VendettaAnims.roccoGuardWalk(ticks);
+            walking = true;
             t--; // the move's clock waits while he walks
             return false;
         }
@@ -737,59 +783,75 @@ final class Vendetta implements Listener {
         // ---------- 1) Kick: a heavy front kick. Stuns for 3 seconds. ----------
         void kick(Player target, List<Player> a) {
             if (t == 0 && !closeIn(target, 3.0)) return;
-            if (t < 9) { pose = anim(t, new int[]{0, 8}, new Pose[]{standPose(), kickWindupPose()}); face(target.getLocation().toVector(), 20); }
-            else if (t == 9) {
-                pose = kickPose();
+            pose = VendettaAnims.roccoKick(t);
+            if (t < 8) face(target.getLocation().toVector(), 20);
+            if (t == 7 || t == 8) step(fwd().multiply(0.22 * scale)); // he drives into it
+            if (t == 9) {
                 world.playSound(loc(), Sound.ENTITY_PLAYER_ATTACK_KNOCKBACK, 1.6f, 0.6f);
-                world.spawnParticle(Particle.SWEEP_ATTACK, loc().add(fwd().multiply(1.4)).add(0, 0.9, 0), 1);
-                for (Player p : a) if (inFront(p, 3.6, 0.3)) hit(p, c("kick-damage", 10), Guard.HEAVY, (int) c("stun-ticks", 60), 1.0);
-            } else if (t < 22) pose = anim(t, new int[]{9, 13, 22}, new Pose[]{kickPose(), followThroughPose(), standPose()});
-            else end(16);
+                world.playSound(loc(), Sound.ENTITY_IRON_GOLEM_ATTACK, 1.2f, 0.8f);
+                world.spawnParticle(Particle.SWEEP_ATTACK, loc().add(fwd().multiply(1.5 * scale)).add(0, 0.9 * scale, 0), 1);
+                for (Player p : a) if (inFront(p, 3.6, 0.3)) hit(p, c("kick-damage", 12), Guard.HEAVY, (int) c("stun-ticks", 60), 1.1);
+            }
+            if (t >= 24) end(14);
         }
 
         // ---------- 2) Punch: a step-in straight. Stuns for 3 seconds. ----------
         void punch(Player target, List<Player> a) {
             if (t == 0 && !closeIn(target, 2.8)) return;
-            if (t < 7) { pose = anim(t, new int[]{0, 6}, new Pose[]{standPose(), punchWindPose()}); face(target.getLocation().toVector(), 20); }
-            else if (t == 7) {
-                pose = punchPose();
-                step(fwd().multiply(0.5));
+            if (t == 0) leftNext = !leftNext;
+            pose = VendettaAnims.roccoPunch(t, leftNext);
+            if (t < 6) face(target.getLocation().toVector(), 20);
+            if (t == 6 || t == 7) step(fwd().multiply(0.3 * scale)); // a step in behind the punch
+            if (t == 7) {
                 world.playSound(loc(), Sound.ENTITY_PLAYER_ATTACK_STRONG, 1.6f, 0.6f);
-                world.spawnParticle(Particle.CRIT, loc().add(fwd().multiply(1.3)).add(0, 1.4 * scale, 0), 10, 0.2, 0.2, 0.2, 0.2);
-                for (Player p : a) if (inFront(p, 3.2, 0.4)) hit(p, c("punch-damage", 9), Guard.BLOCKABLE, (int) c("stun-ticks", 60), 0.7);
-            } else if (t < 18) pose = anim(t, new int[]{7, 11, 18}, new Pose[]{punchPose(), punchPose(), standPose()});
-            else end(12);
+                world.spawnParticle(Particle.CRIT, loc().add(fwd().multiply(1.3 * scale)).add(0, 1.4 * scale, 0), 12, 0.2, 0.2, 0.2, 0.25);
+                for (Player p : a) if (inFront(p, 3.2, 0.4)) hit(p, c("punch-damage", 11), Guard.BLOCKABLE, (int) c("stun-ticks", 60), 0.8);
+            }
+            if (t >= 18) end(12);
         }
 
         // ---------- 3) Payback: a counter stance. Hit him and he punishes you. ----------
         void payback() {
             guarding = t < 40;
-            Pose g = guardPose(); g.add(BODY, 0, (float) Math.sin(t * 0.3) * 6, 0);
-            pose = Pose.lerp(pose, g, 0.35f);
+            pose = VendettaAnims.roccoGuard(t);
             if (t == 0) { world.playSound(loc(), Sound.ITEM_SHIELD_BLOCK, 1.4f, 0.5f); say(ChatColor.LIGHT_PURPLE + "\"Go on. Hit me.\"", 30); }
             if (guarding && t % 3 == 0) world.spawnParticle(Particle.DUST, loc().add(0, 1.3 * scale, 0), 3, 0.5, 0.7, 0.5, 0, new Particle.DustOptions(Color.fromRGB(200, 30, 60), 1f));
-            if (t >= 40) end(10);
+            if (t >= 40) { paybackCd = (int) (c("payback-cooldown-seconds", 8) * 20); end(10); }
         }
 
+        /** Hit during Payback: he's behind you in a blink, and the uppercut lands a moment later. */
         void counter(Player p) {
             guarding = false;
+            paybackCd = (int) (c("payback-cooldown-seconds", 8) * 20);
             blinkTo(behind(p, 1.6), p.getLocation().toVector());
             faceNow(p.getLocation().toVector());
-            pose = uppercutPose();
             world.playSound(loc(), Sound.ENTITY_PLAYER_ATTACK_CRIT, 1.6f, 0.5f);
-            world.spawnParticle(Particle.EXPLOSION, p.getLocation().add(0, 1, 0), 1);
-            hitCd.remove(p.getUniqueId());
-            hit(p, c("payback-damage", 12) + tattoos * c("payback-per-tattoo", 0.25), Guard.UNBLOCKABLE, (int) c("stun-ticks", 60), 1.2);
             p.sendActionBar(legacy(ChatColor.RED + "PAYBACK! " + ChatColor.GRAY + "Don't hit him while he's guarding."));
-            attack = -1; recover = 16; t = 0;
+            counterOn = p;
+            attack = M_COUNTER; t = 0;
+        }
+
+        void counterTick() {
+            pose = VendettaAnims.roccoUppercut(t);
+            Player p = counterOn;
+            if (p != null && t < 5) faceNow(p.getLocation().toVector());
+            if (t == 5 && p != null && p.isValid()) {
+                world.spawnParticle(Particle.EXPLOSION, p.getLocation().add(0, 1, 0), 1);
+                world.playSound(loc(), Sound.ENTITY_PLAYER_ATTACK_KNOCKBACK, 1.8f, 0.5f);
+                hitCd.remove(p.getUniqueId());
+                if (p.getLocation().toVector().distanceSquared(pos) < 4 * 4)
+                    hit(p, c("payback-damage", 14) + tattoos * c("payback-per-tattoo", 0.25), Guard.UNBLOCKABLE, (int) c("stun-ticks", 60), 1.3);
+            }
+            if (t >= 18) { counterOn = null; end(16); }
         }
 
         // ---------- 4) Assemble: whistles, and the family shows up ----------
         void assemble(List<Player> a) {
-            if (t == 0) { pose = pointPose(); say(ChatColor.LIGHT_PURPLE + "\"Assemble!\"", 30); world.playSound(loc(), Sound.ENTITY_VILLAGER_CELEBRATE, 1.6f, 0.6f); }
-            if (t < 16) pose = anim(t, new int[]{0, 6, 16}, new Pose[]{standPose(), overheadPose(), pointPose()});
-            if (t == 10) {
-                int n = (int) Math.min(c("assemble.base", 2) + a.size(), c("assemble.max-alive", 6) - fam.size());
+            pose = VendettaAnims.roccoWhistle(t);
+            if (t == 0) say(ChatColor.LIGHT_PURPLE + "\"Assemble!\"", 30);
+            if (t == 7) { world.playSound(loc(), Sound.ENTITY_VILLAGER_CELEBRATE, 1.6f, 0.6f); world.playSound(loc(), Sound.ENTITY_BREEZE_WHIRL, 1.4f, 1.8f); }
+            if (t == 12) {
+                int n = (int) Math.min(c("assemble.base", 2) + a.size(), c("assemble.max-alive", 8) - fam.size());
                 for (int i = 0; i < n; i++) {
                     double ang = Math.PI * 2 * i / Math.max(1, n) + random.nextDouble();
                     Vector at = pos.clone().add(new Vector(Math.cos(ang) * 3, 0, Math.sin(ang) * 3));
@@ -802,22 +864,21 @@ final class Vendetta implements Listener {
                 }
                 assembleCd = (int) (c("assemble.cooldown-seconds", 30) * 20);
             }
-            if (t >= 24) end(10);
+            if (t >= 26) end(10);
         }
 
         // ---------- 5) Watch Your Back!: behind you, a hit, behind you again, another hit ----------
         void watchYourBack(Player target) {
-            if (t == 0) { say(ChatColor.LIGHT_PURPLE + "\"Watch your back!\"", 25); blinkTo(behind(target, 2.0), target.getLocation().toVector()); faceNow(target.getLocation().toVector()); pose = punchWindPose(); }
+            if (t == 0) { say(ChatColor.LIGHT_PURPLE + "\"Watch your back!\"", 25); blinkTo(behind(target, 2.0), target.getLocation().toVector()); }
+            if (t == 14) blinkTo(behind(target, 2.0), target.getLocation().toVector());
+            if (t < 6 || (t >= 14 && t < 20)) faceNow(target.getLocation().toVector());
+            pose = t < 14 ? VendettaAnims.roccoPunch(t + 1, false) : VendettaAnims.roccoPunch(t - 13, true);
             if (t == 6 || t == 20) {
-                faceNow(target.getLocation().toVector());
-                pose = t == 6 ? punchPose() : hookPose();
                 world.playSound(loc(), Sound.ENTITY_PLAYER_ATTACK_STRONG, 1.5f, 0.7f);
                 hitCd.remove(target.getUniqueId());
-                if (target.getLocation().toVector().distanceSquared(pos) < 3.6 * 3.6) hit(target, c("back-damage", 8), Guard.BLOCKABLE, 0, 0.6);
+                if (target.getLocation().toVector().distanceSquared(pos) < 3.6 * 3.6) hit(target, c("back-damage", 10), Guard.BLOCKABLE, 0, 0.7);
             }
-            if (t == 14) { blinkTo(behind(target, 2.0), target.getLocation().toVector()); faceNow(target.getLocation().toVector()); pose = mirror(punchWindPose()); }
-            if (t > 20 && t < 30) pose = Pose.lerp(pose, standPose(), 0.25f);
-            if (t >= 30) end(14);
+            if (t >= 32) end(14);
         }
 
         // ---------- 6) MY HAIR COUPONS!!!: a charged blast. Run! Caught = half your health and a short stun. ----------
@@ -826,13 +887,13 @@ final class Vendetta implements Listener {
             int charge = (int) c("coupons.charge-ticks", 50);
             if (t == 0) { shout(ChatColor.DARK_RED + "" + ChatColor.BOLD + "MY HAIR COUPOOOOOOOOOOONS!!!", ChatColor.GRAY + "get away from him!", 40); world.playSound(loc(), Sound.ENTITY_RAVAGER_ROAR, 2f, 0.7f); }
             if (t < charge) {
-                pose = chargePose(t);
+                pose = VendettaAnims.roccoCharge(t, t / (float) charge);
                 double rr = r * Math.min(1, (t + 6) / (double) charge);
                 if (t % 2 == 0) ring(pos, rr, t > charge - 12 ? Color.fromRGB(255, 40, 40) : Color.fromRGB(200, 60, 220), 28);
                 if (t % 10 == 0) world.playSound(loc(), Sound.BLOCK_NOTE_BLOCK_BASEDRUM, 2f, 0.5f + t / (float) charge);
                 world.spawnParticle(Particle.DUST, loc().add(0, 1.2 * scale, 0), 3, 0.5, 0.8, 0.5, 0, new Particle.DustOptions(Color.fromRGB(255, 200, 80), 1.3f));
             } else if (t == charge) {
-                pose = slamPose();
+                pose = VendettaAnims.roccoGroundSmash(0);
                 world.playSound(loc(), Sound.ENTITY_GENERIC_EXPLODE, 2.5f, 0.6f);
                 world.spawnParticle(Particle.EXPLOSION_EMITTER, loc().add(0, 0.5, 0), 1);
                 for (int i = 0; i < 3; i++) ring(pos, r * (0.4 + i * 0.3), Color.fromRGB(255, 200, 80), 40);
@@ -846,7 +907,7 @@ final class Vendetta implements Listener {
                     Vector kb = rel.lengthSquared() > 0.01 ? rel.normalize() : new Vector(1, 0, 0);
                     p.setVelocity(kb.multiply(1.0).setY(0.5));
                 }
-            } else if (t < charge + 20) pose = Pose.lerp(pose, standPose(), 0.12f);
+            } else if (t < charge + 24) pose = VendettaAnims.roccoGroundSmash(t - charge);
             else end(20);
         }
 
@@ -862,9 +923,9 @@ final class Vendetta implements Listener {
                 world.playSound(loc(), Sound.ENTITY_WITHER_SPAWN, 1.5f, 0.8f);
             }
             if (victim == null || !victim.isValid()) { end(10); return; }
-            if (t < 14) pose = anim(t, new int[]{0, 13}, new Pose[]{standPose(), crouchPose()});
-            else if (t < 30) { // the leap
-                pose = jumpPose();
+            if (t < 14) pose = VendettaAnims.roccoLeapStart(t);
+            else if (t < 70 + dodge) pose = VendettaAnims.roccoAirborne(t, (t - 14) / (float) (56 + dodge));
+            if (t >= 14 && t < 30) { // the leap
                 lift = Math.sin((t - 14) / 16.0 * Math.PI / 2) * c("extermination.height", 22);
                 if (t == 14) { world.playSound(loc(), Sound.ENTITY_PLAYER_ATTACK_SWEEP, 2f, 0.5f); world.spawnParticle(Particle.EXPLOSION, loc(), 3, 0.5, 0.1, 0.5, 0); }
             }
@@ -883,7 +944,7 @@ final class Vendetta implements Listener {
             }
             if (t == 70 + dodge) { // the slam
                 pos = lock.clone(); pos.setY(floorY(pos.getX(), pos.getZ(), lock.getY() + 2));
-                lift = 0; pose = slamPose();
+                lift = 0; pose = VendettaAnims.roccoSlamLand(0);
                 world.playSound(loc(), Sound.ENTITY_GENERIC_EXPLODE, 3f, 0.5f);
                 world.spawnParticle(Particle.EXPLOSION_EMITTER, loc(), 2, 0.5, 0.1, 0.5, 0);
                 world.spawnParticle(Particle.BLOCK, loc().add(0, 0.1, 0), 80, 2.5, 0.1, 2.5, 0, loc().subtract(0, 1, 0).getBlock().getBlockData());
@@ -892,12 +953,13 @@ final class Vendetta implements Listener {
                     if (d <= 2.6 && Math.abs(p.getLocation().getY() - pos.getY()) < 4) {
                         p.setHealth(0); // no matter what: armor, shields and totems don't help
                         Bukkit.broadcastMessage(ChatColor.DARK_RED + p.getName() + ChatColor.GRAY + " was exterminated by Rocco Vendetta.");
-                    } else if (d < 7) hit(p, c("extermination.splash-damage", 6), Guard.UNBLOCKABLE, 0, 1.2);
+                    } else if (d < 7) hit(p, c("extermination.splash-damage", 8), Guard.UNBLOCKABLE, 0, 1.2);
                 }
                 tattoos = 0;
+                extermCd = (int) (c("extermination.cooldown-seconds", 40) * 20);
             }
-            if (t > 70 + dodge && t < 90 + dodge) pose = Pose.lerp(pose, standPose(), 0.1f);
-            if (t >= 90 + dodge) end(24);
+            if (t > 70 + dodge) pose = VendettaAnims.roccoSlamLand((t - 70 - dodge) * 40f / 32f); // the opening to punish him
+            if (t >= 102 + dodge) end(20);
         }
 
         // ---------- 8) Swear Vengeance: dodges everything for 5 seconds, and 3 buffs ----------
@@ -908,8 +970,8 @@ final class Vendetta implements Listener {
                 sworn = (int) c("vengeance.dodge-ticks", 100);
                 vengeance = (int) c("vengeance.buff-ticks", 300);
             }
-            pose = anim(t, new int[]{0, 6, 18, 24}, new Pose[]{standPose(), roarPose(t), roarPose(t), powerPose()});
-            if (t >= 24) end(6);
+            pose = VendettaAnims.roccoSwear(t);
+            if (t >= 26) end(6);
         }
 
         void dodge() {
@@ -929,17 +991,17 @@ final class Vendetta implements Listener {
                 if (targets.isEmpty()) { end(10); return; }
             }
             int i = t / 12, k = t % 12;
-            if (i >= 3) { if (t > 44) end(16); else pose = Pose.lerp(pose, standPose(), 0.2f); return; }
+            if (i >= 3) { if (t > 44) end(16); else pose = VendettaAnims.roccoStance(ticks); return; }
+            pose = i == 2 ? VendettaAnims.roccoUppercut(k) : VendettaAnims.roccoPunch(k + 2, i == 1);
             LivingEntity tg = targets.get(i % targets.size());
             if (!tg.isValid() || tg.isDead()) return;
             if (k == 0) {
                 Vector front = tg.getLocation().toVector().add(flatDir(tg.getLocation()).multiply(1.8));
-                blinkTo(front, tg.getLocation().toVector()); faceNow(tg.getLocation().toVector()); pose = i % 2 == 0 ? punchWindPose() : mirror(punchWindPose());
+                blinkTo(front, tg.getLocation().toVector()); faceNow(tg.getLocation().toVector());
             }
             if (k == 5) {
-                pose = i % 2 == 0 ? punchPose() : hookPose();
                 world.playSound(loc(), Sound.ENTITY_PLAYER_ATTACK_STRONG, 1.6f, 0.5f);
-                if (tg instanceof Player p) { hitCd.remove(p.getUniqueId()); hit(p, c("tests-damage", 11), Guard.HEAVY, 0, 0.9); }
+                if (tg instanceof Player p) { hitCd.remove(p.getUniqueId()); hit(p, c("tests-damage", 13), Guard.HEAVY, 0, 0.9); }
             }
         }
 
@@ -957,12 +1019,13 @@ final class Vendetta implements Listener {
             if (state != FIGHT) { event.setCancelled(true); return; }
             if (sworn > 0) { event.setCancelled(true); dodge(); return; }
             if (guarding && by != null && attack == M_PAYBACK) { event.setCancelled(true); counter(by); return; }
+            if (attack == M_COUNTER && t < 5) { event.setCancelled(true); return; } // mid-blink: the counter can't be interrupted
             double dmg = event.getDamage();
             event.setDamage(0.001); // the hit lands (the Index credits it); his real health is tracked here
             if (by != null) fighters.add(by.getUniqueId());
             if (vengeance > 0) dmg *= 1 - c("vengeance.damage-reduction", 0.25);
-            hp -= dmg * (1 - c("defense", 0.1));
-            flinch = 5; hitFlash = 3;
+            hp -= dmg * (1 - c("defense", 0.15));
+            if (attack != M_EXTERMINATE) flinchFrom(by); else hitFlash = 3;
             if (tattooCd <= 0 && tattoos < c("max-tattoos", 50)) {
                 tattoos++; tattooCd = (int) c("tattoo-cooldown-ticks", 10);
                 if (tattoos == (int) c("max-tattoos", 50)) {
@@ -996,7 +1059,7 @@ final class Vendetta implements Listener {
         }
 
         void transitionTick(List<Player> a) {
-            pose = anim(st, new int[]{0, 10, 40, 60}, new Pose[]{staggerPose(), roarPose(st), roarPose(st), powerPose()});
+            pose = VendettaAnims.roccoPhaseChange(st);
             if (st % 3 == 0) world.spawnParticle(Particle.DUST, loc().add(0, 1.2 * scale, 0), 6, 0.6, 1, 0.6, 0, new Particle.DustOptions(Color.fromRGB(150, 50, 200), 1.5f));
             if (st == 20) { // a shockwave pushes everyone back
                 world.playSound(loc(), Sound.ENTITY_GENERIC_EXPLODE, 1.6f, 0.8f);
@@ -1021,8 +1084,7 @@ final class Vendetta implements Listener {
         }
 
         void defeatTick() {
-            if (st < 100) pose = Pose.lerp(pose, kneelPose(ticks), 0.15f);
-            else pose = Pose.lerp(pose, new Pose().set(BODY, -90, 0, 0).set(LEG_R, -90, 0, 0).set(LEG_L, -90, 0, 0).drop(-0.75f), 0.15f);
+            pose = VendettaAnims.roccoDefeat(st);
             if (st == 100) {
                 world.playSound(loc(), Sound.ENTITY_PLAYER_DEATH, 2f, 0.6f);
                 world.spawnParticle(Particle.DUST, loc().add(0, 1, 0), 80, 0.6, 1, 0.6, 0, new Particle.DustOptions(Color.fromRGB(150, 50, 200), 2f));
@@ -1184,20 +1246,25 @@ final class Vendetta implements Listener {
     // =====================================================================================================
     //  WERNER (little brother, 300 health): with Rocco from half health, or helping a Vendetta Fist holder
     // =====================================================================================================
-    static final int W_PLEXUS = 1, W_DOME = 2, W_GUT = 3, W_AWAITS = 4, W_SEIZE = 5;
+    static final int W_PLEXUS = 1, W_DOME = 2, W_GUT = 3, W_AWAITS = 4, W_SEIZE = 5, W_COUNTER = 6;
 
     final class Werner extends Body {
         final Rocco brother;         // boss side (null for an ally)
         final Player owner;          // ally side (null on the boss side)
         double hp, maxHp;
-        int life, members, gutBuff, awaitsCd, failStreak;
+        int life, members, gutBuff, awaitsCd, seizeCd, failStreak, pending = -1, chase;
         boolean guarding, gone;
+        Player counterOn;
         final BossBar bar;
 
         Werner(Location at, Rocco brother, Player owner) {
             super(at, "werner", (float) c("werner.scale", 1.0), WERNER_TAG, "Werner", c("werner.hitbox-scale", 1.9), false, Color.fromRGB(255, 255, 255));
             this.brother = brother; this.owner = owner;
             maxHp = hp = c("werner.health", 300);
+            if (brother != null) { // he's built for a group too (7 recommended)
+                int n = Math.max(1, Math.min(brother.active().size(), (int) c("max-scaled-fighters", 12)));
+                maxHp = hp = c("werner.health", 300) * (1 + c("werner.health-per-extra-fighter", 0.5) * (n - 1));
+            }
             life = owner != null ? (int) (c("fist.werner-seconds", 30) * 20) : Integer.MAX_VALUE;
             if (owner == null) pl.proxy(hitbox, parts[2], EntityType.VINDICATOR, scale);
             else hitbox.remove(); // the helper can't be hurt (and nothing aims at him)
@@ -1234,6 +1301,7 @@ final class Vendetta implements Listener {
             if (brother == null && owner == null) { leave(null); return; }
             if (gutBuff > 0) gutBuff--;
             if (awaitsCd > 0) awaitsCd--;
+            if (seizeCd > 0) seizeCd--;
             List<LivingEntity> foes = enemies();
             LivingEntity target = null; double bd = Double.MAX_VALUE;
             for (LivingEntity e : foes) { double d = e.getLocation().toVector().distanceSquared(pos); if (d < bd) { bd = d; target = e; } }
@@ -1241,11 +1309,12 @@ final class Vendetta implements Listener {
                 if (target == null) {
                     if (owner != null) { // follows his owner around
                         Vector to = owner.getLocation().toVector().subtract(pos).setY(0);
-                        if (to.length() > 3) { face(owner.getLocation().toVector(), 15); step(to.normalize().multiply(Math.min(to.length() - 2, 0.35))); pose = Pose.lerp(pose, walkPose(ticks, 1), 0.3f); }
-                        else { pose = Pose.lerp(pose, idlePose(ticks), 0.2f); settle(); }
+                        if (to.length() > 3) { face(owner.getLocation().toVector(), 15); step(to.normalize().multiply(Math.min(to.length() - 2, 0.35))); walking = true; }
+                        else settle();
+                        pose = VendettaAnims.wernerStance(ticks);
                         if (to.length() > 24) { pos = owner.getLocation().toVector(); settle(); }
-                    } else pose = Pose.lerp(pose, idlePose(ticks), 0.2f);
-                    attack = -1;
+                    } else pose = VendettaAnims.wernerStance(ticks);
+                    attack = -1; pending = -1;
                 } else fight(target, foes);
                 failStreak = 0;
             } catch (RuntimeException e) {
@@ -1264,71 +1333,82 @@ final class Vendetta implements Listener {
             }
         }
 
+        /**
+         * His next move, picked ONCE. BUG FIX: he used to re-roll a move every tick while walking to you, and the only
+         * picks that didn't need him to walk were his counter and his slam, so whenever you kept your distance he
+         * started his counter guard over and over. Now the counter only comes up when someone is right on him, with a
+         * 12 second cooldown, and every other move walks in first.
+         */
+        int choose(List<LivingEntity> foes) {
+            boolean close = false;
+            for (LivingEntity e : foes) if (e.getLocation().toVector().distanceSquared(pos) < 4 * 4) close = true;
+            List<Integer> pool = new ArrayList<>(List.of(W_PLEXUS, W_PLEXUS, W_DOME, W_GUT));
+            if (owner == null && close && seizeCd <= 0) pool.add(W_SEIZE);
+            if (awaitsCd <= 0) pool.add(W_AWAITS);
+            return pool.get(random.nextInt(pool.size()));
+        }
+
         void fight(LivingEntity target, List<LivingEntity> foes) {
             if (attack < 0) {
                 face(target.getLocation().toVector(), 16);
-                if (recover > 0) { recover--; pose = Pose.lerp(pose, idlePose(ticks), 0.25f); settle(); return; }
+                if (recover > 0) { recover--; pose = VendettaAnims.wernerStance(ticks); settle(); return; }
+                if (pending < 0) { pending = choose(foes); chase = 0; }
                 Vector to = target.getLocation().toVector().subtract(pos).setY(0);
-                List<Integer> pool = new ArrayList<>(List.of(W_PLEXUS, W_PLEXUS, W_DOME, W_GUT));
-                if (owner == null) pool.add(W_SEIZE);
-                if (awaitsCd <= 0) pool.add(W_AWAITS);
-                int pick = pool.get(random.nextInt(pool.size()));
-                if (pick != W_SEIZE && pick != W_AWAITS && to.length() > 2.6) {
-                    if (!step(to.normalize().multiply(c("werner.speed", 0.36)))) { blinkTo(target.getLocation().toVector().subtract(to.normalize().multiply(1.5)), target.getLocation().toVector()); }
-                    pose = runPose(ticks, 1f);
+                double reach = pending == W_AWAITS ? 3.2 : 2.6;
+                if (pending != W_SEIZE && to.length() > reach) { // walk in first
+                    if (!step(to.normalize().multiply(c("werner.speed", 0.36))) || ++chase > 70)
+                        blinkTo(target.getLocation().toVector().subtract(to.normalize().multiply(1.5)), target.getLocation().toVector());
+                    walking = true;
+                    pose = VendettaAnims.wernerStance(ticks);
                     return;
                 }
-                attack = pick; t = 0; guarding = false;
+                attack = pending; pending = -1; t = 0; guarding = false;
+                if (attack == W_SEIZE) seizeCd = (int) (c("werner.seize-cooldown-seconds", 12) * 20);
             }
             Player credit = owner;
-            if (t < 6 && attack != W_SEIZE) face(target.getLocation().toVector(), 20);
+            if (t < 6 && attack != W_SEIZE && attack != W_COUNTER) face(target.getLocation().toVector(), 20);
             switch (attack) {
-                case W_PLEXUS -> { // Aim for the Solar Plexus: a body blow that stuns for a second
+                case W_PLEXUS -> { // Aim for the Solar Plexus: a dipping body blow that stuns for a second
+                    pose = VendettaAnims.wernerPlexus(t);
                     if (t == 0 && owner == null) say(ChatColor.LIGHT_PURPLE + "Werner: " + ChatColor.WHITE + "\"Aim for the solar plexus!\"", 25);
-                    if (t < 6) pose = anim(t, new int[]{0, 5}, new Pose[]{standPose(), punchWindPose()});
+                    if (t == 5) step(fwd().multiply(0.35));
                     if (t == 6) {
-                        pose = punchPose().add(BODY, 14, 0, 0);
                         world.playSound(loc(), Sound.ENTITY_PLAYER_ATTACK_STRONG, 1.3f, 0.9f);
-                        for (LivingEntity e : foes) if (inFront(e, 3, 0.4)) hitAny(e, c("werner.plexus-damage", 7), Guard.BLOCKABLE, (int) c("werner.plexus-stun-ticks", 20), 0.4, credit);
+                        for (LivingEntity e : foes) if (inFront(e, 3, 0.4)) hitAny(e, c("werner.plexus-damage", 8), Guard.BLOCKABLE, (int) c("werner.plexus-stun-ticks", 20), 0.4, credit);
                     }
-                    if (t > 6 && t < 16) pose = Pose.lerp(pose, standPose(), 0.2f);
                     if (t >= 16) endW(14);
                 }
-                case W_DOME -> { // Right in the Dome: a headbutt; Weakness II (a shield blocks it)
+                case W_DOME -> { // Right in the Dome: grabs your collar and headbutts you; Weakness II (a shield blocks it)
+                    pose = VendettaAnims.wernerDome(t);
                     if (t == 0 && owner == null) say(ChatColor.LIGHT_PURPLE + "Werner: " + ChatColor.WHITE + "\"Right in the dome!\"", 25);
-                    if (t < 8) pose = anim(t, new int[]{0, 7}, new Pose[]{standPose(), headbuttWindPose()});
                     if (t == 8) {
-                        pose = headbuttPose();
                         world.playSound(loc(), Sound.BLOCK_ANVIL_LAND, 0.6f, 1.6f);
                         for (LivingEntity e : foes) if (inFront(e, 2.8, 0.5)) {
                             boolean blocked = e instanceof Player p && credit == null && facingBlock(p, chest());
-                            hitAny(e, c("werner.dome-damage", 6), Guard.BLOCKABLE, 0, 0.5, credit);
+                            hitAny(e, c("werner.dome-damage", 7), Guard.BLOCKABLE, 0, 0.5, credit);
                             if (!blocked) e.addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS, (int) c("werner.weakness-ticks", 160), 1));
                         }
                     }
-                    if (t > 8 && t < 18) pose = Pose.lerp(pose, standPose(), 0.2f);
                     if (t >= 18) endW(14);
                 }
-                case W_GUT -> { // Gut Crush: two punches, then he pumps himself up (+25% damage for 10s)
+                case W_GUT -> { // Gut Crush: two hooks to the body, then he pumps himself up (+25% damage for 10s)
+                    pose = VendettaAnims.wernerGut(t);
                     if (t == 0 && owner == null) say(ChatColor.LIGHT_PURPLE + "Werner: " + ChatColor.WHITE + "\"Gut crush!\"", 25);
-                    if (t < 5) pose = anim(t, new int[]{0, 4}, new Pose[]{standPose(), punchWindPose()});
                     if (t == 5 || t == 12) {
-                        pose = t == 5 ? punchPose() : hookPose();
                         world.playSound(loc(), Sound.ENTITY_PLAYER_ATTACK_STRONG, 1.3f, 1.0f);
-                        for (LivingEntity e : foes) if (inFront(e, 3, 0.4)) { hitCd.remove(e.getUniqueId()); hitAny(e, c("werner.gut-damage", 5), Guard.BLOCKABLE, 0, 0.3, credit); }
+                        for (LivingEntity e : foes) if (inFront(e, 3, 0.4)) { hitCd.remove(e.getUniqueId()); hitAny(e, c("werner.gut-damage", 6), Guard.BLOCKABLE, 0, 0.3, credit); }
                     }
-                    if (t == 9) pose = mirror(punchWindPose());
-                    if (t == 18) { pose = powerPose(); gutBuff = (int) c("werner.gut-buff-ticks", 200); world.playSound(loc(), Sound.ENTITY_IRON_GOLEM_REPAIR, 1f, 0.8f); }
+                    if (t == 18) { gutBuff = (int) c("werner.gut-buff-ticks", 200); world.playSound(loc(), Sound.ENTITY_IRON_GOLEM_REPAIR, 1f, 0.8f); }
                     if (t >= 26) endW(12);
                 }
-                case W_AWAITS -> { // Vengeance Awaits You All!: a slam that punishes debuffs
+                case W_AWAITS -> { // Vengeance Awaits You All!: a hop and a two-fisted slam that punishes debuffs
+                    pose = VendettaAnims.wernerAwaits(t);
                     if (t == 0) {
                         if (owner == null) say(ChatColor.LIGHT_PURPLE + "Werner: " + ChatColor.DARK_RED + "" + ChatColor.BOLD + "\"VENGEANCE AWAITS YOU ALL!\"", 35);
                         world.playSound(loc(), Sound.ENTITY_RAVAGER_ROAR, 1.4f, 1.2f);
                     }
-                    if (t < 16) { pose = anim(t, new int[]{0, 15}, new Pose[]{standPose(), overheadPose()}); if (t % 2 == 0) ring(4); }
+                    if (t < 16 && t % 2 == 0) ring(4);
                     if (t == 16) {
-                        pose = slamPose();
                         world.playSound(loc(), Sound.ENTITY_GENERIC_EXPLODE, 1.4f, 1.1f);
                         world.spawnParticle(Particle.EXPLOSION, loc(), 3, 1, 0.1, 1, 0);
                         for (LivingEntity e : foes) {
@@ -1340,10 +1420,10 @@ final class Vendetta implements Listener {
                                 if (ty.getCategory() == org.bukkit.potion.PotionEffectTypeCategory.HARMFUL) debuffs++;
                             }
                             if (isStunned(e)) debuffs++;
-                            double dmg = c("werner.awaits-damage", 8) * (1 + debuffs * c("werner.awaits-per-debuff", 0.25));
+                            double dmg = c("werner.awaits-damage", 10) * (1 + debuffs * c("werner.awaits-per-debuff", 0.25));
                             hitCd.remove(e.getUniqueId());
                             if (weak && e instanceof Player wp && credit == null) {
-                                // BUG FIX: "half your health" went through armor, so armored players lost far less than half
+                                // "half your health" goes around armor (armor used to shrink it)
                                 if (!survival(wp)) continue;
                                 wp.setHealth(Math.max(0.5, wp.getHealth() / 2));
                                 wp.playHurtAnimation(0);
@@ -1357,14 +1437,27 @@ final class Vendetta implements Listener {
                         }
                         awaitsCd = (int) (c("werner.awaits-cooldown-seconds", 15) * 20);
                     }
-                    if (t > 16 && t < 30) pose = Pose.lerp(pose, standPose(), 0.12f);
                     if (t >= 30) endW(18);
                 }
-                case W_SEIZE -> { // Counter - Seize ya Chance: a guard; hit him and he counters with Weakness II
+                case W_SEIZE -> { // Counter - Seize ya Chance: an open guard; hit him and he counters with Weakness II
                     guarding = t < 34;
-                    pose = Pose.lerp(pose, guardPose(), 0.35f);
+                    pose = VendettaAnims.wernerSeize(t);
                     if (t == 0) { say(ChatColor.LIGHT_PURPLE + "Werner: " + ChatColor.WHITE + "\"Go ahead. Seize your chance.\"", 25); world.playSound(loc(), Sound.ITEM_SHIELD_BLOCK, 1.2f, 0.8f); }
                     if (t >= 34) endW(10);
+                }
+                case W_COUNTER -> { // the counter itself: a spinning backfist
+                    pose = VendettaAnims.wernerCounter(t);
+                    Player p = counterOn;
+                    if (p != null && t < 5) faceNow(p.getLocation().toVector());
+                    if (t == 5 && p != null && p.isValid()) {
+                        world.playSound(loc(), Sound.ENTITY_PLAYER_ATTACK_CRIT, 1.5f, 0.8f);
+                        hitCd.remove(p.getUniqueId());
+                        if (p.getLocation().toVector().distanceSquared(pos) < 4 * 4) {
+                            hit(p, c("werner.seize-damage", 9), Guard.UNBLOCKABLE, 0, 0.8);
+                            p.addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS, (int) c("werner.weakness-ticks", 160), 1));
+                        }
+                    }
+                    if (t >= 14) { counterOn = null; endW(14); }
                 }
                 default -> endW(10);
             }
@@ -1378,25 +1471,23 @@ final class Vendetta implements Listener {
 
         void endW(int rest) { attack = -1; t = 0; guarding = false; recover = rest; }
 
+        /** Hit during his guard: once, then the guard is over (one counter per guard, never a chain). */
         void counter(Player p) {
             guarding = false;
             blinkTo(behind(p, 1.5), p.getLocation().toVector()); faceNow(p.getLocation().toVector());
-            pose = uppercutPose();
-            world.playSound(loc(), Sound.ENTITY_PLAYER_ATTACK_CRIT, 1.5f, 0.8f);
-            hitCd.remove(p.getUniqueId());
-            hit(p, c("werner.seize-damage", 8), Guard.UNBLOCKABLE, 0, 0.8);
-            p.addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS, (int) c("werner.weakness-ticks", 160), 1));
             p.sendActionBar(legacy(ChatColor.LIGHT_PURPLE + "Seized! " + ChatColor.GRAY + "Don't hit Werner while he's guarding."));
-            attack = -1; recover = 14; t = 0;
+            counterOn = p;
+            attack = W_COUNTER; t = 0;
         }
 
         void onHit(EntityDamageEvent event, Player by) {
             if (owner != null || gone) { event.setCancelled(true); return; }
             if (guarding && by != null && attack == W_SEIZE) { event.setCancelled(true); counter(by); return; }
+            if (attack == W_COUNTER && t < 5) { event.setCancelled(true); return; } // mid-blink
             double dmg = event.getDamage();
             event.setDamage(0.001);
             hp -= dmg;
-            flinch = 5; hitFlash = 3;
+            flinchFrom(by);
             if (by != null && brother != null) brother.fighters.add(by.getUniqueId());
             if (hp <= 0) died();
         }

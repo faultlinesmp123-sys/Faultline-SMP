@@ -1,6 +1,6 @@
-# Next boss: "Ricardo" (working name, rename before release)
+# Next boss: Rocco Vendetta
 
-Inspired by Ricardo from Limbus Company; needs its own name. The **2nd hardest boss** (after the Kraken).
+Inspired by Ricardo from Limbus Company, renamed to **Rocco Vendetta**. The **2nd hardest boss** (after the Kraken).
 Not coded yet. Werner's moves are still to come from the owner.
 
 ## Fight
@@ -26,7 +26,7 @@ Not coded yet. Werner's moves are still to come from the owner.
 
 ## When he dies
 Players get **his passives** (as an item/ability; design TBD) plus:
-- **Cosmetics** (one of): **Golden Chains**, **his Book**, or **his Coat**. Goes into the new cosmetics plugin.
+- **Cosmetics** (one of): **Golden Chains**, **his Book**, or **his Coat**. Unlocked forever in FaultlineCosmetics: `cosmetic unlock <player> rocco_chains|rocco_book|rocco_coat`. The art already exists.
 - **Weapon: Fist**: lets you use every move he has, each on a cooldown. With the Fist you also get:
   - **Mercy of the Big Brother**: buffs you a little, does no damage.
   - **TRICKED ME, DID YOU??!!**: buffs you, does no damage.

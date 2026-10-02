@@ -1,0 +1,75 @@
+{
+ "format_version": 2,
+ "items": {
+  "minecraft:paper": [
+   {
+    "type": "definition",
+    "model": "faultline:cosmetic/rocco_chains_icon",
+    "bedrock_identifier": "faultline:rocco_chains_icon",
+    "display_name": "Rocco's Golden Chains",
+    "bedrock_options": {
+     "icon": "faultline.rocco_chains_icon",
+     "allow_offhand": false
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:cosmetic/rocco_book_icon",
+    "bedrock_identifier": "faultline:rocco_book_icon",
+    "display_name": "Rocco's Book",
+    "bedrock_options": {
+     "icon": "faultline.rocco_book_icon",
+     "allow_offhand": false
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:cosmetic/rocco_chains",
+    "bedrock_identifier": "faultline:rocco_chains",
+    "display_name": "Rocco's Golden Chains",
+    "bedrock_options": {
+     "icon": "faultline.rocco_chains_icon",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "legs"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:cosmetic/rocco_book",
+    "bedrock_identifier": "faultline:rocco_book",
+    "display_name": "Rocco's Book",
+    "bedrock_options": {
+     "icon": "faultline.rocco_book_icon",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "feet"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:cosmetic/rocco_coat_icon",
+    "bedrock_identifier": "faultline:rocco_coat",
+    "display_name": "Rocco's Coat",
+    "bedrock_options": {
+     "icon": "faultline.rocco_coat_icon",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "chest"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   }
+  ]
+ }
+}

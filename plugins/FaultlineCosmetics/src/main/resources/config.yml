@@ -1,0 +1,34 @@
+# ============================================================================
+# FAULTLINE COSMETICS
+# Cosmetics are permanent unlocks. Players wear them from /cosmetics (4 slots: HAT, NECK, BACK, BODY).
+# They show over armor and do nothing to stats.
+#
+# Unlock one from console or another plugin:   cosmetic unlock <player> <id>
+#
+# Adding a cosmetic needs art for both editions (tools/cosmetics_assets.py makes it):
+#   Java    (FaultlineSMP.zip): faultline:cosmetic/<id>_icon  menu icon
+#                               faultline:cosmetic/<id>       the worn model (HAT / NECK / BACK)
+#                               equipment asset faultline:<id> (BODY: an armor-layer texture)
+#   Bedrock (Geyser): FaultlineCosmetics.mcpack in plugins/Geyser-Spigot/packs and
+#                     faultline_cosmetics_mappings.json in plugins/Geyser-Spigot/custom_mappings
+# ============================================================================
+
+cosmetics:
+  rocco_chains:
+    name: "&6Rocco's Golden Chains"
+    slot: NECK
+    source: "Dropped by Rocco Vendetta"
+  rocco_book:
+    name: "&6Rocco's Book"
+    slot: BACK
+    source: "Dropped by Rocco Vendetta"
+  rocco_coat:
+    name: "&6Rocco's Coat"
+    slot: BODY
+    source: "Dropped by Rocco Vendetta"
+
+# Show your own NECK/BACK cosmetics to yourself (seen in third person; a little of it shows when you look down).
+show-own: true
+
+# How often (ticks) cosmetics are re-sent to everyone as a safety net. 40 = every 2 seconds.
+resend-ticks: 40

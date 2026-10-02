@@ -98,31 +98,35 @@ def book(seed):
 
 
 def coat_texture(seed):
-    """Rocco's Coat on the 64x32 humanoid armor layout: a long black coat, gold trim and buttons, open over a red shirt."""
+    """Rocco's Coat on the 64x32 humanoid armor layout: the brothers' long purple coat with a black fur collar and cuffs."""
     rng = random.Random(seed)
     img = np.zeros((32, 64, 4))
-    BLACK = (30, 28, 34); BLACK_HI = (58, 54, 64); BLACK_DK = (16, 14, 18)
-    RED = (130, 22, 30); GOLD_C = (232, 184, 46); GOLD_D = (150, 98, 14)
+    P, PH, PD = (112, 40, 146), (156, 74, 188), (72, 22, 96)
+    FUR, FURH, SHIRT = (24, 20, 26), (46, 40, 52), (60, 22, 80)
+    GOLD_C, GOLD_D = (232, 184, 46), (150, 98, 14)
     def fill(x0, y0, x1, y1, c, n=5):
         for y in range(y0, y1):
             for x in range(x0, x1):
                 img[y, x, :3] = [max(0, min(255, v + rng.uniform(-n, n))) for v in c]; img[y, x, 3] = 255
     # body: top (20,16) 8x4, bottom (28,16), right (16,20) 4x12, front (20,20) 8x12, left (28,20), back (32,20) 8x12
-    fill(20, 16, 28, 20, BLACK); fill(28, 16, 36, 20, BLACK_DK)
-    fill(16, 20, 20, 32, BLACK); fill(28, 20, 32, 32, BLACK); fill(32, 20, 40, 32, BLACK)
-    fill(20, 20, 28, 32, BLACK)
-    fill(23, 20, 25, 32, RED)                                         # the shirt down the middle
-    for y in range(20, 32): img[y, 22, :3] = GOLD_C; img[y, 25, :3] = GOLD_C   # gold-trimmed lapels / front edges
-    for x in range(20, 28): img[20, x, :3] = GOLD_C                   # collar trim
-    img[20, 21, :3] = BLACK_HI; img[20, 26, :3] = BLACK_HI; img[21, 21, :3] = BLACK_HI; img[21, 26, :3] = BLACK_HI  # popped collar
-    for y in (24, 27, 30): img[y, 21, :3] = GOLD_C                    # buttons
-    for x in range(32, 40): img[30, x, :3] = GOLD_D                   # a gold seam across the back
-    for y in range(20, 32): img[y, 36, :3] = BLACK_DK                 # back vent
+    fill(20, 16, 28, 20, FUR, 8); fill(28, 16, 36, 20, PD)
+    fill(16, 20, 20, 32, P); fill(28, 20, 32, 32, P); fill(32, 20, 40, 32, P)
+    fill(20, 20, 28, 32, P)
+    fill(23, 20, 25, 32, SHIRT)                                       # open down the middle
+    for y in range(20, 32): img[y, 22, :3] = PH; img[y, 25, :3] = PH  # lapel edges
+    for x0, x1 in ((16, 40),):                                        # the fur collar, ragged
+        for x in range(x0, x1):
+            for y in range(20, 22 + rng.randint(0, 1)): img[y, x, :3] = FUR if x % 2 else FURH
+    for y in (25, 28): img[y, 21, :3] = GOLD_C; img[y, 26, :3] = GOLD_C   # gold buttons
+    img[29, 23, :3] = GOLD_C; img[29, 24, :3] = GOLD_D                    # belt buckle
+    for y in range(20, 32): img[y, 36, :3] = PD                        # back seam
+    for x in range(16, 40): img[31, x, :3] = FUR if x % 2 else FURH    # fur hem
     # arms: top (44,16) 4x4, bottom (48,16), outer (40,20) 4x12, front (44,20), inner (48,20), back (52,20)
-    fill(44, 16, 48, 20, BLACK); fill(48, 16, 52, 20, BLACK_DK)
-    for x0 in (40, 44, 48, 52): fill(x0, 20, x0 + 4, 32, BLACK)
-    for x in range(40, 56): img[30, x, :3] = GOLD_C; img[31, x, :3] = GOLD_D     # gold cuffs
-    for x in range(40, 56): img[20, x, :3] = BLACK_HI                             # shoulder highlight
+    fill(44, 16, 48, 20, FUR, 8); fill(48, 16, 52, 20, PD)
+    for x0 in (40, 44, 48, 52): fill(x0, 20, x0 + 4, 32, P)
+    for x in range(40, 56):
+        img[29, x, :3] = FURH; img[30, x, :3] = FUR; img[31, x, :3] = FUR if x % 2 else FURH   # fur cuffs
+        img[20, x, :3] = FUR                                                                     # fur at the shoulder
     return Image.fromarray(img.astype(np.uint8), "RGBA")
 
 # ------------------------------------------------------------------ menu icons (16x16)
@@ -148,15 +152,16 @@ def icon(kind):
         for x, y in [(7, 6), (6, 7), (8, 7), (7, 8), (7, 7)]: px(x, y, G)
         px(2, 7, GL); px(2, 8, G)
     elif kind == "rocco_coat":
-        B, BH, R = (30, 28, 34), (60, 56, 66), (130, 22, 30)
+        B, F, R, L = (112, 40, 146), (24, 20, 26), (60, 22, 80), (156, 74, 188)
         for y in range(2, 15):
             for x in range(4, 12): px(x, y, B)
         for y in range(4, 12): px(2, y, B); px(3, y, B); px(12, y, B); px(13, y, B)
         for y in range(3, 15): px(7, y, R); px(8, y, R)
-        for y in range(3, 15): px(6, y, G); px(9, y, G)
-        px(5, 2, BH); px(10, 2, BH); px(5, 3, BH); px(10, 3, BH)
-        for y in (6, 9, 12): px(5, y, GL)
-        for x in (2, 3, 12, 13): px(x, 11, G)
+        for y in range(3, 15): px(6, y, L); px(9, y, L)
+        for x in range(3, 13): px(x, 2, F); px(x, 3, F if x % 2 else (46, 40, 52))   # fur collar
+        for y in (7, 10): px(5, y, G); px(10, y, G)
+        for x in range(4, 12): px(x, 14, F)                                          # fur hem
+        for x in (2, 3, 12, 13): px(x, 11, F); px(x, 12, F)                          # fur cuffs
     return Image.fromarray(img.astype(np.uint8), "RGBA")
 
 # ------------------------------------------------------------------ Bedrock geometry from Java elements

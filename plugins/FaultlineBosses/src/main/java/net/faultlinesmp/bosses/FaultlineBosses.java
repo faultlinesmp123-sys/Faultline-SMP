@@ -203,7 +203,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             Attack.BLOOD_SHOTS, Attack.HOVER, Attack.PHANTOM_DASH, Attack.BLOOD_CHARGE, Attack.BLOOD_SHOTS, Attack.HOVER, Attack.BLOOD_RAIN,
             Attack.HOVER, Attack.TOOTH_VOMIT, Attack.PHANTOM_DASH, Attack.SPIN_DASH};
 
-    private final Random random = new Random();
+    final Random random = new Random();
     private boolean dealing; // true only while the boss deals its own damage
     private NamespacedKey summonKey;
     private DemonEye eye;
@@ -285,6 +285,58 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             }
             return true;
         });
+        getCommand("rocco").setExecutor((sender, command, label, args) -> {
+            if (!sender.hasPermission("bosses.admin")) { sender.sendMessage(ChatColor.RED + "You don't have permission to do that."); return true; }
+            String sub = args.length > 0 ? args[0].toLowerCase() : "";
+            Player self = sender instanceof Player pl ? pl : null;
+            Vendetta.Rocco r = vendetta.rocco;
+            switch (sub) {
+                case "summon" -> {
+                    if (self == null) { sender.sendMessage("Players only."); return true; }
+                    if (r != null) { sender.sendMessage(ChatColor.GRAY + "Rocco Vendetta is already here."); return true; }
+                    vendetta.summon(self.getLocation().add(self.getLocation().getDirection().setY(0).normalize().multiply(6)), self);
+                    sender.sendMessage(ChatColor.GRAY + "(Fight him in survival; creative players don't count as fighters.)");
+                }
+                case "kill" -> { if (r != null) { r.leave(null); sender.sendMessage(ChatColor.GREEN + "Removed Rocco Vendetta."); } else sender.sendMessage(ChatColor.GRAY + "He isn't here."); }
+                case "phase" -> {
+                    if (r == null || args.length < 2) { sender.sendMessage(ChatColor.YELLOW + "/rocco phase <2|3>"); return true; }
+                    int ph;
+                    try { ph = Math.max(2, Math.min(3, Integer.parseInt(args[1]))); } catch (NumberFormatException e) { sender.sendMessage(ChatColor.YELLOW + "/rocco phase <2|3>"); return true; }
+                    if (r.state != Vendetta.FIGHT || ph <= r.phase) { sender.sendMessage(ChatColor.GRAY + "He's already past that (or not fighting yet)."); return true; }
+                    r.hp = Math.min(r.hp, r.maxHp * (ph == 2 ? 2 / 3.0 : 1 / 3.0));
+                    if (ph == 3 && !r.wernerCalled) { r.wernerCalled = true; r.callWerner(); }
+                    r.startTransition(ph);
+                }
+                case "tattoos" -> {
+                    if (r == null) { sender.sendMessage(ChatColor.GRAY + "He isn't here."); return true; }
+                    try { r.tattoos = Math.max(0, Math.min(50, Integer.parseInt(args.length > 1 ? args[1] : "50"))); } catch (NumberFormatException e) { r.tattoos = 50; }
+                    sender.sendMessage(ChatColor.GREEN + "Rocco has " + r.tattoos + " Vengeance Tattoos.");
+                }
+                case "werner" -> {
+                    if (r == null || r.werner != null) { sender.sendMessage(ChatColor.GRAY + "No Rocco here, or Werner is already out."); return true; }
+                    r.wernerCalled = true; r.callWerner();
+                }
+                case "item" -> {
+                    String which = args.length > 1 && args[1].equalsIgnoreCase("fist") ? "fist" : "contract";
+                    int amount = 1; Player target = self;
+                    for (int i = 2; i < args.length; i++) {
+                        Player online = Bukkit.getPlayerExact(args[i]);
+                        if (online != null) target = online;
+                        else try { amount = Math.max(1, Math.min(64, Integer.parseInt(args[i]))); } catch (NumberFormatException ignored) { }
+                    }
+                    if (target == null) { sender.sendMessage("Who should get it?"); return true; }
+                    for (int i = 0; i < amount; i++) give(target, vendetta.item(which));
+                    sender.sendMessage(ChatColor.GREEN + "Gave " + amount + " " + which + " to " + target.getName() + ".");
+                }
+                case "tattoo" -> { // sets YOUR Vendetta Fist tattoos (testing Extermination)
+                    if (self == null) return true;
+                    vendetta.setTattoos(self, args.length > 1 ? Integer.parseInt(args[1].replaceAll("[^0-9]", "0")) : 50);
+                    sender.sendMessage(ChatColor.GREEN + "You have " + vendetta.tattoos(self) + " Vengeance Tattoos.");
+                }
+                default -> sender.sendMessage(ChatColor.YELLOW + "/rocco <summon|kill|phase <2|3>|tattoos [n]|werner|tattoo [n]|item <contract|fist> [amount] [player]>");
+            }
+            return true;
+        });
         getCommand("don").setExecutor((sender, command, label, args) -> {
             String sub = args.length > 0 ? args[0].toLowerCase() : "";
             if (sub.equals("answer")) { // the [Yes] / [No] buttons
@@ -325,6 +377,8 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         registerIdolRecipe();
         removeLeftovers();
         getServer().getPluginManager().registerEvents(this, this);
+        vendetta = new Vendetta(this);
+        getServer().getPluginManager().registerEvents(vendetta, this);
         getServer().getScheduler().runTaskTimer(this, () -> {
             // Each boss updates on its own: an error in one can't freeze the others, and the error is
             // written to the console (at most every 30s per boss) so it can be tracked down.
@@ -334,6 +388,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             safely("Don Lorenzo", () -> { if (don != null) don.tick(); });
             safely("Kraken", () -> { if (kraken != null) kraken.tick(); });
             safely("Diamond Jacob", () -> { if (jacob != null) jacob.tick(); });
+            safely("Rocco Vendetta", () -> { if (vendetta != null) vendetta.tick(); });
             safely("Boss form", this::morphTick);
             safely("Kraken bait", this::baitTick);
             safely("Lorenzo's Ball", this::ballTick);
@@ -455,6 +510,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         safely("shutdown: leftovers", this::removeLeftovers);
         safely("shutdown: Kraken", () -> { if (kraken != null) kraken.removeEverything(); });
         safely("shutdown: Diamond Jacob", () -> { if (jacob != null) jacob.removeEverything(); });
+        safely("shutdown: Rocco Vendetta", () -> { if (vendetta != null) vendetta.shutdown(); });
         don = null; dune = null; mortimer = null; eye = null; kraken = null; jacob = null;
         proxies.clear();
     }
@@ -463,7 +519,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         return getConfig().getDouble("demon-eye." + key, def);
     }
 
-    private static boolean survival(Player p) {
+    static boolean survival(Player p) {
         // an admin playing a boss (/bossmorph) is never a fighter: no boss targets, hurts, or films them
         return (p.getGameMode() == GameMode.SURVIVAL || p.getGameMode() == GameMode.ADVENTURE) && !MORPHED.contains(p.getUniqueId());
     }
@@ -482,12 +538,13 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                         || tags.contains(PROXY_TAG) || tags.contains(DUNE_TAG) || tags.contains(DUNE_SEG_TAG) || tags.contains(VULTURE_TAG)
                         || tags.contains(DON_TAG) || tags.contains(DON_ORB_TAG) || tags.contains(KRAKEN_TAG) || tags.contains(KRAKEN_TENT_TAG)
                         || tags.contains(KRAKEN_PINK_TAG) || tags.contains(KRAKEN_EEL_TAG) || tags.contains(KRAKEN_MINION_TAG)
-                        || tags.contains(JACOB_TAG) || tags.contains(JACOB_BIRD_TAG) || tags.contains(JACOB_ORB_TAG) || tags.contains(JACOB_MINION_TAG)) e.remove();
+                        || tags.contains(JACOB_TAG) || tags.contains(JACOB_BIRD_TAG) || tags.contains(JACOB_ORB_TAG) || tags.contains(JACOB_MINION_TAG)
+                        || Vendetta.ours(e)) e.remove();
             }
         }
     }
 
-    private static net.kyori.adventure.text.Component legacy(String text) {
+    static net.kyori.adventure.text.Component legacy(String text) {
         return LegacyComponentSerializer.legacySection().deserialize(text);
     }
 
@@ -500,14 +557,14 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
      * so the eye's face ended up at the back (it dashed tendrils-first and spat teeth
      * out of its tendrils). This flips it so the face leads. model-flip: false undoes it.
      */
-    private Quaternionf facing(float roll) {
+    Quaternionf facing(float roll) {
         Quaternionf q = new Quaternionf();
         if (getConfig().getBoolean("demon-eye.model-flip", true)) q.rotateY((float) Math.PI);
         return q.rotateZ(roll);
     }
 
     /** An item whose look comes from the FaultlineBosses resource pack. */
-    private static ItemStack modelItem(String model) {
+    static ItemStack modelItem(String model) {
         ItemStack item = new ItemStack(Material.ENDER_EYE);
         ItemMeta meta = item.getItemMeta();
         meta.setItemModel(new NamespacedKey("faultline", model));
@@ -515,7 +572,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         return item;
     }
 
-    private ItemDisplay spawnDisplay(Location at, String model, float scale, int teleportTicks, Display.Billboard billboard) {
+    ItemDisplay spawnDisplay(Location at, String model, float scale, int teleportTicks, Display.Billboard billboard) {
         ItemDisplay d = at.getWorld().spawn(at, ItemDisplay.class);
         d.setItemStack(modelItem(model));
         d.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.NONE);
@@ -685,7 +742,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         if (!(tags.contains(BOSS_TAG) || tags.contains(SERVANT_TAG) || tags.contains(MORT_TAG) || tags.contains(MORT_ORB_TAG)
                 || tags.contains(DUNE_TAG) || tags.contains(DUNE_SEG_TAG) || tags.contains(KRAKEN_TAG) || tags.contains(KRAKEN_TENT_TAG)
                 || tags.contains(KRAKEN_PINK_TAG) || tags.contains(KRAKEN_EEL_TAG) || tags.contains(JACOB_TAG) || tags.contains(JACOB_BIRD_TAG)
-                || tags.contains(JACOB_ORB_TAG))) return;
+                || tags.contains(JACOB_ORB_TAG) || Vendetta.isBody(event.getDamager()))) return;
         if (!dealing) {
             event.setCancelled(true);
         } else if (event.isApplicable(EntityDamageEvent.DamageModifier.BLOCKING)) {
@@ -703,12 +760,13 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
      * the side), not just the boss. BLOCKABLE: fully blocked. HEAVY: half damage, and
      * your shield is knocked away for 5 seconds. UNBLOCKABLE: shields don't help.
      */
-    private void hurt(Player p, double amount, Entity source, Vector from, Guard guard) {
+    void hurt(Player p, double amount, Entity source, Vector from, Guard guard) {
         boolean frost = source != null && source.getScoreboardTags().contains(MORT_TAG);
         boolean worm = source != null && source.getScoreboardTags().contains(DUNE_TAG);
         if (source != null && source.getScoreboardTags().contains(DON_TAG)) amount *= ncfg("damage-multiplier", 1.3); // Don hits 30% harder
         if (source != null && source.getScoreboardTags().contains(KRAKEN_TAG)) amount *= kcfg("damage-multiplier", 1.2) / Math.max(0.01, cfg("damage-multiplier", 1.0)); // his own multiplier
         if (source != null && source.getScoreboardTags().contains(JACOB_TAG)) amount *= jcfg("damage-multiplier", 1.0) / Math.max(0.01, cfg("damage-multiplier", 1.0));
+        if (source != null && Vendetta.isBody(source)) amount *= getConfig().getDouble("rocco.damage-multiplier", 1.0) / Math.max(0.01, cfg("damage-multiplier", 1.0));
         amount *= frost ? mcfg("damage-multiplier", 1.5) : worm ? dcfg("damage-multiplier", 1.2) : cfg("damage-multiplier", 1.0);
         if (guard != Guard.UNBLOCKABLE && facingBlock(p, from)) {
             shieldHit(p, amount, guard == Guard.HEAVY);
@@ -821,7 +879,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
      * slimes even draw their shell while invisible). A real, permanent, hidden Invisibility effect
      * survives that re-check; onHiddenEffect below keeps every other effect off.
      */
-    private static void hideForGood(LivingEntity e) {
+    static void hideForGood(LivingEntity e) {
         e.setInvisible(true);
         e.addPotionEffect(new org.bukkit.potion.PotionEffect(org.bukkit.potion.PotionEffectType.INVISIBILITY,
                 org.bukkit.potion.PotionEffect.INFINITE_DURATION, 0, false, false, false));
@@ -832,7 +890,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
      * made, thorns, bed/anchor blasts, a Necromancer Staff minion). Before, Iron Golems (they attack slimes on sight),
      * creepers and skeletons could hurt the bosses too, so luring a worm into a village killed it for free loot.
      */
-    private static boolean byPlayer(EntityDamageEvent e) {
+    static boolean byPlayer(EntityDamageEvent e) {
         EntityDamageEvent.DamageCause c = e.getCause();
         if (c == EntityDamageEvent.DamageCause.BLOCK_EXPLOSION || c == EntityDamageEvent.DamageCause.CUSTOM) return true; // beds/anchors; the plugin's own hits
         if (!(e instanceof EntityDamageByEntityEvent by)) return false;
@@ -851,7 +909,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 || t.contains(TWIN_EYE_TAG) || t.contains(RUNNER_TAG) || t.contains(DUNE_TAG) || t.contains(DUNE_SEG_TAG)
                 || t.contains(DON_TAG) || t.contains(DON_ORB_TAG) || t.contains(VULTURE_TAG) // Vultures: invisible under their bird model
                 || t.contains(KRAKEN_TAG) || t.contains(KRAKEN_TENT_TAG) || t.contains(KRAKEN_PINK_TAG) || t.contains(KRAKEN_EEL_TAG)
-                || t.contains(JACOB_TAG) || t.contains(JACOB_BIRD_TAG) || t.contains(JACOB_ORB_TAG);
+                || t.contains(JACOB_TAG) || t.contains(JACOB_BIRD_TAG) || t.contains(JACOB_ORB_TAG) || Vendetta.isBody(e);
     }
 
     /** Hitboxes and Icicle Runners take no potion effects (no Glowing, Slowness, Poison...), and never lose Invisibility. */
@@ -871,7 +929,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         if (hiddenBody(event.getEntity())) { event.setCancelled(true); event.getEntity().setFireTicks(0); }
     }
 
-    private void setupHitbox(Slime slime, double health, String tag, String name) {
+    void setupHitbox(Slime slime, double health, String tag, String name) {
         slime.setAI(false);
         slime.setGravity(false);
         hideForGood(slime);
@@ -1819,7 +1877,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         return item;
     }
 
-    private boolean tagged(ItemStack item, NamespacedKey key) {
+    boolean tagged(ItemStack item, NamespacedKey key) {
         if (item == null || !item.hasItemMeta()) return false;
         Byte tag = item.getItemMeta().getPersistentDataContainer().get(key, PersistentDataType.BYTE);
         return tag != null && tag == (byte) 1;
@@ -8025,7 +8083,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
     private final Map<String, Long> bossPartLog = new HashMap<>();
 
     /** Logs one boss part's error (at most every 30 seconds per part), so the console says exactly what failed. */
-    private void logBossPart(String boss, String what, Throwable e) {
+    void logBossPart(String boss, String what, Throwable e) {
         long now = System.currentTimeMillis();
         if (now - bossPartLog.getOrDefault(boss + what, 0L) < 30000) return;
         bossPartLog.put(boss + what, now);
@@ -8033,7 +8091,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
     }
 
     /** Runs one part of a boss's update; an error is logged and the rest of the boss keeps going. */
-    private void bossPart(String boss, String what, Runnable r) {
+    void bossPart(String boss, String what, Runnable r) {
         try { r.run(); } catch (RuntimeException e) { logBossPart(boss, what, e); }
     }
 
@@ -8182,7 +8240,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
 
     static Pose jumpPose() { return new Pose().set(LEG_R, -40, 0, 0).set(LEG_L, 30, 0, 0).set(ARM_R, -170, 0, -10).set(ARM_L, -150, 0, 10); }
 
-    private Quaternionf euler(float[] r) {
+    Quaternionf euler(float[] r) {
         return new Quaternionf().rotateY((float) Math.toRadians(r[1])).rotateX((float) Math.toRadians(r[0])).rotateZ((float) Math.toRadians(r[2]));
     }
 
@@ -10051,7 +10109,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
     }
 
     // ---------- damage, talking, orbs ----------
-    private Player playerFrom(Entity damager) {
+    Player playerFrom(Entity damager) {
         if (damager instanceof Player p) return p;
         if (damager instanceof Projectile pr && pr.getShooter() instanceof Player s) return s;
         return null;
@@ -10163,24 +10221,24 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
     // ===================== REWARDS & COMMAND =====================
 
     /** Drops an item at a spot, bursting outward, pick-up-able only by `owner`. */
-    private void dropLocked(Location at, Player owner, ItemStack item) {
+    void dropLocked(Location at, Player owner, ItemStack item) {
         org.bukkit.entity.Item drop = at.getWorld().dropItem(at, item);
         drop.setOwner(owner.getUniqueId());
         drop.setVelocity(new Vector(random.nextGaussian() * 0.15, 0.3 + random.nextDouble() * 0.2, random.nextGaussian() * 0.15));
     }
 
-    private void give(Player p, ItemStack item) {
+    void give(Player p, ItemStack item) {
         p.getInventory().addItem(item).values().forEach(left -> p.getWorld().dropItemNaturally(p.getLocation(), left));
     }
 
     /** Mythic Bags come from FaultlineItems, Zombie Omens from FaultlineRaids (the real items). */
-    private void console(String command, Player p) {
+    void console(String command, Player p) {
         console(command, p, null);
     }
 
-    private void console(String command, Player p, Location dropAt) {
+    void console(String command, Player p, Location dropAt) {
         boolean index = command.startsWith("index ");
-        String pluginName = command.startsWith("zraid") ? "FaultlineRaids" : index ? "FaultlineIndex" : "FaultlineItems";
+        String pluginName = command.startsWith("zraid") ? "FaultlineRaids" : index ? "FaultlineIndex" : command.startsWith("cosmetic ") ? "FaultlineCosmetics" : "FaultlineItems";
         Plugin other = Bukkit.getPluginManager().getPlugin(pluginName);
         boolean ok = other != null && other.isEnabled() && Bukkit.dispatchCommand(Bukkit.getConsoleSender(), command);
         if (!ok && index) return; // just an Index unlock: nothing to make up for
@@ -10198,8 +10256,9 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
     //  Everyone else fights it like the real thing: its health, phases, cutscenes, and defeat all work normally.
     // =====================================================================================================
     static final Set<UUID> MORPHED = new HashSet<>();
-    static final List<String> MORPH_KINDS = List.of("demoneye", "frostbeard", "dune", "frostmaw", "kraken", "jacob", "don", "off", "release");
+    static final List<String> MORPH_KINDS = List.of("demoneye", "frostbeard", "dune", "frostmaw", "kraken", "jacob", "don", "rocco", "off", "release");
     private Morph morph;
+    Vendetta vendetta;
     private final NamespacedKey MORPH_MOVE_KEY = new NamespacedKey(this, "morph_move");
     java.io.File morphFile() { return new java.io.File(getDataFolder(), "boss_form.yml"); }
 
@@ -10349,6 +10408,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 m.add(new MoveSlot(9, "Ace Eater", Material.ROTTEN_FLESH));
             }
         }
+        else if (vendetta != null && vendetta.rocco != null && b == vendetta.rocco) m.addAll(vendetta.morphMoves());
         return m.size() > 8 ? m.subList(0, 8) : m;
     }
 
@@ -10397,12 +10457,12 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         if (!(sender instanceof Player p)) { sender.sendMessage("Players only."); return true; }
         if (morph != null) { sender.sendMessage(ChatColor.RED + "Someone is already in boss form. (/bossmorph off)"); return true; }
         if (!MORPH_KINDS.contains(kind) || kind.equals("off") || kind.equals("release")) {
-            sender.sendMessage(ChatColor.YELLOW + "/bossmorph <demoneye|frostbeard|dune|frostmaw|kraken|jacob|don>  |  /bossmorph off  |  /bossmorph release");
+            sender.sendMessage(ChatColor.YELLOW + "/bossmorph <demoneye|frostbeard|dune|frostmaw|kraken|jacob|don|rocco>  |  /bossmorph off  |  /bossmorph release");
             return true;
         }
         boolean busy = switch (kind) {
             case "demoneye" -> eye != null; case "frostbeard" -> mortimer != null; case "dune", "frostmaw" -> dune != null;
-            case "kraken" -> kraken != null; case "jacob" -> jacob != null; default -> don != null;
+            case "kraken" -> kraken != null; case "jacob" -> jacob != null; case "rocco" -> vendetta.rocco != null; default -> don != null;
         };
         if (busy) { sender.sendMessage(ChatColor.RED + "That boss is already out. Remove it first (/" + (kind.equals("frostmaw") ? "dune" : kind) + " kill)."); return true; }
         startMorph(p, kind);
@@ -10426,7 +10486,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         p.getInventory().clear();
         p.setGameMode(GameMode.ADVENTURE);
         p.setAllowFlight(true);
-        if (!kind.equals("don")) p.setFlying(true);
+        if (!kind.equals("don") && !kind.equals("rocco")) p.setFlying(true);
         p.setInvulnerable(true);
         p.setCollidable(false);
         p.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, PotionEffect.INFINITE_DURATION, 0, false, false, false));
@@ -10447,6 +10507,11 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 case "dune", "frostmaw" -> { summonDune(p, kind.equals("frostmaw")); morph.boss = dune; }
                 case "kraken" -> { summonKraken(at.clone().add(look.clone().multiply(14)), null); morph.boss = kraken; }
                 case "jacob" -> { summonJacob(at, null); morph.boss = jacob; }
+                case "rocco" -> {
+                    vendetta.summon(at.clone().add(look.clone().multiply(3)), null);
+                    morph.boss = vendetta.rocco;
+                    if (vendetta.rocco != null) { vendetta.rocco.state = Vendetta.FIGHT; vendetta.rocco.st = 0; } // no entrance
+                }
                 default -> {
                     summonDon(at, p);
                     morph.boss = don;
@@ -10470,7 +10535,8 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         MORPHED.remove(m.player);
         if (leave && m.boss != null) {
             String cmd = m.boss == eye ? "demoneye kill" : m.boss == mortimer ? "frostbeard kill" : m.boss == dune ? "dune kill"
-                    : m.boss == kraken ? "kraken kill" : m.boss == jacob ? "jacob kill" : m.boss == don ? "don kill" : null;
+                    : m.boss == kraken ? "kraken kill" : m.boss == jacob ? "jacob kill" : m.boss == don ? "don kill"
+                    : m.boss == vendetta.rocco ? "rocco kill" : null;
             if (cmd != null) Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd);
         }
         Player p = Bukkit.getPlayer(m.player);
@@ -10504,7 +10570,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         Player p = Bukkit.getPlayer(morph.player);
         if (p == null) { endMorph(true, null); return; }
         boolean alive = morph.boss != null && (morph.boss == eye || morph.boss == mortimer || morph.boss == dune
-                || morph.boss == kraken || morph.boss == jacob || morph.boss == don);
+                || morph.boss == kraken || morph.boss == jacob || morph.boss == don || morph.boss == vendetta.rocco);
         if (!alive) { endMorph(false, ChatColor.GOLD + "Your boss was defeated! You're yourself again."); return; }
         if (++morph.ticks % 10 == 0) {
             refreshMorphHotbar(p);

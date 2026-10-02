@@ -338,3 +338,63 @@ jacob:
     volume: 1.0
     length1-seconds: 315      # track 1 (phases 1-3): music1.ogg is 5:15
     length2-seconds: 287      # track 2 (the third cutscene + phase 4): music2.ogg is 4:46
+
+# Rocco Vendetta: summoned with a Vendetta Contract (Gold Blocks, Netherite Scrap and a Book) on open, flat ground.
+rocco:
+  health: 5000                # 3 phases (2/3 and 1/3 mark the next phase); Werner joins at half health
+  defense: 0.1                # 10% less damage taken
+  damage-multiplier: 1.0      # everything he and Werner deal
+  scale: 1.2
+  hitbox-scale: 2.25
+  arena-radius: 40
+  walk-speed: 0.28
+  phase2-speed: 0.34
+  phase3-speed: 0.42
+  stun-ticks: 60              # kicks and punches stun for 3 seconds
+  stun-immunity-ticks: 30     # after a stun ends you can't be stunned again for 1.5 seconds
+  max-tattoos: 50             # Vengeance Tattoos: one per hit he takes (at most every tattoo-cooldown-ticks)
+  tattoo-cooldown-ticks: 10
+  tattoo-damage: 0.01         # +1% damage per tattoo
+  kick-damage: 10
+  punch-damage: 9
+  payback-damage: 12
+  back-damage: 8
+  tests-damage: 11
+  coupons:
+    radius: 7                 # MY HAIR COUPONS!!!: 14 blocks wide; caught = half your health
+    charge-ticks: 50
+    stun-ticks: 20
+  extermination:
+    height: 22
+    dodge-ticks: 20           # the red ring locks 1 second before he lands: get out of it or die
+    splash-damage: 6
+  vengeance:
+    dodge-ticks: 100          # Swear Vengeance: dodges everything for 5 seconds...
+    buff-ticks: 300           # ...and for 15 seconds: +25% damage, +40% speed, 25% less damage taken
+    damage-bonus: 0.25
+    speed-bonus: 0.4
+    damage-reduction: 0.25
+  assemble:
+    base: 2                   # Enforcers per Assemble: 2 + one per fighter
+    max-alive: 6
+    health: 30
+    cooldown-seconds: 30
+  werner:
+    at: 0.5
+    health: 300
+    member-bonus: 0.15        # +15% damage every time a Vendetta Enforcer dies
+    cosmetic-chance: 0.33     # killing Werner: a 1 in 3 chance at one of the cosmetics
+    death-rage: 0.15          # Rocco hits 15% harder once Werner is down
+  cooldown-minutes: 15
+  rewards:
+    mythic-bags-min: 50
+    mythic-bags-extra: 101    # 50-150 Mythic Goodie Bags
+    goodie-bags: 10
+    fist-chance: 1.0
+    xp: 3000
+  fist:
+    boss-damage-cap: 60       # no Fist move hits a boss for more than this...
+    extermination-boss-damage: 250   # ...except Extermination
+    werner-cooldown-seconds: 300     # Werner helps when you drop below half health (every 5 minutes, for 30 seconds)
+    werner-seconds: 30
+

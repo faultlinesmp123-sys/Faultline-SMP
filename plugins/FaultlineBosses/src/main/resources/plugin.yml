@@ -24,6 +24,10 @@ commands:
     description: "Admin: summon or remove Diamond Jacob, skip to a phase, or give his items"
     usage: /jacob <summon|kill|phase|item>
     permission: bosses.admin
+  rocco:
+    description: "Admin: summon or remove Rocco Vendetta, skip to a phase, set his tattoos, call Werner, or give his items"
+    usage: /rocco <summon|kill|phase|tattoos|werner|tattoo|item>
+    permission: bosses.admin
   kraken:
     description: "Admin: summon or remove the Kraken, force a phase, spawn a pink bubble, or get a Bait Worm"
     usage: /kraken <summon|kill|phase|bubble|worm>

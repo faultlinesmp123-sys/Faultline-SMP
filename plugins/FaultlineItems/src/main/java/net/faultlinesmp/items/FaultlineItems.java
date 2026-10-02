@@ -6846,6 +6846,10 @@ public final class FaultlineItems extends JavaPlugin {
                         "jacob item hammer {amount} {player}", "FaultlineBosses"));
                 list.add(external(icon(Material.NETHERITE_SWORD, "jacob_sword", ChatColor.GOLD + "" + ChatColor.BOLD + "Ember Blade", "FaultlineBosses"),
                         "jacob item sword {amount} {player}", "FaultlineBosses"));
+                list.add(external(icon(Material.PAPER, "vendetta_contract", ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + "Vendetta Contract", "FaultlineBosses"),
+                        "rocco item contract {amount} {player}", "FaultlineBosses"));
+                list.add(external(icon(Material.PAPER, "vendetta_fist", ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + "Vendetta Fist", "FaultlineBosses"),
+                        "rocco item fist {amount} {player}", "FaultlineBosses"));
             }
             if (enabled("FaultlineRaids")) {
                 String[] roman = {"I", "II", "III", "IV", "V"};

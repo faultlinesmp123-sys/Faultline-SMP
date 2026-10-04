@@ -12,9 +12,10 @@ Writes into an unpacked FaultlineSMP pack:
   explorer_blade                                  his greatsword (black, with white edges)
   explorer_tiger_{body,head,jaw,tail}             the black tiger, sitting (joints in TIGER_JOINT)
   textures/index/lost_explorer.png                his Index icon
+  lost_mirror                                     the Mirror..?? (his accessory drop): item + Index icon
 Usage: python3 tools/explorer_models.py <unpacked-pack-dir> [--preview <dir>]
 """
-import math, os, random, sys
+import json, math, os, random, sys
 import numpy as np
 from PIL import Image
 
@@ -617,6 +618,37 @@ def icon():
     return im
 
 
+# ---------------- the Mirror..?? (his drop, an accessory): a black hand mirror. Look closely: his helm is in the glass.
+MIRROR = [
+    ".....#####......",
+    "...##WWWWW##....",
+    "..#WgggggggW#...",
+    ".#WggggggggsW#..",
+    ".#WgggKKKggsW#..",
+    "#WgggKKKKKggsW#.",
+    "#WgggKVVVKgggW#.",
+    "#WgggKVVVKgggW#.",
+    "#WggggKVKggggW#.",
+    ".#WggggggggsW#..",
+    ".#WgsggggggW#...",
+    "..#WWggggWW#....",
+    "...##WWWW##.....",
+    ".....#HH#.......",
+    ".....#HH#.......",
+    "......##........",
+]
+MIRROR_PAL = {"#": (8, 8, 12), "W": (60, 60, 76), "g": (188, 196, 214), "s": (240, 244, 255),
+              "K": (120, 124, 140), "V": (28, 28, 36), "H": (40, 40, 52)}
+
+
+def mirror_icon():
+    im = Image.new("RGBA", (16, 16), (0, 0, 0, 0))
+    for y, row in enumerate(MIRROR):
+        for x, ch in enumerate(row):
+            if ch in MIRROR_PAL: im.putpixel((x, y), MIRROR_PAL[ch] + (255,))
+    return im
+
+
 def lighten(path):
     """Swap the dark preview background for grey so the black armor can actually be judged."""
     im = np.asarray(Image.open(path).convert("RGBA")).copy()
@@ -654,6 +686,13 @@ def main():
     prev = sys.argv[sys.argv.index("--preview") + 1] if "--preview" in sys.argv else None
     for d in ("models/item", "textures/item", "items", "textures/index"): os.makedirs(os.path.join(pack, "assets/faultline", d), exist_ok=True)
     icon().save(os.path.join(pack, "assets/faultline/textures/index/lost_explorer.png"))
+    A = os.path.join(pack, "assets/faultline")
+    mirror_icon().save(os.path.join(A, "textures/item/lost_mirror.png"))
+    mirror_icon().save(os.path.join(A, "textures/index/lost_mirror.png"))
+    with open(os.path.join(A, "models/item/lost_mirror.json"), "w") as f:
+        json.dump({"parent": "minecraft:item/generated", "textures": {"layer0": "faultline:item/lost_mirror"}}, f, indent=2)
+    with open(os.path.join(A, "items/lost_mirror.json"), "w") as f:
+        json.dump({"model": {"type": "minecraft:model", "model": "faultline:item/lost_mirror"}}, f, indent=2)
     atlas, parts = explorer(41)
     img = write_tex(pack, "explorer_armor", atlas)
     for part, el in parts.items(): write_model(pack, f"explorer_{part}", "explorer_armor", el)

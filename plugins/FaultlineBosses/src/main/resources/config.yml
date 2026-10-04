@@ -441,7 +441,12 @@ explorer:
   pickaxe-hits: 3                   # pickaxe hits on the cracked pillar to drop it on him
   respawn-minutes: 30               # after he's beaten, before his statue comes back
   tiger-pounce-seconds: 12
-  rewards:
-    diamonds: 32
-    mythic-bags: 5
+  rewards:                          # per fighter
+    mythic-bags: 32
     xp: 3000
+    netherite-blocks: 5
+    mirror: true                    # the Mirror..?? accessory (FaultlineItems /givelostmirror)
+  music:
+    enabled: true
+    volume: 1.0
+    length-seconds: 122             # Black Knife (Deltarune), looped from "Then show me." until the fight ends

@@ -110,18 +110,22 @@ final class Explorer implements Listener, CommandExecutor {
     /** Starts the fight (right-clicking his statue). */
     void begin(World w, Player by) {
         if (fight != null) return;
+        cleanArena(true); // BUG FIX: pillars left by a crash were remembered as "what was there" and put back after the fight
         fight = new Fight(w, by);
     }
 
     static Vector center() { return new Vector(0.5, Below.PATH_Y + 1, Below.ARENA_Z + 0.5); }
 
     /** Leftover pillars/walls (a crash mid-fight) go back to the generated arena: air, and the light blocks. */
-    void cleanArena() {
+    void cleanArena() { cleanArena(false); }
+
+    /** force: load the arena's chunks if they aren't (a fight is starting there anyway). */
+    void cleanArena(boolean force) {
         World v = Bukkit.getWorld(below.voidName());
         if (v == null || fight != null) return;
         int cz = Below.ARENA_Z;
         for (int x = -21; x <= 21; x++) for (int z = cz - 21; z <= cz + 21; z++) for (int y = Below.PATH_Y + 1; y <= Below.PATH_Y + 1 + PILLAR_H; y++) {
-            if (!v.isChunkLoaded(x >> 4, z >> 4)) continue;
+            if (!force && !v.isChunkLoaded(x >> 4, z >> 4)) continue;
             Block b = v.getBlockAt(x, y, z);
             Material m = b.getType();
             if (m == Material.BARRIER || m == PILLAR_BODY || m == PILLAR_CAP) b.setBlockData(generated(x, y, z), false);
@@ -178,6 +182,7 @@ final class Explorer implements Listener, CommandExecutor {
         Vector thrownPos, thrownVel;
         boolean thrownBack;
         final Map<UUID, Long> counterCd = new HashMap<>();
+        final Map<UUID, Integer> iframes = new HashMap<>();
         Tiger tiger;
         // the falling pillar
         final List<BlockDisplay> fallParts = new ArrayList<>();
@@ -246,9 +251,40 @@ final class Explorer implements Listener, CommandExecutor {
             for (Player p : world.getPlayers()) p.sendActionBar(legacy(text));
         }
 
+        // ------------------------------------------------------------------ music: Black Knife, looped for the fight
+        long musicStart = -1;
+        final Set<UUID> listeners = new HashSet<>();
+
+        boolean musicOn() { return pl.getConfig().getBoolean("explorer.music.enabled", true); }
+
+        void playMusic() {
+            musicStart = System.currentTimeMillis();
+            if (!musicOn()) return;
+            for (Player p : world.getPlayers()) if (inArena(p, 40)) listen(p);
+        }
+
+        void listen(Player p) {
+            p.stopSound(SoundCategory.MUSIC);
+            p.playSound(p, "faultline:explorer.music", SoundCategory.RECORDS, (float) c("music.volume", 1.0), 1f);
+            listeners.add(p.getUniqueId());
+        }
+
+        void stopMusic() {
+            for (UUID id : listeners) { Player p = Bukkit.getPlayer(id); if (p != null) p.stopSound("faultline:explorer.music", SoundCategory.RECORDS); }
+            listeners.clear();
+            musicStart = -1;
+        }
+
+        void musicTick() {
+            if (musicStart < 0 || !musicOn()) return;
+            if (System.currentTimeMillis() - musicStart > c("music.length-seconds", 122) * 1000) { stopMusic(); playMusic(); return; }
+            if (ticks % 20 == 0) for (Player p : world.getPlayers()) if (!listeners.contains(p.getUniqueId()) && inArena(p, 30)) listen(p);
+        }
+
         // ------------------------------------------------------------------ every tick
         void tick() {
             ticks++; t++;
+            musicTick();
             for (Player p : world.getPlayers()) if (!fighters.contains(p.getUniqueId()) && inArena(p, 18.5) && st != St.LOSS && st != St.DEFEAT) fighters.add(p.getUniqueId());
             for (UUID id : downed) { // the fallen stay where they are, on their knees
                 Player p = Bukkit.getPlayer(id);
@@ -300,7 +336,7 @@ final class Explorer implements Listener, CommandExecutor {
                 world.playSound(home.toLocation(world), Sound.BLOCK_END_PORTAL_SPAWN, SoundCategory.HOSTILE, 1.4f, 0.5f);
             }
             if (t >= 40 && t <= 40 + PILLAR_H * 4 && (t - 40) % 4 == 0) for (Pillar pr : pillars) raise(pr, (t - 40) / 4);
-            if (t == 70) say("Then show me.");
+            if (t == 70) { say("Then show me."); playMusic(); }
             if (t == 95) hint(ChatColor.GRAY + "Weapons won't touch him. " + ChatColor.WHITE + "Make him crash into a pillar" + ChatColor.GRAY + ", then hit it with a pickaxe.");
             Player look = nearest();
             if (look != null && t > 20) face(look.getLocation().toVector(), 4);
@@ -330,6 +366,14 @@ final class Explorer implements Listener, CommandExecutor {
         /** Invisible walls all around the arena edge (and across the path), so nobody can fall into the void. */
         void placeWalls() {
             int cx = (int) Math.floor(home.getX()), cz = (int) Math.floor(home.getZ());
+            for (Player p : world.getPlayers()) { // anyone standing where the wall goes up is moved inside, not walled in
+                Vector d = p.getLocation().toVector().subtract(home).setY(0);
+                if (d.length() >= 18.0 && d.length() < 20.6 && Math.abs(p.getLocation().getY() - home.getY()) < 6) {
+                    Vector in = d.normalize().multiply(17.4);
+                    Location l = p.getLocation(); l.setX(home.getX() + in.getX()); l.setZ(home.getZ() + in.getZ()); l.setY(home.getY());
+                    p.teleport(l);
+                }
+            }
             for (int x = -21; x <= 21; x++) for (int z = -21; z <= 21; z++) {
                 double d = Math.hypot(x, z);
                 if (d < 18.6 || d >= 19.9) continue;
@@ -833,8 +877,18 @@ final class Explorer implements Listener, CommandExecutor {
             double dmg = hp * (heavy ? c("damage.heavy", 0.55) : c("damage.light", 0.40));
             Vector push = p.getLocation().toVector().subtract(from).setY(0);
             if (push.lengthSquared() < 0.01) push = fwd();
-            p.damage(dmg, org.bukkit.damage.DamageSource.builder(org.bukkit.damage.DamageType.MAGIC).withCausingEntity(hitbox).withDirectEntity(hitbox).build());
-            if (!downed.contains(p.getUniqueId())) p.setVelocity(push.normalize().multiply(heavy ? 1.1 : 0.7).setY(heavy ? 0.5 : 0.35));
+            // BUG FIX: this used to be magic damage, which Protection enchants and Resistance still shrink: in full Protection IV
+            // his hits took 5-6 to put you down, not 2-3. Now it's taken straight off your health (absorption hearts first).
+            if (ticks < iframes.getOrDefault(p.getUniqueId(), 0)) return; // two hits in the same instant (him + the tiger) count once
+            iframes.put(p.getUniqueId(), ticks + 8);
+            double abs = p.getAbsorptionAmount(), fromAbs = Math.min(abs, dmg);
+            if (fromAbs > 0) p.setAbsorptionAmount(abs - fromAbs);
+            double left = p.getHealth() - (dmg - fromAbs);
+            p.playHurtAnimation(0);
+            p.getWorld().playSound(p.getLocation(), Sound.ENTITY_PLAYER_HURT, SoundCategory.PLAYERS, 1f, 0.8f);
+            if (left <= 0.01) { down(p); return; }
+            p.setHealth(left);
+            p.setVelocity(push.normalize().multiply(heavy ? 1.1 : 0.7).setY(heavy ? 0.5 : 0.35));
             p.getWorld().spawnParticle(Particle.DAMAGE_INDICATOR, p.getLocation().add(0, 1, 0), 6, 0.3, 0.4, 0.3, 0);
         }
 
@@ -869,6 +923,7 @@ final class Explorer implements Listener, CommandExecutor {
         // ------------------------------------------------------------------ losing: "You cannot defeat me..."
         void startLoss() {
             st = St.LOSS; t = 0; move = Move.NONE;
+            stopMusic(); // silence, then he speaks
             if (thrown != null && thrown.isValid()) thrown.remove();
             thrown = null;
             weapon.setItemStack(modelItem(blade ? "explorer_blade" : "explorer_axe"));
@@ -895,7 +950,7 @@ final class Explorer implements Listener, CommandExecutor {
             }
             if (t == 108) {
                 for (Player p : new ArrayList<>(world.getPlayers())) {
-                    below.paid.add(p.getUniqueId()); // Swarm takes them back down without another Fist
+                    if (fighters.contains(p.getUniqueId())) below.paid.add(p.getUniqueId()); // Swarm takes them back down without another Fist
                     below.sendBack(p);
                     p.sendMessage(ChatColor.DARK_GRAY + "" + ChatColor.ITALIC + "The void spits you out. The way down has closed. You'll have to find Swarm again.");
                 }
@@ -910,6 +965,7 @@ final class Explorer implements Listener, CommandExecutor {
         // ------------------------------------------------------------------ winning
         void startDefeat() {
             st = St.DEFEAT; t = 0;
+            stopMusic();
             if (tiger != null) tiger.leaving = true;
         }
 
@@ -946,16 +1002,18 @@ final class Explorer implements Listener, CommandExecutor {
             Location at = p.getLocation();
             int xp = (int) c("rewards.xp", 3000);
             for (int left = xp; left > 0; ) { int n = Math.min(left, 100); left -= n; world.spawn(at, org.bukkit.entity.ExperienceOrb.class).setExperience(n); }
-            int bags = (int) c("rewards.mythic-bags", 5);
+            int bags = (int) c("rewards.mythic-bags", 32);
             if (bags > 0) pl.console("givemythicbag " + bags + " " + p.getName(), p);
-            int dia = (int) c("rewards.diamonds", 32);
-            if (dia > 0) pl.dropLocked(at, p, new ItemStack(Material.DIAMOND, dia));
+            int neth = (int) c("rewards.netherite-blocks", 5);
+            if (neth > 0) pl.dropLocked(at, p, new ItemStack(Material.NETHERITE_BLOCK, neth));
+            if (pl.getConfig().getBoolean("explorer.rewards.mirror", true)) pl.console("givelostmirror 1 " + p.getName(), p);
         }
 
         // ------------------------------------------------------------------ cleanup
         void end(boolean won) {
             if (over) return;
             over = true;
+            stopMusic();
             for (UUID id : new ArrayList<>(downed)) { Player p = Bukkit.getPlayer(id); if (p != null) restore(p); }
             downed.clear();
             for (ItemDisplay d : parts) if (d != null && d.isValid()) d.remove();
@@ -1141,6 +1199,7 @@ final class Explorer implements Listener, CommandExecutor {
         f.counterCd.put(p.getUniqueId(), now + 1500);
         f.face(p.getLocation().toVector(), 360);
         f.counterT = 0;
+        p.setAbsorptionAmount(0);
         p.setHealth(Math.min(p.getHealth(), 1.0)); // half a heart
         p.setVelocity(p.getLocation().toVector().subtract(f.pos).setY(0).normalize().multiply(0.9).setY(0.4));
         f.world.playSound(p.getLocation(), Sound.ENTITY_PLAYER_ATTACK_CRIT, SoundCategory.HOSTILE, 1.5f, 0.5f);
@@ -1171,6 +1230,37 @@ final class Explorer implements Listener, CommandExecutor {
         if (f == null) return;
         for (Pillar pr : f.pillars) if (pr.contains(event.getBlock())) { event.setCancelled(true); return; }
         if (event.getBlock().getType() == Material.BARRIER && event.getBlock().getWorld().equals(f.world)) event.setCancelled(true);
+    }
+
+    /** BUG FIX: after a crash mid-fight the walls stayed up (cleanup only reached loaded chunks), so nobody could reach his statue. */
+    @EventHandler
+    public void onChunkLoad(org.bukkit.event.world.ChunkLoadEvent event) {
+        if (fight != null || !below.inVoid(event.getWorld())) return;
+        int x = event.getChunk().getX(), z = event.getChunk().getZ();
+        if (x < -2 || x > 1 || z < (Below.ARENA_Z - 21) >> 4 || z > (Below.ARENA_Z + 21) >> 4) return;
+        Bukkit.getScheduler().runTask(pl, () -> cleanArena(false));
+    }
+
+    /** The fallen stay down: no pearls, no chorus fruit, no eating, building or shooting their way out. */
+    @EventHandler(priority = EventPriority.LOW)
+    public void onDownedInteract(PlayerInteractEvent event) {
+        Fight f = fight;
+        if (f != null && f.downed.contains(event.getPlayer().getUniqueId())) event.setCancelled(true);
+    }
+
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onDownedTeleport(org.bukkit.event.player.PlayerTeleportEvent event) {
+        Fight f = fight;
+        if (f == null || !f.downed.contains(event.getPlayer().getUniqueId())) return;
+        var c = event.getCause();
+        if (c == org.bukkit.event.player.PlayerTeleportEvent.TeleportCause.ENDER_PEARL || c == org.bukkit.event.player.PlayerTeleportEvent.TeleportCause.CONSUMABLE_EFFECT)
+            event.setCancelled(true);
+    }
+
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onDownedEat(org.bukkit.event.player.PlayerItemConsumeEvent event) {
+        Fight f = fight;
+        if (f != null && f.downed.contains(event.getPlayer().getUniqueId())) event.setCancelled(true);
     }
 
     @EventHandler

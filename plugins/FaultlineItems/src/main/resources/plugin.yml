@@ -103,7 +103,14 @@ commands:
     description: Give one of Diamond Jacob's accessories
     usage: /givejacob <falconers_quiver|ender_anchor|banner_of_defiance|ember_ward|diamond_heart> [amount] [player]
     permission: items.givejacob
+  givelostmirror:
+    description: Give the Mirror..?? (the Lost Explorer's accessory)
+    usage: /givelostmirror [amount] [player]
+    permission: items.givelostmirror
 permissions:
+  items.givelostmirror:
+    description: Allows giving the Mirror..??
+    default: op
   items.testtexture:
     description: "Debug: the /testtexture stick (it looks like a Golden Ring, so players could pass it off as one)"
     default: op

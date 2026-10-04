@@ -381,6 +381,10 @@ public final class FaultlineItems extends JavaPlugin {
         getServer().getPluginManager().registerEvents(jacobGear, this);
         getCommand("givejacob").setExecutor(new GiveItemCommand(this, "items.givejacob",
                 "/givejacob <falconers_quiver|ender_anchor|banner_of_defiance|ember_ward|diamond_heart> [amount] [player]", jacobGear.catalog(), "falconers_quiver"));
+        mirrorGear = new MirrorGear(this);
+        getServer().getPluginManager().registerEvents(mirrorGear, this);
+        getCommand("givelostmirror").setExecutor(new GiveItemCommand(this, "items.givelostmirror",
+                "/givelostmirror [amount] [player]", ItemCatalog.single(pl -> pl.getMirrorGear().item())));
         krakenGear = new KrakenGear(this);
         getServer().getPluginManager().registerEvents(krakenGear, this);
         getCommand("givekraken").setExecutor(new GiveItemCommand(this, "items.givekraken",
@@ -747,6 +751,8 @@ public final class FaultlineItems extends JavaPlugin {
     private KrakenGear krakenGear;
     private JacobGear jacobGear;
     JacobGear getJacobGear() { return jacobGear; }
+    private MirrorGear mirrorGear;
+    MirrorGear getMirrorGear() { return mirrorGear; }
     KrakenGear getKrakenGear() { return krakenGear; }
 
     public AccessoryManager getAccessoryManager() {
@@ -6698,6 +6704,7 @@ public final class FaultlineItems extends JavaPlugin {
             ACCESSORY_TYPES.put("glowgland", pl -> pl.getKrakenGear().counter(KrakenGear.Counter.GLOW_GLAND));
             ACCESSORY_TYPES.put("eelskin", pl -> pl.getKrakenGear().counter(KrakenGear.Counter.EELSKIN_WRAP));
             for (JacobGear.Piece jp : JacobGear.Piece.values()) ACCESSORY_TYPES.put(jp.id.replace("_", ""), pl -> pl.getJacobGear().item(jp));
+            ACCESSORY_TYPES.put("lostmirror", pl -> pl.getMirrorGear().item());
 
             DARKNESS_TYPES.put("final", DarknessPotionItem::createFinal);
             DARKNESS_TYPES.put("stage1", DarknessPotionItem::createStage1);
@@ -6776,7 +6783,9 @@ public final class FaultlineItems extends JavaPlugin {
                 pl -> pl.getJacobGear().item(JacobGear.Piece.ANCHOR),
                 pl -> pl.getJacobGear().item(JacobGear.Piece.BANNER),
                 pl -> pl.getJacobGear().item(JacobGear.Piece.EMBER),
-                pl -> pl.getJacobGear().item(JacobGear.Piece.HEART));
+                pl -> pl.getJacobGear().item(JacobGear.Piece.HEART),
+                // the Lost Explorer's drop
+                pl -> pl.getMirrorGear().item());
 
         static Map<String, Function<FaultlineItems, ItemStack>> single(Function<FaultlineItems, ItemStack> factory) {
             return Map.of("", factory);

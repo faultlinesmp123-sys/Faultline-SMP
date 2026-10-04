@@ -320,7 +320,7 @@ boots:
 item-textures:
   enabled: true
   url: "https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/main/FaultlineSMP.zip"
-  hash: "eb811085989f1baec1f24f0872807699e14548ce"
+  hash: "dd1ab876f241c1d0838031b7671e1f9839030464"
 
 
 # Immunity charms: one accessory per debuff (Guardian Scale, Ginger Root, Blindfold, Salt Ration,
@@ -397,3 +397,9 @@ kraken-gear:
     coral-lung-from-pufferfish: 0.03
     glow-gland-from-glow-squid: 0.04
     eelskin-wrap-from-drowned: 0.02
+
+# Mirror..?? (accessory, dropped by the Lost Explorer): a big hit is thrown back at whoever dealt it
+mirror:
+  cooldown-seconds: 45
+  min-hit-share: 0.33      # only hits taking at least this share of your max health
+  max-reflect: 30          # most damage sent back

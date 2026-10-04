@@ -31,9 +31,11 @@ How it's built:
   next start). The statue is hidden during the fight and for `respawn-minutes` (30) after he's beaten.
 - **He can't be hurt.** Melee hits are cancelled and answered with a backhand (health set to half a heart, 1.5 s cooldown
   per player); arrows bounce off. While stunned/pinned, weapon hits just tell you to use a pickaxe.
-- **Damage**: every hit is `damage.heavy` (55% of max health) or `damage.light` (40%) as magic damage, so 2 heavy or 3
-  light hits. Any hit that would kill a fighter in the void world instead **downs** them: kneeling (fixed crouch pose),
-  can't move or jump (transient -100% speed/jump modifiers), can't be hurt, keeps everything. Totems aren't used up.
+- **Damage**: every hit is `damage.heavy` (55% of max health) or `damage.light` (40%), taken straight off your health
+  (absorption hearts first). Armor, Protection and Resistance don't shrink it, so it's always 2 heavy or 3 light hits.
+  Two hits within 8 ticks (him and the tiger at once) count as one. Any hit that would kill a fighter in the void world instead **downs** them: kneeling (fixed crouch pose),
+  can't move or jump (transient -100% speed/jump modifiers), can't be hurt, can't use items, eat, pearl or chorus out,
+  keeps everything. Totems aren't used up.
 - **The pillar trick**: he charges every `charge-every-seconds` (12, faster in later phases), or sooner if you keep your
   distance: a roar, a red line on the floor locking on, then a straight bull rush (`charge-speed` 0.95 blocks/tick). Hit
   a pillar and he's **stunned** for `stun-seconds` (8, 1 less each phase). Hit that pillar **3 times with any pickaxe**
@@ -48,10 +50,20 @@ How it's built:
   that throws everyone back, and everyone in the void is sent home (`sendBack`) and **the hole is sealed at once**
   (Swarm fills it in). Their next trip: Swarm still wants the Jacob kill but **won't ask for another Fist** (`below.yml`
   → `paid`).
-- **Winning**: "...", "So. You found the way after all.", "Go on. It's yours now.", he crumbles into ash. Each fighter:
-  `rewards.diamonds` (32, dropped locked to them), `rewards.mythic-bags` (5, `givemythicbag`), `rewards.xp` (3000), the
-  Index entry. Server broadcast. These rewards are placeholders: tell me what he should really drop.
-- No music yet, and no boss form (`/bossmorph`): the fight is tied to its arena.
+- **Winning**: "...", "So. You found the way after all.", "Go on. It's yours now.", he crumbles into ash. Each fighter
+  (from the owner): `rewards.mythic-bags` (32), `rewards.xp` (3000), `rewards.netherite-blocks` (5, dropped locked to
+  them) and the **Mirror..??** (`rewards.mirror`, FaultlineItems `/givelostmirror`), plus the Index entry. Server broadcast.
+- **Mirror..??** (accessory, `MirrorGear.java` in FaultlineItems, key `faultlineitems:lost_mirror`, model
+  `faultline:lost_mirror`): a hit that would take a third of your max health or more (`mirror.min-hit-share`) is cancelled
+  and thrown back at whoever dealt it (up to `mirror.max-reflect` 30), then a 45 s cooldown (`mirror.cooldown-seconds`).
+  The reflected hit counts as yours (boss counters like Rocco's Payback see it). It doesn't work against the Explorer
+  himself (his hits aren't normal damage). Art: `tools/explorer_models.py` (a black hand mirror with his helm in the glass).
+- **Music**: Black Knife (Deltarune), `sounds/explorer/music.ogg` (2:02, `explorer.music.length-seconds: 122`), starts at
+  "Then show me." and loops for players within 30 blocks; it stops when everyone's down (silence before his lines) and
+  when he's beaten.
+- No boss form (`/bossmorph`): the fight is tied to its arena.
+- Crash leftovers (walls/pillars) are cleaned when the arena's chunks load and when a fight starts. Players standing where
+  the wall rises are moved inside.
 - Bedrock players see a big wither skeleton (and a ravager for the tiger) through `proxy`.
 - Admin: `/explorer start` (in the void), `stop`, `phase <1-4>`, `stun` (crash into the nearest pillar), `reset` (statue
   back now), `arena [player]` (straight to the arena edge; the `/itemsmenu` entry uses it).
@@ -94,6 +106,5 @@ How it's built:
 - Picture: `tools/previews/void_world.png` (`tools/void_preview.py`), Swarm: `tools/previews/swarm*.png`.
 
 ## Open questions
-- Real drops (the rewards are placeholders) and music.
 - Solo or group? Right now only whoever talks to Swarm needs the Jacob kill and the Fist; anyone can follow them down.
 - Swarm's look was picked without the owner's input (hooded underground wanderer); change it if they describe him.

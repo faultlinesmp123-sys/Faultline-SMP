@@ -543,9 +543,17 @@ entries:
     where: 'The final boss. Swarm digs you down through the bedrock into the void; walk the white path to its end, where he stands like a statue. Talk to him (right-click) to start. Barrier walls go up around his arena and four black pillars rise out of the floor.'
     does: 'He can''t be hurt, and hitting him with a weapon earns a backhand that leaves you at half a heart. Every one of his attacks puts you down in 2-3 hits, but nobody dies here: you fall to your knees and stay there, keeping everything. Dodge his charge (the red line on the floor) so he slams into a pillar instead. While he''s stunned, hit that pillar 3 times with a pickaxe to drop it on him. Four pillars, four phases: Cleave, Sweep and the Charge first; phase 2 adds his Leap (jump the shockwave ring) and his black tiger, who pounces from behind him; phase 3 swaps the axe for a greatsword he throws like a boomerang and a vanishing ambush; phase 4 rains blades. If everyone is on their knees: "You cannot defeat me... Get out of my sight." He kicks you out of the void, the way down closes, and you have to find Swarm again (he won''t ask for another Fist). Comes back 30 minutes after he''s beaten.'
     drops:
-    - 32 Diamonds|100%
-    - 5 Mythic Goodie Bags|100%
+    - 32 Mythic Goodie Bags|100%
+    - 5 Netherite Blocks|100%
+    - Mirror..??|100%
     - 3,000 XP|100%
+  - chapter: accessories
+    id: lost_mirror
+    name: Mirror..??
+    icon: lost_mirror
+    detect: faultlineitems:lost_mirror
+    how: Dropped by the Lost Explorer.
+    does: A hit that would take a third of your health or more bounces off you and back at whoever dealt it (up to 15 hearts), and you take none of it. Then it needs 45 seconds to clear. You look into it. Something looks back.
   - chapter: enemies
     name: Vendetta Enforcer
     icon: vendetta_enforcer

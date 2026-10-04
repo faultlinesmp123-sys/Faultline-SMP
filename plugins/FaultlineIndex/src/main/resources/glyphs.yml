@@ -376,3 +376,6 @@ swarm:
 lost_explorer:
   large: 59189
   small: 58165
+lost_mirror:
+  large: 59190
+  small: 58166

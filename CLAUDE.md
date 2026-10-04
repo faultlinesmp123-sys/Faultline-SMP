@@ -63,7 +63,9 @@ Notes:
   statue → barrier walls + 4 pillars rise; he can't be hurt; every hit downs you in 2-3 (downed = kneeling, frozen, keeps
   everything, never dies); dodge his charge into a pillar, pickaxe it 3 times while he's stunned to drop it on him; 4 pillars =
   4 phases (tiger in 2, greatsword in 3, blade rain in 4). All downed → "You cannot defeat me... Get out of my sight", kicked
-  home, the hole sealed (Swarm won't ask for another Fist: `below.yml` `paid`). No boss form, no music. Rewards are placeholders.
+  home, the hole sealed (Swarm won't ask for another Fist: `below.yml` `paid`). No boss form. Music: `sounds/explorer/music.ogg`
+  (Black Knife, 2:02, `explorer.music.length-seconds: 122`). Drops 32 mythic bags, 3000 XP, 5 netherite blocks and the
+  **Mirror..??** accessory (FaultlineItems `MirrorGear.java`, `/givelostmirror`: reflects one big hit, 45 s cooldown).
   His and the tiger's poses are in `ExplorerAnims.java` (preview with `tools/anim/preview.sh`). `renderRig` has an overload
   with sword pitch/scale: custom blade-up weapon models use pitch +90, vanilla swords -90.
   `Below.java`: Swarm turns up underground (2%/min, y -1..-50), wants a Jacob kill (recorded in `below.yml`, or Jacob

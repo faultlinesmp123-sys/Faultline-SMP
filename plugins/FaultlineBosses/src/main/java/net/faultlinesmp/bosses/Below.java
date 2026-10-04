@@ -90,6 +90,8 @@ final class Below implements Listener, CommandExecutor {
     final Random random;
     final File dataFile;
     final Set<UUID> slayers = new HashSet<>();
+    /** Paid Swarm the Vendetta Fist once already (the Explorer threw them out). Swarm takes them down free after that. */
+    final Set<UUID> paid = new HashSet<>();
     final Map<UUID, Location> returns = new HashMap<>();
     final Map<UUID, Long> encounterCd = new HashMap<>(), talkCd = new HashMap<>();
     final Map<UUID, Integer> arrived = new HashMap<>();
@@ -131,6 +133,7 @@ final class Below implements Listener, CommandExecutor {
         if (!dataFile.exists()) return;
         YamlConfiguration y = YamlConfiguration.loadConfiguration(dataFile);
         for (String s : y.getStringList("jacob-slayers")) try { slayers.add(UUID.fromString(s)); } catch (IllegalArgumentException ignored) { }
+        for (String s : y.getStringList("paid")) try { paid.add(UUID.fromString(s)); } catch (IllegalArgumentException ignored) { }
         var r = y.getConfigurationSection("returns");
         if (r != null) for (String id : r.getKeys(false)) {
             Location l = parseLoc(r.getString(id));
@@ -155,6 +158,7 @@ final class Below implements Listener, CommandExecutor {
         dirty = false;
         YamlConfiguration y = new YamlConfiguration();
         y.set("jacob-slayers", slayers.stream().map(UUID::toString).toList());
+        y.set("paid", paid.stream().map(UUID::toString).toList());
         for (var e : returns.entrySet()) y.set("returns." + e.getKey(), locString(e.getValue()));
         List<String> rs = new ArrayList<>();
         for (var e : changes.entrySet()) {
@@ -452,6 +456,12 @@ final class Below implements Listener, CommandExecutor {
                 script.add("Diamond Jacob still sits on his mountain.");
                 script.add("Nobody who couldn't beat Jacob comes back from where you want to go. Kill him. Then find me again.");
                 script.add((Runnable) this::backToIdle);
+                return;
+            }
+            if (!creative && paid.contains(p.getUniqueId())) {
+                script.add("You again. He threw you out, didn't he?");
+                script.add("Fine. You paid already. Stay close.");
+                script.add((Runnable) () -> startStairs(p));
                 return;
             }
             if (!creative && !holdingFist(p)) {
@@ -1022,8 +1032,8 @@ final class Below implements Listener, CommandExecutor {
         boolean near = false;
         for (Player p : ps) if (p.getWorld().equals(v) && p.getLocation().distanceSquared(new Location(v, 0, PATH_Y, ARENA_Z)) < 140 * 140) near = true; // (some may have just left)
         if (near) {
-            if (statue == null) statue = new Statue(v);
-            statue.tick();
+            if (statue == null && !pl.explorer.blocksStatue()) statue = new Statue(v);
+            if (statue != null) statue.tick();
         } else if (statue != null) { statue.remove(); statue = null; }
     }
 
@@ -1058,6 +1068,11 @@ final class Below implements Listener, CommandExecutor {
     //  the Lost Explorer, waiting at the end of the path (the fight comes later)
     // =====================================================================================================
     static final float STATUE_SCALE = 1.5f;
+
+    void removeStatue() { if (statue != null) { statue.remove(); statue = null; } }
+
+    /** Closes the hole right away (the Explorer threw someone out). */
+    void sealNow() { if (swarm != null && swarm.openUntil > now) { swarm.openUntil = now; swarm.warned = true; } }
 
     final class Statue {
         final World world;
@@ -1115,16 +1130,16 @@ final class Below implements Listener, CommandExecutor {
             Pose p = new Pose().set(ARM_R, -32, -8, -4).set(ARM_L, -30, 34, 8).set(BODY, 3 + b, 0, 0)
                     .set(LEG_R, 0, 0, -4).set(LEG_L, 0, 0, 4).set(HEAD, headPitch, -headYaw, 0);
             shown = Pose.lerp(shown, p, 0.3f);
-            pl.renderRig(parts, axe, root, 180, STATUE_SCALE, shown);
+            pl.renderRig(parts, axe, root, 180, STATUE_SCALE, shown, 90, 1.0f);
             click.teleport(root);
             anchor.teleport(root);
             if (t % 8 == 0) world.spawnParticle(Particle.WHITE_ASH, root.clone().add(0, 1.5, 0), 4, 0.8, 1.2, 0.8, 0);
         }
 
         void talk(Player p) {
-            p.sendMessage(ChatColor.WHITE + "" + ChatColor.BOLD + "The Lost Explorer" + ChatColor.DARK_GRAY + " » " + ChatColor.GRAY + "" + ChatColor.ITALIC + "...");
-            p.sendActionBar(legacy(ChatColor.GRAY + "He looks at you, and says nothing. Not yet."));
-            p.playSound(root, Sound.ENTITY_WARDEN_HEARTBEAT, SoundCategory.HOSTILE, 1f, 0.5f);
+            if (pl.explorer.blocksStatue()) return;
+            removeStatue();
+            pl.explorer.begin(world, p); // he steps off his pedestal: the fight starts
         }
 
         void remove() {

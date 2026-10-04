@@ -382,6 +382,9 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         below = new Below(this);
         getServer().getPluginManager().registerEvents(below, this);
         getCommand("below").setExecutor(below);
+        explorer = new Explorer(this, below);
+        getServer().getPluginManager().registerEvents(explorer, this);
+        getCommand("explorer").setExecutor(explorer);
         getServer().getScheduler().runTaskTimer(this, () -> {
             // Each boss updates on its own: an error in one can't freeze the others, and the error is
             // written to the console (at most every 30s per boss) so it can be tracked down.
@@ -393,6 +396,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             safely("Diamond Jacob", () -> { if (jacob != null) jacob.tick(); });
             safely("Rocco Vendetta", () -> { if (vendetta != null) vendetta.tick(); });
             safely("The way down", () -> { if (below != null) below.tick(); });
+            safely("The Lost Explorer", () -> { if (explorer != null) explorer.tick(); });
             safely("Boss form", this::morphTick);
             safely("Kraken bait", this::baitTick);
             safely("Lorenzo's Ball", this::ballTick);
@@ -515,6 +519,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         safely("shutdown: Kraken", () -> { if (kraken != null) kraken.removeEverything(); });
         safely("shutdown: Diamond Jacob", () -> { if (jacob != null) jacob.removeEverything(); });
         safely("shutdown: Rocco Vendetta", () -> { if (vendetta != null) vendetta.shutdown(); });
+        safely("shutdown: The Lost Explorer", () -> { if (explorer != null) explorer.shutdown(); }); // drops the pillars and walls first
         safely("shutdown: The way down", () -> { if (below != null) below.shutdown(); }); // puts Swarm's staircase back
         don = null; dune = null; mortimer = null; eye = null; kraken = null; jacob = null;
         proxies.clear();
@@ -544,7 +549,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                         || tags.contains(DON_TAG) || tags.contains(DON_ORB_TAG) || tags.contains(KRAKEN_TAG) || tags.contains(KRAKEN_TENT_TAG)
                         || tags.contains(KRAKEN_PINK_TAG) || tags.contains(KRAKEN_EEL_TAG) || tags.contains(KRAKEN_MINION_TAG)
                         || tags.contains(JACOB_TAG) || tags.contains(JACOB_BIRD_TAG) || tags.contains(JACOB_ORB_TAG) || tags.contains(JACOB_MINION_TAG)
-                        || Vendetta.ours(e) || Below.ours(e)) e.remove();
+                        || Vendetta.ours(e) || Below.ours(e) || Explorer.ours(e)) e.remove();
             }
         }
     }
@@ -8279,6 +8284,14 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
 
     /** Places all 6 pieces (+ his sword) for a pose. Arms and head follow the body's lean and twist. */
     void renderRig(ItemDisplay[] parts, ItemDisplay sword, Location root, float yaw, float scale, Pose pose) {
+        renderRig(parts, sword, root, yaw, scale, pose, (float) ncfg("sword-pitch", -90), (float) ncfg("sword-scale", 0.85));
+    }
+
+    /**
+     * swordPitch tilts the held item from the hand: -90 suits vanilla swords (their own third-person transform already
+     * tilts them), +90 points a custom weapon whose model is built blade-up (the Lost Explorer's axe/greatsword) forward.
+     */
+    void renderRig(ItemDisplay[] parts, ItemDisplay sword, Location root, float yaw, float scale, Pose pose, float swordPitch, float swordScale) {
         Quaternionf qYaw = new Quaternionf().rotateY((float) -Math.toRadians(yaw));
         Quaternionf qBody = euler(pose.r[BODY]);
         Quaternionf flip = facing(0);
@@ -8314,8 +8327,8 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             at.setYaw(0); at.setPitch(0);
             sword.teleport(at);
             sword.setInterpolationDelay(0);
-            Quaternionf rot = new Quaternionf(qYaw).mul(qArm).rotateX((float) Math.toRadians(ncfg("sword-pitch", -90))).rotateY((float) Math.PI);
-            float ss = scale * (float) ncfg("sword-scale", 0.85);
+            Quaternionf rot = new Quaternionf(qYaw).mul(qArm).rotateX((float) Math.toRadians(swordPitch)).rotateY((float) Math.PI);
+            float ss = scale * swordScale;
             sword.setTransformation(new Transformation(new Vector3f(0, 0, 0), rot, new Vector3f(ss, ss, ss), new Quaternionf()));
         }
     }
@@ -10302,6 +10315,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
     private Morph morph;
     Vendetta vendetta;
     Below below;
+    Explorer explorer;
     private final NamespacedKey MORPH_MOVE_KEY = new NamespacedKey(this, "morph_move");
     java.io.File morphFile() { return new java.io.File(getDataFolder(), "boss_form.yml"); }
 

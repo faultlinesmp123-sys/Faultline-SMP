@@ -40,6 +40,10 @@ commands:
     description: "Admin: the way down to the Lost Explorer (Swarm, the void world)"
     usage: /below <swarm|void|leave|close|slayer|unslayer|info> [player]
     permission: bosses.admin
+  explorer:
+    description: "Admin: the Lost Explorer's fight"
+    usage: /explorer <start|stop|phase <1-4>|stun|reset>
+    permission: bosses.admin
   bossmorph:
     description: "Admin: become a boss and control it (your hotbar becomes its moves)"
     usage: /bossmorph <demoneye|frostbeard|dune|frostmaw|kraken|jacob|don|off|release>

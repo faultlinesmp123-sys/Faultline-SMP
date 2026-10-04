@@ -428,3 +428,20 @@ below:
     player-cooldown-seconds: 600    # after he turns up for someone, not again for them for this long
   stairs-open-seconds: 600          # the hole stays open this long, then he seals it and fills the stairs back in
   void-world: faultline_void
+
+# The Lost Explorer (final boss, at the end of the white path in the void world). Talk to his statue to start.
+explorer:
+  damage:
+    heavy: 0.55                     # share of max health per heavy hit (2 hits = down)
+    light: 0.40                     # light hits (3 hits = down)
+  charge-every-seconds: 12          # how often he charges (into a pillar, if you dodge)
+  charge-speed: 0.95                # blocks per tick
+  stun-seconds: 8                   # how long he's stunned after crashing into a pillar
+  stun-seconds-less-per-phase: 1
+  pickaxe-hits: 3                   # pickaxe hits on the cracked pillar to drop it on him
+  respawn-minutes: 30               # after he's beaten, before his statue comes back
+  tiger-pounce-seconds: 12
+  rewards:
+    diamonds: 32
+    mythic-bags: 5
+    xp: 3000

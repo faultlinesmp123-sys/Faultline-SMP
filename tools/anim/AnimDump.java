@@ -46,6 +46,26 @@ public final class AnimDump {
         add("swarm", "swarm_bedrock", 24, Below::slamPose);
         add("swarm", "swarm_place", 20, Below::placePose);
         add("swarm", "swarm_bow", 30, Below::bowPose);
+        add("explorer", "explorer_idle", 80, ExplorerAnims::idle);
+        add("explorer", "explorer_walk", 40, t -> ExplorerAnims.walk(t, 1f));
+        add("explorer", "explorer_cleave", 32, t -> ExplorerAnims.cleave(t));
+        add("explorer", "explorer_sweep", 36, t -> ExplorerAnims.sweep(t));
+        add("explorer", "explorer_charge_windup", 24, t -> ExplorerAnims.chargeWindup(t));
+        add("explorer", "explorer_charge", 20, ExplorerAnims::charge);
+        add("explorer", "explorer_crash", 16, t -> ExplorerAnims.crash(t));
+        add("explorer", "explorer_stunned", 60, ExplorerAnims::stunned);
+        add("explorer", "explorer_pinned", 30, t -> ExplorerAnims.pinned(t));
+        add("explorer", "explorer_roar", 60, t -> ExplorerAnims.roar(t));
+        add("explorer", "explorer_leap", 20, t -> ExplorerAnims.leap(t));
+        add("explorer", "explorer_slam", 24, t -> ExplorerAnims.slam(t));
+        add("explorer", "explorer_blade_throw", 22, t -> ExplorerAnims.throwBlade(t));
+        add("explorer", "explorer_vanish", 14, t -> ExplorerAnims.vanish(t));
+        add("explorer", "explorer_ambush", 18, t -> ExplorerAnims.ambush(t));
+        add("explorer", "explorer_calldown", 40, t -> ExplorerAnims.callDown(t));
+        add("explorer", "explorer_counter", 12, t -> ExplorerAnims.counter(t));
+        add("explorer", "explorer_dismiss", 40, t -> ExplorerAnims.dismiss(t));
+        add("explorer", "explorer_defeat", 90, t -> ExplorerAnims.defeat(t));
+        add("explorer", "explorer_awaken", 70, t -> ExplorerAnims.awaken(t));
         StringBuilder sb = new StringBuilder("{");
         boolean first = true;
         for (var e : ANIMS.entrySet()) {

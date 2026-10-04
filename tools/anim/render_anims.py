@@ -35,7 +35,15 @@ def load_model(pack, name):
     return m["elements"], tex
 
 
-def place(frame, models, worn):
+def item_transform(model_json):
+    """thirdperson_righthand display transform of an item model: (matrix, translation in px)."""
+    d = model_json.get("display", {}).get("thirdperson_righthand", {})
+    rot = d.get("rotation", [0, 0, 0]); tr = d.get("translation", [0, 0, 0]); sc = d.get("scale", [1, 1, 1])
+    R = rx(math.radians(rot[0])) @ ry(math.radians(rot[1])) @ rz(math.radians(rot[2]))  # Quaternionf.rotationXYZ
+    return R @ np.diag(sc), np.array(tr, dtype=float)
+
+
+def place(frame, models, worn, weapon=None, weapon_scale=0.85, weapon_pitch=-90):
     """Every part's (elements, texture, matrix, offset) for one pose, in model pixels (feet at y=0, facing +z)."""
     r, drop = frame["r"], frame["drop"] * 16
     qb = euler(r[BODY])
@@ -54,6 +62,14 @@ def place(frame, models, worn):
     for els, tex in worn:  # cosmetics: centered on the torso, which hangs from the hips
         c = qb @ np.array([0, 6, 0]) + hips
         out.append((els, tex, qb, c + [0, drop, 0]))
+    if weapon is not None:  # held in the right hand, like FaultlineBosses.renderRig's sword
+        els, tex, disp_m, disp_t = weapon
+        shoulder = qb @ (np.array(JOINT[ARM_R], dtype=float) - hips) + hips
+        q_arm = qb @ euler(r[ARM_R])
+        hand = q_arm @ np.array([0, -10, 0]) + shoulder
+        # renderRig adds rotateY(PI), which cancels the half-turn Minecraft's item-display renderer itself applies
+        held = q_arm @ rx(math.radians(weapon_pitch)) * weapon_scale
+        out.append((els, tex, held @ disp_m, hand + held @ disp_t + [0, drop, 0]))
     return out
 
 
@@ -121,16 +137,23 @@ def main():
             worn = [] if skin not in ("rocco", "werner") else [load_model(pack, "cosmetic/rocco_chains")] + ([load_model(pack, "cosmetic/rocco_book")] if skin == "rocco" else [])
             cache[skin] = (models, worn)
         models, worn = cache[skin]
+        weapon = None
+        if skin == "explorer":  # his axe (the greatsword in the blade moves)
+            wname = "explorer_blade" if "blade" in name else "explorer_axe"
+            els, tex = load_model(pack, wname)
+            mj = json.load(open(os.path.join(pack, "assets", "faultline", "models", "item", wname + ".json")))
+            weapon = (els, tex) + item_transform(mj)
         frames = a["frames"]
         n = min(10, len(frames))
         picks = sorted(set(round(i * (len(frames) - 1) / max(1, n - 1)) for i in range(n)))
-        fw, fh = 150, 210
+        fw, fh = (190, 300) if skin == "explorer" else (150, 210)
         sheet = Image.new("RGBA", (fw * len(picks), fh * 2 + 14), (24, 26, 32, 255))
         d = ImageDraw.Draw(sheet)
         for col, k in enumerate(picks):
-            parts = place(frames[k], models, worn)
-            sheet.paste(render(parts, 20, 8, 4.0, (fw, fh)), (col * fw, 0))
-            sheet.paste(render(parts, 90, 4, 4.0, (fw, fh)), (col * fw, fh))
+            parts = place(frames[k], models, worn, weapon, 1.0, 90) if skin == "explorer" else place(frames[k], models, worn, weapon)
+            sc = 3.6 if skin == "explorer" else 4.0
+            sheet.paste(render(parts, 20, 8, sc, (fw, fh)), (col * fw, 0))
+            sheet.paste(render(parts, 90, 4, sc, (fw, fh)), (col * fw, fh))
             d.text((col * fw + 4, fh * 2 + 1), f"t={k}", fill=(200, 200, 210))
         sheet.save(os.path.join(outdir, name + ".png"))
         print("wrote", name)

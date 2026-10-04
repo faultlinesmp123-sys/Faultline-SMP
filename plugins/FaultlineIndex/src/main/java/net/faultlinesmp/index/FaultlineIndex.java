@@ -673,8 +673,28 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
     // ===================== COMMAND =====================
 
     private class IndexCommand implements CommandExecutor {
+        /**
+         * Any error is written to the console in full AND shown in chat (just the cause and where it happened), instead of
+         * Minecraft's bare "An unexpected error occurred", so it can be reported from a screenshot.
+         */
         @Override
         public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+            try {
+                return run(sender, args);
+            } catch (Throwable t) {
+                getLogger().log(java.util.logging.Level.SEVERE, "/index " + String.join(" ", args) + " failed for " + sender.getName(), t);
+                StackTraceElement where = null;
+                for (StackTraceElement el : t.getStackTrace()) if (el.getClassName().startsWith("net.faultlinesmp")) { where = el; break; }
+                Throwable root = t;
+                while (root.getCause() != null && root.getCause() != root) root = root.getCause();
+                sender.sendMessage(ChatColor.RED + "The Index hit an error: " + ChatColor.GRAY + root.getClass().getSimpleName() + ": " + root.getMessage());
+                if (where != null) sender.sendMessage(ChatColor.DARK_GRAY + "at " + where.getMethodName() + " (line " + where.getLineNumber() + ")"
+                        + (root != t ? ", " + t.getClass().getSimpleName() : ""));
+                return true;
+            }
+        }
+
+        private boolean run(CommandSender sender, String[] args) {
             if (args.length == 0) {
                 if (sender instanceof Player p) open(p);
                 else sender.sendMessage("Only players can open the Index.");

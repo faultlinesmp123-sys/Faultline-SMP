@@ -683,6 +683,21 @@ public final class FaultlineItems extends JavaPlugin {
         return eventName.equals(active);
     }
 
+    /**
+     * Mobs a player can make on demand: bred or hatched animals, built golems, spawn eggs, and anything a plugin
+     * spawned (boss minions like Rocco's family, raid waves, Necromancer minions, the Golden Ring's extra spawns).
+     * Item drops that hand out diamonds or rare gear skip these, or a breeding pen / snow golem line / boss add wave
+     * turns into an item printer.
+     */
+    static boolean farmedMob(LivingEntity e) {
+        // (spawners have their own config toggles at each drop table, so they're not decided here)
+        return switch (e.getEntitySpawnReason()) {
+            case BREEDING, EGG, DISPENSE_EGG, SPAWNER_EGG, BUILD_SNOWMAN, BUILD_IRONGOLEM, VILLAGE_DEFENSE,
+                 CUSTOM, COMMAND, DUPLICATION, BUCKET, SLIME_SPLIT -> true;
+            default -> false;
+        };
+    }
+
     /** Lantern Night doubles custom item drop chances (mob drops, ore drops, fishing). */
     public double eventDropMultiplier() {
         return isEventActive("LANTERN_NIGHT") ? getConfig().getDouble("lantern-night.drop-multiplier", 2.0) : 1.0;
@@ -1258,6 +1273,20 @@ public final class FaultlineItems extends JavaPlugin {
 
             int slot = event.getSlot();
             player.closeInventory();
+            // BUG FIX: combat and cooldown were only checked when the menu OPENED. Opening it before a fight and
+            // picking a destination mid-fight teleported you out of combat.
+            if (slot != MagicMirrorGuiHolder.SLOT_BED && slot != MagicMirrorGuiHolder.SLOT_BLACK_MARKET && slot != MagicMirrorGuiHolder.SLOT_NETHER) return;
+            if (plugin.getTeleportManager().isChanneling(player.getUniqueId())) return;
+            if (plugin.getCombatTracker().isInCombat(player.getUniqueId())) {
+                player.sendMessage(ChatColor.RED + "You can't use the Magic Mirror in combat! ("
+                        + plugin.getCombatTracker().secondsRemaining(player.getUniqueId()) + "s left)");
+                return;
+            }
+            if (plugin.getTeleportManager().getRemainingCooldownSeconds(player.getUniqueId()) > 0) return;
+            if (!MagicMirrorItem.isMagicMirror(plugin, player.getInventory().getItem(heldSlot))) {
+                player.sendMessage(ChatColor.RED + "Hold your Magic Mirror to use it.");
+                return;
+            }
 
             switch (slot) {
                 case MagicMirrorGuiHolder.SLOT_BED -> plugin.getTeleportManager().startBedTeleport(player, heldSlot);
@@ -1775,6 +1804,8 @@ public final class FaultlineItems extends JavaPlugin {
             // Not our effect — leave it alone entirely (e.g. a creative player's
             // normal flight toggle should work completely unaffected).
             if (!plugin.getDoubleJumpManager().isActive(player.getUniqueId())) return;
+            // BUG FIX: in Bat Form the player is really flying; double-tapping jump used to cancel that flight here.
+            if (plugin.getBatFormManager() != null && plugin.getBatFormManager().isBat(player)) return;
 
             // While the effect is active, real flight must NEVER actually turn
             // on — always cancel the toggle here, regardless of whether this
@@ -1874,8 +1905,13 @@ public final class FaultlineItems extends JavaPlugin {
             if (!player.isOnline()) return;
             if (player.getGameMode() == GameMode.CREATIVE || player.getGameMode() == GameMode.SPECTATOR) return;
 
-            player.setAllowFlight(false);
-            player.setFlying(false);
+            // BUG FIX: the potion wearing off mid Bat Form switched flight off and dropped the bat out of the sky.
+            // Bat Form puts flight back the way it should be when it ends.
+            boolean bat = plugin.getBatFormManager() != null && plugin.getBatFormManager().isBat(player);
+            if (!bat) {
+                player.setAllowFlight(false);
+                player.setFlying(false);
+            }
             if (wasActive) {
                 player.sendMessage(ChatColor.GRAY + "Your Cloud Potion effect has worn off.");
             }
@@ -1931,6 +1967,7 @@ public final class FaultlineItems extends JavaPlugin {
         public void lockFlightBriefly(Player player) {
             UUID uuid = player.getUniqueId();
             if (!isActive(uuid)) return;
+            if (plugin.getBatFormManager() != null && plugin.getBatFormManager().isBat(player)) return;
 
             player.setAllowFlight(false);
 
@@ -1942,6 +1979,7 @@ public final class FaultlineItems extends JavaPlugin {
                     player.setAllowFlight(true);
                 }
             }, cooldownTicks);
+            // (the bat check above matters too: this delayed re-enable never fights Bat Form's own flight)
         }
 
         /** Called on quit/respawn to make sure no lingering flight flag or task survives. */
@@ -2089,8 +2127,15 @@ public final class FaultlineItems extends JavaPlugin {
         @EventHandler(priority = EventPriority.MONITOR)
         public void onMobDeath(EntityDeathEvent event) {
             if (!(event.getEntity() instanceof LivingEntity victim)) return;
+            // BUG FIX: EntityDeathEvent also fires for PLAYER deaths (PlayerDeathEvent shares its listeners), so every
+            // PvP kill had a 5% Goodie Bag chance: two friends could farm each other (or an alt) for diamonds.
+            if (victim instanceof Player) return;
             Player killer = victim.getKiller();
             if (killer == null) return;
+            // BUG FIX: bred animals, built snow golems, spawn eggs and boss/raid adds counted too (Rocco keeps
+            // summoning family members, and FaultlineBosses clears their drops BEFORE this adds a bag), so a chicken
+            // farm or a long boss fight printed Goodie Bags. Same rule as the other drop tables now.
+            if (plugin.getConfig().getBoolean("goodie-bag.exclude-farmed-mobs", true) && farmedMob(victim)) return;
 
             // Spawner mobs don't count by default — otherwise a spawner grinder
             // (this server runs SMPSilkSpawner, so spawners are movable) turns
@@ -2363,6 +2408,8 @@ public final class FaultlineItems extends JavaPlugin {
         @EventHandler(priority = EventPriority.MONITOR)
         public void onMobDeath(EntityDeathEvent event) {
             if (!(event.getEntity() instanceof LivingEntity victim)) return;
+            // BUG FIX: player deaths reach this listener too (and onPlayerDeath below), so a PvP kill's XP was doubled twice (4x)
+            if (victim instanceof Player) return;
             Player killer = victim.getKiller();
             if (killer == null) return;
             if (!isWearingRing(killer)) return;
@@ -3731,7 +3778,8 @@ public final class FaultlineItems extends JavaPlugin {
                 // cave mobs only: underground, no open sky, and deep enough that dark-room mob farms don't count
                 roll(event, "weird-clock.cave-drop-chance", 0.01, NewAccessoryItems.weirdClock(plugin));
             }
-            if (reason != CreatureSpawnEvent.SpawnReason.CUSTOM && reason != CreatureSpawnEvent.SpawnReason.SPAWNER_EGG) {
+            // BUG FIX: bred animals, chicks from eggs and built golems counted (a chicken farm + a sword = boots)
+            if (!farmedMob(victim)) {
                 roll(event, "boots.hermes-drop-chance", 0.005, BootsItems.hermes(plugin));
                 roll(event, "boots.rocket-drop-chance", 0.005, BootsItems.rocket(plugin));
             }
@@ -5820,6 +5868,7 @@ public final class FaultlineItems extends JavaPlugin {
             long endsAt;
             double savedHealth;
             boolean hadAllowFlight;
+            boolean hadCloudPotion; // allowFlight was only on because of a Cloud Potion
             float flySpeed;
         }
 
@@ -5883,6 +5932,7 @@ public final class FaultlineItems extends JavaPlugin {
             Form form = new Form();
             form.savedHealth = player.getHealth();
             form.hadAllowFlight = player.getAllowFlight();
+            form.hadCloudPotion = plugin.getDoubleJumpManager().isActive(player.getUniqueId());
             form.flySpeed = player.getFlySpeed();
             form.endsAt = System.currentTimeMillis() + (long) (cfg("seconds", 20) * 1000);
 
@@ -5953,7 +6003,11 @@ public final class FaultlineItems extends JavaPlugin {
             boolean creativeFlight = player.getGameMode() == GameMode.CREATIVE || player.getGameMode() == GameMode.SPECTATOR;
             if (!creativeFlight) {
                 player.setFlying(false);
-                player.setAllowFlight(form.hadAllowFlight);
+                // BUG FIX (free flight): with a Cloud Potion on when the bat form started, allowFlight was saved as "on"
+                // and put back even after the potion had worn off, so a survival player could fly forever. If the
+                // potion was the reason, flight now follows whether the potion is still active.
+                boolean allow = form.hadCloudPotion ? plugin.getDoubleJumpManager().isActive(player.getUniqueId()) : form.hadAllowFlight;
+                player.setAllowFlight(allow);
             }
             if (!died && !player.isOnGround()) {
                 player.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_FALLING, 20 * 6, 0, false, false, true));

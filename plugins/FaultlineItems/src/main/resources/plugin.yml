@@ -35,7 +35,7 @@ commands:
     usage: /itemsreload
     permission: items.reload
   accessories:
-    description: Open your 2-slot Accessories menu
+    description: Open your Accessories menu (3 slots)
     usage: /accessories
   giveaccessory:
     description: Give yourself or another player any accessory (for testing)
@@ -44,6 +44,7 @@ commands:
   testtexture:
     description: "Debug: gives a test Stick with the Golden Ring's item_model applied"
     usage: /testtexture
+    permission: items.testtexture
 
   givenecrostaff:
     description: Give yourself or another player a Necromancer Staff
@@ -103,6 +104,9 @@ commands:
     usage: /givejacob <falconers_quiver|ender_anchor|banner_of_defiance|ember_ward|diamond_heart> [amount] [player]
     permission: items.givejacob
 permissions:
+  items.testtexture:
+    description: "Debug: the /testtexture stick (it looks like a Golden Ring, so players could pass it off as one)"
+    default: op
   items.givejacob:
     description: Allows giving Diamond Jacob's accessories
     default: op

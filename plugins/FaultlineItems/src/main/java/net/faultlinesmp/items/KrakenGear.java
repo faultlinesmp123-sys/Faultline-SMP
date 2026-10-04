@@ -14,6 +14,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
@@ -27,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.Function;
 
 /**
@@ -118,11 +120,34 @@ final class KrakenGear implements Listener {
         }
     }
 
-    /** 0.5% of the dirt you dig has a Bait Worm in it. */
+    /**
+     * Dirt a player placed (remembered in memory, the most recent 200,000 blocks). BUG FIX: placing and breaking the
+     * same dirt block over and over rolled the 0.5% every time, so a stack of dirt was an endless Kraken summon farm.
+     */
+    private final Map<UUID, Set<Long>> placedDirt = new java.util.HashMap<>();
+    private static final int PLACED_MEMORY = 200_000;
+
+    private Set<Long> placedIn(org.bukkit.World w) {
+        return placedDirt.computeIfAbsent(w.getUID(), k -> java.util.Collections.newSetFromMap(new LinkedHashMap<Long, Boolean>() {
+            @Override protected boolean removeEldestEntry(Map.Entry<Long, Boolean> eldest) { return size() > PLACED_MEMORY; }
+        }));
+    }
+
+    private static long key(org.bukkit.block.Block b) {
+        return ((long) (b.getX() & 0x3FFFFFF) << 38) | ((long) (b.getZ() & 0x3FFFFFF) << 12) | (b.getY() & 0xFFF);
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onPlace(BlockPlaceEvent event) {
+        if (DIRT.contains(event.getBlockPlaced().getType())) placedIn(event.getBlockPlaced().getWorld()).add(key(event.getBlockPlaced()));
+    }
+
+    /** 0.5% of the (natural) dirt you dig has a Bait Worm in it. */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onDig(BlockBreakEvent event) {
         Player p = event.getPlayer();
         if (!DIRT.contains(event.getBlock().getType())) return;
+        if (placedIn(event.getBlock().getWorld()).remove(key(event.getBlock()))) return; // a player put it there
         if (p.getGameMode() != GameMode.SURVIVAL && p.getGameMode() != GameMode.ADVENTURE) return;
         if (random.nextDouble() >= cfg("worm-from-dirt", 0.005)) return;
         Location at = event.getBlock().getLocation().add(0.5, 0.5, 0.5);

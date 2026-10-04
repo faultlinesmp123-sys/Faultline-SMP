@@ -61,6 +61,9 @@ goodie-bag:
   # Mobs from spawners don't drop Goodie Bags by default, since a spawner
   # grinder would otherwise print diamonds. Set to false to let them count.
   exclude-spawner-mobs: true
+  # Bred/hatched animals, built snow/iron golems, spawn-egg mobs, and plugin-spawned mobs (boss minions,
+  # raid waves) don't drop them either, or a chicken farm or a long boss fight prints diamonds.
+  exclude-farmed-mobs: true
 
 # Mythic Goodie Bag — boss-only drop (player kill required). Loot table
 # (one roll per bag): 0.1% Elytra, 10% Netherite Block, 20% 5 Diamond

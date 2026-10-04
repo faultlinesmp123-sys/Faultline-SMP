@@ -415,3 +415,16 @@ rocco:
     werner-cooldown-seconds: 300     # Werner helps when you drop below half health (every 5 minutes, for 30 seconds)
     werner-seconds: 30
 
+
+# The way down to the Lost Explorer: Swarm, his staircase to the bedrock, and the void world with the white path.
+below:
+  enabled: true
+  swarm:
+    chance: 0.02                    # each check, per player exploring underground
+    check-seconds: 60
+    min-y: -50                      # only between these heights, with no sky above
+    max-y: -1
+    stay-seconds: 300               # how long he waits around if nobody talks to him
+    player-cooldown-seconds: 600    # after he turns up for someone, not again for them for this long
+  stairs-open-seconds: 600          # the hole stays open this long, then he seals it and fills the stairs back in
+  void-world: faultline_void

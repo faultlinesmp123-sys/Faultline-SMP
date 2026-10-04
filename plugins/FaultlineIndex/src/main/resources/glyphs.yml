@@ -370,3 +370,6 @@ vendetta_contract:
 vendetta_fist:
   large: 59187
   small: 58163
+swarm:
+  large: 59188
+  small: 58164

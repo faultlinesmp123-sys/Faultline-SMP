@@ -5,7 +5,7 @@ import java.util.*;
 import java.util.function.IntFunction;
 
 /**
- * Prints Rocco's and Werner's animations as JSON (every tick of every move), for tools/vendetta_anim_preview.py.
+ * Prints Rocco's, Werner's and Swarm's animations as JSON (every tick of every move), for tools/vendetta_anim_preview.py.
  * Built and run by tools/anim/preview.sh against the compiled FaultlineBosses classes.
  */
 public final class AnimDump {
@@ -37,6 +37,15 @@ public final class AnimDump {
         add("werner", "werner_awaits", 30, t -> VendettaAnims.wernerAwaits(t));
         add("werner", "werner_seize", 30, VendettaAnims::wernerSeize);
         add("werner", "werner_counter", 14, t -> VendettaAnims.wernerCounter(t));
+        add("swarm", "swarm_idle", 120, t -> Below.idlePose(t, true));
+        add("swarm", "swarm_talk", 60, Below::talkPose);
+        add("swarm", "swarm_take", 40, Below::takePose);
+        add("swarm", "swarm_dig", 18, Below::swingPose);
+        add("swarm", "swarm_step", 14, t -> Below.stepPose(t, 1f));
+        add("swarm", "swarm_draw", 110, Below::drawPose);
+        add("swarm", "swarm_bedrock", 24, Below::slamPose);
+        add("swarm", "swarm_place", 20, Below::placePose);
+        add("swarm", "swarm_bow", 30, Below::bowPose);
         StringBuilder sb = new StringBuilder("{");
         boolean first = true;
         for (var e : ANIMS.entrySet()) {

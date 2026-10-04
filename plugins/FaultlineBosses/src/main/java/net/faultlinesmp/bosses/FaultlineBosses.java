@@ -379,6 +379,9 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(this, this);
         vendetta = new Vendetta(this);
         getServer().getPluginManager().registerEvents(vendetta, this);
+        below = new Below(this);
+        getServer().getPluginManager().registerEvents(below, this);
+        getCommand("below").setExecutor(below);
         getServer().getScheduler().runTaskTimer(this, () -> {
             // Each boss updates on its own: an error in one can't freeze the others, and the error is
             // written to the console (at most every 30s per boss) so it can be tracked down.
@@ -389,6 +392,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             safely("Kraken", () -> { if (kraken != null) kraken.tick(); });
             safely("Diamond Jacob", () -> { if (jacob != null) jacob.tick(); });
             safely("Rocco Vendetta", () -> { if (vendetta != null) vendetta.tick(); });
+            safely("The way down", () -> { if (below != null) below.tick(); });
             safely("Boss form", this::morphTick);
             safely("Kraken bait", this::baitTick);
             safely("Lorenzo's Ball", this::ballTick);
@@ -511,6 +515,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         safely("shutdown: Kraken", () -> { if (kraken != null) kraken.removeEverything(); });
         safely("shutdown: Diamond Jacob", () -> { if (jacob != null) jacob.removeEverything(); });
         safely("shutdown: Rocco Vendetta", () -> { if (vendetta != null) vendetta.shutdown(); });
+        safely("shutdown: The way down", () -> { if (below != null) below.shutdown(); }); // puts Swarm's staircase back
         don = null; dune = null; mortimer = null; eye = null; kraken = null; jacob = null;
         proxies.clear();
     }
@@ -539,7 +544,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                         || tags.contains(DON_TAG) || tags.contains(DON_ORB_TAG) || tags.contains(KRAKEN_TAG) || tags.contains(KRAKEN_TENT_TAG)
                         || tags.contains(KRAKEN_PINK_TAG) || tags.contains(KRAKEN_EEL_TAG) || tags.contains(KRAKEN_MINION_TAG)
                         || tags.contains(JACOB_TAG) || tags.contains(JACOB_BIRD_TAG) || tags.contains(JACOB_ORB_TAG) || tags.contains(JACOB_MINION_TAG)
-                        || Vendetta.ours(e)) e.remove();
+                        || Vendetta.ours(e) || Below.ours(e)) e.remove();
             }
         }
     }
@@ -3592,6 +3597,19 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         AttributeInstance sc = stand.getAttribute(Attribute.SCALE);
         if (sc != null) sc.setBaseValue(scale);
         proxies.put(anchor.getUniqueId(), new Proxy(stand, anchor, look));
+    }
+
+    /** The real thing behind a Bedrock stand-in (null if it isn't one): a click on the stand-in counts as a click on it. */
+    LivingEntity proxyAnchorOf(Entity stand) {
+        if (stand == null || !stand.getScoreboardTags().contains(PROXY_TAG)) return null;
+        for (Proxy px : proxies.values()) if (px.stand.equals(stand)) return px.anchor;
+        return null;
+    }
+
+    /** The Bedrock stand-in for this anchor, if it has one. */
+    LivingEntity proxyStandOf(LivingEntity anchor) {
+        Proxy px = anchor == null ? null : proxies.get(anchor.getUniqueId());
+        return px == null ? null : px.stand;
     }
 
     /** Every tick: stand-ins follow their hitboxes (feet to feet) and face where the model faces. */
@@ -6780,6 +6798,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 int xp = (int) jcfg("rewards.xp", 2500);
                 for (int left = xp; left > 0; ) { int n = Math.min(left, 100); left -= n; world.spawn(at, org.bukkit.entity.ExperienceOrb.class).setExperience(n); }
                 console("index discover " + p.getName() + " diamond_jacob", p);
+                if (below != null) below.markSlayer(p); // Swarm only shows the way down to people who beat Jacob
                 p.sendMessage(ChatColor.AQUA + "Diamond Jacob's hammer, his blade, and his five charms are yours.");
             }
         }
@@ -10282,6 +10301,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
     static final List<String> MORPH_KINDS = List.of("demoneye", "frostbeard", "dune", "frostmaw", "kraken", "jacob", "don", "rocco", "off", "release");
     private Morph morph;
     Vendetta vendetta;
+    Below below;
     private final NamespacedKey MORPH_MOVE_KEY = new NamespacedKey(this, "morph_move");
     java.io.File morphFile() { return new java.io.File(getDataFolder(), "boss_form.yml"); }
 

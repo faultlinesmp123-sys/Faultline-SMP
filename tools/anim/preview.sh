@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Renders Rocco's and Werner's animations (VendettaAnims.java) to PNG strips, using the real Java pose code.
+# Renders Rocco's, Werner's (VendettaAnims.java) and Swarm's (Below.java) animations to PNG strips, using the real Java pose code.
 # Usage: tools/anim/preview.sh <unpacked-pack-dir> <out-dir> [anim-name ...]
 # The pack dir needs the rocco_*/werner_* models + skins (tools/vendetta_models.py writes them).
 set -euo pipefail

@@ -387,6 +387,12 @@ entries:
     where: 'Sets up shop in caves: every 2 minutes, anyone underground (no sky above, below y=50) has a 5% chance of him appearing nearby. He stays for 8 minutes.'
     does: 'Trades accessories for emeralds (rarer ones cost diamonds too): immunity charms, rings, the Spelunker Amulet, diving gear, and more. Five wares at a time, changing with every visit. He can''t be
       hurt.'
+  - chapter: friends
+    name: Swarm
+    icon: swarm
+    detect-tag: faultline_swarm
+    where: 'A citizen of the city Below the Bedrock. Explore between y=-1 and y=-50 (in the caves, no sky above): every minute there''s a 2% chance he turns up somewhere behind you. He waits around for 5 minutes.'
+    does: 'Knows the way down to the Lost Explorer, but only shows it to people who have killed Diamond Jacob, and only for the Vendetta Fist (hold it out to him; he keeps it). Then he digs you a staircase to the bedrock, breaks through it with a pickaxe nobody up here has seen, and opens a hole into the void. Jump in. The hole stays open 10 minutes, then he seals it and fills the stairs back in. He can''t be hurt.'
   - chapter: bosses
     name: The Kraken
     icon: kraken

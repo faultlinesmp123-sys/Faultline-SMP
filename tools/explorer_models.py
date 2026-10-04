@@ -390,8 +390,8 @@ def axe(seed):
 # ---------------- his greatsword: a long black blade with white edges and a white fuller, a spiked crossguard
 BLADE_DISPLAY = {"fixed": {"rotation": [0, 0, 0], "translation": [0, 0, 0], "scale": [1, 1, 1]},
                  "gui": {"rotation": [0, 0, -45], "translation": [0, 0, 0], "scale": [0.5, 0.5, 0.5]},
-                 "thirdperson_righthand": {"rotation": [0, 90, 0], "translation": [0, 6, 1], "scale": [0.6, 0.6, 0.6]},
-                 "firstperson_righthand": {"rotation": [0, 90, 20], "translation": [1, 4, 1], "scale": [0.5, 0.5, 0.5]}}
+                 "thirdperson_righthand": {"rotation": [0, 90, 0], "translation": [0, 10.8, 1], "scale": [0.6, 0.6, 0.6]},
+                 "firstperson_righthand": {"rotation": [0, 90, 20], "translation": [1, 8, 1], "scale": [0.5, 0.5, 0.5]}}
 
 
 def blade(seed):
@@ -430,6 +430,8 @@ def blade(seed):
         box(atlas, (-1.0, 27.0, -0.4), (1.0, 29.4, 0.4), steel),
         box(atlas, (-0.45, 29.4, -0.3), (0.45, 31.4, 0.3), tip),         # ...to a white point
     ]
+    for e in el:  # Minecraft only allows elements between -16 and 32: the whole sword sits 8 lower (its grip at y = -21..-14)
+        e["from"][1] = round(e["from"][1] - 8, 3); e["to"][1] = round(e["to"][1] - 8, 3)
     return atlas, el
 
 

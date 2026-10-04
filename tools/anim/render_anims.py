@@ -118,7 +118,7 @@ def main():
         skin = a["skin"]
         if skin not in cache:
             models = {p: load_model(pack, f"{skin}_{p}") for p in PIECES}
-            worn = [load_model(pack, "cosmetic/rocco_chains")] + ([load_model(pack, "cosmetic/rocco_book")] if skin == "rocco" else [])
+            worn = [] if skin not in ("rocco", "werner") else [load_model(pack, "cosmetic/rocco_chains")] + ([load_model(pack, "cosmetic/rocco_book")] if skin == "rocco" else [])
             cache[skin] = (models, worn)
         models, worn = cache[skin]
         frames = a["frames"]

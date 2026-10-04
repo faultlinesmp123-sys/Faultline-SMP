@@ -536,6 +536,16 @@ entries:
     does: 'Aim for the Solar Plexus (a body blow: stunned for a second), Right in the Dome (a headbutt: Weakness II, a shield blocks it), Gut Crush (two punches, then he hits harder for 10 seconds), Vengeance Awaits You All! (a slam: half your health if you have Weakness, more damage for every debuff, then a 3 second stun, Slowness II and Weakness II) and Counter - Seize ya Chance (a guard: hit him and he counters). Every Vendetta Enforcer that dies makes him 15% stronger. Kill him and Rocco hits 15% harder.'
     drops:
     - 'A cosmetic: Golden Chains, Book, or Coat|33%'
+  - chapter: bosses
+    name: The Lost Explorer
+    icon: lost_explorer
+    detect-tag: faultline_explorer
+    where: 'The final boss. Swarm digs you down through the bedrock into the void; walk the white path to its end, where he stands like a statue. Talk to him (right-click) to start. Barrier walls go up around his arena and four black pillars rise out of the floor.'
+    does: 'He can''t be hurt, and hitting him with a weapon earns a backhand that leaves you at half a heart. Every one of his attacks puts you down in 2-3 hits, but nobody dies here: you fall to your knees and stay there, keeping everything. Dodge his charge (the red line on the floor) so he slams into a pillar instead. While he''s stunned, hit that pillar 3 times with a pickaxe to drop it on him. Four pillars, four phases: Cleave, Sweep and the Charge first; phase 2 adds his Leap (jump the shockwave ring) and his black tiger, who pounces from behind him; phase 3 swaps the axe for a greatsword he throws like a boomerang and a vanishing ambush; phase 4 rains blades. If everyone is on their knees: "You cannot defeat me... Get out of my sight." He kicks you out of the void, the way down closes, and you have to find Swarm again (he won''t ask for another Fist). Comes back 30 minutes after he''s beaten.'
+    drops:
+    - 32 Diamonds|100%
+    - 5 Mythic Goodie Bags|100%
+    - 3,000 XP|100%
   - chapter: enemies
     name: Vendetta Enforcer
     icon: vendetta_enforcer

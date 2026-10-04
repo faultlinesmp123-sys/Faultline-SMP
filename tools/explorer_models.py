@@ -11,6 +11,7 @@ Writes into an unpacked FaultlineSMP pack:
   explorer_axe                                    his great axe (double crescent heads, white edges)
   explorer_blade                                  his greatsword (black, with white edges)
   explorer_tiger_{body,head,jaw,tail}             the black tiger, sitting (joints in TIGER_JOINT)
+  textures/index/lost_explorer.png                his Index icon
 Usage: python3 tools/explorer_models.py <unpacked-pack-dir> [--preview <dir>]
 """
 import math, os, random, sys
@@ -57,37 +58,71 @@ class Painter:
         """One raised pixel of engraving: lit on top, its shadow just under it."""
         self.px(reg, x, y, self.P["eng_hi"]); self.px(reg, x + 1, y + 1, self.P["eng_dark"])
 
+    def line(self, reg, pts):
+        """A one-pixel engraved line through a list of points (no gaps, no clumps)."""
+        seen = set()
+        for (x0, y0), (x1, y1) in zip(pts, pts[1:]):
+            n = int(max(abs(x1 - x0), abs(y1 - y0))) + 1
+            for k in range(n + 1):
+                x, y = int(round(x0 + (x1 - x0) * k / n)), int(round(y0 + (y1 - y0) * k / n))
+                if (x, y) not in seen:
+                    seen.add((x, y)); self.px(reg, x, y, self.P["eng_hi"])
+        for x, y in seen:  # its shadow, only where it doesn't land on the line itself
+            if (x + 1, y + 1) not in seen and (x, y + 1) not in seen: self.px(reg, x, y + 1, self.P["eng_dark"])
+
+    def curl(self, reg, cx, cy, r, start, turn):
+        """An open scroll curl: one and a quarter turns, winding inward, never closing into a blob."""
+        pts = []
+        for k in range(28):
+            f = k / 27
+            a = start + turn * f * math.pi * 2.5
+            rr = r * (1 - 0.72 * f)
+            pts.append((cx + math.cos(a) * rr, cy + math.sin(a) * rr))
+        self.line(reg, pts)
+
     def engrave(self, reg, dense=1.0):
-        """Godfrey-style scrollwork: an inset border, spirals in the corners, a vine winding between them."""
+        """Godfrey-style scrollwork, kept clean: a double inset border, a vine of open curls, a lozenge in the middle."""
         h, w = reg.shape[:2]
         if w < 10 or h < 10: return
-        P, rng = self.P, self.rng
+        P = self.P
         i = 2 if min(w, h) < 20 else 3
         reg[i, i:w - i, :3] = P["eng"]; reg[h - 1 - i, i:w - i, :3] = P["eng"]
         reg[i:h - i, i, :3] = P["eng"]; reg[i:h - i, w - 1 - i, :3] = P["eng"]
         reg[i + 1, i + 1:w - i - 1, :3] = P["eng_dark"]; reg[i + 1:h - i - 1, i + 1, :3] = P["eng_dark"]
-        if w < 16 or h < 16: return
-        r = max(3, min(w, h) // 7)
-        centers = [(i + r + 2, i + r + 2), (w - i - r - 3, h - i - r - 3)]
-        if w * h > 900: centers += [(w - i - r - 3, i + r + 2), (i + r + 2, h - i - r - 3)]
-        for cx, cy in centers:
-            turn = rng.choice((-1, 1))
-            for k in range(int(70 * dense)):
-                a = k * 0.18
-                rr = r * (1 - k / (70 * dense))
-                self.emboss(reg, int(cx + math.cos(a * turn) * rr), int(cy + math.sin(a * turn) * rr))
-        # the vine: a wave from one spiral to the other, with little leaf curls
-        (x0, y0), (x1, y1) = centers[0], centers[1]
-        n = max(abs(x1 - x0), abs(y1 - y0))
-        amp = max(2, min(w, h) // 10)
-        for k in range(n):
-            f = k / max(1, n)
-            x = int(x0 + (x1 - x0) * f + math.sin(f * math.pi * 4) * amp * (abs(y1 - y0) > abs(x1 - x0)))
-            y = int(y0 + (y1 - y0) * f + math.sin(f * math.pi * 4) * amp * (abs(y1 - y0) <= abs(x1 - x0)))
-            self.emboss(reg, x, y)
-            if k % max(6, n // 6) == 3:
-                for j in range(6):
-                    self.emboss(reg, x + int(math.cos(j * 0.9) * 2), y + int(math.sin(j * 0.9) * 2))
+        if w < 18 or h < 18: return
+        j = i + 2
+        if min(w, h) >= 28:  # the inner border, with its corners cut
+            c = 3
+            self.line(reg, [(j + c, j), (w - 1 - j - c, j), (w - 1 - j, j + c), (w - 1 - j, h - 1 - j - c),
+                            (w - 1 - j - c, h - 1 - j), (j + c, h - 1 - j), (j, h - 1 - j - c), (j, j + c), (j + c, j)])
+            j += 2
+        cx, cy = (w - 1) / 2, (h - 1) / 2
+        # the lozenge
+        rx, ry = max(2, (w - 2 * j) // 7), max(2, (h - 2 * j) // 7)
+        self.line(reg, [(cx, cy - ry), (cx + rx, cy), (cx, cy + ry), (cx - rx, cy), (cx, cy - ry)])
+        if dense < 0.8: return
+        # the vine: along the long axis, curls budding off alternately on each side
+        horiz = w >= h
+        a0, a1 = (j + 2, cx - rx - 2) if horiz else (j + 2, cy - ry - 2)
+        span = (h - 2 * j) if horiz else (w - 2 * j)
+        r = max(2.0, min(5.0, span / 5))
+        for side in (0, 1):
+            pts = []
+            n = 20
+            for k in range(n + 1):
+                f = k / n
+                along = a0 + (a1 - a0) * f
+                off = math.sin(f * math.pi * 2) * r * 0.6
+                if side: along = (w - 1 if horiz else h - 1) - along
+                pts.append((along, cy + off) if horiz else (cx + off, along))
+            if abs(a1 - a0) < 4: continue
+            self.line(reg, pts)
+            for k, f in enumerate((0.25, 0.75)):
+                along = a0 + (a1 - a0) * f
+                if side: along = (w - 1 if horiz else h - 1) - along
+                sgn = 1 if k == 0 else -1
+                bx, by = (along, cy + sgn * r * 1.1) if horiz else (cx + sgn * r * 1.1, along)
+                self.curl(reg, bx, by, r * 0.75, (math.pi / 2 if horiz else 0) * -sgn, sgn)
 
     def plate(self, reg, face, wu, hu, ornate=False, ridge=False, lames=0, rivets=False, edge=True):
         """Black plate: a soft top-down falloff, a thin cold highlight along the top/left, deep shadow bottom/right."""
@@ -216,7 +251,7 @@ class Painter:
                 for y in range(h - cut, h): reg[y, x, 3] = 0
 
     def medallion(self, reg, face, wu, hu):
-        """A round medallion with a tiger's face on it (his emblem)."""
+        """A round medallion with his emblem on it: the tiger's three claw marks."""
         P = self.P
         self.plate(reg, face, wu, hu, edge=False)
         if face != "south": return
@@ -227,12 +262,11 @@ class Painter:
                 d = math.hypot(x - cx, y - cy)
                 if d > r: reg[y, x, :3] = P["dark"]
                 elif d > r - 1.5: reg[y, x, :3] = P["eng_hi"] if y < cy else P["eng"]
-        s = max(1, int(r / 4))
-        for ex in (-1, 1):  # ears, eyes, nose
-            self.px(reg, int(cx + ex * r * 0.5), int(cy - r * 0.55), P["eng_hi"])
-            for k in range(s): self.px(reg, int(cx + ex * r * 0.35) + k, int(cy - r * 0.1), P["white_dim"])
-        for k in range(-s, s + 1): self.px(reg, int(cx) + k, int(cy + r * 0.3), P["eng_hi"])
-        self.px(reg, int(cx), int(cy + r * 0.45), P["eng_hi"])
+        # his emblem: three claw slashes across the disc (the tiger's mark)
+        for k in (-1, 0, 1):
+            ox = k * r * 0.45
+            pts = [(cx + ox - r * 0.3, cy - r * 0.6), (cx + ox + r * 0.3, cy + r * 0.6)]
+            self.line(reg, pts)
 
 
 def explorer(seed):
@@ -246,24 +280,23 @@ def explorer(seed):
         box(atlas, (-3.8, 0.0, -3.8), (3.8, 8.8, 3.8), helm),
         box(atlas, (-4.1, -0.3, -4.1), (4.1, 0.9, 4.1), trim),                         # lower rim
         box(atlas, (-4.05, 6.6, -4.05), (4.05, 7.8, 4.05), trim),                      # the circlet
-        box(atlas, (-3.0, 8.8, -3.0), (3.0, 10.2, 3.0), plate, ornate=True, ridge=True),  # the helm narrows...
-        box(atlas, (-2.0, 10.2, -2.0), (2.0, 11.6, 2.0), plate, ridge=True),
-        box(atlas, (-1.1, 11.6, -1.1), (1.1, 13.2, 1.1), spike),
-        box(atlas, (-0.45, 13.2, -0.45), (0.45, 15.4, 0.45), spike),                   # ...into a spire
+        box(atlas, (-3.4, 8.8, -3.4), (3.4, 9.8, 3.4), plate, ridge=True),            # a low dome...
+        box(atlas, (-2.4, 9.8, -2.4), (2.4, 10.5, 2.4), plate, ridge=True),
+        box(atlas, (-0.5, 10.5, -3.0), (0.5, 11.3, 3.0), trim),                       # ...with a crest running front to back
         box(atlas, (-4.3, 0.0, -4.5), (4.3, 3.2, -3.6), plate),                        # neck guard at the back
     ]
     for x, z in ((0, -4.05), (-2.6, -4.05), (2.6, -4.05), (-4.05, -1.6), (4.05, -1.6), (-4.05, 1.4), (4.05, 1.4)):
         dx = 0.25 if abs(x) > 4 else 0.35; dz = 0.35 if abs(x) > 4 else 0.25           # the circlet's points
-        head.append(box(atlas, (x - dx, 7.8, z - dz), (x + dx, 10.0 if x == 0 else 9.4, z + dz), spike))
+        top = 12.6 if x == 0 else (11.0 if abs(x) < 4 else 10.2)                       # tallest at the front
+        head.append(box(atlas, (x - dx, 7.8, z - dz), (x + dx, top, z + dz), spike))
     for s in (-1, 1):  # horns: out of the temples, then one long sweep up and back
         head.append(box(atlas, (min(s * 3.8, s * 5.2), 5.4, -0.9), (max(s * 3.8, s * 5.2), 7.0, 0.9), spike))
         head.append(tilt(box(atlas, (min(s * 4.4, s * 5.4), 6.2, -0.7), (max(s * 4.4, s * 5.4), 13.0, 0.7), spike), "x", -45, (s * 4.9, 6.6, 0)))
         head.append(tilt(box(atlas, (min(s * 4.6, s * 5.2), 12.0, -0.4), (max(s * 4.6, s * 5.2), 15.0, 0.4), spike), "x", -45, (s * 4.9, 6.6, 0)))
     # the mane: thick locks spilling from under the back of the helm, flaring out behind him
-    for i, x in enumerate((-3.6, -2.4, -1.2, 0.0, 1.2, 2.4, 3.6)):
-        ln = 7.5 if i in (0, 6) else (9.5 if i % 2 else 11.0)
-        a = 22.5
-        head.append(tilt(box(atlas, (x - 0.75, 4.5 - ln, -5.2), (x + 0.75, 4.5, -3.6), pt.mane), "x", a, (x, 4.5, -4.4)))
+    for i, x in enumerate((-3.0, -1.5, 0.0, 1.5, 3.0)):
+        ln = (6.5, 8.5, 10.0, 8.5, 6.5)[i]
+        head.append(tilt(box(atlas, (x - 1.1, 4.5 - ln, -5.3), (x + 1.1, 4.5, -3.5), pt.mane), "x", 22.5, (x, 4.5, -4.4)))
     for s in (-1, 1):  # side locks falling past the cheeks onto the mantle
         head.append(tilt(box(atlas, (min(s * 3.9, s * 5.0), -4.0, -2.4), (max(s * 3.9, s * 5.0), 3.0, 0.6), pt.mane), "z", 22.5 * s, (s * 4.4, 3.0, -1)))
     parts["head"] = head
@@ -318,9 +351,11 @@ def explorer(seed):
         el.append(box(atlas, (x0, -3.6, -3.5), (x1, -2.8, 3.5), trim))                            # its rim
         x0, x1 = X(-2.6, 1.0)
         el.append(box(atlas, (x0, 2.4, -3.1), (x1, 3.8, 3.1), pt.fur))                             # fur ruff
-        for zc, ln, x in ((-1.8, 5.0, 2.0), (0.0, 7.4, 2.9), (1.8, 5.0, 2.0)):                    # raking spikes
+        for zc, ln, x in ((-1.8, 4.2, 2.2), (0.0, 6.4, 3.0), (1.8, 4.2, 2.2)):                    # raking spikes, tapered
             x0, x1 = X(x - 0.6, x + 0.6)
-            el.append(tilt(box(atlas, (x0, 2.6, zc - 0.55), (x1, 2.6 + ln, zc + 0.55), spike), "z", -22.5 * o, (o * x, 2.6, zc)))
+            el.append(tilt(box(atlas, (x0, 2.6, zc - 0.55), (x1, 2.6 + ln * 0.6, zc + 0.55), spike), "z", -45 * o, (o * x, 2.6, zc)))
+            x0, x1 = X(x - 0.3, x + 0.3)
+            el.append(tilt(box(atlas, (x0, 2.6 + ln * 0.6, zc - 0.28), (x1, 2.6 + ln, zc + 0.28), spike), "z", -45 * o, (o * x, 2.6, zc)))
         for i in range(4):                                                                         # claws
             x = -1.65 + i * 1.1
             el.append(box(atlas, (x, -13.8, 1.0), (x + 0.6, -12.4, 2.0), spike))
@@ -552,6 +587,36 @@ def tiger(seed):
     return atlas, parts
 
 
+# ---------------- his Index icon: the crowned helm, horns, and the dark where his face should be (16x16)
+ICON = [
+    "................",
+    "..#....#....#...",
+    "..#.#..#..#.#...",
+    "#.#######.###.#.",
+    "#.#HHHHHHHHH#.#.",
+    "##HLLLLLLLLLH##.",
+    ".#HLL#VVV#LLH#..",
+    "..#L#VVVVV#LH#..",
+    "..#L#VVVVV#LH#..",
+    "..#L#VVVVV#LH#..",
+    "..#L#VVVVV#LH#..",
+    "..#LL#VVV#LLH#..",
+    "..#TTTTTTTTTT#..",
+    ".#FFFFFFFFFFFF#.",
+    "#FFFFFFFFFFFFFF#",
+    "################",
+]
+ICON_PAL = {"#": (6, 6, 9), "H": (92, 92, 116), "L": (44, 44, 58), "V": (0, 0, 0), "T": (70, 70, 90), "F": (26, 26, 32)}
+
+
+def icon():
+    im = Image.new("RGBA", (16, 16), (0, 0, 0, 0))
+    for y, row in enumerate(ICON):
+        for x, ch in enumerate(row):
+            if ch in ICON_PAL: im.putpixel((x, y), ICON_PAL[ch] + (255,))
+    return im
+
+
 def lighten(path):
     """Swap the dark preview background for grey so the black armor can actually be judged."""
     im = np.asarray(Image.open(path).convert("RGBA")).copy()
@@ -587,7 +652,8 @@ def scene(prev, parts, img, ael, aimg, tparts, timg):
 def main():
     pack = sys.argv[1]
     prev = sys.argv[sys.argv.index("--preview") + 1] if "--preview" in sys.argv else None
-    for d in ("models/item", "textures/item", "items"): os.makedirs(os.path.join(pack, "assets/faultline", d), exist_ok=True)
+    for d in ("models/item", "textures/item", "items", "textures/index"): os.makedirs(os.path.join(pack, "assets/faultline", d), exist_ok=True)
+    icon().save(os.path.join(pack, "assets/faultline/textures/index/lost_explorer.png"))
     atlas, parts = explorer(41)
     img = write_tex(pack, "explorer_armor", atlas)
     for part, el in parts.items(): write_model(pack, f"explorer_{part}", "explorer_armor", el)

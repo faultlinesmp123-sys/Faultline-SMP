@@ -42,7 +42,7 @@ commands:
     permission: bosses.admin
   explorer:
     description: "Admin: the Lost Explorer's fight"
-    usage: /explorer <start|stop|phase <1-4>|stun|reset>
+    usage: /explorer <start|stop|phase <1-4>|stun|reset|arena [player]>
     permission: bosses.admin
   bossmorph:
     description: "Admin: become a boss and control it (your hotbar becomes its moves)"

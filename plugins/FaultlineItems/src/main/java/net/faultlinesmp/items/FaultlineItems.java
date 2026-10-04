@@ -6983,6 +6983,8 @@ public final class FaultlineItems extends JavaPlugin {
                         "rocco item contract {amount} {player}", "FaultlineBosses"));
                 list.add(external(icon(Material.PAPER, "vendetta_fist", ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + "Vendetta Fist", "FaultlineBosses"),
                         "rocco item fist {amount} {player}", "FaultlineBosses"));
+                list.add(external(icon(Material.WITHER_SKELETON_SKULL, "explorer_head", ChatColor.WHITE + "" + ChatColor.BOLD + "The Lost Explorer " + ChatColor.GRAY + "(go to his arena)", "FaultlineBosses"),
+                        "explorer arena {player}", "FaultlineBosses"));
             }
             if (enabled("FaultlineRaids")) {
                 String[] roman = {"I", "II", "III", "IV", "V"};

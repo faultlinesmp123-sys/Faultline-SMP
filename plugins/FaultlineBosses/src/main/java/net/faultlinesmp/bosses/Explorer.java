@@ -1225,8 +1225,18 @@ final class Explorer implements Listener, CommandExecutor {
                 f.crash(pr);
                 sender.sendMessage(ChatColor.GREEN + "He crashed into a pillar.");
             }
+            case "arena" -> { // straight to the edge of his arena (the admin menu uses this)
+                Player tg = args.length > 1 ? Bukkit.getPlayerExact(args[1]) : sender instanceof Player sp ? sp : null;
+                if (tg == null) { sender.sendMessage(ChatColor.RED + "Who? /explorer arena [player]"); return true; }
+                World v = below.voidWorld();
+                if (v == null) { sender.sendMessage(ChatColor.RED + "The void world couldn't be loaded (see the console)."); return true; }
+                if (!below.inVoid(tg.getWorld()) && !below.returns.containsKey(tg.getUniqueId())) { below.returns.put(tg.getUniqueId(), tg.getLocation()); below.dirty = true; }
+                tg.setFallDistance(0);
+                tg.teleport(new Location(v, 0.5, Below.PATH_Y + 1, Below.ARENA_Z - 14.5, 0, 0));
+                if (!tg.equals(sender)) sender.sendMessage(ChatColor.GREEN + "Sent " + tg.getName() + " to the Lost Explorer's arena.");
+            }
             case "reset" -> { respawnAt = 0; sender.sendMessage(ChatColor.GREEN + "He'll be back at the end of the path right away."); }
-            default -> sender.sendMessage(ChatColor.YELLOW + "/explorer <start|stop|phase <1-4>|stun|reset>");
+            default -> sender.sendMessage(ChatColor.YELLOW + "/explorer <start|stop|phase <1-4>|stun|reset|arena [player]>");
         }
         return true;
     }

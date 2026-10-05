@@ -60,7 +60,7 @@ Notes:
   Tuned for 7 players (health scales per fighter). His and Werner's animations are in `VendettaAnims.java`; render them to
   PNGs with `tools/anim/preview.sh <unpacked-pack> <out>` (runs the real Java pose code through `tools/anim/render_anims.py`).
 - **The Lost Explorer** (final boss, spec + build notes: `docs/bosses/lost_explorer.md`). `Explorer.java`: he stands on a
-  12-tall pillar in his arena digging with a pickaxe, his tiger sitting below; walking in → cutscene 1 ("Who are you?", snap)
+  12-tall pillar in his arena digging with a pickaxe, his tiger sitting below; SOLO (one fighter, others are put back on the path); walking in → cutscene 1 ("Who are you?", snap)
   → his BLACK TIGER (2000 hp, swords work, 4 hits to down you) → cutscene 2 ("Useless." "You shall die.", his pillar sinks,
   4 pillars rise) → him, 4 phases: can't be hurt, Roaring Knight moves (slash lines, dashes, cross cuts, sword rings,
   starbursts, sword rain, big red/white warnings), 4 hits to down you; after every 15 moves he charges: into a pillar → pickaxe it

@@ -28,6 +28,10 @@ pickaxe trick); 4 phases. Nobody dies, they kneel. If everyone's down he talks f
 my sight", kicks them out and the void closes (find Swarm again). Hitting him with a weapon slashes you to half a heart.
 
 How it's built:
+- **Solo** (from the owner): only the player who starts it (walks in first / `begin(w, player)`) is a fighter. Every 5 ticks
+  any other survival/adventure player within 20.5 blocks of the center is teleported back onto the path (z = ARENA_Z-24.5)
+  with "Someone is already facing him". Non-fighters can't hurt the tiger, don't get the boss bar, the Skip / Yes / No
+  buttons, the kick or the `paid` mark. A retry ("Yes") keeps the same fighter.
 - **His pillar** (`BIG_H` 12 tall, 3x3 deepslate bricks, tiles top and bottom, at the arena center): always there except while
   he fights on the floor; `ensureBigPillar` puts it back (statue spawn, fight start, after the fight). The statue (`Below.Statue`,
   ticked every tick) is him on top, back to the path, digging with the black pickaxe (`ExplorerAnims.dig`), and the tiger

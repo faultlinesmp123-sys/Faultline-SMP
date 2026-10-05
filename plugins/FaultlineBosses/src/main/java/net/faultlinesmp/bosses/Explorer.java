@@ -69,6 +69,7 @@ import static net.faultlinesmp.bosses.FaultlineBosses.*;
  *     Roaring Knight: fast, with slash lines across the floor, dashes, cross cuts, rings of swords, starbursts of blades,
  *     sword rain. Every hit is randomly a one-shot or a two-shot. After every 15 moves he CHARGES: dodge so he hits a
  *     pillar, then hit that pillar 3 times with a pickaxe while he's stunned to drop it on him. Four pillars, four phases.
+ * SOLO: only whoever walks in first fights him; anyone else who walks into the arena is put back on the path.
  * Nobody dies and nobody loses anything here: you drop to your knees and can't move. When everyone is down he talks for half a
  * minute about the kingdom Below the Bedrock, then "Get out of my sight.", kicks you all out, and Swarm's hole closes.
  */
@@ -280,8 +281,10 @@ final class Explorer implements Listener, CommandExecutor {
                 a.setInvulnerable(true); a.setPersistent(false); a.addScoreboardTag(TAG);
             });
             pl.proxy(anchor, anchor, EntityType.WITHER_SKELETON, SCALE); // Bedrock players see a big wither skeleton
-            for (Player p : w.getPlayers()) if (inArena(p, 19)) fighters.add(p.getUniqueId());
-            if (by != null) fighters.add(by.getUniqueId());
+            // SOLO: only whoever started it fights (anyone else in the arena is put back on the path)
+            Player solo = by;
+            if (solo == null) { double bd = Double.MAX_VALUE; for (Player p : w.getPlayers()) if (survival(p) && inArena(p, 19) && p.getLocation().distanceSquared(at) < bd) { bd = p.getLocation().distanceSquared(at); solo = p; } }
+            if (solo != null) fighters.add(solo.getUniqueId());
             for (int i = 0; i < 4; i++) pillars.add(new Pillar(i, (int) Math.floor(home.getX()) + PILLARS[i][0], (int) Math.floor(home.getZ()) + PILLARS[i][1]));
             shown = ExplorerAnims.dig(0);
             tiger = new Tiger(w);
@@ -349,7 +352,7 @@ final class Explorer implements Listener, CommandExecutor {
         void tick() {
             ticks++; t++;
             musicTick();
-            for (Player p : world.getPlayers()) if (!fighters.contains(p.getUniqueId()) && inArena(p, 18.5) && st != St.LOSS && st != St.DEFEAT) fighters.add(p.getUniqueId());
+            if (ticks % 5 == 0) keepOut();
             for (UUID id : downed) { // the fallen stay where they are, on their knees
                 Player p = Bukkit.getPlayer(id);
                 if (p != null && t % 10 == 0) p.getWorld().spawnParticle(Particle.ASH, p.getLocation().add(0, 1, 0), 6, 0.3, 0.4, 0.3, 0);
@@ -385,6 +388,16 @@ final class Explorer implements Listener, CommandExecutor {
             if (tiger != null) tiger.tick();
             if (counterT >= 0) { p = ExplorerAnims.counter(counterT); if (++counterT > 12) counterT = -1; }
             render(p);
+        }
+
+        /** Solo fight: anyone else who walks into the arena (survival/adventure) is put back on the path outside it. */
+        void keepOut() {
+            for (Player p : world.getPlayers()) {
+                if (fighters.contains(p.getUniqueId()) || !survival(p) || !inArena(p, 20.5)) continue;
+                p.setFallDistance(0);
+                p.teleport(new Location(world, 0.5, Below.PATH_Y + 1, Below.ARENA_Z - 24.5, 180, 0));
+                p.sendActionBar(legacy(ChatColor.GRAY + "Someone is already facing him. " + ChatColor.WHITE + "He fights one at a time."));
+            }
         }
 
         void render(Pose p) {
@@ -1277,6 +1290,7 @@ final class Explorer implements Listener, CommandExecutor {
                 if (t == outAt + 30) { // the kick
                     world.playSound(pos.toLocation(world), Sound.ENTITY_IRON_GOLEM_ATTACK, SoundCategory.HOSTILE, 1.5f, 0.5f);
                     for (Player p : world.getPlayers()) {
+                        if (!fighters.contains(p.getUniqueId())) continue;
                         if (downed.contains(p.getUniqueId())) restore(p);
                         Vector away = p.getLocation().toVector().subtract(pos).setY(0);
                         if (away.lengthSquared() < 0.01) away = fwd();
@@ -1285,7 +1299,8 @@ final class Explorer implements Listener, CommandExecutor {
                 }
                 if (t == outAt + 38) {
                     for (Player p : new ArrayList<>(world.getPlayers())) {
-                        if (fighters.contains(p.getUniqueId())) below.paid.add(p.getUniqueId()); // Swarm takes them back down without another Fist
+                        if (!fighters.contains(p.getUniqueId())) continue; // (solo: only the one who fought him)
+                        below.paid.add(p.getUniqueId()); // Swarm takes them back down without another Fist
                         below.sendBack(p);
                         p.sendMessage(ChatColor.DARK_GRAY + "" + ChatColor.ITALIC + "The void spits you out. The way down has closed. You'll have to find Swarm again.");
                     }
@@ -1300,16 +1315,22 @@ final class Explorer implements Listener, CommandExecutor {
             return onPillar ? ExplorerAnims.watch(ticks) : ExplorerAnims.loom(ticks);
         }
 
+        List<Player> fighterList() {
+            List<Player> out = new ArrayList<>();
+            for (UUID id : fighters) { Player p = Bukkit.getPlayer(id); if (p != null && p.getWorld().equals(world)) out.add(p); }
+            return out;
+        }
+
         /** A clickable [Skip] for everyone in the void (any fighter can skip it for everyone). */
         void offerSkip() {
-            for (Player p : world.getPlayers()) p.spigot().sendMessage(button("  [ Skip ▶ ]", net.md_5.bungee.api.ChatColor.DARK_GRAY, "/lostexplorer skip", "Skip what he has to say"));
+            for (Player p : fighterList()) p.spigot().sendMessage(button("  [ Skip ▶ ]", net.md_5.bungee.api.ChatColor.DARK_GRAY, "/lostexplorer skip", "Skip what he has to say"));
         }
 
         void ask() {
             askAt = t;
             say("Do you want to do it again..?");
             world.playSound(pos.toLocation(world), Sound.BLOCK_BELL_RESONATE, SoundCategory.HOSTILE, 1.2f, 0.5f);
-            for (Player p : world.getPlayers()) {
+            for (Player p : fighterList()) {
                 p.sendTitle(ChatColor.WHITE + "Do you want to do it again..?", ChatColor.GRAY + "Click Yes or No in chat", 10, (int) (c("again-seconds", 15) * 20), 20);
                 net.md_5.bungee.api.chat.TextComponent line = new net.md_5.bungee.api.chat.TextComponent("  ");
                 line.addExtra(button("[ Yes ]", net.md_5.bungee.api.ChatColor.WHITE, "/lostexplorer yes", "Fight him again, right now (from the tiger)"));
@@ -1346,9 +1367,11 @@ final class Explorer implements Listener, CommandExecutor {
         /** Yes: everyone back on their feet, the arena reset, and straight into the snap and the tiger. */
         void restart() {
             World w = world;
+            Player solo = null;
+            for (UUID id : fighters) { Player p = Bukkit.getPlayer(id); if (p != null && p.getWorld().equals(w)) { solo = p; break; } }
             end(false);
             fight = null;
-            begin(w, null);
+            begin(w, solo);
             Fight f = fight;
             if (f == null) return;
             f.placeWalls();
@@ -1545,7 +1568,7 @@ final class Explorer implements Listener, CommandExecutor {
             if (hurtT >= 0 && ++hurtT > 6) hurtT = -1;
             if (state != SIT && state != DEATH && state != CALM) { // the bar for everyone fighting it
                 bar.setVisible(true);
-                for (Player p : world.getPlayers()) if (f.inArena(p, 30) && !bar.getPlayers().contains(p)) bar.addPlayer(p);
+                for (UUID id : f.fighters) { Player p = Bukkit.getPlayer(id); if (p != null && !bar.getPlayers().contains(p)) bar.addPlayer(p); }
             }
             float[] pose;
             Player tg = f.nearestTo(pos);
@@ -1734,7 +1757,7 @@ final class Explorer implements Listener, CommandExecutor {
         if (f == null || !(event instanceof EntityDamageByEntityEvent by)) return;
         Player p = by.getDamager() instanceof Player pp ? pp : by.getDamager() instanceof Projectile pr && pr.getShooter() instanceof Player sh ? sh : null;
         if (event.getEntity().getScoreboardTags().contains(TIGER_TAG)) { // the tiger: swords, axes, arrows, all of it
-            if (p != null && f.tiger != null && !f.downed.contains(p.getUniqueId()) && survival(p)) f.tiger.damage(dmg, p);
+            if (p != null && f.tiger != null && f.fighters.contains(p.getUniqueId()) && !f.downed.contains(p.getUniqueId()) && survival(p)) f.tiger.damage(dmg, p);
             return;
         }
         if (by.getDamager() instanceof Projectile pr) {

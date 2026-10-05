@@ -2,7 +2,8 @@
 
 Inspired by the Roaring Knight (Deltarune). The last, hardest boss. **Status: built.** Model `tools/explorer_models.py`,
 animations `ExplorerAnims.java`, the fight `Explorer.java` (config `explorer:`, admin `/explorer`), the way there `Below.java`.
-At the end of the path he stands like a statue (head following you); right-click him to start the fight.
+At the end of the path he stands on top of a huge black pillar, digging into it, his tiger sitting below; walk into the
+arena (within 15 blocks) or right-click the tiger to start.
 
 ## Look
 Completely black plate armor, an imposing knight, detailed like Elden Ring's Godfrey but all in black. You can't see his
@@ -12,44 +13,55 @@ horns, a wild black mane down his back, a fur mantle, a high collar, engraved sc
 tapered spikes raked outward, clawed gauntlets, and a long torn cape.
 - Rig: `explorer_{head,body,arm_r,arm_l,leg_r,leg_l}` (same joints as Jacob/Don, so `renderRig` draws it), texture `explorer_armor`.
 - Weapons: `explorer_axe` (a great axe with double crescent heads and white edges) and `explorer_blade` (greatsword).
-- **His black tiger** (comes in phase 2, sits behind him): `explorer_tiger_{body,head,jaw,tail}`, texture `explorer_tiger`,
-  joints in `TIGER_JOINT` in the script (head/jaw/tail can move separately for roars and tail swishes).
+- **His black tiger** (fight 1): standing, in 8 pieces `explorer_tiger_{body,head,jaw,tail,leg_fr,leg_fl,leg_br,leg_bl}`,
+  texture `explorer_tiger`, joints in `TIGER_JOINT` (script) = `T_*_J` in Explorer.java = `render_anims.py`. Its poses are
+  12-number arrays in `ExplorerAnims` (`tigerIdle/Sit/Walk/Roar/Crouch/Leap/Land/Swipe/Flinch/Die`); preview them with
+  `tools/anim/preview.sh <pack> <out> tiger_walk tiger_die ...`.
 - Previews: `tools/previews/explorer*.png` (`explorer_scene.png` is him with the axe and the tiger behind him).
   All of these are in FaultlineSMP.zip (the statue at the end of the path uses the rig and the axe).
 
 ## The fight (BUILT: `Explorer.java` + `ExplorerAnims.java`)
-From the owner: every attack takes 2-3 hits to put you down; nobody dies, they kneel; if everyone's down he says "You
-cannot defeat me... Get out of my sight", kicks them out and the void closes (find Swarm again). Talking to him raises 4
-pillars (and barriers around the arena so nobody falls into the void). He has to crash into a pillar; while he's stunned you
-pickaxe the pillar so it falls on him. 4 phases. Hitting him with a weapon slashes you to half a heart.
+From the owner: the tiger first (2,000 health, swords work, 4 hits to down you), then him. He's fast and fights exactly like
+the Roaring Knight; his hits are randomly a one-shot or a two-shot; he charges after every 15 moves (into a pillar = the
+pickaxe trick); 4 phases. Nobody dies, they kneel. If everyone's down he talks for 30 s about the kingdom Below the Bedrock
+(it was beautiful, it fell; hint that its lost king ruined it, never say it; Diamond Jacob was its general), then "Get out of
+my sight", kicks them out and the void closes (find Swarm again). Hitting him with a weapon slashes you to half a heart.
 
 How it's built:
-- **Start**: right-click the statue (`Below.Statue.talk` → `explorer.begin`). Everyone in the arena (radius 19) fights;
-  anyone who walks in later joins. Intro lines; at 2 s a ring of **barriers** (radius ~19, 5 high, closing the path behind you too) goes up and the
-  **4 pillars** (3x3, 9 tall, polished blackstone bricks with a chiseled cap, at ±7/±7 from the center) rise over ~2 s.
-  Every block placed is remembered and put back after the fight (also on shutdown; leftovers after a crash are cleaned
-  next start). The statue is hidden during the fight and for `respawn-minutes` (30) after he's beaten.
-- **He can't be hurt.** Melee hits are cancelled and answered with a backhand (health set to half a heart, 1.5 s cooldown
-  per player); arrows bounce off. While stunned/pinned, weapon hits just tell you to use a pickaxe.
-- **Damage**: every hit is `damage.heavy` (55% of max health) or `damage.light` (40%), taken straight off your health
-  (absorption hearts first). Armor, Protection and Resistance don't shrink it, so it's always 2 heavy or 3 light hits.
-  Two hits within 8 ticks (him and the tiger at once) count as one. Any hit that would kill a fighter in the void world instead **downs** them: kneeling (fixed crouch pose),
-  can't move or jump (transient -100% speed/jump modifiers), can't be hurt, can't use items, eat, pearl or chorus out,
-  keeps everything. Totems aren't used up.
-- **The pillar trick**: he charges every `charge-every-seconds` (12, faster in later phases), or sooner if you keep your
-  distance: a roar, a red line on the floor locking on, then a straight bull rush (`charge-speed` 0.95 blocks/tick). Hit
-  a pillar and he's **stunned** for `stun-seconds` (8, 1 less each phase). Hit that pillar **3 times with any pickaxe**
-  (left-click; `pickaxe-hits`) and it topples onto him (block displays pivoting over its base, 0.9 s), pinning him. Don't
-  stand where it falls. Too slow and he gets back up. Pillars can't be mined or broken any other way.
-- **Phases** (one per pillar dropped on him): 1: Cleave (cone), Sweep (spin, ring), Charge. 2 ("Hm. Clever."): faster,
-  + Leap & Slam (lands on you, then a shockwave ring you jump over) and **his black tiger** pads in and sits behind him
-  (roars, crouches, pounces at the nearest player every `tiger-pounce-seconds`, 12, then leaps back). 3 ("Enough."):
-  the axe becomes the **greatsword**, + Throw (it spins out and boomerangs back) and Vanish/Ambush (gone in smoke,
-  reappears behind someone). 4: + Blade Rain (marked circles, then blades drop). The 4th pillar ends it.
-- **Losing** (every fighter downed): he walks to the fallen, "You cannot defeat me...", "Get out of my sight.", a kick
-  that throws everyone back, and everyone in the void is sent home (`sendBack`) and **the hole is sealed at once**
-  (Swarm fills it in). Their next trip: Swarm still wants the Jacob kill but **won't ask for another Fist** (`below.yml`
-  → `paid`).
+- **His pillar** (`BIG_H` 12 tall, 3x3 deepslate bricks, tiles top and bottom, at the arena center): always there except while
+  he fights on the floor; `ensureBigPillar` puts it back (statue spawn, fight start, after the fight). The statue (`Below.Statue`,
+  ticked every tick) is him on top, back to the path, digging with the black pickaxe (`ExplorerAnims.dig`), and the tiger
+  sitting at its foot (`tigerSeat`). A survival/adventure player within 15 blocks of the center starts the fight.
+- **Cutscene 1** (`INTRO`, ~11 s): walls (barrier ring, radius ~19, 5 high; players in the ring are moved in) at 0.5 s; he
+  stops digging, straightens, turns to you; "...", "Who are you?", "You're not from this world."; the finger snap (left hand,
+  click + spell sound) wakes the tiger: it rises, roars, bounds off the dais. Music (Black Knife) starts.
+- **The tiger** (`TIGER`): `tiger.health` 2000 (tracked by the plugin; the slime hitbox has tag `faultline_explorer_tiger`; any
+  melee/projectile damage from a fighter counts), boss bar. Moves: prowl (circles you up close), Swipe (paw rake, cone 3.8,
+  2 in a row below half health), Pounce (crouch + red circle, then a leap: radius 2.6), Roar (throws you back, Slowness II).
+  Every hit = `tiger.damage-share` 0.26 of max health (4 hits). He watches from the pillar.
+- **Cutscene 2** (`TIGER_DEATH`, ~12 s): the tiger staggers, collapses, rolls onto its side, turns to ash. Music stops.
+  "...", "Useless.", "Completely useless.", "You shall die." (roar, music restarts). He drops off the pillar onto the floor,
+  the pillar sinks layer by layer, the four 3x3 fighting pillars (±7, ±7) rise.
+- **Damage**: his hits are randomly (`one-shot-chance` 0.5) all your health (down) or `damage.two-shot` 0.55; the tiger's
+  0.26. Taken straight off health (absorption first): armor, Protection and Resistance don't change the count. Hits within
+  8 ticks of each other count once. Any hit that would kill a fighter in the void world instead **downs** them: kneeling, frozen
+  (speed/jump -100%), can't be hurt, can't use items, eat, pearl or chorus out, keeps everything. Totems aren't used up.
+- **His moves** (Roaring Knight style; everything runs on a sped-up clock: `speed` 1.25, x1.12/1.25/1.4 in phases 2-4):
+  - Phase 1: **Slash** (a rising slash; 3 white lines across the arena, one through each player, turning red, then they cut:
+    anyone within 1.1 of a line is hit), **Dash** (2 dashes straight through you, red line first, 1.7 b/tick), Cleave and
+    Sweep up close.
+  - Phase 2: + **Cross** (an X through you, then a + over it), **Ring** (8 swords appear around you, hang there, then thrust in:
+    run out of the ring), 4 slash lines, 3 dashes.
+  - Phase 3: the greatsword: + **Starburst** (3 waves of 12 blades fly out from him, rotated each wave: stand in the gaps),
+    Throw (boomerang), Shadow Step (behind you), slash lines cut one after another.
+  - Phase 4: + **Sword Rain** (blades fall on marked spots around each player), 6 slash lines, 4 dashes, double rings, 16-blade waves.
+- **The charge**: after `charge-after-moves` (15) moves ("He's gathering himself..." one move before), a roar, a red line
+  locking on, then a bull rush (`charge-speed` 1.1). Into a pillar: stunned for `stun-seconds` (8, 1 less each phase); 3
+  pickaxe hits on that pillar topple it onto him (pinned, next phase; the 4th pillar ends it). Missed: he's ready to charge
+  again 4 moves later.
+- **Losing** (every fighter down, in either fight): ~30 s (`loss-speech-seconds`) of 9 lines about the kingdom Below the
+  Bedrock (`LORE` in Explorer.java), then "Get out of my sight.", the kick, everyone in the void sent home, the hole sealed at
+  once; fighters are marked `paid` (Swarm won't ask for another Fist).
 - **Winning**: "...", "So. You found the way after all.", "Go on. It's yours now.", he crumbles into ash. Each fighter
   (from the owner): `rewards.mythic-bags` (32), `rewards.xp` (3000), `rewards.netherite-blocks` (5, dropped locked to
   them) and the **Mirror..??** (`rewards.mirror`, FaultlineItems `/givelostmirror`), plus the Index entry. Server broadcast.
@@ -58,18 +70,20 @@ How it's built:
   and thrown back at whoever dealt it (up to `mirror.max-reflect` 30), then a 45 s cooldown (`mirror.cooldown-seconds`).
   The reflected hit counts as yours (boss counters like Rocco's Payback see it). It doesn't work against the Explorer
   himself (his hits aren't normal damage). Art: `tools/explorer_models.py` (a black hand mirror with his helm in the glass).
-- **Music**: Black Knife (Deltarune), `sounds/explorer/music.ogg` (2:02, `explorer.music.length-seconds: 122`), starts at
-  "Then show me." and loops for players within 30 blocks; it stops when everyone's down (silence before his lines) and
-  when he's beaten.
+- **Music**: Black Knife (Deltarune), `sounds/explorer/music.ogg` (2:02, `explorer.music.length-seconds: 122`), from the
+  snap through the tiger fight, then again from "You shall die.", looped for players within 30 blocks; silent when everyone's
+  down and when he's beaten.
 - No boss form (`/bossmorph`): the fight is tied to its arena.
 - Crash leftovers (walls/pillars) are cleaned when the arena's chunks load and when a fight starts. Players standing where
   the wall rises are moved inside.
 - Bedrock players see a big wither skeleton (and a ravager for the tiger) through `proxy`.
-- Admin: `/explorer start` (in the void), `stop`, `phase <1-4>`, `stun` (crash into the nearest pillar), `reset` (statue
-  back now), `arena [player]` (straight to the arena edge; the `/itemsmenu` entry uses it).
-- Tested with MockBukkit: intro → walls/pillars, crash → 3 pickaxe hits → pinned → phases 2-4 (tiger, blade) → defeat,
-  rewards and cleanup; two heavy hits → kneeling with the inventory intact → loss → kicked home, `paid`, arena cleared;
-  a player hiding behind a pillar gets charged into it.
+- Admin: `/explorer start` (in the void), `stop`, `skip` (past the cutscene / kills the tiger), `phase <1-4>` (straight to
+  him on the floor), `stun` (crash into the nearest pillar), `reset` (back on his pillar now), `arena [player]` (on the path
+  just short of the arena; the `/itemsmenu` entry uses it).
+- Tested with MockBukkit: walking in → cutscene 1 lines → tiger (2000 hp, sword damage counts, 0.26 per hit) → cutscene 2
+  (Useless / You shall die, pillar sinks, 4 pillars rise) → slashes/dashes → the charge after 15 moves → one/two-shot split →
+  4 pillars → defeat, cleanup, his pillar back; a loss during the tiger fight → the 30 s speech (mentions Diamond Jacob, never
+  says he was the king) → kicked home; phase 1 and 4 run a minute each without errors (up to 48 blades in the air).
 
 ## Getting there (BUILT: `plugins/FaultlineBosses/.../Below.java`, config `below:`, admin `/below`)
 1. Explore between **y = -1 and y = -50**. Every minute there's a **2% chance** to meet **Swarm**, a citizen of the city

@@ -11,6 +11,8 @@ import java.util.function.IntFunction;
 public final class AnimDump {
     static final LinkedHashMap<String, Object[]> ANIMS = new LinkedHashMap<>();
     static void add(String skin, String name, int len, IntFunction<Pose> f) { ANIMS.put(name, new Object[]{skin, len, f}); }
+    static final LinkedHashMap<String, Object[]> TIGER = new LinkedHashMap<>();
+    static void tiger(String name, int len, IntFunction<float[]> f) { TIGER.put(name, new Object[]{len, f}); }
 
     public static void main(String[] a) {
         add("rocco", "rocco_stance", 30, VendettaAnims::roccoStance);
@@ -66,6 +68,25 @@ public final class AnimDump {
         add("explorer", "explorer_dismiss", 40, t -> ExplorerAnims.dismiss(t));
         add("explorer", "explorer_defeat", 90, t -> ExplorerAnims.defeat(t));
         add("explorer", "explorer_awaken", 70, t -> ExplorerAnims.awaken(t));
+        add("explorer", "explorer_dig_pick", 24, ExplorerAnims::dig);
+        add("explorer", "explorer_straighten", 40, t -> ExplorerAnims.straighten(t));
+        add("explorer", "explorer_snap", 30, t -> ExplorerAnims.snap(t));
+        add("explorer", "explorer_useless", 60, t -> ExplorerAnims.useless(t));
+        add("explorer", "explorer_slash_blade", 22, t -> ExplorerAnims.slash(t));
+        add("explorer", "explorer_dash_blade", 12, t -> ExplorerAnims.dash(t));
+        add("explorer", "explorer_cross_blade", 26, t -> ExplorerAnims.cross(t));
+        add("explorer", "explorer_summon_blade", 30, t -> ExplorerAnims.summon(t));
+        add("explorer", "explorer_starburst", 40, t -> ExplorerAnims.starburst(t));
+        tiger("tiger_idle", 60, t -> ExplorerAnims.tigerIdle(t));
+        tiger("tiger_sit", 30, t -> ExplorerAnims.tigerSit(t));
+        tiger("tiger_walk", 24, t -> ExplorerAnims.tigerWalk(t, 1f));
+        tiger("tiger_run", 18, t -> ExplorerAnims.tigerWalk(t, 1.3f));
+        tiger("tiger_roar", 24, t -> ExplorerAnims.tigerRoar(t));
+        tiger("tiger_crouch", 14, ExplorerAnims::tigerCrouch);
+        tiger("tiger_leap", 4, ExplorerAnims::tigerLeap);
+        tiger("tiger_land", 12, t -> ExplorerAnims.tigerLand(t));
+        tiger("tiger_swipe", 18, t -> ExplorerAnims.tigerSwipe(t, true));
+        tiger("tiger_die", 80, t -> ExplorerAnims.tigerDie(t));
         StringBuilder sb = new StringBuilder("{");
         boolean first = true;
         for (var e : ANIMS.entrySet()) {
@@ -78,6 +99,18 @@ public final class AnimDump {
                 if (t > 0) sb.append(",");
                 sb.append("{\"drop\":").append(p.drop).append(",\"r\":[");
                 for (int i = 0; i < 6; i++) sb.append(i > 0 ? "," : "").append("[").append(p.r[i][0]).append(",").append(p.r[i][1]).append(",").append(p.r[i][2]).append("]");
+                sb.append("]}");
+            }
+            sb.append("]}");
+        }
+        for (var e : TIGER.entrySet()) { // the tiger: 12 numbers a frame (see ExplorerAnims)
+            @SuppressWarnings("unchecked") IntFunction<float[]> f = (IntFunction<float[]>) e.getValue()[1];
+            sb.append(",\"").append(e.getKey()).append("\":{\"skin\":\"tiger\",\"frames\":[");
+            for (int t = 0; t < (int) e.getValue()[0]; t++) {
+                float[] p = f.apply(t);
+                if (t > 0) sb.append(",");
+                sb.append("{\"t\":[");
+                for (int i = 0; i < p.length; i++) sb.append(i > 0 ? "," : "").append(p[i]);
                 sb.append("]}");
             }
             sb.append("]}");

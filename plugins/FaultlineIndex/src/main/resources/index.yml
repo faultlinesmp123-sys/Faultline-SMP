@@ -540,13 +540,22 @@ entries:
     name: The Lost Explorer
     icon: lost_explorer
     detect-tag: faultline_explorer
-    where: 'The final boss. Swarm digs you down through the bedrock into the void; walk the white path to its end, where he stands like a statue. Talk to him (right-click) to start. Barrier walls go up around his arena and four black pillars rise out of the floor.'
-    does: 'He can''t be hurt, and hitting him with a weapon earns a backhand that leaves you at half a heart. Every one of his attacks puts you down in 2-3 hits, but nobody dies here: you fall to your knees and stay there, keeping everything. Dodge his charge (the red line on the floor) so he slams into a pillar instead. While he''s stunned, hit that pillar 3 times with a pickaxe to drop it on him. Four pillars, four phases: Cleave, Sweep and the Charge first; phase 2 adds his Leap (jump the shockwave ring) and his black tiger, who pounces from behind him; phase 3 swaps the axe for a greatsword he throws like a boomerang and a vanishing ambush; phase 4 rains blades. If everyone is on their knees: "You cannot defeat me... Get out of my sight." He kicks you out of the void, the way down closes, and you have to find Swarm again (he won''t ask for another Fist). Comes back 30 minutes after he''s beaten.'
+    where: 'The final boss. Swarm digs you down through the bedrock into the void; walk the white path to its end. He stands on top of a huge black pillar, digging into it, his black tiger sitting below. Walk into his arena and walls close it off.'
+    does: '"Who are you?" "You''re not from this world." He snaps his fingers and his BLACK TIGER attacks first: 2,000 health, swords work on it, and it takes a quarter of your health per hit (swipes, pounces, a roar that throws you back). Kill it and he calls it useless... "You shall die." He drops off his pillar and four pillars rise. HE can''t be hurt, and hitting him with a weapon earns a backhand that leaves you at half a heart. He fights like the Roaring Knight, fast: white slash lines across the floor (get off the line before it turns red and cuts), dashes straight through you, X and + cuts, rings of swords that close in on you, starbursts of blades (stand in the gaps), and sword rain. Every hit is a one-shot or a two-shot. After every 15 moves he CHARGES: be in front of a pillar so he slams into it, then hit that pillar 3 times with a pickaxe while he''s stunned to drop it on him. Four pillars, four phases. Nobody dies here: you fall to your knees and keep everything. If everyone''s down he tells you about the kingdom Below the Bedrock, then "Get out of my sight." He kicks you out, the way down closes, and you have to find Swarm again (no second Fist). Comes back 30 minutes after he''s beaten.'
     drops:
     - 32 Mythic Goodie Bags|100%
     - 5 Netherite Blocks|100%
     - Mirror..??|100%
     - 3,000 XP|100%
+  - chapter: bosses
+    id: black_tiger
+    name: The Black Tiger
+    icon: black_tiger
+    detect-tag: faultline_explorer_tiger
+    where: 'The Lost Explorer''s tiger. It sits at the foot of his pillar until he snaps his fingers. 2,000 health.'
+    does: 'Fight 1 of the Lost Explorer. Swords, axes and arrows all hurt it. It prowls and circles you, rakes with its paws (twice in a row below half health), crouches and pounces onto a red circle, and roars to throw you back and slow you. Every hit takes a quarter of your health: four and you''re on your knees.'
+    drops:
+    - Nothing (its master is next)|-
   - chapter: accessories
     id: lost_mirror
     name: Mirror..??

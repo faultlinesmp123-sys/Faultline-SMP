@@ -207,6 +207,7 @@ final class Below implements Listener, CommandExecutor {
         if (swarm != null && swarm.gone) swarm = null;
         pl.bossPart("The way down", "hole", this::holeTick);
         if (now % 5 == 0) pl.bossPart("The way down", "void world", this::voidTick);
+        if (statue != null) pl.bossPart("The Lost Explorer", "statue", () -> { if (statue != null) statue.tick(); });
         if (now % 20 == 0 && enabled()) pl.bossPart("The way down", "encounters", this::encounterTick);
         if (dirty && now % 100 == 0) save();
     }
@@ -1033,7 +1034,7 @@ final class Below implements Listener, CommandExecutor {
         for (Player p : ps) if (p.getWorld().equals(v) && p.getLocation().distanceSquared(new Location(v, 0, PATH_Y, ARENA_Z)) < 140 * 140) near = true; // (some may have just left)
         if (near) {
             if (statue == null && !pl.explorer.blocksStatue()) statue = new Statue(v);
-            if (statue != null) statue.tick();
+            // (statue.tick() runs every tick, from tick(): he's digging)
         } else if (statue != null) { statue.remove(); statue = null; }
     }
 
@@ -1078,33 +1079,37 @@ final class Below implements Listener, CommandExecutor {
         final World world;
         final Location root;
         final ItemDisplay[] parts = new ItemDisplay[6];
-        final ItemDisplay axe;
+        final ItemDisplay[] tiger;
+        final ItemDisplay pick;
         final Interaction click;
         final ArmorStand anchor;
         Pose shown = new Pose();
-        float headYaw, headPitch;
         int t;
 
         Statue(World w) {
             world = w;
-            root = new Location(w, 0.5, PATH_Y + 1, ARENA_Z + 0.5, 180, 0); // the middle of the white circle
+            pl.explorer.ensureBigPillar(w);
+            Vector top = Explorer.pillarTop();
+            root = new Location(w, top.getX(), top.getY(), top.getZ(), 0, 0); // on top of his pillar, his back to the path, digging
             String[] pieces = {"_leg_r", "_leg_l", "_body", "_arm_r", "_arm_l", "_head"};
             for (int i = 0; i < 6; i++) { parts[i] = pl.spawnDisplay(root, "explorer" + pieces[i], STATUE_SCALE, 3, Display.Billboard.FIXED); parts[i].setViewRange(8f); parts[i].addScoreboardTag(STATUE_TAG); }
-            axe = w.spawn(root, ItemDisplay.class, d -> {
-                d.setItemStack(modelItem("explorer_axe"));
+            pick = w.spawn(root, ItemDisplay.class, d -> {
+                d.setItemStack(modelItem("below_pickaxe"));
                 d.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.THIRDPERSON_RIGHTHAND);
                 d.setTeleportDuration(3); d.setInterpolationDuration(3); d.setViewRange(8f);
                 d.setBrightness(new Display.Brightness(13, 13));
                 d.setPersistent(false);
                 d.addScoreboardTag(DISPLAY_TAG); d.addScoreboardTag(STATUE_TAG);
             });
-            click = w.spawn(root, Interaction.class, x -> {
-                x.setInteractionWidth(1.4f); x.setInteractionHeight(3.4f); x.setResponsive(true);
+            Vector seat = Explorer.tigerSeat();
+            tiger = Explorer.spawnTiger(pl, seat.toLocation(w), STATUE_TAG); // his tiger, sitting at the foot of the pillar
+            click = w.spawn(seat.toLocation(w), Interaction.class, x -> { // right-clicking the tiger works too
+                x.setInteractionWidth(2.4f); x.setInteractionHeight(2.6f); x.setResponsive(true);
                 x.setPersistent(false); x.addScoreboardTag(STATUE_TAG);
             });
             anchor = w.spawn(root, ArmorStand.class, a -> {
                 a.setVisibleByDefault(false); a.setInvisible(true); a.setMarker(true); a.setGravity(false);
-                a.setInvulnerable(true); a.setPersistent(false); a.setRotation(180, 0); a.addScoreboardTag(STATUE_TAG);
+                a.setInvulnerable(true); a.setPersistent(false); a.setRotation(0, 0); a.addScoreboardTag(STATUE_TAG);
             });
             pl.proxy(anchor, anchor, EntityType.WITHER_SKELETON, STATUE_SCALE);
         }
@@ -1113,38 +1118,36 @@ final class Below implements Listener, CommandExecutor {
             t++;
             if (!click.isValid() || !anchor.isValid()) { remove(); statue = null; return; }
             for (ItemDisplay d : parts) if (d == null || !d.isValid()) { remove(); statue = null; return; }
-            // he stands with the axe planted, hands on its haft; his head follows whoever comes closest
-            Player look = null;
-            double bd = 36 * 36;
-            for (Player p : world.getPlayers()) { double d = p.getLocation().distanceSquared(root); if (d < bd) { bd = d; look = p; } }
-            float wantYaw = 0, wantPitch = 0;
-            if (look != null) {
-                Vector to = look.getEyeLocation().toVector().subtract(root.toVector().add(new Vector(0, 2.4, 0)));
-                float want = (float) Math.toDegrees(Math.atan2(-to.getX(), to.getZ()));
-                wantYaw = Math.max(-55, Math.min(55, ((want - 180) % 360 + 540) % 360 - 180));
-                wantPitch = (float) Math.max(-30, Math.min(30, -Math.toDegrees(Math.atan2(to.getY(), Math.max(0.5, Math.hypot(to.getX(), to.getZ()))))));
-            }
-            headYaw += (wantYaw - headYaw) * 0.04f;   // slowly. He's in no hurry.
-            headPitch += (wantPitch - headPitch) * 0.04f;
-            float b = (float) Math.sin(t * 0.05);
-            Pose p = new Pose().set(ARM_R, -32, -8, -4).set(ARM_L, -30, 34, 8).set(BODY, 3 + b, 0, 0)
-                    .set(LEG_R, 0, 0, -4).set(LEG_L, 0, 0, 4).set(HEAD, headPitch, -headYaw, 0);
-            shown = Pose.lerp(shown, p, 0.3f);
-            pl.renderRig(parts, axe, root, 180, STATUE_SCALE, shown, 90, 1.0f);
-            click.teleport(root);
+            shown = Pose.lerp(shown, ExplorerAnims.dig(t), 0.6f);
+            pl.renderRig(parts, pick, root, 0, STATUE_SCALE, shown, 90, 1.0f);
+            Explorer.renderTiger(pl, tiger, Explorer.tigerSeat().toLocation(world), 180, ExplorerAnims.tigerSit(t));
             anchor.teleport(root);
+            if (t % 24 == 15) { // the pickaxe bites into the pillar
+                Location bite = root.clone().add(0, 0.1, 1.0);
+                world.spawnParticle(Particle.BLOCK, bite, 10, 0.3, 0.1, 0.3, 0, Explorer.BIG_BODY.createBlockData());
+                world.playSound(bite, Sound.BLOCK_DEEPSLATE_BRICKS_HIT, SoundCategory.BLOCKS, 1.4f, 0.6f);
+            }
             if (t % 8 == 0) world.spawnParticle(Particle.WHITE_ASH, root.clone().add(0, 1.5, 0), 4, 0.8, 1.2, 0.8, 0);
+            // walking into his arena starts it
+            if (t % 5 == 0) for (Player p : world.getPlayers()) {
+                Location l = p.getLocation();
+                if (!survivalish(p) || Math.abs(l.getY() - (PATH_Y + 1)) > 6) continue;
+                if (Math.hypot(l.getX() - root.getX(), l.getZ() - root.getZ()) <= 15) { talk(p); return; }
+            }
         }
+
+        boolean survivalish(Player p) { return p.getGameMode() == GameMode.SURVIVAL || p.getGameMode() == GameMode.ADVENTURE; }
 
         void talk(Player p) {
             if (pl.explorer.blocksStatue()) return;
             removeStatue();
-            pl.explorer.begin(world, p); // he steps off his pedestal: the fight starts
+            pl.explorer.begin(world, p); // the cutscene starts
         }
 
         void remove() {
             for (ItemDisplay d : parts) if (d != null && d.isValid()) d.remove();
-            if (axe.isValid()) axe.remove();
+            for (ItemDisplay d : tiger) if (d != null && d.isValid()) d.remove();
+            if (pick.isValid()) pick.remove();
             if (click.isValid()) click.remove();
             if (anchor.isValid()) anchor.remove();
         }

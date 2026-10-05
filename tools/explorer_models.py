@@ -10,9 +10,10 @@ Writes into an unpacked FaultlineSMP pack:
   explorer_{head,body,arm_r,arm_l,leg_r,leg_l}   the 6-piece rig (same joints as Jacob/Don: renderRig draws it)
   explorer_axe                                    his great axe (double crescent heads, white edges)
   explorer_blade                                  his greatsword (black, with white edges)
-  explorer_tiger_{body,head,jaw,tail}             the black tiger, sitting (joints in TIGER_JOINT)
+  explorer_tiger_{body,head,jaw,tail,leg_*}       the black tiger, standing, in 8 pieces (joints in TIGER_JOINT)
   textures/index/lost_explorer.png                his Index icon
   lost_mirror                                     the Mirror..?? (his accessory drop): item + Index icon
+  textures/index/black_tiger.png                  the tiger's Index icon
 Usage: python3 tools/explorer_models.py <unpacked-pack-dir> [--preview <dir>]
 """
 import json, math, os, random, sys
@@ -472,7 +473,8 @@ def blade(seed):
 
 
 # ---------------- the black tiger: sits behind him (phase 2). Faces +z, feet at y = 0.
-TIGER_JOINT = {"body": (0, 0, 0), "head": (0, 19.5, 9.0), "jaw": (0, 15.6, 13.6), "tail": (0, 1.5, -9.0)}
+TIGER_JOINT = {"body": (0, 14, 0), "head": (0, 18, 13), "jaw": (0, 14.1, 17.6), "tail": (0, 17, -12),
+               "leg_fr": (-3.4, 12, 8.5), "leg_fl": (3.4, 12, 8.5), "leg_br": (-3.8, 13, -9), "leg_bl": (3.8, 13, -9)}
 
 
 def tiger(seed):
@@ -542,23 +544,16 @@ def tiger(seed):
     claw, fang = plain(T["claw"]), plain(T["fang"])
     parts = {}
 
-    # body: haunches on the ground, chest up and leaning forward, two straight front legs
+    # A standing, prowling tiger in 8 pieces so it can walk, swipe, pounce and die. Every piece hangs from its joint
+    # (TIGER_JOINT, in px from the ground under its middle); it faces +z, its right side is -x.
     body = [
-        box(atlas, (-6.0, 0.0, -9.0), (6.0, 6.0, 1.0), coat),                           # haunches
-        box(atlas, (-5.0, 6.0, -8.0), (5.0, 8.5, 0.5), coat),                           # rounding off the rump
-        tilt(box(atlas, (-3.9, 4.0, -2.0), (3.9, 16.5, 4.6), coat), "x", 22.5, (0, 5, 1)),   # the chest, leaning up/forward
-        tilt(box(atlas, (-2.8, 6.0, 4.4), (2.8, 13.5, 5.6), ruff), "x", 22.5, (0, 5, 1)),    # pale chest ruff
-        box(atlas, (-3.4, 14.5, 4.0), (3.4, 19.0, 9.6), coat),                          # neck
+        box(atlas, (-5.0, -5.0, -11.5), (5.0, 4.5, 10.0), coat),                        # the torso
+        box(atlas, (-5.4, -4.2, -12.6), (5.4, 4.0, -5.5), coat),                        # heavy haunches
+        box(atlas, (-4.6, 4.5, 2.0), (4.6, 6.0, 9.0), coat),                            # shoulder hump
+        box(atlas, (-4.2, -6.0, -7.0), (4.2, -5.0, 6.0), coat, stripes=False, belly=True),  # belly
+        box(atlas, (-3.8, -5.6, 9.0), (3.8, 2.0, 11.6), ruff),                          # pale chest ruff
+        box(atlas, (-3.4, -1.5, 9.0), (3.4, 6.0, 14.5), coat),                          # neck
     ]
-    for s in (-1, 1):
-        X = lambda a, b: (min(a * s, b * s), max(a * s, b * s))
-        x0, x1 = X(4.5, 7.4); body.append(box(atlas, (x0, 0.0, -8.5), (x1, 8.5, 0.5), coat))       # thighs
-        x0, x1 = X(4.3, 7.6); body.append(box(atlas, (x0, 0.0, 0.5), (x1, 1.8, 5.0), coat))        # hind paws
-        x0, x1 = X(1.0, 3.8); body.append(box(atlas, (x0, 1.4, 5.4), (x1, 13.0, 8.2), coat))       # front legs
-        x0, x1 = X(0.8, 4.1); body.append(box(atlas, (x0, 0.0, 5.2), (x1, 2.0, 9.6), coat))        # front paws
-        for k in range(3):
-            cx = s * (1.3 + k * 1.1)
-            body.append(box(atlas, (cx - 0.25, 0.0, 9.6), (cx + 0.25, 0.8, 10.4), claw))
     parts["body"] = body
 
     # head (joint at the top of the neck): broad skull, cheek ruffs, a heavy muzzle, short ears, upper fangs
@@ -576,15 +571,37 @@ def tiger(seed):
         x0, x1 = X(1.2, 2.0); head.append(box(atlas, (x0, -5.4, 6.8), (x1, -3.6, 7.6), fang))      # fangs
     parts["head"] = head
 
-    # jaw (hinged under the muzzle) and tail (curling round his right side along the ground)
+    # jaw (hinged under the muzzle)
     parts["jaw"] = [box(atlas, (-2.3, -1.6, -1.2), (2.3, 0.2, 3.0), coat),
                     box(atlas, (-1.6, 0.2, 2.2), (-1.0, 0.9, 2.7), fang), box(atlas, (1.0, 0.2, 2.2), (1.6, 0.9, 2.7), fang)]
+    # tail (joint at the base of the spine): out behind, then hanging down to a black tip
     parts["tail"] = [
-        box(atlas, (-1.1, -1.5, -6.0), (1.1, 0.7, 0.0), coat),
-        box(atlas, (-7.0, -1.5, -7.6), (1.1, 0.5, -5.6), coat),
-        box(atlas, (-9.0, -1.5, -7.0), (-7.0, 0.3, 1.0), coat),
-        box(atlas, (-9.6, -1.5, 1.0), (-6.4, 1.4, 3.6), plain(T["dark"])),              # the black tip
+        box(atlas, (-1.1, -1.1, -7.0), (1.1, 1.1, 0.0), coat),
+        box(atlas, (-1.0, -3.4, -12.5), (1.0, -1.0, -6.5), coat),
+        box(atlas, (-1.0, -7.4, -14.6), (1.0, -3.2, -12.0), coat),
+        box(atlas, (-1.2, -10.0, -15.2), (1.2, -7.2, -12.8), plain(T["dark"])),       # the black tip
     ]
+
+    def paw(el, y0, z0):
+        el.append(box(atlas, (-2.0, y0, z0 - 3.0), (2.0, y0 + 1.8, z0 + 1.6), coat))
+        for k in (-1, 0, 1):
+            el.append(box(atlas, (k * 1.2 - 0.25, y0, z0 + 1.6), (k * 1.2 + 0.25, y0 + 0.8, z0 + 2.4), claw))
+
+    def front_leg():
+        el = [box(atlas, (-2.2, -5.0, -2.4), (2.2, 1.5, 2.4), coat),                     # shoulder
+              box(atlas, (-1.7, -11.0, -1.7), (1.7, -4.0, 1.7), coat)]                   # foreleg
+        paw(el, -12.0, 1.2)
+        return el
+
+    def back_leg():
+        el = [box(atlas, (-2.5, -6.0, -3.2), (2.5, 1.8, 2.8), coat),                     # thigh
+              box(atlas, (-1.7, -9.5, -3.4), (1.7, -5.0, -0.4), coat),                   # the hock, bent back
+              box(atlas, (-1.5, -12.0, -2.4), (1.5, -9.0, 0.6), coat)]                   # lower leg
+        paw(el, -13.0, 0.0)
+        return el
+
+    parts["leg_fr"], parts["leg_fl"] = front_leg(), front_leg()
+    parts["leg_br"], parts["leg_bl"] = back_leg(), back_leg()
     return atlas, parts
 
 
@@ -649,6 +666,37 @@ def mirror_icon():
     return im
 
 
+# ---------------- the black tiger's Index icon: its face, pale narrowed eyes, faint stripes (16x16)
+TIGER_ICON = [
+    "................",
+    "..##........##..",
+    ".#ss#......#ss#.",
+    ".#sF########Fs#.",
+    "..#FFSFFFFSFF#..",
+    ".#FFSFFFFFFSFF#.",
+    ".#FEEFFSSFFEEF#.",
+    "#FFFeFFFFFFeFFF#",
+    "#SFFFFFFFFFFFFS#",
+    "#FFFFFNNNNFFFFF#",
+    ".#FFFFFNNFFFFF#.",
+    ".#SFFMMMMMMFFS#.",
+    "..#FFMWMMWMFF#..",
+    "...##MMMMMM##...",
+    ".....######.....",
+    "................",
+]
+TIGER_ICON_PAL = {"#": (4, 4, 6), "F": (24, 24, 30), "S": (52, 52, 64), "s": (40, 40, 50), "E": (210, 214, 230),
+                  "e": (8, 8, 10), "N": (10, 10, 12), "M": (34, 34, 42), "W": (230, 230, 240)}
+
+
+def tiger_icon():
+    im = Image.new("RGBA", (16, 16), (0, 0, 0, 0))
+    for y, row in enumerate(TIGER_ICON):
+        for x, ch in enumerate(row):
+            if ch in TIGER_ICON_PAL: im.putpixel((x, y), TIGER_ICON_PAL[ch] + (255,))
+    return im
+
+
 def lighten(path):
     """Swap the dark preview background for grey so the black armor can actually be judged."""
     im = np.asarray(Image.open(path).convert("RGBA")).copy()
@@ -689,6 +737,7 @@ def main():
     A = os.path.join(pack, "assets/faultline")
     mirror_icon().save(os.path.join(A, "textures/item/lost_mirror.png"))
     mirror_icon().save(os.path.join(A, "textures/index/lost_mirror.png"))
+    tiger_icon().save(os.path.join(A, "textures/index/black_tiger.png"))
     with open(os.path.join(A, "models/item/lost_mirror.json"), "w") as f:
         json.dump({"parent": "minecraft:item/generated", "textures": {"layer0": "faultline:item/lost_mirror"}}, f, indent=2)
     with open(os.path.join(A, "items/lost_mirror.json"), "w") as f:

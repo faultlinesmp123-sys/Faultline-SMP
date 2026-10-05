@@ -139,7 +139,7 @@ final class Explorer implements Listener, CommandExecutor {
         World v = Bukkit.getWorld(below.voidName());
         if (v == null || fight != null) return;
         int cz = Below.ARENA_Z;
-        for (int x = -21; x <= 21; x++) for (int z = cz - 21; z <= cz + 21; z++) for (int y = Below.PATH_Y + 1; y <= Below.PATH_Y + 1 + PILLAR_H; y++) {
+        for (int x = -24; x <= 24; x++) for (int z = cz - 24; z <= cz + 24; z++) for (int y = Below.PATH_Y; y <= Below.PATH_Y + 1 + PILLAR_H; y++) {
             if (!force && !v.isChunkLoaded(x >> 4, z >> 4)) continue;
             Block b = v.getBlockAt(x, y, z);
             Material m = b.getType();
@@ -393,7 +393,7 @@ final class Explorer implements Listener, CommandExecutor {
         /** Solo fight: anyone else who walks into the arena (survival/adventure) is put back on the path outside it. */
         void keepOut() {
             for (Player p : world.getPlayers()) {
-                if (fighters.contains(p.getUniqueId()) || !survival(p) || !inArena(p, 20.5)) continue;
+                if (fighters.contains(p.getUniqueId()) || !survival(p) || !inArena(p, 22.2)) continue;
                 p.setFallDistance(0);
                 p.teleport(new Location(world, 0.5, Below.PATH_Y + 1, Below.ARENA_Z - 24.5, 180, 0));
                 p.sendActionBar(legacy(ChatColor.GRAY + "Someone is already facing him. " + ChatColor.WHITE + "He fights one at a time."));
@@ -532,17 +532,30 @@ final class Explorer implements Listener, CommandExecutor {
             int cx = (int) Math.floor(home.getX()), cz = (int) Math.floor(home.getZ());
             for (Player p : world.getPlayers()) { // anyone standing where the wall goes up is moved inside, not walled in
                 Vector d = p.getLocation().toVector().subtract(home).setY(0);
-                if (d.length() >= 18.0 && d.length() < 20.6 && Math.abs(p.getLocation().getY() - home.getY()) < 6) {
+                if (d.length() >= 17.8 && d.length() < 22.2 && Math.abs(p.getLocation().getY() - home.getY()) < 6) {
                     Vector in = d.normalize().multiply(17.4);
                     Location l = p.getLocation(); l.setX(home.getX() + in.getX()); l.setZ(home.getZ() + in.getZ()); l.setY(home.getY());
                     p.teleport(l);
                 }
             }
-            for (int x = -21; x <= 21; x++) for (int z = -21; z <= 21; z++) {
-                double d = Math.hypot(x, z);
-                if (d < 18.6 || d >= 19.9) continue;
-                for (int y = 0; y < 5; y++) {
-                    Block b = world.getBlockAt(cx + x, (int) home.getY() + y, cz + z);
+            // BUG FIX: the wall used to be a circle (radius 18.6-19.9) a little outside the floor, whose edge is stepped, so in
+            // places there was a gap of open void between the last floor block and the barriers. Now it hugs the floor: every
+            // void column touching the arena floor gets barriers (from floor level up), and the path is closed off just past
+            // the arena's edge.
+            for (int x = -23; x <= 23; x++) for (int z = -23; z <= 23; z++) {
+                int wx = cx + x, wz = cz + z;
+                double d = Math.hypot(wx + 0.5 - home.getX(), wz + 0.5 - home.getZ());
+                if (d > 23) continue;
+                boolean wall;
+                if (Below.isPath(wx, wz)) wall = d > 18.8 && d < 21.5; // across the path, just outside the arena
+                else {
+                    wall = false;
+                    for (int ox = -1; ox <= 1 && !wall; ox++) for (int oz = -1; oz <= 1 && !wall; oz++)
+                        if (Below.isPath(wx + ox, wz + oz) && Math.hypot(wx + ox + 0.5 - home.getX(), wz + oz + 0.5 - home.getZ()) < 21.5) wall = true;
+                }
+                if (!wall) continue;
+                for (int y = -1; y < 5; y++) { // from floor level (nothing to slip through below) up
+                    Block b = world.getBlockAt(wx, (int) home.getY() + y, wz);
                     if (b.getType().isAir() || b.getType() == Material.LIGHT) set(b, Material.BARRIER.createBlockData());
                 }
             }
@@ -1813,7 +1826,7 @@ final class Explorer implements Listener, CommandExecutor {
     public void onChunkLoad(org.bukkit.event.world.ChunkLoadEvent event) {
         if (fight != null || !below.inVoid(event.getWorld())) return;
         int x = event.getChunk().getX(), z = event.getChunk().getZ();
-        if (x < -2 || x > 1 || z < (Below.ARENA_Z - 21) >> 4 || z > (Below.ARENA_Z + 21) >> 4) return;
+        if (x < -2 || x > 1 || z < (Below.ARENA_Z - 24) >> 4 || z > (Below.ARENA_Z + 24) >> 4) return;
         Bukkit.getScheduler().runTask(pl, () -> cleanArena(false));
     }
 

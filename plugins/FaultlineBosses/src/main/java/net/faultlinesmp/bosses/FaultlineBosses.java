@@ -385,6 +385,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         explorer = new Explorer(this, below);
         getServer().getPluginManager().registerEvents(explorer, this);
         getCommand("explorer").setExecutor(explorer);
+        getCommand("lostexplorer").setExecutor(explorer);
         getServer().getScheduler().runTaskTimer(this, () -> {
             // Each boss updates on its own: an error in one can't freeze the others, and the error is
             // written to the console (at most every 30s per boss) so it can be tracked down.

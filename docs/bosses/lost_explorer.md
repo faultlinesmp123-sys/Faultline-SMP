@@ -60,8 +60,11 @@ How it's built:
   pickaxe hits on that pillar topple it onto him (pinned, next phase; the 4th pillar ends it). Missed: he's ready to charge
   again 4 moves later.
 - **Losing** (every fighter down, in either fight): ~30 s (`loss-speech-seconds`) of 9 lines about the kingdom Below the
-  Bedrock (`LORE` in Explorer.java), then "Get out of my sight.", the kick, everyone in the void sent home, the hole sealed at
-  once; fighters are marked `paid` (Swarm won't ask for another Fist).
+  Bedrock (`LORE` in Explorer.java). A clickable **[ Skip ]** in chat (`/lostexplorer skip`, no permission needed, any fighter)
+  cuts it short. Then (skipped or not) "Do you want to do it again..?" as a title plus **[ Yes ] [ No ]** in chat
+  (`/lostexplorer yes|no`, the first fighter to click decides, `again-seconds` 15). **Yes**: the fight restarts at once, everyone
+  back up, walls up, straight into the snap and the tiger ("Again, then."). **No** or no answer: "Get out of my sight.", the kick,
+  everyone in the void sent home, the hole sealed at once; fighters are marked `paid` (Swarm won't ask for another Fist).
 - **Winning**: "...", "So. You found the way after all.", "Go on. It's yours now.", he crumbles into ash. Each fighter
   (from the owner): `rewards.mythic-bags` (32), `rewards.xp` (3000), `rewards.netherite-blocks` (5, dropped locked to
   them) and the **Mirror..??** (`rewards.mirror`, FaultlineItems `/givelostmirror`), plus the Index entry. Server broadcast.

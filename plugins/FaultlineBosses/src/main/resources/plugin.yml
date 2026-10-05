@@ -44,6 +44,9 @@ commands:
     description: "Admin: the Lost Explorer's fight"
     usage: /explorer <start|stop|skip|phase <1-4>|stun|reset|arena [player]>
     permission: bosses.admin
+  lostexplorer:
+    description: "The Lost Explorer's [Skip] / [Yes] / [No] chat buttons"
+    usage: /lostexplorer <skip|yes|no>
   bossmorph:
     description: "Admin: become a boss and control it (your hotbar becomes its moves)"
     usage: /bossmorph <demoneye|frostbeard|dune|frostmaw|kraken|jacob|don|off|release>

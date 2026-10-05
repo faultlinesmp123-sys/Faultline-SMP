@@ -1240,6 +1240,10 @@ final class Explorer implements Listener, CommandExecutor {
             if (tiger != null && tiger.hp > 0) tiger.calm();
         }
 
+        // the speech can be skipped; then "Do you want to do it again..?" (Yes: straight back to the tiger. No: kicked out)
+        int askAt = -1, outAt = -1;
+        Boolean again;
+
         Pose lossTick() {
             int talk = (int) (c("loss-speech-seconds", 30) * 20);
             int every = Math.max(20, talk / LORE.length);
@@ -1250,31 +1254,99 @@ final class Explorer implements Listener, CommandExecutor {
                 Vector d = look.getLocation().toVector().subtract(pos).setY(0);
                 if (d.length() > 3.5) { pos.add(d.normalize().multiply(0.12)); clampToArena(); return ExplorerAnims.walk(ticks, 0.6f); }
             } else if (look != null) face(look.getLocation().toVector(), 4);
-            if (t % every == 20 && (t - 20) / every < LORE.length) say(LORE[(t - 20) / every]);
-            int out = 20 + every * LORE.length;
-            if (t == out) say("Get out of my sight.");
-            if (t == out + 30) { // the kick
-                world.playSound(pos.toLocation(world), Sound.ENTITY_IRON_GOLEM_ATTACK, SoundCategory.HOSTILE, 1.5f, 0.5f);
-                for (Player p : world.getPlayers()) {
-                    if (downed.contains(p.getUniqueId())) restore(p);
-                    Vector away = p.getLocation().toVector().subtract(pos).setY(0);
-                    if (away.lengthSquared() < 0.01) away = fwd();
-                    p.setVelocity(away.normalize().multiply(1.6).setY(0.8));
-                }
+            if (askAt < 0) { // the speech
+                if (t == 2) offerSkip();
+                if (t % every == 20 && (t - 20) / every < LORE.length) say(LORE[(t - 20) / every]);
+                if (t >= 20 + every * LORE.length) ask();
+            } else if (outAt < 0) { // waiting for an answer
+                if (again != null) {
+                    if (again) { restart(); return ExplorerAnims.watch(ticks); }
+                    outAt = t;
+                } else if (t - askAt >= c("again-seconds", 15) * 20) outAt = t;
             }
-            if (t == out + 38) {
-                for (Player p : new ArrayList<>(world.getPlayers())) {
-                    if (fighters.contains(p.getUniqueId())) below.paid.add(p.getUniqueId()); // Swarm takes them back down without another Fist
-                    below.sendBack(p);
-                    p.sendMessage(ChatColor.DARK_GRAY + "" + ChatColor.ITALIC + "The void spits you out. The way down has closed. You'll have to find Swarm again.");
+            if (outAt >= 0) {
+                if (t == outAt) say("Get out of my sight.");
+                if (t == outAt + 30) { // the kick
+                    world.playSound(pos.toLocation(world), Sound.ENTITY_IRON_GOLEM_ATTACK, SoundCategory.HOSTILE, 1.5f, 0.5f);
+                    for (Player p : world.getPlayers()) {
+                        if (downed.contains(p.getUniqueId())) restore(p);
+                        Vector away = p.getLocation().toVector().subtract(pos).setY(0);
+                        if (away.lengthSquared() < 0.01) away = fwd();
+                        p.setVelocity(away.normalize().multiply(1.6).setY(0.8));
+                    }
                 }
-                below.dirty = true;
-                below.sealNow();
-                end(false);
-                return ExplorerAnims.loom(ticks);
+                if (t == outAt + 38) {
+                    for (Player p : new ArrayList<>(world.getPlayers())) {
+                        if (fighters.contains(p.getUniqueId())) below.paid.add(p.getUniqueId()); // Swarm takes them back down without another Fist
+                        below.sendBack(p);
+                        p.sendMessage(ChatColor.DARK_GRAY + "" + ChatColor.ITALIC + "The void spits you out. The way down has closed. You'll have to find Swarm again.");
+                    }
+                    below.dirty = true;
+                    below.sealNow();
+                    end(false);
+                    return ExplorerAnims.loom(ticks);
+                }
+                if (onPillar) return ExplorerAnims.snap(Math.min(30, t - outAt));
+                return ExplorerAnims.dismiss(Math.min(40, t - outAt));
             }
-            if (onPillar) return t >= out ? ExplorerAnims.snap(Math.min(30, t - out)) : ExplorerAnims.watch(ticks);
-            return t < out ? ExplorerAnims.loom(ticks) : ExplorerAnims.dismiss(t - out);
+            return onPillar ? ExplorerAnims.watch(ticks) : ExplorerAnims.loom(ticks);
+        }
+
+        /** A clickable [Skip] for everyone in the void (any fighter can skip it for everyone). */
+        void offerSkip() {
+            for (Player p : world.getPlayers()) p.spigot().sendMessage(button("  [ Skip ▶ ]", net.md_5.bungee.api.ChatColor.DARK_GRAY, "/lostexplorer skip", "Skip what he has to say"));
+        }
+
+        void ask() {
+            askAt = t;
+            say("Do you want to do it again..?");
+            world.playSound(pos.toLocation(world), Sound.BLOCK_BELL_RESONATE, SoundCategory.HOSTILE, 1.2f, 0.5f);
+            for (Player p : world.getPlayers()) {
+                p.sendTitle(ChatColor.WHITE + "Do you want to do it again..?", ChatColor.GRAY + "Click Yes or No in chat", 10, (int) (c("again-seconds", 15) * 20), 20);
+                net.md_5.bungee.api.chat.TextComponent line = new net.md_5.bungee.api.chat.TextComponent("  ");
+                line.addExtra(button("[ Yes ]", net.md_5.bungee.api.ChatColor.WHITE, "/lostexplorer yes", "Fight him again, right now (from the tiger)"));
+                line.addExtra(new net.md_5.bungee.api.chat.TextComponent("   "));
+                line.addExtra(button("[ No ]", net.md_5.bungee.api.ChatColor.DARK_GRAY, "/lostexplorer no", "Leave the void"));
+                p.spigot().sendMessage(line);
+            }
+        }
+
+        net.md_5.bungee.api.chat.TextComponent button(String text, net.md_5.bungee.api.ChatColor color, String command, String hover) {
+            net.md_5.bungee.api.chat.TextComponent b = new net.md_5.bungee.api.chat.TextComponent(text);
+            b.setColor(color);
+            b.setBold(true);
+            b.setClickEvent(new net.md_5.bungee.api.chat.ClickEvent(net.md_5.bungee.api.chat.ClickEvent.Action.RUN_COMMAND, command));
+            b.setHoverEvent(new net.md_5.bungee.api.chat.HoverEvent(net.md_5.bungee.api.chat.HoverEvent.Action.SHOW_TEXT,
+                    new net.md_5.bungee.api.chat.hover.content.Text(hover)));
+            return b;
+        }
+
+        /** /lostexplorer skip|yes|no from a fighter. */
+        void choose(Player p, String what) {
+            if (st != St.LOSS || !fighters.contains(p.getUniqueId())) return;
+            switch (what) {
+                case "skip" -> { if (askAt < 0) { for (Player o : world.getPlayers()) o.sendMessage(ChatColor.DARK_GRAY + p.getName() + " skipped it."); ask(); } }
+                case "yes", "no" -> {
+                    if (askAt < 0 || outAt >= 0 || again != null) return;
+                    again = what.equals("yes");
+                    for (Player o : world.getPlayers()) { o.resetTitle(); o.sendMessage(ChatColor.GRAY + p.getName() + (again ? " wants to go again." : " has had enough.")); }
+                }
+                default -> { }
+            }
+        }
+
+        /** Yes: everyone back on their feet, the arena reset, and straight into the snap and the tiger. */
+        void restart() {
+            World w = world;
+            end(false);
+            fight = null;
+            begin(w, null);
+            Fight f = fight;
+            if (f == null) return;
+            f.placeWalls();
+            f.weapon.setItemStack(modelItem("explorer_axe"));
+            f.t = 160; // the snap, then the tiger
+            f.say("Again, then.");
         }
 
         // ------------------------------------------------------------------ winning
@@ -1743,6 +1815,10 @@ final class Explorer implements Listener, CommandExecutor {
     // =====================================================================================================
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        if (command.getName().equalsIgnoreCase("lostexplorer")) { // the [Skip] / [Yes] / [No] buttons (any player)
+            if (sender instanceof Player p && fight != null && args.length > 0) fight.choose(p, args[0].toLowerCase());
+            return true;
+        }
         if (!sender.hasPermission("bosses.admin")) { sender.sendMessage(ChatColor.RED + "You don't have permission to do that."); return true; }
         String sub = args.length > 0 ? args[0].toLowerCase() : "";
         switch (sub) {

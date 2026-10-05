@@ -443,6 +443,7 @@ explorer:
   pickaxe-hits: 3                   # pickaxe hits on the cracked pillar to drop it on him
   respawn-minutes: 30               # after he's beaten, before he's back on his pillar
   loss-speech-seconds: 30           # how long he talks when everyone's down
+  again-seconds: 15                 # then "Do you want to do it again..?": how long the Yes / No stays up
   tiger:
     health: 2000
     damage-share: 0.26              # share of your max health per tiger hit (4 hits)

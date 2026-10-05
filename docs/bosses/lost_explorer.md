@@ -42,11 +42,11 @@ How it's built:
 - **Cutscene 2** (`TIGER_DEATH`, ~12 s): the tiger staggers, collapses, rolls onto its side, turns to ash. Music stops.
   "...", "Useless.", "Completely useless.", "You shall die." (roar, music restarts). He drops off the pillar onto the floor,
   the pillar sinks layer by layer, the four 3x3 fighting pillars (±7, ±7) rise.
-- **Damage**: his hits are randomly (`one-shot-chance` 0.5) all your health (down) or `damage.two-shot` 0.55; the tiger's
-  0.26. Taken straight off health (absorption first): armor, Protection and Resistance don't change the count. Hits within
+- **Damage**: his hits take `damage.hit` 0.26 of max health (4 hits; `one-shot-chance` 0, set it above 0 for random
+  one-shots); the tiger's 0.26 too. Taken straight off health (absorption first): armor, Protection and Resistance don't change the count. Hits within
   8 ticks of each other count once. Any hit that would kill a fighter in the void world instead **downs** them: kneeling, frozen
   (speed/jump -100%), can't be hurt, can't use items, eat, pearl or chorus out, keeps everything. Totems aren't used up.
-- **His moves** (Roaring Knight style; everything runs on a sped-up clock: `speed` 1.25, x1.12/1.25/1.4 in phases 2-4):
+- **His moves** (Roaring Knight style; everything runs on a sped-up clock: `speed` 1.1, x1.12/1.25/1.4 in phases 2-4):
   - Phase 1: **Slash** (a rising slash; 3 white lines across the arena, one through each player, turning red, then they cut:
     anyone within 1.1 of a line is hit), **Dash** (2 dashes straight through you, red line first, 1.7 b/tick), Cleave and
     Sweep up close.
@@ -84,7 +84,7 @@ How it's built:
   him on the floor), `stun` (crash into the nearest pillar), `reset` (back on his pillar now), `arena [player]` (on the path
   just short of the arena; the `/itemsmenu` entry uses it).
 - Tested with MockBukkit: walking in → cutscene 1 lines → tiger (2000 hp, sword damage counts, 0.26 per hit) → cutscene 2
-  (Useless / You shall die, pillar sinks, 4 pillars rise) → slashes/dashes → the charge after 15 moves → one/two-shot split →
+  (Useless / You shall die, pillar sinks, 4 pillars rise) → slashes/dashes → the charge after 15 moves → 4 hits to go down →
   4 pillars → defeat, cleanup, his pillar back; a loss during the tiger fight → the 30 s speech (mentions Diamond Jacob, never
   says he was the king) → kicked home; phase 1 and 4 run a minute each without errors (up to 48 blades in the air).
 

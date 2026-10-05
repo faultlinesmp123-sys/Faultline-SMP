@@ -432,10 +432,10 @@ below:
 # The Lost Explorer (final boss, on his pillar at the end of the white path in the void world). Walk into his arena to start:
 # cutscene, his tiger (fight 1), cutscene, then him (4 phases).
 explorer:
-  speed: 1.25                       # how fast his moves run (x1.12 / x1.25 / x1.4 in phases 2-4)
-  one-shot-chance: 0.5              # each of his hits: this chance to put you down at once, otherwise...
+  speed: 1.1                        # how fast his moves run (x1.12 / x1.25 / x1.4 in phases 2-4)
+  one-shot-chance: 0.0              # each of his hits: this chance to put you down at once, otherwise...
   damage:
-    two-shot: 0.55                  # ...this share of your max health (2 hits)
+    hit: 0.26                       # ...this share of your max health (4 hits)
   charge-after-moves: 15            # he charges (the pillar trick) after this many moves
   charge-speed: 1.1                 # blocks per tick
   stun-seconds: 8                   # how long he's stunned after crashing into a pillar

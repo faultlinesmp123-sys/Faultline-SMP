@@ -303,7 +303,7 @@ final class Explorer implements Listener, CommandExecutor {
         }
 
         /** He's fast like the Roaring Knight, and gets faster every phase. */
-        double spd() { return c("speed", 1.25) * switch (phase) { case 1 -> 1.0; case 2 -> 1.12; case 3 -> 1.25; default -> 1.4; }; }
+        double spd() { return c("speed", 1.1) * switch (phase) { case 1 -> 1.0; case 2 -> 1.12; case 3 -> 1.25; default -> 1.4; }; }
 
         void say(String text) {
             for (Player p : world.getPlayers())
@@ -648,7 +648,7 @@ final class Explorer implements Listener, CommandExecutor {
         // --- CLEAVE: the axe/blade comes down on whatever's in front of him
         Pose cleave(Player tg, double tt) {
             if (tt < 12 && tg != null) face(tg.getLocation().toVector(), 10);
-            if (tt < 18 && mt % 2 == 0) cone(5.8, 40, Color.fromRGB(120, 0, 0));
+            if (tt < 18) cone(5.8, 40, Color.fromRGB(200, 0, 0));
             if (crossed(tt, 18)) {
                 for (Player p : alive()) if (inCone(p, 5.8, 40)) hit(p, pos);
                 Location fx = pos.clone().add(fwd().multiply(3.2)).toLocation(world);
@@ -663,7 +663,7 @@ final class Explorer implements Listener, CommandExecutor {
 
         // --- SWEEP: a full spin at hip height
         Pose sweep(double tt) {
-            if (tt < 18 && mt % 2 == 0) ring(4.8, Color.fromRGB(120, 0, 0));
+            if (tt < 18) { ring(4.8, Color.fromRGB(200, 0, 0)); ring(4.0, Color.fromRGB(200, 0, 0)); }
             if (tt >= 18 && tt < 26) yaw += 45 * (float) spd();
             if (crossed(tt, 19)) {
                 for (Player p : alive()) if (flatDist(p) <= 4.9) hit(p, pos);
@@ -679,7 +679,7 @@ final class Explorer implements Listener, CommandExecutor {
             if (tt < 8 && tg != null) face(tg.getLocation().toVector(), 14);
             if (mt == 1) {
                 int n = phase >= 4 ? 6 : phase >= 2 ? 4 : 3;
-                int warn = (int) Math.max(10, 18 / spd());
+                int warn = (int) Math.max(16, 26 / spd());
                 List<Player> ps = alive();
                 for (int i = 0; i < n; i++) {
                     Vector through = i < ps.size() ? ps.get(i).getLocation().toVector() : tg != null ? tg.getLocation().toVector() : home.clone();
@@ -695,7 +695,7 @@ final class Explorer implements Listener, CommandExecutor {
 
         // --- DASH: two to four dashes straight through you, a red line first, white streaks behind him
         Pose dashMove(Player tg) {
-            int warn = (int) Math.max(6, 10 / spd());
+            int warn = (int) Math.max(10, 15 / spd());
             if (mt == 1) dashLeft = phase >= 4 ? 4 : phase >= 2 ? 3 : 2;
             int local = (mt - 1) % (warn + 12);
             if (local == 0) {
@@ -708,7 +708,7 @@ final class Explorer implements Listener, CommandExecutor {
                 world.playSound(pos.toLocation(world), Sound.ENTITY_WARDEN_SONIC_CHARGE, SoundCategory.HOSTILE, 1f, 1.6f);
             }
             if (local < warn) {
-                if (local % 2 == 0) line(aim, 22, Color.fromRGB(200, 0, 0));
+                line(aim, 22, Color.fromRGB(230, 0, 0));
                 return ExplorerAnims.dash(Math.min(6, local * 6f / warn));
             }
             // the dash itself: 12 ticks at full speed
@@ -733,7 +733,7 @@ final class Explorer implements Listener, CommandExecutor {
             if (tt < 6 && tg != null) face(tg.getLocation().toVector(), 14);
             if (mt == 1) {
                 Vector c = tg != null ? tg.getLocation().toVector() : home.clone();
-                int warn = (int) Math.max(10, 16 / spd());
+                int warn = (int) Math.max(16, 24 / spd());
                 double base = random.nextDouble() * Math.PI;
                 addLine(c, base + Math.PI / 4, ticks + warn);
                 addLine(c, base - Math.PI / 4, ticks + warn);
@@ -759,7 +759,7 @@ final class Explorer implements Listener, CommandExecutor {
                             double a = (i + r * 0.5) * Math.PI * 2 / n;
                             Vector at = c.clone().add(new Vector(Math.cos(a) * 4.5, 0, Math.sin(a) * 4.5));
                             Vector in = c.clone().subtract(at);
-                            blades.add(new Blade(world, at, in, 0.55, (int) (22 / Math.min(1.3, spd())) + r * 14, 18));
+                            blades.add(new Blade(world, at, in, 0.55, (int) (30 / Math.min(1.3, spd())) + r * 16, 18));
                         }
                     }
                     world.playSound(p.getLocation(), Sound.ITEM_TRIDENT_RETURN, SoundCategory.HOSTILE, 1.4f, 0.8f);
@@ -778,7 +778,7 @@ final class Explorer implements Listener, CommandExecutor {
                     for (int i = 0; i < n; i++) {
                         double a = off + i * Math.PI * 2 / n;
                         Vector dir = new Vector(Math.cos(a), 0, Math.sin(a));
-                        blades.add(new Blade(world, pos.clone().add(new Vector(0, 1.2, 0)).add(dir.clone().multiply(1.5)), dir, 0.75, 3, 26));
+                        blades.add(new Blade(world, pos.clone().add(new Vector(0, 1.2, 0)).add(dir.clone().multiply(1.5)), dir, 0.7, 10, 26));
                     }
                     world.playSound(pos.toLocation(world), Sound.ENTITY_WITHER_SHOOT, SoundCategory.HOSTILE, 1.2f, 1.4f);
                 }
@@ -894,11 +894,15 @@ final class Explorer implements Listener, CommandExecutor {
                 Vector ab = s.b.clone().subtract(s.a);
                 double len = ab.length();
                 Vector dir = ab.clone().multiply(1 / len);
-                if (ticks < s.cutAt) { // the warning: a thin line, white turning red as the cut gets close
-                    if (ticks % 2 == 0) {
-                        int left = s.cutAt - ticks;
-                        Color col = left > 8 ? Color.fromRGB(230, 230, 240) : Color.fromRGB(230, 30, 30);
-                        for (double d = 0; d <= len; d += 0.9) world.spawnParticle(Particle.DUST, s.a.clone().add(dir.clone().multiply(d)).toLocation(world).add(0, 0.15, 0), 1, 0, 0, 0, 0, new Particle.DustOptions(col, 1.0f));
+                if (ticks < s.cutAt) { // the warning: the whole band that gets cut (white, turning red as the cut gets close)
+                    int left = s.cutAt - ticks;
+                    Color col = left > 10 ? Color.fromRGB(235, 235, 245) : Color.fromRGB(235, 20, 20);
+                    Vector side = new Vector(-dir.getZ(), 0, dir.getX());
+                    for (double d = 0; d <= len; d += 0.55) {
+                        Vector c = s.a.clone().add(dir.clone().multiply(d));
+                        world.spawnParticle(Particle.DUST, c.toLocation(world).add(0, 0.15, 0), 1, 0, 0, 0, 0, new Particle.DustOptions(col, 1.8f));
+                        if (ticks % 2 == 0) for (int k = -1; k <= 1; k += 2) // the edges of the danger band
+                            world.spawnParticle(Particle.DUST, c.clone().add(side.clone().multiply(1.1 * k)).toLocation(world).add(0, 0.15, 0), 1, 0, 0, 0, 0, new Particle.DustOptions(col, 1.1f));
                     }
                     continue;
                 }
@@ -926,6 +930,10 @@ final class Explorer implements Listener, CommandExecutor {
                 if (b.wait > 0) {
                     b.wait--;
                     if (b.wait % 4 == 0) world.spawnParticle(Particle.END_ROD, b.pos.toLocation(world), 1, 0.05, 0.05, 0.05, 0);
+                    if (b.wait % 2 == 0) { // where it's going to go
+                        if (b.dir.getY() < -0.5) circle(b.pos.clone().setY(home.getY()), 1.2, Color.fromRGB(230, 0, 0));
+                        else for (double d = 0.5; d <= 3; d += 0.5) dust(b.pos.clone().add(b.dir.clone().multiply(d)).setY(home.getY()), Color.fromRGB(230, 0, 0));
+                    }
                     if (b.wait == 0) world.playSound(b.pos.toLocation(world), Sound.ITEM_TRIDENT_THROW, SoundCategory.HOSTILE, 0.6f, 1.4f);
                     continue;
                 }
@@ -1120,7 +1128,7 @@ final class Explorer implements Listener, CommandExecutor {
         }
 
         // ------------------------------------------------------------------ telegraphs (on the white floor)
-        void dust(Vector v, Color col) { world.spawnParticle(Particle.DUST, v.toLocation(world).add(0, 0.12, 0), 1, 0.05, 0, 0.05, 0, new Particle.DustOptions(col, 1.6f)); }
+        void dust(Vector v, Color col) { world.spawnParticle(Particle.DUST, v.toLocation(world).add(0, 0.12, 0), 2, 0.05, 0, 0.05, 0, new Particle.DustOptions(col, 2.0f)); }
 
         void cone(double range, double halfDeg, Color col) {
             for (double r = 1.5; r <= range; r += 0.8) for (double a = -halfDeg; a <= halfDeg; a += 14) {
@@ -1159,10 +1167,10 @@ final class Explorer implements Listener, CommandExecutor {
         }
 
         // ------------------------------------------------------------------ damage: never a death
-        /** His hits: randomly a one-shot or a two-shot. */
+        /** His hits: a quarter of your health each (4 to go down). */
         void hit(Player p, Vector from) {
-            boolean one = random.nextDouble() < c("one-shot-chance", 0.5);
-            hitShare(p, one ? 1.0 : c("damage.two-shot", 0.55), from, one ? 1.2 : 0.9);
+            boolean one = random.nextDouble() < c("one-shot-chance", 0.0); // (off by default: 4 hits to go down)
+            hitShare(p, one ? 1.0 : c("damage.hit", 0.26), from, one ? 1.2 : 0.8);
         }
 
         /**
@@ -1562,7 +1570,7 @@ final class Explorer implements Listener, CommandExecutor {
                     Vector p = from.clone().add(to.clone().subtract(from).multiply(k));
                     p.setY(center().getY() + Math.sin(k * Math.PI) * (state == ARRIVE ? 4 : 3));
                     pos = p;
-                    if (state == AIR && t % 3 == 0) f.circle(to, 2.6, Color.fromRGB(230, 0, 0));
+                    if (state == AIR && t % 2 == 0) f.circle(to, 2.6, Color.fromRGB(230, 0, 0));
                     if (t >= dur) {
                         pos = to.clone(); clamp();
                         if (state == AIR) for (Player pl2 : f.alive()) if (pl2.getLocation().toVector().setY(pos.getY()).distance(pos) <= 2.6) f.hitShare(pl2, share(), pos, 1.0);
@@ -1597,6 +1605,10 @@ final class Explorer implements Listener, CommandExecutor {
                     float tt = (float) (t * spd());
                     pose = ExplorerAnims.tigerSwipe(tt, right);
                     if (tg != null && tt < 8) turnTo(tg.getLocation().toVector(), 10);
+                    if (tt < 10 && t % 2 == 0) for (double r = 1.2; r <= 3.8; r += 0.8) for (double ang = -70; ang <= 70; ang += 20) { // where the paw rakes
+                        double rad = Math.toRadians(yaw + ang);
+                        f.dust(pos.clone().add(new Vector(-Math.sin(rad) * r, 0, Math.cos(rad) * r)), Color.fromRGB(200, 0, 0));
+                    }
                     if (tt >= 10 && tt - spd() < 10) {
                         world.playSound(pos.toLocation(world), Sound.ENTITY_PLAYER_ATTACK_SWEEP, SoundCategory.HOSTILE, 1.3f, 0.6f);
                         Vector fw = fwd();
@@ -1614,7 +1626,7 @@ final class Explorer implements Listener, CommandExecutor {
                 case CROUCH -> {
                     pose = ExplorerAnims.tigerCrouch(t);
                     if (tg != null && t <= 8) { to = tg.getLocation().toVector().setY(center().getY()); faceTo(to); }
-                    if (to != null && t % 3 == 0) f.circle(to, 2.6, Color.fromRGB(150, 0, 0));
+                    if (to != null && t % 2 == 0) f.circle(to, 2.6, Color.fromRGB(200, 0, 0));
                     if (t >= (int) (14 / spd())) { from = pos.clone(); state = AIR; t = 0; world.playSound(pos.toLocation(world), Sound.ENTITY_RAVAGER_ROAR, SoundCategory.HOSTILE, 1.4f, 0.9f); }
                 }
                 case ROAR -> {

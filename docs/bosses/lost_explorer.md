@@ -36,7 +36,8 @@ How it's built:
   he fights on the floor; `ensureBigPillar` puts it back (statue spawn, fight start, after the fight). The statue (`Below.Statue`,
   ticked every tick) is him on top, back to the path, digging with the black pickaxe (`ExplorerAnims.dig`), and the tiger
   sitting at its foot (`tigerSeat`). A survival/adventure player within 15 blocks of the center starts the fight.
-- **Cutscene 1** (`INTRO`, ~11 s): walls (barriers on every void column touching the arena floor, from floor level up 6, plus across the path just outside the circle: no gaps; players where they go up are moved in) at 0.5 s (they hug the floor edge block by block: every void column touching the arena floor, floor level up, and across the path just outside the circle); he
+- **Cutscene 1** (`INTRO`, ~11 s): walls at 0.5 s (barriers on every void column touching the arena floor, from floor
+  level up, plus across the path just outside the circle: no gaps; players where they go up are moved in); he
   stops digging, straightens, turns to you; "...", "Who are you?", "You're not from this world."; the finger snap (left hand,
   click + spell sound) wakes the tiger: it rises, roars, bounds off the dais. Music (Black Knife) starts.
 - **The tiger** (`TIGER`): `tiger.health` 2000 (tracked by the plugin; the slime hitbox has tag `faultline_explorer_tiger`; any

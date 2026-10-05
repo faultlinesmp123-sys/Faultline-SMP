@@ -726,7 +726,8 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
     public void onSplit(SlimeSplitEvent event) {
         // BUG FIX: Frostbeard's size-3 hitbox split into normal (visible) slimes when he died.
         // Every Faultline hitbox is tagged "faultline_...", so none of them can ever split.
-        if (event.getEntity().getScoreboardTags().stream().anyMatch(t -> t.startsWith("faultline_"))) event.setCancelled(true);
+        // (through EntityEvent: SlimeSplitEvent.getEntity()'s return type differs between API versions -> NoSuchMethodError)
+        if (((org.bukkit.event.entity.EntityEvent) event).getEntity().getScoreboardTags().stream().anyMatch(t -> t.startsWith("faultline_"))) event.setCancelled(true);
     }
 
     /** The hitbox passes through terrain, so terrain damage is ignored; transformations make it untouchable. */
@@ -925,7 +926,10 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
     /** Hitboxes and Icicle Runners take no potion effects (no Glowing, Slowness, Poison...), and never lose Invisibility. */
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onHiddenEffect(org.bukkit.event.entity.EntityPotionEffectEvent event) {
-        if (!hiddenBody(event.getEntity())) return;
+        // BUG FIX: called through EntityEvent. EntityPotionEffectEvent.getEntity() returns LivingEntity in newer APIs and
+        // Entity in older ones; a jar built against the wrong one threw NoSuchMethodError here, so milk and potions could
+        // strip a boss hitbox's invisibility and Java players saw plain slimes inside the bosses.
+        if (!hiddenBody(((org.bukkit.event.entity.EntityEvent) event).getEntity())) return;
         org.bukkit.potion.PotionEffect incoming = event.getNewEffect();
         org.bukkit.potion.PotionEffect outgoing = event.getOldEffect();
         boolean invisIn = incoming != null && incoming.getType().equals(org.bukkit.potion.PotionEffectType.INVISIBILITY);

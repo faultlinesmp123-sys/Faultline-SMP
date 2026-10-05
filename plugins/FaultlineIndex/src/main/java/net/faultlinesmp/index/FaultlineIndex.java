@@ -3,7 +3,6 @@ package net.faultlinesmp.index;
 import net.kyori.adventure.inventory.Book;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -460,13 +459,17 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
         return t.trim() + "…";
     }
 
+    /**
+     * BUG FIX: this used a TextComponent.Builder, and Builder.build() changed its signature between Adventure 4 and 5
+     * (NoSuchMethodError "TextComponent$Builder.build()" on some servers). Plain append() is the same in both.
+     */
     private static Component page(List<Component> lines) {
-        TextComponent.Builder b = Component.text();
+        Component c = Component.empty();
         for (int i = 0; i < lines.size(); i++) {
-            if (i > 0) b.append(Component.newline());
-            b.append(lines.get(i));
+            if (i > 0) c = c.append(Component.newline());
+            c = c.append(lines.get(i));
         }
-        return b.build();
+        return c;
     }
 
     private static final Component BLANK = Component.empty();

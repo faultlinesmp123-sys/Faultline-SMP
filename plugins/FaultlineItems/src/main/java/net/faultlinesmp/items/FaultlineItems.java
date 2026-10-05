@@ -2786,7 +2786,8 @@ public final class FaultlineItems extends JavaPlugin {
 
         @EventHandler(priority = EventPriority.HIGH)
         public void onEffect(EntityPotionEffectEvent event) {
-            if (!(event.getEntity() instanceof Player player) || event.getNewEffect() == null) return;
+            // (through EntityEvent: getEntity()'s return type differs between API versions -> NoSuchMethodError)
+            if (!(((org.bukkit.event.entity.EntityEvent) event).getEntity() instanceof Player player) || event.getNewEffect() == null) return;
             PotionEffectType type = event.getNewEffect().getType();
             for (Charm c : Charm.values()) {
                 if (c.effect.equals(type) && plugin.getAccessoryManager().hasEquipped(player, key(plugin, c))) {
@@ -2928,7 +2929,7 @@ public final class FaultlineItems extends JavaPlugin {
         public void onPotionEffect(EntityPotionEffectEvent event) {
             if (event.getNewEffect() == null) return;
             if (event.getNewEffect().getType() != PotionEffectType.POISON) return;
-            if (!(event.getEntity() instanceof Player player)) return;
+            if (!(((org.bukkit.event.entity.EntityEvent) event).getEntity() instanceof Player player)) return; // (see onEffect)
 
             if (plugin.getAccessoryManager().hasEquipped(player, plugin.getBezoarKey())) {
                 event.setCancelled(true);
@@ -3896,7 +3897,8 @@ public final class FaultlineItems extends JavaPlugin {
         /** Frost Flare blocks Slowness; Ankh Shield blocks its whole list. */
         @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
         public void onPotion(EntityPotionEffectEvent event) {
-            if (!(event.getEntity() instanceof Player player) || event.getNewEffect() == null) return;
+            // (through EntityEvent: getEntity()'s return type differs between API versions -> NoSuchMethodError)
+            if (!(((org.bukkit.event.entity.EntityEvent) event).getEntity() instanceof Player player) || event.getNewEffect() == null) return;
             PotionEffectType type = event.getNewEffect().getType();
             if (type.equals(PotionEffectType.SLOWNESS) && (wearing(player, plugin.getFrostFlareKey()) || wearing(player, plugin.getWeirdClockKey()))) {
                 event.setCancelled(true);
@@ -5008,7 +5010,7 @@ public final class FaultlineItems extends JavaPlugin {
         @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
         public void onWitherEffect(EntityPotionEffectEvent event) {
             if (event.getCause() != EntityPotionEffectEvent.Cause.ATTACK || event.getNewEffect() == null) return;
-            if (event.getNewEffect().getType().equals(PotionEffectType.WITHER) && justHit.contains(event.getEntity().getUniqueId())) {
+            if (event.getNewEffect().getType().equals(PotionEffectType.WITHER) && justHit.contains(((org.bukkit.event.entity.EntityEvent) event).getEntity().getUniqueId())) { // (see onEffect)
                 event.setCancelled(true);
             }
         }

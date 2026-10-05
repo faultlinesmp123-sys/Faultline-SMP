@@ -139,3 +139,8 @@ Maven must reach `repo.papermc.io` to download paper-api. If the build fails wit
 `403 Forbidden` on that host, add `repo.papermc.io` to the environment's allowed network domains.
 Without it, run `tools/compile_check.sh` to compile every plugin against the real Paper 26.2 API (`PAPER=1.21.11` for the old one)
 (it builds paper-api from PaperMC's GitHub source + Maven Central). Run it before pushing Java changes.
+**Build release jars from the 1.21.11 output** (`PAPER=1.21.11 tools/compile_check.sh <Plugin>` → `$CACHE/1.21.11/build/<Plugin>`
+plus `src/main/resources`, `jar cf`), like `mvn package` would. The 26.2 build uses Adventure 5.2, whose method signatures the
+server's runtime doesn't have (`TextComponent$Builder.build()` crashed the Index). Some event getters also return different
+types between the two APIs (`EntityPotionEffectEvent.getEntity()`, `SlimeSplitEvent.getEntity()`): call them through
+`((EntityEvent) event).getEntity()`. To check, diff the `javap -c` method refs of the two builds; they should be identical.

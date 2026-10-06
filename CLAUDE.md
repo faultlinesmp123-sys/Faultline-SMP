@@ -36,7 +36,7 @@ All are Maven projects: Java 21, `paper-api 1.21.11-R0.1-SNAPSHOT`. Build with
 |---|---|---|---|
 | **LimboBlackMarket** | `net.limbosmp.blackmarket` | Head-tier economy, kill/death stats, kill streaks, anti-farm, quests + Quest Book, friendly-fire logging, global reload | `/tier`, `/markethelp`, `/stats`, `/leaderboard`, `/tierleaderboard`, `/faultlinereload` (`/freload`), `/givequestbook` |
 | **FaultlineItems** | `net.faultlinesmp.items` | All custom items + accessories (3-slot `/accessories` GUI), staffs, spawn eggs, diving gear, Kraken & Diamond Jacob gear, Skeleton Wanderer cave trader, admin `/itemsmenu` | many `/give*` commands, `/itemsmenu` (`/fitems`), `/itemsreload`, `/cavetrader`, `/batform` |
-| **FaultlineRaids** | `net.faultlinesmp.raids` | Zombie Raids: Zombie Omens, Zombie Captains, waves of special zombies | `/zraid <start\|stop\|captain\|menu\|egg\|omen>` |
+| **FaultlineRaids** | `net.faultlinesmp.raids` | Zombie Raids (Zombie Omens, Captains, Rotbeard), Skeleton Raids, and **Piglin Raids** (`Piglins.java`: War Horn, the Bulwark, the Great Hog) | `/zraid <start\|stop\|captain\|menu\|egg\|omen\|horn>` |
 | **FaultlineBosses** | `net.faultlinesmp.bosses` | Bosses in one ~585 KB file: Demon Eye, Frostbeard, Dune Devourer/Frostmaw, Don Lorenzo, Kraken, **Diamond Jacob**; admin boss form. **Rocco Vendetta** (+ Werner, the Vendetta Fist) lives in its own `Vendetta.java`. **The way down to the Lost Explorer** (Swarm, his staircase, the void world) is `Below.java`; **the Lost Explorer's fight** is `Explorer.java` (+ `ExplorerAnims.java`) | `/demoneye`, `/frostbeard`, `/dune`, `/don`, `/kraken`, `/jacob <summon\|kill\|phase\|item>`, `/rocco <summon\|kill\|phase\|tattoos\|werner\|item>`, `/bossmorph <boss\|off\|release>`, `/below <swarm\|void\|leave\|close\|slayer\|info>`, `/explorer <start\|stop\|skip\|phase\|stun\|reset\|arena>` |
 | **FaultlineIndex** | `net.faultlinesmp.index` | The Faultline Index codex. Entries live in `src/main/resources/index.yml`, font glyphs in `glyphs.yml` | `/index [give\|reset] [player]` |
 | **FaultlineCosmetics** | `net.faultlinesmp.cosmetics` | Permanent cosmetic unlocks worn in 4 slots (Hat, Neck, Back, Body) over armor, for Java and Bedrock. Cosmetics are defined in its `config.yml`, unlocks saved in `players.yml` | `/cosmetics`, admin `/cosmetic <unlock\|lock\|list\|reload>` |
@@ -76,6 +76,18 @@ Notes:
   unlocked in the Index) and the Vendetta Fist, digs a staircase to the bedrock, breaks through with a black pickaxe; the
   hole leads to the void world `faultline_void` (white path in the dark, his statue at the end). Everything Swarm digs is
   put back after 10 minutes, on shutdown, and after a crash. Creative players skip his checks. Tested with MockBukkit.
+- **Piglin Raids** (`FaultlineRaids/Piglins.java`, config `piglin-raid:`): Piglin Brutes killed by a player drop a
+  **Piglin War Horn** 5% (always III-V). Blowing it gives a Piglin Omen (same omen system as Zombie/Skeleton Omens:
+  near a village in the Overworld → 30 s → raid). III = 6 waves, IV = 8, V = 10, 15 piglins a wave: Grunts, Crossbowmen,
+  Brutes, Hoglin Riders, Piglin Mages (fireballs, flame burst), Piglin Summoners (portals → Grunts), Balloonists (a piglin
+  in a hot air balloon of block displays, dropping fire bombs). **The Bulwark** (mini boss, wave 5: Shield Bash, Ground
+  Slam, Unbreakable = 80% less damage from the front) and **The Great Hog** (boss after the last wave, every level:
+  Charge → stunned on a wall, Earthshaker ring, Rally, Fire Breath, enraged below 50%). Every piglin/hoglin is
+  `setImmuneToZombification(true)`. `/zraid start <lvl> piglin`, `/zraid horn <3-5>`, eggs in `/zraid menu` and `/itemsmenu`.
+  Art: `python3 tools/piglin_assets.py <pack> --preview tools/previews` (horn texture + Index icons).
+  Tested with MockBukkit (a full level V raid, horn drop rate, and every ability).
+- Items nerfs: the **Ankh Shield** only stops knockback (`ankh-shield.old-effects: true` brings the rest back); the
+  **Harpy Ring** is +7.5% speed.
 - Changing a plugin's default `config.yml` does NOT update the copy already on the server. Tell the owner
   which values to change in `plugins/<Plugin>/config.yml` on the VPS.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Index → all the others.

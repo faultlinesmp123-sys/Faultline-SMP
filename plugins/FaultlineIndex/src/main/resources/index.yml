@@ -196,6 +196,10 @@ entries:
      how: "Always dropped by Bone Commanders (the leaders of Skeleton Armies).",
      does: "Drink it near a village to start a Skeleton Raid (levels I-V): waves of archers behind a wall of shields. Win for big rewards."}
 
+  - {chapter: consumables, name: "Piglin War Horn", icon: piglin_war_horn, detect: "faultlineraids:piglin_war_horn",
+     how: "5% from Piglin Brutes (always level III, IV or V).",
+     does: "Blow it, then go near a village in the Overworld to start a Piglin Raid: 15 piglins a wave (III: 6 waves, IV: 8, V: 10), The Bulwark in wave 5, and The Great Hog at the end. Win for big rewards."}
+
   - {chapter: consumables, name: "Ankh", icon: ankh_piece, detect: "faultlineitems:ankh_piece",
      how: "50% from the Demon Eye (each fighter rolls).",
      does: "A piece of the Ankh Shield: it goes right below the Cross in the recipe."}
@@ -228,6 +232,14 @@ entries:
      where: "Deep in caves: 1% of spiders spawning underground. 500 health.",
      does: "Poison bites, Venom Spit, a pounce, a ground stomp, webs around every player, swarms of brood, and egg sacs (big eggs in a web: break the web before they hatch into Cave Spiders). Enrages at half health.",
      drops: ["10 Spider Eyes|100%", "5-10 Diamonds|50%", "Spider Staff|10%", "Queen's Silk|5%", "300 XP|100%"]}
+  - {chapter: bosses, name: "The Bulwark", icon: the_bulwark, detect-tag: faultline_bulwark,
+     where: "Wave 5 of every Piglin Raid. A giant Piglin Brute in netherite with a tower shield. 220 health (+60 per raid level above III).",
+     does: "Shield Bash (a red line shows where it'll charge: get out of it), Ground Slam (jump before the red rings hit), and Unbreakable: it raises its shield and takes 80% less damage from the front for 4 seconds. Hit it from behind.",
+     drops: ["1-3 Gold Blocks|100%", "150 XP|100%"]}
+  - {chapter: bosses, name: "The Great Hog", icon: great_hog, detect-tag: faultline_great_hog,
+     where: "Ends every Piglin Raid, after the last wave: the leader of the Horde. A giant crowned Hoglin. 600 health (+200 per raid level above III).",
+     does: "Charge (it paws the ground and a red lane shows where it'll run: dodge, and if it slams into a wall it's stunned and takes 50% more damage), Earthshaker (it rears up and a shockwave rolls outward: jump it), Rally (calls more of the Horde), and Fire Breath (a cone of flame). Below half health it's enraged: faster, and it charges twice in a row.",
+     drops: ["8-16 Gold Ingots|100%", "1-3 Netherite Scrap|100%", "400 XP|100%", "Winning the raid: Goodie & Mythic Bags|100%"]}
   - {chapter: bosses, name: "Captain Rotbeard", icon: captain_rotbeard, detect-tag: faultline_rotbeard,
      where: "Appears at the end of level IV and V Zombie Raids. 500 health.",
      does: "A pirate captain: Cutlass Sweep, Flintlock shots, a Cannon Barrage, a Grappling Hook that pulls you in, an Anchor Slam, and he calls his crew.",
@@ -326,6 +338,23 @@ entries:
      where: "Some nights (5% per player), leading a Skeleton Army of 3-5 soldiers. A champion Bone Commander ends level IV and V Skeleton Raids.",
      does: "80 health (the raid champion has 300). Five moves: War Horn (his army gets Speed and Strength), Arrow Rain (a red ring marks where arrows fall: get out), Piercing Shot (he draws, then fires a heavy arrow that pierces, knocks you back, and slows you), Call to Arms (a Shieldbearer and a Soldier climb out of the ground), and Disengage (get close and he leaps back, shooting).",
      drops: ["Skeleton Omen|100%", "Goodie Bag|100%", "6-12 Bones|100%", "16-32 Arrows|100%", "Commander's Bow (Power IV)|35%"]}
+  - {chapter: enemies, name: "Piglin Mage", icon: piglin_mage, detect-name: "Piglin Mage",
+     where: "Piglin Raids (from wave 2).",
+     does: "Throws fireballs from range (they never set blocks on fire). Get close and it gathers flame at its feet, then bursts: burns and throws you back.",
+     drops: ["Goodie Bag|5%"]}
+  - {chapter: enemies, name: "Piglin Summoner", icon: piglin_summoner, detect-name: "Piglin Summoner",
+     where: "Piglin Raids (from wave 3).",
+     does: "Keeps its distance and opens little nether portals: two Grunts step out of each one (up to 4 at a time). Kill it first.",
+     drops: ["Goodie Bag|5%"]}
+  - {chapter: enemies, name: "Piglin Balloonist", icon: piglin_balloonist, detect-name: "Piglin Balloonist",
+     where: "Piglin Raids (from wave 3), floating above the village in a hot air balloon.",
+     does: "Circles over you and drops fire bombs (they explode but never break blocks). Shoot it down with arrows: when it dies, the balloon tears apart.",
+     drops: ["Goodie Bag|5%"]}
+  - {chapter: enemies, name: "Hoglin Rider", icon: hoglin_rider, detect-name: "Hoglin Rider",
+     where: "Piglin Raids (from wave 4).",
+     does: "A Piglin with a golden sword riding a charging Hoglin.",
+     drops: ["Goodie Bag|5%"]}
+
   - {chapter: enemies, name: "Skeleton Soldier", icon: skeleton_soldier, detect-name: "Skeleton Soldier",
      where: "Skeleton Armies and Skeleton Raids.",
      does: "A disciplined archer (30 health, arrows hit 30% harder).",

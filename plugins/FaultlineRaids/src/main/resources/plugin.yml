@@ -3,13 +3,13 @@ version: '1.0.0'
 main: net.faultlinesmp.raids.FaultlineRaids
 api-version: '1.21'
 author: FaultlineSMP
-description: Zombie Raids for Faultline SMP — Zombie Omens, Zombie Captains, and waves of special zombies
+description: Zombie, Skeleton and Piglin Raids for Faultline SMP — omens, Captains, the Great Hog
 softdepend: [FaultlineItems]
 
 commands:
   zraid:
-    description: "Admin: start or stop Zombie Raids, spawn a Captain, open the raid items menu, or give eggs/Omens"
-    usage: /zraid <start|stop|captain|menu|egg|omen> ...
+    description: "Admin: start or stop raids, spawn a Captain, open the raid items menu, or give eggs/Omens/War Horns"
+    usage: /zraid <start|stop|captain|menu|egg|omen|horn> ...
     permission: zraid.admin
 
 permissions:

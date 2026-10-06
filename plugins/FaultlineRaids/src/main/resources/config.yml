@@ -75,3 +75,44 @@ skeleton-army:
 # end with a champion Bone Commander instead of Captain Rotbeard.
 skeleton-raid:
   champion-health: 300
+
+# Piglin Raids: a Piglin Brute killed by a player has horn-chance to drop a Piglin War Horn (always level III-V).
+# Blow it and you carry a Piglin Omen; go near a village in the Overworld and the Piglins march on it.
+# III = 6 waves, IV = 8, V = 10. Every wave is wave-size piglins; The Bulwark marches in wave 5, The Great Hog ends it.
+# Raid piglins and hoglins never turn into zombified ones.
+piglin-raid:
+  horn-chance: 0.05
+  wave-size: 15
+  grunt-health: 20
+  mage-health: 24
+  summoner-health: 26
+  summoned-health: 14
+  rider-hoglin-health: 40
+  mage:
+    burst-damage: 5            # the flame burst when you get close
+  summoner:
+    seconds: 10                # between portals
+    max-alive: 4               # Grunts it can have out at once
+  balloon:
+    health: 30
+    height: 12                 # blocks above the ground
+    speed: 0.22
+    bomb-seconds: 3.5
+    bomb-power: 2.0            # never breaks blocks or starts fires
+  bulwark:                     # mini boss, wave 5
+    health: 220
+    health-per-level: 60       # per raid level above III
+    melee-damage: 12
+    bash-damage: 9
+    slam-damage: 10
+    xp: 150
+  great-hog:                   # the boss, after the last wave
+    health: 600
+    health-per-level: 200
+    scale: 2.4
+    melee-damage: 12
+    charge-damage: 13
+    stomp-damage: 9
+    breath-damage: 3
+    stun-seconds: 3            # after charging into a wall (takes 50% more damage)
+    xp: 400

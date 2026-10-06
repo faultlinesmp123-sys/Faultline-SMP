@@ -128,7 +128,12 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
 
     enum Kind { ZOMBIE, HUSK, BABY, ARCHER, BRUTE, BOMBER, BABY_BOMBER, BAT, FLYER, WITCH, HORSEMAN, MAGE, CREW, BOSS,
         // the Skeleton Army / Skeleton Raids
-        SKEL_SOLDIER, FROST_ARCHER, BOG_ARCHER, SHIELDBEARER, BONE_RIDER, WITHER_BRUTE, BONE_COMMANDER }
+        SKEL_SOLDIER, FROST_ARCHER, BOG_ARCHER, SHIELDBEARER, BONE_RIDER, WITHER_BRUTE, BONE_COMMANDER,
+        // Piglin Raids (Piglins.java)
+        PIGLIN_GRUNT, PIGLIN_CROSSBOW, PIGLIN_BRUTE, HOGLIN_RIDER, PIGLIN_MAGE, PIGLIN_SUMMONER, PIGLIN_BALLOON, BULWARK, GREAT_HOG }
+
+    static final int OMEN_ZOMBIE = 0, OMEN_SKELETON = 1, OMEN_PIGLIN = 2;
+    Piglins piglins;
 
     static final String RAID_TAG = "faultline_raid_mob";
     static final String CAPTAIN_TAG = "faultline_zombie_captain";
@@ -136,7 +141,7 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
     static final String COMMANDER_TAG = "faultline_bone_commander";
     static final String SHIELD_TAG = "faultline_shieldbearer";
 
-    private final Random random = new Random();
+    final Random random = new Random();
     private NamespacedKey omenKey;
     private NamespacedKey skeletonOmenKey;
     private NamespacedKey eggKey;
@@ -160,7 +165,15 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
         BOG_ARCHER(Kind.BOG_ARCHER, Material.BOGGED_SPAWN_EGG, ChatColor.DARK_GREEN + "Bog Archer"),
         SHIELDBEARER(Kind.SHIELDBEARER, Material.SKELETON_SPAWN_EGG, ChatColor.GRAY + "Shieldbearer"),
         BONE_RIDER(Kind.BONE_RIDER, Material.SKELETON_HORSE_SPAWN_EGG, ChatColor.WHITE + "Bone Rider"),
-        WITHER_BRUTE(Kind.WITHER_BRUTE, Material.WITHER_SKELETON_SPAWN_EGG, ChatColor.DARK_GRAY + "" + ChatColor.BOLD + "Wither Brute");
+        WITHER_BRUTE(Kind.WITHER_BRUTE, Material.WITHER_SKELETON_SPAWN_EGG, ChatColor.DARK_GRAY + "" + ChatColor.BOLD + "Wither Brute"),
+        PIGLIN_GRUNT(Kind.PIGLIN_GRUNT, Material.PIGLIN_SPAWN_EGG, ChatColor.GOLD + "Piglin Grunt"),
+        PIGLIN_CROSSBOW(Kind.PIGLIN_CROSSBOW, Material.PIGLIN_SPAWN_EGG, ChatColor.GOLD + "Piglin Crossbowman"),
+        PIGLIN_MAGE(Kind.PIGLIN_MAGE, Material.PIGLIN_SPAWN_EGG, ChatColor.RED + "Piglin Mage"),
+        PIGLIN_SUMMONER(Kind.PIGLIN_SUMMONER, Material.PIGLIN_SPAWN_EGG, ChatColor.DARK_PURPLE + "Piglin Summoner"),
+        PIGLIN_BALLOON(Kind.PIGLIN_BALLOON, Material.PIGLIN_SPAWN_EGG, ChatColor.RED + "Piglin Balloonist"),
+        HOGLIN_RIDER(Kind.HOGLIN_RIDER, Material.HOGLIN_SPAWN_EGG, ChatColor.GOLD + "Hoglin Rider"),
+        BULWARK(Kind.BULWARK, Material.PIGLIN_BRUTE_SPAWN_EGG, ChatColor.GOLD + "" + ChatColor.BOLD + "The Bulwark (Mini Boss)"),
+        GREAT_HOG(Kind.GREAT_HOG, Material.HOGLIN_SPAWN_EGG, ChatColor.GOLD + "" + ChatColor.BOLD + "The Great Hog (Boss)");
 
         final Kind kind;
         final Material material;
@@ -182,6 +195,7 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
     private static class Omen {
         int level;
         boolean skeleton; // a Skeleton Omen (Skeleton Raid) instead of a Zombie Omen
+        boolean piglin;   // a Piglin Omen (from a Piglin War Horn)
         long expires;
         long countdownEnds; // 0 = not counting down
     }
@@ -189,7 +203,7 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
     private File omenFile;
 
     // ---- raids ----
-    private class ZombieRaid {
+    class ZombieRaid {
         World world;
         Location center;
         int level;
@@ -207,14 +221,16 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
         boolean over;
         boolean bossSpawned; // level IV-V: Captain Rotbeard (zombie) or a Bone Commander champion (skeleton) after the last wave
         boolean skeleton;    // a Skeleton Raid
-        String kindName() { return skeleton ? "Skeleton Raid" : "Zombie Raid"; }
-        ChatColor color() { return skeleton ? ChatColor.WHITE : ChatColor.DARK_GREEN; }
+        boolean piglin;      // a Piglin Raid (Piglins.java)
+        String kindName() { return piglin ? "Piglin Raid" : skeleton ? "Skeleton Raid" : "Zombie Raid"; }
+        ChatColor color() { return piglin ? ChatColor.GOLD : skeleton ? ChatColor.WHITE : ChatColor.DARK_GREEN; }
+        String foe() { return piglin ? "the Piglins" : skeleton ? "the bones" : "the dead"; }
     }
     private final List<ZombieRaid> raids = new ArrayList<>();
-    private final Map<UUID, ZombieRaid> mobRaid = new HashMap<>();
+    final Map<UUID, ZombieRaid> mobRaid = new HashMap<>();
 
     // ---- special mob state ----
-    private final Map<UUID, Kind> special = new HashMap<>();
+    final Map<UUID, Kind> special = new HashMap<>();
     private final Map<UUID, Long> nextShot = new HashMap<>();
     private final Map<UUID, Integer> fuse = new HashMap<>();
     private final Set<UUID> exploded = new HashSet<>();
@@ -238,6 +254,8 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
         wasNight = isNight(Bukkit.getWorlds().get(0));
 
         getServer().getPluginManager().registerEvents(this, this);
+        piglins = new Piglins(this);
+        getServer().getPluginManager().registerEvents(piglins, this);
         getServer().getScheduler().runTaskTimer(this, () -> { try { secondTick(); } catch (RuntimeException ex) { logPart("raid timer", ex); } }, 20L, 20L);
         getServer().getScheduler().runTaskTimer(this, () -> { try { specialTick(); } catch (RuntimeException ex) { logPart("special mobs", ex); } }, 2L, 2L);
         getCommand("zraid").setExecutor(new RaidCommand());
@@ -333,21 +351,30 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
         int zLevel = omenLevel(event.getItem()), sLevel = skeletonOmenLevel(event.getItem());
         int level = Math.max(zLevel, sLevel);
         if (level == 0) return;
-        boolean skeleton = sLevel > 0;
-        Player player = event.getPlayer();
+        giveOmen(event.getPlayer(), level, sLevel > 0 ? OMEN_SKELETON : OMEN_ZOMBIE);
+    }
+
+    /** An omen (Zombie / Skeleton from a potion, Piglin from a War Horn): go near a village and the raid comes. */
+    void giveOmen(Player player, int level, int type) {
+        boolean skeleton = type == OMEN_SKELETON, piglin = type == OMEN_PIGLIN;
         Omen omen = omens.computeIfAbsent(player.getUniqueId(), k -> new Omen());
-        if (omen.skeleton != skeleton) omen.level = 0; // a different omen replaces the old one
+        if (omen.skeleton != skeleton || omen.piglin != piglin) omen.level = 0; // a different omen replaces the old one
         omen.skeleton = skeleton;
+        omen.piglin = piglin;
         omen.level = Math.max(omen.level, level);
         omen.expires = System.currentTimeMillis() + (long) cfg("omen.minutes", 60) * 60_000L;
         omen.countdownEnds = 0;
         saveOmens();
-        player.showTitle(Title.title(legacy(skeleton ? ChatColor.WHITE + "" + ChatColor.BOLD + "Skeleton Omen " + roman(omen.level)
-                        : ChatColor.DARK_GREEN + "" + ChatColor.BOLD + "Zombie Omen " + roman(omen.level)),
-                legacy(ChatColor.GRAY + (skeleton ? "Find a village... the bones will march on it." : "Find a village... the dead will follow.")),
+        String title = piglin ? ChatColor.GOLD + "" + ChatColor.BOLD + "Piglin Omen " + roman(omen.level)
+                : skeleton ? ChatColor.WHITE + "" + ChatColor.BOLD + "Skeleton Omen " + roman(omen.level)
+                : ChatColor.DARK_GREEN + "" + ChatColor.BOLD + "Zombie Omen " + roman(omen.level);
+        String sub = piglin ? "Find a village... the Piglins will march on it." : skeleton ? "Find a village... the bones will march on it." : "Find a village... the dead will follow.";
+        player.showTitle(Title.title(legacy(title), legacy(ChatColor.GRAY + sub),
                 Title.Times.times(Duration.ofMillis(300), Duration.ofSeconds(3), Duration.ofSeconds(1))));
-        player.playSound(player.getLocation(), Sound.ENTITY_ZOMBIE_VILLAGER_CURE, 1f, 0.6f);
+        if (!piglin) player.playSound(player.getLocation(), Sound.ENTITY_ZOMBIE_VILLAGER_CURE, 1f, 0.6f);
     }
+
+    static String omenName(Omen o) { return o.piglin ? "Piglin" : o.skeleton ? "Skeleton" : "Zombie"; }
 
     // ===================== ONCE-A-SECOND LOOP =====================
 
@@ -365,7 +392,7 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
             if (now > omen.expires) {
                 it.remove();
                 changed = true;
-                if (player != null) player.sendMessage(ChatColor.GRAY + "Your " + (omen.skeleton ? "Skeleton" : "Zombie") + " Omen fades away.");
+                if (player != null) player.sendMessage(ChatColor.GRAY + "Your " + omenName(omen) + " Omen fades away.");
                 continue;
             }
             if (player == null || !survival(player) || player.getWorld().getEnvironment() != World.Environment.NORMAL
@@ -379,13 +406,13 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
             }
             if (omen.countdownEnds == 0) {
                 omen.countdownEnds = now + (long) cfg("omen.countdown-seconds", 30) * 1000L;
-                player.sendMessage((omen.skeleton ? ChatColor.WHITE + "The bones have found this village... " : ChatColor.DARK_GREEN + "The dead have found this village... ")
-                        + ChatColor.GRAY + "(" + (omen.skeleton ? "Skeleton" : "Zombie") + " Raid in " + (long) cfg("omen.countdown-seconds", 30) + "s)");
-                player.playSound(player.getLocation(), omen.skeleton ? Sound.ENTITY_SKELETON_AMBIENT : Sound.ENTITY_ZOMBIE_AMBIENT, 1f, 0.5f);
+                player.sendMessage((omen.piglin ? ChatColor.GOLD + "The Piglins have found this village... " : omen.skeleton ? ChatColor.WHITE + "The bones have found this village... " : ChatColor.DARK_GREEN + "The dead have found this village... ")
+                        + ChatColor.GRAY + "(" + omenName(omen) + " Raid in " + (long) cfg("omen.countdown-seconds", 30) + "s)");
+                player.playSound(player.getLocation(), omen.piglin ? Sound.ENTITY_PIGLIN_ANGRY : omen.skeleton ? Sound.ENTITY_SKELETON_AMBIENT : Sound.ENTITY_ZOMBIE_AMBIENT, 1f, 0.5f);
             } else if (now >= omen.countdownEnds) {
                 it.remove();
                 changed = true;
-                startRaid(centroid(villagers), omen.level, player, false, omen.skeleton);
+                startRaid(centroid(villagers), omen.level, player, false, omen.piglin ? OMEN_PIGLIN : omen.skeleton ? OMEN_SKELETON : OMEN_ZOMBIE);
             }
         }
         if (changed) saveOmens();
@@ -427,18 +454,24 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
     }
 
     void startRaid(Location center, int level, Player starter, boolean forced, boolean skeleton) {
+        startRaid(center, level, starter, forced, skeleton ? OMEN_SKELETON : OMEN_ZOMBIE);
+    }
+
+    void startRaid(Location center, int level, Player starter, boolean forced, int type) {
+        boolean skeleton = type == OMEN_SKELETON;
         ZombieRaid raid = new ZombieRaid();
         raid.skeleton = skeleton;
+        raid.piglin = type == OMEN_PIGLIN;
         raid.world = center.getWorld();
         raid.center = center;
         raid.level = Math.max(1, Math.min(5, level));
-        raid.totalWaves = 2 + raid.level;
+        raid.totalWaves = raid.piglin ? Piglins.waves(raid.level) : 2 + raid.level;
         raid.forced = forced;
         raid.startedAt = System.currentTimeMillis();
         raid.lastPlayerNear = raid.startedAt;
         raid.nextWaveAt = raid.startedAt + 5000;
         raid.bar = Bukkit.createBossBar(raid.color() + "" + ChatColor.BOLD + raid.kindName() + " " + roman(raid.level),
-                skeleton ? BarColor.WHITE : BarColor.GREEN, BarStyle.SEGMENTED_10);
+                raid.piglin ? BarColor.YELLOW : skeleton ? BarColor.WHITE : BarColor.GREEN, BarStyle.SEGMENTED_10);
         if (starter != null && survival(starter)) raid.participants.add(starter.getUniqueId()); // a creative admin isn't a defender
         raids.add(raid);
 
@@ -472,7 +505,7 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
 
         if (near.stream().anyMatch(FaultlineRaids::survival)) raid.lastPlayerNear = now;
         else if (now - raid.lastPlayerNear > (long) cfg("raid.abandon-seconds", 120) * 1000L) {
-            endRaid(raid, false, "Everyone left... the dead take the village.");
+            endRaid(raid, false, "Everyone left... " + raid.foe() + " take the village.");
             return;
         }
         if (now - raid.startedAt > (long) cfg("raid.max-minutes", 30) * 60_000L) {
@@ -493,7 +526,12 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
 
         if (raid.nextWaveAt == 0 && raid.mobs.isEmpty() && raid.wave > 0) {
             if (raid.wave >= raid.totalWaves) {
-                if (raid.level >= (int) cfg("boss.min-level", 4) && !raid.bossSpawned) {
+                if (raid.piglin && !raid.bossSpawned) { // every Piglin Raid ends with the Great Hog
+                    raid.bossSpawned = true;
+                    spawnGreatHog(raid);
+                    return;
+                }
+                if (!raid.piglin && raid.level >= (int) cfg("boss.min-level", 4) && !raid.bossSpawned) {
                     raid.bossSpawned = true;
                     spawnBossForRaid(raid);
                     return;
@@ -556,7 +594,17 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
 
         // The middle wave is a swarm of babies: baby Zombies/Husks and baby Bombers.
         int babyWave = Math.max(2, (raid.totalWaves + 1) / 2);
-        if (raid.skeleton) {
+        if (raid.piglin) {
+            piglins.spawnLevel = lv;
+            kinds.addAll(piglins.wave(w, lv, raid.totalWaves));
+            if (w == 5) for (Player p : playersNear(raid, 96)) {
+                p.showTitle(Title.title(legacy(ChatColor.GOLD + "" + ChatColor.BOLD + "THE BULWARK"),
+                        legacy(ChatColor.GRAY + "The Piglins' shield marches with this wave!"),
+                        Title.Times.times(Duration.ofMillis(300), Duration.ofSeconds(3), Duration.ofSeconds(1))));
+            }
+            else if (w == raid.totalWaves) announce(raid, ChatColor.GOLD + "The ground trembles... the last of the Horde, and something huge behind it.");
+            else if (w == 3) announce(raid, ChatColor.GOLD + "Something floats over the treetops...");
+        } else if (raid.skeleton) {
             if (w == babyWave) { // the Volley: a wall of archers behind a line of shields
                 for (int i = 0; i < 5 + w + lv; i++) kinds.add(random.nextDouble() < 0.7 ? Kind.SKEL_SOLDIER : Kind.FROST_ARCHER);
                 for (int i = 0; i < 2 + lv / 2; i++) kinds.add(Kind.SHIELDBEARER);
@@ -605,6 +653,7 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
             if (spot == null) spot = ringSpot(raid.center, 6, 20);
             if (spot == null) spot = raid.center.clone();
             if (kind == Kind.BAT || kind == Kind.FLYER) spot.add(0, 4, 0);
+            if (kind == Kind.PIGLIN_BALLOON) spot.add(0, 10, 0);
             LivingEntity mob = spawnKind(kind, spot);
             if (mob == null) continue;
             tag(mob, RAID_TAG); // (and its horse, for Horsemen)
@@ -721,6 +770,7 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
     // ===================== MOB TYPES =====================
 
     LivingEntity spawnKind(Kind kind, Location at) {
+        if (Piglins.isPiglinKind(kind)) return piglins.spawn(kind, at);
         World world = at.getWorld();
         EntityType type = switch (kind) {
             case HUSK -> EntityType.HUSK;
@@ -925,7 +975,7 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
         return mob;
     }
 
-    private static void setAttr(LivingEntity mob, Attribute attribute, double value) {
+    static void setAttr(LivingEntity mob, Attribute attribute, double value) {
         AttributeInstance inst = mob.getAttribute(attribute);
         if (inst != null) inst.setBaseValue(value);
     }
@@ -964,6 +1014,7 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
                     case MAGE -> mageTick(mob, now);
                     case HORSEMAN -> horsemanTick(mob, now);
                     case BOSS -> bossTick(mob, now);
+                    case PIGLIN_MAGE, PIGLIN_SUMMONER, PIGLIN_BALLOON, HOGLIN_RIDER, BULWARK, GREAT_HOG -> piglins.tick(mob, entry.getValue(), now);
                     default -> { }
                 }
             } catch (RuntimeException ex) {
@@ -971,6 +1022,7 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
             }
         }
         try { orbTick(); } catch (RuntimeException ex) { logPart("orbs", ex); }
+        try { piglins.projectileTick(); } catch (RuntimeException ex) { logPart("piglin bombs", ex); }
     }
 
     private final Map<String, Long> partLog = new HashMap<>();
@@ -985,6 +1037,7 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
 
     private void clearState(UUID id) {
         exploded.remove(id);
+        piglins.clear(id);
         UUID horse = horses.remove(id);
         if (horse != null) { // the rider is gone: so is the horse
             Entity h = Bukkit.getEntity(horse);
@@ -1164,7 +1217,7 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
 
     static final String ORB_TAG = "faultline_mage_orb";
     private final Map<UUID, Long> orbs = new HashMap<>(); // orb -> fired at
-    private final Map<UUID, UUID> horses = new HashMap<>(); // rider -> horse
+    final Map<UUID, UUID> horses = new HashMap<>(); // rider -> horse
 
     /** Tags a mob and, for a Horseman, his horse too. */
     private void tag(LivingEntity mob, String tag) {
@@ -1558,6 +1611,8 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
             Bukkit.broadcastMessage(ChatColor.GOLD + "" + ChatColor.BOLD + "Captain Rotbeard has fallen"
                     + (killer != null ? " to " + killer.getName() : "") + "!");
         }
+
+        try { piglins.onDeath(event); } catch (RuntimeException ex) { logPart("piglin death", ex); }
 
         if (dead.getScoreboardTags().contains(CAPTAIN_TAG)) {
             event.getDrops().removeIf(i -> i.getType().name().endsWith("_BANNER"));
@@ -2020,6 +2075,7 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
         for (Egg egg : Egg.values()) holder.entries.add(eggItem(egg));
         for (int level = 1; level <= 5; level++) holder.entries.add(omenItem(level));
         for (int level = 1; level <= 5; level++) holder.entries.add(skeletonOmenItem(level));
+        for (int level = 3; level <= 5; level++) holder.entries.add(piglins.horn(level));
         holder.inventory = Bukkit.createInventory(holder, 54, ChatColor.DARK_GREEN + "" + ChatColor.BOLD + "Raid Items");
         for (int i = 0; i < holder.entries.size(); i++) holder.inventory.setItem(i, holder.entries.get(i));
 
@@ -2081,7 +2137,7 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
                 return p != null && !p.isDead() && survival(p) && p.getWorld().equals(raid.world);
             });
             if (!anyoneUp) {
-                endRaid(raid, false, "Everyone defending the village has fallen. The dead take it.");
+                endRaid(raid, false, "Everyone defending the village has fallen. " + Character.toUpperCase(raid.foe().charAt(0)) + raid.foe().substring(1) + " take it.");
             }
         }
     }
@@ -2154,9 +2210,19 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
                     if (!(sender instanceof Player p)) return msg(sender, "Only players can start a raid.");
                     int level = args.length > 1 ? parse(args[1], 1) : 1;
                     boolean skel = args.length > 2 && args[2].toLowerCase().startsWith("skel");
-                    startRaid(p.getLocation(), level, p, true, skel);
+                    boolean pig = args.length > 2 && args[2].toLowerCase().startsWith("pig");
+                    startRaid(p.getLocation(), level, p, true, pig ? OMEN_PIGLIN : skel ? OMEN_SKELETON : OMEN_ZOMBIE);
                     return msg(sender, ChatColor.GREEN + "Started a level " + roman(Math.max(1, Math.min(5, level)))
-                            + (skel ? " Skeleton" : " Zombie") + " Raid here (test raid: it won't end if villagers die).");
+                            + (pig ? " Piglin" : skel ? " Skeleton" : " Zombie") + " Raid here (test raid: it won't end if villagers die).");
+                }
+                case "horn" -> {
+                    int level = args.length > 1 ? parse(args[1], 3) : 3;
+                    int amount = args.length > 2 ? Math.max(1, Math.min(64, parse(args[2], 1))) : 1;
+                    Player target = args.length > 3 ? Bukkit.getPlayerExact(args[3]) : (sender instanceof Player p ? p : null);
+                    if (target == null) return msg(sender, ChatColor.RED + "Usage: /zraid horn <3-5> [amount] [player]");
+                    for (int i = 0; i < amount; i++) target.getInventory().addItem(piglins.horn(level)).values()
+                            .forEach(left -> target.getWorld().dropItemNaturally(target.getLocation(), left));
+                    return msg(sender, ChatColor.GREEN + "Gave " + target.getName() + " " + amount + "x Piglin War Horn " + roman(Math.max(3, Math.min(5, level))) + ".");
                 }
                 case "skeletonarmy" -> {
                     if (!(sender instanceof Player p)) return msg(sender, "Only players can do that.");
@@ -2229,7 +2295,7 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
                     return msg(sender, ChatColor.GREEN + "Gave " + target.getName() + " " + amount + "x Zombie Omen " + roman(Math.max(1, Math.min(5, level))) + ".");
                 }
                 default -> {
-                    return msg(sender, ChatColor.YELLOW + "/zraid start <1-5> | stop | captain | menu | egg <type> [amount] [player] | omen <1-5> [amount] [player]");
+                    return msg(sender, ChatColor.YELLOW + "/zraid start <1-5> [zombie|skeleton|piglin] | stop | captain | menu | egg <type> [amount] [player] | omen <1-5> [amount] [player] | horn <3-5> [amount] [player]");
                 }
             }
         }
@@ -2258,6 +2324,7 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
                 omen.level = yaml.getInt(key + ".level");
                 omen.expires = yaml.getLong(key + ".expires");
                 omen.skeleton = yaml.getBoolean(key + ".skeleton", false);
+                omen.piglin = yaml.getBoolean(key + ".piglin", false);
                 omens.put(UUID.fromString(key), omen);
             } catch (IllegalArgumentException ignored) {
             }
@@ -2270,11 +2337,55 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
             yaml.set(entry.getKey() + ".level", entry.getValue().level);
             yaml.set(entry.getKey() + ".expires", entry.getValue().expires);
             yaml.set(entry.getKey() + ".skeleton", entry.getValue().skeleton);
+            yaml.set(entry.getKey() + ".piglin", entry.getValue().piglin);
         }
         try {
             yaml.save(omenFile);
         } catch (IOException e) {
             getLogger().log(Level.SEVERE, "Failed to save omens.yml", e);
+        }
+    }
+
+    List<ZombieRaid> raidsForTest() { return raids; }
+
+    // ---- for Piglins.java ----
+    static boolean isRaidMobStatic(Entity e) { return isRaidMob(e); }
+    static boolean survivalStatic(Player p) { return survival(p); }
+    static ItemStack dyedStatic(Material m, Color c) { return dyed(m, c); }
+    static net.kyori.adventure.text.Component legacyStatic(String text) { return legacy(text); }
+    void tagMob(LivingEntity mob, String tag) { tag(mob, tag); }
+    LivingEntity targetFor(LivingEntity mob) {
+        LivingEntity t = targetOf(mob);
+        if (t == null && mobRaid.containsKey(mob.getUniqueId())) t = nearestVillagerOrPlayer(mob.getLocation(), 48);
+        return t;
+    }
+    void guarded(LivingEntity victim, double amount, Entity source, Vector from, boolean heavy) { guardedDamage(victim, amount, source, from, heavy); }
+    Location ring(Location c, double min, double max) { return ringSpot(c, min, max); }
+    List<Player> playersAround(Location at, double r) {
+        List<Player> out = new ArrayList<>();
+        for (Player p : at.getWorld().getPlayers()) if (p.getLocation().distanceSquared(at) <= r * r) out.add(p);
+        return out;
+    }
+    void announceNear(Location at, String msg) { for (Player p : playersAround(at, 96)) p.sendMessage(msg); }
+
+    /** Every Piglin Raid ends with THE GREAT HOG: the raid isn't won until it's dead. */
+    private void spawnGreatHog(ZombieRaid raid) {
+        Location spot = ringSpot(raid.center, 14, 26);
+        if (spot == null) spot = raid.center.clone();
+        piglins.spawnLevel = raid.level;
+        LivingEntity hog = spawnKind(Kind.GREAT_HOG, spot);
+        if (hog == null) { winRaid(raid); return; }
+        tag(hog, RAID_TAG);
+        if (hog instanceof Mob m) m.setRemoveWhenFarAway(false);
+        raid.mobs.add(hog.getUniqueId());
+        mobRaid.put(hog.getUniqueId(), raid);
+        raid.waveSize = 1;
+        for (Player p : playersNear(raid, 96)) {
+            p.showTitle(Title.title(legacy(ChatColor.GOLD + "" + ChatColor.BOLD + "THE GREAT HOG"),
+                    legacy(ChatColor.GRAY + "The leader of the Horde charges in!"),
+                    Title.Times.times(Duration.ofMillis(400), Duration.ofSeconds(3), Duration.ofSeconds(1))));
+            p.playSound(p.getLocation(), Sound.ENTITY_HOGLIN_ANGRY, 2f, 0.4f);
+            p.playSound(p.getLocation(), Sound.EVENT_RAID_HORN, 2f, 0.5f);
         }
     }
 

@@ -382,3 +382,24 @@ lost_mirror:
 black_tiger:
   large: 59191
   small: 58167
+piglin_war_horn:
+  large: 59192
+  small: 58168
+piglin_mage:
+  large: 59193
+  small: 58169
+piglin_summoner:
+  large: 59194
+  small: 58170
+piglin_balloonist:
+  large: 59195
+  small: 58171
+hoglin_rider:
+  large: 59196
+  small: 58172
+the_bulwark:
+  large: 59197
+  small: 58173
+great_hog:
+  large: 59198
+  small: 58174

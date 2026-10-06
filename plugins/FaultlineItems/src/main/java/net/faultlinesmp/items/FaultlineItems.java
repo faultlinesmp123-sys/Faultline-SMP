@@ -7040,7 +7040,19 @@ public final class FaultlineItems extends JavaPlugin {
                         {"bog_archer", Material.BOGGED_SPAWN_EGG, ChatColor.DARK_GREEN + "Bog Archer"},
                         {"shieldbearer", Material.SKELETON_SPAWN_EGG, ChatColor.GRAY + "Shieldbearer"},
                         {"bone_rider", Material.SKELETON_HORSE_SPAWN_EGG, ChatColor.WHITE + "Bone Rider"},
-                        {"wither_brute", Material.WITHER_SKELETON_SPAWN_EGG, ChatColor.DARK_GRAY + "" + ChatColor.BOLD + "Wither Brute"}};
+                        {"wither_brute", Material.WITHER_SKELETON_SPAWN_EGG, ChatColor.DARK_GRAY + "" + ChatColor.BOLD + "Wither Brute"},
+                        {"piglin_grunt", Material.PIGLIN_SPAWN_EGG, ChatColor.GOLD + "Piglin Grunt"},
+                        {"piglin_crossbow", Material.PIGLIN_SPAWN_EGG, ChatColor.GOLD + "Piglin Crossbowman"},
+                        {"piglin_mage", Material.PIGLIN_SPAWN_EGG, ChatColor.RED + "Piglin Mage"},
+                        {"piglin_summoner", Material.PIGLIN_SPAWN_EGG, ChatColor.DARK_PURPLE + "Piglin Summoner"},
+                        {"piglin_balloon", Material.PIGLIN_SPAWN_EGG, ChatColor.RED + "Piglin Balloonist"},
+                        {"hoglin_rider", Material.HOGLIN_SPAWN_EGG, ChatColor.GOLD + "Hoglin Rider"},
+                        {"bulwark", Material.PIGLIN_BRUTE_SPAWN_EGG, ChatColor.GOLD + "" + ChatColor.BOLD + "The Bulwark (Mini Boss)"},
+                        {"great_hog", Material.HOGLIN_SPAWN_EGG, ChatColor.GOLD + "" + ChatColor.BOLD + "The Great Hog (Boss)"}};
+                for (int level = 3; level <= 5; level++) { // the Piglin War Horn (starts a Piglin Raid)
+                    list.add(external(icon(Material.GOAT_HORN, "piglin_war_horn", ChatColor.GOLD + "" + ChatColor.BOLD + "Piglin War Horn " + roman[level - 1], "FaultlineRaids"),
+                            "zraid horn " + level + " {amount} {player}", "FaultlineRaids"));
+                }
                 for (Object[] egg : eggs) {
                     list.add(external(icon((Material) egg[1], null, egg[2] + " Spawn Egg", "FaultlineRaids"),
                             "zraid egg " + egg[0] + " {amount} {player}", "FaultlineRaids"));

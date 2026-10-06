@@ -224,7 +224,30 @@ Players download the pack from `main`, so a new hash only works once the new zip
 Keep `FaultlineSMP.zip` **under 25 MB**: the owner uploads it through GitHub's web page, which refuses bigger files.
 Almost all of its size is boss music: encode new tracks as Ogg Vorbis at `ffmpeg -c:a libvorbis -q:a 1 -ar 44100` (~80 kbps).
 
+## Bedrock (Geyser) coverage
+Bedrock players are detected by Floodgate UUID (top half 0) in every plugin (`bedrock(p)`). What each needs:
+- **Boss bodies**: a vanilla stand-in mob per boss (`FaultlineBosses.proxy(...)`), shown only to Bedrock players.
+- **Boss moves** (`BedrockFx.java`, ticked by FaultlineBosses): Geyser can't draw display entities, so every item/block
+  display near a Bedrock player (any plugin: boss moves, piglin balloons, ...) is traced in particles for them only:
+  block displays in that block's crack particles, vanilla items in item bits, custom models in dust (glow colour, or a
+  colour from the model name). Skipped: boss bodies (model-name regex `BedrockFx.BODY`), held weapons (`faultline_held`
+  tag), ships, cosmetics, lanterns. Cap `bedrock.fx-particles-per-player` (160 per 2 ticks). A new boss body model must
+  be added to `BODY`; a held weapon display needs `BedrockFx.HELD_TAG`.
+- **Cinematic black/white frames**: `FaultlineBosses.cinematic(...)` (Java: the cinematic font glyph; Bedrock: Blindness,
+  subtitle kept). Cutscene cameras: Bedrock players are teleported along the shot (Geyser has no spectator camera).
+- **Music + custom sounds, Index icons, custom item icons**: `bedrock/FaultlineBedrock.mcpack` (→ `plugins/Geyser-Spigot/packs/`)
+  and `bedrock/faultline_items_mappings.json` (→ `plugins/Geyser-Spigot/custom_mappings/`), made by
+  `python3 tools/bedrock_pack.py FaultlineSMP.zip bedrock --items tools/bedrock/items.tsv --preview tools/previews`.
+  Geyser passes custom sound names through, so `sound_definitions.json` uses the Java names (`faultline:jacob.music1`).
+  Index glyphs = `font/glyph_E0/E3/E4/E7.png`. `tools/bedrock/items.tsv` lists every /itemsmenu item (base, model, stack,
+  name), dumped by building them in a MockBukkit server (the mock forgets item_model; the test copy records it in the PDC);
+  the other plugins' items are found by scanning their source. Rerun after adding items, sounds or Index icons.
+- **Ghost Pirates** (invisible + glowing): Bedrock has no glow outline, so Bedrock players get their shape in dust.
+- Ships and cosmetics have their own Bedrock packs (below / Ships notes).
+
 ## Cosmetics (FaultlineCosmetics)
+- `/cosmetics` opens the menu; `/cosmetic` (the admin command) also opens it for non-admins. A menu error is shown to the
+  player and logged in full (1.0.1).
 - Unlock from console or another plugin: `cosmetic unlock <player> <id> [silent]` (Rocco Vendetta will drop `rocco_chains`, `rocco_book`, `rocco_coat`).
 - Drawing: HAT/BODY = a fake helmet/chestplate sent to other players (BODY uses an equipment asset `faultline:<id>`).
   NECK/BACK = an ItemDisplay following the torso for Java viewers; Bedrock viewers get a fake LEGS/FEET item that the

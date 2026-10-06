@@ -264,6 +264,7 @@ final class Explorer implements Listener, CommandExecutor {
                 parts[i].addScoreboardTag(TAG);
             }
             weapon = w.spawn(at, ItemDisplay.class, d -> {
+                d.addScoreboardTag(BedrockFx.HELD_TAG);
                 d.setItemStack(modelItem("below_pickaxe")); // he's still digging when you walk in
                 d.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.THIRDPERSON_RIGHTHAND);
                 d.setTeleportDuration(2); d.setInterpolationDuration(2); d.setViewRange(8f);

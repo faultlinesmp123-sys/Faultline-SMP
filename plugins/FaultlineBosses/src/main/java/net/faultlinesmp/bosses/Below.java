@@ -366,6 +366,7 @@ final class Below implements Listener, CommandExecutor {
             if (tool != null && tool.isValid()) tool.remove();
             ItemStack held = tool != null ? tool.getItemStack() : null;
             tool = world.spawn(at, ItemDisplay.class, d -> {
+                d.addScoreboardTag(BedrockFx.HELD_TAG);
                 d.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.THIRDPERSON_RIGHTHAND);
                 d.setTeleportDuration(2); d.setInterpolationDuration(2); d.setViewRange(4f);
                 d.setBrightness(new Display.Brightness(13, 13));
@@ -1094,6 +1095,7 @@ final class Below implements Listener, CommandExecutor {
             String[] pieces = {"_leg_r", "_leg_l", "_body", "_arm_r", "_arm_l", "_head"};
             for (int i = 0; i < 6; i++) { parts[i] = pl.spawnDisplay(root, "explorer" + pieces[i], STATUE_SCALE, 3, Display.Billboard.FIXED); parts[i].setViewRange(8f); parts[i].addScoreboardTag(STATUE_TAG); }
             pick = w.spawn(root, ItemDisplay.class, d -> {
+                d.addScoreboardTag(BedrockFx.HELD_TAG);
                 d.setItemStack(modelItem("below_pickaxe"));
                 d.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.THIRDPERSON_RIGHTHAND);
                 d.setTeleportDuration(3); d.setInterpolationDuration(3); d.setViewRange(8f);

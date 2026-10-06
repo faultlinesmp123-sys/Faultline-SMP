@@ -288,12 +288,21 @@ public final class FaultlineCosmetics extends JavaPlugin implements Listener {
 
     @Override
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
-        if (cmd.getName().equalsIgnoreCase("cosmetics")) {
-            if (sender instanceof Player p) openMenu(p, 0);
+        // /cosmetics opens the menu; so does /cosmetic for anyone who isn't an admin (an easy typo that used to just say
+        // "no permission", so it looked like the command didn't work)
+        boolean admin = sender.hasPermission("faultlinecosmetics.admin");
+        if (cmd.getName().equalsIgnoreCase("cosmetics") || !admin) {
+            if (sender instanceof Player p) {
+                try { openMenu(p, 0); }
+                catch (RuntimeException | LinkageError ex) { // never fail silently: tell them, and put the cause in the console
+                    getLogger().log(java.util.logging.Level.SEVERE, "Couldn't open the cosmetics menu for " + p.getName(), ex);
+                    msg(p, "&cThe cosmetics menu couldn't open (the error is in the server console). Tell an admin.");
+                }
+            }
             else msg(sender, "&cOnly players can open the cosmetics menu.");
             return true;
         }
-        if (args.length == 0) { usage(sender); return true; }
+        if (args.length == 0) { if (sender instanceof Player p) { openMenu(p, 0); return true; } usage(sender); return true; }
         switch (args[0].toLowerCase(Locale.ROOT)) {
             case "reload" -> {
                 reloadConfig(); loadCosmetics();
@@ -358,7 +367,7 @@ public final class FaultlineCosmetics extends JavaPlugin implements Listener {
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command cmd, String alias, String[] args) {
-        if (cmd.getName().equalsIgnoreCase("cosmetics")) return List.of();
+        if (cmd.getName().equalsIgnoreCase("cosmetics") || !sender.hasPermission("faultlinecosmetics.admin")) return List.of();
         List<String> opts = new ArrayList<>();
         if (args.length == 1) opts.addAll(List.of("unlock", "lock", "list", "reload"));
         else if (args.length == 2 && !args[0].equalsIgnoreCase("reload")) Bukkit.getOnlinePlayers().forEach(p -> opts.add(p.getName()));

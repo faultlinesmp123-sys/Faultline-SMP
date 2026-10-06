@@ -801,6 +801,14 @@ final class Pirates implements Listener {
                 m.getWorld().spawnParticle(Particle.SOUL, gl, 2, 0.3, 0.5, 0.3, 0.01);
                 m.getWorld().spawnParticle(Particle.SOUL_FIRE_FLAME, gl, 1, 0.25, 0.4, 0.25, 0.005);
                 if (rnd.nextInt(16) == 0) m.getWorld().playSound(gl, Sound.ENTITY_VEX_AMBIENT, SoundCategory.HOSTILE, 0.8f, 0.6f);
+                // Bedrock has no glowing outline, so an invisible ghost would be truly invisible there: Bedrock players
+                // get its shape in pale soul-blue dust instead (a 2-block figure where it stands)
+                Particle.DustOptions ghostDust = new Particle.DustOptions(Color.fromRGB(170, 235, 255), 1.3f);
+                for (Player bp : m.getWorld().getPlayers()) {
+                    if (!FaultlineShips.bedrock(bp) || bp.getLocation().distanceSquared(m.getLocation()) > 40 * 40) continue;
+                    bp.spawnParticle(Particle.DUST, m.getLocation().add(0, 1.0, 0), 10, 0.22, 0.6, 0.22, 0, ghostDust);
+                    bp.spawnParticle(Particle.DUST, m.getLocation().add(0, 1.85, 0), 4, 0.15, 0.12, 0.15, 0, ghostDust);
+                }
             }
             Player t = nearest(m.getLocation(), c.kind.boss ? 40 : 30);
             if (m instanceof Mob mob && t != null && (mob.getTarget() == null || !mob.getTarget().isValid())) mob.setTarget(t);

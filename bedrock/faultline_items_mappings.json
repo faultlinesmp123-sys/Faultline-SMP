@@ -1,0 +1,1199 @@
+{
+ "format_version": 2,
+ "items": {
+  "minecraft:amethyst_shard": [
+   {
+    "type": "definition",
+    "model": "faultline:fortune_charm",
+    "bedrock_identifier": "faultline:fortune_charm",
+    "bedrock_options": {
+     "icon": "faultline.fortune_charm",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Fortune's Charm"
+   },
+   {
+    "type": "definition",
+    "model": "faultline:spelunker_amulet",
+    "bedrock_identifier": "faultline:spelunker_amulet",
+    "bedrock_options": {
+     "icon": "faultline.spelunker_amulet",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Spelunker's Amulet"
+   }
+  ],
+  "minecraft:arrow": [
+   {
+    "type": "definition",
+    "model": "faultline:falconers_quiver",
+    "bedrock_identifier": "faultline:falconers_quiver",
+    "bedrock_options": {
+     "icon": "faultline.falconers_quiver",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Falconer's Quiver"
+   },
+   {
+    "type": "definition",
+    "model": "faultline:unholy_arrow",
+    "bedrock_identifier": "faultline:unholy_arrow",
+    "bedrock_options": {
+     "icon": "faultline.unholy_arrow",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   }
+  ],
+  "minecraft:blaze_powder": [
+   {
+    "type": "definition",
+    "model": "faultline:ember_ward",
+    "bedrock_identifier": "faultline:ember_ward",
+    "bedrock_options": {
+     "icon": "faultline.ember_ward",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Ember Ward"
+   }
+  ],
+  "minecraft:blaze_rod": [
+   {
+    "type": "definition",
+    "model": "faultline:necromancer_staff",
+    "bedrock_identifier": "faultline:necromancer_staff",
+    "bedrock_options": {
+     "icon": "faultline.necromancer_staff",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    },
+    "display_name": "Necromancer Staff"
+   },
+   {
+    "type": "definition",
+    "model": "faultline:twin_eye_staff",
+    "bedrock_identifier": "faultline:twin_eye_staff",
+    "bedrock_options": {
+     "icon": "faultline.twin_eye_staff",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   }
+  ],
+  "minecraft:book": [
+   {
+    "type": "definition",
+    "model": "faultline:faultline_index",
+    "bedrock_identifier": "faultline:faultline_index",
+    "bedrock_options": {
+     "icon": "faultline.faultline_index",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:quest_book",
+    "bedrock_identifier": "faultline:quest_book",
+    "bedrock_options": {
+     "icon": "faultline.quest_book",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   }
+  ],
+  "minecraft:breeze_rod": [
+   {
+    "type": "definition",
+    "model": "faultline:spider_staff",
+    "bedrock_identifier": "faultline:spider_staff_breeze_rod",
+    "bedrock_options": {
+     "icon": "faultline.spider_staff",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    },
+    "display_name": "Spider Staff"
+   }
+  ],
+  "minecraft:brick": [
+   {
+    "type": "definition",
+    "model": "faultline:vitamins",
+    "bedrock_identifier": "faultline:vitamins",
+    "bedrock_options": {
+     "icon": "faultline.vitamins",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Vitamins"
+   }
+  ],
+  "minecraft:chest": [
+   {
+    "type": "definition",
+    "model": "faultline:goodie_bag",
+    "bedrock_identifier": "faultline:goodie_bag",
+    "bedrock_options": {
+     "icon": "faultline.goodie_bag",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    },
+    "display_name": "Goodie Bag"
+   }
+  ],
+  "minecraft:clay_ball": [
+   {
+    "type": "definition",
+    "model": "faultline:ginger_root",
+    "bedrock_identifier": "faultline:ginger_root",
+    "bedrock_options": {
+     "icon": "faultline.ginger_root",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Ginger Root"
+   }
+  ],
+  "minecraft:clock": [
+   {
+    "type": "definition",
+    "model": "faultline:magic_mirror",
+    "bedrock_identifier": "faultline:magic_mirror",
+    "bedrock_options": {
+     "icon": "faultline.magic_mirror",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    },
+    "display_name": "Magic Mirror"
+   },
+   {
+    "type": "definition",
+    "model": "faultline:weird_clock",
+    "bedrock_identifier": "faultline:weird_clock",
+    "bedrock_options": {
+     "icon": "faultline.weird_clock",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "A Weird Clock..."
+   }
+  ],
+  "minecraft:diamond": [
+   {
+    "type": "definition",
+    "model": "faultline:diamond_heart",
+    "bedrock_identifier": "faultline:diamond_heart",
+    "bedrock_options": {
+     "icon": "faultline.diamond_heart",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Diamond Heart"
+   }
+  ],
+  "minecraft:echo_shard": [
+   {
+    "type": "definition",
+    "model": "faultline:depths_charm",
+    "bedrock_identifier": "faultline:depths_charm",
+    "bedrock_options": {
+     "icon": "faultline.depths_charm",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Depths Charm"
+   },
+   {
+    "type": "definition",
+    "model": "faultline:night_lens",
+    "bedrock_identifier": "faultline:night_lens",
+    "bedrock_options": {
+     "icon": "faultline.night_lens",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Night Lens"
+   }
+  ],
+  "minecraft:ender_chest": [
+   {
+    "type": "definition",
+    "model": "faultline:mythic_goodie_bag",
+    "bedrock_identifier": "faultline:mythic_goodie_bag",
+    "bedrock_options": {
+     "icon": "faultline.mythic_goodie_bag",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    },
+    "display_name": "Mythic Goodie Bag"
+   }
+  ],
+  "minecraft:ender_eye": [
+   {
+    "type": "definition",
+    "model": "faultline:ender_anchor",
+    "bedrock_identifier": "faultline:ender_anchor",
+    "bedrock_options": {
+     "icon": "faultline.ender_anchor",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Ender Anchor"
+   },
+   {
+    "type": "definition",
+    "model": "faultline:suspicious_eye",
+    "bedrock_identifier": "faultline:suspicious_eye",
+    "bedrock_options": {
+     "icon": "faultline.suspicious_eye",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   }
+  ],
+  "minecraft:feather": [
+   {
+    "type": "definition",
+    "model": "faultline:four_leaf_clover",
+    "bedrock_identifier": "faultline:four_leaf_clover",
+    "bedrock_options": {
+     "icon": "faultline.four_leaf_clover",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Four-Leaf Clover"
+   },
+   {
+    "type": "definition",
+    "model": "faultline:ranger_emblem",
+    "bedrock_identifier": "faultline:ranger_emblem",
+    "bedrock_options": {
+     "icon": "faultline.ranger_emblem",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Ranger Emblem"
+   }
+  ],
+  "minecraft:firework_star": [
+   {
+    "type": "definition",
+    "model": "faultline:lorenzos_ball",
+    "bedrock_identifier": "faultline:lorenzos_ball",
+    "bedrock_options": {
+     "icon": "faultline.lorenzos_ball",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   }
+  ],
+  "minecraft:fishing_rod": [
+   {
+    "type": "definition",
+    "model": "faultline:grappling_hook",
+    "bedrock_identifier": "faultline:grappling_hook",
+    "bedrock_options": {
+     "icon": "faultline.grappling_hook",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    },
+    "display_name": "Rotbeard's Grappling Hook"
+   }
+  ],
+  "minecraft:flint": [
+   {
+    "type": "definition",
+    "model": "faultline:cleft_horn",
+    "bedrock_identifier": "faultline:cleft_horn",
+    "bedrock_options": {
+     "icon": "faultline.cleft_horn",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Cleft Horn"
+   },
+   {
+    "type": "definition",
+    "model": "faultline:talon",
+    "bedrock_identifier": "faultline:talon",
+    "bedrock_options": {
+     "icon": "faultline.talon",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   }
+  ],
+  "minecraft:glass_pane": [
+   {
+    "type": "definition",
+    "model": "faultline:lost_mirror",
+    "bedrock_identifier": "faultline:lost_mirror",
+    "bedrock_options": {
+     "icon": "faultline.lost_mirror",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Mirror..??"
+   }
+  ],
+  "minecraft:glowstone_dust": [
+   {
+    "type": "definition",
+    "model": "faultline:glow_gland",
+    "bedrock_identifier": "faultline:glow_gland",
+    "bedrock_options": {
+     "icon": "faultline.glow_gland",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Glow Gland"
+   }
+  ],
+  "minecraft:glow_ink_sac": [
+   {
+    "type": "definition",
+    "model": "faultline:life_jelly",
+    "bedrock_identifier": "faultline:life_jelly",
+    "bedrock_options": {
+     "icon": "faultline.life_jelly",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Life Jelly"
+   }
+  ],
+  "minecraft:goat_horn": [
+   {
+    "type": "definition",
+    "model": "faultline:jacob_horn",
+    "bedrock_identifier": "faultline:jacob_horn",
+    "bedrock_options": {
+     "icon": "faultline.jacob_horn",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:piglin_war_horn",
+    "bedrock_identifier": "faultline:piglin_war_horn",
+    "bedrock_options": {
+     "icon": "faultline.piglin_war_horn",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    }
+   }
+  ],
+  "minecraft:gold_nugget": [
+   {
+    "type": "definition",
+    "model": "faultline:ankh_piece",
+    "bedrock_identifier": "faultline:ankh_piece",
+    "bedrock_options": {
+     "icon": "faultline.ankh_piece",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    },
+    "display_name": "Ankh"
+   },
+   {
+    "type": "definition",
+    "model": "faultline:harpy_ring",
+    "bedrock_identifier": "faultline:harpy_ring",
+    "bedrock_options": {
+     "icon": "faultline.harpy_ring",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Harpy Ring"
+   }
+  ],
+  "minecraft:heart_of_the_sea": [
+   {
+    "type": "definition",
+    "model": "faultline:abyssal_diving_gear",
+    "bedrock_identifier": "faultline:abyssal_diving_gear",
+    "bedrock_options": {
+     "icon": "faultline.abyssal_diving_gear",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Abyssal Diving Gear"
+   },
+   {
+    "type": "definition",
+    "model": "faultline:dune_idol",
+    "bedrock_identifier": "faultline:dune_idol",
+    "bedrock_options": {
+     "icon": "faultline.dune_idol",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:golden_ring",
+    "bedrock_identifier": "faultline:golden_ring_heart_of_the_sea",
+    "bedrock_options": {
+     "icon": "faultline.golden_ring",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Golden Ring"
+   },
+   {
+    "type": "definition",
+    "model": "faultline:shield_of_the_ocean",
+    "bedrock_identifier": "faultline:shield_of_the_ocean",
+    "bedrock_options": {
+     "icon": "faultline.shield_of_the_ocean",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Shield of the Ocean"
+   }
+  ],
+  "minecraft:iron_nugget": [
+   {
+    "type": "definition",
+    "model": "faultline:pest_charm",
+    "bedrock_identifier": "faultline:pest_charm",
+    "bedrock_options": {
+     "icon": "faultline.pest_charm",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Pest Charm"
+   }
+  ],
+  "minecraft:leather": [
+   {
+    "type": "definition",
+    "model": "faultline:black_belt",
+    "bedrock_identifier": "faultline:black_belt",
+    "bedrock_options": {
+     "icon": "faultline.black_belt",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Black Belt"
+   },
+   {
+    "type": "definition",
+    "model": "faultline:eelskin_wrap",
+    "bedrock_identifier": "faultline:eelskin_wrap",
+    "bedrock_options": {
+     "icon": "faultline.eelskin_wrap",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Eelskin Wrap"
+   },
+   {
+    "type": "definition",
+    "model": "faultline:slime_ward",
+    "bedrock_identifier": "faultline:slime_ward",
+    "bedrock_options": {
+     "icon": "faultline.slime_ward",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Slime Ward"
+   }
+  ],
+  "minecraft:leather_boots": [
+   {
+    "type": "definition",
+    "model": "faultline:hermes_boots",
+    "bedrock_identifier": "faultline:hermes_boots",
+    "bedrock_options": {
+     "icon": "faultline.hermes_boots",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    },
+    "display_name": "Hermes Boots"
+   },
+   {
+    "type": "definition",
+    "model": "faultline:rocket_boots",
+    "bedrock_identifier": "faultline:rocket_boots",
+    "bedrock_options": {
+     "icon": "faultline.rocket_boots",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    },
+    "display_name": "Rocket Boots"
+   },
+   {
+    "type": "definition",
+    "model": "faultline:spectre_boots",
+    "bedrock_identifier": "faultline:spectre_boots",
+    "bedrock_options": {
+     "icon": "faultline.spectre_boots",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    },
+    "display_name": "Spectre Boots"
+   }
+  ],
+  "minecraft:magma_cream": [
+   {
+    "type": "definition",
+    "model": "faultline:lava_charm",
+    "bedrock_identifier": "faultline:lava_charm",
+    "bedrock_options": {
+     "icon": "faultline.lava_charm",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Lava Charm"
+   }
+  ],
+  "minecraft:nautilus_shell": [
+   {
+    "type": "definition",
+    "model": "faultline:ankh_shield",
+    "bedrock_identifier": "faultline:ankh_shield",
+    "bedrock_options": {
+     "icon": "faultline.ankh_shield",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Ankh Shield"
+   },
+   {
+    "type": "definition",
+    "model": "faultline:diving_helmet",
+    "bedrock_identifier": "faultline:diving_helmet",
+    "bedrock_options": {
+     "icon": "faultline.diving_helmet",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Diving Helmet"
+   }
+  ],
+  "minecraft:netherite_axe": [
+   {
+    "type": "definition",
+    "model": "faultline:jacob_hammer",
+    "bedrock_identifier": "faultline:jacob_hammer",
+    "bedrock_options": {
+     "icon": "faultline.jacob_hammer",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    }
+   }
+  ],
+  "minecraft:netherite_pickaxe": [
+   {
+    "type": "definition",
+    "model": "faultline:below_pickaxe",
+    "bedrock_identifier": "faultline:below_pickaxe",
+    "bedrock_options": {
+     "icon": "faultline.below_pickaxe",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    }
+   }
+  ],
+  "minecraft:netherite_scrap": [
+   {
+    "type": "definition",
+    "model": "faultline:abyssal_diving_suit",
+    "bedrock_identifier": "faultline:abyssal_diving_suit",
+    "bedrock_options": {
+     "icon": "faultline.abyssal_diving_suit",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Abyssal Diving Suit"
+   },
+   {
+    "type": "definition",
+    "model": "faultline:ankh_cross",
+    "bedrock_identifier": "faultline:ankh_cross",
+    "bedrock_options": {
+     "icon": "faultline.ankh_cross",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    },
+    "display_name": "Cross"
+   }
+  ],
+  "minecraft:netherite_sword": [
+   {
+    "type": "definition",
+    "model": "faultline:jacob_sword",
+    "bedrock_identifier": "faultline:jacob_sword",
+    "bedrock_options": {
+     "icon": "faultline.jacob_sword",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    }
+   }
+  ],
+  "minecraft:nether_brick": [
+   {
+    "type": "definition",
+    "model": "faultline:soul_ward",
+    "bedrock_identifier": "faultline:soul_ward",
+    "bedrock_options": {
+     "icon": "faultline.soul_ward",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Soul Ward"
+   }
+  ],
+  "minecraft:nether_star": [
+   {
+    "type": "definition",
+    "model": "faultline:nightwatch_charm",
+    "bedrock_identifier": "faultline:nightwatch_charm",
+    "bedrock_options": {
+     "icon": "faultline.nightwatch_charm",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Nightwatch Charm"
+   }
+  ],
+  "minecraft:paper": [
+   {
+    "type": "definition",
+    "model": "faultline:banner_of_defiance",
+    "bedrock_identifier": "faultline:banner_of_defiance",
+    "bedrock_options": {
+     "icon": "faultline.banner_of_defiance",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Banner of Defiance"
+   },
+   {
+    "type": "definition",
+    "model": "faultline:blindfold",
+    "bedrock_identifier": "faultline:blindfold",
+    "bedrock_options": {
+     "icon": "faultline.blindfold",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Blindfold"
+   },
+   {
+    "type": "definition",
+    "model": "faultline:captains_armband",
+    "bedrock_identifier": "faultline:captains_armband",
+    "bedrock_options": {
+     "icon": "faultline.captains_armband",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:discount_card",
+    "bedrock_identifier": "faultline:discount_card",
+    "bedrock_options": {
+     "icon": "faultline.discount_card",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Discount Card"
+   },
+   {
+    "type": "definition",
+    "model": "faultline:vendetta_contract",
+    "bedrock_identifier": "faultline:vendetta_contract",
+    "bedrock_options": {
+     "icon": "faultline.vendetta_contract",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:vendetta_fist",
+    "bedrock_identifier": "faultline:vendetta_fist",
+    "bedrock_options": {
+     "icon": "faultline.vendetta_fist",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   }
+  ],
+  "minecraft:phantom_membrane": [
+   {
+    "type": "definition",
+    "model": "faultline:climbing_claws",
+    "bedrock_identifier": "faultline:climbing_claws",
+    "bedrock_options": {
+     "icon": "faultline.climbing_claws",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Climbing Claws"
+   },
+   {
+    "type": "definition",
+    "model": "faultline:flipper",
+    "bedrock_identifier": "faultline:flipper",
+    "bedrock_options": {
+     "icon": "faultline.flipper",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Flipper"
+   }
+  ],
+  "minecraft:potion": [
+   {
+    "type": "definition",
+    "model": "faultline:cloud_potion",
+    "bedrock_identifier": "faultline:cloud_potion",
+    "bedrock_options": {
+     "icon": "faultline.cloud_potion",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    },
+    "display_name": "Cloud Potion"
+   },
+   {
+    "type": "definition",
+    "model": "faultline:potion_of_the_abyss",
+    "bedrock_identifier": "faultline:potion_of_the_abyss",
+    "bedrock_options": {
+     "icon": "faultline.potion_of_the_abyss",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    },
+    "display_name": "Potion of the Abyss"
+   },
+   {
+    "type": "definition",
+    "model": "faultline:potion_of_whispers",
+    "bedrock_identifier": "faultline:potion_of_whispers",
+    "bedrock_options": {
+     "icon": "faultline.potion_of_whispers",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    },
+    "display_name": "Potion of Whispers"
+   },
+   {
+    "type": "definition",
+    "model": "faultline:skeleton_omen",
+    "bedrock_identifier": "faultline:skeleton_omen",
+    "bedrock_options": {
+     "icon": "faultline.skeleton_omen",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:zombie_omen",
+    "bedrock_identifier": "faultline:zombie_omen",
+    "bedrock_options": {
+     "icon": "faultline.zombie_omen",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    }
+   }
+  ],
+  "minecraft:prismarine_crystals": [
+   {
+    "type": "definition",
+    "model": "faultline:diving_gear",
+    "bedrock_identifier": "faultline:diving_gear",
+    "bedrock_options": {
+     "icon": "faultline.diving_gear",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Diving Gear"
+   },
+   {
+    "type": "definition",
+    "model": "faultline:frost_flare",
+    "bedrock_identifier": "faultline:frost_flare",
+    "bedrock_options": {
+     "icon": "faultline.frost_flare",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Frost Flare"
+   },
+   {
+    "type": "definition",
+    "model": "faultline:wayfarer_charm",
+    "bedrock_identifier": "faultline:wayfarer_charm",
+    "bedrock_options": {
+     "icon": "faultline.wayfarer_charm",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Wayfarer's Charm"
+   }
+  ],
+  "minecraft:prismarine_shard": [
+   {
+    "type": "definition",
+    "model": "faultline:coral_lung",
+    "bedrock_identifier": "faultline:coral_lung",
+    "bedrock_options": {
+     "icon": "faultline.coral_lung",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Coral Lung"
+   },
+   {
+    "type": "definition",
+    "model": "faultline:guardian_scale",
+    "bedrock_identifier": "faultline:guardian_scale",
+    "bedrock_options": {
+     "icon": "faultline.guardian_scale",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Guardian Scale"
+   }
+  ],
+  "minecraft:quartz": [
+   {
+    "type": "definition",
+    "model": "faultline:moon_stone",
+    "bedrock_identifier": "faultline:moon_stone",
+    "bedrock_options": {
+     "icon": "faultline.moon_stone",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Moon Stone"
+   },
+   {
+    "type": "definition",
+    "model": "faultline:salt_ration",
+    "bedrock_identifier": "faultline:salt_ration",
+    "bedrock_options": {
+     "icon": "faultline.salt_ration",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Salt Ration"
+   }
+  ],
+  "minecraft:rabbit_foot": [
+   {
+    "type": "definition",
+    "model": "faultline:bezoar",
+    "bedrock_identifier": "faultline:bezoar",
+    "bedrock_options": {
+     "icon": "faultline.bezoar",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Bezoar"
+   }
+  ],
+  "minecraft:rabbit_hide": [
+   {
+    "type": "definition",
+    "model": "faultline:bloody_wolf_scarf",
+    "bedrock_identifier": "faultline:bloody_wolf_scarf",
+    "bedrock_options": {
+     "icon": "faultline.bloody_wolf_scarf",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Bloody Wolf Scarf"
+   },
+   {
+    "type": "definition",
+    "model": "faultline:kraken_worm",
+    "bedrock_identifier": "faultline:kraken_worm",
+    "bedrock_options": {
+     "icon": "faultline.kraken_worm",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Bait Worm"
+   },
+   {
+    "type": "definition",
+    "model": "faultline:silk_ward",
+    "bedrock_identifier": "faultline:silk_ward",
+    "bedrock_options": {
+     "icon": "faultline.silk_ward",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Silk Ward"
+   }
+  ],
+  "minecraft:shulker_shell": [
+   {
+    "type": "definition",
+    "model": "faultline:gravity_stone",
+    "bedrock_identifier": "faultline:gravity_stone",
+    "bedrock_options": {
+     "icon": "faultline.gravity_stone",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Gravity Stone"
+   }
+  ],
+  "minecraft:splash_potion": [
+   {
+    "type": "definition",
+    "model": "faultline:darkness_potion",
+    "bedrock_identifier": "faultline:darkness_potion",
+    "bedrock_options": {
+     "icon": "faultline.darkness_potion",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    },
+    "display_name": "Darkness Potion"
+   }
+  ],
+  "minecraft:stick": [
+   {
+    "type": "definition",
+    "model": "faultline:golden_ring",
+    "bedrock_identifier": "faultline:golden_ring_stick",
+    "bedrock_options": {
+     "icon": "faultline.golden_ring",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:iron_stick",
+    "bedrock_identifier": "faultline:iron_stick",
+    "bedrock_options": {
+     "icon": "faultline.iron_stick",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    },
+    "display_name": "Iron Stick"
+   },
+   {
+    "type": "definition",
+    "model": "faultline:spider_staff",
+    "bedrock_identifier": "faultline:spider_staff_stick",
+    "bedrock_options": {
+     "icon": "faultline.spider_staff",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   }
+  ],
+  "minecraft:string": [
+   {
+    "type": "definition",
+    "model": "faultline:queen_silk",
+    "bedrock_identifier": "faultline:queen_silk",
+    "bedrock_options": {
+     "icon": "faultline.queen_silk",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    },
+    "display_name": "Queen's Silk"
+   }
+  ],
+  "minecraft:turtle_scute": [
+   {
+    "type": "definition",
+    "model": "faultline:wind_ward",
+    "bedrock_identifier": "faultline:wind_ward",
+    "bedrock_options": {
+     "icon": "faultline.wind_ward",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Wind Ward"
+   }
+  ]
+ }
+}

@@ -1,0 +1,66 @@
+CLOCK	magic_mirror	1	Magic Mirror
+POTION	cloud_potion	1	Cloud Potion
+SPLASH_POTION	darkness_potion	1	Darkness Potion
+POTION	potion_of_whispers	1	Potion of Whispers
+POTION	potion_of_the_abyss	1	Potion of the Abyss
+CHEST	goodie_bag	64	Goodie Bag
+ENDER_CHEST	mythic_goodie_bag	64	Mythic Goodie Bag
+HEART_OF_THE_SEA	golden_ring	16	Golden Ring
+PHANTOM_MEMBRANE	climbing_claws	16	Climbing Claws
+RABBIT_FOOT	bezoar	16	Bezoar
+PAPER	discount_card	16	Discount Card
+GLOW_INK_SAC	life_jelly	16	Life Jelly
+HEART_OF_THE_SEA	shield_of_the_ocean	16	Shield of the Ocean
+MAGMA_CREAM	lava_charm	16	Lava Charm
+LEATHER	black_belt	16	Black Belt
+QUARTZ	moon_stone	16	Moon Stone
+FEATHER	ranger_emblem	16	Ranger Emblem
+RABBIT_HIDE	bloody_wolf_scarf	16	Bloody Wolf Scarf
+PRISMARINE_CRYSTALS	frost_flare	16	Frost Flare
+AMETHYST_SHARD	spelunker_amulet	16	Spelunker's Amulet
+GOLD_NUGGET	harpy_ring	16	Harpy Ring
+NAUTILUS_SHELL	ankh_shield	16	Ankh Shield
+FLINT	cleft_horn	16	Cleft Horn
+CLOCK	weird_clock	16	A Weird Clock...
+PRISMARINE_SHARD	guardian_scale	16	Guardian Scale
+CLAY_BALL	ginger_root	16	Ginger Root
+PAPER	blindfold	16	Blindfold
+QUARTZ	salt_ration	16	Salt Ration
+BRICK	vitamins	16	Vitamins
+NETHER_BRICK	soul_ward	16	Soul Ward
+SHULKER_SHELL	gravity_stone	16	Gravity Stone
+FEATHER	four_leaf_clover	16	Four-Leaf Clover
+ECHO_SHARD	night_lens	16	Night Lens
+TURTLE_SCUTE	wind_ward	16	Wind Ward
+RABBIT_HIDE	silk_ward	16	Silk Ward
+LEATHER	slime_ward	16	Slime Ward
+IRON_NUGGET	pest_charm	16	Pest Charm
+NETHER_STAR	nightwatch_charm	16	Nightwatch Charm
+PRISMARINE_CRYSTALS	wayfarer_charm	16	Wayfarer's Charm
+AMETHYST_SHARD	fortune_charm	16	Fortune's Charm
+GOLD_NUGGET	ankh_piece	64	Ankh
+NETHERITE_SCRAP	ankh_cross	64	Cross
+LEATHER_BOOTS	hermes_boots	1	Hermes Boots
+LEATHER_BOOTS	rocket_boots	1	Rocket Boots
+LEATHER_BOOTS	spectre_boots	1	Spectre Boots
+BLAZE_ROD	necromancer_staff	1	Necromancer Staff
+STICK	iron_stick	64	Iron Stick
+BREEZE_ROD	spider_staff	1	Spider Staff
+FISHING_ROD	grappling_hook	1	Rotbeard's Grappling Hook
+STRING	queen_silk	1	Queen's Silk
+NAUTILUS_SHELL	diving_helmet	16	Diving Helmet
+PHANTOM_MEMBRANE	flipper	16	Flipper
+PRISMARINE_CRYSTALS	diving_gear	16	Diving Gear
+ECHO_SHARD	depths_charm	16	Depths Charm
+HEART_OF_THE_SEA	abyssal_diving_gear	16	Abyssal Diving Gear
+NETHERITE_SCRAP	abyssal_diving_suit	16	Abyssal Diving Suit
+RABBIT_HIDE	kraken_worm	16	Bait Worm
+PRISMARINE_SHARD	coral_lung	16	Coral Lung
+GLOWSTONE_DUST	glow_gland	16	Glow Gland
+LEATHER	eelskin_wrap	16	Eelskin Wrap
+ARROW	falconers_quiver	16	Falconer's Quiver
+ENDER_EYE	ender_anchor	16	Ender Anchor
+PAPER	banner_of_defiance	16	Banner of Defiance
+BLAZE_POWDER	ember_ward	16	Ember Ward
+DIAMOND	diamond_heart	16	Diamond Heart
+GLASS_PANE	lost_mirror	16	Mirror..??

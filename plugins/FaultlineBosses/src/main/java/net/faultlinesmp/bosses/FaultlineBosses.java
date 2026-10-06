@@ -204,6 +204,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             Attack.HOVER, Attack.TOOTH_VOMIT, Attack.PHANTOM_DASH, Attack.SPIN_DASH};
 
     final Random random = new Random();
+    final BedrockFx bedrockFx = new BedrockFx(this); // boss moves drawn in particles for Bedrock players
     private boolean dealing; // true only while the boss deals its own damage
     private NamespacedKey summonKey;
     private DemonEye eye;
@@ -398,6 +399,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             safely("Rocco Vendetta", () -> { if (vendetta != null) vendetta.tick(); });
             safely("The way down", () -> { if (below != null) below.tick(); });
             safely("The Lost Explorer", () -> { if (explorer != null) explorer.tick(); });
+            safely("Bedrock moves", bedrockFx::tick);
             safely("Boss form", this::morphTick);
             safely("Kraken bait", this::baitTick);
             safely("Lorenzo's Ball", this::ballTick);
@@ -3566,6 +3568,24 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
     private int proxyTicks;
 
     /** Floodgate gives Bedrock players UUIDs whose first half is all zeros. */
+    /**
+     * A cinematic full-screen black (or white) frame. Java players get the cinematic font's full-screen glyph; Bedrock
+     * players can't draw Java fonts (they'd see a broken box), so a black frame is Blindness for as long, and the
+     * subtitle still shows.
+     */
+    static void cinematic(Player p, boolean white, net.kyori.adventure.text.Component subtitle, int inT, int stayT, int outT) {
+        Title.Times times = Title.Times.times(java.time.Duration.ofMillis(inT * 50L), java.time.Duration.ofMillis(stayT * 50L), java.time.Duration.ofMillis(outT * 50L));
+        if (bedrock(p)) {
+            if (!white) p.addPotionEffect(new org.bukkit.potion.PotionEffect(org.bukkit.potion.PotionEffectType.BLINDNESS, inT + stayT + outT / 2 + 1, 0, false, false, false));
+            if (subtitle != null && !subtitle.equals(net.kyori.adventure.text.Component.empty()))
+                p.showTitle(Title.title(net.kyori.adventure.text.Component.empty(), subtitle, times));
+            return;
+        }
+        net.kyori.adventure.text.Component b = net.kyori.adventure.text.Component.text(white ? "\ue900" : "\ue901").font(net.kyori.adventure.key.Key.key("faultline", "cinematic"));
+        if (white) b = b.color(net.kyori.adventure.text.format.NamedTextColor.WHITE);
+        p.showTitle(Title.title(b, subtitle == null ? net.kyori.adventure.text.Component.empty() : subtitle, times));
+    }
+
     static boolean bedrock(Player p) {
         return p.getUniqueId().getMostSignificantBits() == 0;
     }
@@ -5464,7 +5484,10 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             cam.teleport(at);
             for (UUID id : viewers) {
                 Player p = Bukkit.getPlayer(id);
-                if (p != null && p.getGameMode() == GameMode.SPECTATOR && !cam.equals(p.getSpectatorTarget())) p.setSpectatorTarget(cam);
+                if (p == null || p.getGameMode() != GameMode.SPECTATOR) continue;
+                // Bedrock can't look through another entity (Geyser has no spectator camera): it rides the shot itself
+                if (bedrock(p)) { allowTeleport = true; p.teleport(at); allowTeleport = false; continue; }
+                if (!cam.equals(p.getSpectatorTarget())) p.setSpectatorTarget(cam);
             }
         }
         void restore(Player p) {
@@ -5656,7 +5679,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         void hold(ItemStack item) {
             if (held == null || !held.isValid()) {
                 held = world.spawn(pos.toLocation(world), ItemDisplay.class, d -> {
-                    d.setPersistent(false); d.addScoreboardTag(DISPLAY_TAG); d.setTeleportDuration(2); d.setInterpolationDuration(2);
+                    d.setPersistent(false); d.addScoreboardTag(DISPLAY_TAG); d.addScoreboardTag(BedrockFx.HELD_TAG); d.setTeleportDuration(2); d.setInterpolationDuration(2);
                     // BUG FIX: THIRDPERSON_RIGHTHAND plus the rig's spear math (tuned for Don) left his sword, hammer, and bow
                     // sticking out at odd angles. He places his weapon himself now (renderWeapon), from a grip per item.
                     d.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.NONE);
@@ -5815,16 +5838,11 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         }
 
         void black(int inT, int stayT, int outT) {
-            net.kyori.adventure.text.Component b = net.kyori.adventure.text.Component.text("\ue901").font(net.kyori.adventure.key.Key.key("faultline", "cinematic"));
-            for (Player p : world.getPlayers()) if (p.getLocation().toVector().distanceSquared(pos) < 96 * 96)
-                p.showTitle(Title.title(b, net.kyori.adventure.text.Component.empty(),
-                        Title.Times.times(java.time.Duration.ofMillis(inT * 50L), java.time.Duration.ofMillis(stayT * 50L), java.time.Duration.ofMillis(outT * 50L))));
+            for (Player p : world.getPlayers()) if (p.getLocation().toVector().distanceSquared(pos) < 96 * 96) cinematic(p, false, null, inT, stayT, outT);
         }
 
         void flash(boolean white) {
-            net.kyori.adventure.text.Component b = net.kyori.adventure.text.Component.text(white ? "\ue900" : "\ue901").font(net.kyori.adventure.key.Key.key("faultline", "cinematic"));
-            for (Player p : world.getPlayers()) if (p.getLocation().toVector().distanceSquared(pos) < 96 * 96)
-                p.showTitle(Title.title(b, net.kyori.adventure.text.Component.empty(), Title.Times.times(java.time.Duration.ZERO, java.time.Duration.ofMillis(100), java.time.Duration.ofMillis(50))));
+            for (Player p : world.getPlayers()) if (p.getLocation().toVector().distanceSquared(pos) < 96 * 96) cinematic(p, white, null, 0, 2, 1);
         }
 
         // ---------- music: track 1 for phases 1-3 (silent in cutscenes), track 2 from the third cutscene ----------
@@ -6807,9 +6825,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             }
             if (m >= 140 && m < 300 && (m - 140) % 30 == 0) black(0, 32, 0); // 0:07: full black (refreshed until 0:15)
             if (m >= 220 && m < 224) for (Player p : world.getPlayers()) if (p.getLocation().distanceSquared(loc()) < 96 * 96) // 0:11, on the black screen
-                p.showTitle(Title.title(net.kyori.adventure.text.Component.text("\ue901").font(net.kyori.adventure.key.Key.key("faultline", "cinematic")),
-                        legacy(ChatColor.GOLD + "" + ChatColor.BOLD + "It's not over yet..."),
-                        Title.Times.times(java.time.Duration.ZERO, java.time.Duration.ofMillis(3600), java.time.Duration.ofMillis(200))));
+                cinematic(p, false, legacy(ChatColor.GOLD + "" + ChatColor.BOLD + "It's not over yet..."), 0, 72, 4);
             if (m >= 300) { // 0:15: he's back, standing, ablaze
                 pose = powerPose();
                 world.playSound(loc(), Sound.ENTITY_WITHER_SPAWN, 2f, 1.2f);
@@ -10002,7 +10018,9 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             cam.teleport(shot);
             for (UUID id : viewers) { // stay locked on the camera
                 Player p = Bukkit.getPlayer(id);
-                if (p != null && p.getGameMode() == GameMode.SPECTATOR && !cam.equals(p.getSpectatorTarget())) p.setSpectatorTarget(cam);
+                if (p == null || p.getGameMode() != GameMode.SPECTATOR) continue;
+                if (bedrock(p)) { allowTeleport = true; p.teleport(shot); allowTeleport = false; continue; } // Bedrock rides the shot itself
+                if (!cam.equals(p.getSpectatorTarget())) p.setSpectatorTarget(cam);
             }
             // ================= Don =================
             d.lookAt = null; // his head follows whoever's closest (the camera, from where you're watching)
@@ -10047,11 +10065,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             }
             if (at.test(415)) pulse(root, 60, 0.25);
             if (at.test(430)) { // the white flash, into the drop
-                net.kyori.adventure.text.Component flash = net.kyori.adventure.text.Component.text("\ue900")
-                        .font(net.kyori.adventure.key.Key.key("faultline", "cinematic")).color(net.kyori.adventure.text.format.NamedTextColor.WHITE);
-                for (Player p : w.getPlayers()) if (p.getLocation().toVector().distanceSquared(d.pos) < 70 * 70)
-                    p.showTitle(Title.title(flash, net.kyori.adventure.text.Component.empty(),
-                            Title.Times.times(java.time.Duration.ofMillis(250), java.time.Duration.ofMillis(500), java.time.Duration.ofMillis(700))));
+                for (Player p : w.getPlayers()) if (p.getLocation().toVector().distanceSquared(d.pos) < 70 * 70) cinematic(p, true, null, 5, 10, 14);
             }
             if (t >= T_FIGHT) { // 0:22: the beat drops
                 finish(true);

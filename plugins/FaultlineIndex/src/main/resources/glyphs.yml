@@ -433,3 +433,9 @@ galleon_blueprint:
 shipwright_hammer:
   large: 59208
   small: 58184
+ship_cannon:
+  large: 59209
+  small: 58185
+cannonball:
+  large: 59210
+  small: 58186

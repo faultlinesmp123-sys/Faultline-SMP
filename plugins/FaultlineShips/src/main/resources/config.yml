@@ -5,6 +5,7 @@
 #   Brigantine Blueprint: gold in the corners, paper on the sides, a Sloop Blueprint in the middle
 #   Galleon Blueprint:    diamonds in the corners, paper on the sides, a Brigantine Blueprint in the middle
 #   Shipwright's Hammer:  3 iron / iron, planks, iron / stick
+#   Ship Cannon:          3 iron / iron, gunpowder / log, log;  Cannonball (x4): iron + gunpowder
 # Health 0 = wrecked: it can't sail until a hammer brings it back to full (timing minigame).
 # ============================================================================
 
@@ -37,3 +38,15 @@ repair:
   planks-per-hit: 1
   hit-percent: 7
   perfect-percent: 12
+
+# Cannons: built into each ship's cannon spots with Ship Cannons (5 iron, 1 gunpowder, 2 logs).
+# On board, right-click with a Cannonball (iron + gunpowder = 4) looking over the side: the nearest ready cannon on
+# that side fires (aim up to 35 degrees off straight out). The ball blows up where it lands.
+cannon:
+  reload-seconds: 3
+  speed: 2.4            # blocks per tick
+  explosion-power: 2.0
+  break-blocks: false   # true lets cannonballs blow holes in the land
+  hit-damage: 10        # extra damage to a mob or player it hits directly
+  ship-damage: 45       # to a ship it lands on (less further away, up to ship-radius blocks)
+  ship-radius: 4

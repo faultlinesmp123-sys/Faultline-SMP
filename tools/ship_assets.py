@@ -19,7 +19,7 @@ Usage: python3 tools/ship_assets.py <unpacked-pack-dir> [--preview <dir>] [--bed
 import json, os, random, sys, zipfile
 from PIL import Image
 
-ICONS = ["sloop_blueprint", "brigantine_blueprint", "galleon_blueprint", "shipwright_hammer"]
+ICONS = ["sloop_blueprint", "brigantine_blueprint", "galleon_blueprint", "shipwright_hammer", "ship_cannon", "cannonball"]
 SMALL0, LARGE0 = 0xE345, 0xE745
 
 PAL = {
@@ -90,9 +90,12 @@ def main():
         "brigantine_blueprint": draw(BLUEPRINT, "G"),
         "galleon_blueprint": draw(BLUEPRINT, "D"),
         "shipwright_hammer": draw(HAMMER),
+        "ship_cannon": icon_of(CANNON_ICON),
+        "cannonball": icon_of(BALL_ICON),
     }
     for k, im in imgs.items():
         im.save(os.path.join(A, "textures/index", k + ".png"))
+    ctex = java_cannons(A)
     font = os.path.join(A, "font/index.json")
     if os.path.exists(font):
         d = json.load(open(font))
@@ -105,6 +108,9 @@ def main():
                 d["providers"].append({"type": "bitmap", "file": f, "ascent": 7, "height": 16, "chars": [chr(LARGE0 + n)]})
         with open(font, "w") as fh:
             json.dump(d, fh, indent=1)
+    if prev:
+        os.makedirs(prev, exist_ok=True)
+        preview_cannon(ctex, os.path.join(prev, "ship_cannon.png"))
     if "--bedrock" in sys.argv:
         bout = sys.argv[sys.argv.index("--bedrock") + 1]
         layouts = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "ships", "layouts.json")))
@@ -122,15 +128,165 @@ def main():
         sheet.save(os.path.join(prev, "ship_icons.png"))
 
 
+# ====================================================================== cannons (Java item models + Index icons)
+def cannon_texture():
+    """32x32: iron, dark iron (rings), wood, dark wood, the muzzle, a wheel."""
+    rnd = random.Random(11)
+    im = Image.new("RGBA", (32, 32), (0, 0, 0, 0))
+    def fill(x0, y0, base, n, fn=None):
+        for y in range(16):
+            for x in range(16):
+                c = fn(x, y) if fn else base
+                im.putpixel((x0 + x, y0 + y), tuple(max(0, min(255, v + rnd.randint(-n, n))) for v in c) + (255,))
+    fill(0, 0, (78, 80, 88), 7, lambda x, y: (96, 98, 108) if (x + y) % 7 == 0 else (74, 76, 84))       # iron
+    fill(16, 0, (40, 40, 46), 5)                                                                          # dark iron
+    fill(0, 16, (128, 92, 54), 7, lambda x, y: (100, 70, 40) if y % 5 == 0 else (132, 96, 58))          # wood
+    fill(16, 16, (86, 60, 36), 6, lambda x, y: (70, 48, 28) if x % 4 == 0 else (90, 62, 38))            # dark wood
+    # the muzzle face (uv 12,4 -> 16,8 = pixels 24..31, 8..15): a black bore in the dark iron
+    for y in range(10, 14):
+        for x in range(26, 30): im.putpixel((x, y), (8, 8, 10, 255))
+    return im
+
+
+UV = {"iron": [0, 0, 8, 8], "dark": [8, 0, 12, 4], "wood": [0, 8, 8, 16], "wood_dark": [8, 8, 16, 16]}
+
+
+def el(frm, to, tex, rot=None, muzzle=False):
+    faces = {f: {"uv": UV[tex], "texture": "#t"} for f in ("north", "south", "east", "west", "up", "down")}
+    if muzzle: faces["south"] = {"uv": [12, 4, 16, 8], "texture": "#t"}  # the bore
+    e = {"from": [round(v, 3) for v in frm], "to": [round(v, 3) for v in to], "faces": faces}
+    if rot: e["rotation"] = rot
+    return e
+
+
+def cannon_elements():
+    """A naval cannon on a wooden carriage, barrel pointing south (+z), out past the block edge like it pokes over the rail."""
+    e = []
+    # carriage
+    e.append(el([3.5, 0.5, 1.5], [5.5, 6, 12.5], "wood"))
+    e.append(el([10.5, 0.5, 1.5], [12.5, 6, 12.5], "wood"))
+    e.append(el([5.5, 1.5, 2.5], [10.5, 3, 11.5], "wood_dark"))
+    e.append(el([2, 1.5, 9.5], [14, 3, 11], "wood_dark"))
+    e.append(el([2, 1.5, 3], [14, 3, 4.5], "wood_dark"))
+    # wheels: a box and the same box turned 45 degrees, so they read as round
+    for wx0, wx1 in ((1.25, 3), (13, 14.75)):
+        for zc in (3.75, 10.25):
+            e.append(el([wx0, 0, zc - 2.25], [wx1, 4.5, zc + 2.25], "wood_dark"))
+            e.append(el([wx0, 0, zc - 2.25], [wx1, 4.5, zc + 2.25], "wood_dark", {"angle": 45, "axis": "x", "origin": [8, 2.25, zc]}))
+    # barrel
+    e.append(el([5, 4.5, 0], [11, 10.5, 5.5], "iron"))
+    e.append(el([5, 4.5, 0], [11, 10.5, 5.5], "iron", {"angle": 45, "axis": "z", "origin": [8, 7.5, 2.75]}))
+    e.append(el([5.5, 5, 5.5], [10.5, 10, 11.5], "iron"))
+    e.append(el([5.5, 5, 5.5], [10.5, 10, 11.5], "iron", {"angle": 45, "axis": "z", "origin": [8, 7.5, 8.5]}))
+    e.append(el([6, 5.5, 11.5], [10, 9.5, 18], "iron"))
+    e.append(el([5.25, 4.75, 5.25], [10.75, 10.25, 6.25], "dark"))
+    e.append(el([5.75, 5.25, 11.25], [10.25, 9.75, 12.25], "dark"))
+    e.append(el([5.5, 5, 17.5], [10.5, 10, 19.5], "dark", muzzle=True))
+    e.append(el([7, 6.5, -1.5], [9, 8.5, 0], "dark"))            # the knob at the back
+    e.append(el([4, 7, 7.5], [12, 8, 8.5], "dark"))              # trunnions
+    return e
+
+
+def ball_elements():
+    return [el([5.5, 5.5, 5.5], [10.5, 10.5, 10.5], "dark"), el([5, 6, 6], [11, 10, 10], "dark"),
+            el([6, 5, 6], [10, 11, 10], "dark"), el([6, 6, 5], [10, 10, 11], "dark")]
+
+
+CANNON_ICON = [
+    "................",
+    "................",
+    "................",
+    "..........#.....",
+    "...#######i#....",
+    "..#IIIIIIIIi##..",
+    ".#IIIIIIIIIIdd#.",
+    ".#iIIIIIIIIidb#.",
+    "..#iiiiiiiiid#..",
+    "...#WWW##WWW#...",
+    "..#WwwW#WwwW#...",
+    "..#WwkW#WwkW#...",
+    "..#WwwW#WwwW#...",
+    "...#WW#..#WW#...",
+    "....##....##....",
+    "................",
+]
+BALL_ICON = [
+    "................",
+    "................",
+    "................",
+    "................",
+    "......####......",
+    ".....#iIIi#.....",
+    "....#iIwIIi#....",
+    "....#IIIIIj#....",
+    "....#IIIIij#....",
+    "....#iIIijj#....",
+    ".....#ijjj#.....",
+    "......####......",
+    "................",
+    "................",
+    "................",
+    "................",
+]
+ICON_PAL = {"#": (16, 16, 20), "I": (96, 98, 110), "i": (66, 68, 78), "j": (44, 44, 52), "d": (34, 34, 40), "b": (10, 10, 12),
+            "w": (220, 220, 230), "W": (130, 92, 54), "k": (70, 48, 28)}
+
+
+def icon_of(grid):
+    im = Image.new("RGBA", (16, 16), (0, 0, 0, 0))
+    for y, row in enumerate(grid):
+        for x, ch in enumerate(row[:16]):
+            if ch in ICON_PAL: im.putpixel((x, y), ICON_PAL[ch] + (255,))
+    return im
+
+
+def java_cannons(A):
+    """Writes the cannon and cannonball item models (and their item definitions) into the Java pack."""
+    tex = cannon_texture()
+    os.makedirs(os.path.join(A, "textures/item"), exist_ok=True)
+    tex.save(os.path.join(A, "textures/item/ship_cannon.png"))
+    gui = {"gui": {"rotation": [25, 135, 0], "translation": [0, -1, 0], "scale": [0.5, 0.5, 0.5]},
+           "ground": {"rotation": [0, 0, 0], "translation": [0, 2, 0], "scale": [0.4, 0.4, 0.4]},
+           "fixed": {"rotation": [0, 180, 0], "scale": [0.6, 0.6, 0.6]},
+           "thirdperson_righthand": {"rotation": [70, 0, 0], "translation": [0, 1, -2], "scale": [0.35, 0.35, 0.35]},
+           "firstperson_righthand": {"rotation": [0, 135, 0], "translation": [2, 2, 0], "scale": [0.35, 0.35, 0.35]}}
+    _w(os.path.join(A, "models/item/ship_cannon.json"), {"textures": {"t": "faultline:item/ship_cannon", "particle": "faultline:item/ship_cannon"},
+                                                         "elements": cannon_elements(), "display": gui})
+    _w(os.path.join(A, "items/ship_cannon.json"), {"model": {"type": "minecraft:model", "model": "faultline:item/ship_cannon"}})
+    ball_disp = {"ground": {"translation": [0, 0, 0], "scale": [1.0, 1.0, 1.0]},
+                 "gui": {"rotation": [30, 45, 0], "scale": [1.1, 1.1, 1.1]},
+                 "thirdperson_righthand": {"translation": [0, 2, 1], "scale": [0.6, 0.6, 0.6]},
+                 "firstperson_righthand": {"translation": [1, 2, 0], "scale": [0.6, 0.6, 0.6]}}
+    _w(os.path.join(A, "models/item/cannonball.json"), {"textures": {"t": "faultline:item/ship_cannon", "particle": "faultline:item/ship_cannon"},
+                                                        "elements": ball_elements(), "display": ball_disp})
+    _w(os.path.join(A, "items/cannonball.json"), {"model": {"type": "minecraft:model", "model": "faultline:item/cannonball"}})
+    return tex
+
+
+def preview_cannon(tex, out):
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import numpy as np
+    import jacob_models as jm
+    jm.set_anchor(0.62)
+    t = np.asarray(tex).astype(float)
+    shots = [jm.render([(cannon_elements(), t, (0, 0, 0))], yaw, 22, 14, (360, 300)) for yaw in (30, 150, 250)]
+    shots.append(jm.render([(ball_elements(), t, (0, 0, 0))], 30, 22, 14, (360, 300)))
+    sheet = Image.new("RGBA", (360 * len(shots), 300))
+    for i, sh in enumerate(shots): sheet.paste(sh, (i * 360, 0))
+    sheet.save(out)
+
+
 # ====================================================================== Bedrock
 TILE = {"planks": (0, 0), "log_side": (16, 0), "log_top": (32, 0), "wool": (48, 0),
-        "barrel_side": (0, 16), "barrel_top": (16, 16), "lantern": (32, 16), "dark": (48, 16)}
+        "barrel_side": (0, 16), "barrel_top": (16, 16), "lantern": (32, 16), "dark": (48, 16),
+        "iron": (0, 32), "iron_dark": (16, 32), "glass": (32, 32), "ladder": (48, 32)}
+ATLAS_H = 48
 
 
 def atlas():
     """64x32: oak-ish planks, spruce-ish log, white wool, a barrel, a lantern."""
     rnd = random.Random(7)
-    im = Image.new("RGBA", (64, 32), (0, 0, 0, 0))
+    im = Image.new("RGBA", (64, ATLAS_H), (0, 0, 0, 0))
     px = im.putpixel
 
     def noise(c, n):
@@ -175,6 +331,25 @@ def atlas():
     for y in range(16):
         for x in range(16):
             px((ox + x, oy + y), noise((70, 52, 34), 6))
+    ox, oy = TILE["iron"]
+    for y in range(16):
+        for x in range(16):
+            px((ox + x, oy + y), noise((80, 82, 90), 7))
+    ox, oy = TILE["iron_dark"]
+    for y in range(16):
+        for x in range(16):
+            px((ox + x, oy + y), (10, 10, 12, 255) if 5 <= x <= 10 and 5 <= y <= 10 else noise((42, 42, 48), 4))
+    ox, oy = TILE["glass"]
+    for y in range(16):
+        for x in range(16):
+            edge = x in (0, 15) or y in (0, 15)
+            px((ox + x, oy + y), (200, 210, 220, 255) if edge else ((170, 215, 235, 255) if (x - y) % 6 else (215, 240, 250, 255)))
+    ox, oy = TILE["ladder"]
+    for y in range(16):
+        for x in range(16):
+            rail = x in (2, 3, 12, 13)
+            rung = y % 4 == 1 and 2 <= x <= 13
+            px((ox + x, oy + y), noise((140, 104, 62), 6) if rail or rung else (0, 0, 0, 0))
     return im
 
 
@@ -224,6 +399,33 @@ def ship_cubes(cells, wreck):
                     else: box = (x - 0.0625, y + h0, z + zr[0], x + 0.0625, y + h1, z + zr[1])
                     o, sz = to_bedrock(*box)
                     cubes.append({"origin": o, "size": sz, "uv": {f: face_uv("planks", 2, 2) for f in FACE_OF.values()}})
+        elif need == "LADDER":
+            s_ = 1 if "south" in props else -1
+            wall = z - s_ * 0.5
+            z0, z1 = sorted((wall, wall + s_ * 0.0625))
+            o, sz = to_bedrock(x - 0.5, y, z0, x + 0.5, y + 1, z1)
+            cubes.append({"origin": o, "size": sz, "uv": {f: face_uv("ladder") for f in FACE_OF.values()}})
+        elif need == "TRAPDOOR":
+            o, sz = to_bedrock(x - 0.5, y + 13 / 16, z - 0.5, x + 0.5, y + 1, z + 0.5)
+            cubes.append({"origin": o, "size": sz, "uv": {f: face_uv("planks", 16, 3 if f not in ("up", "down") else 16) for f in FACE_OF.values()}})
+        elif need == "PANE":
+            along_x = pr.get("east") == "true" or pr.get("west") == "true"
+            box = (x - 0.5, y, z - 0.0625, x + 0.5, y + 1, z + 0.0625) if along_x else (x - 0.0625, y, z - 0.5, x + 0.0625, y + 1, z + 0.5)
+            o, sz = to_bedrock(*box)
+            cubes.append({"origin": o, "size": sz, "uv": {f: face_uv("glass") for f in FACE_OF.values()}})
+        elif need == "CANNON":
+            s_ = 1 if "south" in props else -1
+            def zb(a, b): return tuple(sorted((z + s_ * a, z + s_ * b)))
+            parts = [((x - 0.31, y, *zb(-0.4, 0.3)), (x + 0.31, y + 0.36), "planks"),         # carriage
+                     ((x - 0.19, y + 0.28, *zb(-0.45, 0.35)), (x + 0.19, y + 0.66), "iron"),   # breech
+                     ((x - 0.14, y + 0.33, *zb(0.35, 1.05)), (x + 0.14, y + 0.61), "iron"),    # chase
+                     ((x - 0.17, y + 0.30, *zb(1.0, 1.2)), (x + 0.17, y + 0.64), "iron_dark")]  # muzzle
+            for wz in (-0.28, 0.2):                                                            # wheels
+                for wx in (-0.37, 0.31):
+                    parts.append(((x + wx, y, *zb(wz - 0.13, wz + 0.13)), (x + wx + 0.06, y + 0.28), "dark"))
+            for (a0, b0, za, zb_), (a1, b1), t in parts:
+                o, sz = to_bedrock(a0, b0, za, a1, b1, zb_)
+                cubes.append({"origin": o, "size": sz, "uv": {f: face_uv(t, 4, 4) for f in FACE_OF.values()}})
         elif need == "LANTERN":
             o, sz = to_bedrock(x - 0.1875, y, z - 0.1875, x + 0.1875, y + 0.4375, z + 0.1875)
             cubes.append({"origin": o, "size": sz, "uv": {f: face_uv("lantern", 6, 7) for f in FACE_OF.values()}})
@@ -240,14 +442,18 @@ def bedrock_pack(bout, layouts, icons):
     icons["shipwright_hammer"].save(os.path.join(rp, "textures/items/faultline/shipwright_hammer.png"))
     item_tex = {"resource_pack_name": "faultline_ships", "texture_name": "atlas.items", "texture_data": {
         "faultline.ship_icon": {"textures": "textures/items/faultline/ship_icon"},
-        "faultline.shipwright_hammer": {"textures": "textures/items/faultline/shipwright_hammer"}}}
+        "faultline.shipwright_hammer": {"textures": "textures/items/faultline/shipwright_hammer"},
+        "faultline.ship_cannon": {"textures": "textures/items/faultline/ship_cannon"},
+        "faultline.cannonball": {"textures": "textures/items/faultline/cannonball"}}}
+    icons["ship_cannon"].save(os.path.join(rp, "textures/items/faultline/ship_cannon.png"))
+    icons["cannonball"].save(os.path.join(rp, "textures/items/faultline/cannonball.png"))
     paper, stick = [], []
     for name, lay in layouts.items():
         for wreck in (False, True):
             key = name + ("_wreck" if wreck else "")
             cubes = ship_cubes(lay["cells"], wreck)
             geo = {"format_version": "1.16.0", "minecraft:geometry": [{
-                "description": {"identifier": f"geometry.faultline.ship_{key}", "texture_width": 64, "texture_height": 32,
+                "description": {"identifier": f"geometry.faultline.ship_{key}", "texture_width": 64, "texture_height": ATLAS_H,
                                 "visible_bounds_width": 48, "visible_bounds_height": 40, "visible_bounds_offset": [0, 10, 0]},
                 "bones": [{"name": "body", "pivot": [0, 24, 0], "cubes": cubes}]}]}
             _w(os.path.join(rp, "models/entity/faultline", f"ship_{key}.geo.json"), geo)
@@ -260,6 +466,10 @@ def bedrock_pack(bout, layouts, icons):
                           "display_name": lay["title"] + (" (wrecked)" if wreck else ""),
                           "bedrock_options": {"icon": "faultline.ship_icon", "allow_offhand": False},
                           "components": {"minecraft:equippable": {"slot": "head"}, "minecraft:max_stack_size": 1}})
+    for key, title in (("ship_cannon", "Ship Cannon"), ("cannonball", "Cannonball")):
+        paper.append({"type": "definition", "model": f"faultline:{key}", "bedrock_identifier": f"faultline:{key}", "display_name": title,
+                      "bedrock_options": {"icon": f"faultline.{key}", "allow_offhand": key == "cannonball"},
+                      "components": {"minecraft:max_stack_size": 64}})
     stick.append({"type": "definition", "model": "minecraft:mace", "bedrock_identifier": "faultline:shipwright_hammer",
                   "display_name": "Shipwright's Hammer", "bedrock_options": {"icon": "faultline.shipwright_hammer", "allow_offhand": False},
                   "components": {"minecraft:max_stack_size": 1}})

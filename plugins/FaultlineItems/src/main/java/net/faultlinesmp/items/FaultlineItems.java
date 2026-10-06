@@ -6969,6 +6969,10 @@ public final class FaultlineItems extends JavaPlugin {
                 }
                 list.add(external(icon(Material.MACE, null, ChatColor.GOLD + "" + ChatColor.BOLD + "Shipwright's Hammer", "FaultlineShips"),
                         "ship give hammer {amount} {player}", "FaultlineShips"));
+                list.add(external(icon(Material.PAPER, "ship_cannon", ChatColor.GRAY + "" + ChatColor.BOLD + "Ship Cannon", "FaultlineShips"),
+                        "ship give cannon {amount} {player}", "FaultlineShips"));
+                list.add(external(icon(Material.PAPER, "cannonball", ChatColor.DARK_GRAY + "" + ChatColor.BOLD + "Cannonball", "FaultlineShips"),
+                        "ship give cannonball {amount} {player}", "FaultlineShips"));
             }
             if (enabled("FaultlineBosses")) {
                 list.add(external(icon(Material.ENDER_EYE, "suspicious_eye", ChatColor.DARK_RED + "" + ChatColor.BOLD + "Suspicious Eye", "FaultlineBosses"),

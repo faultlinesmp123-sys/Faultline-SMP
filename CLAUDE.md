@@ -40,7 +40,7 @@ All are Maven projects: Java 21, `paper-api 1.21.11-R0.1-SNAPSHOT`. Build with
 | **FaultlineBosses** | `net.faultlinesmp.bosses` | Bosses in one ~585 KB file: Demon Eye, Frostbeard, Dune Devourer/Frostmaw, Don Lorenzo, Kraken, **Diamond Jacob**; admin boss form. **Rocco Vendetta** (+ Werner, the Vendetta Fist) lives in its own `Vendetta.java`. **The way down to the Lost Explorer** (Swarm, his staircase, the void world) is `Below.java`; **the Lost Explorer's fight** is `Explorer.java` (+ `ExplorerAnims.java`) | `/demoneye`, `/frostbeard`, `/dune`, `/don`, `/kraken`, `/jacob <summon\|kill\|phase\|item>`, `/rocco <summon\|kill\|phase\|tattoos\|werner\|item>`, `/bossmorph <boss\|off\|release>`, `/below <swarm\|void\|leave\|close\|slayer\|info>`, `/explorer <start\|stop\|skip\|phase\|stun\|reset\|arena>` |
 | **FaultlineIndex** | `net.faultlinesmp.index` | The Faultline Index codex. Entries live in `src/main/resources/index.yml`, font glyphs in `glyphs.yml` | `/index [give\|reset] [player]` |
 | **FaultlineCosmetics** | `net.faultlinesmp.cosmetics` | Permanent cosmetic unlocks worn in 4 slots (Hat, Neck, Back, Body) over armor, for Java and Bedrock. Cosmetics are defined in its `config.yml`, unlocks saved in `players.yml` | `/cosmetics`, admin `/cosmetic <unlock\|lock\|list\|reload>` |
-| **FaultlineShips** | `net.faultlinesmp.ships` | Ships: Sloop, Brigantine, Galleon. Blueprint → lay out on water → place every block → sail. Health, wrecks, Shipwright's Hammer repair minigame. Ships saved in `ships.yml` | `/ship [list\|info\|crew\|scrap]`, admin `/ship <give\|repair\|wreck\|remove>` |
+| **FaultlineShips** | `net.faultlinesmp.ships` | Ships: Sloop, Brigantine, Galleon. Blueprint → lay out on water → place every block → sail. Health, wrecks, Shipwright's Hammer repair minigame, cannons, banners, names. Ships saved in `ships.yml` | `/ship [list\|info\|name\|crew\|anchor\|stop\|banner\|scrap]`, admin `/ship <give\|repair\|wreck\|remove\|tp> [name\|#n]` |
 
 Notes:
 - `FaultlineItems.java` (~350 KB) and `FaultlineBosses.java` (~585 KB) are huge. Search them instead of reading them whole.
@@ -94,10 +94,22 @@ Notes:
 - Changing a plugin's default `config.yml` does NOT update the copy already on the server. Tell the owner
   which values to change in `plugins/<Plugin>/config.yml` on the VPS.
 - **Ships** (`FaultlineShips`; `ShipType.java` = the 3 layouts, `Ship.java` = one ship, `FaultlineShips.java` = items,
-  events, the hammer minigame, saving). A ship is one block display per block riding an invisible root ItemDisplay
-  (moving = one teleport; since 1.21.10 teleports keep passengers), each display's transformation places/rotates its block
-  (re-sent, interpolated, while turning). Local coords: +x bow, +z starboard, y 0 = top water block. Sloop 107 blocks / 150 hp /
-  3 seats, Brigantine 280 / 350 / 5 + 27-slot hold, Galleon 648 / 700 / 9 + 54-slot hold (medium and big need water 2 deep).
+  events, the hammer minigame, cannons, saving). A ship is one display per block riding an invisible root ItemDisplay
+  (moving = one teleport; since 1.21.10 teleports keep passengers). Each display's transformation is fixed (the cell in the
+  ship's frame, `Q0` = local→display axes) and turning sets every display's own yaw (`sendRotation`), so the ship turns as
+  one rigid piece (re-sending transforms made blocks wobble). Local coords: +x bow, +z starboard, y 0 = top water block.
+  v2 layouts (1.2.0): Sloop 111 blocks / 150 hp / 3 seats / 2 cannons, Brigantine 296 / 350 / 5 / 4 + crow's nest + 27-slot
+  hold, Galleon 666 / 700 / 9 / 8 + crow's nest + stern windows + 54-slot hold. Ladders down both sides (real ladder blocks
+  while anchored); bottoms are narrower than the deck (`hull(..., inset)`) and ladders are never checked against the bank,
+  so the Galleon fits a 7-wide river. Saves store blocks by position (`format: 2`); format-1 saves are mapped through
+  `layouts_v1.json`, and finished ships get the parts an update adds for free. S brakes (press again to reverse), `/ship stop`,
+  Jump/`/ship anchor` at speed brakes first. `/ship name`, `/ship banner` (right-click with any banner flies it from the
+  tallest mast; Bedrock: an armor stand wearing it). Admin `/ship <wreck|repair|remove|tp|info> <name|#n>` (#n from
+  `/ship list all`). **Cannons**: Ship Cannon item (paper, model `faultline:ship_cannon`) fills the cannon cells; Cannonball
+  (paper, `faultline:cannonball`; iron + gunpowder = 4) right-clicked on board fires the nearest loaded cannon on the side
+  you look at (35 degree arc, 3 s reload, a Snowball carrying the ship id): no block damage, 45 to a ship it lands on
+  (`cannon.*` in config). Models from `tools/ship_assets.py` (Java pack + Bedrock). The repair minigame judges a click by where
+  the marker was when the player saw it (ping + 1 tick, `seen()`); marker slower, green wider.
   Blueprints (base item GLOBE_BANNER_PATTERN): Sloop = paper around a boat, Brigantine = gold + paper around a Sloop Blueprint,
   Galleon = diamonds + paper around a Brigantine Blueprint. Building: right-click water → glowing outline → right-click
   the glowing blocks with the right kind (any wood; sneak = 16 at once). Each built cell gets a barrier while
@@ -118,7 +130,8 @@ Notes:
   (a block display can't draw a chest). Barriers go in only where nobody stands (players get lifted onto the deck); after a crash,
   barriers the save didn't know about are reconciled on the ship's first spawn. Nothing can be built on/over an anchored ship.
   Index icons from `python3 tools/ship_assets.py <pack> --preview tools/previews`. Tested with MockBukkit (build, sail, shore,
-  anchor, damage, wreck, repair, save/load, scrap, events, Bedrock stand-in, the fixes). MockBukkit quirks the test copy patches:
+  anchor, damage, wreck, repair, save/load, scrap, events, Bedrock stand-in, the fixes, and v2: braking, names, wreck by name,
+  banners, cannons, rivers, old-save migration). MockBukkit quirks the test copy patches:
   teleporting an entity with passengers, `Block.getLocation()` returning the block's own Location, rayTraceBlocks.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world

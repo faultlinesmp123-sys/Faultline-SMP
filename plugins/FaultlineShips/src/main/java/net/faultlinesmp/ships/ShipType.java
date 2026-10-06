@@ -27,7 +27,9 @@ enum ShipType {
     enum Need {
         PLANKS("Planks", Material.OAK_PLANKS), LOG("Logs", Material.OAK_LOG), FENCE("Wooden Fences", Material.OAK_FENCE),
         STAIRS("Wooden Stairs", Material.OAK_STAIRS), WOOL("Wool (sails)", Material.WHITE_WOOL),
-        CHEST("Chests", Material.CHEST), LANTERN("Lanterns", Material.LANTERN);
+        CHEST("Chests", Material.CHEST), LANTERN("Lanterns", Material.LANTERN), LADDER("Ladders", Material.LADDER),
+        TRAPDOOR("Wooden Trapdoors", Material.SPRUCE_TRAPDOOR), PANE("Glass Panes", Material.GLASS_PANE),
+        CANNON("Ship Cannons", Material.IRON_BLOCK); // a custom item, checked by the plugin
 
         final String label;
         final Material ghost;
@@ -42,13 +44,18 @@ enum ShipType {
             String n = m.name();
             return switch (this) {
                 case PLANKS -> n.endsWith("_PLANKS");
-                case LOG -> !n.contains("POTTED") && (n.endsWith("_LOG") || n.endsWith("_WOOD") || n.endsWith("_STEM")
-                        || n.endsWith("_HYPHAE") || n.equals("BAMBOO_BLOCK") || n.equals("STRIPPED_BAMBOO_BLOCK"));
+                case LOG -> !n.contains("POTTED") && (n.endsWith("_LOG") || n.endsWith("_WOOD") || n.endsWith("_HYPHAE")
+                        || ((n.endsWith("_STEM")) && (n.contains("CRIMSON") || n.contains("WARPED"))) // not melon/pumpkin stems
+                        || n.equals("BAMBOO_BLOCK") || n.equals("STRIPPED_BAMBOO_BLOCK"));
                 case FENCE -> n.endsWith("_FENCE") && wood(n);
                 case STAIRS -> n.endsWith("_STAIRS") && wood(n);
                 case WOOL -> n.endsWith("_WOOL");
                 case CHEST -> m == Material.CHEST || m == Material.TRAPPED_CHEST || m == Material.BARREL;
                 case LANTERN -> m == Material.LANTERN || m == Material.SOUL_LANTERN;
+                case LADDER -> m == Material.LADDER;
+                case TRAPDOOR -> n.endsWith("_TRAPDOOR") && wood(n);
+                case PANE -> n.endsWith("GLASS_PANE");
+                case CANNON -> false;
             };
         }
 
@@ -70,6 +77,8 @@ enum ShipType {
     int deckY, minX, maxX, halfWidth, height;
     List<Integer> probes;            // cells checked against the world while sailing (hull sides, rails, keel)
     Map<Long, Integer> index;        // local x,y,z -> cell number
+    Set<Integer> loose;              // ladders (and what holds them): never checked against the shore, so rivers stay passable
+    int flagX, flagY;                // where a banner flies: on top of the tallest mast
 
     ShipType(String title, String size, double maxHp, double speed, double turn, int cargo, boolean deep) {
         this.title = title; this.size = size; this.maxHp = maxHp; this.speed = speed; this.turn = turn;
@@ -108,16 +117,18 @@ enum ShipType {
         Layout l = new Layout();
         switch (this) {
             case SLOOP -> {
-                l.hull(-4, new int[]{3, 5, 5, 5, 5, 5, 5, 3, 1}, 1);
+                l.hull(-4, new int[]{3, 5, 5, 5, 5, 5, 5, 3, 1}, 1, 1);
                 l.mast(0, 2, 9);
                 l.sail(0, 3, new int[]{2, 2, 2, 1, 1});
                 l.bowsprit(5, 2, 2);
                 l.helm(-2, 2);
                 l.lantern(-4, 3, -1); l.lantern(-4, 3, 1);
+                l.ladder(-1);
+                l.cannon(2);
                 l.seat(1, 2, -1); l.seat(1, 2, 1);
             }
             case BRIGANTINE -> {
-                l.hull(-7, new int[]{5, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 5, 3, 1}, 1);
+                l.hull(-7, new int[]{5, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 5, 3, 1}, 1, 2);
                 l.castle(-7, -4, 2, -1, 1, true);
                 l.mast(-1, 2, 12);
                 l.sail(-1, 4, new int[]{3, 3, 3, 2, 2, 2});
@@ -127,13 +138,16 @@ enum ShipType {
                 l.helm(-5, 3);  // on the castle, clear of the stairs
                 l.chest(2, 2, -2, "south");
                 l.lantern(-7, 4, -2); l.lantern(-7, 4, 2);
+                l.nest(-1, 11);
+                l.ladder(-2);
+                l.cannon(0); l.cannon(2);
                 l.seat(1, 2, -2); l.seat(1, 2, 2); l.seat(-3, 2, -2); l.seat(-3, 2, 2);
             }
             case GALLEON -> {
                 int[] w = new int[23];
                 for (int i = 0; i < 23; i++) w[i] = 9;
                 w[0] = 7; w[19] = 7; w[20] = 5; w[21] = 3; w[22] = 1;
-                l.hull(-11, w, 2);
+                l.hull(-11, w, 2, 2);
                 l.castle(-11, -6, 3, -1, 1, true);  // quarterdeck
                 l.castle(-11, -8, 4, 0, 0, true);   // poop deck, on top of it
                 l.castle(7, 11, 3, -1, 1, false);   // forecastle
@@ -147,6 +161,11 @@ enum ShipType {
                 l.helm(-9, 5);  // on the poop deck
                 l.chest(-1, 3, -3, "south"); l.chest(-1, 3, 3, "north");
                 l.lantern(-11, 6, -3); l.lantern(-11, 6, 3);
+                l.nest(2, 15);
+                l.ladder(2);
+                l.cannon(-2); l.cannon(0); l.cannon(4); l.cannon(6);
+                l.window(-11, 1, -1); l.window(-11, 1, 1);           // stern windows under the poop deck
+                for (int x : new int[]{-9, -7}) { l.window(x, 1, -4); l.window(x, 1, 4); }
                 l.seat(0, 3, -3); l.seat(0, 3, 3); l.seat(4, 3, -3); l.seat(4, 3, 3);
                 l.seat(-4, 3, -3); l.seat(-4, 3, 3); l.seat(-7, 4, -3); l.seat(-7, 4, 3);
             }
@@ -164,6 +183,8 @@ enum ShipType {
         final List<Cell> late = new ArrayList<>(); // placed after the rails (bowsprit, lanterns)
         int deckY, minX, maxX, half;
         double[] helmSeat;
+        final Map<Integer, Integer> halfAt = new HashMap<>();
+        final Set<Long> loose = new HashSet<>();
 
         static long key(int x, int z) { return ((long) x << 32) ^ (z & 0xffffffffL); }
         static long key3(int x, int y, int z) { return ShipType.key3(x, y, z); }
@@ -171,17 +192,19 @@ enum ShipType {
         void put(int x, int y, int z, Need n, String props) { cells.put(key3(x, y, z), new Cell(x, y, z, n, props)); }
         boolean has(int x, int y, int z) { return cells.containsKey(key3(x, y, z)); }
 
-        void hull(int stern, int[] widths, int deckY) {
+        /** inset: how much narrower each side of the bottom is than the deck (a narrow bottom fits rivers). */
+        void hull(int stern, int[] widths, int deckY, int inset) {
             this.deckY = deckY;
             minX = stern; maxX = stern + widths.length - 1;
             Set<Long> deck = new HashSet<>();
             for (int i = 0; i < widths.length; i++) {
                 int x = stern + i, h = (widths[i] - 1) / 2;
                 half = Math.max(half, h);
+                halfAt.put(x, h);
                 for (int z = -h; z <= h; z++) deck.add(key(x, z));
             }
             for (int i = 0; i < widths.length; i++) {
-                int x = stern + i, h = (widths[i] - 1) / 2, hb = Math.max(0, h - 1);
+                int x = stern + i, h = (widths[i] - 1) / 2, hb = Math.max(0, h - inset);
                 for (int z = -h; z <= h; z++) {
                     put(x, deckY, z, Need.PLANKS, "");
                     // the bottom is a narrower ring with a keel down the middle: the deck overhangs it like a real hull
@@ -224,6 +247,36 @@ enum ShipType {
         void chest(int x, int y, int z, String facing) { put(x, y, z, Need.CHEST, "facing=" + facing); }
         void seat(int x, int y, int z) { seats.add(new double[]{x, y, z}); }
 
+        /** A ladder down each side to the water, a gap in the rail at the top. */
+        void ladder(int x) {
+            int h = halfAt.get(x);
+            for (int s : new int[]{-1, 1}) {
+                for (int y = 0; y <= deckY; y++) {
+                    put(x, y, s * (h + 1), Need.LADDER, "facing=" + (s > 0 ? "south" : "north"));
+                    loose.add(key3(x, y, s * (h + 1)));
+                }
+                if (!has(x, 0, s * h)) { put(x, 0, s * h, Need.PLANKS, ""); loose.add(key3(x, 0, s * h)); } // what the bottom rung hangs on
+                openings.get(0).add(key(x, s * h));
+            }
+        }
+
+        /** A cannon on each side, standing in the rail and pointing out. */
+        void cannon(int x) {
+            int h = halfAt.get(x);
+            for (int s : new int[]{-1, 1}) put(x, deckY + 1, s * h, Need.CANNON, "facing=" + (s > 0 ? "south" : "north"));
+        }
+
+        /** A crow's nest: a trapdoor platform round the mast at y with a fence ring on it. */
+        void nest(int mx, int y) {
+            for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) {
+                if (dx == 0 && dz == 0) continue;
+                put(mx + dx, y, dz, Need.TRAPDOOR, "facing=north,half=top,open=false");
+                late.add(new Cell(mx + dx, y + 1, dz, Need.FENCE, ""));
+            }
+        }
+
+        void window(int x, int y, int z) { put(x, y, z, Need.PANE, ""); }
+
         /** The wheel: a fence post on the deck at floor level y, the captain sits right behind it. */
         void helm(int x, int y) { put(x, y, 0, Need.FENCE, ""); helmSeat = new double[]{x - 1, y, 0}; }
 
@@ -247,7 +300,7 @@ enum ShipType {
             // fences connect to fences and solid blocks beside them
             List<Cell> out = new ArrayList<>();
             for (Cell c : cells.values()) {
-                if (c.need() != Need.FENCE) { out.add(c); continue; }
+                if (c.need() != Need.FENCE && c.need() != Need.PANE) { out.add(c); continue; }
                 String p = "east=" + joins(c.x() + 1, c.y(), c.z()) + ",west=" + joins(c.x() - 1, c.y(), c.z())
                         + ",south=" + joins(c.x(), c.y(), c.z() + 1) + ",north=" + joins(c.x(), c.y(), c.z() - 1);
                 out.add(new Cell(c.x(), c.y(), c.z(), c.need(), p));
@@ -273,13 +326,20 @@ enum ShipType {
                         || !idx.containsKey(key3(c.x(), c.y(), c.z() + 1)) || !idx.containsKey(key3(c.x(), c.y(), c.z() - 1));
                 if (c.y() == 0 || (outer && c.y() <= deckY + 2) || c.x() > maxX) probes.add(i);
             }
+            Set<Integer> lo = new HashSet<>();
+            for (long k : loose) { Integer i = idx.get(k); if (i != null) lo.add(i); }
+            probes.removeIf(lo::contains);
             t.probes = Collections.unmodifiableList(probes);
             t.index = Collections.unmodifiableMap(idx);
+            t.loose = Collections.unmodifiableSet(lo);
+            int fx = 0, fy = -1;
+            for (Cell c : out) if (c.need() == Need.LOG && c.z() == 0 && c.y() > fy) { fy = c.y(); fx = c.x(); }
+            t.flagX = fx; t.flagY = fy + 1;
         }
 
         boolean joins(int x, int y, int z) {
             Cell n = cells.get(key3(x, y, z));
-            return n != null && (n.need() == Need.FENCE || n.need() == Need.PLANKS || n.need() == Need.LOG || n.need() == Need.STAIRS);
+            return n != null && (n.need() == Need.FENCE || n.need() == Need.PLANKS || n.need() == Need.LOG || n.need() == Need.STAIRS || n.need() == Need.PANE);
         }
     }
 }

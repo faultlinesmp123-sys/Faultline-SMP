@@ -54,6 +54,11 @@ import java.util.UUID;
 final class Ship {
     static final String TAG = "faultline_ship";
     static final float GHOST = 0.45f;
+    static final String CANNON_DATA = "faultline:cannon";
+    /** Local axes -> display axes (bow = display +z at yaw 0); the entity's own yaw turns the whole ship as one piece. */
+    static final Quaternionf Q0 = new Quaternionf().rotationY((float) Math.toRadians(-90));
+    /** Item displays draw items turned half way round. */
+    static final Quaternionf FLIP = new Quaternionf().rotationY((float) Math.PI);
 
     final FaultlineShips pl;
     final UUID id;
@@ -65,12 +70,16 @@ final class Ship {
     double hp;
     boolean building, anchored, wrecked;
     final String[] blocks;                      // block data placed in each cell (null = still a ghost)
+    String name;                                // optional, set with /ship name
+    ItemStack banner;                           // flown from the tallest mast
     final List<String> barriers = new ArrayList<>(); // "x,y,z|original block data" for every barrier we put down
     ItemStack[] cargo;
 
     // ---- runtime ----
     ItemDisplay root;
-    BlockDisplay[] displays;
+    Display[] displays;  // block displays; item displays for cannons
+    ItemDisplay flag;
+    ArmorStand flagStand; // Bedrock only: wears the banner
     ArmorStand[] seats;  // armor stands, not displays: Bedrock (Geyser) has no display entities to sit on
     ArmorStand stand;    // Bedrock only: wears an item whose Bedrock model is the whole ship
     boolean reconciled;
@@ -84,7 +93,8 @@ final class Ship {
     int anchorStep = -1;
     float anchorYaw0, anchorYaw1;
     double anchorX0, anchorZ0, anchorX1, anchorZ1;
-    boolean prevJump, prevForward;
+    boolean prevJump, prevForward, prevBack, braking, anchorQueued, allStop;
+    final java.util.Map<Integer, Long> cannonReady = new java.util.HashMap<>();
     long lastRam, lastHurtFx;
     int filled;
 
@@ -98,6 +108,7 @@ final class Ship {
     //  geometry
     // =====================================================================================================
     World world() { return Bukkit.getWorld(world); }
+    String title() { return name != null ? name : type.title; }
     boolean sailing() { return !building && !anchored && anchorStep < 0; }
     double maxHp() { return type.maxHp * pl.getConfig().getDouble("ships." + type.size + ".health-multiplier", 1.0); }
 
@@ -153,6 +164,7 @@ final class Ship {
         double[][] spots = all ? new double[][]{{0, 0}} : new double[][]{{0, 0}, {0.49, 0}, {-0.49, 0}, {0, 0.49}, {0, -0.49}};
         for (int k = 0; k < n; k++) {
             int i = all ? k : check.get(k);
+            if (type.loose.contains(i)) continue; // ladders may brush the bank
             ShipType.Cell c = type.cells.get(i);
             for (double[] o : spots) {
                 double[] wp = toWorld(px, pz, pyaw, c.x() + o[0], c.z() + o[1]);
@@ -189,25 +201,30 @@ final class Ship {
         despawn();
         World w = world();
         if (w == null) return;
-        Location base = new Location(w, x, y + visualY(), z);
+        Location base = new Location(w, x, y + visualY(), z, yaw, 0);
         root = w.spawn(base, ItemDisplay.class, d -> {
             d.setPersistent(false);
             d.addScoreboardTag(TAG);
-            d.setTeleportDuration(2);
+            d.setTeleportDuration(3); // same smoothing as the armor stands the crew sit on
         });
-        displays = new BlockDisplay[type.cells.size()];
+        displays = new Display[type.cells.size()];
         for (int i = 0; i < displays.length; i++) {
             final int idx = i;
-            displays[i] = w.spawn(base, BlockDisplay.class, d -> {
+            java.util.function.Consumer<Display> setup = d -> {
                 d.setPersistent(false);
                 d.addScoreboardTag(TAG);
-                d.setBlock(dataOf(idx));
-                d.setTransformation(transform(idx, yaw));
+                d.setTeleportDuration(3); // turning is the entity's yaw: this smooths it, the same for every block
+                d.setTransformation(transform(idx));
                 if (blocks[idx] == null) { d.setGlowing(true); d.setGlowColorOverride(Color.fromRGB(150, 220, 255)); }
-            });
+            };
+            if (type.cells.get(i).need() == ShipType.Need.CANNON)
+                displays[i] = w.spawn(base, ItemDisplay.class, d -> { d.setItemStack(pl.cannonModel()); setup.accept(d); });
+            else
+                displays[i] = w.spawn(base, BlockDisplay.class, d -> { d.setBlock(dataOf(idx)); setup.accept(d); });
             root.addPassenger(displays[i]);
         }
         sentYaw = yaw;
+        spawnFlag();
         if (!building) { spawnSeats(); spawnStand(); }
         if (!reconciled) { reconciled = true; reconcileBarriers(); }
         if (sailing()) spawnHitboxes();
@@ -288,7 +305,10 @@ final class Ship {
         if (seats != null) for (ArmorStand s : seats) if (s != null && s.isValid()) { s.eject(); s.remove(); }
         if (stand != null && stand.isValid()) stand.remove();
         stand = null;
-        if (displays != null) for (BlockDisplay d : displays) if (d != null && d.isValid()) d.remove();
+        if (displays != null) for (Display d : displays) if (d != null && d.isValid()) d.remove();
+        if (flag != null && flag.isValid()) flag.remove();
+        if (flagStand != null && flagStand.isValid()) flagStand.remove();
+        flag = null; flagStand = null;
         if (root != null && root.isValid()) { root.eject(); root.remove(); }
         removeHitboxes();
         if (label != null && label.isValid()) label.remove();
@@ -313,39 +333,117 @@ final class Ship {
 
     float scaleOf(int i) {
         if (blocks[i] == null) return GHOST;
+        if (anchored && type.cells.get(i).need() == ShipType.Need.LADDER) return 0f; // a real ladder block stands there
         if (wrecked && type.cells.get(i).need() == ShipType.Need.WOOL && (i % 2 == 0 || type.cells.get(i).y() % 3 == 0)) return 0f; // torn sails
         return 1f;
     }
 
-    Transformation transform(int i, float atYaw) {
+    /**
+     * Where a cell's display draws, in the ship's own frame (it never changes while sailing). The display entity's yaw
+     * (the ship's yaw) turns it, so every block of the ship turns together as one rigid piece.
+     */
+    Transformation transform(int i) {
         ShipType.Cell c = type.cells.get(i);
         float s = scaleOf(i);
-        Quaternionf q = new Quaternionf().rotationY((float) -Math.toRadians(atYaw + 90));
+        if (c.need() == ShipType.Need.CANNON) { // the cannon model points at +z; port-side ones turn round
+            Quaternionf q = new Quaternionf(Q0).mul(c.props().contains("south") ? FLIP : new Quaternionf());
+            Vector3f t = new Vector3f(c.x(), c.y() + 0.5f * s, c.z());
+            Q0.transform(t);
+            return new Transformation(t, q, new Vector3f(s, s, s), new Quaternionf());
+        }
         Vector3f t = new Vector3f(c.x() - s * 0.5f, c.y() + 0.5f - s * 0.5f, c.z() - s * 0.5f);
-        q.transform(t);
-        return new Transformation(t, q, new Vector3f(s, s, s), new Quaternionf());
+        Q0.transform(t);
+        return new Transformation(t, new Quaternionf(Q0), new Vector3f(s, s, s), new Quaternionf());
     }
 
-    void sendTransforms(int interp) {
-        if (displays == null) return;
-        for (int i = 0; i < displays.length; i++) {
-            BlockDisplay d = displays[i];
-            if (d == null || !d.isValid()) continue;
-            d.setInterpolationDelay(0);
-            d.setInterpolationDuration(interp);
-            d.setTransformation(transform(i, yaw));
-        }
+    /** Turn the whole ship: every display (and the flag) gets the ship's yaw; the client smooths it. */
+    void sendRotation() {
+        if (displays != null) for (Display d : displays) if (d != null && d.isValid()) d.setRotation(yaw, 0);
+        if (flag != null && flag.isValid()) flag.setRotation(yaw, 0);
         sentYaw = yaw;
     }
 
     void refreshCell(int i) {
         if (displays == null || displays[i] == null || !displays[i].isValid()) return;
-        BlockDisplay d = displays[i];
-        d.setBlock(dataOf(i));
+        Display d = displays[i];
+        if (d instanceof BlockDisplay bd) bd.setBlock(dataOf(i));
         d.setGlowing(blocks[i] == null);
         d.setInterpolationDelay(0);
         d.setInterpolationDuration(4);
-        d.setTransformation(transform(i, yaw));
+        d.setTransformation(transform(i));
+    }
+
+    void refreshLadders() {
+        for (int i = 0; i < blocks.length; i++) if (type.cells.get(i).need() == ShipType.Need.LADDER) refreshCell(i);
+    }
+
+    // ---- the banner ----
+    void spawnFlag() {
+        World w = world();
+        if (w == null || banner == null || root == null) return;
+        Location base = new Location(w, x, y + visualY(), z, yaw, 0);
+        flag = w.spawn(base, ItemDisplay.class, d -> {
+            d.setPersistent(false);
+            d.addScoreboardTag(TAG);
+            d.setTeleportDuration(3);
+            d.setItemStack(banner);
+            float sc = 1.4f;
+            Vector3f t = new Vector3f(type.flagX, type.flagY + 0.5f * sc, 0);
+            Q0.transform(t);
+            d.setTransformation(new Transformation(t, new Quaternionf(Q0).mul(FLIP), new Vector3f(sc, sc, sc), new Quaternionf()));
+        });
+        root.addPassenger(flag);
+        flagStand = w.spawn(flagStandLoc(), ArmorStand.class, a -> {
+            seatSetup(a);
+            a.setMarker(false);
+            a.setVisibleByDefault(false);
+            a.getEquipment().setHelmet(banner.clone());
+        });
+        for (Player p : w.getPlayers()) {
+            if (FaultlineShips.bedrock(p)) p.showEntity(pl, flagStand);
+            else p.hideEntity(pl, flagStand);
+        }
+    }
+
+    Location flagStandLoc() {
+        double[] w = toWorld(x, z, yaw, type.flagX, 0);
+        return new Location(world(), w[0], y + type.flagY - 1.2 + visualY(), w[1], yaw + 90, 0);
+    }
+
+    /** Hang a banner (any banner, patterns and all). Returns the one it replaces, or null. */
+    ItemStack setBanner(ItemStack b) {
+        ItemStack old = banner;
+        banner = b == null ? null : b.clone();
+        if (banner != null) banner.setAmount(1);
+        if (flag != null && flag.isValid()) flag.remove();
+        if (flagStand != null && flagStand.isValid()) flagStand.remove();
+        flag = null; flagStand = null;
+        spawnFlag();
+        pl.dirty = true;
+        return old;
+    }
+
+    // ---- cannons ----
+    List<Integer> cannons() {
+        List<Integer> out = new ArrayList<>();
+        for (int i = 0; i < blocks.length; i++) if (type.cells.get(i).need() == ShipType.Need.CANNON && blocks[i] != null) out.add(i);
+        return out;
+    }
+
+    /** +1 for a starboard cannon, -1 for port. */
+    int sideOf(int i) { return type.cells.get(i).props().contains("south") ? 1 : -1; }
+
+    /** World position of a cannon's muzzle. */
+    Location muzzle(int i) {
+        ShipType.Cell c = type.cells.get(i);
+        double[] w = toWorld(x, z, yaw, c.x(), c.z() + sideOf(i) * 0.9);
+        return new Location(world(), w[0], y + c.y() + 0.55 + visualY(), w[1]);
+    }
+
+    /** Straight out of the cannon's side of the ship. */
+    org.bukkit.util.Vector outward(int i) {
+        double[] a = toWorld(0, 0, yaw, 0, sideOf(i));
+        return new org.bukkit.util.Vector(a[0], 0, a[1]).normalize();
     }
 
     void refreshLabel() {
@@ -361,7 +459,9 @@ final class Ship {
             text = ChatColor.RED + "" + ChatColor.BOLD + "WRECKED\n" + ChatColor.GRAY + "Repair it with a Shipwright's Hammer\n"
                     + ChatColor.WHITE + "Hull " + (int) Math.round(100 * hp / maxHp()) + "%";
         } else if (anchored && hp < maxHp()) {
-            text = ChatColor.GOLD + type.title + ChatColor.GRAY + " · Hull " + (int) Math.round(100 * hp / maxHp()) + "%";
+            text = ChatColor.GOLD + title() + ChatColor.GRAY + " · Hull " + (int) Math.round(100 * hp / maxHp()) + "%";
+        } else if (anchored && name != null) {
+            text = ChatColor.GOLD + "" + ChatColor.BOLD + name;
         }
         if (text == null) {
             if (label != null && label.isValid()) label.remove();
@@ -428,8 +528,8 @@ final class Ship {
         seats[best].teleport(seatLoc(best));
         seats[best].addPassenger(p);
         if (best == 0) {
-            p.sendMessage(ChatColor.AQUA + "You take the helm of the " + type.title + ". " + ChatColor.GRAY
-                    + (anchored ? "W to raise the anchor and sail. " : "") + "W/S sail, A/D steer, Sprint for full sail, Jump to drop anchor.");
+            p.sendMessage(ChatColor.AQUA + "You take the helm of the " + title() + ". " + ChatColor.GRAY
+                    + (anchored ? "W to raise the anchor and sail. " : "") + "W sail, S brake (then reverse), A/D steer, Sprint for full sail, Jump to drop anchor.");
         }
         return true;
     }
@@ -445,8 +545,8 @@ final class Ship {
         else if (sailing()) sail();
         // move everything
         if (sailing() || anchorStep >= 0) {
-            int every = type == ShipType.SLOOP ? 2 : type == ShipType.BRIGANTINE ? 3 : 4;
-            if (Math.abs(yaw - sentYaw) > 0.01f && ticks % every == 0) sendTransforms(every);
+            int every = type == ShipType.GALLEON ? 2 : 1;
+            if (Math.abs(yaw - sentYaw) >= 0.5f && ticks % every == 0) sendRotation();
             place();
         }
         if (ticks % 10 == 0) {
@@ -470,6 +570,7 @@ final class Ship {
             if (it.isValid()) it.teleport(new Location(w, p[0], y, p[1]));
         }
         if (stand != null && stand.isValid()) stand.teleport(new Location(w, x, y + visualY(), z, yaw, 0));
+        if (flagStand != null && flagStand.isValid()) flagStand.teleport(flagStandLoc());
     }
 
     private Input input(Player p) { return p == null ? null : pl.inputSource.apply(p); }
@@ -492,13 +593,31 @@ final class Ship {
         if (in != null) { f = in.isForward(); b = in.isBackward(); l = in.isLeft(); r = in.isRight(); sp = in.isSprint(); j = in.isJump(); }
         if (wrecked) { f = b = l = r = sp = j = false; }
         boolean jumped = j && !prevJump;
+        boolean backPressed = b && !prevBack;
         prevJump = j;
         prevForward = f;
-        if (jumped && cap != null) { dropAnchor(cap); return; }
+        prevBack = b;
         double max = type.speed * pl.getConfig().getDouble("ships." + type.size + ".speed-multiplier", 1.0);
-        double target = f ? max * (sp ? 1.25 : 1) : b ? -max * 0.35 : 0;
+        if (jumped && cap != null) {
+            if (Math.abs(speed) <= max * 0.3) { dropAnchor(cap); return; }
+            anchorQueued = true; // too fast: brake hard, then drop it
+            cap.sendActionBar(Component.text("Braking to drop anchor...", NamedTextColor.YELLOW));
+        }
+        if (anchorQueued) {
+            if (f || cap == null) anchorQueued = false;
+            else {
+                speed = brake(speed, max);
+                if (Math.abs(speed) <= max * 0.3) { anchorQueued = false; dropAnchor(cap); return; }
+            }
+        }
+        // S brakes hard to a stop; let go and press it again to go astern
+        if (b && speed > 0.002 && !braking && backPressed) braking = true;
+        if (allStop) { braking = true; if (speed == 0 || f) allStop = false; }
+        else if (!b) braking = false;
+        double target = f ? max * (sp ? 1.25 : 1) : b && !braking ? -max * 0.35 : 0;
         double acc = max / 45;
-        if (target == 0) { speed *= 0.975; if (Math.abs(speed) < 0.004) speed = 0; }
+        if (braking || anchorQueued) { speed = brake(speed, max); if (speed == 0) braking = b; }
+        else if (target == 0) { speed *= 0.975; if (Math.abs(speed) < 0.004) speed = 0; }
         else speed += Math.max(-acc, Math.min(acc, target - speed));
         double steer = (r ? 1 : 0) - (l ? 1 : 0);
         double rate = steer * type.turn * (0.35 + 0.65 * Math.min(1, Math.abs(speed) / max));
@@ -513,6 +632,11 @@ final class Ship {
         yaw = ((yaw % 360) + 360) % 360;
         if (Math.abs(sentYaw - yaw) > 180) sentYaw += sentYaw > yaw ? -360 : 360; // keep the interpolation the short way round
         if (ticks % 20 == 0) pl.dirty = true;
+    }
+
+    static double brake(double speed, double max) {
+        double d = max / 12;
+        return Math.abs(speed) <= d ? 0 : speed - Math.signum(speed) * d;
     }
 
     void ram(double max) {
@@ -564,39 +688,51 @@ final class Ship {
             anchorStep = -1;
             yaw = ((Math.round(anchorYaw1) % 360) + 360) % 360;
             x = anchorX1; z = anchorZ1;
-            if (!clear(x, z, yaw, true, null)) { // something moved in while we swung round
-                for (Player p : riders()) p.sendActionBar(Component.text("Couldn't drop anchor here.", NamedTextColor.RED));
-                return;
+            if (!clear(x, z, yaw, true, null)) { // something moved in while we swung round: one more look nearby
+                double[] spot = snapSpot((float) yaw);
+                if (spot == null) {
+                    for (Player p : riders()) p.sendMessage(ChatColor.RED + "Couldn't drop anchor here: the " + title()
+                            + " is still afloat (the deck isn't walkable). Move away from the shore and try again.");
+                    return;
+                }
+                x = spot[0]; z = spot[1];
             }
-            sendTransforms(3);
-            anchor();
+            sendRotation();
+            int solid = anchor();
             Player cap = rider(0);
-            if (cap != null) cap.sendMessage(ChatColor.AQUA + "Anchor dropped. " + ChatColor.GRAY + "The crew can walk the deck. W at the helm raises it again.");
+            if (cap != null) cap.sendMessage(ChatColor.AQUA + "Anchor dropped. " + ChatColor.GRAY + "The deck is solid (" + solid + "/" + filled
+                    + " blocks), climb the ladders from the water. W at the helm raises the anchor.");
         }
     }
 
-    /** Snap is done: barriers in every built cell, so the deck can be walked on. */
-    void anchor() {
+    /** Snap is done: barriers in every built cell, so the deck can be walked on. Returns how many cells are solid. */
+    int anchor() {
         anchored = true;
-        speed = 0; turnRate = 0;
+        speed = 0; turnRate = 0; braking = false; anchorQueued = false; allStop = false;
         removeHitboxes();
         place();
-        for (int i = 0; i < blocks.length; i++) if (blocks[i] != null) putBarrier(i);
+        int solid = 0;
+        for (int i = 0; i < blocks.length; i++) if (blocks[i] != null && putBarrier(i)) solid++;
+        refreshLadders();
         liftPlayers();
         refreshLabel();
         pl.saveNow();
+        return solid;
     }
 
-    void putBarrier(int i) {
+    /** A barrier in a built cell (a real ladder for ladder cells, so they can be climbed). True if the cell is solid now. */
+    boolean putBarrier(int i) {
         Block b = blockOf(i);
-        if (b.getType() == Material.BARRIER) return;
-        if (!water(b) && !air(b)) return;
+        boolean ladder = type.cells.get(i).need() == ShipType.Need.LADDER;
+        if (b.getType() == (ladder ? Material.LADDER : Material.BARRIER)) return true;
+        if (!water(b) && !air(b)) return false;
         boolean wet = water(b);
         String was = b.getBlockData().getAsString();
-        BlockData bar = Material.BARRIER.createBlockData();
+        BlockData bar = ladder ? dataOf(i) : Material.BARRIER.createBlockData();
         if (bar instanceof Waterlogged wl) wl.setWaterlogged(wet);
         b.setBlockData(bar, false);
         barriers.add(b.getX() + "," + b.getY() + "," + b.getZ() + "|" + was);
+        return true;
     }
 
     void clearBarriers() {
@@ -609,14 +745,15 @@ final class Ship {
         int bar = s.indexOf('|');
         String[] p = s.substring(0, bar).split(",");
         Block b = w.getBlockAt(Integer.parseInt(p[0]), Integer.parseInt(p[1]), Integer.parseInt(p[2]));
-        if (b.getType() != Material.BARRIER) return;
+        if (b.getType() != Material.BARRIER && b.getType() != Material.LADDER) return;
         try { b.setBlockData(Bukkit.createBlockData(s.substring(bar + 1)), false); }
-        catch (IllegalArgumentException ex) { b.setType(Material.WATER, false); }
+        catch (IllegalArgumentException ex) { b.setType(s.contains("water") ? Material.WATER : Material.AIR, false); }
     }
 
     void raiseAnchor(Player cap) {
         clearBarriers();
         anchored = false;
+        refreshLadders();
         // whoever is standing on the deck gets a seat, or is left behind
         for (Player p : world().getPlayers()) {
             if (p.isInsideVehicle() || p.getLocation().distanceSquared(center()) > radius() * radius() + 25) continue;
@@ -628,7 +765,7 @@ final class Ship {
         refreshLabel();
         world().playSound(center(), Sound.BLOCK_CHAIN_BREAK, SoundCategory.BLOCKS, 1.5f, 0.7f);
         world().playSound(center(), Sound.ENTITY_PLAYER_SPLASH, SoundCategory.BLOCKS, 1f, 1.2f);
-        cap.sendActionBar(Component.text("Anchor up. Full sail with Sprint, Jump to drop anchor.", NamedTextColor.AQUA));
+        cap.sendActionBar(Component.text("Anchor up. Full sail with Sprint, S to brake, Jump to drop anchor.", NamedTextColor.AQUA));
         pl.saveNow();
     }
 
@@ -653,17 +790,29 @@ final class Ship {
     void reconcileBarriers() {
         World w = world();
         if (w == null) return;
-        Set<String> known = new HashSet<>();
+        Set<String> known = new HashSet<>(), cellsAt = new HashSet<>();
         for (String b : barriers) known.add(b.substring(0, b.indexOf('|')));
         boolean changed = false;
         for (int i = 0; i < blocks.length; i++) {
             Block b = blockOf(i);
-            if (b.getType() != Material.BARRIER) continue;
             String at = b.getX() + "," + b.getY() + "," + b.getZ();
+            cellsAt.add(at);
+            if (b.getType() != Material.BARRIER && b.getType() != Material.LADDER) {
+                if (anchored && blocks[i] != null && putBarrier(i)) changed = true; // a cell the ship didn't have before (an update)
+                continue;
+            }
             if (known.contains(at)) continue;
             String was = type.cells.get(i).y() == 0 ? "minecraft:water" : "minecraft:air";
             if (anchored && blocks[i] != null) barriers.add(at + "|" + was);
             else b.setBlockData(Bukkit.createBlockData(was), false);
+            changed = true;
+        }
+        // barriers of cells the ship doesn't have any more (an update): water or air again
+        for (java.util.Iterator<String> it = barriers.iterator(); it.hasNext(); ) {
+            String b = it.next();
+            if (cellsAt.contains(b.substring(0, b.indexOf('|')))) continue;
+            restoreBarrier(w, b);
+            it.remove();
             changed = true;
         }
         if (changed) pl.saveNow();
@@ -673,7 +822,7 @@ final class Ship {
     List<BlockState> fakes(List<Integer> cells) {
         List<BlockState> out = new ArrayList<>();
         for (int i : cells) {
-            if (blocks[i] == null) continue;
+            if (blocks[i] == null || type.cells.get(i).need() == ShipType.Need.CANNON) continue;
             Block b = blockOf(i);
             if (b.getType() != Material.BARRIER) continue;
             BlockState st = b.getState();
@@ -686,7 +835,10 @@ final class Ship {
     // =====================================================================================================
     //  building
     // =====================================================================================================
-    String blockFor(int i, Material m) { return withProps(m, type.cells.get(i).props()).getAsString(); }
+    String blockFor(int i, Material m) {
+        if (type.cells.get(i).need() == ShipType.Need.CANNON) return CANNON_DATA;
+        return withProps(m, type.cells.get(i).props()).getAsString();
+    }
 
     void fill(int i, Material m) {
         if (blocks[i] != null) return;
@@ -696,7 +848,8 @@ final class Ship {
         refreshCell(i);
         pl.showFakes(this, List.of(i));
         Block b = blockOf(i);
-        world().playSound(b.getLocation().add(0.5, 0.5, 0.5), m.createBlockData().getSoundGroup().getPlaceSound(), SoundCategory.BLOCKS, 1f, 0.9f);
+        Sound place = type.cells.get(i).need() == ShipType.Need.CANNON ? Sound.BLOCK_ANVIL_PLACE : m.createBlockData().getSoundGroup().getPlaceSound();
+        world().playSound(b.getLocation().add(0.5, 0.5, 0.5), place, SoundCategory.BLOCKS, type.cells.get(i).need() == ShipType.Need.CANNON ? 0.5f : 1f, 0.9f);
         if (filled >= blocks.length) finish();
         else if (filled % 4 == 0) refreshLabel();
         pl.dirty = true;
@@ -755,7 +908,7 @@ final class Ship {
             double[] spot = snapSpot(ty);
             if (spot != null) {
                 yaw = ((Math.round(ty) % 360) + 360) % 360; x = spot[0]; z = spot[1];
-                sendTransforms(6);
+                sendRotation();
                 anchor();
             }
         }
@@ -769,10 +922,10 @@ final class Ship {
         world().spawnParticle(Particle.LARGE_SMOKE, c, 60, type.halfWidth, 1.5, 3, 0.02);
         String who = by != null ? " by " + by.getName() : "";
         for (Player p : world().getPlayers()) if (p.getLocation().distanceSquared(c) < 64 * 64)
-            p.sendMessage(ChatColor.RED + "A " + type.title + " has been wrecked" + who + "!");
+            p.sendMessage(ChatColor.RED + (name != null ? "The " + name : "A " + type.title) + " has been wrecked" + who + "!");
         Player o = Bukkit.getPlayer(owner);
         if (o != null && o.getLocation().distanceSquared(c) >= 64 * 64)
-            o.sendMessage(ChatColor.RED + "Your " + type.title + " has been wrecked! Repair it with a Shipwright's Hammer.");
+            o.sendMessage(ChatColor.RED + "Your " + title() + " has been wrecked! Repair it with a Shipwright's Hammer.");
         pl.saveNow();
     }
 
@@ -806,7 +959,7 @@ final class Ship {
     void hud() {
         List<Player> riders = riders();
         if (bar == null) bar = Bukkit.createBossBar(type.title, BarColor.BLUE, BarStyle.SEGMENTED_10);
-        bar.setTitle(ChatColor.AQUA + type.title + ChatColor.GRAY + "  Hull " + (int) Math.ceil(hp) + "/" + (int) maxHp());
+        bar.setTitle(ChatColor.AQUA + title() + ChatColor.GRAY + "  Hull " + (int) Math.ceil(hp) + "/" + (int) maxHp());
         bar.setProgress(Math.max(0, Math.min(1, hp / maxHp())));
         bar.setColor(hp < maxHp() * 0.3 ? BarColor.RED : hp < maxHp() * 0.7 ? BarColor.YELLOW : BarColor.BLUE);
         Set<Player> want = new HashSet<>(riders);
@@ -816,7 +969,7 @@ final class Ship {
         if (cap != null && sailing() && !pl.repairing(cap)) {
             double ms = Math.abs(speed) * 20;
             cap.sendActionBar(Component.text(String.format("⚓ %.1f m/s", ms), NamedTextColor.AQUA)
-                    .append(Component.text("   W/S sail · A/D steer · Sprint full sail · Jump anchor", NamedTextColor.GRAY)));
+                    .append(Component.text(braking ? "   BRAKING" : anchorQueued ? "   dropping anchor..." : "   W sail · S brake · A/D steer · Sprint full sail · Jump anchor", braking || anchorQueued ? NamedTextColor.YELLOW : NamedTextColor.GRAY)));
         }
     }
 
@@ -833,7 +986,7 @@ final class Ship {
     Inventory hold() {
         if (hold == null && type.cargo > 0) {
             Hold h = new Hold(this);
-            hold = Bukkit.createInventory(h, type.cargo, type.title + "'s Hold");
+            hold = Bukkit.createInventory(h, type.cargo, title() + "'s Hold");
             h.inv = hold;
             if (cargo != null) hold.setContents(java.util.Arrays.copyOf(cargo, type.cargo));
         }

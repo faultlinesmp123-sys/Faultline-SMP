@@ -106,9 +106,20 @@ Notes:
   water, everything above in air (checked each tick). Damage: melee (axe 8...), arrows/tridents, explosions, ramming the shore;
   owner + `/ship crew` can't hurt it. 0 hp = wrecked (torn sails, can't sail until full). Shipwright's Hammer (base item
   STICK with the vanilla mace model; can't be crafted with): timing bar in the action bar, 1 Planks per good hit.
-  Bedrock (Geyser) players can't see display entities, so they don't see the ships. Index icons from
-  `python3 tools/ship_assets.py <pack> --preview tools/previews`. Tested with MockBukkit (build, sail, shore, anchor, damage,
-  wreck, repair, save/load, scrap, events).
+  Seats are invisible marker armor stands (Bedrock can ride those; it has no display entities).
+  **Bedrock** (Geyser can't draw block displays): a finished ship also gets a stand-in armor stand, hidden from Java players
+  and shown to Bedrock ones (`bedrock(p)` = Floodgate UUID, top half 0), wearing paper with item model
+  `faultline:ship/<type>[_wreck]`. Geyser maps that to a Bedrock attachable drawing the whole ship (default woods). While
+  a ship is being built, Bedrock players get fake block changes (the real block in each built cell, over the barrier) and
+  particles on the empty cells. `/ship anchor` drops/raises without the Jump key. Bedrock files:
+  `bedrock/FaultlineShips.mcpack` → `plugins/Geyser-Spigot/packs/`, `bedrock/faultline_ships_mappings.json` →
+  `plugins/Geyser-Spigot/custom_mappings/`. Made by `python3 tools/ship_assets.py <pack> --preview tools/previews --bedrock bedrock`
+  from `tools/ships/layouts.json` (rerun `tools/ship_layouts.sh` after changing ShipType.java). Chests show as barrels
+  (a block display can't draw a chest). Barriers go in only where nobody stands (players get lifted onto the deck); after a crash,
+  barriers the save didn't know about are reconciled on the ship's first spawn. Nothing can be built on/over an anchored ship.
+  Index icons from `python3 tools/ship_assets.py <pack> --preview tools/previews`. Tested with MockBukkit (build, sail, shore,
+  anchor, damage, wreck, repair, save/load, scrap, events, Bedrock stand-in, the fixes). MockBukkit quirks the test copy patches:
+  teleporting an entity with passengers, `Block.getLocation()` returning the block's own Location, rayTraceBlocks.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.
@@ -131,7 +142,7 @@ Notes:
 | `FaultlineBloodMoon.zip` | Blood Moon pack: replaces moon phase textures |
 | `FaultlineBosses.zip` | Very old zip of the FaultlineBosses source (Demon Eye only). Ignore it; the live copy is `plugins/FaultlineBosses/` |
 | `plugins/` | Source code for all seven custom plugins (edit these) |
-| `bedrock/` | Bedrock (Geyser) cosmetics pack + custom item mappings, made by `tools/cosmetics_assets.py` |
+| `bedrock/` | Bedrock (Geyser) packs + custom item mappings: cosmetics (`tools/cosmetics_assets.py`) and ships (`tools/ship_assets.py --bedrock`) |
 
 Resource packs are served from raw GitHub links on `main`, e.g.
 `https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/main/FaultlineBossesPack.zip`

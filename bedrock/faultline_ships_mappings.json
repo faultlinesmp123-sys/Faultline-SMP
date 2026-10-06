@@ -1,0 +1,118 @@
+{
+ "format_version": 2,
+ "items": {
+  "minecraft:paper": [
+   {
+    "type": "definition",
+    "model": "faultline:ship/sloop",
+    "bedrock_identifier": "faultline:ship_sloop",
+    "display_name": "Sloop",
+    "bedrock_options": {
+     "icon": "faultline.ship_icon",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:ship/sloop_wreck",
+    "bedrock_identifier": "faultline:ship_sloop_wreck",
+    "display_name": "Sloop (wrecked)",
+    "bedrock_options": {
+     "icon": "faultline.ship_icon",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:ship/brigantine",
+    "bedrock_identifier": "faultline:ship_brigantine",
+    "display_name": "Brigantine",
+    "bedrock_options": {
+     "icon": "faultline.ship_icon",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:ship/brigantine_wreck",
+    "bedrock_identifier": "faultline:ship_brigantine_wreck",
+    "display_name": "Brigantine (wrecked)",
+    "bedrock_options": {
+     "icon": "faultline.ship_icon",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:ship/galleon",
+    "bedrock_identifier": "faultline:ship_galleon",
+    "display_name": "Galleon",
+    "bedrock_options": {
+     "icon": "faultline.ship_icon",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:ship/galleon_wreck",
+    "bedrock_identifier": "faultline:ship_galleon_wreck",
+    "display_name": "Galleon (wrecked)",
+    "bedrock_options": {
+     "icon": "faultline.ship_icon",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   }
+  ],
+  "minecraft:stick": [
+   {
+    "type": "definition",
+    "model": "minecraft:mace",
+    "bedrock_identifier": "faultline:shipwright_hammer",
+    "display_name": "Shipwright's Hammer",
+    "bedrock_options": {
+     "icon": "faultline.shipwright_hammer",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    }
+   }
+  ]
+ }
+}

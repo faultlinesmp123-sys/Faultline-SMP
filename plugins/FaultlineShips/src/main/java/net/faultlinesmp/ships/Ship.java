@@ -18,6 +18,7 @@ import org.bukkit.block.data.Waterlogged;
 import org.bukkit.boss.BarColor;
 import org.bukkit.boss.BarStyle;
 import org.bukkit.boss.BossBar;
+import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.BlockDisplay;
 import org.bukkit.entity.Display;
 import org.bukkit.entity.Entity;
@@ -27,7 +28,11 @@ import org.bukkit.entity.Player;
 import org.bukkit.entity.TextDisplay;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
+import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.NamespacedKey;
+import org.bukkit.block.BlockState;
 import org.bukkit.util.Transformation;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
@@ -66,7 +71,9 @@ final class Ship {
     // ---- runtime ----
     ItemDisplay root;
     BlockDisplay[] displays;
-    ItemDisplay[] seats;
+    ArmorStand[] seats;  // armor stands, not displays: Bedrock (Geyser) has no display entities to sit on
+    ArmorStand stand;    // Bedrock only: wears an item whose Bedrock model is the whole ship
+    boolean reconciled;
     final List<Interaction> hitboxes = new ArrayList<>();
     TextDisplay label;
     BossBar bar;
@@ -201,21 +208,58 @@ final class Ship {
             root.addPassenger(displays[i]);
         }
         sentYaw = yaw;
-        if (!building) spawnSeats();
+        if (!building) { spawnSeats(); spawnStand(); }
+        if (!reconciled) { reconciled = true; reconcileBarriers(); }
         if (sailing()) spawnHitboxes();
         refreshLabel();
     }
 
     void spawnSeats() {
         World w = world();
-        seats = new ItemDisplay[type.seats.length];
-        for (int i = 0; i < seats.length; i++) {
-            seats[i] = w.spawn(seatLoc(i), ItemDisplay.class, d -> {
-                d.setPersistent(false);
-                d.addScoreboardTag(TAG);
-                d.setTeleportDuration(2);
-            });
+        seats = new ArmorStand[type.seats.length];
+        for (int i = 0; i < seats.length; i++) seats[i] = w.spawn(seatLoc(i), ArmorStand.class, Ship::seatSetup);
+    }
+
+    static void seatSetup(ArmorStand a) {
+        a.setPersistent(false);
+        a.addScoreboardTag(TAG);
+        a.setMarker(true);       // no hitbox; a rider sits right at its feet
+        a.setInvisible(true);
+        a.setGravity(false);
+        a.setInvulnerable(true);
+        a.setSilent(true);
+        a.setBasePlate(false);
+        for (EquipmentSlot slot : EquipmentSlot.values()) {
+            try { a.addEquipmentLock(slot, ArmorStand.LockType.REMOVING_OR_CHANGING); } catch (RuntimeException ignored) { }
         }
+    }
+
+    /** The Bedrock stand-in: hidden from Java players, wearing the ship model (Geyser maps it to a Bedrock attachable). */
+    void spawnStand() {
+        World w = world();
+        if (w == null || building) return;
+        stand = w.spawn(new Location(w, x, y + visualY(), z, yaw, 0), ArmorStand.class, a -> {
+            seatSetup(a);
+            a.setMarker(false);  // Geyser needs a real armor stand to draw the helmet on
+            a.setInvulnerable(false); // so a Bedrock player's hit reaches the damage event (cancelled there, counted on the ship)
+            a.setVisibleByDefault(false);
+            a.getEquipment().setHelmet(standItem());
+        });
+        for (Player p : w.getPlayers()) {
+            if (FaultlineShips.bedrock(p)) p.showEntity(pl, stand);
+            else p.hideEntity(pl, stand); // in case visible-by-default isn't honoured
+        }
+    }
+
+    /** Geyser maps paper with this item model to the Bedrock ship model (tools/ship_assets.py --bedrock). */
+    String standModel() { return "faultline:ship/" + type.name().toLowerCase() + (wrecked ? "_wreck" : ""); }
+
+    ItemStack standItem() {
+        ItemStack it = new ItemStack(Material.PAPER);
+        ItemMeta m = it.getItemMeta();
+        m.setItemModel(NamespacedKey.fromString(standModel()));
+        it.setItemMeta(m);
+        return it;
     }
 
     void spawnHitboxes() {
@@ -241,7 +285,9 @@ final class Ship {
     }
 
     void despawn() {
-        if (seats != null) for (ItemDisplay s : seats) if (s != null && s.isValid()) { s.eject(); s.remove(); }
+        if (seats != null) for (ArmorStand s : seats) if (s != null && s.isValid()) { s.eject(); s.remove(); }
+        if (stand != null && stand.isValid()) stand.remove();
+        stand = null;
         if (displays != null) for (BlockDisplay d : displays) if (d != null && d.isValid()) d.remove();
         if (root != null && root.isValid()) { root.eject(); root.remove(); }
         removeHitboxes();
@@ -251,6 +297,7 @@ final class Ship {
     }
 
     BlockData dataOf(int i) {
+        if (type.cells.get(i).need() == ShipType.Need.CHEST) return Material.BARREL.createBlockData(); // chests are drawn as block entities: a display shows nothing
         if (blocks[i] != null) {
             try { return Bukkit.createBlockData(blocks[i]); } catch (IllegalArgumentException ignored) { }
         }
@@ -398,23 +445,31 @@ final class Ship {
         else if (sailing()) sail();
         // move everything
         if (sailing() || anchorStep >= 0) {
-            root.teleport(new Location(world(), x, y + visualY(), z));
             int every = type == ShipType.SLOOP ? 2 : type == ShipType.BRIGANTINE ? 3 : 4;
             if (Math.abs(yaw - sentYaw) > 0.01f && ticks % every == 0) sendTransforms(every);
-            if (seats != null) for (int i = 0; i < seats.length; i++) {
-                if (seats[i] != null && seats[i].isValid()) seats[i].teleport(seatLoc(i));
-            }
-            int k = 0;
-            for (int lx = type.minX + 1; lx <= type.maxX && k < hitboxes.size(); lx += 2, k++) {
-                double[] p = toWorld(x, z, yaw, lx, 0);
-                Interaction it = hitboxes.get(k);
-                if (it.isValid()) it.teleport(new Location(world(), p[0], y, p[1]));
-            }
+            place();
         }
         if (ticks % 10 == 0) {
             effects();
             hud();
         }
+    }
+
+    /** Root, seats, hitboxes and the Bedrock stand-in to where the ship is now. */
+    void place() {
+        World w = world();
+        if (w == null || root == null) return;
+        root.teleport(new Location(w, x, y + visualY(), z));
+        if (seats != null) for (int i = 0; i < seats.length; i++) {
+            if (seats[i] != null && seats[i].isValid()) seats[i].teleport(seatLoc(i));
+        }
+        int k = 0;
+        for (int lx = type.minX + 1; lx <= type.maxX && k < hitboxes.size(); lx += 2, k++) {
+            double[] p = toWorld(x, z, yaw, lx, 0);
+            Interaction it = hitboxes.get(k);
+            if (it.isValid()) it.teleport(new Location(w, p[0], y, p[1]));
+        }
+        if (stand != null && stand.isValid()) stand.teleport(new Location(w, x, y + visualY(), z, yaw, 0));
     }
 
     private Input input(Player p) { return p == null ? null : pl.inputSource.apply(p); }
@@ -525,8 +580,9 @@ final class Ship {
         anchored = true;
         speed = 0; turnRate = 0;
         removeHitboxes();
-        root.teleport(new Location(world(), x, y + visualY(), z));
+        place();
         for (int i = 0; i < blocks.length; i++) if (blocks[i] != null) putBarrier(i);
+        liftPlayers();
         refreshLabel();
         pl.saveNow();
     }
@@ -576,6 +632,57 @@ final class Ship {
         pl.saveNow();
     }
 
+    /** Barriers just went in: nobody may be left stuck inside one (they'd suffocate). Up onto the deck with them. */
+    void liftPlayers() {
+        World w = world();
+        for (Player p : w.getPlayers()) {
+            if (p.isInsideVehicle()) continue;
+            Location l = p.getLocation();
+            if (Math.abs(l.getX() - x) > radius() + 2 || Math.abs(l.getZ() - z) > radius() + 2) continue;
+            if (cellAt(l.getX(), l.getY() + 0.1, l.getZ()) < 0 && cellAt(l.getX(), l.getY() + 1.1, l.getZ()) < 0) continue;
+            double ty = Math.floor(l.getY());
+            while (ty < y + type.height + 2 && (cellAt(l.getX(), ty + 0.1, l.getZ()) >= 0 || cellAt(l.getX(), ty + 1.1, l.getZ()) >= 0)) ty++;
+            p.teleport(new Location(w, l.getX(), ty, l.getZ(), l.getYaw(), l.getPitch()));
+        }
+    }
+
+    /**
+     * After a crash the saved barrier list can be behind the world: a block placed after the last save left a barrier
+     * we don't know about. Built cells get theirs recorded; empty cells (and afloat ships) get water or air back.
+     */
+    void reconcileBarriers() {
+        World w = world();
+        if (w == null) return;
+        Set<String> known = new HashSet<>();
+        for (String b : barriers) known.add(b.substring(0, b.indexOf('|')));
+        boolean changed = false;
+        for (int i = 0; i < blocks.length; i++) {
+            Block b = blockOf(i);
+            if (b.getType() != Material.BARRIER) continue;
+            String at = b.getX() + "," + b.getY() + "," + b.getZ();
+            if (known.contains(at)) continue;
+            String was = type.cells.get(i).y() == 0 ? "minecraft:water" : "minecraft:air";
+            if (anchored && blocks[i] != null) barriers.add(at + "|" + was);
+            else b.setBlockData(Bukkit.createBlockData(was), false);
+            changed = true;
+        }
+        if (changed) pl.saveNow();
+    }
+
+    /** What Bedrock players are sent while it's being built: the real block in each built cell. */
+    List<BlockState> fakes(List<Integer> cells) {
+        List<BlockState> out = new ArrayList<>();
+        for (int i : cells) {
+            if (blocks[i] == null) continue;
+            Block b = blockOf(i);
+            if (b.getType() != Material.BARRIER) continue;
+            BlockState st = b.getState();
+            st.setBlockData(dataOf(i));
+            out.add(st);
+        }
+        return out;
+    }
+
     // =====================================================================================================
     //  building
     // =====================================================================================================
@@ -585,8 +692,9 @@ final class Ship {
         if (blocks[i] != null) return;
         blocks[i] = blockFor(i, m);
         filled++;
-        if (anchored) putBarrier(i);
+        if (anchored) { putBarrier(i); liftPlayers(); }
         refreshCell(i);
+        pl.showFakes(this, List.of(i));
         Block b = blockOf(i);
         world().playSound(b.getLocation().add(0.5, 0.5, 0.5), m.createBlockData().getSoundGroup().getPlaceSound(), SoundCategory.BLOCKS, 1f, 0.9f);
         if (filled >= blocks.length) finish();
@@ -598,6 +706,8 @@ final class Ship {
         building = false;
         hp = maxHp();
         spawnSeats();
+        spawnStand();
+        pl.clearFakes(this);
         refreshLabel();
         Location c = center();
         world().playSound(c, Sound.UI_TOAST_CHALLENGE_COMPLETE, SoundCategory.PLAYERS, 1f, 1f);
@@ -638,7 +748,7 @@ final class Ship {
         wrecked = true;
         hp = 0;
         speed = 0; turnRate = 0;
-        if (seats != null) for (ItemDisplay s : seats) if (s != null && s.isValid()) s.eject();
+        if (seats != null) for (ArmorStand s : seats) if (s != null && s.isValid()) s.eject();
         anchorStep = -1;
         if (!anchored) {
             float ty = Math.round(yaw / 90f) * 90f;
@@ -649,7 +759,8 @@ final class Ship {
                 anchor();
             }
         }
-        if (root != null && root.isValid()) root.teleport(new Location(world(), x, y + visualY(), z));
+        place();
+        if (stand != null && stand.isValid()) stand.getEquipment().setHelmet(standItem());
         for (int i = 0; i < blocks.length; i++) if (type.cells.get(i).need() == ShipType.Need.WOOL) refreshCell(i);
         refreshLabel();
         Location c = center();
@@ -672,7 +783,8 @@ final class Ship {
         if (hp >= maxHp() && wrecked) {
             wrecked = false;
             for (int i = 0; i < blocks.length; i++) if (type.cells.get(i).need() == ShipType.Need.WOOL) refreshCell(i);
-            if (root != null && root.isValid()) root.teleport(new Location(world(), x, y, z));
+            place();
+            if (stand != null && stand.isValid()) stand.getEquipment().setHelmet(standItem());
             Location c = center();
             world().playSound(c, Sound.BLOCK_ANVIL_USE, SoundCategory.BLOCKS, 1f, 1.2f);
             world().spawnParticle(Particle.HAPPY_VILLAGER, c.clone().add(0, 2, 0), 60, type.halfWidth, 2, 4, 0);

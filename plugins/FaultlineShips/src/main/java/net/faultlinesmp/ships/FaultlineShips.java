@@ -37,7 +37,13 @@ import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockExplodeEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
+import org.bukkit.event.entity.ProjectileHitEvent;
+import org.bukkit.event.inventory.FurnaceBurnEvent;
+import org.bukkit.event.player.PlayerArmorStandManipulateEvent;
+import org.bukkit.block.BlockState;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.PrepareItemCraftEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
@@ -100,7 +106,7 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(this, this);
         for (World w : Bukkit.getWorlds()) for (var ch : w.getLoadedChunks()) cleanup(ch.getEntities());
         Bukkit.getScheduler().runTaskTimer(this, this::tick, 1L, 1L);
-        Bukkit.getScheduler().runTaskTimer(this, () -> { if (dirty) saveNow(); }, 600L, 600L);
+        Bukkit.getScheduler().runTaskTimer(this, () -> { if (dirty) saveNow(); }, 100L, 100L);
         getLogger().info("Faultline Ships enabled: " + ships.size() + " ships.");
     }
 
@@ -114,6 +120,35 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
     }
 
     double cfg(String key, double def) { return getConfig().getDouble(key, def); }
+
+    /** Floodgate gives Bedrock players a UUID whose top half is 0 (same check as FaultlineBosses). */
+    static boolean bedrock(Player p) { return p.getUniqueId().getMostSignificantBits() == 0; }
+
+    /** Bedrock players can't see block displays: while a ship is built they're sent the real blocks instead. */
+    void showFakes(Ship s, List<Integer> cells) {
+        if (!s.building) return;
+        List<BlockState> st = null;
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            if (!bedrock(p) || !p.getWorld().getName().equals(s.world) || p.getLocation().distance(s.center()) > 96) continue;
+            if (st == null) st = s.fakes(cells);
+            if (!st.isEmpty()) p.sendBlockChanges(st);
+        }
+    }
+
+    void showAllFakes(Ship s) {
+        List<Integer> all = new ArrayList<>();
+        for (int i = 0; i < s.blocks.length; i++) all.add(i);
+        showFakes(s, all);
+    }
+
+    /** The ship is finished (or gone): back to the real barriers, the stand-in takes over. */
+    void clearFakes(Ship s) {
+        World w = s.world();
+        if (w == null) return;
+        List<BlockState> real = new ArrayList<>();
+        for (int i = 0; i < s.blocks.length; i++) real.add(s.blockOf(i).getState());
+        for (Player p : w.getPlayers()) if (bedrock(p) && p.getLocation().distance(s.center()) < 128) p.sendBlockChanges(real);
+    }
 
     // =====================================================================================================
     //  items
@@ -347,11 +382,24 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
         return null;
     }
 
+    /** A ship whose space (deck to mast tops) this block is in. */
+    Ship shipOver(Block b) {
+        for (Ship s : ships.values()) {
+            if (s.world == null || !s.world.equals(b.getWorld().getName())) continue;
+            double px = b.getX() + 0.5 - s.x, pz = b.getZ() + 0.5 - s.z, fx = Ship.fx(s.yaw), fz = Ship.fz(s.yaw);
+            double lx = px * fx + pz * fz, lz = -px * fz + pz * fx;
+            if (lx >= s.type.minX - 0.5 && lx <= s.type.maxX + 4.5 && Math.abs(lz) <= s.type.halfWidth + 0.5
+                    && b.getY() >= s.y && b.getY() <= s.y + s.type.height + 1) return s;
+        }
+        return null;
+    }
+
     Ship shipOfEntity(Entity e) {
         if (e == null || !e.getScoreboardTags().contains(Ship.TAG)) return null;
         for (Ship s : ships.values()) {
             if (s.hitboxes.contains(e)) return s;
             if (s.seats != null) for (Entity seat : s.seats) if (e.equals(seat)) return s;
+            if (e.equals(s.stand)) return s;
         }
         return null;
     }
@@ -488,6 +536,49 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
         p.playSound(p.getLocation(), Sound.BLOCK_CHEST_OPEN, SoundCategory.BLOCKS, 0.8f, 0.9f);
     }
 
+    /** Seats and the Bedrock stand-in are armor stands: nothing may break them or take what they wear. */
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onShipEntityHurt(EntityDamageEvent event) {
+        Entity e = event.getEntity();
+        if (!e.getScoreboardTags().contains(Ship.TAG)) return;
+        event.setCancelled(true);
+        if (event instanceof EntityDamageByEntityEvent by) {
+            Ship s = shipOfEntity(e);
+            if (s == null) return;
+            if (by.getDamager() instanceof Player p) swing(p, s);           // a Bedrock player hitting the stand-in
+            else if (by.getDamager() instanceof Projectile pr && !arrowsCounted.contains(pr.getUniqueId())) {
+                arrowsCounted.add(pr.getUniqueId());
+                s.damage((pr instanceof AbstractArrow ar ? Math.max(1, ar.getDamage()) : 2) * cfg("damage.projectile-multiplier", 1.0),
+                        pr.getShooter() instanceof Player sp ? sp : null);
+            }
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onStandManipulate(PlayerArmorStandManipulateEvent event) {
+        if (event.getRightClicked().getScoreboardTags().contains(Ship.TAG)) event.setCancelled(true);
+    }
+
+    /** A hammer is a stick underneath: it doesn't burn. */
+    @EventHandler(ignoreCancelled = true)
+    public void onBurn(FurnaceBurnEvent event) {
+        if (isHammer(event.getFuel())) event.setCancelled(true);
+    }
+
+    /** Arrows that land in an anchored ship (its barriers) hurt it too. */
+    @EventHandler(ignoreCancelled = true)
+    public void onProjectileHit(ProjectileHitEvent event) {
+        Block b = event.getHitBlock();
+        if (b == null || b.getType() != Material.BARRIER) return;
+        Ship s = shipCellAt(b, null);
+        Projectile pr = event.getEntity();
+        if (s == null || arrowsCounted.contains(pr.getUniqueId())) return;
+        if (pr.getShooter() instanceof Player sp && mayCaptain(sp, s)) return;
+        arrowsCounted.add(pr.getUniqueId());
+        double dmg = pr instanceof Trident ? 6 : pr instanceof AbstractArrow ar ? Math.max(1, ar.getDamage()) * (ar.getFireTicks() > 0 ? 1.5 : 1) : 2;
+        s.damage(dmg * cfg("damage.projectile-multiplier", 1.0), pr.getShooter() instanceof Player p ? p : null);
+    }
+
     @EventHandler
     public void onHoldClose(InventoryCloseEvent event) {
         if (event.getInventory().getHolder() instanceof Ship.Hold h) {
@@ -501,7 +592,14 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
     public void onPlace(BlockPlaceEvent event) {
         Block b = event.getBlockPlaced();
         Ship s = shipCellAt(b, null);
-        if (s == null) return;
+        if (s == null) {
+            Ship over = shipOver(b);
+            if (over != null) {
+                event.setCancelled(true);
+                event.getPlayer().sendActionBar(Component.text("You can't build on a ship: it would be left behind when it sails.", NamedTextColor.RED));
+            }
+            return;
+        }
         event.setCancelled(true);
         int c = s.cellAt(b);
         if (s.building && s.blocks[c] == null) {
@@ -570,7 +668,7 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
             if (!e.getScoreboardTags().contains(Ship.TAG)) continue;
             boolean live = false;
             for (Ship s : ships.values()) {
-                if (e.equals(s.root) || e.equals(s.label) || s.hitboxes.contains(e)) { live = true; break; }
+                if (e.equals(s.root) || e.equals(s.label) || e.equals(s.stand) || s.hitboxes.contains(e)) { live = true; break; }
                 if (s.displays != null) for (Entity d : s.displays) if (e.equals(d)) { live = true; break; }
                 if (s.seats != null) for (Entity d : s.seats) if (e.equals(d)) { live = true; break; }
                 if (live) break;
@@ -589,7 +687,7 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
                 World w = s.world();
                 boolean want = false;
                 if (w != null && w.isChunkLoaded((int) Math.floor(s.x) >> 4, (int) Math.floor(s.z) >> 4)) {
-                    double range = cfg("spawn-range", 128);
+                    double range = cfg("spawn-range", 128) + (s.spawned() ? 32 : 0); // a margin so it doesn't flicker at the edge
                     for (Player p : w.getPlayers()) {
                         Location l = p.getLocation();
                         double dx = l.getX() - s.x, dz = l.getZ() - s.z;
@@ -604,9 +702,42 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
             }
         }
         for (Ship s : ships.values()) s.tick();
+        if (now % 20 == 5) bedrockUpkeep();
+        if (now % 10 == 3) ghostParticles();
         if (now % 2 == 0) arrows();
         if (now % 10 == 0) previews();
         tickRepairs();
+    }
+
+    /** Bedrock players: see every stand-in in their world, and get the built blocks of ships under construction. */
+    void bedrockUpkeep() {
+        for (Ship s : ships.values()) {
+            if (!s.spawned()) continue;
+            if (s.stand != null && s.stand.isValid())
+                for (Player p : s.world().getPlayers()) {
+                    if (bedrock(p)) { if (!p.canSee(s.stand)) p.showEntity(this, s.stand); }
+                    else if (p.canSee(s.stand)) p.hideEntity(this, s.stand);
+                }
+            if (s.building && now % 40 == 5) showAllFakes(s);
+        }
+    }
+
+    /** Bedrock players can't see the glowing outline either: the empty cells near them sparkle instead. */
+    void ghostParticles() {
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            if (!bedrock(p)) continue;
+            for (Ship s : ships.values()) {
+                if (!s.building || !s.spawned() || !p.getWorld().getName().equals(s.world) || p.getLocation().distance(s.center()) > s.radius() + 16) continue;
+                int shown = 0;
+                for (int i = 0; i < s.blocks.length && shown < 80; i++) {
+                    if (s.blocks[i] != null) continue;
+                    Location c = s.blockOf(i).getLocation().add(0.5, 0.5, 0.5);
+                    if (c.distanceSquared(p.getLocation()) > 14 * 14) continue;
+                    p.spawnParticle(Particle.DUST, c, 1, 0.15, 0.15, 0.15, 0, new Particle.DustOptions(Color.fromRGB(150, 220, 255), 1.2f));
+                    shown++;
+                }
+            }
+        }
     }
 
     /** Arrows and tridents fly through display blocks: check them against sailing ships ourselves. */
@@ -938,6 +1069,13 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
                 scrap(s, p.getLocation(), true);
                 sender.sendMessage(ChatColor.YELLOW + "You took the " + s.type.title + " apart: the blueprint, its blocks and its cargo are by you.");
             }
+            case "anchor" -> {
+                if (p == null) { sender.sendMessage("Players only."); return true; }
+                Ship s = ridingOn(p);
+                if (s == null || s.seatOf(p) != 0) { sender.sendMessage(ChatColor.RED + "Take the helm first."); return true; }
+                if (s.anchored) { if (s.wrecked) sender.sendMessage(ChatColor.RED + "The ship is wrecked: repair it first."); else s.raiseAnchor(p); }
+                else if (s.anchorStep < 0) s.dropAnchor(p);
+            }
             case "info" -> {
                 if (p == null) { sender.sendMessage("Players only."); return true; }
                 Ship s = ridingOn(p);
@@ -971,7 +1109,7 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
                 sender.sendMessage(ChatColor.GRAY + "Right-click the wheel to steer: W/S sail, A/D steer, Sprint full sail, Jump drops anchor (then the deck can be walked).");
                 sender.sendMessage(ChatColor.GRAY + "A wrecked ship needs a Shipwright's Hammer (3 iron, 1 planks, 2 iron, 1 stick).");
                 sender.sendMessage(ChatColor.YELLOW + "/ship list" + ChatColor.GRAY + ", " + ChatColor.YELLOW + "/ship info" + ChatColor.GRAY + ", "
-                        + ChatColor.YELLOW + "/ship crew <add|remove|list> [player]" + ChatColor.GRAY + ", " + ChatColor.YELLOW + "/ship scrap");
+                        + ChatColor.YELLOW + "/ship crew <add|remove|list> [player]" + ChatColor.GRAY + ", " + ChatColor.YELLOW + "/ship anchor" + ChatColor.GRAY + ", " + ChatColor.YELLOW + "/ship scrap");
                 if (admin) sender.sendMessage(ChatColor.DARK_GRAY + "Admin: /ship give <sloop|brigantine|galleon|hammer> [amount] [player], /ship repair, /ship wreck, /ship remove");
             }
         }
@@ -982,7 +1120,7 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         List<String> opts = new ArrayList<>();
         if (args.length == 1) {
-            opts.addAll(List.of("list", "info", "crew", "scrap"));
+            opts.addAll(List.of("list", "info", "crew", "scrap", "anchor"));
             if (sender.hasPermission("faultlineships.admin")) opts.addAll(List.of("give", "repair", "wreck", "remove"));
         } else if (args.length == 2 && args[0].equalsIgnoreCase("give")) opts.addAll(List.of("sloop", "brigantine", "galleon", "hammer"));
         else if (args.length == 2 && args[0].equalsIgnoreCase("crew")) opts.addAll(List.of("add", "remove", "list"));
@@ -997,6 +1135,7 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
         if (s.hold != null) { s.cargo = s.hold.getContents(); for (var v : new ArrayList<>(s.hold.getViewers())) v.closeInventory(); }
         s.despawn();
         s.clearBarriers();
+        if (s.building) clearFakes(s);
         ships.remove(s.id);
         repairs.values().removeIf(r -> r.ship == s);
         if (refund) {

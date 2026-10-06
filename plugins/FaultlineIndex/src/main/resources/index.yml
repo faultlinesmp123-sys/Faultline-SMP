@@ -657,3 +657,60 @@ entries:
   - {chapter: weapons, name: "Cannonball", icon: cannonball, detect: "faultlineships:cannonball",
      how: "Craft it: an Iron Ingot and Gunpowder make 4.",
      does: "On a ship with cannons, right-click while looking over the side: the nearest loaded cannon on that side fires (aim up to 35 degrees either way, 3 second reload per cannon). It blows up where it lands without breaking blocks, does 45 damage to a ship it hits, and hurts whatever's near."}
+  - {chapter: weapons, name: "Dinghy Blueprint", icon: dinghy_blueprint, detect: "faultlineships:dinghy_blueprint",
+     how: "Craft it: 2 Paper and any Boat (shapeless).",
+     does: "A little rowboat for fishing: 26 blocks (23 Planks, 2 Wooden Fences for the oars, 1 Lantern). 60 health, 2 seats, no cannons, and the quickest to turn. Sneak + right-click it for a 9-slot fish hold. Fits in shallow water and narrow rivers."}
+  - {chapter: weapons, name: "Pirate Ship Blueprint", icon: pirate_blueprint, detect: "faultlineships:pirate_blueprint",
+     how: "Craft it: Black Dye in the corners, Paper on the sides, a Galleon Blueprint in the middle and a Wither Skeleton Skull at the bottom (D P D / P G P / D S D).",
+     does: "The biggest ship: 882 blocks (522 Planks, 122 Black Wool and 50 White Wool for the skull-and-bones sails, 92 Fences, 47 Logs, 10 Ladders, 10 Ship Cannons, 8 Trapdoors, 7 Stairs, 6 Glass Panes, 5 Lanterns, 2 Chests, 1 hatch Trapdoor). Three masts, a crow's nest, a quarterdeck, a poop deck, a forecastle and a hold below deck (go down the hatch). 900 health, 9 seats, 10 cannons, a 54-slot hold. Needs water 2 deep under the keel."}
+  - {chapter: consumables, name: "Cursed Pirate Horn", icon: pirate_horn, detect: "faultlineships:pirate_horn",
+     how: "Only in the holds of skeleton ships (15% in a lone one, 5% in an invasion ship).",
+     does: "Blow it while on a ship at sea to call the Pirate Invasion: 15+ skeleton ships come at you, with their flagship, the Black Gallows, in the back. Sink the fleet, then beat the flagship's three bosses one after the other. Its own music plays the whole time."}
+
+  # ---------------------------------------------------------------- PIRATES (FaultlineShips)
+  - {chapter: bosses, name: "The Captain's Son", icon: captains_son, detect-tag: faultline_pirate_son,
+     where: "The first boss of the Pirate Invasion, on the flagship once the fleet is sunk. 320 health.",
+     does: "Quick and cocky, with a golden cutlass. Lunges at you, throws a smoke bomb (blinds you and he appears behind you) and fires his flintlock.",
+     drops: ["300 XP|100%"]}
+  - {chapter: bosses, name: "The Skeleton Commander", icon: skeleton_commander, detect-tag: faultline_pirate_commander,
+     where: "The second boss of the Pirate Invasion. 480 health.",
+     does: "The skeleton army's commander, Jolly Roger on his head. Fires a fan of 7 arrows, rallies 3 more Deckhands and Musketeers, and blows his war horn to give his crew Strength.",
+     drops: ["300 XP|100%"]}
+  - {chapter: bosses, name: "The Skeleton Captain", icon: skeleton_captain, detect-tag: faultline_pirate_captain,
+     where: "The last boss of the Pirate Invasion. 900 health.",
+     does: "Huge, in netherite. A cutlass sweep that knocks you back, a broadside (red marks on the deck, then cannon fire comes down on them), and an anchor slam. Below half health his ghost crew of 4 Cursed Wraiths rises. Beat him and everyone who fought gets 2 Mythic Goodie Bags, an accessory, a 50% Zombie Omen V and a 25% Pirate Ship Blueprint.",
+     drops: ["300 XP|100%", "2 Mythic Goodie Bags (each fighter)|100%", "An accessory (each fighter)|100%", "Zombie Omen V|50%", "Pirate Ship Blueprint|25%"]}
+  - {chapter: enemies, name: "Skeleton Deckhand", icon: skeleton_deckhand, detect-tag: faultline_pirate_deckhand,
+     where: "Crews skeleton ships. 24 health.",
+     does: "A red-capped skeleton with an iron cutlass. Comes up on deck to fight when its ship drops anchor.", drops: ["1-3 Bones|100%", "2-6 Gold Nuggets|30%", "1-3 Cannonballs|20%"]}
+  - {chapter: enemies, name: "Skeleton Musketeer", icon: skeleton_musketeer, detect-tag: faultline_pirate_musketeer,
+     where: "Crews skeleton ships. 22 health.",
+     does: "Shoots hard-hitting musket shots from the deck, even while the ship sails.", drops: ["1-3 Bones|100%", "2-6 Gold Nuggets|30%", "1-3 Cannonballs|20%"]}
+  - {chapter: enemies, name: "Skeleton Gunner", icon: skeleton_gunner, detect-tag: faultline_pirate_gunner,
+     where: "Crews skeleton ships. 26 health.",
+     does: "Lobs lit cannonballs at you from up to 22 blocks away. They blow up where they land.", drops: ["1-3 Bones|100%", "2-6 Gold Nuggets|30%", "1-3 Cannonballs|20%"]}
+  - {chapter: enemies, name: "Skeleton Boarder", icon: skeleton_boarder, detect-tag: faultline_pirate_boarder,
+     where: "Crews skeleton ships. 28 health.",
+     does: "Leaps across the water onto your ship, axe first.", drops: ["1-3 Bones|100%", "2-6 Gold Nuggets|30%", "1-3 Cannonballs|20%"]}
+  - {chapter: enemies, name: "Powder Monkey", icon: powder_monkey, detect-tag: faultline_pirate_powder_monkey,
+     where: "Crews skeleton ships. 12 health.",
+     does: "A tiny, fast skeleton with a TNT block on its head. Runs up to you, lights its fuse and blows up a second later (killing it with arrows still sets it off).",
+     drops: ["1-3 Bones|100%", "2-4 Gunpowder|100%", "2-6 Gold Nuggets|30%", "1-3 Cannonballs|20%"]}
+  - {chapter: enemies, name: "Drowned Corsair", icon: drowned_corsair, detect-tag: faultline_pirate_corsair,
+     where: "Swims around skeleton ships. 30 health.",
+     does: "A fast-swimming drowned with a trident, waiting for anyone who falls in.", drops: ["1-3 Bones|100%", "2-6 Gold Nuggets|30%", "1-3 Cannonballs|20%"]}
+  - {chapter: enemies, name: "Skeleton Bosun", icon: skeleton_bosun, detect-tag: faultline_pirate_bosun,
+     where: "Crews skeleton ships. 34 health.",
+     does: "Swings a chain that drags you in from up to 10 blocks, and drives the crew near him on (Speed).", drops: ["1-3 Bones|100%", "2-6 Gold Nuggets|30%", "1-3 Cannonballs|20%"]}
+  - {chapter: enemies, name: "Ghost Gull", icon: ghost_gull, detect-tag: faultline_pirate_gull,
+     where: "Circles above some skeleton ships. 10 health.",
+     does: "A small pale phantom that swoops at you, day or night.", drops: ["1-3 Bones|100%", "2-6 Gold Nuggets|30%", "1-3 Cannonballs|20%"]}
+  - {chapter: enemies, name: "Bone Shark", icon: bone_shark, detect-tag: faultline_pirate_shark,
+     where: "In the water around some skeleton ships. 36 health.",
+     does: "A big guardian that hunts swimmers. Don't fall in.", drops: ["1-3 Bones|100%", "2-6 Gold Nuggets|30%", "1-3 Cannonballs|20%"]}
+  - {chapter: enemies, name: "Skeleton Navigator", icon: skeleton_navigator, detect-tag: faultline_pirate_navigator,
+     where: "At the helm of every skeleton ship. 26 health.",
+     does: "Spots you through his spyglass from up to 44 blocks: you glow, and while you glow the ship's cannons aim true. Kill him first.", drops: ["1-3 Bones|100%", "2-6 Gold Nuggets|30%", "1-3 Cannonballs|20%"]}
+  - {chapter: enemies, name: "Cursed Wraith", icon: cursed_wraith, detect-tag: faultline_pirate_wraith,
+     where: "Some skeleton ship crews, and the Skeleton Captain's ghost crew. 34 health.",
+     does: "A wither skeleton sailor. Its blade withers you.", drops: ["1-3 Bones|100%", "2-6 Gold Nuggets|30%", "1-3 Cannonballs|20%"]}

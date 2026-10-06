@@ -94,6 +94,14 @@ final class Ship {
     float anchorYaw0, anchorYaw1;
     double anchorX0, anchorZ0, anchorX1, anchorZ1;
     boolean prevJump, prevForward, prevBack, braking, anchorQueued, allStop;
+    // ---- damage you can see ----
+    final Set<Integer> broken = new HashSet<>();  // cells knocked out by crashes, cannonballs, blasts: holes until patched
+    double breakAcc;                               // damage not yet turned into a broken block
+    double sink;                                   // how far a wreck has gone down
+    Block lastBlocked;                             // what stopped the ship last (where it crashed)
+    long lastBlockedTick = -999;
+    Pirates.Brain ai;                              // a skeleton ship: steered by the plugin, crewed by skeletons, never saved
+    Ship lastBlockShip;                            // ...if that was another ship
     final java.util.Map<Integer, Long> cannonReady = new java.util.HashMap<>();
     long lastRam, lastHurtFx;
     int filled;
@@ -110,7 +118,10 @@ final class Ship {
     World world() { return Bukkit.getWorld(world); }
     String title() { return name != null ? name : type.title; }
     boolean sailing() { return !building && !anchored && anchorStep < 0; }
-    double maxHp() { return type.maxHp * pl.getConfig().getDouble("ships." + type.size + ".health-multiplier", 1.0); }
+    double maxHp() {
+        if (ai != null) return type.maxHp * pl.getConfig().getDouble("pirates.health-multiplier", 0.5);
+        return type.maxHp * pl.getConfig().getDouble("ships." + type.size + ".health-multiplier", 1.0);
+    }
 
     static double fx(float yaw) { return -Math.sin(Math.toRadians(yaw)); }
     static double fz(float yaw) { return Math.cos(Math.toRadians(yaw)); }
@@ -147,8 +158,13 @@ final class Ship {
         return new Location(world(), w[0], y + s[1] + 0.05 + visualY(), w[1], yaw, 0);
     }
 
+    /** A wreck sinks this far: a player's ship settles with its deck awash (it can be repaired and refloats). */
+    double sinkTarget() { return ai != null ? type.height + 4 : type.deckY + 1.4; } // skeleton ships go all the way down
+
+    float pitch() { return wrecked || sink > 0 ? (float) (-7 * Math.min(1, sink / Math.max(0.5, sinkTarget()))) : 0f; }
+
     double visualY() {
-        if (wrecked) return -0.35;
+        if (wrecked || sink > 0) return -sink;
         if (sailing()) return Math.sin(ticks * 0.08) * 0.06 + Math.sin(ticks * 0.031) * 0.04; // a gentle swell
         return 0;
     }
@@ -172,8 +188,9 @@ final class Ship {
                 if (!w.isChunkLoaded(b.getX() >> 4, b.getZ() >> 4)) { ok = false; if (bad == null) return false; continue; }
                 boolean fine = c.y() == 0 ? water(b) : air(b);
                 if (fine && c.y() == 0 && type.deep && c.z() == 0 && !water(b.getRelative(0, -1, 0))) fine = false;
-                if (fine && pl.shipCellAt(b, this) != null) fine = false; // another ship
-                if (!fine) { ok = false; if (bad == null) return false; bad.add(b); }
+                Ship other = fine ? pl.shipCellAt(b, this) : null;
+                if (other != null) fine = false; // another ship
+                if (!fine) { lastBlocked = b; lastBlockShip = other; lastBlockedTick = ticks; ok = false; if (bad == null) return false; bad.add(b); }
             }
         }
         return ok;
@@ -269,7 +286,7 @@ final class Ship {
     }
 
     /** Geyser maps paper with this item model to the Bedrock ship model (tools/ship_assets.py --bedrock). */
-    String standModel() { return "faultline:ship/" + type.name().toLowerCase() + (wrecked ? "_wreck" : ""); }
+    String standModel() { return "faultline:ship/" + type.name().toLowerCase() + (ai != null ? "_dark" : "") + (wrecked ? "_wreck" : ""); }
 
     ItemStack standItem() {
         ItemStack it = new ItemStack(Material.PAPER);
@@ -333,8 +350,9 @@ final class Ship {
 
     float scaleOf(int i) {
         if (blocks[i] == null) return GHOST;
-        if (anchored && type.cells.get(i).need() == ShipType.Need.LADDER) return 0f; // a real ladder block stands there
-        if (wrecked && type.cells.get(i).need() == ShipType.Need.WOOL && (i % 2 == 0 || type.cells.get(i).y() % 3 == 0)) return 0f; // torn sails
+        if (broken.contains(i)) return 0f; // knocked out: a hole until it's patched
+        if (anchored && type.cells.get(i).need().shaped()) return 0f; // the real block stands there (stairs, fences, ladders...)
+        if (wrecked && type.cells.get(i).need().sail() && (i % 2 == 0 || type.cells.get(i).y() % 3 == 0)) return 0f; // torn sails
         return 1f;
     }
 
@@ -358,8 +376,9 @@ final class Ship {
 
     /** Turn the whole ship: every display (and the flag) gets the ship's yaw; the client smooths it. */
     void sendRotation() {
-        if (displays != null) for (Display d : displays) if (d != null && d.isValid()) d.setRotation(yaw, 0);
-        if (flag != null && flag.isValid()) flag.setRotation(yaw, 0);
+        float pt = pitch();
+        if (displays != null) for (Display d : displays) if (d != null && d.isValid()) d.setRotation(yaw, pt);
+        if (flag != null && flag.isValid()) flag.setRotation(yaw, pt);
         sentYaw = yaw;
     }
 
@@ -374,7 +393,7 @@ final class Ship {
     }
 
     void refreshLadders() {
-        for (int i = 0; i < blocks.length; i++) if (type.cells.get(i).need() == ShipType.Need.LADDER) refreshCell(i);
+        for (int i = 0; i < blocks.length; i++) if (type.cells.get(i).need().shaped()) refreshCell(i);
     }
 
     // ---- the banner ----
@@ -456,10 +475,11 @@ final class Ship {
             for (var e : missing().entrySet()) sb.append("\n").append(ChatColor.YELLOW).append(e.getValue()).append(" ").append(ChatColor.WHITE).append(e.getKey().label);
             text = sb.toString();
         } else if (wrecked) {
-            text = ChatColor.RED + "" + ChatColor.BOLD + "WRECKED\n" + ChatColor.GRAY + "Repair it with a Shipwright's Hammer\n"
+            text = ChatColor.RED + "" + ChatColor.BOLD + "SINKING\n" + ChatColor.GRAY + "Patch it with a Shipwright's Hammer to raise it\n"
                     + ChatColor.WHITE + "Hull " + (int) Math.round(100 * hp / maxHp()) + "%";
-        } else if (anchored && hp < maxHp()) {
-            text = ChatColor.GOLD + title() + ChatColor.GRAY + " · Hull " + (int) Math.round(100 * hp / maxHp()) + "%";
+        } else if (anchored && (hp < maxHp() || !broken.isEmpty())) {
+            text = ChatColor.GOLD + title() + ChatColor.GRAY + " · Hull " + (int) Math.round(100 * hp / maxHp()) + "%"
+                    + (broken.isEmpty() ? "" : ChatColor.RED + " · " + broken.size() + " holes");
         } else if (anchored && name != null) {
             text = ChatColor.GOLD + "" + ChatColor.BOLD + name;
         }
@@ -511,6 +531,8 @@ final class Ship {
     /** Sit a player down: the helm if they may steer and it's free (or they asked for it), else the closest free seat. */
     boolean board(Player p, boolean helmOnly, Location near) {
         if (building || seats == null || p.isInsideVehicle()) return false;
+        if (wrecked) { p.sendActionBar(Component.text("The " + title() + " is sinking: patch it with a Shipwright's Hammer.", NamedTextColor.RED)); return false; }
+        if (ai != null) return false; // the skeletons' seats
         boolean captain = pl.mayCaptain(p, this);
         if (helmOnly && !captain) { p.sendActionBar(Component.text("Only the owner and their crew can take the helm.", NamedTextColor.RED)); return false; }
         int best = -1;
@@ -544,9 +566,13 @@ final class Ship {
         else if (anchored && !building) helmWhileAnchored();
         else if (sailing()) sail();
         // move everything
-        if (sailing() || anchorStep >= 0) {
-            int every = type == ShipType.GALLEON ? 2 : 1;
-            if (Math.abs(yaw - sentYaw) >= 0.5f && ticks % every == 0) sendRotation();
+        // a wreck goes down slowly (tilting); a repaired one comes back up
+        boolean sinking = false;
+        if (wrecked && sink < sinkTarget()) { sink = Math.min(sinkTarget(), sink + pl.cfg("sink-speed", 0.006) * (ai != null ? 3 : 1)); sinking = true; }
+        else if (!wrecked && sink > 0) { sink = Math.max(0, sink - 0.03); sinking = true; }
+        if (sailing() || anchorStep >= 0 || sinking) {
+            int every = type == ShipType.GALLEON || type == ShipType.PIRATE ? 2 : 1;
+            if ((Math.abs(yaw - sentYaw) >= 0.5f || (sinking && ticks % 10 == 0)) && ticks % every == 0) sendRotation();
             place();
         }
         if (ticks % 10 == 0) {
@@ -588,7 +614,7 @@ final class Ship {
     void sail() {
         Player cap = rider(0);
         if (cap != null && !pl.mayCaptain(cap, this)) cap = null;
-        Input in = input(cap);
+        Input in = ai != null ? ai.input : input(cap);
         boolean f = false, b = false, l = false, r = false, sp = false, j = false;
         if (in != null) { f = in.isForward(); b = in.isBackward(); l = in.isLeft(); r = in.isRight(); sp = in.isSprint(); j = in.isJump(); }
         if (wrecked) { f = b = l = r = sp = j = false; }
@@ -646,7 +672,10 @@ final class Ship {
             Location at = center();
             world().playSound(at, Sound.ENTITY_ZOMBIE_BREAK_WOODEN_DOOR, SoundCategory.BLOCKS, 1.4f, 0.6f);
             world().spawnParticle(Particle.BLOCK, at, 40, 2, 1, 2, 0, Material.OAK_PLANKS.createBlockData());
-            damage(pl.getConfig().getDouble("ram-damage", 30) * hit, null);
+            Location crash = lastBlocked != null ? lastBlocked.getLocation().add(0.5, 0.5, 0.5) : null;
+            damage(pl.getConfig().getDouble("ram-damage", 30) * hit, null, crash);
+            if (lastBlockShip != null && lastBlockShip != this && !lastBlockShip.building)
+                lastBlockShip.damage(pl.getConfig().getDouble("ram-damage", 30) * hit * pl.cfg("ram-other-multiplier", 1.6), null, crash);
             for (Player p : riders()) p.sendActionBar(Component.text("The hull scrapes against the shore!", NamedTextColor.RED));
         }
         speed = -speed * 0.2;
@@ -657,10 +686,10 @@ final class Ship {
     // =====================================================================================================
     void dropAnchor(Player cap) {
         double max = type.speed * pl.getConfig().getDouble("ships." + type.size + ".speed-multiplier", 1.0);
-        if (Math.abs(speed) > max * 0.3) { cap.sendActionBar(Component.text("Slow down to drop anchor.", NamedTextColor.YELLOW)); return; }
+        if (Math.abs(speed) > max * 0.3) { if (cap != null) cap.sendActionBar(Component.text("Slow down to drop anchor.", NamedTextColor.YELLOW)); return; }
         float ty = Math.round(yaw / 90f) * 90f;
         double[] spot = snapSpot(ty);
-        if (spot == null) { cap.sendActionBar(Component.text("Too close to land or blocks to drop anchor here.", NamedTextColor.RED)); return; }
+        if (spot == null) { if (cap != null) cap.sendActionBar(Component.text("Too close to land or blocks to drop anchor here.", NamedTextColor.RED)); return; }
         speed = 0; turnRate = 0;
         anchorYaw0 = yaw; anchorYaw1 = ty;
         if (Math.abs(anchorYaw1 - anchorYaw0) > 180) anchorYaw1 += anchorYaw1 > anchorYaw0 ? -360 : 360;
@@ -712,7 +741,7 @@ final class Ship {
         removeHitboxes();
         place();
         int solid = 0;
-        for (int i = 0; i < blocks.length; i++) if (blocks[i] != null && putBarrier(i)) solid++;
+        for (int i = 0; i < blocks.length; i++) if (blocks[i] != null && !broken.contains(i) && putBarrier(i)) solid++;
         refreshLadders();
         liftPlayers();
         refreshLabel();
@@ -720,15 +749,20 @@ final class Ship {
         return solid;
     }
 
-    /** A barrier in a built cell (a real ladder for ladder cells, so they can be climbed). True if the cell is solid now. */
+    /**
+     * A barrier in a built cell, or for stairs, fences, trapdoors, ladders, panes and lanterns the real block, so they
+     * feel like the real thing (walk up stairs, can't hop the rails, climb the ladders, open the hatch).
+     * True if the cell is solid now.
+     */
     boolean putBarrier(int i) {
         Block b = blockOf(i);
-        boolean ladder = type.cells.get(i).need() == ShipType.Need.LADDER;
-        if (b.getType() == (ladder ? Material.LADDER : Material.BARRIER)) return true;
+        boolean real = type.cells.get(i).need().shaped();
+        BlockData want = real ? dataOf(i) : Material.BARRIER.createBlockData();
+        if (b.getType() == want.getMaterial()) return true;
         if (!water(b) && !air(b)) return false;
         boolean wet = water(b);
         String was = b.getBlockData().getAsString();
-        BlockData bar = ladder ? dataOf(i) : Material.BARRIER.createBlockData();
+        BlockData bar = want;
         if (bar instanceof Waterlogged wl) wl.setWaterlogged(wet);
         b.setBlockData(bar, false);
         barriers.add(b.getX() + "," + b.getY() + "," + b.getZ() + "|" + was);
@@ -745,17 +779,24 @@ final class Ship {
         int bar = s.indexOf('|');
         String[] p = s.substring(0, bar).split(",");
         Block b = w.getBlockAt(Integer.parseInt(p[0]), Integer.parseInt(p[1]), Integer.parseInt(p[2]));
-        if (b.getType() != Material.BARRIER && b.getType() != Material.LADDER) return;
+        if (!shipBlock(b.getType())) return;
         try { b.setBlockData(Bukkit.createBlockData(s.substring(bar + 1)), false); }
         catch (IllegalArgumentException ex) { b.setType(s.contains("water") ? Material.WATER : Material.AIR, false); }
+    }
+
+    /** A block a ship puts in the world while anchored: barriers, and the real shaped blocks. */
+    static boolean shipBlock(Material m) {
+        if (m == Material.BARRIER || m == Material.LADDER || m == Material.LANTERN || m == Material.SOUL_LANTERN) return true;
+        String n = m.name();
+        return n.endsWith("_STAIRS") || n.endsWith("_FENCE") || n.endsWith("_TRAPDOOR") || n.endsWith("GLASS_PANE");
     }
 
     void raiseAnchor(Player cap) {
         clearBarriers();
         anchored = false;
         refreshLadders();
-        // whoever is standing on the deck gets a seat, or is left behind
-        for (Player p : world().getPlayers()) {
+        // whoever is standing on the deck gets a seat, or is left behind (not on a skeleton ship: its seats are its crew's)
+        if (ai == null) for (Player p : world().getPlayers()) {
             if (p.isInsideVehicle() || p.getLocation().distanceSquared(center()) > radius() * radius() + 25) continue;
             Location l = p.getLocation();
             if (cellAt(l.getX(), l.getY() - 0.2, l.getZ()) < 0 && cellAt(l.getX(), l.getY() - 1.2, l.getZ()) < 0) continue;
@@ -765,7 +806,7 @@ final class Ship {
         refreshLabel();
         world().playSound(center(), Sound.BLOCK_CHAIN_BREAK, SoundCategory.BLOCKS, 1.5f, 0.7f);
         world().playSound(center(), Sound.ENTITY_PLAYER_SPLASH, SoundCategory.BLOCKS, 1f, 1.2f);
-        cap.sendActionBar(Component.text("Anchor up. Full sail with Sprint, S to brake, Jump to drop anchor.", NamedTextColor.AQUA));
+        if (cap != null) cap.sendActionBar(Component.text("Anchor up. Full sail with Sprint, S to brake, Jump to drop anchor.", NamedTextColor.AQUA));
         pl.saveNow();
     }
 
@@ -797,7 +838,7 @@ final class Ship {
             Block b = blockOf(i);
             String at = b.getX() + "," + b.getY() + "," + b.getZ();
             cellsAt.add(at);
-            if (b.getType() != Material.BARRIER && b.getType() != Material.LADDER) {
+            if (!shipBlock(b.getType())) {
                 if (anchored && blocks[i] != null && putBarrier(i)) changed = true; // a cell the ship didn't have before (an update)
                 continue;
             }
@@ -822,7 +863,7 @@ final class Ship {
     List<BlockState> fakes(List<Integer> cells) {
         List<BlockState> out = new ArrayList<>();
         for (int i : cells) {
-            if (blocks[i] == null || type.cells.get(i).need() == ShipType.Need.CANNON) continue;
+            if (blocks[i] == null || type.cells.get(i).need() == ShipType.Need.CANNON || type.cells.get(i).need().shaped()) continue; // shaped ones are real already
             Block b = blockOf(i);
             if (b.getType() != Material.BARRIER) continue;
             BlockState st = b.getState();
@@ -883,10 +924,17 @@ final class Ship {
     // =====================================================================================================
     //  health
     // =====================================================================================================
-    void damage(double amount, Player by) {
+    void damage(double amount, Player by) { damage(amount, by, null); }
+
+    /** at: where it was hit (the blocks nearest it break), or null for anywhere. */
+    void damage(double amount, Player by, Location at) {
         if (building || wrecked || amount <= 0) return;
         hp = Math.max(0, hp - amount);
         pl.dirty = true;
+        breakAcc += amount;
+        double per = Math.max(1, pl.cfg("parts.hp-per-broken-block", 6));
+        int n = (int) Math.min(pl.cfg("parts.max-broken-per-hit", 6), Math.floor(breakAcc / per));
+        if (n > 0) { breakAcc -= n * per; breakNear(at, n); }
         if (ticks - lastHurtFx > 4) {
             lastHurtFx = ticks;
             Location c = center();
@@ -898,23 +946,21 @@ final class Ship {
     }
 
     void wreck(Player by) {
+        if (ai != null) pl.pirates.onWreck(this);
         wrecked = true;
         hp = 0;
         speed = 0; turnRate = 0;
         if (seats != null) for (ArmorStand s : seats) if (s != null && s.isValid()) s.eject();
         anchorStep = -1;
-        if (!anchored) {
-            float ty = Math.round(yaw / 90f) * 90f;
-            double[] spot = snapSpot(ty);
-            if (spot != null) {
-                yaw = ((Math.round(ty) % 360) + 360) % 360; x = spot[0]; z = spot[1];
-                sendRotation();
-                anchor();
-            }
+        if (anchored) { // it's going down: the deck can't be stood on any more
+            clearBarriers();
+            anchored = false;
+            refreshLadders();
+            spawnHitboxes();
         }
         place();
         if (stand != null && stand.isValid()) stand.getEquipment().setHelmet(standItem());
-        for (int i = 0; i < blocks.length; i++) if (type.cells.get(i).need() == ShipType.Need.WOOL) refreshCell(i);
+        for (int i = 0; i < blocks.length; i++) if (type.cells.get(i).need().sail()) refreshCell(i);
         refreshLabel();
         Location c = center();
         world().playSound(c, Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.BLOCKS, 1.2f, 0.7f);
@@ -925,17 +971,30 @@ final class Ship {
             p.sendMessage(ChatColor.RED + (name != null ? "The " + name : "A " + type.title) + " has been wrecked" + who + "!");
         Player o = Bukkit.getPlayer(owner);
         if (o != null && o.getLocation().distanceSquared(c) >= 64 * 64)
-            o.sendMessage(ChatColor.RED + "Your " + title() + " has been wrecked! Repair it with a Shipwright's Hammer.");
+            o.sendMessage(ChatColor.RED + "Your " + title() + " has been wrecked and is sinking! Patch it with a Shipwright's Hammer to raise it.");
         pl.saveNow();
     }
 
-    /** Hammer work. Returns true once the ship is back to full. */
-    boolean repair(double amount) {
+    /** Hammer work. Returns true once the ship is back to full (and every hole is patched). */
+    boolean repair(double amount) { return repair(amount, null) > 0; }
+
+    /**
+     * Hammer work by a player: patches the holes within reach (2 a hit), and the hull.
+     * Returns -1 if there are holes but none within reach (nothing happens), 0 for progress, 1 once it's whole again.
+     */
+    int repair(double amount, Player by) {
+        if (!broken.isEmpty() && by != null) {
+            List<Integer> near = brokenNear(by.getLocation(), pl.cfg("parts.reach", 6));
+            if (near.isEmpty()) return -1;
+            for (int k = 0; k < Math.min(2, near.size()); k++) fixPart(near.get(k));
+        } else if (!broken.isEmpty()) {
+            for (int i : new ArrayList<>(broken)) fixPart(i);
+        }
         hp = Math.min(maxHp(), hp + amount);
         pl.dirty = true;
-        if (hp >= maxHp() && wrecked) {
+        if (hp >= maxHp() && broken.isEmpty() && wrecked) {
             wrecked = false;
-            for (int i = 0; i < blocks.length; i++) if (type.cells.get(i).need() == ShipType.Need.WOOL) refreshCell(i);
+            for (int i = 0; i < blocks.length; i++) if (type.cells.get(i).need().sail()) refreshCell(i);
             place();
             if (stand != null && stand.isValid()) stand.getEquipment().setHelmet(standItem());
             Location c = center();
@@ -943,7 +1002,97 @@ final class Ship {
             world().spawnParticle(Particle.HAPPY_VILLAGER, c.clone().add(0, 2, 0), 60, type.halfWidth, 2, 4, 0);
         }
         refreshLabel();
-        return hp >= maxHp();
+        return hp >= maxHp() && broken.isEmpty() ? 1 : 0;
+    }
+
+    // ---- broken parts ----
+    /** Knock out the n built blocks nearest to where it was hit (holes you can see, and fall through when anchored). */
+    void breakNear(Location at, int n) {
+        int cap = (int) (blocks.length * pl.cfg("parts.max-broken-fraction", 0.35));
+        if (broken.size() >= cap) return;
+        World w = world();
+        if (w == null) return;
+        double ax, ay, az;
+        if (at != null) { ax = at.getX(); ay = at.getY(); az = at.getZ(); }
+        else { // somewhere on the hull
+            ShipType.Cell c = type.cells.get(type.probes.get((int) (Math.random() * type.probes.size())));
+            double[] p = toWorld(x, z, yaw, c.x(), c.z());
+            ax = p[0]; ay = y + c.y() + 0.5; az = p[1];
+        }
+        List<double[]> cand = new ArrayList<>();
+        for (int i = 0; i < blocks.length; i++) {
+            if (blocks[i] == null || broken.contains(i)) continue;
+            ShipType.Cell c = type.cells.get(i);
+            if (c.need() == ShipType.Need.LADDER) continue;
+            double[] p = toWorld(x, z, yaw, c.x(), c.z());
+            double dx = p[0] - ax, dy = y + c.y() + 0.5 - ay, dz = p[1] - az;
+            cand.add(new double[]{dx * dx + dy * dy + dz * dz, i});
+        }
+        cand.sort((a, b) -> Double.compare(a[0], b[0]));
+        for (int k = 0; k < Math.min(n, cand.size()) && broken.size() < cap; k++) {
+            int i = (int) cand.get(k)[1];
+            broken.add(i);
+            if (anchored) unbarrier(i);
+            refreshCell(i);
+            Location l = cellLoc(i);
+            try { w.spawnParticle(Particle.BLOCK, l, 14, 0.3, 0.3, 0.3, 0, dataOf(i)); } catch (RuntimeException ignored) { }
+        }
+        w.playSound(new Location(w, ax, ay, az), Sound.ENTITY_ZOMBIE_BREAK_WOODEN_DOOR, SoundCategory.BLOCKS, 1f, 0.8f);
+        refreshLabel();
+    }
+
+    void fixPart(int i) {
+        if (!broken.remove(i)) return;
+        if (anchored) putBarrier(i);
+        refreshCell(i);
+        World w = world();
+        if (w != null) w.spawnParticle(Particle.HAPPY_VILLAGER, cellLoc(i), 6, 0.3, 0.3, 0.3, 0);
+    }
+
+    /** Take a cell's barrier (or real block) back out: the original water or air. */
+    void unbarrier(int i) {
+        Block b = blockOf(i);
+        String at = b.getX() + "," + b.getY() + "," + b.getZ() + "|";
+        for (java.util.Iterator<String> it = barriers.iterator(); it.hasNext(); ) {
+            String r = it.next();
+            if (!r.startsWith(at)) continue;
+            restoreBarrier(world(), r);
+            it.remove();
+        }
+    }
+
+    /** The middle of a cell in the world (where a wreck has sunk to, too). */
+    Location cellLoc(int i) {
+        ShipType.Cell c = type.cells.get(i);
+        double[] p = toWorld(x, z, yaw, c.x(), c.z());
+        return new Location(world(), p[0], y + c.y() + 0.5 - (wrecked || sink > 0 ? sink : 0), p[1]);
+    }
+
+    /** Broken cells within reach of a spot, nearest first. */
+    List<Integer> brokenNear(Location l, double reach) {
+        List<Integer> out = new ArrayList<>();
+        for (int i : broken) if (cellLoc(i).distanceSquared(l) <= reach * reach) out.add(i);
+        out.sort((a, b) -> Double.compare(cellLoc(a).distanceSquared(l), cellLoc(b).distanceSquared(l)));
+        return out;
+    }
+
+    /** Where a cell is, in words: below deck, the rigging, the bow, the stern, port or starboard. */
+    String partName(int i) {
+        ShipType.Cell c = type.cells.get(i);
+        if (c.y() < type.deckY && c.y() > 0) return "below deck";
+        if (c.need().sail() || c.need() == ShipType.Need.LOG || c.y() > type.deckY + 2) return "rigging";
+        if (c.x() >= type.maxX - 2) return "bow";
+        if (c.x() <= type.minX + 2) return "stern";
+        if (c.y() == 0) return "keel";
+        return c.z() < 0 ? "port side" : c.z() > 0 ? "starboard side" : "deck";
+    }
+
+    /** The nearest broken part to a spot, in words ("the bow, 12 blocks away"). */
+    String nearestDamage(Location l) {
+        int best = -1;
+        double bd = Double.MAX_VALUE;
+        for (int i : broken) { double d = cellLoc(i).distanceSquared(l); if (d < bd) { bd = d; best = i; } }
+        return best < 0 ? "nothing" : "the " + partName(best) + ", " + (int) Math.sqrt(bd) + " blocks away";
     }
 
     void effects() {
@@ -959,7 +1108,8 @@ final class Ship {
     void hud() {
         List<Player> riders = riders();
         if (bar == null) bar = Bukkit.createBossBar(type.title, BarColor.BLUE, BarStyle.SEGMENTED_10);
-        bar.setTitle(ChatColor.AQUA + title() + ChatColor.GRAY + "  Hull " + (int) Math.ceil(hp) + "/" + (int) maxHp());
+        bar.setTitle(ChatColor.AQUA + title() + ChatColor.GRAY + "  Hull " + (int) Math.ceil(hp) + "/" + (int) maxHp()
+                + (broken.isEmpty() ? "" : ChatColor.RED + "  " + broken.size() + " holes"));
         bar.setProgress(Math.max(0, Math.min(1, hp / maxHp())));
         bar.setColor(hp < maxHp() * 0.3 ? BarColor.RED : hp < maxHp() * 0.7 ? BarColor.YELLOW : BarColor.BLUE);
         Set<Player> want = new HashSet<>(riders);

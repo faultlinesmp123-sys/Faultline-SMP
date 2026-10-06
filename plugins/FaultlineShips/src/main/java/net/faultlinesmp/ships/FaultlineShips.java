@@ -96,6 +96,7 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
     final Map<ShipType, NamespacedKey> blueprintKeys = new HashMap<>();
     File dataFile;
     boolean dirty;
+    Pirates pirates;
     long now;
 
     @Override
@@ -111,6 +112,8 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
         load();
         recipes();
         getServer().getPluginManager().registerEvents(this, this);
+        pirates = new Pirates(this);
+        getServer().getPluginManager().registerEvents(pirates, this);
         for (World w : Bukkit.getWorlds()) for (var ch : w.getLoadedChunks()) cleanup(ch.getEntities());
         Bukkit.getScheduler().runTaskTimer(this, this::tick, 1L, 1L);
         Bukkit.getScheduler().runTaskTimer(this, () -> { if (dirty) saveNow(); }, 100L, 100L);
@@ -119,6 +122,7 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
 
     @Override
     public void onDisable() {
+        if (pirates != null) pirates.shutdown();
         for (Ship s : ships.values()) {
             if (s.hold != null) s.cargo = s.hold.getContents();
             s.despawn();
@@ -127,6 +131,11 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
     }
 
     double cfg(String key, double def) { return getConfig().getDouble(key, def); }
+
+    static void attr(org.bukkit.entity.LivingEntity e, org.bukkit.attribute.Attribute a, double v) {
+        org.bukkit.attribute.AttributeInstance i = e.getAttribute(a);
+        if (i != null) i.setBaseValue(v);
+    }
 
     /** Floodgate gives Bedrock players a UUID whose top half is 0 (same check as FaultlineBosses). */
     static boolean bedrock(Player p) { return p.getUniqueId().getMostSignificantBits() == 0; }
@@ -163,7 +172,13 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
     ItemStack blueprint(ShipType t) {
         ItemStack it = new ItemStack(Material.GLOBE_BANNER_PATTERN);
         ItemMeta m = it.getItemMeta();
-        ChatColor c = t == ShipType.SLOOP ? ChatColor.WHITE : t == ShipType.BRIGANTINE ? ChatColor.GOLD : ChatColor.AQUA;
+        ChatColor c = switch (t) {
+            case DINGHY -> ChatColor.GREEN;
+            case SLOOP -> ChatColor.WHITE;
+            case BRIGANTINE -> ChatColor.GOLD;
+            case GALLEON -> ChatColor.AQUA;
+            case PIRATE -> ChatColor.DARK_GRAY;
+        };
         m.setDisplayName(c + "" + ChatColor.BOLD + t.title + " Blueprint");
         List<String> lore = new ArrayList<>();
         lore.add(ChatColor.GRAY + "A " + t.size + " ship: " + (int) t.maxHp + " health, " + (t.seats.length) + " seats"
@@ -175,7 +190,9 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
         if (t.deep) lore.add(ChatColor.DARK_GRAY + "Needs water at least 2 deep.");
         m.setLore(lore);
         m.addItemFlags(ItemFlag.HIDE_ADDITIONAL_TOOLTIP);
-        if (t == ShipType.GALLEON) m.setEnchantmentGlintOverride(true);
+        if (t == ShipType.DINGHY) lore.add(1, ChatColor.GRAY + "A rowboat for fishing: no cannons.");
+        if (t == ShipType.GALLEON || t == ShipType.PIRATE) lore.add(1, ChatColor.GRAY + "A hold below deck: open the hatch.");
+        if (t == ShipType.GALLEON || t == ShipType.PIRATE) m.setEnchantmentGlintOverride(true);
         m.getPersistentDataContainer().set(blueprintKeys.get(t), PersistentDataType.BYTE, (byte) 1);
         it.setItemMeta(m);
         return it;
@@ -272,6 +289,20 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
             gal.setIngredient('P', Material.PAPER);
             gal.setIngredient('B', new RecipeChoice.ExactChoice(blueprint(ShipType.BRIGANTINE)));
             add(gal);
+            ItemStack dinghy = blueprint(ShipType.DINGHY);
+            ShapelessRecipe din = new ShapelessRecipe(blueprintKeys.get(ShipType.DINGHY), dinghy);
+            din.addIngredient(Material.PAPER);
+            din.addIngredient(Material.PAPER);
+            din.addIngredient(new RecipeChoice.MaterialChoice(boats));
+            Bukkit.removeRecipe(din.getKey());
+            Bukkit.addRecipe(din);
+            ShapedRecipe pir = new ShapedRecipe(blueprintKeys.get(ShipType.PIRATE), blueprint(ShipType.PIRATE));
+            pir.shape("DPD", "PGP", "DSD");
+            pir.setIngredient('D', Material.BLACK_DYE);
+            pir.setIngredient('P', Material.PAPER);
+            pir.setIngredient('G', new RecipeChoice.ExactChoice(blueprint(ShipType.GALLEON)));
+            pir.setIngredient('S', Material.WITHER_SKELETON_SKULL);
+            add(pir);
             ShapedRecipe can = new ShapedRecipe(cannonKey, cannon());
             can.shape("III", "IG ", "L L");
             can.setIngredient('I', Material.IRON_INGOT);
@@ -562,6 +593,8 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
         if (onShip != null && a == Action.RIGHT_CLICK_BLOCK) {
             int c = onShip.cellAt(clicked);
             ShipType.Cell cell = onShip.type.cells.get(c);
+            if (cell.need() == ShipType.Need.HATCH && !onShip.building) return;   // the hatch opens like any trapdoor
+            if (cell.need() == ShipType.Need.TRAPDOOR) { event.setCancelled(true); if (!onShip.building && !p.isSneaking() && !used(p)) onShip.board(p, false, clicked.getLocation().add(0.5, 1, 0.5)); return; } // the crow's nest stays shut
             if (cell.need() == ShipType.Need.CHEST && onShip.blocks[c] != null && !onShip.building) {
                 event.setCancelled(true);
                 openHold(p, onShip);
@@ -616,7 +649,8 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
         String n = p.getInventory().getItemInMainHand().getType().name();
         double dmg = n.endsWith("_AXE") ? 8 : n.endsWith("_SWORD") ? 5 : n.equals("MACE") ? 6 : n.equals("TRIDENT") ? 5 : n.endsWith("_PICKAXE") ? 3 : 1;
         dmg *= cfg("damage.melee-multiplier", 1.0);
-        s.damage(dmg, p);
+        Location eye = p.getEyeLocation();
+        s.damage(dmg, p, eye.clone().add(eye.getDirection().multiply(2.5)));
     }
 
     void hangBanner(Player p, Ship s, ItemStack hand) {
@@ -687,12 +721,16 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
         }
         double pitch = Math.max(Math.toRadians(-8), Math.min(Math.toRadians(30), Math.asin(Math.max(-1, Math.min(1, look.getY())))));
         Vector dir = flat.multiply(Math.cos(pitch)).setY(Math.sin(pitch)).normalize().multiply(cfg("cannon.speed", 2.4));
+        launch(s, mz, dir, p);
+    }
+
+    /** A cannonball out of a ship's muzzle (players' and skeletons' alike). */
+    Snowball launch(Ship from, Location mz, Vector vel, org.bukkit.projectiles.ProjectileSource shooter) {
         World w = mz.getWorld();
-        final Ship from = s;
         Snowball ball = w.spawn(mz, Snowball.class, b -> {
             b.setItem(ball());
-            b.setShooter(p);
-            b.setVelocity(dir);
+            if (shooter != null) b.setShooter(shooter);
+            b.setVelocity(vel);
             b.getPersistentDataContainer().set(ballTag, PersistentDataType.STRING, from.id.toString());
         });
         w.playSound(mz, Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.PLAYERS, 1.6f, 1.6f);
@@ -700,7 +738,10 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
         w.spawnParticle(Particle.LARGE_SMOKE, mz, 14, 0.25, 0.2, 0.25, 0.05);
         w.spawnParticle(Particle.FLAME, mz, 10, 0.15, 0.15, 0.15, 0.04);
         w.spawnParticle(Particle.EXPLOSION, mz, 1, 0, 0, 0, 0);
+        return ball;
     }
+
+    boolean ballExploding; // impact() is setting off its own explosion: the explosion handlers leave the ships to it
 
     Ship ballShip(Entity e) {
         String id = e.getPersistentDataContainer().get(ballTag, PersistentDataType.STRING);
@@ -714,13 +755,19 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
     void impact(Entity ball, Location at, Entity hit) {
         if (!ball.isValid()) return;
         Ship from = ballShip(ball);
-        Player shooter = ball instanceof Projectile pr && pr.getShooter() instanceof Player pp ? pp : null;
+        Entity source = ball instanceof Projectile pr && pr.getShooter() instanceof Entity en ? en : null;
+        Player shooter = source instanceof Player pp ? pp : null;
+        boolean pirate = from != null && from.ai != null;
         ball.remove();
         World w = at.getWorld();
-        w.createExplosion(at, (float) cfg("cannon.explosion-power", 2.0), false, getConfig().getBoolean("cannon.break-blocks", false), shooter);
-        if (hit instanceof org.bukkit.entity.LivingEntity le && !(shipOfEntity(hit) != null)) le.damage(cfg("cannon.hit-damage", 10), shooter);
+        ballExploding = true;
+        try { w.createExplosion(at, (float) cfg("cannon.explosion-power", 2.0), false, getConfig().getBoolean("cannon.break-blocks", false), source); }
+        finally { ballExploding = false; }
+        if (hit instanceof org.bukkit.entity.LivingEntity le && shipOfEntity(hit) == null && !(pirate && pirates.isPirate(hit)))
+            le.damage(cfg("cannon.hit-damage", 10), source);
         for (Ship s : ships.values()) {
             if (s == from || !at.getWorld().getName().equals(s.world) || s.building || s.wrecked) continue;
+            if (pirate && s.ai != null) continue; // skeletons don't shoot their own fleet
             if (at.distance(s.center()) > s.radius() + 6) continue;
             double near = Double.MAX_VALUE;
             for (int i : s.type.probes) {
@@ -730,12 +777,18 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
                 near = Math.min(near, dx * dx + dy * dy + dz * dz);
             }
             double d = Math.sqrt(near), r = cfg("cannon.ship-radius", 4);
-            if (d < r) s.damage(cfg("cannon.ship-damage", 45) * (1 - d / r * 0.6) * cfg("damage.projectile-multiplier", 1.0), shooter);
+            if (d < r) s.damage(cfg("cannon.ship-damage", 45) * (1 - d / r * 0.6) * cfg("damage.projectile-multiplier", 1.0), shooter, at);
         }
     }
 
     void openHold(Player p, Ship s) {
         if (s.type.cargo <= 0) { p.sendActionBar(Component.text("The " + s.type.title + " has no hold.", NamedTextColor.GRAY)); return; }
+        if (s.ai != null) { // a skeleton ship's hold: plunder for whoever gets on board
+            if (!s.anchored) { p.sendActionBar(Component.text("Get it to drop anchor first: pull alongside.", NamedTextColor.YELLOW)); return; }
+            pirates.plunder(p, s);
+            p.playSound(p.getLocation(), Sound.BLOCK_CHEST_OPEN, SoundCategory.BLOCKS, 0.8f, 0.9f);
+            return;
+        }
         if (!mayCaptain(p, s)) { p.sendActionBar(Component.text("Only the owner and their crew can open the hold.", NamedTextColor.RED)); return; }
         p.openInventory(s.hold());
         p.playSound(p.getLocation(), Sound.BLOCK_CHEST_OPEN, SoundCategory.BLOCKS, 0.8f, 0.9f);
@@ -754,7 +807,7 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
             else if (by.getDamager() instanceof Projectile pr && !arrowsCounted.contains(pr.getUniqueId())) {
                 arrowsCounted.add(pr.getUniqueId());
                 s.damage((pr instanceof AbstractArrow ar ? Math.max(1, ar.getDamage()) : 2) * cfg("damage.projectile-multiplier", 1.0),
-                        pr.getShooter() instanceof Player sp ? sp : null);
+                        pr.getShooter() instanceof Player sp ? sp : null, pr.getLocation());
             }
         }
     }
@@ -794,14 +847,14 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
             return;
         }
         Block b = event.getHitBlock();
-        if (b == null || b.getType() != Material.BARRIER) return;
+        if (b == null || !Ship.shipBlock(b.getType())) return;
         Ship s = shipCellAt(b, null);
         Projectile pr = event.getEntity();
         if (s == null || arrowsCounted.contains(pr.getUniqueId())) return;
         if (pr.getShooter() instanceof Player sp && mayCaptain(sp, s)) return;
         arrowsCounted.add(pr.getUniqueId());
         double dmg = pr instanceof Trident ? 6 : pr instanceof AbstractArrow ar ? Math.max(1, ar.getDamage()) * (ar.getFireTicks() > 0 ? 1.5 : 1) : 2;
-        s.damage(dmg * cfg("damage.projectile-multiplier", 1.0), pr.getShooter() instanceof Player p ? p : null);
+        s.damage(dmg * cfg("damage.projectile-multiplier", 1.0), pr.getShooter() instanceof Player p ? p : null, b.getLocation().add(0.5, 0.5, 0.5));
     }
 
     @EventHandler
@@ -833,15 +886,31 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
         }
     }
 
+    @EventHandler(ignoreCancelled = true)
+    public void onBurn(org.bukkit.event.block.BlockBurnEvent event) {
+        if (Ship.shipBlock(event.getBlock().getType()) && shipCellAt(event.getBlock(), null) != null) event.setCancelled(true);
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    public void onPistonPush(org.bukkit.event.block.BlockPistonExtendEvent event) {
+        for (Block b : event.getBlocks()) if (Ship.shipBlock(b.getType()) && shipCellAt(b, null) != null) { event.setCancelled(true); return; }
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    public void onPistonPull(org.bukkit.event.block.BlockPistonRetractEvent event) {
+        for (Block b : event.getBlocks()) if (Ship.shipBlock(b.getType()) && shipCellAt(b, null) != null) { event.setCancelled(true); return; }
+    }
+
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onBreak(BlockBreakEvent event) {
-        if (event.getBlock().getType() == Material.BARRIER && shipCellAt(event.getBlock(), null) != null) event.setCancelled(true);
+        Ship s = shipCellAt(event.getBlock(), null);
+        if (s != null && (s.anchored || s.building) && Ship.shipBlock(event.getBlock().getType())) event.setCancelled(true);
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onExplode(EntityExplodeEvent event) {
         Entity e = event.getEntity();
-        if (e instanceof Player) { event.blockList().removeIf(b -> b.getType() == Material.BARRIER && shipCellAt(b, null) != null); return; } // a cannonball (impact() hurt the ships)
+        if (ballExploding || e instanceof Player) { event.blockList().removeIf(b -> Ship.shipBlock(b.getType()) && shipCellAt(b, null) != null); return; } // a cannonball (impact() hurt the ships)
         double base = switch (e.getType().name()) {
             case "TNT", "TNT_MINECART" -> 60;
             case "CREEPER" -> e instanceof Creeper c && c.isPowered() ? 80 : 40;
@@ -856,11 +925,12 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onBlockExplode(BlockExplodeEvent event) {
+        if (ballExploding) { event.blockList().removeIf(b -> Ship.shipBlock(b.getType()) && shipCellAt(b, null) != null); return; }
         blast(event.getBlock().getLocation().add(0.5, 0.5, 0.5), 40, event.blockList());
     }
 
     void blast(Location at, double base, List<Block> blocks) {
-        blocks.removeIf(b -> b.getType() == Material.BARRIER && shipCellAt(b, null) != null);
+        blocks.removeIf(b -> Ship.shipBlock(b.getType()) && shipCellAt(b, null) != null);
         if (base <= 0) return;
         double r = cfg("damage.explosion-radius", 7);
         for (Ship s : ships.values()) {
@@ -874,7 +944,7 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
                 best = Math.min(best, dx * dx + dy * dy + dz * dz);
             }
             double d = Math.sqrt(best);
-            if (d < r) s.damage(base * (1 - d / r) * cfg("damage.explosion-multiplier", 1.0), null);
+            if (d < r) s.damage(base * (1 - d / r) * cfg("damage.explosion-multiplier", 1.0), null, at);
         }
     }
 
@@ -909,6 +979,7 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
     void tick() {
         now++;
         if (now % 20 == 0) {
+            List<Ship> gone = new ArrayList<>();
             for (Ship s : ships.values()) {
                 World w = s.world();
                 boolean want = false;
@@ -920,13 +991,16 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
                         if (dx * dx + dz * dz < range * range) { want = true; break; }
                     }
                 }
+                if (s.ai != null && !want && s.ai.inv == null) { gone.add(s); continue; } // nobody left to see it: it's gone
                 if (want && !s.spawned()) s.spawn();
                 else if (!want && s.spawned()) s.despawn();
                 else if (s.spawned() && s.displays != null) { // a piece got removed somehow: rebuild
                     for (Entity d : s.displays) if (d == null || !d.isValid()) { s.spawn(); break; }
                 }
             }
+            for (Ship s : gone) pirates.discard(s);
         }
+        pirates.tick();
         for (Ship s : ships.values()) s.tick();
         if (now % 20 == 5) bedrockUpkeep();
         if (now % 10 == 3) ghostParticles();
@@ -984,9 +1058,10 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
                 Location l = e.getLocation();
                 if (s.cellAt(l.getX(), l.getY(), l.getZ()) < 0) continue;
                 if (pr.getShooter() instanceof Player shooter && mayCaptain(shooter, s)) continue;
+                if (s.ai != null && pr.getShooter() instanceof Entity se && pirates.isPirate(se)) continue; // their own arrows
                 arrowsCounted.add(e.getUniqueId());
                 double dmg = e instanceof Trident ? 6 : e instanceof AbstractArrow ar ? Math.max(1, ar.getDamage()) * (ar.getFireTicks() > 0 ? 1.5 : 1) : 2;
-                s.damage(dmg * cfg("damage.projectile-multiplier", 1.0), pr.getShooter() instanceof Player sp ? sp : null);
+                s.damage(dmg * cfg("damage.projectile-multiplier", 1.0), pr.getShooter() instanceof Player sp ? sp : null, l);
                 if (!(e instanceof Trident)) e.remove();
                 else e.setVelocity(new Vector(0, -0.2, 0));
             }
@@ -1045,7 +1120,7 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
         }
         if (s == null) return;
         if (s.building) { p.sendActionBar(Component.text("Finish building it first.", NamedTextColor.YELLOW)); return; }
-        if (!s.wrecked && s.hp >= s.maxHp()) { p.sendActionBar(Component.text("The hull is in perfect shape.", NamedTextColor.GREEN)); return; }
+        if (!s.wrecked && s.hp >= s.maxHp() && s.broken.isEmpty()) { p.sendActionBar(Component.text("The hull is in perfect shape.", NamedTextColor.GREEN)); return; }
         Repair n = new Repair();
         n.ship = s;
         n.lastClick = now;
@@ -1055,7 +1130,8 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
         newZone(n);
         repairs.put(p.getUniqueId(), n);
         p.playSound(p.getLocation(), Sound.BLOCK_SMITHING_TABLE_USE, SoundCategory.PLAYERS, 1f, 1f);
-        p.sendMessage(ChatColor.GOLD + "Patching the " + s.title() + ". " + ChatColor.GRAY + "Right-click when the white marker is in the green (gold is perfect).");
+        p.sendMessage(ChatColor.GOLD + "Patching the " + s.title() + ". " + ChatColor.GRAY + "Right-click when the white marker is in the green (gold is perfect)."
+                + (s.broken.isEmpty() ? "" : ChatColor.YELLOW + " " + s.broken.size() + " holes to patch: stand by them (nearest: " + s.nearestDamage(p.getLocation()) + ")."));
     }
 
     void newZone(Repair r) {
@@ -1094,13 +1170,18 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
         Location fx = s.center();
         if (at >= r.zone && at < r.zone + r.zoneLen) {
             boolean best = at == perfect;
+            if (!s.broken.isEmpty() && s.brokenNear(p.getLocation(), cfg("parts.reach", 6)).isEmpty()) { // the holes are elsewhere
+                p.sendActionBar(Component.text("Nothing to patch here: the damage is at " + s.nearestDamage(p.getLocation()) + ".", NamedTextColor.YELLOW));
+                r.lockedUntil = now + 10;
+                return;
+            }
             if (p.getGameMode() != GameMode.CREATIVE && !takePlanks(p, getConfig().getInt("repair.planks-per-hit", 1))) {
                 p.sendActionBar(Component.text("You need Planks to patch the hull.", NamedTextColor.RED));
                 r.lockedUntil = now + 10;
                 return;
             }
             double amount = s.maxHp() * (best ? cfg("repair.perfect-percent", 12) : cfg("repair.hit-percent", 7)) / 100.0;
-            boolean done = s.repair(amount);
+            boolean done = s.repair(amount, p) > 0;
             r.combo++;
             p.playSound(p.getLocation(), Sound.BLOCK_ANVIL_PLACE, SoundCategory.PLAYERS, 0.6f, best ? 1.6f : 1.2f);
             if (best) p.playSound(p.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, SoundCategory.PLAYERS, 0.8f, 1.4f);
@@ -1109,7 +1190,7 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
             p.sendTitle("", best ? ChatColor.GOLD + "" + ChatColor.BOLD + "PERFECT!" : ChatColor.GREEN + "Good hit", 0, 12, 4);
             if (done) {
                 repairs.remove(p.getUniqueId());
-                p.sendTitle(ChatColor.GREEN + "Repaired!", ChatColor.GRAY + "The " + s.type.title + " is seaworthy.", 5, 40, 10);
+                p.sendTitle(ChatColor.GREEN + "Repaired!", ChatColor.GRAY + "The " + s.title() + " is seaworthy.", 5, 40, 10);
                 p.playSound(p.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, SoundCategory.PLAYERS, 0.8f, 1.2f);
                 return;
             }
@@ -1189,6 +1270,7 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
         dirty = false;
         YamlConfiguration y = new YamlConfiguration();
         for (Ship s : ships.values()) {
+            if (s.ai != null) continue; // skeleton ships are never saved
             String k = "ships." + s.id;
             y.set(k + ".type", s.type.name());
             y.set(k + ".owner", s.owner.toString());
@@ -1200,6 +1282,7 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
             y.set(k + ".wrecked", s.wrecked);
             // blocks by position, so a ship keeps its blocks when a plugin update changes the layouts
             y.set(k + ".format", 2);
+            y.set(k + ".layout", 3);
             List<String> bl = new ArrayList<>();
             for (int i = 0; i < s.blocks.length; i++) {
                 if (s.blocks[i] == null) continue;
@@ -1208,6 +1291,12 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
             }
             y.set(k + ".blocks", bl);
             if (s.name != null) y.set(k + ".name", s.name);
+            if (!s.broken.isEmpty()) {
+                List<String> br = new ArrayList<>();
+                for (int i : s.broken) { ShipType.Cell bc = s.type.cells.get(i); br.add(bc.x() + "," + bc.y() + "," + bc.z()); }
+                y.set(k + ".broken", br);
+            }
+            if (s.sink > 0) y.set(k + ".sink", s.sink);
             if (s.banner != null) y.set(k + ".banner", Base64.getEncoder().encodeToString(s.banner.serializeAsBytes()));
             y.set(k + ".barriers", new ArrayList<>(s.barriers));
             ItemStack[] cargo = s.cargoNow();
@@ -1257,11 +1346,24 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
                         byPos.put(o[0] + "," + o[1] + "," + o[2], bl.get(i));
                     }
                 }
+                if (t == ShipType.GALLEON && c.getInt("layout", 2) < 3) { // 1.3 raised the Galleon's deck one block (a hold below)
+                    Map<String, String> up = new HashMap<>();
+                    for (var e : byPos.entrySet()) {
+                        String[] q = e.getKey().split(",");
+                        int yy = Integer.parseInt(q[1]);
+                        up.put(q[0] + "," + (yy >= 1 ? yy + 1 : yy) + "," + q[2], e.getValue());
+                    }
+                    byPos = up;
+                }
                 int carried = 0;
                 for (int i = 0; i < s.blocks.length; i++) {
                     ShipType.Cell cell = t.cells.get(i);
                     String v = byPos.get(cell.x() + "," + cell.y() + "," + cell.z());
-                    if (v != null && (cell.need() == ShipType.Need.CANNON) == v.equals(Ship.CANNON_DATA)) { s.blocks[i] = v; carried++; }
+                    if (v == null || (cell.need() == ShipType.Need.CANNON) != v.equals(Ship.CANNON_DATA)) continue;
+                    if (cell.need() != ShipType.Need.CANNON) { // the block still has to be the right kind for that spot
+                        try { if (!cell.need().accepts(Bukkit.createBlockData(v).getMaterial())) continue; } catch (IllegalArgumentException ex) { continue; }
+                    }
+                    s.blocks[i] = v; carried++;
                 }
                 // a finished ship gets the parts a layout update added (ladders, cannons, crow's nest...) for free
                 if (!s.building) for (int i = 0; i < s.blocks.length; i++) {
@@ -1270,6 +1372,12 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
                 s.recount();
                 if (carried < byPos.size()) getLogger().info("Ship " + id + ": " + (byPos.size() - carried) + " blocks aren't part of the " + t.title + " any more.");
                 s.name = c.getString("name");
+                for (String bp : c.getStringList("broken")) {
+                    String[] q = bp.split(",");
+                    int bi = t.cellAt(Integer.parseInt(q[0]), Integer.parseInt(q[1]), Integer.parseInt(q[2]));
+                    if (bi >= 0 && s.blocks[bi] != null) s.broken.add(bi);
+                }
+                s.sink = c.getDouble("sink", 0);
                 if (c.isString("banner")) s.banner = ItemStack.deserializeBytes(Base64.getDecoder().decode(c.getString("banner")));
                 s.barriers.addAll(c.getStringList("barriers"));
                 if (c.isList("cargo")) {
@@ -1341,9 +1449,13 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
         boolean admin = sender.hasPermission("faultlineships.admin");
         Player p = sender instanceof Player pp ? pp : null;
         switch (sub) {
+            case "pirates" -> {
+                if (!admin) { sender.sendMessage(ChatColor.RED + "No permission."); return true; }
+                return pirates.command(sender, args);
+            }
             case "give" -> {
                 if (!admin) { sender.sendMessage(ChatColor.RED + "No permission."); return true; }
-                if (args.length < 2) { sender.sendMessage(ChatColor.RED + "/ship give <sloop|brigantine|galleon|hammer|cannon|cannonball> [amount] [player]"); return true; }
+                if (args.length < 2) { sender.sendMessage(ChatColor.RED + "/ship give <dinghy|sloop|brigantine|galleon|pirate|hammer|cannon|cannonball> [amount] [player]"); return true; }
                 ItemStack it;
                 if (args[1].equalsIgnoreCase("hammer")) it = hammer();
                 else if (args[1].equalsIgnoreCase("cannon")) it = cannon();
@@ -1368,7 +1480,7 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
                 int n = 0, num = 0;
                 for (Ship s : ships.values()) {
                     num++;
-                    if (!all && !s.owner.equals(p.getUniqueId())) continue;
+                    if (s.ai != null || (!all && !s.owner.equals(p.getUniqueId()))) continue;
                     n++;
                     String state = s.building ? "being built (" + s.filled + "/" + s.blocks.length + ")" : s.wrecked ? ChatColor.RED + "wrecked" : s.anchored ? "anchored" : "afloat";
                     String own = all ? ChatColor.GRAY + " (" + Bukkit.getOfflinePlayer(s.owner).getName() + ")" : "";
@@ -1495,7 +1607,7 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
                 sender.sendMessage(ChatColor.YELLOW + "/ship list" + ChatColor.GRAY + ", " + ChatColor.YELLOW + "/ship info" + ChatColor.GRAY + ", " + ChatColor.YELLOW + "/ship name <name>"
                         + ChatColor.GRAY + ", " + ChatColor.YELLOW + "/ship crew <add|remove|list> [player]" + ChatColor.GRAY + ", " + ChatColor.YELLOW + "/ship anchor" + ChatColor.GRAY + ", "
                         + ChatColor.YELLOW + "/ship stop" + ChatColor.GRAY + ", " + ChatColor.YELLOW + "/ship banner" + ChatColor.GRAY + ", " + ChatColor.YELLOW + "/ship scrap");
-                if (admin) sender.sendMessage(ChatColor.DARK_GRAY + "Admin: /ship give <sloop|brigantine|galleon|hammer|cannon|cannonball> [amount] [player], /ship list all, /ship <wreck|repair|remove|tp> [name|#n]");
+                if (admin) sender.sendMessage(ChatColor.DARK_GRAY + "Admin: /ship give <dinghy|sloop|brigantine|galleon|pirate|hammer|cannon|cannonball> [amount] [player], /ship list all, /ship <wreck|repair|remove|tp> [name|#n]");
             }
         }
         return true;
@@ -1506,8 +1618,10 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
         List<String> opts = new ArrayList<>();
         if (args.length == 1) {
             opts.addAll(List.of("list", "info", "name", "crew", "scrap", "anchor", "stop", "banner"));
-            if (sender.hasPermission("faultlineships.admin")) opts.addAll(List.of("give", "repair", "wreck", "remove", "tp"));
-        } else if (args.length == 2 && args[0].equalsIgnoreCase("give")) opts.addAll(List.of("sloop", "brigantine", "galleon", "hammer", "cannon", "cannonball"));
+            if (sender.hasPermission("faultlineships.admin")) opts.addAll(List.of("give", "repair", "wreck", "remove", "tp", "pirates"));
+        } else if (args.length == 2 && args[0].equalsIgnoreCase("give")) opts.addAll(List.of("dinghy", "sloop", "brigantine", "galleon", "pirate", "hammer", "cannon", "cannonball"));
+        else if (args.length == 2 && args[0].equalsIgnoreCase("pirates")) opts.addAll(List.of("ship", "invasion", "horn", "spawn", "egg", "stop"));
+        else if (args.length == 3 && args[0].equalsIgnoreCase("pirates") && (args[1].equalsIgnoreCase("spawn") || args[1].equalsIgnoreCase("egg"))) { for (Pirates.Kind k : Pirates.Kind.values()) opts.add(k.name().toLowerCase()); }
         else if (args.length == 2 && List.of("wreck", "repair", "remove", "tp", "info").contains(args[0].toLowerCase())) {
             for (Ship sh : ships.values()) if (sh.name != null) opts.add(sh.name);
             for (int i = 1; i <= ships.size(); i++) opts.add("#" + i);

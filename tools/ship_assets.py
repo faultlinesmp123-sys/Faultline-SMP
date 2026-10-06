@@ -19,7 +19,12 @@ Usage: python3 tools/ship_assets.py <unpacked-pack-dir> [--preview <dir>] [--bed
 import json, os, random, sys, zipfile
 from PIL import Image
 
-ICONS = ["sloop_blueprint", "brigantine_blueprint", "galleon_blueprint", "shipwright_hammer", "ship_cannon", "cannonball"]
+ICONS = ["sloop_blueprint", "brigantine_blueprint", "galleon_blueprint", "shipwright_hammer", "ship_cannon", "cannonball",
+         # 0xE34B on: the new ships, the horn, the pirates (the order is the glyph order: append only)
+         "dinghy_blueprint", "pirate_blueprint", "pirate_horn",
+         "skeleton_deckhand", "skeleton_musketeer", "skeleton_gunner", "skeleton_boarder", "powder_monkey", "drowned_corsair",
+         "skeleton_bosun", "ghost_gull", "bone_shark", "skeleton_navigator", "cursed_wraith",
+         "captains_son", "skeleton_commander", "skeleton_captain"]
 SMALL0, LARGE0 = 0xE345, 0xE745
 
 PAL = {
@@ -28,6 +33,7 @@ PAL = {
     "W": (230, 230, 225), "G": (250, 200, 60), "D": (90, 230, 230),                    # tier trims
     "h": (120, 84, 50), "H": (160, 116, 70), "k": (70, 48, 28),                        # handle
     "I": (200, 205, 215), "i": (140, 145, 160), "j": (90, 95, 110),                    # iron head
+    "E": (110, 200, 90), "X": (150, 30, 30),                                           # dinghy / pirate trims
 }
 
 BLUEPRINT = [
@@ -92,7 +98,10 @@ def main():
         "shipwright_hammer": draw(HAMMER),
         "ship_cannon": icon_of(CANNON_ICON),
         "cannonball": icon_of(BALL_ICON),
+        "dinghy_blueprint": draw(BLUEPRINT, "E"),
+        "pirate_blueprint": draw(BLUEPRINT, "X"),
     }
+    imgs.update(pirate_icons())
     for k, im in imgs.items():
         im.save(os.path.join(A, "textures/index", k + ".png"))
     ctex = java_cannons(A)
@@ -279,8 +288,10 @@ def preview_cannon(tex, out):
 # ====================================================================== Bedrock
 TILE = {"planks": (0, 0), "log_side": (16, 0), "log_top": (32, 0), "wool": (48, 0),
         "barrel_side": (0, 16), "barrel_top": (16, 16), "lantern": (32, 16), "dark": (48, 16),
-        "iron": (0, 32), "iron_dark": (16, 32), "glass": (32, 32), "ladder": (48, 32)}
-ATLAS_H = 48
+        "iron": (0, 32), "iron_dark": (16, 32), "glass": (32, 32), "ladder": (48, 32),
+        "dplanks": (0, 48), "dlog_side": (16, 48), "dlog_top": (32, 48), "black_wool": (48, 48)}
+ATLAS_H = 64
+DARK_SHIPS = ("sloop", "brigantine", "pirate")  # the ones skeletons sail (Ship.standModel adds _dark)
 
 
 def atlas():
@@ -350,17 +361,44 @@ def atlas():
             rail = x in (2, 3, 12, 13)
             rung = y % 4 == 1 and 2 <= x <= 13
             px((ox + x, oy + y), noise((140, 104, 62), 6) if rail or rung else (0, 0, 0, 0))
+    # the skeleton ships' dark oak and black sails
+    ox, oy = TILE["dplanks"]
+    for y in range(16):
+        for x in range(16):
+            c = (70, 46, 24) if (y % 4) else (44, 28, 14)
+            if y % 4 and x == (5 if (y // 4) % 2 else 11): c = (50, 33, 17)
+            px((ox + x, oy + y), noise(c, 6))
+    ox, oy = TILE["dlog_side"]
+    for y in range(16):
+        for x in range(16):
+            px((ox + x, oy + y), noise((58, 42, 26) if x % 3 else (38, 27, 16), 6))
+    ox, oy = TILE["dlog_top"]
+    for y in range(16):
+        for x in range(16):
+            r = max(abs(x - 7.5), abs(y - 7.5))
+            c = (58, 42, 26) if r > 6 else ((84, 58, 32) if int(r) % 2 else (68, 46, 24))
+            px((ox + x, oy + y), noise(c, 5))
+    ox, oy = TILE["black_wool"]
+    for y in range(16):
+        for x in range(16):
+            px((ox + x, oy + y), noise((26, 26, 30), 5))
     return im
 
 
-FULL = {"PLANKS", "LOG", "WOOL", "STAIRS", "CHEST"}
+FULL = {"PLANKS", "LOG", "WOOL", "SAIL_BLACK", "SAIL_WHITE", "STAIRS", "CHEST"}
+SAILS = {"WOOL", "SAIL_BLACK", "SAIL_WHITE"}
+# a skeleton ship (dark=True): dark oak, black sails
+DARK = {"planks": "dplanks", "log_side": "dlog_side", "log_top": "dlog_top", "wool": "black_wool"}
 # local +x (bow) -> Bedrock -z (an entity's front), local +z (starboard) -> Bedrock -x (its right)
 FACE_OF = {(1, 0, 0): "north", (-1, 0, 0): "south", (0, 0, 1): "west", (0, 0, -1): "east", (0, 1, 0): "up", (0, -1, 0): "down"}
 
 
-def face_uv(tile, w=16, h=16, u0=0, v0=0):
-    ox, oy = TILE[tile]
+def _face_uv(tile, w=16, h=16, u0=0, v0=0):
+    ox, oy = TILE["wool" if tile == "white_keep" else tile]
     return {"uv": [ox + u0, oy + v0], "uv_size": [w, h]}
+
+
+face_uv = _face_uv
 
 
 def to_bedrock(x0, y0, z0, x1, y1, z1):
@@ -370,18 +408,22 @@ def to_bedrock(x0, y0, z0, x1, y1, z1):
     return [round(bx0, 3), round(y0 * 16, 3), round(bz0, 3)], [round(bx1 - bx0, 3), round((y1 - y0) * 16, 3), round(bz1 - bz0, 3)]
 
 
-def ship_cubes(cells, wreck):
+def ship_cubes(cells, wreck, dark=False):
+    def face_uv(tile, *a):  # a skeleton ship swaps in its dark tiles
+        return _face_uv(DARK.get(tile, tile) if dark else tile, *a)
     torn = set()
     if wreck:  # same rule as Ship.scaleOf: torn sails
         for i, c in enumerate(cells):
-            if c[3] == "WOOL" and (i % 2 == 0 or c[1] % 3 == 0): torn.add(i)
+            if c[3] in SAILS and (i % 2 == 0 or c[1] % 3 == 0): torn.add(i)
     full = {(c[0], c[1], c[2]) for i, c in enumerate(cells) if c[3] in FULL and i not in torn}
     cubes = []
     for i, (x, y, z, need, props) in enumerate(cells):
         if i in torn: continue
         pr = dict(kv.split("=") for kv in props.split(",") if "=" in kv)
         if need in FULL:
-            side, top = {"LOG": ("log_side", "log_top"), "WOOL": ("wool", "wool"), "CHEST": ("barrel_side", "barrel_top")}.get(need, ("planks", "planks"))
+            side, top = {"LOG": ("log_side", "log_top"), "WOOL": ("wool", "wool"), "SAIL_WHITE": ("wool", "wool"),
+                         "SAIL_BLACK": ("black_wool", "black_wool"), "CHEST": ("barrel_side", "barrel_top")}.get(need, ("planks", "planks"))
+            if dark and need == "SAIL_WHITE": side = top = "white_keep"
             o, sz = to_bedrock(x - 0.5, y, z - 0.5, x + 0.5, y + 1, z + 0.5)
             uv = {}
             for (dx, dy, dz), f in FACE_OF.items():
@@ -405,7 +447,7 @@ def ship_cubes(cells, wreck):
             z0, z1 = sorted((wall, wall + s_ * 0.0625))
             o, sz = to_bedrock(x - 0.5, y, z0, x + 0.5, y + 1, z1)
             cubes.append({"origin": o, "size": sz, "uv": {f: face_uv("ladder") for f in FACE_OF.values()}})
-        elif need == "TRAPDOOR":
+        elif need in ("TRAPDOOR", "HATCH"):
             o, sz = to_bedrock(x - 0.5, y + 13 / 16, z - 0.5, x + 0.5, y + 1, z + 0.5)
             cubes.append({"origin": o, "size": sz, "uv": {f: face_uv("planks", 16, 3 if f not in ("up", "down") else 16) for f in FACE_OF.values()}})
         elif need == "PANE":
@@ -448,10 +490,11 @@ def bedrock_pack(bout, layouts, icons):
     icons["ship_cannon"].save(os.path.join(rp, "textures/items/faultline/ship_cannon.png"))
     icons["cannonball"].save(os.path.join(rp, "textures/items/faultline/cannonball.png"))
     paper, stick = [], []
-    for name, lay in layouts.items():
+    variants = [(name, lay, False) for name, lay in layouts.items()] + [(name, lay, True) for name, lay in layouts.items() if name in DARK_SHIPS]
+    for name, lay, dark in variants:
         for wreck in (False, True):
-            key = name + ("_wreck" if wreck else "")
-            cubes = ship_cubes(lay["cells"], wreck)
+            key = name + ("_dark" if dark else "") + ("_wreck" if wreck else "")
+            cubes = ship_cubes(lay["cells"], wreck, dark)
             geo = {"format_version": "1.16.0", "minecraft:geometry": [{
                 "description": {"identifier": f"geometry.faultline.ship_{key}", "texture_width": 64, "texture_height": ATLAS_H,
                                 "visible_bounds_width": 48, "visible_bounds_height": 40, "visible_bounds_offset": [0, 10, 0]},
@@ -463,7 +506,7 @@ def bedrock_pack(bout, layouts, icons):
                 "geometry": {"default": f"geometry.faultline.ship_{key}"}, "scripts": {"parent_setup": "v.helmet_layer_visible = 0.0;"},
                 "render_controllers": ["controller.render.armor"]}}})
             paper.append({"type": "definition", "model": f"faultline:ship/{key}", "bedrock_identifier": f"faultline:ship_{key}",
-                          "display_name": lay["title"] + (" (wrecked)" if wreck else ""),
+                          "display_name": ("Skeleton " if dark else "") + lay["title"] + (" (wrecked)" if wreck else ""),
                           "bedrock_options": {"icon": "faultline.ship_icon", "allow_offhand": False},
                           "components": {"minecraft:equippable": {"slot": "head"}, "minecraft:max_stack_size": 1}})
     for key, title in (("ship_cannon", "Ship Cannon"), ("cannonball", "Cannonball")):
@@ -494,7 +537,7 @@ def _w(path, obj):
 def preview_bedrock(rp, tex, out):
     """Draws each Bedrock ship model as Bedrock would place it on an armor stand facing north (-z): the bow must point up the sheet."""
     sheets = []
-    for name in ("sloop", "brigantine", "galleon", "galleon_wreck"):
+    for name in ("dinghy", "sloop_dark", "pirate", "pirate_dark_wreck"):
         geo = json.load(open(os.path.join(rp, "models/entity/faultline", f"ship_{name}.geo.json")))
         cubes = geo["minecraft:geometry"][0]["bones"][0]["cubes"]
         S = 3.0
@@ -529,6 +572,139 @@ def preview_bedrock(rp, tex, out):
     sheet = Image.new("RGB", (W, H), (40, 90, 140)); yy = 0
     for i in sheets: sheet.paste(i, (0, yy)); yy += i.height
     sheet.save(out)
+
+
+# ====================================================================== the pirates' Index icons
+PIR = {"W": (226, 222, 205), "w": (180, 176, 160), "b": (20, 18, 22), "k": (40, 38, 44), "R": (170, 30, 30), "r": (110, 20, 20),
+       "B": (30, 40, 90), "G": (110, 110, 118), "g": (70, 70, 78), "C": (150, 155, 165), "c": (100, 105, 115), "T": (200, 40, 30),
+       "t": (240, 240, 230), "N": (60, 110, 80), "n": (40, 80, 60), "Y": (240, 200, 60), "y": (180, 140, 30), "O": (120, 80, 45),
+       "o": (90, 60, 30), "S": (110, 120, 135), "s": (80, 90, 105), "P": (150, 230, 255), "D": (60, 60, 66), "d": (34, 34, 38),
+       "H": (130, 90, 50), "h": (80, 50, 30), "e": (255, 255, 255), "m": (220, 60, 60), "L": (90, 170, 220)}
+
+SKULL = [
+    "................",
+    "................",
+    "................",
+    "................",
+    "....WWWWWWWW....",
+    "...WWWWWWWWWW...",
+    "...WWWWWWWWWw...",
+    "...WbbWWWWbbw...",
+    "...WbbWWWWbbw...",
+    "...WWWWbbWWWw...",
+    "....WWWWWWww....",
+    "....WbWbWbWb....",
+    ".....wWWWWw.....",
+    "................",
+    "................",
+    "................",
+]
+
+# each: rows that replace the skull's (None = keep), then a tint for the bone (W/w) if any
+OVERLAY = {
+    "skeleton_deckhand": {1: "....RRRRRRRR....", 2: "...RRRRRRRRRR...", 3: "...RRRRRRRRRRRr.", 4: "...RRRRRRRRRR.rr"},
+    "skeleton_musketeer": {1: "......kkkk......", 2: "..kkkkkkkkkkkk..", 3: ".kkkkkkkkkkkkkk.", 4: "..kWWWWWWWWWWk..",
+                           13: "...BBBBBBBBBB...", 14: "..BBBBYBBYBBBB..", 15: "..BBBBBBBBBBBB.."},
+    "skeleton_gunner": {2: ".....GGGGGG.....", 3: "....GGGGGGGG....", 4: "...gGGGGGGGGg...", 13: "..........kk....", 14: ".........kddk...", 15: ".........kddk..."},
+    "skeleton_boarder": {2: "....CCCCCCCC....", 3: "...CcCcCcCcCC...", 4: "..CCCCCCCCCCCC..", 5: "..CWWWWWWWWWWC..", 6: "..CWWWWWWWWWwC..",
+                         13: "..........SSS...", 14: ".........SSs....", 15: "........Hh......"},
+    "powder_monkey": {0: "......TTTT......", 1: ".....TttttT.....", 2: ".....TTTTTT.....", 3: "......y..y......"},
+    "drowned_corsair": {1: "......kkkk......", 2: "..kkkkkkkkkkkk..", 3: ".kkkkkkkkkkkkkk.", 13: "..........SSS...", 14: "...........S....", 15: "...........S...."},
+    "skeleton_bosun": {2: "....OOOOOOOO....", 3: "...OOOOOOOOOO...", 4: "...oOOOOOOOOo...", 13: "...Coc...cC.....", 14: "..cC.....Cc.....", 15: "................"},
+    "skeleton_navigator": {2: "....NNNNNNNN....", 3: "...NNNNNNNNNN...", 4: "...nNNNNNNNNn...", 7: "...WbbWWWWYYYYw.", 8: "...WbbWWWWyLLy..",
+                           13: "................"},
+    "cursed_wraith": {},
+    "captains_son": {1: "......kkkk......", 2: "...kkkkkkkkkk...", 3: "..kkkkkkkkkkkk..", 4: "..kWWWWWWWWWWk..",
+                     13: "...RRRRYYRRRR...", 14: "..RRRRRRRRRRRR..", 15: "..RRrRRRRRRrRR.."},
+    "skeleton_commander": {0: "...kkkkkkkkkk...", 1: "...kktttttttk...", 2: "...kktbbtbbtk...", 3: "...kkttttttkk...",
+                           13: "..CCCCCCCCCCCC..", 14: "..CcCCCCCCCCcC..", 15: "..CCCCCCCCCCCC.."},
+    "skeleton_captain": {0: ".....kkkkkk.....", 1: "..kkkkktttkkkkk.", 2: ".kkkkkktbtkkkkkk", 3: "kYYYYYYYYYYYYYYk", 4: ".kkWWWWWWWWWWkk.",
+                         13: "..dddddYYddddd..", 14: ".ddddddYYdddddd.", 15: ".ddmddddddddmdd."},
+}
+
+GULL = [
+    "................",
+    "................",
+    "......eee.......",
+    ".....eeeee......",
+    ".....ePeee......",
+    "......eeeyy.....",
+    "......eee.......",
+    ".eeee.eeee.eeee.",
+    "..eeeeeeeeeeee..",
+    "....eeeeeeee....",
+    "......eeee......",
+    "......e..e......",
+    "................",
+    "................",
+    "................",
+    "................",
+]
+
+SHARK = [
+    "................",
+    "................",
+    "........S.......",
+    ".......SS.......",
+    "......SSS.......",
+    "....SSSSSSSS....",
+    "..SSSSSSSSSSSS..",
+    ".SSbSSSSSSSSSSS.",
+    ".SSSSSSSSSSSSSSs",
+    ".WkWkWkWSSSSSSs.",
+    "..kWkWkWSSSSs...",
+    "...sssssssss....",
+    "................",
+    "................",
+    "................",
+    "................",
+]
+
+HORN = [
+    "................",
+    "............kk..",
+    "...........kWWk.",
+    "..........kWwk..",
+    ".........krrk...",
+    "........kRRrk...",
+    ".......kWWwk....",
+    "......kRRrk.....",
+    ".....kRRRrk.....",
+    "....kWWWwk......",
+    "...kRRRrk.......",
+    "..kRRRRrk.......",
+    "..kRRRrk........",
+    "..kkkkk.........",
+    "................",
+    "................",
+]
+
+
+def pir_draw(grid):
+    im = Image.new("RGBA", (16, 16), (0, 0, 0, 0))
+    for y, row in enumerate(grid):
+        for x, ch in enumerate(row[:16]):
+            if ch in PIR: im.putpixel((x, y), PIR[ch] + (255,))
+    return im
+
+
+def pirate_icons():
+    out = {}
+    for k, ov in OVERLAY.items():
+        g = list(SKULL)
+        for r, row in ov.items(): g[r] = row
+        if k == "cursed_wraith":  # a wither skull: dark bone
+            g = [row.replace("W", "d").replace("w", "k").replace("b", "m") for row in g]
+        if k == "drowned_corsair":
+            g = [row if i in (1, 2, 3, 13, 14, 15) else row.replace("W", "N").replace("w", "n") for i, row in enumerate(g)]
+        if k == "powder_monkey":  # a small skull under the barrel
+            g = list(SKULL[:4]) + ["................"] + [("." + row[1:-1] + ".") for row in SKULL[4:15]]
+            for r, row in ov.items(): g[r] = row
+        out[k] = pir_draw(g)
+    out["ghost_gull"] = pir_draw(GULL)
+    out["bone_shark"] = pir_draw(SHARK)
+    out["pirate_horn"] = pir_draw(HORN)
+    return out
 
 
 if __name__ == "__main__":

@@ -100,6 +100,166 @@
    },
    {
     "type": "definition",
+    "model": "faultline:ship/dinghy",
+    "bedrock_identifier": "faultline:ship_dinghy",
+    "display_name": "Dinghy",
+    "bedrock_options": {
+     "icon": "faultline.ship_icon",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:ship/dinghy_wreck",
+    "bedrock_identifier": "faultline:ship_dinghy_wreck",
+    "display_name": "Dinghy (wrecked)",
+    "bedrock_options": {
+     "icon": "faultline.ship_icon",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:ship/pirate",
+    "bedrock_identifier": "faultline:ship_pirate",
+    "display_name": "Pirate Ship",
+    "bedrock_options": {
+     "icon": "faultline.ship_icon",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:ship/pirate_wreck",
+    "bedrock_identifier": "faultline:ship_pirate_wreck",
+    "display_name": "Pirate Ship (wrecked)",
+    "bedrock_options": {
+     "icon": "faultline.ship_icon",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:ship/sloop_dark",
+    "bedrock_identifier": "faultline:ship_sloop_dark",
+    "display_name": "Skeleton Sloop",
+    "bedrock_options": {
+     "icon": "faultline.ship_icon",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:ship/sloop_dark_wreck",
+    "bedrock_identifier": "faultline:ship_sloop_dark_wreck",
+    "display_name": "Skeleton Sloop (wrecked)",
+    "bedrock_options": {
+     "icon": "faultline.ship_icon",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:ship/brigantine_dark",
+    "bedrock_identifier": "faultline:ship_brigantine_dark",
+    "display_name": "Skeleton Brigantine",
+    "bedrock_options": {
+     "icon": "faultline.ship_icon",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:ship/brigantine_dark_wreck",
+    "bedrock_identifier": "faultline:ship_brigantine_dark_wreck",
+    "display_name": "Skeleton Brigantine (wrecked)",
+    "bedrock_options": {
+     "icon": "faultline.ship_icon",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:ship/pirate_dark",
+    "bedrock_identifier": "faultline:ship_pirate_dark",
+    "display_name": "Skeleton Pirate Ship",
+    "bedrock_options": {
+     "icon": "faultline.ship_icon",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:ship/pirate_dark_wreck",
+    "bedrock_identifier": "faultline:ship_pirate_dark_wreck",
+    "display_name": "Skeleton Pirate Ship (wrecked)",
+    "bedrock_options": {
+     "icon": "faultline.ship_icon",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
     "model": "faultline:ship_cannon",
     "bedrock_identifier": "faultline:ship_cannon",
     "display_name": "Ship Cannon",

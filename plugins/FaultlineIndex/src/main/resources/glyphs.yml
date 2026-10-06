@@ -439,3 +439,54 @@ ship_cannon:
 cannonball:
   large: 59210
   small: 58186
+dinghy_blueprint:
+  large: 59211
+  small: 58187
+pirate_blueprint:
+  large: 59212
+  small: 58188
+pirate_horn:
+  large: 59213
+  small: 58189
+skeleton_deckhand:
+  large: 59214
+  small: 58190
+skeleton_musketeer:
+  large: 59215
+  small: 58191
+skeleton_gunner:
+  large: 59216
+  small: 58192
+skeleton_boarder:
+  large: 59217
+  small: 58193
+powder_monkey:
+  large: 59218
+  small: 58194
+drowned_corsair:
+  large: 59219
+  small: 58195
+skeleton_bosun:
+  large: 59220
+  small: 58196
+ghost_gull:
+  large: 59221
+  small: 58197
+bone_shark:
+  large: 59222
+  small: 58198
+skeleton_navigator:
+  large: 59223
+  small: 58199
+cursed_wraith:
+  large: 59224
+  small: 58200
+captains_son:
+  large: 59225
+  small: 58201
+skeleton_commander:
+  large: 59226
+  small: 58202
+skeleton_captain:
+  large: 59227
+  small: 58203

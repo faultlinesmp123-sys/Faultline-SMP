@@ -40,7 +40,7 @@ All are Maven projects: Java 21, `paper-api 1.21.11-R0.1-SNAPSHOT`. Build with
 | **FaultlineBosses** | `net.faultlinesmp.bosses` | Bosses in one ~585 KB file: Demon Eye, Frostbeard, Dune Devourer/Frostmaw, Don Lorenzo, Kraken, **Diamond Jacob**; admin boss form. **Rocco Vendetta** (+ Werner, the Vendetta Fist) lives in its own `Vendetta.java`. **The way down to the Lost Explorer** (Swarm, his staircase, the void world) is `Below.java`; **the Lost Explorer's fight** is `Explorer.java` (+ `ExplorerAnims.java`) | `/demoneye`, `/frostbeard`, `/dune`, `/don`, `/kraken`, `/jacob <summon\|kill\|phase\|item>`, `/rocco <summon\|kill\|phase\|tattoos\|werner\|item>`, `/bossmorph <boss\|off\|release>`, `/below <swarm\|void\|leave\|close\|slayer\|info>`, `/explorer <start\|stop\|skip\|phase\|stun\|reset\|arena>` |
 | **FaultlineIndex** | `net.faultlinesmp.index` | The Faultline Index codex. Entries live in `src/main/resources/index.yml`, font glyphs in `glyphs.yml` | `/index [give\|reset] [player]` |
 | **FaultlineCosmetics** | `net.faultlinesmp.cosmetics` | Permanent cosmetic unlocks worn in 4 slots (Hat, Neck, Back, Body) over armor, for Java and Bedrock. Cosmetics are defined in its `config.yml`, unlocks saved in `players.yml` | `/cosmetics`, admin `/cosmetic <unlock\|lock\|list\|reload>` |
-| **FaultlineShips** | `net.faultlinesmp.ships` | Ships: Sloop, Brigantine, Galleon. Blueprint → lay out on water → place every block → sail. Health, wrecks, Shipwright's Hammer repair minigame, cannons, banners, names. Ships saved in `ships.yml` | `/ship [list\|info\|name\|crew\|anchor\|stop\|banner\|scrap]`, admin `/ship <give\|repair\|wreck\|remove\|tp> [name\|#n]` |
+| **FaultlineShips** | `net.faultlinesmp.ships` | Ships: Dinghy, Sloop, Brigantine, Galleon, Pirate Ship. Blueprint → lay out on water → place every block → sail. Health, part damage, sinking, Shipwright's Hammer repair minigame, cannons, banners, names. **Skeleton ships** and the **Pirate Invasion** (`Pirates.java`). Ships saved in `ships.yml` | `/ship [list\|info\|name\|crew\|anchor\|stop\|banner\|scrap]`, admin `/ship <give\|repair\|wreck\|remove\|tp> [name\|#n]`, `/ship pirates <ship\|invasion\|horn\|spawn\|egg\|stop>` |
 
 Notes:
 - `FaultlineItems.java` (~350 KB) and `FaultlineBosses.java` (~585 KB) are huge. Search them instead of reading them whole.
@@ -93,7 +93,7 @@ Notes:
   **Harpy Ring** is +7.5% speed.
 - Changing a plugin's default `config.yml` does NOT update the copy already on the server. Tell the owner
   which values to change in `plugins/<Plugin>/config.yml` on the VPS.
-- **Ships** (`FaultlineShips`; `ShipType.java` = the 3 layouts, `Ship.java` = one ship, `FaultlineShips.java` = items,
+- **Ships** (`FaultlineShips`; `ShipType.java` = the 5 layouts, `Ship.java` = one ship, `FaultlineShips.java` = items,
   events, the hammer minigame, cannons, saving). A ship is one display per block riding an invisible root ItemDisplay
   (moving = one teleport; since 1.21.10 teleports keep passengers). Each display's transformation is fixed (the cell in the
   ship's frame, `Q0` = local→display axes) and turning sets every display's own yaw (`sendRotation`), so the ship turns as
@@ -133,6 +133,32 @@ Notes:
   anchor, damage, wreck, repair, save/load, scrap, events, Bedrock stand-in, the fixes, and v2: braking, names, wreck by name,
   banners, cannons, rivers, old-save migration). MockBukkit quirks the test copy patches:
   teleporting an entity with passengers, `Block.getLocation()` returning the block's own Location, rayTraceBlocks.
+  **v3 (1.3.0)**: Galleon deck raised to y3 with a walkable hold below (hatch + ladder; `layout: 3` in saves, older Galleons
+  are shifted on load). **Dinghy** (26 blocks, 60 hp, 2 seats, no cannons, sneak + right-click = 9-slot fish hold; 2 paper + any
+  boat) and **Pirate Ship** (882 blocks, 900 hp, 9 seats, 10 cannons, Jolly Roger sails of SAIL_BLACK/SAIL_WHITE wool, hold
+  below a HATCH; black dye + paper + Galleon Blueprint + wither skeleton skull). Shaped cells (stairs, fences, trapdoors,
+  panes, ladders, lanterns) are REAL blocks while anchored (`need().shaped()`, `Ship.shipBlock`), so you jump on stairs and
+  can't walk through fences. **Parts**: a hit breaks the cells nearest the impact (`damage(amount, by, at)` → `breakNear`,
+  `parts.*` config): broken cells vanish; crashing (`ram()`) breaks the bow/side that hit and hurts a ship you rammed. The
+  hammer only works within `parts.reach` of a hole (it tells you where), incl. below deck. 0 hp = slowly SINKS (`sink`,
+  `pitch`, `sink-speed`), can't be boarded; repaired, it refloats.
+  **Pirates** (`Pirates.java`, config `pirates:`): every `check-seconds` a player sailing an ocean biome rolls 1% invasion,
+  else 5% skeleton ship (`spawnNear`). A skeleton ship is an AI `Ship` (`ship.ai` = `Brain`, `AiInput` replaces the player's
+  keys, owner `OWNER`), dark oak + black sails (`dark(Need)`), half health, never saved. `think()`: patrol; approach;
+  broadside (cannons with lead/spread, 2 degrees when a Navigator made you glow); ram a ship under 35% / stopped / cannonless;
+  open the range when too close; after `shots-before-boarding` (or your hull < 60%) close in, and alongside (`gap()` < 4,
+  real hull gap) drop anchor: the crew stands up to fight, the hold (sneak/chest) is plunder for anyone (`plunder` commands
+  once per player). Swimmers: it sails away faster. Your ship sinking: 3 crew go over the side after you (`abandon`).
+  Wrecked: spills loot, sinks, gone. Mobs (`Kind`, tag `faultline_pirate_<kind>`): Deckhand, Musketeer, Gunner (lit
+  cannonballs), Boarder (leaps), Powder Monkey (explodes), Drowned Corsair, Bosun (chain pull) + Ghost Gull, Bone Shark,
+  Navigator, Cursed Wraith. **Invasion** (also the Cursed Pirate Horn, GOAT_HORN + PDC `pirate_horn`, only in skeleton ship
+  holds 15%/5%): flagship "The Black Gallows" behind 15 escorts; once they're sunk (or it's wrecked) the bosses come one at a
+  time on its deck: the Captain's Son (320), the Skeleton Commander (480, Jolly Roger banner), the Skeleton Captain (900, ghost
+  crew below 50%); win = `invasion.rewards` per fighter. Music `faultline:pirates.music` (`sounds/pirates/music.ogg`,
+  4:51, `invasion.music-seconds: 291`). Eggs: `/ship pirates egg <kind> [amount] [player]` (in /itemsmenu). Bedrock: AI
+  ships use `faultline:ship/<type>_dark[_wreck]`. Tested with MockBukkit (`ShipV3Test`, `PirateTest`: spawn, crew, cannons,
+  ramming, boarding, plunder, sinking, swimmers, random roll, horn → 16-ship invasion → 3 bosses → victory, all 14 mobs,
+  powder monkey). MockBukkit has no projectile flight or pathfinding: cannon hits and swimming aren't really simulated.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

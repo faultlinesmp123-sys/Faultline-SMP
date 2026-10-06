@@ -50,3 +50,71 @@ cannon:
   hit-damage: 10        # extra damage to a mob or player it hits directly
   ship-damage: 45       # to a ship it lands on (less further away, up to ship-radius blocks)
   ship-radius: 4
+
+# How fast a ship at 0 health sinks (blocks a tick). Players' ships settle with the deck awash (repair raises them);
+# skeleton ships go all the way down.
+sink-speed: 0.006
+
+# Damage you can see: every hp-per-broken-block damage knocks out the block nearest the hit (at most max-broken-per-hit
+# at once, max-broken-fraction of the ship in all). Holes are patched with the hammer by standing within reach of them.
+parts:
+  hp-per-broken-block: 6
+  max-broken-per-hit: 6
+  max-broken-fraction: 0.35
+  reach: 6
+# Ramming another ship hurts it this much more than it hurts you.
+ram-other-multiplier: 1.6
+
+# ============================================================================
+# SKELETON SHIPS AND THE PIRATE INVASION
+# Every check-seconds, each player sailing the ocean has ship-chance to meet a skeleton ship (a Pirate Ship crewed by
+# skeletons) and invasion-chance to meet the whole Pirate Invasion. A Cursed Pirate Horn (found in skeleton ships'
+# holds) calls the invasion too. Admin: /ship pirates <ship|invasion|horn|spawn <mob>|stop>
+# ============================================================================
+pirates:
+  enabled: true
+  check-seconds: 60
+  ship-chance: 0.05
+  invasion-chance: 0.01
+  require-ocean: true
+  spawn-distance: 75
+  health-multiplier: 0.5        # skeleton ships' health, times the ship's normal health
+  sight: 110                    # how far they see you
+  leave-after-seconds: 90       # a lone ship nobody's near sails off
+  cannon-range: 48
+  reload-seconds: 4.5
+  cannon-spread-degrees: 6      # 2 when a Skeleton Navigator has spotted you (you glow)
+  ram-when-below: 0.35          # they ram a ship below this much health (or a stopped one, or one with no cannons)
+  shots-before-boarding: 6      # cannonballs a skeleton ship fires before it pulls alongside to board (or your hull under 60%)
+  swim-speed: 0.2
+  horn-chance: 0.15             # a Cursed Pirate Horn in a lone skeleton ship's hold (0.05 in an invasion ship's)
+  powder-monkey-power: 2.2
+  gunner-power: 1.4
+  bosses:
+    son-health: 320
+    commander-health: 480
+    captain-health: 900
+    xp: 300
+  invasion:
+    ships: 15                   # plus the flagship
+    flagship-distance: 120
+    min-distance: 62
+    depth: 45
+    arc-degrees: 70
+    spacing: 22
+    max-minutes: 25
+    music-seconds: 291          # length of sounds/pirates/music.ogg (it loops)
+    # everyone who fought gets these when the Skeleton Captain falls ({player}, {accessory}, {lo-hi})
+    rewards:
+      - {command: "givemythicbag 2 {player}", chance: 1.0}
+      - {command: "giveaccessory {accessory} 1 {player}", chance: 1.0}
+      - {command: "zraid omen 5 1 {player}", chance: 0.5}
+      - {command: "ship give pirate 1 {player}", chance: 0.25}
+  flagship-waits-for: 3         # the flagship hangs back until this few escorts are left
+  # the first time a player opens a skeleton ship's hold: these on top of what's in it
+  plunder:
+    - {command: "givegoodiebag 1 {player}", chance: 0.6, name: "a Goodie Bag"}
+    - {command: "giveaccessory {accessory} 1 {player}", chance: 0.35, name: "an accessory"}
+    - {command: "zraid omen {1-3} 1 {player}", chance: 0.4, name: "a Bad Omen"}
+    - {command: "givecloudpotion 1 {player}", chance: 0.3, name: "a Cloud Potion"}
+  accessories: [claws, bezoar, discount, jelly, shield, lavacharm, blackbelt, ranger, scarf, frostflare, spelunker, harpy, divinghelmet, flipper]

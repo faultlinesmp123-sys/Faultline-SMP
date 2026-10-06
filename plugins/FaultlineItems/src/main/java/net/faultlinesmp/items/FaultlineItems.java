@@ -6961,9 +6961,10 @@ public final class FaultlineItems extends JavaPlugin {
                         "index give {player}", "FaultlineIndex"));
             }
             if (enabled("FaultlineShips")) {
-                String[][] ships = {{"sloop", "" + ChatColor.WHITE}, {"brigantine", "" + ChatColor.GOLD}, {"galleon", "" + ChatColor.AQUA}};
+                String[][] ships = {{"dinghy", "" + ChatColor.GREEN, "Dinghy"}, {"sloop", "" + ChatColor.WHITE, "Sloop"}, {"brigantine", "" + ChatColor.GOLD, "Brigantine"},
+                        {"galleon", "" + ChatColor.AQUA, "Galleon"}, {"pirate", "" + ChatColor.DARK_GRAY, "Pirate Ship"}};
                 for (String[] sh : ships) {
-                    String title = Character.toUpperCase(sh[0].charAt(0)) + sh[0].substring(1);
+                    String title = sh[2];
                     list.add(external(icon(Material.GLOBE_BANNER_PATTERN, null, sh[1] + ChatColor.BOLD + title + " Blueprint", "FaultlineShips"),
                             "ship give " + sh[0] + " {amount} {player}", "FaultlineShips"));
                 }
@@ -6973,6 +6974,27 @@ public final class FaultlineItems extends JavaPlugin {
                         "ship give cannon {amount} {player}", "FaultlineShips"));
                 list.add(external(icon(Material.PAPER, "cannonball", ChatColor.DARK_GRAY + "" + ChatColor.BOLD + "Cannonball", "FaultlineShips"),
                         "ship give cannonball {amount} {player}", "FaultlineShips"));
+                list.add(external(icon(Material.GOAT_HORN, null, ChatColor.DARK_RED + "" + ChatColor.BOLD + "Cursed Pirate Horn", "FaultlineShips"),
+                        "ship pirates horn {amount} {player}", "FaultlineShips"));
+                Object[][] pirates = { // the Pirate Invasion's bosses first, then its mobs
+                        {"son", Material.SKELETON_SPAWN_EGG, ChatColor.GOLD + "" + ChatColor.BOLD + "The Captain's Son (Boss)"},
+                        {"commander", Material.SKELETON_SPAWN_EGG, ChatColor.GOLD + "" + ChatColor.BOLD + "The Skeleton Commander (Boss)"},
+                        {"captain", Material.WITHER_SKELETON_SPAWN_EGG, ChatColor.GOLD + "" + ChatColor.BOLD + "The Skeleton Captain (Boss)"},
+                        {"deckhand", Material.SKELETON_SPAWN_EGG, ChatColor.WHITE + "Skeleton Deckhand"},
+                        {"musketeer", Material.SKELETON_SPAWN_EGG, ChatColor.WHITE + "Skeleton Musketeer"},
+                        {"gunner", Material.SKELETON_SPAWN_EGG, ChatColor.WHITE + "Skeleton Gunner"},
+                        {"boarder", Material.SKELETON_SPAWN_EGG, ChatColor.WHITE + "Skeleton Boarder"},
+                        {"powder_monkey", Material.SKELETON_SPAWN_EGG, ChatColor.RED + "Powder Monkey"},
+                        {"corsair", Material.DROWNED_SPAWN_EGG, ChatColor.DARK_AQUA + "Drowned Corsair"},
+                        {"bosun", Material.SKELETON_SPAWN_EGG, ChatColor.WHITE + "Skeleton Bosun"},
+                        {"gull", Material.PHANTOM_SPAWN_EGG, ChatColor.GRAY + "Ghost Gull"},
+                        {"shark", Material.GUARDIAN_SPAWN_EGG, ChatColor.GRAY + "Bone Shark"},
+                        {"navigator", Material.STRAY_SPAWN_EGG, ChatColor.DARK_GREEN + "Skeleton Navigator"},
+                        {"wraith", Material.WITHER_SKELETON_SPAWN_EGG, ChatColor.DARK_GRAY + "Cursed Wraith"}};
+                for (Object[] egg : pirates) {
+                    list.add(external(icon((Material) egg[1], null, egg[2] + " Spawn Egg", "FaultlineShips"),
+                            "ship pirates egg " + egg[0] + " {amount} {player}", "FaultlineShips"));
+                }
             }
             if (enabled("FaultlineBosses")) {
                 list.add(external(icon(Material.ENDER_EYE, "suspicious_eye", ChatColor.DARK_RED + "" + ChatColor.BOLD + "Suspicious Eye", "FaultlineBosses"),

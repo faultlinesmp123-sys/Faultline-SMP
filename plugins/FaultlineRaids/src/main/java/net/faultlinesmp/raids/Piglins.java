@@ -76,6 +76,7 @@ import java.util.UUID;
  */
 final class Piglins implements Listener {
 
+    static final String UNIT_TAG = "faultline_piglin_unit"; // every piglin-raid mob (and a rider's hoglin): drops nothing
     static final String SHIELDWALL_TAG = "faultline_piglin_shieldwall", MAGMA_TAG = "faultline_piglin_magma";
     static final String BOMB_TAG = "faultline_piglin_bomb", FIREBALL_TAG = "faultline_piglin_fireball",
             HOG_TAG = "faultline_great_hog", BULWARK_TAG = "faultline_bulwark", DISPLAY_TAG = "faultline_piglin_display";
@@ -170,6 +171,11 @@ final class Piglins implements Listener {
                 && random.nextDouble() < cfg("horn-chance", 0.05)) {
             event.getDrops().add(randomHorn());
         }
+        // Raid piglins (and the riders' hoglins) drop nothing: no gold gear, no loot. The bosses add theirs below.
+        if (dead.getScoreboardTags().contains(UNIT_TAG)
+                || ((dead instanceof PiglinAbstract || dead instanceof Hoglin) && FaultlineRaids.isRaidMobStatic(dead))) {
+            event.getDrops().clear();
+        }
         Boss b = bosses.get(id);
         if (b != null) {
             event.getDrops().clear();
@@ -249,6 +255,7 @@ final class Piglins implements Listener {
         if (!(world.spawnEntity(at, type, false) instanceof LivingEntity mob) || !mob.isValid()) return null;
         mob.setPersistent(false);
         mob.setCanPickupItems(false);
+        mob.addScoreboardTag(UNIT_TAG);
         noZombie(mob); // in the Overworld they'd turn into Zombified Piglins after 15 seconds
         if (mob instanceof Piglin pig) { pig.setAdult(); pig.setIsAbleToHunt(false); }
         FaultlineRaids.setAttr(mob, Attribute.FOLLOW_RANGE, 48);
@@ -305,6 +312,7 @@ final class Piglins implements Listener {
                 if (world.spawnEntity(at, EntityType.HOGLIN, false) instanceof Hoglin hog && hog.isValid()) {
                     hog.setPersistent(false);
                     hog.setAdult();
+                    hog.addScoreboardTag(UNIT_TAG);
                     noZombie(hog);
                     hog.setIsAbleToBeHunted(false);
                     hog.setRemoveWhenFarAway(false);

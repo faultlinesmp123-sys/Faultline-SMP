@@ -85,7 +85,7 @@ Notes:
   Specials are shuffled and cut to fit the 15 each wave. **The Bulwark** (mini boss, wave 5: Shield Bash, Ground
   Slam, Unbreakable = 80% less damage from the front) and **The Great Hog** (boss after the last wave, every level:
   Charge → stunned on a wall, Earthshaker ring, Rally, Fire Breath, enraged below 50%). Every piglin/hoglin is
-  `setImmuneToZombification(true)`. `/zraid start <lvl> piglin`, `/zraid horn <3-5>`, eggs in `/zraid menu` and `/itemsmenu`.
+  `setImmuneToZombification(true)`. Raid piglins (tag `faultline_piglin_unit`) drop nothing; only the Bulwark and the Great Hog drop gold. `/zraid start <lvl> piglin`, `/zraid horn <3-5>`, eggs in `/zraid menu` and `/itemsmenu`.
   Art: `python3 tools/piglin_assets.py <pack> --preview tools/previews` (horn texture + Index icons).
   Tested with MockBukkit (a full level V raid, horn drop rate, and every ability).
 - Items nerfs: the **Ankh Shield** only stops knockback (`ankh-shield.old-effects: true` brings the rest back); the

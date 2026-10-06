@@ -585,7 +585,15 @@ final class Ship {
     // =====================================================================================================
     void tick() {
         ticks++;
-        if (!spawned()) return;
+        if (!spawned()) {
+            // a skeleton ship too far off to be drawn still sails (just numbers) while its water is loaded, so it keeps
+            // coming after you instead of freezing out past the draw range
+            if (ai != null && !wrecked && unseenLoaded()) {
+                if (anchorStep >= 0) stepAnchor();
+                else if (sailing()) sail();
+            }
+            return;
+        }
         if (anchorStep >= 0) stepAnchor();
         else if (anchored && !building) helmWhileAnchored();
         else if (sailing() && anchorForLeave) anchorToLeave();
@@ -610,6 +618,11 @@ final class Ship {
     }
 
     boolean viewerNear = true;
+
+    boolean unseenLoaded() {
+        World w = world();
+        return w != null && w.isChunkLoaded((int) Math.floor(x) >> 4, (int) Math.floor(z) >> 4);
+    }
 
     double nearestPlayerSq() {
         World w = world();

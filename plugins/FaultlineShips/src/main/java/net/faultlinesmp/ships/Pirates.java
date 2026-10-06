@@ -535,7 +535,7 @@ final class Pirates implements Listener {
     void think(Brain b, long now) {
         Ship s = b.ship;
         if (!pl.ships.containsKey(s.id)) { brains.remove(s.id); return; }
-        if (!s.spawned()) return;
+        if (!s.spawned() && !s.unseenLoaded()) return; // out past the draw range it still thinks (and sails) while its water is loaded
         AiInput in = b.input;
         if (s.wrecked) {
             in.clear();
@@ -545,7 +545,8 @@ final class Pirates implements Listener {
         }
         // who's around
         Player t = null;
-        double td = cfg("sight", 110);
+        // how far it sees you: an invasion ship hunts the fleet's fighters from anywhere nearby, so none drift off
+        double td = b.inv != null ? cfg("invasion.sight", 400) : cfg("sight", 200);
         for (Player p : s.world().getPlayers()) {
             if (!fighting(p)) continue;
             double d = p.getLocation().distance(new Location(s.world(), s.x, p.getLocation().getY(), s.z));

@@ -5901,6 +5901,8 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 h.remove();
                 return true;
             });
+            if (ticks % 20 == 0) bossPart("Diamond Jacob", "army follows", () -> armyFollow(a));
+            if (ticks % 40 == 0) bossPart("Diamond Jacob", "hitboxes hidden", this::rehide);
             hitCooldown.replaceAll((k, v) -> v - 1); hitCooldown.values().removeIf(v -> v <= 0);
             bossPart("Diamond Jacob", "boss bar", this::updateBar);
             if (ticks % 20 == 0) bossPart("Diamond Jacob", "music", this::musicTick);
@@ -6298,6 +6300,51 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             if (t > 30) { hold(model(Material.NETHERITE_AXE, "jacob_hammer", true)); end(16); }
         }
 
+        /**
+         * His riders stay with him: a soldier with no fighter near it (they ran off, or it lost them) rides back to his side
+         * instead of standing where it was; one left far behind (over 64 blocks) is brought back to him.
+         */
+        void armyFollow(List<Player> a) {
+            if (cut != null) return;
+            Location me = loc();
+            int i = 0;
+            for (LivingEntity s : army) {
+                i++;
+                if (!(s instanceof org.bukkit.entity.Mob sm) || !sm.hasAI() || !s.isValid()) continue;
+                boolean fighterNear = false;
+                for (Player p : a) if (p.getWorld().equals(world) && p.getLocation().distanceSquared(s.getLocation()) < 18 * 18) { fighterNear = true; break; }
+                if (fighterNear) continue; // there's someone to fight right here
+                double dj = s.getLocation().distanceSquared(me);
+                if (dj < 7 * 7) continue; // already at his side
+                // a ring around him, each rider its own spot
+                double ang = Math.PI * 2 * i / Math.max(1, army.size());
+                Location spot = me.clone().add(Math.cos(ang) * 5, 0, Math.sin(ang) * 5);
+                spot.setY(floorY(spot.getX(), spot.getZ(), me.getY() + 3));
+                Entity mount = s.getVehicle();
+                if (dj > 64 * 64) { // left far behind: back to him
+                    Entity mover = mount != null ? mount : s;
+                    mover.teleport(spot);
+                    world.spawnParticle(Particle.CLOUD, spot.clone().add(0, 1, 0), 12, 0.4, 0.6, 0.4, 0.02);
+                    continue;
+                }
+                if (sm.getTarget() instanceof Player tp && (!a.contains(tp) || tp.getLocation().distanceSquared(s.getLocation()) > 18 * 18)) sm.setTarget(null);
+                sm.getPathfinder().moveTo(spot, 1.4);
+                if (mount instanceof org.bukkit.entity.Mob horse) horse.getPathfinder().moveTo(spot, 1.6);
+            }
+        }
+
+        /** Safety net: his hitboxes stay invisible (Java), and Bedrock players, who hit his stand-ins, never see them at all. */
+        void rehide() {
+            List<LivingEntity> boxes = new ArrayList<>();
+            if (hitbox.isValid()) boxes.add(hitbox);
+            if (birdBox != null && birdBox.isValid()) boxes.add(birdBox);
+            for (LivingEntity b : boxes) {
+                if (!b.isInvisible() || !b.hasPotionEffect(org.bukkit.potion.PotionEffectType.INVISIBILITY)) hideForGood(b);
+                for (Player p : world.getPlayers()) if (bedrock(p) && p.canSee(b)) p.hideEntity(FaultlineBosses.this, b);
+            }
+            for (JOrb o : orbs) if (o.box.isValid() && (!o.box.isInvisible() || !o.box.hasPotionEffect(org.bukkit.potion.PotionEffectType.INVISIBILITY))) hideForGood(o.box);
+        }
+
         // ---------- phase 3: the army ----------
         void cavalryCharge(Player target, List<Player> a) {
             Pose rally = p(new float[]{ARM_R, -168, 0, -16}, new float[]{ARM_L, -36, 0, 30}, new float[]{BODY, -10, 0, 0}, new float[]{HEAD, -26, 0, 0},
@@ -6336,15 +6383,32 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 Vector dir = safeDir(target.getLocation().toVector().subtract(pos).setY(0), fwd());
                 for (int s = -1; s <= 1; s++) marks.add(dir.clone().rotateAroundY(Math.toRadians(s * 22)));
             }
-            if (t < 22 && t % 3 == 0) for (Vector dir : marks) for (int i = 2; i <= 14; i += 2)
-                world.spawnParticle(Particle.DUST, loc().add(dir.clone().multiply(i)).add(0, 0.15, 0), 1, 0.1, 0, 0.1, 0, new Particle.DustOptions(Color.fromRGB(220, 40, 40), 1.3f));
+            // BUG FIX: the warning lines were drawn at his own height, so on a slope they floated in the air or sank into
+            // the ground; and every spear faced the same way, so lines running the other way showed up as paper-thin slivers.
+            if (t < 22 && t % 3 == 0) for (Vector dir : marks) for (int i = 2; i <= 14; i += 2) {
+                Location ml = loc().add(dir.clone().multiply(i));
+                ml.setY(floorY(ml.getX(), ml.getZ(), ml.getY() + 1) + 0.15);
+                world.spawnParticle(Particle.DUST, ml, 1, 0.1, 0, 0.1, 0, new Particle.DustOptions(Color.fromRGB(220, 40, 40), 1.3f));
+            }
             if (t == 22) {
                 world.playSound(loc(), Sound.ITEM_TRIDENT_THROW, 2f, 0.5f);
                 for (Vector dir : marks) for (int i = 2; i <= 14; i += 2) {
                     Location l = loc().add(dir.clone().multiply(i));
                     l.setY(floorY(l.getX(), l.getZ(), l.getY() + 1));
+                    // the flat spear faces across its line (seen side-on by whoever's dodging), a little tilt each, and it
+                    // bursts up out of the ground instead of just appearing
+                    l.setYaw((float) Math.toDegrees(Math.atan2(-dir.getX(), dir.getZ())) + 90 + (float) (random.nextGaussian() * 8));
+                    l.setPitch(0);
+                    float lean = (float) Math.toRadians(-45 + random.nextGaussian() * 5);
                     ItemDisplay spear = world.spawn(l, ItemDisplay.class, d -> { d.setItemStack(new ItemStack(Material.IRON_SPEAR)); d.setPersistent(false); d.addScoreboardTag(DISPLAY_TAG);
-                        d.setTransformation(new Transformation(new Vector3f(0, 0.9f, 0), new Quaternionf().rotateZ((float) Math.toRadians(-45)), new Vector3f(1.8f, 1.8f, 1.8f), new Quaternionf())); });
+                        d.setTransformation(new Transformation(new Vector3f(0, -1.6f, 0), new Quaternionf().rotateZ(lean), new Vector3f(1.8f, 1.8f, 1.8f), new Quaternionf())); });
+                    Bukkit.getScheduler().runTaskLater(FaultlineBosses.this, () -> {
+                        if (!spear.isValid()) return;
+                        spear.setInterpolationDelay(0); spear.setInterpolationDuration(3);
+                        spear.setTransformation(new Transformation(new Vector3f(0, 0.9f, 0), new Quaternionf().rotateZ(lean), new Vector3f(1.8f, 1.8f, 1.8f), new Quaternionf()));
+                    }, 1L);
+                    org.bukkit.block.Block under = l.clone().subtract(0, 0.5, 0).getBlock();
+                    if (i % 4 == 2 && !under.getType().isAir()) world.spawnParticle(Particle.BLOCK, l.clone().add(0, 0.2, 0), 8, 0.3, 0.1, 0.3, 0, under.getBlockData());
                     Bukkit.getScheduler().runTaskLater(FaultlineBosses.this, () -> { if (spear.isValid()) spear.remove(); }, 24L);
                     for (Player p : a) if (p.getLocation().toVector().setY(0).distanceSquared(l.toVector().setY(0)) < 1.4 * 1.4 && Math.abs(p.getLocation().getY() - l.getY()) < 2.5)
                         strike(p, jcfg("damage.spear-wall", 12), Guard.HEAVY, l.toVector(), false, true);

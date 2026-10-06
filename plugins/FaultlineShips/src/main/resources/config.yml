@@ -80,7 +80,7 @@ pirates:
   require-ocean: true
   spawn-distance: 75
   health-multiplier: 0.5        # skeleton ships' health, times the ship's normal health
-  sight: 110                    # how far they see you
+  sight: 200                    # how far a lone skeleton ship sees (and chases) you
   leave-after-seconds: 90       # a lone ship nobody's near sails off
   cannon-range: 48
   reload-seconds: 4.5
@@ -97,6 +97,7 @@ pirates:
     captain-health: 900
     xp: 300
   invasion:
+    sight: 400                  # how far invasion ships hunt the fighters (so none of the fleet drifts off)
     ships: 15                   # plus the flagship
     flagship-distance: 120
     min-distance: 62

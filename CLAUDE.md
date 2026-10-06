@@ -73,6 +73,11 @@ Notes:
   **Mirror..??** accessory (FaultlineItems `MirrorGear.java`, `/givelostmirror`: reflects one big hit, 45 s cooldown).
   His and the tiger's poses are in `ExplorerAnims.java` (preview with `tools/anim/preview.sh`; the tiger is 8 pieces, 12-number poses). `renderRig` has an overload
   with sword pitch/scale: custom blade-up weapon models use pitch +90, vanilla swords -90.
+- **Diamond Jacob fixes**: his phase 3 riders (`army`, vindicators on horses) ride back to his side when no fighter is
+  within 18 blocks of them (`armyFollow`, every second; one left over 64 blocks behind is teleported back). `rehide()`
+  (every 2 s) re-applies invisibility to his hitbox slimes and hides them from Bedrock players (they hit his stand-ins).
+  Spear Wall: warning lines and spears follow the ground (`floorY`), each flat spear faces across its line with a little
+  tilt, and they burst up out of the ground. Tested in the bosses harness (`JacobTest`).
   `Below.java`: Swarm turns up underground (2%/min, y -1..-50), wants a Jacob kill (recorded in `below.yml`, or Jacob
   unlocked in the Index) and the Vendetta Fist, digs a staircase to the bedrock, breaks through with a black pickaxe; the
   hole leads to the void world `faultline_void` (white path in the dark, his statue at the end). Everything Swarm digs is
@@ -183,6 +188,9 @@ Notes:
   `waiting` (no AI, invulnerable, "(waiting)"); players climb its real ladders (both sides, from the water). Flagship sunk
   first: waiting bosses are removed and come through the water instead. The WRAITH kind is now the "Ghost Pirate":
   invisible + glowing outline, slow falling, soul particles, vex sounds (the Captain's ghost crew and some ship crews).
+  **1.3.4**: skeleton ships sail on while out past the draw range (`Ship.tick`/`think` run when `unseenLoaded()`), so
+  they keep chasing you instead of freezing; a lone ship sees you from `pirates.sight` 200 (was 110), invasion ships hunt
+  fighters from `pirates.invasion.sight` 400 (none of the fleet drifts off).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

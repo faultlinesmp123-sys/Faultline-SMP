@@ -89,6 +89,7 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
     final Map<UUID, Ship> ships = new LinkedHashMap<>();
     final Map<UUID, Set<UUID>> crews = new HashMap<>();
     final Map<UUID, Repair> repairs = new HashMap<>();
+    final Map<UUID, long[]> overboardAsk = new HashMap<>(); // a passenger who sneaked once on a ship under sail
     final Map<UUID, Long> lastSwing = new HashMap<>();
     final Map<UUID, Long> lastUse = new HashMap<>();
     final Set<UUID> arrowsCounted = new HashSet<>();
@@ -855,10 +856,31 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
     public void onDismount(EntityDismountEvent event) {
         if (!(event.getEntity() instanceof Player p)) return;
         Ship s = shipOfEntity(event.getDismounted());
-        if (s == null || !s.anchored || s.seats == null) return;
+        if (s == null || s.seats == null) return;
         int seat = -1;
         for (int i = 0; i < s.seats.length; i++) if (event.getDismounted().equals(s.seats[i])) seat = i;
         if (seat < 0) return;
+        if (!s.anchored) {
+            // Not anchored = no solid deck: stepping off would drop you through the ship. Anchor first (or go over the side).
+            if (s.releasing || s.wrecked || s.building || s.ai != null || !event.isCancellable() || !p.isOnline() || p.isDead()) return;
+            Player cap = s.rider(0);
+            if (cap != null && cap != p && Math.abs(s.speed) > 0.01) { // someone else is sailing it: don't stop their ship
+                // holding sneak asks every tick: only a second, separate press within 2 s means "over the side"
+                long[] asked = overboardAsk.get(p.getUniqueId()); // {first press, last tick it was held}
+                if (asked != null && now - asked[1] <= 2) { asked[1] = now; event.setCancelled(true); return; } // still the same press
+                if (asked != null && now - asked[0] <= 40) { overboardAsk.remove(p.getUniqueId()); if (s.overboard(p, seat)) return; }
+                event.setCancelled(true);
+                overboardAsk.put(p.getUniqueId(), new long[]{now, now});
+                p.sendActionBar(Component.text("The ship is under sail: the captain drops anchor with Jump. Sneak again to jump overboard.", NamedTextColor.YELLOW));
+                return;
+            }
+            event.setCancelled(true);
+            if (s.gettingOff.add(p.getUniqueId())) {
+                s.anchorForLeave = true;
+                p.sendActionBar(Component.text("Dropping anchor so you can step off...", NamedTextColor.YELLOW));
+            }
+            return;
+        }
         Location at = s.seatLoc(seat);
         at.setY(s.y + s.type.seats[seat][1] + 0.01);
         at.setYaw(p.getLocation().getYaw()); at.setPitch(p.getLocation().getPitch());

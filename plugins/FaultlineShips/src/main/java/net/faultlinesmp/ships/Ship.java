@@ -95,6 +95,10 @@ final class Ship {
     float anchorYaw0, anchorYaw1;
     double anchorX0, anchorZ0, anchorX1, anchorZ1;
     boolean prevJump, prevForward, prevBack, braking, anchorQueued, allStop;
+    // someone wants off while it isn't anchored (no deck to stand on yet): it anchors first, then lets them off
+    final Set<UUID> gettingOff = new HashSet<>();
+    boolean anchorForLeave, releasing;
+    int leaveTries;
     // ---- damage you can see ----
     final Set<Integer> broken = new HashSet<>();  // cells knocked out by crashes, cannonballs, blasts: holes until patched
     double breakAcc;                               // damage not yet turned into a broken block
@@ -565,7 +569,9 @@ final class Ship {
         if (!spawned()) return;
         if (anchorStep >= 0) stepAnchor();
         else if (anchored && !building) helmWhileAnchored();
+        else if (sailing() && anchorForLeave) anchorToLeave();
         else if (sailing()) sail();
+        if (anchored && anchorStep < 0 && !gettingOff.isEmpty()) letOff(false); // the deck is solid now
         // move everything
         // a wreck goes down slowly (tilting); a repaired one comes back up
         boolean sinking = false;
@@ -661,6 +667,56 @@ final class Ship {
         if (ticks % 20 == 0) pl.dirty = true;
     }
 
+    /** Brake and drop anchor so whoever asked can step off onto a solid deck (or, if it can't anchor here, over the side). */
+    void anchorToLeave() {
+        if (wrecked || gettingOff.isEmpty()) { anchorForLeave = false; letOff(true); return; }
+        double max = type.speed * pl.getConfig().getDouble("ships." + type.size + ".speed-multiplier", 1.0);
+        turnRate = 0;
+        speed = brake(speed, max);
+        if (Math.abs(speed) > max * 0.3) return;
+        if (++leaveTries > 3) { // land in the way: no anchoring here
+            for (UUID u : gettingOff) { Player p = Bukkit.getPlayer(u); if (p != null) p.sendActionBar(Component.text("Too close to land to anchor: over the side you go.", NamedTextColor.YELLOW)); }
+            letOff(true);
+            return;
+        }
+        dropAnchor(null);
+    }
+
+    /** Off they get: onto the deck if it's anchored, otherwise into the water beside the ship. */
+    void letOff(boolean overboard) {
+        anchorForLeave = false;
+        leaveTries = 0;
+        List<UUID> who = new ArrayList<>(gettingOff);
+        gettingOff.clear();
+        releasing = true;
+        try {
+            for (UUID u : who) {
+                Player p = Bukkit.getPlayer(u);
+                if (p == null || seats == null) continue;
+                for (int i = 0; i < seats.length; i++) {
+                    if (seats[i] == null || !seats[i].getPassengers().contains(p)) continue;
+                    seats[i].removePassenger(p);
+                    if (overboard || !anchored) overboard(p, i);
+                }
+            }
+        } finally { releasing = false; }
+    }
+
+    /** Into the water beside the ship, level with this seat (never inside the hull). */
+    boolean overboard(Player p, int seat) {
+        double sx = type.seats[seat][0], sz = type.seats[seat][2];
+        for (double side : sz >= 0 ? new double[]{1, -1} : new double[]{-1, 1}) {
+            double[] w = toWorld(x, z, yaw, sx, side * (type.halfWidth + 1.6));
+            Location l = new Location(world(), w[0], y + 0.1, w[1], p.getLocation().getYaw(), p.getLocation().getPitch());
+            Block b = l.getBlock(), up = b.getRelative(0, 1, 0);
+            if ((b.isLiquid() || b.isPassable()) && (up.isLiquid() || up.isPassable())) {
+                Bukkit.getScheduler().runTask(pl, () -> { if (p.isOnline() && !p.isInsideVehicle()) p.teleport(l); });
+                return true;
+            }
+        }
+        return false;
+    }
+
     static double brake(double speed, double max) {
         double d = max / 12;
         return Math.abs(speed) <= d ? 0 : speed - Math.signum(speed) * d;
@@ -721,6 +777,7 @@ final class Ship {
             if (!clear(x, z, yaw, true, null)) { // something moved in while we swung round: one more look nearby
                 double[] spot = snapSpot((float) yaw);
                 if (spot == null) {
+                    if (anchorForLeave) return; // someone getting off: anchorToLeave tries again, then puts them over the side
                     for (Player p : riders()) p.sendMessage(ChatColor.RED + "Couldn't drop anchor here: the " + title()
                             + " is still afloat (the deck isn't walkable). Move away from the shore and try again.");
                     return;

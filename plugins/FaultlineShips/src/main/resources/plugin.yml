@@ -1,5 +1,5 @@
 name: FaultlineShips
-version: '1.3.1'
+version: '1.3.2'
 main: net.faultlinesmp.ships.FaultlineShips
 api-version: '1.21'
 author: FaultlineSMP

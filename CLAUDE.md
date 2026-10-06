@@ -168,6 +168,12 @@ Notes:
   you look at (`layOut(..., prebuilt, owner)` → `Ship.completeAll()`). `prebuilt` is saved; scrapping one gives the built
   item back, never its blocks. `/ship list all` #numbers (`numbered()`) skip skeleton ships, so they don't shift. Tested in
   `BuiltTest`.
+  **Getting off an unanchored ship (1.3.2)**: it has no barriers, so stepping off dropped you through the deck. `onDismount`
+  now cancels the sneak while it isn't anchored: the captain (or anyone, when nobody's steering) waits in the seat while it
+  brakes and drops anchor (`gettingOff`, `anchorForLeave` → `anchorToLeave()`), then `letOff()` puts them on the solid deck;
+  if it can't anchor there (land, 3 tries) they go over the side (`overboard()`: water beside the hull). A passenger while
+  someone else sails is kept seated; a second separate sneak within 2 s (`overboardAsk`, holding sneak doesn't count)
+  puts them overboard. Tested in `LeaveTest`.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

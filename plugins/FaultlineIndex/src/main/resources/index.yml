@@ -61,10 +61,10 @@ entries:
      does: "+2% mining speed, and falling sand and gravel can't hurt you."}
   - {chapter: accessories, name: "Harpy Ring", icon: harpy_ring, detect: "faultlineitems:harpy_ring",
      how: "Craft it: Gold Ingots in the corners, Diamonds on the edges, a Netherite Block in the middle.",
-     does: "+10% movement speed, and your Elytra lasts 50% longer."}
+     does: "+7.5% movement speed, and your Elytra lasts 50% longer."}
   - {chapter: accessories, name: "Ankh Shield", icon: ankh_shield, detect: "faultlineitems:ankh_shield",
      how: "Craft it: Netherite Blocks in the corners, the Cross in the middle, the Ankh below it, and the three combination charms (Nightwatch, Wayfarer's, Fortune's) on the left, right, and top. Also 0.1% while fishing, and a rare Zombie Raid reward.",
-     does: "Does nothing on its own: put a Shield (a regular one or the Shield of the Demon Eye) and the Ankh Shield in an anvil (15 levels). While you hold that shield: immune to every debuff, freezing, and fire, no knockback, +5% damage resistance, +15% speed, and +2.5% melee damage."}
+     does: "Does nothing on its own: put a Shield (a regular one or the Shield of the Demon Eye) and the Ankh Shield in an anvil (15 levels). While you hold that shield, you take no knockback."}
   - {chapter: accessories, name: "Cleft Horn", icon: cleft_horn, detect: "faultlineitems:cleft_horn",
      how: "2% from Goats.",
      does: "Your hits ignore 5% of your target's armor."}

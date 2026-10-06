@@ -2838,6 +2838,9 @@ public final class FaultlineItems extends JavaPlugin {
                     && item.getItemMeta().getPersistentDataContainer().has(imbuedKey, PersistentDataType.BYTE);
         }
 
+        /** NERF: the Ankh Shield only stops knockback now. ankh-shield.old-effects: true brings back everything else. */
+        static boolean fullPowers(FaultlineItems plugin) { return plugin.getConfig().getBoolean("ankh-shield.old-effects", false); }
+
         /** Is this player holding an Ankh-imbued shield in either hand? */
         static boolean active(Player player) {
             return isImbued(player.getInventory().getItemInOffHand()) || isImbued(player.getInventory().getItemInMainHand());
@@ -2860,10 +2863,7 @@ public final class FaultlineItems extends JavaPlugin {
             List<String> lore = meta.hasLore() ? new ArrayList<>(meta.getLore()) : new ArrayList<>();
             lore.add("");
             lore.add(ChatColor.YELLOW + "" + ChatColor.BOLD + "✦ Ankh Shield");
-            lore.add(ChatColor.GREEN + "While held: immune to every debuff,");
-            lore.add(ChatColor.GREEN + "freezing, and fire. No knockback.");
-            lore.add(ChatColor.GREEN + "+5% damage resistance, +15% speed,");
-            lore.add(ChatColor.GREEN + "+2.5% melee damage");
+            lore.add(ChatColor.GREEN + "While held: no knockback.");
             meta.setLore(lore);
             meta.setEnchantmentGlintOverride(true);
             result.setItemMeta(meta);
@@ -2875,7 +2875,7 @@ public final class FaultlineItems extends JavaPlugin {
         /** +5% damage resistance while holding it. */
         @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
         public void onHurt(EntityDamageEvent event) {
-            if (event.getEntity() instanceof Player player && active(player)) {
+            if (event.getEntity() instanceof Player player && active(player) && fullPowers(plugin)) {
                 event.setDamage(event.getDamage() * (1 - plugin.getConfig().getDouble("ankh-shield.damage-resistance", 0.05)));
             }
         }
@@ -3487,7 +3487,7 @@ public final class FaultlineItems extends JavaPlugin {
 
         static ItemStack harpyRing(FaultlineItems plugin) {
             return make(plugin, Material.GOLD_NUGGET, ChatColor.WHITE + "" + ChatColor.BOLD + "Harpy Ring", plugin.getHarpyRingKey(),
-                    ChatColor.GREEN + "+10% movement speed",
+                    ChatColor.GREEN + "+7.5% movement speed",
                     ChatColor.GREEN + "Elytra flights last longer",
                     ChatColor.DARK_GRAY + "(Elytra durability drains 50% slower)");
         }
@@ -3506,9 +3506,7 @@ public final class FaultlineItems extends JavaPlugin {
             return make(plugin, Material.NAUTILUS_SHELL, ChatColor.YELLOW + "" + ChatColor.BOLD + "Ankh Shield", plugin.getAnkhShieldKey(),
                     ChatColor.GOLD + "Does nothing on its own: put a Shield",
                     ChatColor.GOLD + "and this in an anvil to imbue it.",
-                    ChatColor.GREEN + "While holding the shield: immune to every",
-                    ChatColor.GREEN + "debuff, freezing, and fire. No knockback.",
-                    ChatColor.GREEN + "+5% resistance, +15% speed, +2.5% melee damage");
+                    ChatColor.GREEN + "While holding the shield: no knockback.");
         }
 
         /** Gold Ingots in the corners, Diamonds on the edges, Netherite Block in the middle. */
@@ -3655,18 +3653,19 @@ public final class FaultlineItems extends JavaPlugin {
             boolean harpy = acc.hasEquipped(player, plugin.getHarpyRingKey());
             boolean spelunker = acc.hasEquipped(player, plugin.getSpelunkerAmuletKey());
             boolean ankh = AnkhImbue.active(player); // only works on a shield (combined in an anvil)
+            boolean ankhFull = ankh && AnkhImbue.fullPowers(plugin); // NERF: just no knockback now, unless old-effects is on
 
             applyModifier(player, Attribute.MOVEMENT_SPEED, frostSpeedKey,
                     plugin.getConfig().getDouble("frost-flare.speed-bonus", 0.05), AttributeModifier.Operation.MULTIPLY_SCALAR_1, frost);
             applyModifier(player, Attribute.MOVEMENT_SPEED, harpySpeedKey,
-                    plugin.getConfig().getDouble("harpy-ring.speed-bonus", 0.10), AttributeModifier.Operation.MULTIPLY_SCALAR_1, harpy);
+                    plugin.getConfig().getDouble("harpy-ring.speed-bonus", 0.075), AttributeModifier.Operation.MULTIPLY_SCALAR_1, harpy);
             applyModifier(player, Attribute.BLOCK_BREAK_SPEED, spelunkerMiningKey,
                     plugin.getConfig().getDouble("spelunker-amulet.mining-speed-bonus", 0.02), AttributeModifier.Operation.MULTIPLY_SCALAR_1, spelunker);
             applyModifier(player, Attribute.KNOCKBACK_RESISTANCE, ankhKnockbackKey, 1.0, AttributeModifier.Operation.ADD_NUMBER, ankh);
             applyModifier(player, Attribute.MOVEMENT_SPEED, ankhSpeedKey,
-                    plugin.getConfig().getDouble("ankh-shield.speed-bonus", 0.15), AttributeModifier.Operation.MULTIPLY_SCALAR_1, ankh);
+                    plugin.getConfig().getDouble("ankh-shield.speed-bonus", 0.15), AttributeModifier.Operation.MULTIPLY_SCALAR_1, ankhFull);
             applyModifier(player, Attribute.ATTACK_DAMAGE, ankhDamageKey,
-                    plugin.getConfig().getDouble("ankh-shield.melee-damage-bonus", 0.025), AttributeModifier.Operation.MULTIPLY_SCALAR_1, ankh);
+                    plugin.getConfig().getDouble("ankh-shield.melee-damage-bonus", 0.025), AttributeModifier.Operation.MULTIPLY_SCALAR_1, ankhFull);
 
             boolean survival = player.getGameMode() == GameMode.SURVIVAL || player.getGameMode() == GameMode.ADVENTURE;
             if (plugin.getAccessoryManager().hasEquipped(player, plugin.getWeirdClockKey())) player.removePotionEffect(PotionEffectType.SLOWNESS);
@@ -3677,7 +3676,7 @@ public final class FaultlineItems extends JavaPlugin {
                     player.setExhaustion(Math.min(40f, player.getExhaustion() + extra));
                 }
             }
-            if (ankh) {
+            if (ankhFull) {
                 // Clears anything that was already on them when they equipped it.
                 for (PotionEffect effect : new ArrayList<>(player.getActivePotionEffects())) {
                     if (FiveAccessoryListener.ankhBlocks(effect.getType())) player.removePotionEffect(effect.getType());
@@ -3717,7 +3716,7 @@ public final class FaultlineItems extends JavaPlugin {
                     player.addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS, 60, 0, true, false, true));
                     boolean canBurn = player.getGameMode() == GameMode.SURVIVAL || player.getGameMode() == GameMode.ADVENTURE;
                     boolean underOpenSky = player.getEyeLocation().getBlock().getLightFromSky() == 15;
-                    boolean ankh = AnkhImbue.active(player);
+                    boolean ankh = AnkhImbue.active(player) && AnkhImbue.fullPowers(plugin);
                     if (canBurn && underOpenSky && !ankh && !player.getWorld().hasStorm() && !player.isInWater()) {
                         player.setFireTicks(Math.max(player.getFireTicks(), 60));
                     }
@@ -3902,7 +3901,7 @@ public final class FaultlineItems extends JavaPlugin {
             PotionEffectType type = event.getNewEffect().getType();
             if (type.equals(PotionEffectType.SLOWNESS) && (wearing(player, plugin.getFrostFlareKey()) || wearing(player, plugin.getWeirdClockKey()))) {
                 event.setCancelled(true);
-            } else if (ankhBlocks(type) && AnkhImbue.active(player)) {
+            } else if (ankhBlocks(type) && AnkhImbue.active(player) && AnkhImbue.fullPowers(plugin)) {
                 event.setCancelled(true);
             }
         }
@@ -3910,7 +3909,7 @@ public final class FaultlineItems extends JavaPlugin {
         /** Ankh Shield: can't be set on fire (lava itself still hurts). */
         @EventHandler(ignoreCancelled = true)
         public void onCombust(EntityCombustEvent event) {
-            if (event.getEntity() instanceof Player player && AnkhImbue.active(player)) {
+            if (event.getEntity() instanceof Player player && AnkhImbue.active(player) && AnkhImbue.fullPowers(plugin)) {
                 event.setCancelled(true);
             }
         }
@@ -3921,7 +3920,7 @@ public final class FaultlineItems extends JavaPlugin {
             EntityDamageEvent.DamageCause cause = event.getCause();
 
             if ((cause == EntityDamageEvent.DamageCause.FIRE_TICK || cause == EntityDamageEvent.DamageCause.FIRE)
-                    && AnkhImbue.active(player)) {
+                    && AnkhImbue.active(player) && AnkhImbue.fullPowers(plugin)) {
                 event.setCancelled(true);
                 player.setFireTicks(0);
                 return;

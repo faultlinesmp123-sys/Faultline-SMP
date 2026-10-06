@@ -179,7 +179,7 @@ spelunker-amulet:
 
 # Harpy Ring (accessory, crafted)
 harpy-ring:
-  speed-bonus: 0.10
+  speed-bonus: 0.075
   elytra-durability-save-chance: 0.5
 
 # Custom fishing loot (only for players who moved/looked around recently).
@@ -334,6 +334,7 @@ item-textures:
 # Ankh Shield in an anvil. While holding the imbued shield:
 ankh-shield:
   anvil-levels: 15
+  old-effects: false          # false = it only stops knockback (the nerf). true = also the old powers below
   damage-resistance: 0.05     # 5% less damage taken
   speed-bonus: 0.15           # +15% speed
   melee-damage-bonus: 0.025   # +2.5% melee damage

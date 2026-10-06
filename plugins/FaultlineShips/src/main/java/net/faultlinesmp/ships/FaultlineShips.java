@@ -101,8 +101,11 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
     Pirates pirates;
     long now;
 
+    static FaultlineShips instance; // for ShipsApi (other plugins)
+
     @Override
     public void onEnable() {
+        instance = this;
         saveDefaultConfig();
         hammerKey = new NamespacedKey(this, "shipwright_hammer");
         builtKey = new NamespacedKey(this, "built_ship");

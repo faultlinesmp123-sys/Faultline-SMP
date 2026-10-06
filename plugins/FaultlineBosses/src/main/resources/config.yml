@@ -246,6 +246,21 @@ kraken:
   scale: 4.0                  # model size (4 = a head about 9 blocks tall)
   min-depth: 15               # blocks of water needed to summon him
   sink-ticks: 160             # the worm sinks for 8 seconds before he comes
+  sea:                        # the Kraken at Sea: fought from a ship or boat (drop a worm over the side, or by chance)
+    enabled: true
+    chance: 0.01              # every check, for each player on a ship or in a boat
+    check-seconds: 120
+    health: 1600
+    min-depth: 8              # blocks of water he needs beside the ship
+    distance: 11              # how far off the hull he keeps station (plus a bit for big ships)
+    rise: 1.2                 # how far his head sits out of the water (in heads; 1 = about 2 blocks at scale 4)
+    bait-ticks: 60            # the worm wriggles down for 3 seconds before he rises
+    ship-damage:              # a fraction of the ship's max health per hit (a boat just breaks)
+      slam: 0.04
+      bite: 0.07
+      surge: 0.03
+      barrage: 0.03
+      barnacle: 0.005
   cooldown-minutes: 10
   arena-radius: 24            # how far he swims from where he rose
   phase2-at: 0.66

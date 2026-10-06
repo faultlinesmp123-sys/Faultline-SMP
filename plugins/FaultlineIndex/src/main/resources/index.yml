@@ -460,6 +460,17 @@ entries:
     - 16-24 Diamonds|100%
     - Abyssal Diving Suit|40%
     - 2,000 XP|100%
+  - chapter: bosses
+    name: The Kraken at Sea
+    icon: kraken
+    detect-tag: faultline_kraken_sea
+    where: 'Drop a Bait Worm over the side of a ship or a boat (8+ blocks of water around it), or just sail: every 2 minutes, anyone on a ship or in a boat has a 1% chance of him rising beside it.'
+    does: '1,600 health, 30% defense, the same three phases and music as the Kraken, but he comes up beside your ship with his head out of the water and keeps pace with it. Keep yourself AND your ship alive: if the ship is wrecked (or the boat smashed) he drags it under and leaves with nothing for you. Shoot him (arrows, tridents, ship cannons all hit him) and the pink bubble bobbing on the waves (150-200 damage). Seven moves: Tentacle Slam and Hull Bite (they break the part of the ship they hit), Crushing Grip (drags you off the deck into the sea: hit the tentacle), Ink Cloud, Barnacle Barrage (chips the hull), Tidal Surge (a wave that slams the ship and knocks you across the deck), and in phase 3 the Eight-Arm Barrage across the deck. Keep a Shipwright''s Hammer handy.'
+    drops:
+    - 18 Mythic Goodie Bags|100%
+    - 16-24 Diamonds|100%
+    - Abyssal Diving Suit|40%
+    - 2,000 XP|100%
   - chapter: enemies
     name: Kraken Eel
     icon: kraken_eel

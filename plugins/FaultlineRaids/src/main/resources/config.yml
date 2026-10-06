@@ -82,6 +82,10 @@ skeleton-raid:
 # Raid piglins and hoglins never turn into zombified ones.
 piglin-raid:
   horn-chance: 0.05
+  # Each raid piglin killed by a player: nugget-chance to drop nugget-min..nugget-max gold nuggets (no gear).
+  nugget-chance: 0.8
+  nugget-min: 3
+  nugget-max: 5
   wave-size: 15
   grunt-health: 20
   mage-health: 24

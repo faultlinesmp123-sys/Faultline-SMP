@@ -171,10 +171,15 @@ final class Piglins implements Listener {
                 && random.nextDouble() < cfg("horn-chance", 0.05)) {
             event.getDrops().add(randomHorn());
         }
-        // Raid piglins (and the riders' hoglins) drop nothing: no gold gear, no loot. The bosses add theirs below.
+        // Raid piglins drop no gear, just a few gold nuggets (80%: 3-5); the riders' hoglins drop nothing.
+        // The bosses add their own loot below.
         if (dead.getScoreboardTags().contains(UNIT_TAG)
                 || ((dead instanceof PiglinAbstract || dead instanceof Hoglin) && FaultlineRaids.isRaidMobStatic(dead))) {
             event.getDrops().clear();
+            if (dead instanceof PiglinAbstract && dead.getKiller() != null && random.nextDouble() < cfg("nugget-chance", 0.8)) {
+                int lo = (int) cfg("nugget-min", 3), hi = Math.max(lo, (int) cfg("nugget-max", 5));
+                event.getDrops().add(new ItemStack(Material.GOLD_NUGGET, lo + random.nextInt(hi - lo + 1)));
+            }
         }
         Boss b = bosses.get(id);
         if (b != null) {

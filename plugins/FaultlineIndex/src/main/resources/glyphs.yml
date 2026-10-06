@@ -421,3 +421,15 @@ piglin_banner_bearer:
 piglin_medic:
   large: 59204
   small: 58180
+sloop_blueprint:
+  large: 59205
+  small: 58181
+brigantine_blueprint:
+  large: 59206
+  small: 58182
+galleon_blueprint:
+  large: 59207
+  small: 58183
+shipwright_hammer:
+  large: 59208
+  small: 58184

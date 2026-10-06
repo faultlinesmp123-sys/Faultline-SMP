@@ -6960,6 +6960,16 @@ public final class FaultlineItems extends JavaPlugin {
                 list.add(external(icon(Material.BOOK, "faultline_index", ChatColor.GOLD + "" + ChatColor.BOLD + "Faultline Index", "FaultlineIndex"),
                         "index give {player}", "FaultlineIndex"));
             }
+            if (enabled("FaultlineShips")) {
+                String[][] ships = {{"sloop", "" + ChatColor.WHITE}, {"brigantine", "" + ChatColor.GOLD}, {"galleon", "" + ChatColor.AQUA}};
+                for (String[] sh : ships) {
+                    String title = Character.toUpperCase(sh[0].charAt(0)) + sh[0].substring(1);
+                    list.add(external(icon(Material.GLOBE_BANNER_PATTERN, null, sh[1] + ChatColor.BOLD + title + " Blueprint", "FaultlineShips"),
+                            "ship give " + sh[0] + " {amount} {player}", "FaultlineShips"));
+                }
+                list.add(external(icon(Material.MACE, null, ChatColor.GOLD + "" + ChatColor.BOLD + "Shipwright's Hammer", "FaultlineShips"),
+                        "ship give hammer {amount} {player}", "FaultlineShips"));
+            }
             if (enabled("FaultlineBosses")) {
                 list.add(external(icon(Material.ENDER_EYE, "suspicious_eye", ChatColor.DARK_RED + "" + ChatColor.BOLD + "Suspicious Eye", "FaultlineBosses"),
                         "demoneye give {amount} {player}", "FaultlineBosses"));

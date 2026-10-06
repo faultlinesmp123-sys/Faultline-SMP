@@ -1,0 +1,17 @@
+name: FaultlineShips
+version: '1.0.0'
+main: net.faultlinesmp.ships.FaultlineShips
+api-version: '1.21'
+author: FaultlineSMP
+description: Build ships from blueprints, sail them, wreck them, repair them
+
+commands:
+  ship:
+    description: Faultline Ships
+    usage: /ship [list|info|crew|scrap]
+    aliases: [ships]
+
+permissions:
+  faultlineships.admin:
+    description: Give blueprints and hammers, repair or remove any ship, steer any ship
+    default: op

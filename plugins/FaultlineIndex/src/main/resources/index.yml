@@ -637,3 +637,17 @@ entries:
     detect: faultlinebosses:vendetta_item=fist
     how: Dropped by Rocco Vendetta.
     does: '+8 attack damage, fast. Sneak + right-click to pick a move, right-click to use it: Kick and Punch (stun), Payback, Assemble (two Enforcers fight for you), Watch Your Back!, MY HAIR COUPONS!!!, Swear Vengeance, No More Tests, COMPLETE AND TOTAL EXTERMINATION!!! (needs 50 tattoos), Mercy of the Big Brother, TRICKED ME, DID YOU??!! and Ah, You Were One of the Fam (a big shield for some health). Getting hit while holding it gives you Vengeance Tattoos, and when you drop below half health, Werner comes to help for 30 seconds (every 5 minutes). PvE only: its moves never hit players, and against a player it hits like a bare hand.'
+
+  # ---------------------------------------------------------------- SHIPS (FaultlineShips)
+  - {chapter: weapons, name: "Sloop Blueprint", icon: sloop_blueprint, detect: "faultlineships:sloop_blueprint",
+     how: "Craft it: Paper on the 4 sides of any Boat.",
+     does: "Right-click open water to lay out a small ship (it's built in front of you, bow pointing where you face), then place every glowing block: 58 Planks, 8 Logs, 23 Wooden Fences, 16 Wool, 2 Lanterns (any wood works, the ship keeps the one you used). Sneak + right-click fills up to 16 at once, masts and sails too. 150 health, 3 seats, the fastest. Right-click the wheel to steer: W/S sail, A/D steer, Sprint for full sail, Jump drops anchor (then the deck can be walked)."}
+  - {chapter: weapons, name: "Brigantine Blueprint", icon: brigantine_blueprint, detect: "faultlineships:brigantine_blueprint",
+     how: "Craft it: Gold Ingots in the corners, Paper on the sides, a Sloop Blueprint in the middle.",
+     does: "A medium ship: 280 blocks (158 Planks, 20 Logs, 46 Fences, 3 Stairs, 50 Wool, 1 Chest, 2 Lanterns), two masts and a raised stern. 350 health, 5 seats and a 27-slot hold (only you and your crew can open it). Needs water 2 deep."}
+  - {chapter: weapons, name: "Galleon Blueprint", icon: galleon_blueprint, detect: "faultlineships:galleon_blueprint",
+     how: "Craft it: Diamonds in the corners, Paper on the sides, a Brigantine Blueprint in the middle.",
+     does: "The big one: 648 blocks (413 Planks, 43 Logs, 81 Fences, 7 Stairs, 100 Wool, 2 Chests, 2 Lanterns), three masts, a two-level stern castle and a forecastle. 700 health, 9 seats and a 54-slot hold, but slow to turn. Needs water 2 deep."}
+  - {chapter: weapons, name: "Shipwright's Hammer", icon: shipwright_hammer, detect: "faultlineships:shipwright_hammer",
+     how: "Craft it: 3 Iron Ingots on top, Iron / any Planks / Iron in the middle, a Stick at the bottom.",
+     does: "Ships lose health to axes and other weapons, arrows, explosions and running into the shore. At 0 a ship is wrecked: torn sails, and it can't sail until it's back to full. Right-click a damaged ship with the hammer, then right-click when the white marker is in the green (gold = perfect, it fixes more). Each good hit uses 1 Planks; the green gets smaller and the marker faster as your streak grows."}

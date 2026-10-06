@@ -40,6 +40,7 @@ All are Maven projects: Java 21, `paper-api 1.21.11-R0.1-SNAPSHOT`. Build with
 | **FaultlineBosses** | `net.faultlinesmp.bosses` | Bosses in one ~585 KB file: Demon Eye, Frostbeard, Dune Devourer/Frostmaw, Don Lorenzo, Kraken, **Diamond Jacob**; admin boss form. **Rocco Vendetta** (+ Werner, the Vendetta Fist) lives in its own `Vendetta.java`. **The way down to the Lost Explorer** (Swarm, his staircase, the void world) is `Below.java`; **the Lost Explorer's fight** is `Explorer.java` (+ `ExplorerAnims.java`) | `/demoneye`, `/frostbeard`, `/dune`, `/don`, `/kraken`, `/jacob <summon\|kill\|phase\|item>`, `/rocco <summon\|kill\|phase\|tattoos\|werner\|item>`, `/bossmorph <boss\|off\|release>`, `/below <swarm\|void\|leave\|close\|slayer\|info>`, `/explorer <start\|stop\|skip\|phase\|stun\|reset\|arena>` |
 | **FaultlineIndex** | `net.faultlinesmp.index` | The Faultline Index codex. Entries live in `src/main/resources/index.yml`, font glyphs in `glyphs.yml` | `/index [give\|reset] [player]` |
 | **FaultlineCosmetics** | `net.faultlinesmp.cosmetics` | Permanent cosmetic unlocks worn in 4 slots (Hat, Neck, Back, Body) over armor, for Java and Bedrock. Cosmetics are defined in its `config.yml`, unlocks saved in `players.yml` | `/cosmetics`, admin `/cosmetic <unlock\|lock\|list\|reload>` |
+| **FaultlineShips** | `net.faultlinesmp.ships` | Ships: Sloop, Brigantine, Galleon. Blueprint → lay out on water → place every block → sail. Health, wrecks, Shipwright's Hammer repair minigame. Ships saved in `ships.yml` | `/ship [list\|info\|crew\|scrap]`, admin `/ship <give\|repair\|wreck\|remove>` |
 
 Notes:
 - `FaultlineItems.java` (~350 KB) and `FaultlineBosses.java` (~585 KB) are huge. Search them instead of reading them whole.
@@ -92,6 +93,22 @@ Notes:
   **Harpy Ring** is +7.5% speed.
 - Changing a plugin's default `config.yml` does NOT update the copy already on the server. Tell the owner
   which values to change in `plugins/<Plugin>/config.yml` on the VPS.
+- **Ships** (`FaultlineShips`; `ShipType.java` = the 3 layouts, `Ship.java` = one ship, `FaultlineShips.java` = items,
+  events, the hammer minigame, saving). A ship is one block display per block riding an invisible root ItemDisplay
+  (moving = one teleport; since 1.21.10 teleports keep passengers), each display's transformation places/rotates its block
+  (re-sent, interpolated, while turning). Local coords: +x bow, +z starboard, y 0 = top water block. Sloop 107 blocks / 150 hp /
+  3 seats, Brigantine 280 / 350 / 5 + 27-slot hold, Galleon 648 / 700 / 9 + 54-slot hold (medium and big need water 2 deep).
+  Blueprints (base item GLOBE_BANNER_PATTERN): Sloop = paper around a boat, Brigantine = gold + paper around a Sloop Blueprint,
+  Galleon = diamonds + paper around a Brigantine Blueprint. Building: right-click water → glowing outline → right-click
+  the glowing blocks with the right kind (any wood; sneak = 16 at once). Each built cell gets a barrier while
+  building/anchored, so the deck is walkable; sailing removes them (everyone aboard sits on seats). Helm: W/S/A/D, Sprint,
+  Jump = anchor (snaps to the grid). Steering reads `Player#getCurrentInput()`. Water only: the bottom row must be in
+  water, everything above in air (checked each tick). Damage: melee (axe 8...), arrows/tridents, explosions, ramming the shore;
+  owner + `/ship crew` can't hurt it. 0 hp = wrecked (torn sails, can't sail until full). Shipwright's Hammer (base item
+  STICK with the vanilla mace model; can't be crafted with): timing bar in the action bar, 1 Planks per good hit.
+  Bedrock (Geyser) players can't see display entities, so they don't see the ships. Index icons from
+  `python3 tools/ship_assets.py <pack> --preview tools/previews`. Tested with MockBukkit (build, sail, shore, anchor, damage,
+  wreck, repair, save/load, scrap, events).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.
@@ -113,7 +130,7 @@ Notes:
 | `FaultlineBossesPack.zip` | Boss models/sounds pack (Demon Eye, Dune, Frostmaw, mf_* models) |
 | `FaultlineBloodMoon.zip` | Blood Moon pack: replaces moon phase textures |
 | `FaultlineBosses.zip` | Very old zip of the FaultlineBosses source (Demon Eye only). Ignore it; the live copy is `plugins/FaultlineBosses/` |
-| `plugins/` | Source code for all six custom plugins (edit these) |
+| `plugins/` | Source code for all seven custom plugins (edit these) |
 | `bedrock/` | Bedrock (Geyser) cosmetics pack + custom item mappings, made by `tools/cosmetics_assets.py` |
 
 Resource packs are served from raw GitHub links on `main`, e.g.

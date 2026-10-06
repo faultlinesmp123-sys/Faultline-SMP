@@ -1,0 +1,39 @@
+# ============================================================================
+# FAULTLINE SHIPS
+# Craft a blueprint, right-click open water, place every glowing block, sail.
+#   Sloop Blueprint:      paper on 4 sides of any boat
+#   Brigantine Blueprint: gold in the corners, paper on the sides, a Sloop Blueprint in the middle
+#   Galleon Blueprint:    diamonds in the corners, paper on the sides, a Brigantine Blueprint in the middle
+#   Shipwright's Hammer:  3 iron / iron, planks, iron / stick
+# Health 0 = wrecked: it can't sail until a hammer brings it back to full (timing minigame).
+# ============================================================================
+
+# How many ships (built or still being built) one player can have.
+max-ships-per-player: 3
+
+# Ships appear when a player is this close to them.
+spawn-range: 128
+
+# Per ship: speed-multiplier (1.0 = Sloop 7.2 m/s, Brigantine 6, Galleon 5; Sprint is +25%)
+# and health-multiplier (1.0 = Sloop 150, Brigantine 350, Galleon 700).
+ships:
+  small:  {speed-multiplier: 1.0, health-multiplier: 1.0}
+  medium: {speed-multiplier: 1.0, health-multiplier: 1.0}
+  big:    {speed-multiplier: 1.0, health-multiplier: 1.0}
+
+# Damage ships take. Melee: axe 8, sword 5, mace 6, trident 5, pickaxe 3, anything else 1 (owner and crew can't hurt their own ship).
+# Explosions: TNT 60, creeper 40 (charged 80), fireball 18, falling off over explosion-radius blocks.
+# Arrows and tridents hit sailing ships too (arrow = its damage, burning x1.5, trident 6).
+damage:
+  melee-multiplier: 1.0
+  explosion-multiplier: 1.0
+  explosion-radius: 7
+  projectile-multiplier: 1.0
+# Running into the shore at more than half speed (scaled by speed).
+ram-damage: 30
+
+# The hammer minigame: each good hit fixes hit-percent of max health, a perfect (gold) one perfect-percent.
+repair:
+  planks-per-hit: 1
+  hit-percent: 7
+  perfect-percent: 12

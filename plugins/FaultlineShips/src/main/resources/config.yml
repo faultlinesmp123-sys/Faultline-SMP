@@ -14,6 +14,7 @@ max-ships-per-player: 3
 
 # Ships appear when a player is this close to them.
 spawn-range: 128
+spawn-blocks-per-tick: 120   # ship blocks spawned per tick across all ships (a fleet appears over a second or two instead of freezing clients)
 
 # Per ship: speed-multiplier (1.0 = Sloop 7.2 m/s, Brigantine 6, Galleon 5; Sprint is +25%)
 # and health-multiplier (1.0 = Sloop 150, Brigantine 350, Galleon 700).

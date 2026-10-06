@@ -672,16 +672,16 @@ entries:
 
   # ---------------------------------------------------------------- PIRATES (FaultlineShips)
   - {chapter: bosses, name: "The Captain's Son", icon: captains_son, detect-tag: faultline_pirate_son,
-     where: "The first boss of the Pirate Invasion, on the flagship once the fleet is sunk. 320 health.",
+     where: "The first boss of the Pirate Invasion. Once the fleet is sunk the flagship drops anchor with all three captains on its deck: climb its ladders and fight them one after another. 320 health.",
      does: "Quick and cocky, with a golden cutlass. Lunges at you, throws a smoke bomb (blinds you and he appears behind you) and fires his flintlock.",
      drops: ["300 XP|100%"]}
   - {chapter: bosses, name: "The Skeleton Commander", icon: skeleton_commander, detect-tag: faultline_pirate_commander,
-     where: "The second boss of the Pirate Invasion. 480 health.",
+     where: "The second boss of the Pirate Invasion: he waits amidships on the flagship until the Son falls. 480 health.",
      does: "The skeleton army's commander, Jolly Roger on his head. Fires a fan of 7 arrows, rallies 3 more Deckhands and Musketeers, and blows his war horn to give his crew Strength.",
      drops: ["300 XP|100%"]}
   - {chapter: bosses, name: "The Skeleton Captain", icon: skeleton_captain, detect-tag: faultline_pirate_captain,
-     where: "The last boss of the Pirate Invasion. 900 health.",
-     does: "Huge, in netherite. A cutlass sweep that knocks you back, a broadside (red marks on the deck, then cannon fire comes down on them), and an anchor slam. Below half health his ghost crew of 4 Cursed Wraiths rises. Beat him and everyone who fought gets 2 Mythic Goodie Bags, an accessory, a 50% Zombie Omen V and a 25% Pirate Ship Blueprint.",
+     where: "The last boss of the Pirate Invasion: he waits on the flagship's poop deck until the Commander falls. 900 health.",
+     does: "Huge, in netherite. A cutlass sweep that knocks you back, a broadside (red marks on the deck, then cannon fire comes down on them), and an anchor slam. Below half health his ghost crew of 4 Ghost Pirates rises. Beat him and everyone who fought gets 2 Mythic Goodie Bags, an accessory, a 50% Zombie Omen V and a 25% Pirate Ship Blueprint.",
      drops: ["300 XP|100%", "2 Mythic Goodie Bags (each fighter)|100%", "An accessory (each fighter)|100%", "Zombie Omen V|50%", "Pirate Ship Blueprint|25%"]}
   - {chapter: enemies, name: "Skeleton Deckhand", icon: skeleton_deckhand, detect-tag: faultline_pirate_deckhand,
      where: "Crews skeleton ships. 24 health.",
@@ -714,6 +714,6 @@ entries:
   - {chapter: enemies, name: "Skeleton Navigator", icon: skeleton_navigator, detect-tag: faultline_pirate_navigator,
      where: "At the helm of every skeleton ship. 26 health.",
      does: "Spots you through his spyglass from up to 44 blocks: you glow, and while you glow the ship's cannons aim true. Kill him first.", drops: ["1-3 Bones|100%", "2-6 Gold Nuggets|30%", "1-3 Cannonballs|20%"]}
-  - {chapter: enemies, name: "Cursed Wraith", icon: cursed_wraith, detect-tag: faultline_pirate_wraith,
-     where: "Some skeleton ship crews, and the Skeleton Captain's ghost crew. 34 health.",
-     does: "A wither skeleton sailor. Its blade withers you.", drops: ["1-3 Bones|100%", "2-6 Gold Nuggets|30%", "1-3 Cannonballs|20%"]}
+  - {chapter: enemies, name: "Ghost Pirate", icon: cursed_wraith, detect-tag: faultline_pirate_wraith,
+     where: "Some skeleton ship crews, and the Skeleton Captain's ghost crew (4 rise when he drops below half health). 34 health.",
+     does: "A drowned sailor's ghost: you only see its glowing outline and its cutlass, trailing souls. It drifts down slowly instead of falling, and its blade withers you.", drops: ["1-3 Bones|100%", "2-6 Gold Nuggets|30%", "1-3 Cannonballs|20%"]}

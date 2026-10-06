@@ -93,7 +93,7 @@ final class Pirates implements Listener {
         DECKHAND("Skeleton Deckhand", false), MUSKETEER("Skeleton Musketeer", false), GUNNER("Skeleton Gunner", false),
         BOARDER("Skeleton Boarder", false), POWDER_MONKEY("Powder Monkey", false), CORSAIR("Drowned Corsair", false),
         BOSUN("Skeleton Bosun", false), GULL("Ghost Gull", false), SHARK("Bone Shark", false), NAVIGATOR("Skeleton Navigator", false),
-        WRAITH("Cursed Wraith", false),
+        WRAITH("Ghost Pirate", false), // tag stays faultline_pirate_wraith
         SON("The Captain's Son", true), COMMANDER("The Skeleton Commander", true), CAPTAIN("The Skeleton Captain", true);
 
         final String title;
@@ -124,7 +124,7 @@ final class Pirates implements Listener {
         final Kind kind;
         Brain home;
         long next, fuse = -1;
-        boolean summoned, ghostCrew;
+        boolean summoned, ghostCrew, waiting; // waiting: a boss on the flagship's deck whose turn hasn't come
         Crew(Kind kind, Brain home) { this.kind = kind; this.home = home; }
     }
 
@@ -160,6 +160,8 @@ final class Pirates implements Listener {
         final BossBar bossBar = Bukkit.createBossBar("", BarColor.PURPLE, BarStyle.SOLID);
         final Set<UUID> fighters = new HashSet<>();
         long started, quietSince = -1, bossDueAt = -1;
+        final LivingEntity[] bosses = new LivingEntity[3]; // the Son, the Commander, the Captain: all three on the flagship's deck
+        int heaveTries;
         final Map<UUID, Long> music = new HashMap<>(); // when each fighter's track last started
         boolean over;
 
@@ -456,7 +458,14 @@ final class Pirates implements Listener {
                 gear(g, leather(Material.LEATHER_HELMET, Color.fromRGB(20, 60, 50)), null, new ItemStack(Material.BOW));
                 if (g != null) { g.setItemInOffHand(new ItemStack(Material.SPYGLASS)); g.setItemInOffHandDropChance(0f); }
             }
-            case WRAITH -> { hp = 34; gear(g, null, null, new ItemStack(Material.STONE_SWORD)); }
+            case WRAITH -> { // a ghost: you only see its glowing outline and its cutlass, drifting in a haze of souls
+                hp = 34;
+                gear(g, null, null, new ItemStack(Material.IRON_SWORD));
+                e.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, PotionEffect.INFINITE_DURATION, 0, false, false));
+                e.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_FALLING, PotionEffect.INFINITE_DURATION, 0, false, false));
+                e.setGlowing(true);
+                e.setSilent(true); // its sounds are ours (ghostly)
+            }
             case SON -> {
                 hp = cfg("bosses.son-health", 320);
                 gear(g, leather(Material.LEATHER_HELMET, Color.fromRGB(20, 20, 24)), leather(Material.LEATHER_CHESTPLATE, Color.fromRGB(150, 20, 20)), new ItemStack(Material.GOLDEN_SWORD));
@@ -558,6 +567,15 @@ final class Pirates implements Listener {
         if (s.anchored) { boarded(b, now); return; }
         if (s.anchorStep >= 0) { in.clear(); return; }
 
+        if (b.flagship && b.inv != null && b.inv.stage == 0 && b.inv.escortsAlive() == 0 && b.inv.heaveTries < 40) {
+            // the fleet's sunk: the Black Gallows heaves to and drops anchor where she is. Climb her ladders and face her captains.
+            in.clear();
+            double max = s.type.speed * pl.getConfig().getDouble("ships." + s.type.size + ".speed-multiplier", 1.0);
+            s.speed = Ship.brake(s.speed, max);
+            s.turnRate = 0;
+            if (Math.abs(s.speed) <= max * 0.3 && now % 10 == 0) { b.inv.heaveTries++; s.dropAnchor(null); }
+            return;
+        }
         Ship ts = t == null ? null : pl.ridingOn(t);
         if (ts == null && t != null) ts = standingOn(t);
         if (ts != null && ts.ai != null) ts = null;
@@ -743,6 +761,11 @@ final class Pirates implements Listener {
         for (Player p : s.world().getPlayers()) if (p.getLocation().distanceSquared(s.center()) < 80 * 80) { by = p; break; }
         if (b.inv != null) {
             for (UUID f : b.inv.fighters) { Player p = Bukkit.getPlayer(f); if (p != null) p.sendActionBar(Component.text("A skeleton ship goes down! " + (b.inv.alive()) + " left.", NamedTextColor.GOLD)); }
+            if (b.flagship) for (int i = 0; i < 3; i++) { // bosses still waiting on its deck: they'll come through the water instead
+                LivingEntity w = b.inv.bosses[i];
+                Crew wc = w == null ? null : crew.get(w.getUniqueId());
+                if (wc != null && wc.waiting) { crew.remove(w.getUniqueId()); w.remove(); b.inv.bosses[i] = null; }
+            }
             if (b.flagship && b.inv.stage > 0 && b.inv.stage < 4 && b.inv.boss != null && b.inv.boss.isValid() && by != null) // the boss goes into the water after you
                 b.inv.boss.setVelocity(by.getLocation().toVector().subtract(b.inv.boss.getLocation().toVector()).setY(0).normalize().multiply(0.8).setY(0.6));
         }
@@ -771,6 +794,13 @@ final class Pirates implements Listener {
             Entity ent = Bukkit.getEntity(e.getKey());
             if (!(ent instanceof LivingEntity m) || !m.isValid() || m.isDead()) { crew.remove(e.getKey()); continue; }
             Crew c = e.getValue();
+            if (c.waiting) continue; // on the deck, waiting for its turn
+            if (c.kind == Kind.WRAITH) { // a ghost: souls drift off it, and it moans now and then
+                Location gl = m.getLocation().add(0, 1.1, 0);
+                m.getWorld().spawnParticle(Particle.SOUL, gl, 2, 0.3, 0.5, 0.3, 0.01);
+                m.getWorld().spawnParticle(Particle.SOUL_FIRE_FLAME, gl, 1, 0.25, 0.4, 0.25, 0.005);
+                if (rnd.nextInt(16) == 0) m.getWorld().playSound(gl, Sound.ENTITY_VEX_AMBIENT, SoundCategory.HOSTILE, 0.8f, 0.6f);
+            }
             Player t = nearest(m.getLocation(), c.kind.boss ? 40 : 30);
             if (m instanceof Mob mob && t != null && (mob.getTarget() == null || !mob.getTarget().isValid())) mob.setTarget(t);
             // in the water, skeletons swim after you (they'd sink otherwise)
@@ -925,6 +955,8 @@ final class Pirates implements Listener {
             c.ghostCrew = true;
             for (int i = 0; i < 4; i++) spawnMob(Kind.WRAITH, m.getLocation().add(rnd.nextGaussian() * 2, 0.2, rnd.nextGaussian() * 2), c.home);
             w.playSound(m.getLocation(), Sound.ENTITY_WITHER_SPAWN, SoundCategory.HOSTILE, 1f, 1.4f);
+            w.playSound(m.getLocation(), Sound.ENTITY_VEX_CHARGE, SoundCategory.HOSTILE, 1.5f, 0.5f);
+            w.spawnParticle(Particle.SOUL, m.getLocation().add(0, 1, 0), 60, 2, 1, 2, 0.05);
             for (Player p : w.getPlayers()) if (p.getLocation().distanceSquared(m.getLocation()) < 60 * 60) p.sendTitle("", ChatColor.DARK_RED + "\"To me, my ghosts!\"", 5, 40, 10);
             return;
         }
@@ -995,6 +1027,16 @@ final class Pirates implements Listener {
     @EventHandler(ignoreCancelled = true)
     public void onFriendlyTarget(EntityTargetLivingEntityEvent event) {
         if (isPirate(event.getEntity()) && isPirate(event.getTarget())) event.setCancelled(true);
+    }
+
+    @EventHandler
+    public void onHitWaiting(EntityDamageByEntityEvent event) {
+        Crew c = crew.get(event.getEntity().getUniqueId());
+        if (c == null || !c.waiting) return;
+        event.setCancelled(true);
+        Entity d = event.getDamager();
+        if (d instanceof Projectile pr && pr.getShooter() instanceof Entity sh) d = sh;
+        if (d instanceof Player p) p.sendActionBar(Component.text(c.kind.title + " waits for his turn.", NamedTextColor.GRAY));
     }
 
     @EventHandler(ignoreCancelled = true)
@@ -1208,28 +1250,54 @@ final class Pirates implements Listener {
     }
 
     /** The next of the flagship's three: the Captain's Son, the Skeleton Commander, the Skeleton Captain. */
+    static Kind bossKind(int i) { return i == 0 ? Kind.SON : i == 1 ? Kind.COMMANDER : Kind.CAPTAIN; }
+
+    /** Where each boss stands on the flagship's deck (local x, feet y, z): the Son at the bow, the Commander amidships, the Captain on the poop deck. */
+    static final double[][] DECK_SPOTS = {{4, 4, 0}, {0, 4, -2}, {-7, 5, 0}};
+
+    Location deckSpot(Ship f, int i) {
+        double[] d = DECK_SPOTS[i];
+        if (f.type != ShipType.PIRATE) d = f.type.seats[Math.min(f.type.seats.length - 1, 1 + i)];
+        double[] w = Ship.toWorld(f.x, f.z, f.yaw, d[0], d[2]);
+        Location l = new Location(f.world(), w[0], f.y + d[1] + 0.05, w[1]);
+        l.setYaw(f.yaw + (i == 2 ? 0 : 180));
+        return l;
+    }
+
+    /**
+     * The next of the flagship's three: the Captain's Son, the Skeleton Commander, the Skeleton Captain.
+     * All three stand on its deck once it's anchored; the ones whose turn hasn't come wait there (frozen, can't be hurt).
+     * If the flagship's gone, they come for you through the water.
+     */
     void nextBoss(Invasion inv) {
         if (inv.over || inv.stage >= 3) return;
         inv.stage++;
-        Kind k = inv.stage == 1 ? Kind.SON : inv.stage == 2 ? Kind.COMMANDER : Kind.CAPTAIN;
+        int k = inv.stage - 1;
+        Kind kind = bossKind(k);
         Ship f = inv.flagship;
-        Location at;
-        if (f != null && pl.ships.containsKey(f.id) && !f.wrecked && f.anchored) at = f.seatLoc(0).add(2, 0.2, 0);
-        else { // the flagship's gone: they come for you through the water
+        boolean deck = f != null && pl.ships.containsKey(f.id) && !f.wrecked && f.anchored;
+        Brain home = f == null ? null : f.ai;
+        if (deck) for (int i = k; i < 3; i++) {
+            if (inv.bosses[i] != null && inv.bosses[i].isValid()) continue;
+            inv.bosses[i] = spawnMob(bossKind(i), deckSpot(f, i), home);
+            if (inv.bosses[i] != null && i > k) setWaiting(inv.bosses[i], true);
+        }
+        LivingEntity boss = inv.bosses[k];
+        if (boss == null || !boss.isValid()) { // the flagship's gone: through the water
             Player near = null;
             for (UUID u : inv.fighters) { Player p = Bukkit.getPlayer(u); if (p != null && fighting(p)) { near = p; break; } }
             if (near == null) { inv.stage--; inv.bossDueAt = pl.now + 40; return; }
-            at = near.getLocation().add(near.getLocation().getDirection().setY(0).normalize().multiply(8));
+            boss = spawnMob(kind, near.getLocation().add(near.getLocation().getDirection().setY(0).normalize().multiply(8)), home);
+            if (boss == null) { inv.stage--; inv.bossDueAt = pl.now + 40; return; }
+            inv.bosses[k] = boss;
         }
-        Brain home = f == null ? null : f.ai;
-        LivingEntity boss = spawnMob(k, at, home);
-        if (boss == null) { inv.stage--; inv.bossDueAt = pl.now + 40; return; }
+        setWaiting(boss, false);
         Crew bc = crew.get(boss.getUniqueId());
         if (bc != null && bc.home == null) bc.home = new Brain(f, inv, true);
         inv.boss = boss;
-        inv.bossBar.setTitle(ChatColor.DARK_RED + "" + ChatColor.BOLD + k.title);
+        inv.bossBar.setTitle(ChatColor.DARK_RED + "" + ChatColor.BOLD + kind.title);
         inv.bossBar.setProgress(1);
-        String line = switch (k) {
+        String line = switch (kind) {
             case SON -> "\"Father said I could have your ship.\"";
             case COMMANDER -> "\"Form up! Bows at the ready!\"";
             default -> "\"Who dares board the Black Gallows?\"";
@@ -1237,9 +1305,21 @@ final class Pirates implements Listener {
         for (UUID u : inv.fighters) {
             Player p = Bukkit.getPlayer(u);
             if (p == null) continue;
-            p.sendTitle(ChatColor.DARK_RED + "" + ChatColor.BOLD + k.title, ChatColor.GRAY + line, 10, 60, 15);
+            p.sendTitle(ChatColor.DARK_RED + "" + ChatColor.BOLD + kind.title, ChatColor.GRAY + line, 10, 60, 15);
             p.playSound(p.getLocation(), Sound.ENTITY_WITHER_SKELETON_AMBIENT, SoundCategory.HOSTILE, 1.5f, 0.5f);
+            if (deck && k == 0) p.sendMessage(ChatColor.GOLD + "The Black Gallows has dropped anchor at " + (int) f.x + ", " + (int) f.z + ". " + ChatColor.GRAY
+                    + "Climb her ladders and face her three captains, one after another.");
         }
+    }
+
+    /** A boss on the deck waiting for its turn: stands still and can't be hurt. */
+    void setWaiting(LivingEntity m, boolean waiting) {
+        Crew c = crew.get(m.getUniqueId());
+        if (c != null) c.waiting = waiting;
+        m.setAI(!waiting);
+        m.setInvulnerable(waiting);
+        Kind k = c == null ? null : c.kind;
+        if (k != null) m.setCustomName(ChatColor.DARK_RED + "" + ChatColor.BOLD + k.title + (waiting ? ChatColor.GRAY + " (waiting)" : ""));
     }
 
     void win(Invasion inv) {

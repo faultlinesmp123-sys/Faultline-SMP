@@ -6994,7 +6994,7 @@ public final class FaultlineItems extends JavaPlugin {
                         {"gull", Material.PHANTOM_SPAWN_EGG, ChatColor.GRAY + "Ghost Gull"},
                         {"shark", Material.GUARDIAN_SPAWN_EGG, ChatColor.GRAY + "Bone Shark"},
                         {"navigator", Material.STRAY_SPAWN_EGG, ChatColor.DARK_GREEN + "Skeleton Navigator"},
-                        {"wraith", Material.WITHER_SKELETON_SPAWN_EGG, ChatColor.DARK_GRAY + "Cursed Wraith"}};
+                        {"wraith", Material.WITHER_SKELETON_SPAWN_EGG, ChatColor.AQUA + "Ghost Pirate"}};
                 for (Object[] egg : pirates) {
                     list.add(external(icon((Material) egg[1], null, egg[2] + " Spawn Egg", "FaultlineShips"),
                             "ship pirates egg " + egg[0] + " {amount} {player}", "FaultlineShips"));

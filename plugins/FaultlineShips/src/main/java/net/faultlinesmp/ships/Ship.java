@@ -229,9 +229,30 @@ final class Ship {
             d.addScoreboardTag(TAG);
             d.setTeleportDuration(3); // same smoothing as the armor stands the crew sit on
         });
+        // The blocks go in a batch a tick (FaultlineShips.tick shares out spawn-blocks-per-tick between ships):
+        // a fleet of 16 ships is ~3700 displays, and spawning them all in one tick froze clients for seconds.
         displays = new Display[type.cells.size()];
-        for (int i = 0; i < displays.length; i++) {
-            final int idx = i;
+        spawnCursor = 0;
+        sentYaw = yaw;
+        spawnFlag();
+        if (!building) { spawnSeats(); spawnStand(); }
+        if (!reconciled) { reconciled = true; reconcileBarriers(); }
+        if (sailing()) spawnHitboxes();
+        refreshLabel();
+    }
+
+    int spawnCursor = -1; // >= 0 while the block displays are still going in
+
+    boolean spawningBlocks() { return spawnCursor >= 0 && displays != null; }
+
+    /** Spawn up to n more block displays; returns how many it spawned. */
+    int spawnMore(int n) {
+        if (!spawningBlocks() || !spawned()) { spawnCursor = -1; return 0; }
+        World w = world();
+        Location base = new Location(w, x, y + visualY(), z, yaw, pitch());
+        int done = 0;
+        while (spawnCursor < displays.length && done < n) {
+            final int idx = spawnCursor++;
             java.util.function.Consumer<Display> setup = d -> {
                 d.setPersistent(false);
                 d.addScoreboardTag(TAG);
@@ -239,18 +260,15 @@ final class Ship {
                 d.setTransformation(transform(idx));
                 if (blocks[idx] == null) { d.setGlowing(true); d.setGlowColorOverride(Color.fromRGB(150, 220, 255)); }
             };
-            if (type.cells.get(i).need() == ShipType.Need.CANNON)
-                displays[i] = w.spawn(base, ItemDisplay.class, d -> { d.setItemStack(pl.cannonModel()); setup.accept(d); });
+            if (type.cells.get(idx).need() == ShipType.Need.CANNON)
+                displays[idx] = w.spawn(base, ItemDisplay.class, d -> { d.setItemStack(pl.cannonModel()); setup.accept(d); });
             else
-                displays[i] = w.spawn(base, BlockDisplay.class, d -> { d.setBlock(dataOf(idx)); setup.accept(d); });
-            root.addPassenger(displays[i]);
+                displays[idx] = w.spawn(base, BlockDisplay.class, d -> { d.setBlock(dataOf(idx)); setup.accept(d); });
+            root.addPassenger(displays[idx]);
+            done++;
         }
-        sentYaw = yaw;
-        spawnFlag();
-        if (!building) { spawnSeats(); spawnStand(); }
-        if (!reconciled) { reconciled = true; reconcileBarriers(); }
-        if (sailing()) spawnHitboxes();
-        refreshLabel();
+        if (spawnCursor >= displays.length) spawnCursor = -1;
+        return done;
     }
 
     void spawnSeats() {
@@ -328,6 +346,7 @@ final class Ship {
         if (stand != null && stand.isValid()) stand.remove();
         stand = null;
         if (displays != null) for (Display d : displays) if (d != null && d.isValid()) d.remove();
+        spawnCursor = -1;
         if (flag != null && flag.isValid()) flag.remove();
         if (flagStand != null && flagStand.isValid()) flagStand.remove();
         flag = null; flagStand = null;
@@ -577,8 +596,10 @@ final class Ship {
         boolean sinking = false;
         if (wrecked && sink < sinkTarget()) { sink = Math.min(sinkTarget(), sink + pl.cfg("sink-speed", 0.006) * (ai != null ? 3 : 1)); sinking = true; }
         else if (!wrecked && sink > 0) { sink = Math.max(0, sink - 0.03); sinking = true; }
+        if (ticks % 20 == 0) viewerNear = viewerWithin(64);
         if (sailing() || anchorStep >= 0 || sinking) {
-            int every = type == ShipType.GALLEON || type == ShipType.PIRATE ? 2 : 1;
+            // every block's yaw is its own packet: big ships, skeleton ships and ships nobody's near send fewer
+            int every = !viewerNear ? 15 : ai != null ? 3 : type == ShipType.GALLEON || type == ShipType.PIRATE ? 2 : 1;
             if ((Math.abs(yaw - sentYaw) >= 0.5f || (sinking && ticks % 10 == 0)) && ticks % every == 0) sendRotation();
             place();
         }
@@ -586,6 +607,28 @@ final class Ship {
             effects();
             hud();
         }
+    }
+
+    boolean viewerNear = true;
+
+    double nearestPlayerSq() {
+        World w = world();
+        double best = Double.MAX_VALUE;
+        if (w != null) for (Player p : w.getPlayers()) {
+            double dx = p.getLocation().getX() - x, dz = p.getLocation().getZ() - z;
+            best = Math.min(best, dx * dx + dz * dz);
+        }
+        return best;
+    }
+
+    boolean viewerWithin(double r) {
+        World w = world();
+        if (w == null) return false;
+        for (Player p : w.getPlayers()) {
+            double dx = p.getLocation().getX() - x, dz = p.getLocation().getZ() - z;
+            if (dx * dx + dz * dz < r * r) return true;
+        }
+        return false;
     }
 
     /** Root, seats, hitboxes and the Bedrock stand-in to where the ship is now. */

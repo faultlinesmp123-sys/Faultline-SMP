@@ -1055,11 +1055,19 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
                 if (s.ai != null && !want && (s.ai.inv == null || s.ai.beaten || s.ai.inv.over || s.wrecked)) { gone.add(s); continue; } // nobody left to see it: it's gone
                 if (want && !s.spawned()) s.spawn();
                 else if (!want && s.spawned()) s.despawn();
-                else if (s.spawned() && s.displays != null) { // a piece got removed somehow: rebuild
+                else if (s.spawned() && s.displays != null && !s.spawningBlocks()) { // a piece got removed somehow: rebuild
                     for (Entity d : s.displays) if (d == null || !d.isValid()) { s.spawn(); break; }
                 }
             }
             for (Ship s : gone) pirates.discard(s);
+        }
+        // ships' blocks go in a batch a tick, nearest ship first, so a whole fleet turning up doesn't freeze anyone
+        int budget = (int) cfg("spawn-blocks-per-tick", 120);
+        if (budget > 0) {
+            List<Ship> filling = new ArrayList<>();
+            for (Ship s : ships.values()) if (s.spawningBlocks()) filling.add(s);
+            if (filling.size() > 1) filling.sort(java.util.Comparator.comparingDouble(Ship::nearestPlayerSq));
+            for (Ship s : filling) { if (budget <= 0) break; budget -= s.spawnMore(budget); }
         }
         pirates.tick();
         for (Ship s : ships.values()) s.tick();

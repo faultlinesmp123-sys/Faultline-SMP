@@ -174,6 +174,15 @@ Notes:
   if it can't anchor there (land, 3 tries) they go over the side (`overboard()`: water beside the hull). A passenger while
   someone else sails is kept seated; a second separate sneak within 2 s (`overboardAsk`, holding sneak doesn't count)
   puts them overboard. Tested in `LeaveTest`.
+  **1.3.3**: Performance: a ship is one display PER BLOCK, so an invasion (16 ships, ~3500 blocks) spawned in one tick froze
+  clients. `spawn()` now only makes the root/seats; `spawnMore(n)` adds blocks, and `FaultlineShips.tick` shares
+  `spawn-blocks-per-tick` (120) between ships still filling (nearest first; `spawningBlocks()`). Rotation packets (one per
+  block) are throttled: every 3 ticks for skeleton ships, every 15 when no player is within 64 (`viewerNear`).
+  Invasion bosses: once the escorts are sunk the flagship heaves to and anchors where it is (`heaveTries`); all three bosses
+  stand on its deck (`DECK_SPOTS`: Son bow, Commander amidships, Captain poop deck); the ones whose turn hasn't come are
+  `waiting` (no AI, invulnerable, "(waiting)"); players climb its real ladders (both sides, from the water). Flagship sunk
+  first: waiting bosses are removed and come through the water instead. The WRAITH kind is now the "Ghost Pirate":
+  invisible + glowing outline, slow falling, soul particles, vex sounds (the Captain's ghost crew and some ship crews).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

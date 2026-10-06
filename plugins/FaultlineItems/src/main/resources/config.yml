@@ -320,7 +320,7 @@ boots:
 item-textures:
   enabled: true
   url: "https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/main/FaultlineSMP.zip"
-  hash: "f5b67f6e2bde141ab58756918aaf188e699e1a59"
+  hash: "7d9487a97608732aaa3b71d30a9145a4af2f2217"
 
 
 # Immunity charms: one accessory per debuff (Guardian Scale, Ginger Root, Blindfold, Salt Ration,

@@ -130,7 +130,8 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
         // the Skeleton Army / Skeleton Raids
         SKEL_SOLDIER, FROST_ARCHER, BOG_ARCHER, SHIELDBEARER, BONE_RIDER, WITHER_BRUTE, BONE_COMMANDER,
         // Piglin Raids (Piglins.java)
-        PIGLIN_GRUNT, PIGLIN_CROSSBOW, PIGLIN_BRUTE, HOGLIN_RIDER, PIGLIN_MAGE, PIGLIN_SUMMONER, PIGLIN_BALLOON, BULWARK, GREAT_HOG }
+        PIGLIN_GRUNT, PIGLIN_CROSSBOW, PIGLIN_BRUTE, HOGLIN_RIDER, PIGLIN_MAGE, PIGLIN_SUMMONER, PIGLIN_BALLOON, BULWARK, GREAT_HOG,
+        PIGLIN_SAPPER, PIGLIN_SHIELDBEARER, PIGLIN_LOBBER, PIGLIN_RUNT, PIGLIN_BANNER, PIGLIN_MEDIC }
 
     static final int OMEN_ZOMBIE = 0, OMEN_SKELETON = 1, OMEN_PIGLIN = 2;
     Piglins piglins;
@@ -173,7 +174,13 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
         PIGLIN_BALLOON(Kind.PIGLIN_BALLOON, Material.PIGLIN_SPAWN_EGG, ChatColor.RED + "Piglin Balloonist"),
         HOGLIN_RIDER(Kind.HOGLIN_RIDER, Material.HOGLIN_SPAWN_EGG, ChatColor.GOLD + "Hoglin Rider"),
         BULWARK(Kind.BULWARK, Material.PIGLIN_BRUTE_SPAWN_EGG, ChatColor.GOLD + "" + ChatColor.BOLD + "The Bulwark (Mini Boss)"),
-        GREAT_HOG(Kind.GREAT_HOG, Material.HOGLIN_SPAWN_EGG, ChatColor.GOLD + "" + ChatColor.BOLD + "The Great Hog (Boss)");
+        GREAT_HOG(Kind.GREAT_HOG, Material.HOGLIN_SPAWN_EGG, ChatColor.GOLD + "" + ChatColor.BOLD + "The Great Hog (Boss)"),
+        PIGLIN_SAPPER(Kind.PIGLIN_SAPPER, Material.PIGLIN_SPAWN_EGG, ChatColor.RED + "Piglin Sapper"),
+        PIGLIN_SHIELDBEARER(Kind.PIGLIN_SHIELDBEARER, Material.PIGLIN_SPAWN_EGG, ChatColor.GOLD + "Piglin Shieldbearer"),
+        PIGLIN_LOBBER(Kind.PIGLIN_LOBBER, Material.PIGLIN_SPAWN_EGG, ChatColor.GOLD + "Piglin Lobber"),
+        PIGLIN_RUNT(Kind.PIGLIN_RUNT, Material.PIGLIN_SPAWN_EGG, ChatColor.GOLD + "Piglin Runt"),
+        PIGLIN_BANNER(Kind.PIGLIN_BANNER, Material.PIGLIN_SPAWN_EGG, ChatColor.GOLD + "Piglin Banner Bearer"),
+        PIGLIN_MEDIC(Kind.PIGLIN_MEDIC, Material.PIGLIN_SPAWN_EGG, ChatColor.GREEN + "Piglin Medic");
 
         final Kind kind;
         final Material material;
@@ -1014,7 +1021,8 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
                     case MAGE -> mageTick(mob, now);
                     case HORSEMAN -> horsemanTick(mob, now);
                     case BOSS -> bossTick(mob, now);
-                    case PIGLIN_MAGE, PIGLIN_SUMMONER, PIGLIN_BALLOON, HOGLIN_RIDER, BULWARK, GREAT_HOG -> piglins.tick(mob, entry.getValue(), now);
+                    case PIGLIN_MAGE, PIGLIN_SUMMONER, PIGLIN_BALLOON, HOGLIN_RIDER, BULWARK, GREAT_HOG,
+                         PIGLIN_SAPPER, PIGLIN_LOBBER, PIGLIN_BANNER, PIGLIN_MEDIC -> piglins.tick(mob, entry.getValue(), now);
                     default -> { }
                 }
             } catch (RuntimeException ex) {
@@ -1023,6 +1031,7 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
         }
         try { orbTick(); } catch (RuntimeException ex) { logPart("orbs", ex); }
         try { piglins.projectileTick(); } catch (RuntimeException ex) { logPart("piglin bombs", ex); }
+        try { piglins.zoneTick(); } catch (RuntimeException ex) { logPart("piglin fire zones", ex); }
     }
 
     private final Map<String, Long> partLog = new HashMap<>();

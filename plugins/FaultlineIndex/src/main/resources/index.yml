@@ -198,7 +198,7 @@ entries:
 
   - {chapter: consumables, name: "Piglin War Horn", icon: piglin_war_horn, detect: "faultlineraids:piglin_war_horn",
      how: "5% from Piglin Brutes (always level III, IV or V).",
-     does: "Blow it, then go near a village in the Overworld to start a Piglin Raid: 15 piglins a wave (III: 6 waves, IV: 8, V: 10), The Bulwark in wave 5, and The Great Hog at the end. Win for big rewards."}
+     does: "Blow it, then go near a village in the Overworld to start a Piglin Raid: 15 piglins a wave (III: 6 waves, IV: 8, V: 10) from 13 kinds of units, The Bulwark in wave 5, and The Great Hog at the end. Win for big rewards."}
 
   - {chapter: consumables, name: "Ankh", icon: ankh_piece, detect: "faultlineitems:ankh_piece",
      how: "50% from the Demon Eye (each fighter rolls).",
@@ -353,6 +353,31 @@ entries:
   - {chapter: enemies, name: "Hoglin Rider", icon: hoglin_rider, detect-name: "Hoglin Rider",
      where: "Piglin Raids (from wave 4).",
      does: "A Piglin with a golden sword riding a charging Hoglin.",
+     drops: ["Goodie Bag|5%"]}
+
+  - {chapter: enemies, name: "Piglin Sapper", icon: piglin_sapper, detect-name: "Piglin Sapper",
+     where: "Piglin Raids (from wave 3).",
+     does: "Fast, with TNT strapped to its head. When it reaches you it lights the fuse (1 second, it flashes white) and blows up. Killing it sets the TNT off too, so back away. Never breaks blocks.",
+     drops: ["Goodie Bag|5%"]}
+  - {chapter: enemies, name: "Piglin Shieldbearer", icon: piglin_shieldbearer, detect-name: "Piglin Shieldbearer",
+     where: "Piglin Raids (from wave 2).",
+     does: "Golden armor and a shield: takes 75% less damage from the front and barely gets knocked back. Go around it.",
+     drops: ["Goodie Bag|5%"]}
+  - {chapter: enemies, name: "Piglin Lobber", icon: piglin_lobber, detect-name: "Piglin Lobber",
+     where: "Piglin Raids (from wave 4).",
+     does: "Lobs balls of magma over walls. An orange ring shows where it'll land; the ground there burns for a few seconds.",
+     drops: ["Goodie Bag|5%"]}
+  - {chapter: enemies, name: "Piglin Runt", icon: piglin_runt, detect-name: "Piglin Runt",
+     where: "Piglin Raids, in packs of three (waves 1, 3, 6 and 9).",
+     does: "Small, fast, and fragile. They swarm you with golden swords.",
+     drops: ["Goodie Bag|5%"]}
+  - {chapter: enemies, name: "Piglin Banner Bearer", icon: piglin_banner_bearer, detect-name: "Piglin Banner Bearer",
+     where: "Piglin Raids (from wave 5).",
+     does: "Carries the Horde's banner: every 8 seconds every piglin within 10 blocks gets Strength and Speed. Kill it first.",
+     drops: ["Goodie Bag|5%"]}
+  - {chapter: enemies, name: "Piglin Medic", icon: piglin_medic, detect-name: "Piglin Medic",
+     where: "Piglin Raids (from wave 6).",
+     does: "Stays back and, every 5 seconds, heals whichever piglin is hurt the most (a golden beam and hearts). Runs from you.",
      drops: ["Goodie Bag|5%"]}
 
   - {chapter: enemies, name: "Skeleton Soldier", icon: skeleton_soldier, detect-name: "Skeleton Soldier",

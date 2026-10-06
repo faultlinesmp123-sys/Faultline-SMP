@@ -403,3 +403,21 @@ the_bulwark:
 great_hog:
   large: 59198
   small: 58174
+piglin_sapper:
+  large: 59199
+  small: 58175
+piglin_shieldbearer:
+  large: 59200
+  small: 58176
+piglin_lobber:
+  large: 59201
+  small: 58177
+piglin_runt:
+  large: 59202
+  small: 58178
+piglin_banner_bearer:
+  large: 59203
+  small: 58179
+piglin_medic:
+  large: 59204
+  small: 58180

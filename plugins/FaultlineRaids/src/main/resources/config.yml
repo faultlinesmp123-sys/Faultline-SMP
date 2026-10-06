@@ -88,6 +88,25 @@ piglin-raid:
   summoner-health: 26
   summoned-health: 14
   rider-hoglin-health: 40
+  sapper-health: 18
+  shieldbearer-health: 30
+  lobber-health: 22
+  runt-health: 8
+  banner-health: 28
+  medic-health: 22
+  sapper:
+    power: 2.5                 # its TNT (never breaks blocks)
+  shieldbearer:
+    front-block: 0.75          # damage blocked from the front
+  lobber:
+    seconds: 4
+    zone-seconds: 4            # how long the ground burns
+    zone-damage: 2
+  banner:
+    seconds: 8                 # Strength + Speed for nearby piglins this often
+  medic:
+    seconds: 5
+    heal: 8
   mage:
     burst-damage: 5            # the flame burst when you get close
   summoner:

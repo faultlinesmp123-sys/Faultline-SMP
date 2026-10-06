@@ -7048,7 +7048,13 @@ public final class FaultlineItems extends JavaPlugin {
                         {"piglin_balloon", Material.PIGLIN_SPAWN_EGG, ChatColor.RED + "Piglin Balloonist"},
                         {"hoglin_rider", Material.HOGLIN_SPAWN_EGG, ChatColor.GOLD + "Hoglin Rider"},
                         {"bulwark", Material.PIGLIN_BRUTE_SPAWN_EGG, ChatColor.GOLD + "" + ChatColor.BOLD + "The Bulwark (Mini Boss)"},
-                        {"great_hog", Material.HOGLIN_SPAWN_EGG, ChatColor.GOLD + "" + ChatColor.BOLD + "The Great Hog (Boss)"}};
+                        {"great_hog", Material.HOGLIN_SPAWN_EGG, ChatColor.GOLD + "" + ChatColor.BOLD + "The Great Hog (Boss)"},
+                        {"piglin_sapper", Material.PIGLIN_SPAWN_EGG, ChatColor.RED + "Piglin Sapper"},
+                        {"piglin_shieldbearer", Material.PIGLIN_SPAWN_EGG, ChatColor.GOLD + "Piglin Shieldbearer"},
+                        {"piglin_lobber", Material.PIGLIN_SPAWN_EGG, ChatColor.GOLD + "Piglin Lobber"},
+                        {"piglin_runt", Material.PIGLIN_SPAWN_EGG, ChatColor.GOLD + "Piglin Runt"},
+                        {"piglin_banner", Material.PIGLIN_SPAWN_EGG, ChatColor.GOLD + "Piglin Banner Bearer"},
+                        {"piglin_medic", Material.PIGLIN_SPAWN_EGG, ChatColor.GREEN + "Piglin Medic"}};
                 for (int level = 3; level <= 5; level++) { // the Piglin War Horn (starts a Piglin Raid)
                     list.add(external(icon(Material.GOAT_HORN, "piglin_war_horn", ChatColor.GOLD + "" + ChatColor.BOLD + "Piglin War Horn " + roman[level - 1], "FaultlineRaids"),
                             "zraid horn " + level + " {amount} {player}", "FaultlineRaids"));

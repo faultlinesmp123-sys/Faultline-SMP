@@ -690,7 +690,7 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
                 for (StackTraceElement el : t.getStackTrace()) if (el.getClassName().startsWith("net.faultlinesmp")) { where = el; break; }
                 Throwable root = t;
                 while (root.getCause() != null && root.getCause() != root) root = root.getCause();
-                sender.sendMessage(ChatColor.RED + "The Index hit an error: " + ChatColor.GRAY + root.getClass().getSimpleName() + ": " + root.getMessage());
+                sender.sendMessage(ChatColor.RED + "The Index (v" + getDescription().getVersion() + ") hit an error: " + ChatColor.GRAY + root.getClass().getSimpleName() + ": " + root.getMessage());
                 if (where != null) sender.sendMessage(ChatColor.DARK_GRAY + "at " + where.getMethodName() + " (line " + where.getLineNumber() + ")"
                         + (root != t ? ", " + t.getClass().getSimpleName() : ""));
                 return true;

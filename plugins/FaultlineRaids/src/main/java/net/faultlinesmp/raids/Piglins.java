@@ -76,6 +76,7 @@ import java.util.UUID;
  */
 final class Piglins implements Listener {
 
+    static final String SHIELDWALL_TAG = "faultline_piglin_shieldwall", MAGMA_TAG = "faultline_piglin_magma";
     static final String BOMB_TAG = "faultline_piglin_bomb", FIREBALL_TAG = "faultline_piglin_fireball",
             HOG_TAG = "faultline_great_hog", BULWARK_TAG = "faultline_bulwark", DISPLAY_TAG = "faultline_piglin_display";
 
@@ -100,7 +101,8 @@ final class Piglins implements Listener {
 
     static boolean isPiglinKind(Kind k) {
         return switch (k) {
-            case PIGLIN_GRUNT, PIGLIN_CROSSBOW, PIGLIN_BRUTE, HOGLIN_RIDER, PIGLIN_MAGE, PIGLIN_SUMMONER, PIGLIN_BALLOON, BULWARK, GREAT_HOG -> true;
+            case PIGLIN_GRUNT, PIGLIN_CROSSBOW, PIGLIN_BRUTE, HOGLIN_RIDER, PIGLIN_MAGE, PIGLIN_SUMMONER, PIGLIN_BALLOON, BULWARK, GREAT_HOG,
+                 PIGLIN_SAPPER, PIGLIN_SHIELDBEARER, PIGLIN_LOBBER, PIGLIN_RUNT, PIGLIN_BANNER, PIGLIN_MEDIC -> true;
             default -> false;
         };
     }
@@ -184,6 +186,11 @@ final class Piglins implements Listener {
             }
             b.bar.removeAll();
         }
+        if (pl.special.get(id) == Kind.PIGLIN_SAPPER && !blown.remove(id)) { // killing a Sapper still sets off its TNT (1 s to back off)
+            Location at = dead.getLocation();
+            at.getWorld().playSound(at, Sound.ENTITY_TNT_PRIMED, 1f, 1f);
+            Bukkit.getScheduler().runTaskLater(pl, () -> at.getWorld().createExplosion(at, (float) cfg("sapper.power", 2.5), false, false), 20L);
+        }
         Balloon bl = balloons.get(id);
         if (bl != null) { // the envelope tears and the basket falls
             Location at = dead.getLocation().add(0, 4, 0);
@@ -194,6 +201,7 @@ final class Piglins implements Listener {
     }
 
     void clear(UUID id) {
+        fuses.remove(id);
         next.remove(id); burst.remove(id); portal.remove(id); portalAt.remove(id); summoned.remove(id);
         Balloon bl = balloons.remove(id);
         if (bl != null) for (BlockDisplay d : bl.parts) if (d != null && d.isValid()) d.remove();
@@ -205,16 +213,25 @@ final class Piglins implements Listener {
     //  waves: always 15
     // =====================================================================================================
     List<Kind> wave(int w, int level, int total) {
-        List<Kind> k = new ArrayList<>();
         int size = (int) cfg("wave-size", 15);
+        List<Kind> sp = new ArrayList<>(); // the specials: shuffled, then cut to fit (a different mix every raid)
+        for (int i = 0; i < 1 + w / 4; i++) sp.add(Kind.PIGLIN_CROSSBOW);
+        if (w >= 2) for (int i = 0; i < 1 + w / 5 + (level >= 5 ? 1 : 0); i++) sp.add(Kind.PIGLIN_BRUTE);
+        if (w >= 2) for (int i = 0; i < 1 + (w >= 6 ? 1 : 0); i++) sp.add(Kind.PIGLIN_SHIELDBEARER);
+        if (w >= 2) for (int i = 0; i < 1 + (w >= 8 ? 1 : 0); i++) sp.add(Kind.PIGLIN_MAGE);
+        if (w >= 3) for (int i = 0; i < 1 + (w >= 7 ? 1 : 0); i++) sp.add(Kind.PIGLIN_SAPPER);
+        if (w >= 3) sp.add(Kind.PIGLIN_SUMMONER);
+        if (w >= 3) for (int i = 0; i < 1 + (w >= 7 ? 1 : 0); i++) sp.add(Kind.PIGLIN_BALLOON);
+        if (w >= 4) sp.add(Kind.PIGLIN_LOBBER);
+        if (w >= 4) for (int i = 0; i < 1 + (w >= 8 ? 1 : 0); i++) sp.add(Kind.HOGLIN_RIDER);
+        if (w >= 5) sp.add(Kind.PIGLIN_BANNER);
+        if (w >= 6) sp.add(Kind.PIGLIN_MEDIC);
+        java.util.Collections.shuffle(sp, random);
+        List<Kind> k = new ArrayList<>();
         if (w == 5) k.add(Kind.BULWARK);
-        for (int i = 0; i < 2 + w / 3; i++) k.add(Kind.PIGLIN_CROSSBOW);
-        if (w >= 2) for (int i = 0; i < 1 + w / 4 + (level >= 5 ? 1 : 0); i++) k.add(Kind.PIGLIN_BRUTE);
-        if (w >= 2) for (int i = 0; i < 1 + (w >= 6 ? 1 : 0); i++) k.add(Kind.PIGLIN_MAGE);
-        if (w >= 3) for (int i = 0; i < 1 + (level >= 5 && w >= 7 ? 1 : 0); i++) k.add(Kind.PIGLIN_SUMMONER);
-        if (w >= 3) for (int i = 0; i < 1 + (w >= 6 ? 1 : 0) + (level >= 5 && w >= 9 ? 1 : 0); i++) k.add(Kind.PIGLIN_BALLOON);
-        if (w >= 4) for (int i = 0; i < 1 + (w >= 7 ? 1 : 0); i++) k.add(Kind.HOGLIN_RIDER);
-        while (k.size() > size - 2) k.remove(k.size() - 1);
+        int room = size - 2 - k.size();
+        for (Kind x : sp) if (k.size() - (w == 5 ? 1 : 0) < room) k.add(x);
+        if (w == 1 || w == 3 || w == 6 || w == 9) for (int i = 0; i < 3 && k.size() < size; i++) k.add(Kind.PIGLIN_RUNT); // a pack of Runts
         while (k.size() < size) k.add(Kind.PIGLIN_GRUNT);
         return k;
     }
@@ -297,6 +314,51 @@ final class Piglins implements Listener {
                     pl.horses.put(mob.getUniqueId(), hog.getUniqueId());
                 }
             }
+            case PIGLIN_SAPPER -> {
+                hp(mob, cfg("sapper-health", 18));
+                FaultlineRaids.setAttr(mob, Attribute.MOVEMENT_SPEED, 0.38);
+                if (gear != null) { gear.setHelmet(new ItemStack(Material.TNT)); gear.setItemInMainHand(new ItemStack(Material.FLINT_AND_STEEL)); }
+                mob.setCustomName(ChatColor.RED + "Piglin Sapper");
+            }
+            case PIGLIN_SHIELDBEARER -> {
+                hp(mob, cfg("shieldbearer-health", 30));
+                FaultlineRaids.setAttr(mob, Attribute.KNOCKBACK_RESISTANCE, 0.7);
+                FaultlineRaids.setAttr(mob, Attribute.MOVEMENT_SPEED, 0.27);
+                if (gear != null) {
+                    gear.setHelmet(new ItemStack(Material.GOLDEN_HELMET));
+                    gear.setChestplate(new ItemStack(Material.GOLDEN_CHESTPLATE));
+                    gear.setItemInMainHand(new ItemStack(Material.GOLDEN_AXE));
+                    gear.setItemInOffHand(new ItemStack(Material.SHIELD));
+                }
+                mob.addScoreboardTag(SHIELDWALL_TAG);
+                mob.setCustomName(ChatColor.GOLD + "Piglin Shieldbearer");
+            }
+            case PIGLIN_LOBBER -> {
+                hp(mob, cfg("lobber-health", 22));
+                if (gear != null) { gear.setItemInMainHand(new ItemStack(Material.MAGMA_CREAM)); gear.setHelmet(FaultlineRaids.dyedStatic(Material.LEATHER_HELMET, Color.fromRGB(60, 40, 30))); }
+                mob.setCustomName(ChatColor.GOLD + "Piglin Lobber");
+            }
+            case PIGLIN_RUNT -> {
+                if (mob instanceof Piglin pig) pig.setBaby();
+                hp(mob, cfg("runt-health", 8));
+                FaultlineRaids.setAttr(mob, Attribute.MOVEMENT_SPEED, 0.42);
+                if (gear != null) gear.setItemInMainHand(new ItemStack(Material.GOLDEN_SWORD));
+                mob.setCustomName(ChatColor.GOLD + "Piglin Runt");
+            }
+            case PIGLIN_BANNER -> {
+                hp(mob, cfg("banner-health", 28));
+                if (gear != null) { gear.setHelmet(warBanner()); gear.setItemInMainHand(new ItemStack(Material.GOLDEN_SWORD)); }
+                mob.setCustomName(ChatColor.GOLD + "" + ChatColor.BOLD + "Piglin Banner Bearer");
+            }
+            case PIGLIN_MEDIC -> {
+                hp(mob, cfg("medic-health", 22));
+                if (gear != null) {
+                    gear.setHelmet(FaultlineRaids.dyedStatic(Material.LEATHER_HELMET, Color.fromRGB(240, 240, 230)));
+                    gear.setChestplate(FaultlineRaids.dyedStatic(Material.LEATHER_CHESTPLATE, Color.fromRGB(240, 240, 230)));
+                    gear.setItemInMainHand(new ItemStack(Material.GLISTERING_MELON_SLICE));
+                }
+                mob.setCustomName(ChatColor.GREEN + "Piglin Medic");
+            }
             case BULWARK -> makeBulwark(mob);
             case GREAT_HOG -> makeHog(mob);
             default -> { }
@@ -307,7 +369,8 @@ final class Piglins implements Listener {
         }
         mob.setCustomNameVisible(kind == Kind.BULWARK || kind == Kind.GREAT_HOG);
         switch (kind) {
-            case PIGLIN_MAGE, PIGLIN_SUMMONER, PIGLIN_BALLOON, HOGLIN_RIDER, BULWARK, GREAT_HOG -> pl.special.put(mob.getUniqueId(), kind);
+            case PIGLIN_MAGE, PIGLIN_SUMMONER, PIGLIN_BALLOON, HOGLIN_RIDER, BULWARK, GREAT_HOG,
+                 PIGLIN_SAPPER, PIGLIN_LOBBER, PIGLIN_BANNER, PIGLIN_MEDIC -> pl.special.put(mob.getUniqueId(), kind);
             default -> { }
         }
         return mob;
@@ -352,6 +415,10 @@ final class Piglins implements Listener {
             case PIGLIN_BALLOON -> balloonTick(mob, now);
             case HOGLIN_RIDER -> riderTick(mob, now);
             case BULWARK, GREAT_HOG -> bossTick(mob, now);
+            case PIGLIN_SAPPER -> sapperTick(mob, now);
+            case PIGLIN_LOBBER -> lobberTick(mob, now);
+            case PIGLIN_BANNER -> bannerTick(mob, now);
+            case PIGLIN_MEDIC -> medicTick(mob, now);
             default -> { }
         }
     }
@@ -474,6 +541,154 @@ final class Piglins implements Listener {
             h.setTarget(target);
             h.getPathfinder().moveTo(target, 1.6);
         }
+    }
+
+    // --- PIGLIN SAPPER: runs at you with TNT on its head; close enough and it lights it (1 s fuse). Never breaks blocks.
+    final Map<UUID, Integer> fuses = new HashMap<>();
+    final java.util.Set<UUID> blown = new java.util.HashSet<>();
+
+    void sapperTick(LivingEntity mob, long now) {
+        Integer f = fuses.get(mob.getUniqueId());
+        if (f != null) {
+            mob.getWorld().spawnParticle(Particle.SMOKE, mob.getEyeLocation().add(0, 0.5, 0), 4, 0.1, 0.1, 0.1, 0.02);
+            if (f % 2 == 0) mob.getWorld().spawnParticle(Particle.DUST, mob.getEyeLocation().add(0, 0.5, 0), 6, 0.25, 0.25, 0.25, 0, new Particle.DustOptions(Color.WHITE, 1.6f)); // flashing
+            if (f <= 0) {
+                Location at = mob.getLocation();
+                blown.add(mob.getUniqueId());
+                fuses.remove(mob.getUniqueId());
+                mob.setHealth(0);
+                at.getWorld().createExplosion(at, (float) cfg("sapper.power", 2.5), false, false, mob);
+            } else fuses.put(mob.getUniqueId(), f - 1);
+            return;
+        }
+        LivingEntity t = pl.targetFor(mob);
+        if (t != null && t.getWorld().equals(mob.getWorld()) && t.getLocation().distanceSquared(mob.getLocation()) < 2.6 * 2.6) {
+            fuses.put(mob.getUniqueId(), 10); // 20 ticks
+            mob.getWorld().playSound(mob.getLocation(), Sound.ENTITY_TNT_PRIMED, 1.2f, 1.2f);
+            if (mob instanceof Mob m) m.getPathfinder().stopPathfinding();
+        }
+    }
+
+    // --- PIGLIN LOBBER: lobs magma over walls; where it lands, the ground burns for a few seconds
+    void lobberTick(LivingEntity mob, long now) {
+        if (!ready(mob, now)) return;
+        LivingEntity t = pl.targetFor(mob);
+        if (t == null || !t.getWorld().equals(mob.getWorld())) return;
+        Vector d = t.getLocation().toVector().subtract(mob.getLocation().toVector());
+        double flat = Math.hypot(d.getX(), d.getZ());
+        if (flat < 4 || flat > 22) return;
+        Location from = mob.getEyeLocation();
+        double ticks = 18 + flat * 0.8, g = 0.03;
+        Vector v = new Vector(d.getX() / ticks, (t.getLocation().getY() - from.getY()) / ticks + 0.5 * g * ticks, d.getZ() / ticks);
+        Snowball ball = mob.getWorld().spawn(from, Snowball.class, s -> {
+            s.setItem(new ItemStack(Material.MAGMA_CREAM));
+            s.setShooter(mob);
+            s.addScoreboardTag(MAGMA_TAG);
+        });
+        ball.setVelocity(v);
+        bombs.add(ball.getUniqueId()); // (gets a smoke trail too)
+        mob.swingMainHand();
+        mob.getWorld().playSound(from, Sound.ENTITY_SNOWBALL_THROW, 1f, 0.5f);
+        circleWarn.put(t.getLocation().clone(), System.currentTimeMillis() + (long) (ticks * 50));
+        next.put(mob.getUniqueId(), now + (long) (cfg("lobber.seconds", 4) * 1000));
+    }
+
+    final Map<Location, Long> circleWarn = new HashMap<>(); // where magma is about to land
+    final Map<Location, Long> zones = new HashMap<>();      // burning ground: until when
+    final Map<Location, UUID> zoneOwner = new HashMap<>();
+
+    @EventHandler
+    public void onMagma(ProjectileHitEvent event) {
+        Projectile p = event.getEntity();
+        if (!p.getScoreboardTags().contains(MAGMA_TAG)) return;
+        bombs.remove(p.getUniqueId());
+        Location at = p.getLocation();
+        p.remove();
+        at.getWorld().playSound(at, Sound.BLOCK_LAVA_POP, 1.4f, 0.7f);
+        at.getWorld().spawnParticle(Particle.LAVA, at, 12, 0.6, 0.2, 0.6, 0);
+        zones.put(at, System.currentTimeMillis() + (long) (cfg("lobber.zone-seconds", 4) * 1000));
+        if (p.getShooter() instanceof Entity e) zoneOwner.put(at, e.getUniqueId());
+    }
+
+    int zoneTicks;
+    void zoneTick() {
+        long now = System.currentTimeMillis();
+        zoneTicks++;
+        circleWarn.entrySet().removeIf(e -> { if (now > e.getValue()) return true; if (zoneTicks % 2 == 0) ring(e.getKey(), 2.2, Color.fromRGB(255, 90, 0)); return false; });
+        zones.entrySet().removeIf(e -> {
+            Location at = e.getKey();
+            if (now > e.getValue() || at.getWorld() == null) { zoneOwner.remove(at); return true; }
+            at.getWorld().spawnParticle(Particle.FLAME, at, 6, 1.4, 0.1, 1.4, 0.01);
+            if (zoneTicks % 3 == 0) at.getWorld().spawnParticle(Particle.LAVA, at, 2, 1.2, 0.1, 1.2, 0);
+            if (zoneTicks % 5 == 0) {
+                Entity owner = zoneOwner.containsKey(at) ? Bukkit.getEntity(zoneOwner.get(at)) : null;
+                for (Entity en : at.getWorld().getNearbyEntities(at, 2.2, 1.5, 2.2)) {
+                    if (!(en instanceof LivingEntity v) || FaultlineRaids.isRaidMobStatic(v) || (v instanceof Player pp && !FaultlineRaids.survivalStatic(pp))) continue;
+                    pl.guarded(v, cfg("lobber.zone-damage", 2), owner, at.toVector(), false);
+                    v.setFireTicks(Math.max(v.getFireTicks(), 40));
+                }
+            }
+            return false;
+        });
+    }
+
+    // --- PIGLIN BANNER BEARER: every few seconds, every piglin around it gets Strength and Speed. Kill it first.
+    void bannerTick(LivingEntity mob, long now) {
+        if (now % 1000 < 100) ring(mob.getLocation(), 1.2, Color.fromRGB(255, 200, 40));
+        if (!ready(mob, now)) return;
+        int n = 0;
+        for (Entity e : mob.getNearbyEntities(10, 5, 10)) {
+            if (!(e instanceof LivingEntity ally) || !FaultlineRaids.isRaidMobStatic(ally) || e instanceof Player) continue;
+            ally.addPotionEffect(new PotionEffect(PotionEffectType.STRENGTH, 120, 0, false, true));
+            ally.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 120, 0, false, true));
+            ally.getWorld().spawnParticle(Particle.DUST, ally.getLocation().add(0, ally.getHeight() + 0.3, 0), 4, 0.2, 0.1, 0.2, 0, new Particle.DustOptions(Color.fromRGB(255, 200, 40), 1.2f));
+            n++;
+        }
+        if (n > 0) {
+            mob.swingMainHand();
+            mob.getWorld().playSound(mob.getLocation(), Sound.EVENT_RAID_HORN, 0.7f, 1.6f);
+            mob.getWorld().spawnParticle(Particle.FLAME, mob.getEyeLocation().add(0, 0.8, 0), 12, 0.3, 0.3, 0.3, 0.03);
+        }
+        next.put(mob.getUniqueId(), now + (long) (cfg("banner.seconds", 8) * 1000));
+    }
+
+    // --- PIGLIN MEDIC: stays back and heals whichever piglin is hurt the most. Kill it first.
+    void medicTick(LivingEntity mob, long now) {
+        LivingEntity t = pl.targetFor(mob);
+        if (t != null && t.getWorld().equals(mob.getWorld()) && t.getLocation().distanceSquared(mob.getLocation()) < 36 && mob instanceof Mob m && now % 1000 < 100) {
+            Vector away = mob.getLocation().toVector().subtract(t.getLocation().toVector()).setY(0);
+            if (away.lengthSquared() > 0.01) m.getPathfinder().moveTo(mob.getLocation().add(away.normalize().multiply(6)), 1.3);
+        }
+        if (!ready(mob, now)) return;
+        LivingEntity worst = null; double ratio = 0.9;
+        for (Entity e : mob.getNearbyEntities(10, 5, 10)) {
+            if (!(e instanceof LivingEntity ally) || !FaultlineRaids.isRaidMobStatic(ally) || e instanceof Player) continue;
+            AttributeInstance max = ally.getAttribute(Attribute.MAX_HEALTH);
+            if (max == null) continue;
+            double r = ally.getHealth() / max.getValue();
+            if (r < ratio) { ratio = r; worst = ally; }
+        }
+        if (worst == null) { next.put(mob.getUniqueId(), now + 1500); return; }
+        AttributeInstance max = worst.getAttribute(Attribute.MAX_HEALTH);
+        worst.setHealth(Math.min(max.getValue(), worst.getHealth() + cfg("medic.heal", 8)));
+        Vector from = mob.getEyeLocation().toVector(), to = worst.getLocation().add(0, worst.getHeight() / 2, 0).toVector();
+        Vector step = to.clone().subtract(from);
+        double len = step.length();
+        for (double d = 0; d < len; d += 0.5) mob.getWorld().spawnParticle(Particle.DUST, from.clone().add(step.clone().multiply(d / len)).toLocation(mob.getWorld()), 1, 0, 0, 0, 0, new Particle.DustOptions(Color.fromRGB(255, 220, 90), 1.0f));
+        worst.getWorld().spawnParticle(Particle.HEART, worst.getLocation().add(0, worst.getHeight() + 0.3, 0), 3, 0.3, 0.2, 0.3, 0);
+        mob.swingMainHand();
+        mob.getWorld().playSound(mob.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_CHIME, 1f, 1.4f);
+        next.put(mob.getUniqueId(), now + (long) (cfg("medic.seconds", 5) * 1000));
+    }
+
+    ItemStack warBanner() {
+        ItemStack b = new ItemStack(Material.ORANGE_BANNER);
+        if (b.getItemMeta() instanceof org.bukkit.inventory.meta.BannerMeta bm) {
+            bm.addPattern(new org.bukkit.block.banner.Pattern(org.bukkit.DyeColor.BLACK, org.bukkit.block.banner.PatternType.PIGLIN));
+            bm.addPattern(new org.bukkit.block.banner.Pattern(org.bukkit.DyeColor.YELLOW, org.bukkit.block.banner.PatternType.BORDER));
+            b.setItemMeta(bm);
+        }
+        return b;
     }
 
     // =====================================================================================================
@@ -881,6 +1096,15 @@ final class Piglins implements Listener {
     /** The Bulwark's shield wall: 80% less damage from the front. Stunned Great Hog: 50% more. */
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onBossHurt(EntityDamageByEntityEvent event) {
+        if (event.getEntity().getScoreboardTags().contains(SHIELDWALL_TAG) && event.getEntity() instanceof LivingEntity sb) { // Shieldbearer: 75% less from the front
+            Entity src = event.getDamager() instanceof Projectile pr && pr.getShooter() instanceof Entity s ? s : event.getDamager();
+            Vector to = src.getLocation().toVector().subtract(sb.getLocation().toVector()).setY(0);
+            if (to.lengthSquared() > 0.01 && Math.toDegrees(to.angle(fwd(sb))) < 65) {
+                event.setDamage(event.getDamage() * (1 - cfg("shieldbearer.front-block", 0.75)));
+                sb.getWorld().playSound(sb.getLocation(), Sound.ITEM_SHIELD_BLOCK, 0.8f, 1f);
+            }
+            return;
+        }
         Boss b = bosses.get(event.getEntity().getUniqueId());
         if (b == null) return;
         long now = System.currentTimeMillis();

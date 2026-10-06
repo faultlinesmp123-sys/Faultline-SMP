@@ -69,6 +69,7 @@ final class Ship {
     float yaw;       // Minecraft yaw: 0 = bow to the south
     double hp;
     boolean building, anchored, wrecked;
+    boolean prebuilt;              // an admin's ready-made ship: scrapping it gives the built item back, not its blocks
     final String[] blocks;                      // block data placed in each cell (null = still a ghost)
     String name;                                // optional, set with /ship name
     ItemStack banner;                           // flown from the tallest mast
@@ -894,6 +895,19 @@ final class Ship {
         if (filled >= blocks.length) finish();
         else if (filled % 4 == 0) refreshLabel();
         pl.dirty = true;
+    }
+
+    /** An admin's ready-made ship: every cell filled with the default blocks at once. */
+    void completeAll() {
+        for (int i = 0; i < blocks.length; i++) {
+            if (blocks[i] != null) continue;
+            blocks[i] = blockFor(i, type.cells.get(i).need().ghost);
+            if (anchored) putBarrier(i);
+            refreshCell(i);
+        }
+        recount();
+        if (anchored) liftPlayers();
+        finish();
     }
 
     void finish() {

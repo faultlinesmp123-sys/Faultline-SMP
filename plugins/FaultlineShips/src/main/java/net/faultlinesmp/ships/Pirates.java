@@ -143,6 +143,7 @@ final class Pirates implements Listener {
         double gap = 999;   // the real gap between our hull and the target's
         long gapAt = -99;
         int shots;          // cannonballs fired: they shell you before they board
+        boolean beaten;     // the invasion's flagship after you've won: it stays put (its hold is yours) and fades when you leave
 
         Brain(Ship ship, Invasion inv, boolean flagship) { this.ship = ship; this.inv = inv; this.flagship = flagship; born = pl.now; }
     }
@@ -158,7 +159,8 @@ final class Pirates implements Listener {
         final BossBar bar = Bukkit.createBossBar("Pirate Invasion", BarColor.RED, BarStyle.SEGMENTED_20);
         final BossBar bossBar = Bukkit.createBossBar("", BarColor.PURPLE, BarStyle.SOLID);
         final Set<UUID> fighters = new HashSet<>();
-        long started, lastMusic = -99999, quietSince = -1;
+        long started, quietSince = -1, bossDueAt = -1;
+        final Map<UUID, Long> music = new HashMap<>(); // when each fighter's track last started
         boolean over;
 
         Invasion(Location center) { this.world = center.getWorld(); this.center = center.clone(); started = pl.now; }
@@ -546,6 +548,13 @@ final class Pirates implements Listener {
             if (now - b.quietSince > cfg("leave-after-seconds", 90) * 20 && b.inv == null) { discard(s); return; }
         } else b.quietSince = -1;
 
+        if (b.beaten) { // won: it stays where it is until nobody's near
+            in.clear();
+            if (t != null && td < 64) { b.quietSince = -1; return; }
+            if (b.quietSince < 0) b.quietSince = now;
+            if (now - b.quietSince > 1200) discard(s); // a minute with nobody aboard or near
+            return;
+        }
         if (s.anchored) { boarded(b, now); return; }
         if (s.anchorStep >= 0) { in.clear(); return; }
 
@@ -684,6 +693,7 @@ final class Pirates implements Listener {
                 p.sendActionBar(Component.text("The skeletons drop anchor: board them!", NamedTextColor.RED));
             if (b.flagship && b.inv != null && b.inv.stage == 0) nextBoss(b.inv);
         }
+        if (b.flagship && b.inv != null && !b.inv.over) return; // the bosses fight on its deck: it stays at anchor
         boolean near = false;
         for (Player p : s.world().getPlayers()) if (fighting(p) && p.getLocation().distanceSquared(s.center()) < 32 * 32) { near = true; break; }
         if (near) { b.quietSince = -1; return; }
@@ -1044,7 +1054,7 @@ final class Pirates implements Listener {
             if (p != null) p.sendTitle(ChatColor.GOLD + c.kind.title, ChatColor.GRAY + "has fallen" + (m.getKiller() != null ? " to " + m.getKiller().getName() : ""), 5, 50, 10);
         }
         if (c.kind == Kind.CAPTAIN) win(inv);
-        else Bukkit.getScheduler().runTaskLater(pl, () -> nextBoss(inv), 60);
+        else inv.bossDueAt = pl.now + 60; // the next one comes up in 3 s (invasionTick)
     }
 
     @EventHandler
@@ -1159,7 +1169,7 @@ final class Pirates implements Listener {
         if (n > 0) c = new Location(inv.world, cx / n, inv.center.getY(), cz / n);
         Set<UUID> now2 = new HashSet<>();
         for (Player p : inv.world.getPlayers()) if (p.getLocation().distanceSquared(c) < 220 * 220 || p.getLocation().distanceSquared(inv.center) < 160 * 160) now2.add(p.getUniqueId());
-        for (UUID u : inv.fighters) if (!now2.contains(u)) { Player p = Bukkit.getPlayer(u); if (p != null) { inv.bar.removePlayer(p); inv.bossBar.removePlayer(p); stopMusic(p); } }
+        for (UUID u : inv.fighters) if (!now2.contains(u)) { inv.music.remove(u); Player p = Bukkit.getPlayer(u); if (p != null) { inv.bar.removePlayer(p); inv.bossBar.removePlayer(p); stopMusic(p); } }
         inv.fighters.clear();
         inv.fighters.addAll(now2);
         int alive = inv.alive();
@@ -1172,14 +1182,20 @@ final class Pirates implements Listener {
             if (!inv.bar.getPlayers().contains(p)) inv.bar.addPlayer(p);
             if (fighting(p)) anyAlive = true;
         }
-        // the music, looped
+        // the music, looped, from the moment each fighter joins in
         double len = cfg("invasion.music-seconds", 291);
-        if (now - inv.lastMusic >= len * 20) {
-            inv.lastMusic = now;
-            for (UUID u : inv.fighters) { Player p = Bukkit.getPlayer(u); if (p != null) { stopMusic(p); p.playSound(p.getLocation(), "faultline:pirates.music", SoundCategory.RECORDS, 1f, 1f); } }
+        for (UUID u : inv.fighters) {
+            Player p = Bukkit.getPlayer(u);
+            Long at = inv.music.get(u);
+            if (p == null || (at != null && now - at < len * 20)) continue;
+            inv.music.put(u, now);
+            stopMusic(p);
+            p.playSound(p.getLocation(), "faultline:pirates.music", SoundCategory.RECORDS, 1f, 1f);
         }
-        // the bosses: when the flagship is boarded, or the fleet is gone
-        if (inv.stage == 0 && (inv.escortsAlive() == 0 || inv.flagship.wrecked)) nextBoss(inv);
+        // the bosses: on the flagship's deck once it's boarded (boarded()), or through the water if it's sunk
+        if (inv.stage == 0 && (inv.flagship.wrecked || !pl.ships.containsKey(inv.flagship.id))) nextBoss(inv);
+        if (inv.boss != null && !inv.boss.isValid()) { inv.boss = null; inv.stage--; inv.bossDueAt = now + 40; } // lost (unloaded): again
+        if (inv.bossDueAt >= 0 && now >= inv.bossDueAt) { inv.bossDueAt = -1; nextBoss(inv); }
         if (inv.boss != null && inv.boss.isValid()) {
             AttributeInstance max = inv.boss.getAttribute(Attribute.MAX_HEALTH);
             inv.bossBar.setProgress(Math.max(0, Math.min(1, inv.boss.getHealth() / (max == null ? 1 : max.getValue()))));
@@ -1202,12 +1218,12 @@ final class Pirates implements Listener {
         else { // the flagship's gone: they come for you through the water
             Player near = null;
             for (UUID u : inv.fighters) { Player p = Bukkit.getPlayer(u); if (p != null && fighting(p)) { near = p; break; } }
-            if (near == null) { inv.stage--; return; }
+            if (near == null) { inv.stage--; inv.bossDueAt = pl.now + 40; return; }
             at = near.getLocation().add(near.getLocation().getDirection().setY(0).normalize().multiply(8));
         }
         Brain home = f == null ? null : f.ai;
         LivingEntity boss = spawnMob(k, at, home);
-        if (boss == null) return;
+        if (boss == null) { inv.stage--; inv.bossDueAt = pl.now + 40; return; }
         Crew bc = crew.get(boss.getUniqueId());
         if (bc != null && bc.home == null) bc.home = new Brain(f, inv, true);
         inv.boss = boss;
@@ -1252,7 +1268,11 @@ final class Pirates implements Listener {
         }
         inv.bar.removeAll();
         inv.bossBar.removeAll();
-        for (Ship s : new ArrayList<>(inv.ships)) if (pl.ships.containsKey(s.id) && !s.wrecked) discard(s);
+        for (Ship s : new ArrayList<>(inv.ships)) {
+            if (!pl.ships.containsKey(s.id) || s.wrecked) continue;
+            if (won && s == inv.flagship && s.ai != null) { s.ai.beaten = true; s.ai.quietSince = pl.now; continue; } // you're on its deck, and its hold is yours
+            discard(s);
+        }
         for (Iterator<Map.Entry<UUID, Crew>> it = crew.entrySet().iterator(); it.hasNext(); ) {
             Map.Entry<UUID, Crew> e = it.next();
             if (e.getValue().home == null || e.getValue().home.inv != inv) continue;

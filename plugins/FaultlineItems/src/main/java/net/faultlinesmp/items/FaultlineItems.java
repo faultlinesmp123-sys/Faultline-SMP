@@ -6968,6 +6968,10 @@ public final class FaultlineItems extends JavaPlugin {
                     list.add(external(icon(Material.GLOBE_BANNER_PATTERN, null, sh[1] + ChatColor.BOLD + title + " Blueprint", "FaultlineShips"),
                             "ship give " + sh[0] + " {amount} {player}", "FaultlineShips"));
                 }
+                for (String[] sh : ships) { // admin: ships that are already built
+                    list.add(external(icon(Material.GLOBE_BANNER_PATTERN, null, ChatColor.LIGHT_PURPLE + "" + ChatColor.BOLD + sh[2] + ChatColor.GRAY + " (built)", "FaultlineShips"),
+                            "ship give built_" + sh[0] + " {amount} {player}", "FaultlineShips"));
+                }
                 list.add(external(icon(Material.MACE, null, ChatColor.GOLD + "" + ChatColor.BOLD + "Shipwright's Hammer", "FaultlineShips"),
                         "ship give hammer {amount} {player}", "FaultlineShips"));
                 list.add(external(icon(Material.PAPER, "ship_cannon", ChatColor.GRAY + "" + ChatColor.BOLD + "Ship Cannon", "FaultlineShips"),

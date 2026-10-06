@@ -40,7 +40,7 @@ All are Maven projects: Java 21, `paper-api 1.21.11-R0.1-SNAPSHOT`. Build with
 | **FaultlineBosses** | `net.faultlinesmp.bosses` | Bosses in one ~585 KB file: Demon Eye, Frostbeard, Dune Devourer/Frostmaw, Don Lorenzo, Kraken, **Diamond Jacob**; admin boss form. **Rocco Vendetta** (+ Werner, the Vendetta Fist) lives in its own `Vendetta.java`. **The way down to the Lost Explorer** (Swarm, his staircase, the void world) is `Below.java`; **the Lost Explorer's fight** is `Explorer.java` (+ `ExplorerAnims.java`) | `/demoneye`, `/frostbeard`, `/dune`, `/don`, `/kraken`, `/jacob <summon\|kill\|phase\|item>`, `/rocco <summon\|kill\|phase\|tattoos\|werner\|item>`, `/bossmorph <boss\|off\|release>`, `/below <swarm\|void\|leave\|close\|slayer\|info>`, `/explorer <start\|stop\|skip\|phase\|stun\|reset\|arena>` |
 | **FaultlineIndex** | `net.faultlinesmp.index` | The Faultline Index codex. Entries live in `src/main/resources/index.yml`, font glyphs in `glyphs.yml` | `/index [give\|reset] [player]` |
 | **FaultlineCosmetics** | `net.faultlinesmp.cosmetics` | Permanent cosmetic unlocks worn in 4 slots (Hat, Neck, Back, Body) over armor, for Java and Bedrock. Cosmetics are defined in its `config.yml`, unlocks saved in `players.yml` | `/cosmetics`, admin `/cosmetic <unlock\|lock\|list\|reload>` |
-| **FaultlineShips** | `net.faultlinesmp.ships` | Ships: Dinghy, Sloop, Brigantine, Galleon, Pirate Ship. Blueprint → lay out on water → place every block → sail. Health, part damage, sinking, Shipwright's Hammer repair minigame, cannons, banners, names. **Skeleton ships** and the **Pirate Invasion** (`Pirates.java`). Ships saved in `ships.yml` | `/ship [list\|info\|name\|crew\|anchor\|stop\|banner\|scrap]`, admin `/ship <give\|repair\|wreck\|remove\|tp> [name\|#n]`, `/ship pirates <ship\|invasion\|horn\|spawn\|egg\|stop>` |
+| **FaultlineShips** | `net.faultlinesmp.ships` | Ships: Dinghy, Sloop, Brigantine, Galleon, Pirate Ship. Blueprint → lay out on water → place every block → sail. Health, part damage, sinking, Shipwright's Hammer repair minigame, cannons, banners, names. **Skeleton ships** and the **Pirate Invasion** (`Pirates.java`). Ships saved in `ships.yml` | `/ship [list\|info\|name\|crew\|anchor\|stop\|banner\|scrap]`, admin `/ship <give\|repair\|wreck\|remove\|tp> [name\|#n]`, `/ship spawn <ship> [owner]`, `/ship pirates <ship\|invasion\|horn\|spawn\|egg\|stop>` |
 
 Notes:
 - `FaultlineItems.java` (~350 KB) and `FaultlineBosses.java` (~585 KB) are huge. Search them instead of reading them whole.
@@ -159,6 +159,15 @@ Notes:
   ships use `faultline:ship/<type>_dark[_wreck]`. Tested with MockBukkit (`ShipV3Test`, `PirateTest`: spawn, crew, cannons,
   ramming, boarding, plunder, sinking, swimmers, random roll, horn → 16-ship invasion → 3 bosses → victory, all 14 mobs,
   powder monkey). MockBukkit has no projectile flight or pathfinding: cannon hits and swimming aren't really simulated.
+  Invasion details (1.3.1): the bosses only come once the flagship is boarded (it anchors alongside: `boarded()` →
+  `nextBoss`), or through the water if it's sunk; a boarded flagship stays at anchor until the invasion ends; a boss that
+  vanishes (unloaded) is respawned (`bossDueAt`); music starts per fighter the moment they join (`inv.music`). After a win
+  the flagship is `beaten`: it stays (its hold is plunder) and is discarded a minute after everyone leaves.
+  **Built ships (admin)**: `/ship give built_<type> [amount] [player]` (GLOBE_BANNER_PATTERN, PDC `built_ship` = type name;
+  in /itemsmenu) or `/ship spawn <type> [owner]` puts a FINISHED ship (default oak / white wool, `Need.ghost`) on the water
+  you look at (`layOut(..., prebuilt, owner)` → `Ship.completeAll()`). `prebuilt` is saved; scrapping one gives the built
+  item back, never its blocks. `/ship list all` #numbers (`numbered()`) skip skeleton ships, so they don't shift. Tested in
+  `BuiltTest`.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

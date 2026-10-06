@@ -648,6 +648,9 @@ entries:
   - {chapter: weapons, name: "Galleon Blueprint", icon: galleon_blueprint, detect: "faultlineships:galleon_blueprint",
      how: "Craft it: Diamonds in the corners, Paper on the sides, a Brigantine Blueprint in the middle.",
      does: "The big one: 666 blocks (405 Planks, 100 Wool, 79 Fences, 43 Logs, 8 Ship Cannons, 8 Trapdoors, 7 Stairs, 6 Ladders, 6 Glass Panes, 2 Chests, 2 Lanterns), three masts, a crow's nest, a two-level stern castle with windows and a forecastle. 700 health, 9 seats, 8 cannons and a 54-slot hold, but slow to turn. Needs water 2 deep under the keel."}
+  - {chapter: weapons, name: "Built Ship", icon: galleon_blueprint, detect: "faultlineships:built_ship",
+     how: "Admin only: /ship give built_<ship>, /ship spawn <ship>, or /itemsmenu. Sometimes handed out as a prize.",
+     does: "A ship that's already built (any of the five). Right-click open water and it's there, finished, anchored and ready to sail, in oak with white sails (black and white on the Pirate Ship). Scrapping it gives the built ship back instead of its blocks."}
   - {chapter: weapons, name: "Shipwright's Hammer", icon: shipwright_hammer, detect: "faultlineships:shipwright_hammer",
      how: "Craft it: 3 Iron Ingots on top, Iron / any Planks / Iron in the middle, a Stick at the bottom.",
      does: "Ships lose health to axes and other weapons, arrows, cannonballs, explosions and running into the shore. At 0 a ship is wrecked: torn sails, and it can't sail until it's back to full. Right-click a damaged ship with the hammer, then right-click when the white marker is in the green (gold = perfect, it fixes more). Each good hit uses 1 Planks; the green gets smaller and the marker faster as your streak grows."}

@@ -352,6 +352,11 @@ meteor:
   warning-seconds: 60
   min-distance: 250
   max-distance: 600
+  # Random meteors never land within this many blocks of a build, a base (chests, beds, furnaces... near the surface,
+  # or a chunk players have spent base-hours in) or anyone's respawn point. Villages are fine. Admins can aim one
+  # anywhere: /meteor target (where you look) or /meteor at <x> <z>. /meteor check tells you if a spot is avoided.
+  build-check-radius: 48
+  base-hours: 3
   lifetime-minutes: 30
   crater-radius: 5
   ancient-debris: 3

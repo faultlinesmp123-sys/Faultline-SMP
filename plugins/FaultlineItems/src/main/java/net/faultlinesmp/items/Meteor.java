@@ -136,7 +136,7 @@ final class Meteor implements Listener, CommandExecutor {
         Player p = pool.get(random.nextInt(pool.size()));
         World w = p.getWorld();
         double min = near != null ? cfg("test-distance", 30) : cfg("min-distance", 250), max = near != null ? min + 10 : cfg("max-distance", 600);
-        for (int tries = 0; tries < 20; tries++) {
+        for (int tries = 0; tries < 40; tries++) {
             double ang = random.nextDouble() * Math.PI * 2, d = min + random.nextDouble() * (max - min);
             int x = (int) Math.floor(p.getLocation().getX() + Math.cos(ang) * d), z = (int) Math.floor(p.getLocation().getZ() + Math.sin(ang) * d);
             if (!w.getWorldBorder().isInside(new Location(w, x, 64, z))) continue;
@@ -144,12 +144,25 @@ final class Meteor implements Listener, CommandExecutor {
             w.getChunkAt(x >> 4, z >> 4); // loads the landing chunk (and keeps it ticking through the fall)
             Block top = w.getHighestBlockAt(x, z, HeightMap.MOTION_BLOCKING_NO_LEAVES);
             if (!natural(top.getType()) || top.isLiquid() || top.getY() < w.getSeaLevel() - 6) continue;
-            if (built(top.getLocation(), 12)) continue;
+            if (base(w, x, top.getY(), z) != null) continue;
             begin(w, x, top.getY(), z);
             return true;
         }
         plugin.getLogger().info("[Meteor] no clear landing spot this time (everything near players is built up or water). Trying again in an hour.");
         return false;
+    }
+
+    /** An admin's meteor, exactly where they say (no base check: they chose the spot). Returns an error, or null if it's falling. */
+    String startAt(World w, int x, int z) {
+        if (strike != null) return "A meteor is already out (/meteor stop).";
+        if (w.getEnvironment() != World.Environment.NORMAL) return "Meteors only fall in the Overworld.";
+        if (!w.getWorldBorder().isInside(new Location(w, x, 64, z))) return "That's outside the world border.";
+        if (!w.isChunkGenerated(x >> 4, z >> 4)) return "That land hasn't been generated yet.";
+        w.getChunkAt(x >> 4, z >> 4);
+        Block top = w.getHighestBlockAt(x, z, HeightMap.MOTION_BLOCKING_NO_LEAVES);
+        if (top.isLiquid()) return "That's water. A meteor needs ground.";
+        begin(w, x, top.getY(), z);
+        return null;
     }
 
     private void begin(World w, int x, int y, int z) {
@@ -266,19 +279,99 @@ final class Meteor implements Listener, CommandExecutor {
 
     static boolean natural(Material m) { return m.isAir() || NATURAL.contains(m); }
 
-    /** Anything player-made within r blocks of the surface spot (blocks a crater there). */
-    private boolean built(Location at, int r) {
-        World w = at.getWorld();
-        for (int dx = -r; dx <= r; dx += 1) for (int dz = -r; dz <= r; dz += 1) {
-            if (dx * dx + dz * dz > r * r) continue;
-            int top = w.getHighestBlockYAt(at.getBlockX() + dx, at.getBlockZ() + dz, HeightMap.MOTION_BLOCKING_NO_LEAVES);
-            for (int y = Math.max(w.getMinHeight(), top - 4); y <= top + 2; y++) {
-                Material m = w.getBlockAt(at.getBlockX() + dx, y, at.getBlockZ() + dz).getType();
-                if (m.isAir() || natural(m) || m == Material.WATER || m == Material.LAVA || m == Material.BEDROCK) continue;
-                if (Tag.LEAVES.isTagged(m) || Tag.FLOWERS.isTagged(m)) continue;
-                return true;
+    /**
+     * Why a meteor can't land here (a build, a base, someone's bed), or null if it can. Checked within
+     * meteor.build-check-radius (48) blocks: player-made blocks on the surface, block entities (chests, furnaces,
+     * beds, ...) near the surface, chunks players have spent hours in, and online players' respawn points.
+     * Inside a village (plus 8 blocks) the village's own houses and chests don't count; the time and bed checks still do.
+     */
+    String base(World w, int x, int y, int z) {
+        int r = Math.max(12, (int) cfg("build-check-radius", 48));
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            Location rs = null;
+            try { rs = p.getRespawnLocation(); } catch (RuntimeException ignored) { }
+            if (rs != null && rs.getWorld() == w && Math.hypot(rs.getX() - x, rs.getZ() - z) < r + 16) return "a respawn point";
+        }
+        List<org.bukkit.util.BoundingBox> villages = villages(w, x, z, r);
+        long hours = (long) (cfg("base-hours", 3) * 72000); // inhabited time is in ticks
+        for (int cx = (x - r) >> 4; cx <= (x + r) >> 4; cx++) for (int cz = (z - r) >> 4; cz <= (z + r) >> 4; cz++) {
+            if (!w.isChunkGenerated(cx, cz)) continue;
+            org.bukkit.Chunk c = w.getChunkAt(cx, cz);
+            try { if (hours > 0 && c.getInhabitedTime() >= hours) return "a base (players spend a lot of time here)"; } catch (RuntimeException ignored) { }
+            org.bukkit.block.BlockState[] tiles;
+            try { tiles = c.getTileEntities(false); } catch (RuntimeException e) { continue; }
+            for (org.bukkit.block.BlockState t : tiles) {
+                if (WILD_TILES.contains(t.getType()) || Math.hypot(t.getX() - x, t.getZ() - z) > r) continue;
+                if (inside(villages, t.getX(), t.getZ())) continue;
+                // chests in dungeons, temples, trial chambers... are deep underground; a base's are on the surface
+                if (t.getY() < w.getHighestBlockYAt(t.getX(), t.getZ(), HeightMap.MOTION_BLOCKING_NO_LEAVES) - 8) continue;
+                return "a base (" + t.getType().name().toLowerCase() + ")";
             }
         }
+        if (inside(villages, x, z)) return null;
+        // every surface column (a spot that's rejected stops at the first build, so only the chosen one is scanned in full)
+        for (int dx = -r; dx <= r; dx++) for (int dz = -r; dz <= r; dz++) {
+            if (dx * dx + dz * dz > r * r) continue;
+            int bx = x + dx, bz = z + dz;
+            if (!w.isChunkGenerated(bx >> 4, bz >> 4) || inside(villages, bx, bz)) continue;
+            int top = w.getHighestBlockYAt(bx, bz, HeightMap.MOTION_BLOCKING_NO_LEAVES);
+            for (int by = Math.max(w.getMinHeight(), top - 4); by <= top + 2; by++)
+                if (built(w.getBlockAt(bx, by, bz))) return "a build at " + bx + ", " + by + ", " + bz;
+        }
+        return null;
+    }
+
+    /** Is this block player-made? Logs count as wild (trees), but stripped logs and bark blocks don't grow anywhere. */
+    static boolean built(Block b) {
+        Material m = b.getType();
+        if (m.isAir() || m == Material.WATER || m == Material.LAVA || m == Material.BEDROCK) return false;
+        if (Tag.LOGS.isTagged(m)) return m.name().startsWith("STRIPPED_") || m.name().endsWith("_WOOD") || m.name().endsWith("_HYPHAE");
+        return !natural(m) && !OLD_CRATER.contains(m) && !WILD.contains(m) && !WILD_TILES.contains(m) && !Tag.LEAVES.isTagged(m) && !Tag.FLOWERS.isTagged(m);
+    }
+
+    /** What an old meteor leaves behind (its crater isn't someone's build). */
+    private static final Set<Material> OLD_CRATER = EnumSet.of(Material.MAGMA_BLOCK, Material.BLACKSTONE, Material.BASALT, Material.COBBLED_DEEPSLATE,
+            Material.OBSIDIAN, Material.CRYING_OBSIDIAN, Material.ANCIENT_DEBRIS, Material.GILDED_BLACKSTONE, Material.FIRE);
+
+    /** Other things that grow or generate on the surface by themselves. */
+    private static final Set<Material> WILD = EnumSet.noneOf(Material.class);
+    static {
+        for (String n : List.of("MOSSY_COBBLESTONE", "BROWN_MUSHROOM_BLOCK", "RED_MUSHROOM_BLOCK", "MUSHROOM_STEM", "BAMBOO", "COCOA",
+                "AZALEA", "FLOWERING_AZALEA", "MANGROVE_ROOTS", "MUDDY_MANGROVE_ROOTS", "HANGING_ROOTS", "GLOW_LICHEN", "LILY_PAD", "KELP",
+                "KELP_PLANT", "SEAGRASS", "TALL_SEAGRASS", "SEA_PICKLE", "BIG_DRIPLEAF", "BIG_DRIPLEAF_STEM", "SMALL_DRIPLEAF", "PINK_PETALS",
+                "WILDFLOWERS", "LEAF_LITTER", "BUSH", "FIREFLY_BUSH", "CACTUS_FLOWER", "PALE_MOSS_BLOCK", "PALE_MOSS_CARPET",
+                "PALE_HANGING_MOSS", "SPORE_BLOSSOM", "CAVE_VINES", "CAVE_VINES_PLANT", "MAGMA_BLOCK", "SUSPICIOUS_SAND")) {
+            try { WILD.add(Material.valueOf(n)); } catch (IllegalArgumentException ignored) { }
+        }
+    }
+
+    /** Block entities that turn up in the wild on their own (bee nests, spawners, ...): not a sign of a base. */
+    private static final Set<Material> WILD_TILES = EnumSet.noneOf(Material.class);
+    static {
+        for (String n : List.of("BEE_NEST", "BEEHIVE", "SPAWNER", "TRIAL_SPAWNER", "VAULT", "SUSPICIOUS_SAND", "SUSPICIOUS_GRAVEL",
+                "DECORATED_POT", "CREAKING_HEART", "SCULK_SENSOR", "CALIBRATED_SCULK_SENSOR", "SCULK_SHRIEKER", "SCULK_CATALYST", "END_GATEWAY",
+                "MOVING_PISTON")) {
+            try { WILD_TILES.add(Material.valueOf(n)); } catch (IllegalArgumentException ignored) { }
+        }
+    }
+
+    /** The boxes of villages near the spot (grown 8 blocks so their fields and paths count too). */
+    private static List<org.bukkit.util.BoundingBox> villages(World w, int x, int z, int r) {
+        List<org.bukkit.util.BoundingBox> out = new ArrayList<>();
+        try {
+            for (int cx = (x - r) >> 4; cx <= (x + r) >> 4; cx++) for (int cz = (z - r) >> 4; cz <= (z + r) >> 4; cz++) {
+                if (!w.isChunkGenerated(cx, cz)) continue;
+                for (org.bukkit.generator.structure.GeneratedStructure gs : w.getStructures(cx, cz)) {
+                    org.bukkit.NamespacedKey k = org.bukkit.Registry.STRUCTURE.getKey(gs.getStructure());
+                    if (k != null && k.getKey().startsWith("village")) out.add(gs.getBoundingBox().clone().expand(8));
+                }
+            }
+        } catch (RuntimeException ignored) { }
+        return out;
+    }
+
+    private static boolean inside(List<org.bukkit.util.BoundingBox> boxes, int x, int z) {
+        for (org.bukkit.util.BoundingBox b : boxes) if (x >= b.getMinX() && x <= b.getMaxX() && z >= b.getMinZ() && z <= b.getMaxZ()) return true;
         return false;
     }
 
@@ -553,6 +646,29 @@ final class Meteor implements Listener, CommandExecutor {
                 if (strike != null) { sender.sendMessage(ChatColor.RED + "A meteor is already out (/meteor stop)."); return true; }
                 sender.sendMessage(start(p) ? ChatColor.GREEN + "A meteor is falling about " + (int) cfg("test-distance", 30) + " blocks from you." : ChatColor.RED + "No clear ground near you.");
             }
+            case "target" -> {
+                if (!(sender instanceof Player p)) { sender.sendMessage("Players only (console: /meteor at <x> <z> [world])."); return true; }
+                Block b = p.getTargetBlockExact(200);
+                if (b == null) { sender.sendMessage(ChatColor.RED + "Look at the ground you want it to hit (up to 200 blocks away)."); return true; }
+                String err = startAt(b.getWorld(), b.getX(), b.getZ());
+                sender.sendMessage(err == null ? ChatColor.GREEN + "A meteor is falling at X " + b.getX() + ", Z " + b.getZ() + "." : ChatColor.RED + err);
+            }
+            case "at" -> {
+                if (args.length < 3) { sender.sendMessage(ChatColor.YELLOW + "/meteor at <x> <z> [world]"); return true; }
+                World w = args.length > 3 ? Bukkit.getWorld(args[3]) : sender instanceof Player p ? p.getWorld() : Bukkit.getWorlds().get(0);
+                if (w == null) { sender.sendMessage(ChatColor.RED + "No world called " + args[3] + "."); return true; }
+                int x, z;
+                try { x = (int) Math.floor(Double.parseDouble(args[1])); z = (int) Math.floor(Double.parseDouble(args[2])); }
+                catch (NumberFormatException e) { sender.sendMessage(ChatColor.RED + "/meteor at <x> <z> [world]"); return true; }
+                String err = startAt(w, x, z);
+                sender.sendMessage(err == null ? ChatColor.GREEN + "A meteor is falling at X " + x + ", Z " + z + "." : ChatColor.RED + err);
+            }
+            case "check" -> {
+                if (!(sender instanceof Player p)) { sender.sendMessage("Players only."); return true; }
+                Location l = p.getLocation();
+                String why = base(p.getWorld(), l.getBlockX(), l.getBlockY(), l.getBlockZ());
+                sender.sendMessage(why == null ? ChatColor.GREEN + "A random meteor could land here." : ChatColor.YELLOW + "Random meteors avoid this spot: " + why + ".");
+            }
             case "stop" -> {
                 if (strike == null) { sender.sendMessage(ChatColor.GRAY + "No meteor is out."); return true; }
                 shutdown();
@@ -564,7 +680,7 @@ final class Meteor implements Listener, CommandExecutor {
                 LivingEntity m = spawn(p.getLocation().add(p.getLocation().getDirection().setY(0).normalize().multiply(3)), kind);
                 if (m != null) sender.sendMessage(ChatColor.GREEN + "Spawned a " + ChatColor.stripColor(m.getCustomName()) + ".");
             }
-            default -> sender.sendMessage(ChatColor.YELLOW + "/meteor [now|here|stop|egg <husk|crawler|sentinel>]");
+            default -> sender.sendMessage(ChatColor.YELLOW + "/meteor [now|here|target|at <x> <z> [world]|check|stop|egg <husk|crawler|sentinel>]");
         }
         return true;
     }

@@ -392,6 +392,12 @@ public final class FaultlineItems extends JavaPlugin {
         caveTrader = new CaveTrader(this, divingGear);
         getServer().getPluginManager().registerEvents(caveTrader, this);
         getCommand("cavetrader").setExecutor(caveTrader);
+        meteor = new Meteor(this);
+        getServer().getPluginManager().registerEvents(meteor, this);
+        getCommand("meteor").setExecutor(meteor);
+        caravan = new Caravan(this);
+        getServer().getPluginManager().registerEvents(caravan, this);
+        getCommand("caravan").setExecutor(caravan);
         getServer().getPluginManager().registerEvents(new CraftGuardListener(this), this);
         NewAccessoryTicker newAccessoryTicker = new NewAccessoryTicker(this);
         getServer().getScheduler().runTaskTimer(this, newAccessoryTicker::tick, 20L, 20L);
@@ -510,6 +516,8 @@ public final class FaultlineItems extends JavaPlugin {
     @Override
     public void onDisable() {
         if (caveTrader != null) caveTrader.removeAll();
+        if (meteor != null) meteor.shutdown();
+        if (caravan != null) caravan.shutdown();
         if (accessoryManager != null) {
             accessoryManager.save();
         }
@@ -745,6 +753,8 @@ public final class FaultlineItems extends JavaPlugin {
 
     private DivingGear divingGear;
     private CaveTrader caveTrader;
+    Meteor meteor;
+    Caravan caravan;
 
     DivingGear getDivingGear() { return divingGear; }
 
@@ -7035,6 +7045,12 @@ public final class FaultlineItems extends JavaPlugin {
                             "ship pirates egg " + egg[0] + " {amount} {player}", "FaultlineShips"));
                 }
             }
+            if (enabled("FaultlineCosmetics")) { // the seasonal currency (Candy at Halloween, Presents in Winter)
+                list.add(external(icon(Material.PAPER, "season_candy", ChatColor.GOLD + "" + ChatColor.BOLD + "Candy " + ChatColor.GRAY + "(Halloween)", "FaultlineCosmetics"),
+                        "cosmetic tokens {player} halloween {amount}", "FaultlineCosmetics"));
+                list.add(external(icon(Material.PAPER, "season_present", ChatColor.AQUA + "" + ChatColor.BOLD + "Present " + ChatColor.GRAY + "(Winter)", "FaultlineCosmetics"),
+                        "cosmetic tokens {player} winter {amount}", "FaultlineCosmetics"));
+            }
             if (enabled("FaultlineBosses")) {
                 list.add(external(icon(Material.ENDER_EYE, "suspicious_eye", ChatColor.DARK_RED + "" + ChatColor.BOLD + "Suspicious Eye", "FaultlineBosses"),
                         "demoneye give {amount} {player}", "FaultlineBosses"));
@@ -7070,6 +7086,10 @@ public final class FaultlineItems extends JavaPlugin {
                         "rocco item fist {amount} {player}", "FaultlineBosses"));
                 list.add(external(icon(Material.WITHER_SKELETON_SKULL, "explorer_head", ChatColor.WHITE + "" + ChatColor.BOLD + "The Lost Explorer " + ChatColor.GRAY + "(go to his arena)", "FaultlineBosses"),
                         "explorer arena {player}", "FaultlineBosses"));
+                list.add(external(icon(Material.PAPER, "warlord_challenge", ChatColor.GOLD + "" + ChatColor.BOLD + "Warlord's Challenge " + ChatColor.GRAY + "(Grimtusk)", "FaultlineBosses"),
+                        "grimtusk item challenge {amount} {player}", "FaultlineBosses"));
+                list.add(external(icon(Material.NETHERITE_AXE, "warlord_cleaver", ChatColor.GOLD + "" + ChatColor.BOLD + "Grimtusk's Cleaver", "FaultlineBosses"),
+                        "grimtusk item cleaver {amount} {player}", "FaultlineBosses"));
             }
             if (enabled("FaultlineRaids")) {
                 String[] roman = {"I", "II", "III", "IV", "V"};

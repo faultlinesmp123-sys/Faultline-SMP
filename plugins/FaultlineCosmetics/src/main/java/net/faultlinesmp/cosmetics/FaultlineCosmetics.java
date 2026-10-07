@@ -41,7 +41,8 @@ public final class FaultlineCosmetics extends JavaPlugin implements Listener {
     }
 
     /** One cosmetic from config.yml. Its models follow the naming in config.yml's header. */
-    public record Cosmetic(String id, String name, Slot slot, String source) {
+    /** season: the season whose shop sells it (null = unlocked some other way), price: in that season's currency. */
+    public record Cosmetic(String id, String name, Slot slot, String source, String season, int price) {
         NamespacedKey icon() { return new NamespacedKey("faultline", "cosmetic/" + id + "_icon"); }
         NamespacedKey worn() { return new NamespacedKey("faultline", "cosmetic/" + id); }
         NamespacedKey equipment() { return new NamespacedKey("faultline", id); }
@@ -58,17 +59,20 @@ public final class FaultlineCosmetics extends JavaPlugin implements Listener {
     private File dataFile;
     private boolean dirty;
     private Renderer renderer;
+    Seasons seasons;
 
     @Override
     public void onEnable() {
         instance = this;
         saveDefaultConfig();
+        seasons = new Seasons(this);
         loadCosmetics();
         dataFile = new File(getDataFolder(), "players.yml");
         loadData();
         renderer = new Renderer(this);
         getServer().getPluginManager().registerEvents(this, this);
         getServer().getPluginManager().registerEvents(renderer, this);
+        getServer().getPluginManager().registerEvents(seasons, this);
         renderer.start();
         Bukkit.getScheduler().runTaskTimer(this, () -> { if (dirty) saveData(); }, 600L, 600L);
         getLogger().info(cosmetics.size() + " cosmetics loaded. Bedrock detection: " + renderer.bedrockDetection());
@@ -96,18 +100,41 @@ public final class FaultlineCosmetics extends JavaPlugin implements Listener {
 
     // ------------------------------------------------------------------ config + storage
 
+    /**
+     * The cosmetics in the server's config.yml, plus any the jar's default config has that the server's copy doesn't
+     * (an update's new cosmetics show up without anyone editing the config).
+     */
     private void loadCosmetics() {
         cosmetics.clear();
         ConfigurationSection sec = getConfig().getConfigurationSection("cosmetics");
-        if (sec == null) return;
-        for (String id : sec.getKeys(false)) {
-            ConfigurationSection c = sec.getConfigurationSection(id);
+        ConfigurationSection defs = getConfig().getDefaults() == null ? null : getConfig().getDefaults().getConfigurationSection("cosmetics");
+        LinkedHashSet<String> ids = new LinkedHashSet<>();
+        if (sec != null) ids.addAll(sec.getKeys(false));
+        if (defs != null) ids.addAll(defs.getKeys(false));
+        for (String id : ids) {
+            // BUG FIX: asking the server's section for an id it doesn't have makes Bukkit create an EMPTY one (no slot);
+            // only read the server's copy for ids it really has, otherwise the jar's default
+            boolean own = sec != null && sec.getKeys(false).contains(id) && sec.get(id) instanceof ConfigurationSection;
+            ConfigurationSection c = own ? sec.getConfigurationSection(id) : defs != null ? defs.getConfigurationSection(id) : null;
             if (c == null) continue;
             Slot slot;
             try { slot = Slot.valueOf(c.getString("slot", "").toUpperCase(Locale.ROOT)); }
             catch (IllegalArgumentException e) { getLogger().warning("Cosmetic " + id + " has no valid slot (HAT, NECK, BACK or BODY), skipped."); continue; }
-            cosmetics.put(id, new Cosmetic(id, c.getString("name", id), slot, c.getString("source", "")));
+            String season = c.getString("season", "");
+            cosmetics.put(id, new Cosmetic(id, c.getString("name", id), slot, c.getString("source", ""),
+                    season == null || season.isBlank() ? null : season.toLowerCase(Locale.ROOT), c.getInt("price", 0)));
         }
+    }
+
+    Collection<Cosmetic> all() { return cosmetics.values(); }
+
+    /** How to get a locked cosmetic, for its tooltip. */
+    String howToGet(Cosmetic c) {
+        if (c.season() != null) {
+            Seasons.Season s = seasons.seasons.get(c.season());
+            if (s != null) return s.color() + s.name() + " Shop &7(" + Seasons.when(s) + "): &f" + c.price() + " " + s.tokenName();
+        }
+        return c.source().isEmpty() ? "" : "&7" + c.source();
     }
 
     private void loadData() {
@@ -168,7 +195,7 @@ public final class FaultlineCosmetics extends JavaPlugin implements Listener {
 
     private static final int[] LIST = {12, 13, 14, 15, 16, 21, 22, 23, 24, 25, 30, 31, 32, 33, 34, 39, 40, 41, 42, 43};
     private static final int[] SLOT_AT = {10, 19, 28, 37}; // HAT, NECK, BACK, BODY
-    private static final int PREV = 48, INFO = 49, NEXT = 50, TAKE_OFF = 46;
+    private static final int PREV = 48, INFO = 49, NEXT = 50, TAKE_OFF = 46, SHOP = 52;
 
     static final class Menu implements InventoryHolder {
         final UUID owner; final int page; final Map<Integer, String> ids = new HashMap<>();
@@ -203,7 +230,7 @@ public final class FaultlineCosmetics extends JavaPlugin implements Listener {
             List<String> lore = new ArrayList<>(List.of("&7Slot: &f" + c.slot().label, ""));
             if (on) lore.add("&aWearing it. &eClick to take it off.");
             else if (has) lore.add("&eClick to wear it.");
-            else { lore.add("&cLocked"); if (!c.source().isEmpty()) lore.add("&7" + c.source()); }
+            else { lore.add("&cLocked"); String how = howToGet(c); if (!how.isEmpty()) lore.add(how); }
             ItemStack it = icon(c, lore.toArray(new String[0]));
             if (on) { ItemMeta im = it.getItemMeta(); im.setEnchantmentGlintOverride(true); it.setItemMeta(im); }
             inv.setItem(LIST[i], it);
@@ -215,7 +242,93 @@ public final class FaultlineCosmetics extends JavaPlugin implements Listener {
         if (page > 0) inv.setItem(PREV, button(Material.ARROW, "&ePrevious page"));
         if (page < pages - 1) inv.setItem(NEXT, button(Material.ARROW, "&eNext page"));
         if (!worn.isEmpty()) inv.setItem(TAKE_OFF, button(Material.BARRIER, "&cTake everything off"));
+        inv.setItem(SHOP, shopButton(p));
         p.openInventory(inv);
+    }
+
+    private ItemStack shopButton(Player p) {
+        Seasons.Season s = seasons.current();
+        if (s != null) {
+            ItemStack it = seasons.token(s, 1);
+            ItemMeta im = it.getItemMeta();
+            im.displayName(text(s.color() + "&l" + s.name() + " Shop"));
+            im.lore(List.of(text("&7Open now: until " + Seasons.when(s).split(" - ")[1] + "."),
+                    text("&7You have &f" + seasons.count(p, s) + " " + s.tokenName() + "&7."),
+                    text("&7Hostile mobs drop " + s.tokenName() + " this season."), text(""), text("&eClick to open.")));
+            it.setItemMeta(im);
+            return it;
+        }
+        Map.Entry<Seasons.Season, Integer> next = seasons.next();
+        return button(Material.CLOCK, "&7Seasonal Shop: &8closed",
+                next == null ? "&8No seasons set up." : "&7Next: " + next.getKey().color() + next.getKey().name() + " &7in &f" + next.getValue() + " days",
+                next == null ? "" : "&8(" + Seasons.when(next.getKey()) + ")");
+    }
+
+    // ------------------------------------------------------------------ the seasonal shop
+
+    static final class Shop implements InventoryHolder {
+        final Seasons.Season season; final Map<Integer, String> ids = new HashMap<>();
+        Inventory inv;
+        Shop(Seasons.Season season) { this.season = season; }
+        @Override public Inventory getInventory() { return inv; }
+    }
+
+    private static final int[] SHOP_LIST = {20, 21, 22, 23, 24, 29, 30, 31, 32, 33};
+    private static final int SHOP_BACK = 49, SHOP_COUNT = 4;
+
+    void openShop(Player p) {
+        Seasons.Season s = seasons.current();
+        if (s == null) { msg(p, "&7The Seasonal Shop is closed right now."); openMenu(p, 0); return; }
+        Shop shop = new Shop(s);
+        Inventory inv = Bukkit.createInventory(shop, 54, text("&8" + Seasons.colorless(s.name()) + " Shop"));
+        shop.inv = inv;
+        ItemStack pane = button(Material.ORANGE_STAINED_GLASS_PANE, " ");
+        if (s.id().equals("winter")) pane = button(Material.LIGHT_BLUE_STAINED_GLASS_PANE, " ");
+        for (int i = 0; i < 54; i++) inv.setItem(i, pane);
+        Data d = data(p.getUniqueId());
+        int have = seasons.count(p, s), i = 0;
+        for (Cosmetic c : cosmetics.values()) {
+            if (!s.id().equals(c.season()) || i >= SHOP_LIST.length) continue;
+            boolean owned = d.unlocked.contains(c.id());
+            List<String> lore = new ArrayList<>(List.of("&7Slot: &f" + c.slot().label, "&7Price: &f" + c.price() + " " + s.tokenName(), ""));
+            if (owned) lore.add("&aYou own this.");
+            else if (have >= c.price()) lore.add("&eClick to buy it.");
+            else lore.add("&cYou need " + (c.price() - have) + " more " + s.tokenName() + ".");
+            ItemStack it = icon(c, lore.toArray(new String[0]));
+            if (owned) { ItemMeta im = it.getItemMeta(); im.setEnchantmentGlintOverride(true); it.setItemMeta(im); }
+            inv.setItem(SHOP_LIST[i], it);
+            shop.ids.put(SHOP_LIST[i], c.id());
+            i++;
+        }
+        ItemStack bal = seasons.token(s, Math.max(1, Math.min(64, have)));
+        ItemMeta bm = bal.getItemMeta();
+        bm.displayName(text(s.color() + "&lYour " + s.tokenName() + ": &f" + have));
+        bm.lore(List.of(text("&7Hostile mobs drop it during " + s.name() + "."), text("&7The shop closes " + Seasons.when(s).split(" - ")[1] + "."),
+                text("&7Its cosmetics are yours forever, and come back next year.")));
+        bal.setItemMeta(bm);
+        inv.setItem(SHOP_COUNT, bal);
+        inv.setItem(SHOP_BACK, button(Material.ARROW, "&eBack to your cosmetics"));
+        p.openInventory(inv);
+    }
+
+    private void shopClick(Player p, Shop shop, int raw) {
+        if (raw == SHOP_BACK) { openMenu(p, 0); return; }
+        String id = shop.ids.get(raw);
+        Cosmetic c = id == null ? null : cosmetics.get(id);
+        if (c == null) return;
+        Data d = data(p.getUniqueId());
+        if (d.unlocked.contains(id)) { p.playSound(p, Sound.BLOCK_NOTE_BLOCK_BASS, 0.6f, 1f); return; }
+        if (seasons.current() == null || !seasons.current().id().equals(shop.season.id())) { p.closeInventory(); msg(p, "&7The shop just closed."); return; }
+        if (!seasons.take(p, shop.season, c.price())) {
+            p.playSound(p, Sound.BLOCK_NOTE_BLOCK_BASS, 0.8f, 0.6f);
+            msg(p, "&cYou need " + c.price() + " " + shop.season.tokenName() + " for " + c.name() + "&c.");
+            return;
+        }
+        d.unlocked.add(id);
+        dirty = true;
+        msg(p, "&6&lCOSMETIC UNLOCKED! &r" + c.name() + " &7is yours forever. Wear it from &e/cosmetics&7.");
+        p.playSound(p, Sound.UI_TOAST_CHALLENGE_COMPLETE, 0.7f, 1.2f);
+        openShop(p);
     }
 
     ItemStack icon(Cosmetic c, String... lore) {
@@ -246,12 +359,18 @@ public final class FaultlineCosmetics extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onClick(InventoryClickEvent e) {
+        if (e.getInventory().getHolder() instanceof Shop shop) {
+            e.setCancelled(true);
+            if (e.getWhoClicked() instanceof Player p && e.getClickedInventory() == e.getView().getTopInventory()) shopClick(p, shop, e.getRawSlot());
+            return;
+        }
         if (!(e.getInventory().getHolder() instanceof Menu m)) return;
         e.setCancelled(true);
         if (!(e.getWhoClicked() instanceof Player p) || e.getClickedInventory() != e.getView().getTopInventory()) return;
         int raw = e.getRawSlot();
         Data d = data(p.getUniqueId());
         if (raw == PREV) { openMenu(p, m.page - 1); return; }
+        if (raw == SHOP) { if (seasons.current() != null) openShop(p); return; }
         if (raw == NEXT) { openMenu(p, m.page + 1); return; }
         if (raw == TAKE_OFF && !d.equipped.isEmpty()) {
             d.equipped.clear(); dirty = true; renderer.refresh(p);
@@ -268,7 +387,9 @@ public final class FaultlineCosmetics extends JavaPlugin implements Listener {
         if (c == null) return;
         if (!d.unlocked.contains(id)) {
             p.playSound(p, Sound.BLOCK_NOTE_BLOCK_BASS, 0.8f, 0.6f);
-            msg(p, "&cYou haven't unlocked " + c.name() + "&c yet." + (c.source().isEmpty() ? "" : " &7(" + c.source() + ")"));
+            String how = howToGet(c);
+            msg(p, "&cYou haven't unlocked " + c.name() + "&c yet." + (how.isEmpty() ? "" : " &7(" + how + "&7)"));
+            if (c.season() != null && seasons.current() != null && c.season().equals(seasons.current().id())) openShop(p);
             return;
         }
         if (id.equals(d.equipped.get(c.slot()))) d.equipped.remove(c.slot());
@@ -281,8 +402,11 @@ public final class FaultlineCosmetics extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onDrag(InventoryDragEvent e) {
-        if (e.getInventory().getHolder() instanceof Menu) e.setCancelled(true);
+        if (e.getInventory().getHolder() instanceof Menu || e.getInventory().getHolder() instanceof Shop) e.setCancelled(true);
     }
+
+    @EventHandler
+    public void onJoin(org.bukkit.event.player.PlayerJoinEvent e) { seasons.announce(e.getPlayer()); }
 
     // ------------------------------------------------------------------ commands
 
@@ -293,7 +417,7 @@ public final class FaultlineCosmetics extends JavaPlugin implements Listener {
         boolean admin = sender.hasPermission("faultlinecosmetics.admin");
         if (cmd.getName().equalsIgnoreCase("cosmetics") || !admin) {
             if (sender instanceof Player p) {
-                try { openMenu(p, 0); }
+                try { if (args.length > 0 && args[0].equalsIgnoreCase("shop")) openShop(p); else openMenu(p, 0); }
                 catch (RuntimeException | LinkageError ex) { // never fail silently: tell them, and put the cause in the console
                     getLogger().log(java.util.logging.Level.SEVERE, "Couldn't open the cosmetics menu for " + p.getName(), ex);
                     msg(p, "&cThe cosmetics menu couldn't open (the error is in the server console). Tell an admin.");
@@ -304,8 +428,33 @@ public final class FaultlineCosmetics extends JavaPlugin implements Listener {
         }
         if (args.length == 0) { if (sender instanceof Player p) { openMenu(p, 0); return true; } usage(sender); return true; }
         switch (args[0].toLowerCase(Locale.ROOT)) {
+            case "shop" -> { if (sender instanceof Player p) openShop(p); }
+            case "season" -> { // force a season (testing / an early start), or back to the calendar
+                String want = args.length > 1 ? args[1].toLowerCase(Locale.ROOT) : "";
+                if (want.isEmpty()) {
+                    Seasons.Season cur = seasons.current();
+                    msg(sender, "&6Season now: &f" + (cur == null ? "none" : cur.name()) + " &7(forced: " + getConfig().getString("force-season", "") + ")");
+                    msg(sender, "&7/cosmetic season <" + String.join("|", seasons.seasons.keySet()) + "|off|auto>");
+                    return true;
+                }
+                if (!want.equals("auto") && !want.equals("off") && !seasons.seasons.containsKey(want)) { msg(sender, "&cUnknown season. Known: " + seasons.seasons.keySet()); return true; }
+                getConfig().set("force-season", want.equals("auto") ? "" : want);
+                saveConfig();
+                Seasons.Season cur = seasons.current();
+                msg(sender, "&aSeason is now: &f" + (cur == null ? "none" : cur.name()) + (want.equals("auto") ? " &7(by the calendar)" : " &7(forced)"));
+            }
+            case "tokens" -> { // cosmetic tokens <player> <season> [amount]
+                if (args.length < 3) { msg(sender, "&6/cosmetic tokens <player> <" + String.join("|", seasons.seasons.keySet()) + "> [amount]"); return true; }
+                Player t = Bukkit.getPlayerExact(args[1]);
+                Seasons.Season s = seasons.seasons.get(args[2].toLowerCase(Locale.ROOT));
+                if (t == null || s == null) { msg(sender, "&cNeeds an online player and a season (" + seasons.seasons.keySet() + ")."); return true; }
+                int n = 1;
+                try { n = Math.max(1, Math.min(2304, Integer.parseInt(args.length > 3 ? args[3] : "1"))); } catch (NumberFormatException ignored) { }
+                for (int left = n; left > 0; left -= 64) t.getInventory().addItem(seasons.token(s, Math.min(64, left))).values().forEach(x -> t.getWorld().dropItemNaturally(t.getLocation(), x));
+                msg(sender, "&aGave " + t.getName() + " " + n + " " + s.tokenName() + ".");
+            }
             case "reload" -> {
-                reloadConfig(); loadCosmetics();
+                reloadConfig(); seasons.load(); loadCosmetics();
                 for (Player p : Bukkit.getOnlinePlayers()) renderer.refresh(p);
                 msg(sender, "&aFaultlineCosmetics reloaded: " + cosmetics.size() + " cosmetics.");
             }
@@ -353,6 +502,9 @@ public final class FaultlineCosmetics extends JavaPlugin implements Listener {
         msg(s, "&6/cosmetic unlock <player> <id|all> [silent] &7- unlock forever");
         msg(s, "&6/cosmetic lock <player> <id|all> &7- take an unlock away");
         msg(s, "&6/cosmetic list [player] &7- every cosmetic, or what a player has");
+        msg(s, "&6/cosmetic season [<season>|off|auto] &7- force a season, or follow the calendar");
+        msg(s, "&6/cosmetic tokens <player> <season> [amount] &7- give Candy / Presents");
+        msg(s, "&6/cosmetic shop &7- open the Seasonal Shop");
         msg(s, "&6/cosmetic reload &7- reload config.yml");
     }
 
@@ -369,8 +521,10 @@ public final class FaultlineCosmetics extends JavaPlugin implements Listener {
     public List<String> onTabComplete(CommandSender sender, Command cmd, String alias, String[] args) {
         if (cmd.getName().equalsIgnoreCase("cosmetics") || !sender.hasPermission("faultlinecosmetics.admin")) return List.of();
         List<String> opts = new ArrayList<>();
-        if (args.length == 1) opts.addAll(List.of("unlock", "lock", "list", "reload"));
-        else if (args.length == 2 && !args[0].equalsIgnoreCase("reload")) Bukkit.getOnlinePlayers().forEach(p -> opts.add(p.getName()));
+        if (args.length == 1) opts.addAll(List.of("unlock", "lock", "list", "reload", "season", "tokens", "shop"));
+        else if (args.length == 2 && args[0].equalsIgnoreCase("season")) { opts.addAll(seasons.seasons.keySet()); opts.add("off"); opts.add("auto"); }
+        else if (args.length == 3 && args[0].equalsIgnoreCase("tokens")) opts.addAll(seasons.seasons.keySet());
+        else if (args.length == 2 && !args[0].equalsIgnoreCase("reload") && !args[0].equalsIgnoreCase("shop")) Bukkit.getOnlinePlayers().forEach(p -> opts.add(p.getName()));
         else if (args.length == 3 && (args[0].equalsIgnoreCase("unlock") || args[0].equalsIgnoreCase("lock"))) { opts.addAll(cosmetics.keySet()); opts.add("all"); }
         else if (args.length == 4 && args[0].equalsIgnoreCase("unlock")) opts.add("silent");
         String last = args[args.length - 1].toLowerCase(Locale.ROOT);

@@ -1,5 +1,5 @@
 name: FaultlineBosses
-version: '1.2.0'
+version: '1.3.0'
 main: net.faultlinesmp.bosses.FaultlineBosses
 api-version: '1.21'
 author: FaultlineSMP
@@ -49,8 +49,15 @@ commands:
     usage: /lostexplorer <skip|yes|no>
   bossmorph:
     description: "Admin: become a boss and control it (your hotbar becomes its moves)"
-    usage: /bossmorph <demoneye|frostbeard|dune|frostmaw|kraken|jacob|don|off|release>
+    usage: /bossmorph <demoneye|frostbeard|dune|frostmaw|kraken|jacob|don|rocco|grimtusk|off|release>
     permission: bosses.admin
+  grimtusk:
+    description: "Admin: summon or remove Grimtusk, the Piglin Warlord, skip to a phase, or give his items"
+    usage: /grimtusk <summon|kill|phase|item>
+    permission: bosses.admin
+  bossrush:
+    description: "The Boss Rush: every boss, back to back (start, top)"
+    usage: /bossrush [start|top]
 
 permissions:
   bosses.admin:

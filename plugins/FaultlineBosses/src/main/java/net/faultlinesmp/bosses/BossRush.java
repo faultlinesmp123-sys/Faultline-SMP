@@ -1,0 +1,465 @@
+package net.faultlinesmp.bosses;
+
+import net.kyori.adventure.title.Title;
+import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
+import org.bukkit.HeightMap;
+import org.bukkit.Location;
+import org.bukkit.Material;
+import org.bukkit.Sound;
+import org.bukkit.World;
+import org.bukkit.block.Biome;
+import org.bukkit.block.Block;
+import org.bukkit.boss.BarColor;
+import org.bukkit.boss.BarStyle;
+import org.bukkit.boss.BossBar;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandExecutor;
+import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabCompleter;
+import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
+import org.bukkit.event.Listener;
+import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.inventory.ItemStack;
+
+import java.io.File;
+import java.util.*;
+
+import static net.faultlinesmp.bosses.FaultlineBosses.*;
+
+/**
+ * THE BOSS RUSH (/bossrush): every boss, back to back. The leader starts it; everyone in survival within 10 blocks joins.
+ * Before each boss the team is teleported to that boss's home biome (the Demon Eye on the plains, Frostbeard in the snow,
+ * the Dune Devourer in the desert, the Kraken over a deep ocean, Diamond Jacob on a mountain peak, Grimtusk in a Nether
+ * bastion...), found once and remembered in bossrush.yml (an admin can set one with /bossrush setarena <boss>).
+ *
+ * Bosses drop no loot in a rush. Dying puts you out (you keep your things); the run fails when the whole team is out or
+ * a boss leaves. Finish it for the rewards, the Boss Rush Champion achievement, and a time on the leaderboard.
+ */
+final class BossRush implements Listener, CommandExecutor, TabCompleter {
+
+    /** One stage: the boss, where it lives, and a name for titles. */
+    record Stage(String kind, String name, World.Environment env, List<Biome> biomes) {}
+
+    static final List<Stage> STAGES = List.of(
+            new Stage("demoneye", "The Demon Eye", World.Environment.NORMAL, List.of(Biome.PLAINS, Biome.SUNFLOWER_PLAINS, Biome.MEADOW)),
+            new Stage("frostbeard", "Frostbeard", World.Environment.NORMAL, List.of(Biome.SNOWY_PLAINS, Biome.SNOWY_TAIGA, Biome.GROVE)),
+            new Stage("dune", "The Dune Devourer", World.Environment.NORMAL, List.of(Biome.DESERT)),
+            new Stage("frostmaw", "The Frostmaw", World.Environment.NORMAL, List.of(Biome.ICE_SPIKES, Biome.SNOWY_PLAINS, Biome.FROZEN_PEAKS)),
+            new Stage("don", "Don Lorenzo", World.Environment.NORMAL, List.of(Biome.PLAINS, Biome.MEADOW, Biome.SAVANNA)),
+            new Stage("kraken", "The Kraken", World.Environment.NORMAL, List.of(Biome.DEEP_OCEAN, Biome.DEEP_COLD_OCEAN, Biome.DEEP_LUKEWARM_OCEAN)),
+            new Stage("jacob", "Diamond Jacob", World.Environment.NORMAL, List.of(Biome.JAGGED_PEAKS, Biome.STONY_PEAKS, Biome.FROZEN_PEAKS)),
+            new Stage("rocco", "Rocco Vendetta", World.Environment.NORMAL, List.of(Biome.PLAINS, Biome.SAVANNA, Biome.MEADOW)),
+            new Stage("grimtusk", "Grimtusk, the Piglin Warlord", World.Environment.NETHER, List.of(Biome.NETHER_WASTES, Biome.CRIMSON_FOREST)));
+
+    final FaultlineBosses pl;
+    private final File file;
+    private final YamlConfiguration data;
+    Run run;
+    private final Map<UUID, Long> cooldown = new HashMap<>();
+
+    final class Run {
+        final List<UUID> team = new ArrayList<>();
+        final Set<UUID> out = new HashSet<>();
+        final Map<UUID, Location> home = new HashMap<>();
+        final List<Stage> stages;
+        int stage = -1, t, state; // 0 = travelling / countdown, 1 = fighting, 2 = break, 3 = finished
+        boolean defeated;
+        long startedAt;
+        final BossBar bar = Bukkit.createBossBar("", BarColor.RED, BarStyle.SEGMENTED_10);
+        Location arena;
+        Run(List<Stage> stages) { this.stages = stages; }
+
+        List<Player> alive() {
+            List<Player> a = new ArrayList<>();
+            for (UUID id : team) { Player p = Bukkit.getPlayer(id); if (p != null && !out.contains(id) && p.isOnline()) a.add(p); }
+            return a;
+        }
+
+        Stage current() { return stage >= 0 && stage < stages.size() ? stages.get(stage) : null; }
+    }
+
+    BossRush(FaultlineBosses pl) {
+        this.pl = pl;
+        file = new File(pl.getDataFolder(), "bossrush.yml");
+        data = YamlConfiguration.loadConfiguration(file);
+    }
+
+    double c(String path, double def) { return pl.getConfig().getDouble("boss-rush." + path, def); }
+
+    void save() {
+        try { pl.getDataFolder().mkdirs(); data.save(file); } catch (Exception e) { pl.getLogger().warning("Couldn't save bossrush.yml: " + e.getMessage()); }
+    }
+
+    List<Stage> stages() {
+        List<String> order = pl.getConfig().getStringList("boss-rush.bosses");
+        if (order.isEmpty()) return STAGES;
+        List<Stage> out = new ArrayList<>();
+        for (String k : order) STAGES.stream().filter(s -> s.kind().equalsIgnoreCase(k.trim())).findFirst().ifPresent(out::add);
+        return out.isEmpty() ? STAGES : out;
+    }
+
+    // ===================================================================== hooks from the bosses
+
+    /** True while a rush is fighting this kind of boss (its loot is skipped). */
+    boolean suppress(String kind) {
+        return run != null && run.state == 1 && run.current() != null && run.current().kind().equals(kind);
+    }
+
+    void defeated(String kind) {
+        if (run != null && run.state == 1 && run.current() != null && run.current().kind().equals(kind)) run.defeated = true;
+    }
+
+    // ===================================================================== arenas
+
+    World world(World.Environment env) {
+        String name = pl.getConfig().getString("boss-rush." + (env == World.Environment.NETHER ? "nether-world" : "world"), "");
+        if (name != null && !name.isBlank() && Bukkit.getWorld(name) != null) return Bukkit.getWorld(name);
+        for (World w : Bukkit.getWorlds()) if (w.getEnvironment() == env) return w;
+        return null;
+    }
+
+    /** Where this boss is fought: remembered, or found once (the nearest fitting biome / a bastion) and remembered. */
+    Location arena(Stage s) {
+        String key = "arenas." + s.kind();
+        if (data.isConfigurationSection(key)) {
+            World w = Bukkit.getWorld(data.getString(key + ".world", ""));
+            if (w != null) return new Location(w, data.getDouble(key + ".x"), data.getDouble(key + ".y"), data.getDouble(key + ".z"));
+        }
+        World w = world(s.env());
+        if (w == null) return null;
+        Location origin = w.getSpawnLocation();
+        Location found = null;
+        try {
+            if (s.kind().equals("grimtusk")) {
+                var r = w.locateNearestStructure(origin, org.bukkit.generator.structure.Structure.BASTION_REMNANT, (int) c("search-chunks", 100), false);
+                if (r != null) found = r.getLocation();
+            } else {
+                var r = w.locateNearestBiome(origin, (int) c("search-radius", 4000), s.biomes().toArray(new Biome[0]));
+                if (r != null) found = r.getLocation();
+            }
+        } catch (RuntimeException e) {
+            pl.getLogger().warning("[Boss Rush] couldn't search for " + s.name() + "'s biome: " + e.getMessage());
+        }
+        if (found == null) return null;
+        Location spot = surface(found, s);
+        if (spot == null) return null;
+        data.set(key + ".world", spot.getWorld().getName());
+        data.set(key + ".x", spot.getX()); data.set(key + ".y", spot.getY()); data.set(key + ".z", spot.getZ());
+        save();
+        return spot;
+    }
+
+    /** A place to stand: the top of the ground (on the water for the Kraken, a floor inside the bastion for Grimtusk). */
+    Location surface(Location l, Stage s) {
+        World w = l.getWorld();
+        w.getChunkAt(l.getBlockX() >> 4, l.getBlockZ() >> 4);
+        if (w.getEnvironment() == World.Environment.NETHER) { // a floor with headroom, under the roof
+            int x = l.getBlockX(), z = l.getBlockZ();
+            for (int r = 0; r < 24; r += 2) for (int dx = -r; dx <= r; dx += Math.max(1, r)) for (int dz = -r; dz <= r; dz += Math.max(1, r))
+                for (int y = Math.min(110, l.getBlockY() + 20); y > 32; y--) {
+                    Block b = w.getBlockAt(x + dx, y, z + dz);
+                    if (b.getType().isSolid() && b.getType() != Material.LAVA && b.getRelative(0, 1, 0).getType().isAir()
+                            && b.getRelative(0, 2, 0).getType().isAir() && b.getRelative(0, 3, 0).getType().isAir())
+                        return b.getLocation().add(0.5, 1, 0.5);
+                }
+            return null;
+        }
+        Block top = w.getHighestBlockAt(l.getBlockX(), l.getBlockZ(), HeightMap.MOTION_BLOCKING_NO_LEAVES);
+        if (s.kind().equals("kraken")) return top.isLiquid() ? top.getLocation().add(0.5, 1, 0.5) : null;
+        if (top.isLiquid()) return null;
+        return top.getLocation().add(0.5, 1, 0.5);
+    }
+
+    // ===================================================================== the run
+
+    void start(Player leader) {
+        if (run != null) { leader.sendMessage(ChatColor.RED + "A Boss Rush is already running."); return; }
+        String busy = pl.bossOutName();
+        if (busy != null) { leader.sendMessage(ChatColor.RED + busy + " is out somewhere: wait until that fight is over."); return; }
+        long now = System.currentTimeMillis();
+        List<Player> team = new ArrayList<>();
+        for (Player p : leader.getWorld().getPlayers())
+            if (survival(p) && !p.isDead() && p.getLocation().distanceSquared(leader.getLocation()) < 10 * 10) team.add(p);
+        if (!team.contains(leader)) { leader.sendMessage(ChatColor.RED + "Be in survival to start a Boss Rush."); return; }
+        for (Player p : team) {
+            Long until = cooldown.get(p.getUniqueId());
+            if (until != null && until > now && !leader.hasPermission("bosses.admin")) {
+                leader.sendMessage(ChatColor.RED + p.getName() + " ran a Boss Rush recently (" + ((until - now) / 60000 + 1) + " more minutes).");
+                return;
+            }
+        }
+        Run r = new Run(stages());
+        for (Player p : team) { r.team.add(p.getUniqueId()); r.home.put(p.getUniqueId(), p.getLocation()); }
+        r.startedAt = now;
+        run = r;
+        Bukkit.broadcastMessage(ChatColor.RED + "" + ChatColor.BOLD + "BOSS RUSH! " + ChatColor.YELLOW + names(team) + ChatColor.YELLOW
+                + " take on " + r.stages.size() + " bosses, back to back.");
+        next(r);
+    }
+
+    private static String names(List<Player> ps) {
+        List<String> n = new ArrayList<>();
+        for (Player p : ps) n.add(p.getName());
+        return String.join(", ", n);
+    }
+
+    /** Teleports the team to the next boss's biome and starts the countdown. */
+    void next(Run r) {
+        r.stage++;
+        r.defeated = false;
+        if (r.stage >= r.stages.size()) { win(r); return; }
+        Stage s = r.current();
+        Location a = arena(s);
+        if (a == null) {
+            msgTeam(r, ChatColor.GRAY + "(No " + s.name() + " arena could be found in this world, so that boss is skipped.)");
+            next(r);
+            return;
+        }
+        r.arena = a;
+        r.state = 0; r.t = 0;
+        int i = 0;
+        for (Player p : r.alive()) {
+            double ang = i++ * Math.PI * 2 / Math.max(1, r.alive().size());
+            Location to = a.clone().add(Math.cos(ang) * 2, 0, Math.sin(ang) * 2);
+            Location safe = surface(to, s);
+            p.teleport(safe != null ? safe : a);
+            p.setFallDistance(0);
+            p.playSound(p.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1f, 0.8f);
+            r.bar.addPlayer(p);
+        }
+        msgTeam(r, ChatColor.RED + "" + ChatColor.BOLD + "Boss " + (r.stage + 1) + "/" + r.stages.size() + ": " + ChatColor.GOLD + s.name());
+    }
+
+    void tick() {
+        Run r = run;
+        if (r == null) return;
+        r.t++;
+        List<Player> alive = r.alive();
+        if (alive.isEmpty() && r.state != 3) { fail(r, "the whole team is out"); return; }
+        Stage s = r.current();
+        long secs = (System.currentTimeMillis() - r.startedAt) / 1000;
+        r.bar.setTitle(ChatColor.RED + "" + ChatColor.BOLD + "Boss Rush " + ChatColor.GRAY + (r.stage + 1) + "/" + r.stages.size()
+                + (s != null ? "  " + ChatColor.GOLD + s.name() : "") + ChatColor.GRAY + "  " + time(secs * 1000));
+        r.bar.setProgress(Math.max(0, Math.min(1, (r.stage + (r.state == 2 ? 1 : 0)) / (double) r.stages.size())));
+        switch (r.state) {
+            case 0 -> { // countdown, then the boss appears
+                int left = 5 - r.t / 20;
+                if (r.t % 20 == 0 && left > 0) for (Player p : alive) {
+                    p.showTitle(Title.title(legacy(ChatColor.GOLD + "" + ChatColor.BOLD + s.name()), legacy(ChatColor.GRAY + "in " + left + "..."),
+                            Title.Times.times(java.time.Duration.ZERO, java.time.Duration.ofMillis(1100), java.time.Duration.ofMillis(100))));
+                    p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_HAT, 1f, 1.2f);
+                }
+                if (r.t >= 100) {
+                    Player lead = alive.get(0);
+                    if (!pl.rushSummon(s.kind(), r.arena, lead)) {
+                        msgTeam(r, ChatColor.GRAY + "(" + s.name() + " couldn't appear here, so that boss is skipped.)");
+                        next(r);
+                        return;
+                    }
+                    r.state = 1; r.t = 0;
+                }
+            }
+            case 1 -> { // the fight
+                if (r.defeated) {
+                    r.state = 2; r.t = 0;
+                    msgTeam(r, ChatColor.GREEN + "" + ChatColor.BOLD + s.name() + " down! " + ChatColor.GRAY + "Next boss in " + (int) c("break-seconds", 15) + " seconds.");
+                    for (Player p : alive) p.playSound(p.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 0.8f, 1.2f);
+                } else if (r.t > 100 && !pl.rushAlive(s.kind())) fail(r, s.name() + " left the fight");
+            }
+            case 2 -> { if (r.t >= c("break-seconds", 15) * 20) next(r); }
+            default -> { }
+        }
+    }
+
+    void win(Run r) {
+        r.state = 3;
+        long ms = System.currentTimeMillis() - r.startedAt;
+        List<Player> alive = r.alive();
+        Bukkit.broadcastMessage(ChatColor.RED + "" + ChatColor.BOLD + "BOSS RUSH COMPLETE! " + ChatColor.YELLOW + names(alive) + ChatColor.YELLOW
+                + " beat every boss in " + ChatColor.WHITE + time(ms) + ChatColor.YELLOW + "!");
+        for (Player p : alive) {
+            p.showTitle(Title.title(legacy(ChatColor.RED + "" + ChatColor.BOLD + "BOSS RUSH CHAMPION"), legacy(ChatColor.GRAY + time(ms)),
+                    Title.Times.times(java.time.Duration.ofMillis(300), java.time.Duration.ofMillis(4000), java.time.Duration.ofMillis(800))));
+            p.playSound(p.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1f, 1f);
+            reward(p);
+            pl.console("index stat " + p.getName() + " boss_rush 1", p);
+            record(p, ms, alive.size());
+        }
+        finish(r, true);
+    }
+
+    void reward(Player p) {
+        pl.console("givemythicbag " + (int) c("rewards.mythic-bags", 32) + " " + p.getName(), p);
+        List<String> items = pl.getConfig().getStringList("boss-rush.rewards.items");
+        if (items.isEmpty()) items = List.of("NETHERITE_INGOT:4", "DIAMOND_BLOCK:4", "TOTEM_OF_UNDYING:1");
+        for (String spec : items) {
+            String[] kv = spec.split(":");
+            Material m = Material.matchMaterial(kv[0].trim());
+            if (m == null) continue;
+            int n = 1;
+            try { n = kv.length > 1 ? Integer.parseInt(kv[1].trim()) : 1; } catch (NumberFormatException ignored) { }
+            pl.give(p, new ItemStack(m, Math.max(1, Math.min(m.getMaxStackSize(), n))));
+        }
+        int xp = (int) c("rewards.xp", 5000);
+        p.giveExp(xp);
+    }
+
+    void fail(Run r, String why) {
+        Bukkit.broadcastMessage(ChatColor.RED + "" + ChatColor.BOLD + "Boss Rush failed " + ChatColor.GRAY + "(" + why + ") at boss "
+                + (r.stage + 1) + "/" + r.stages.size() + ".");
+        Stage s = r.current();
+        if (s != null && r.state == 1) pl.rushKill(s.kind());
+        finish(r, false);
+    }
+
+    /** Ends the run: everyone still in it goes back to where they started. */
+    void finish(Run r, boolean won) {
+        r.bar.removeAll();
+        long until = System.currentTimeMillis() + (long) (c("cooldown-minutes", 60) * 60000);
+        for (UUID id : r.team) cooldown.put(id, until);
+        for (UUID id : r.team) {
+            Player p = Bukkit.getPlayer(id);
+            Location h = r.home.get(id);
+            if (p != null && !r.out.contains(id) && h != null) {
+                Bukkit.getScheduler().runTaskLater(pl, () -> { if (p.isOnline() && !p.isDead()) { p.teleport(h); p.setFallDistance(0); } }, won ? 100L : 60L);
+                p.sendMessage(ChatColor.GRAY + "Sending you back to where you started in a few seconds...");
+            }
+        }
+        if (run == r) run = null;
+    }
+
+    private void msgTeam(Run r, String text) {
+        for (UUID id : r.team) { Player p = Bukkit.getPlayer(id); if (p != null) p.sendMessage(text); }
+    }
+
+    static String time(long ms) {
+        long s = ms / 1000;
+        return (s / 3600 > 0 ? s / 3600 + ":" : "") + String.format(s / 3600 > 0 ? "%02d:%02d" : "%d:%02d", (s / 60) % 60, s % 60);
+    }
+
+    // ---------- the leaderboard (best time per player) ----------
+    void record(Player p, long ms, int teamSize) {
+        String k = "times." + p.getUniqueId();
+        long best = data.getLong(k + ".ms", Long.MAX_VALUE);
+        if (ms < best) {
+            data.set(k + ".ms", ms); data.set(k + ".name", p.getName()); data.set(k + ".team", teamSize);
+            p.sendMessage(ChatColor.GOLD + "New personal best: " + ChatColor.WHITE + time(ms));
+        }
+        data.set(k + ".runs", data.getInt(k + ".runs") + 1);
+        save();
+    }
+
+    void leaderboard(CommandSender to) {
+        var sec = data.getConfigurationSection("times");
+        to.sendMessage(ChatColor.RED + "" + ChatColor.BOLD + "Boss Rush " + ChatColor.GRAY + "- fastest times");
+        if (sec == null || sec.getKeys(false).isEmpty()) { to.sendMessage(ChatColor.GRAY + "  Nobody has finished one yet."); return; }
+        List<String> ids = new ArrayList<>(sec.getKeys(false));
+        ids.sort(Comparator.comparingLong(id -> sec.getLong(id + ".ms")));
+        for (int i = 0; i < Math.min(10, ids.size()); i++) {
+            String id = ids.get(i);
+            to.sendMessage(ChatColor.GOLD + "  " + (i + 1) + ". " + ChatColor.WHITE + sec.getString(id + ".name") + ChatColor.GRAY + "  "
+                    + time(sec.getLong(id + ".ms")) + " (team of " + sec.getInt(id + ".team") + ")");
+        }
+    }
+
+    // ===================================================================== events
+
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onDeath(PlayerDeathEvent e) {
+        Run r = run;
+        if (r == null || !r.team.contains(e.getEntity().getUniqueId()) || r.out.contains(e.getEntity().getUniqueId())) return;
+        if (pl.getConfig().getBoolean("boss-rush.keep-inventory", true)) {
+            e.setKeepInventory(true); e.getDrops().clear();
+            e.setKeepLevel(true); e.setDroppedExp(0);
+        }
+        r.out.add(e.getEntity().getUniqueId());
+        r.bar.removePlayer(e.getEntity());
+        e.getEntity().sendMessage(ChatColor.RED + "You're out of the Boss Rush." + ChatColor.GRAY + " (You kept your things.)");
+        msgTeam(r, ChatColor.GRAY + e.getEntity().getName() + " is out of the Boss Rush.");
+    }
+
+    @EventHandler
+    public void onQuit(PlayerQuitEvent e) {
+        Run r = run;
+        if (r != null && r.team.contains(e.getPlayer().getUniqueId())) { r.out.add(e.getPlayer().getUniqueId()); r.bar.removePlayer(e.getPlayer()); }
+    }
+
+    void shutdown() {
+        if (run != null) { run.bar.removeAll(); run = null; }
+    }
+
+    // ===================================================================== /bossrush
+
+    @Override
+    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        String sub = args.length > 0 ? args[0].toLowerCase() : "";
+        boolean admin = sender.hasPermission("bosses.admin");
+        switch (sub) {
+            case "start" -> { if (sender instanceof Player p) start(p); }
+            case "top", "leaderboard" -> leaderboard(sender);
+            case "stop" -> {
+                if (!admin) { sender.sendMessage(ChatColor.RED + "You don't have permission to do that."); return true; }
+                if (run == null) sender.sendMessage(ChatColor.GRAY + "No Boss Rush is running.");
+                else fail(run, "stopped by an admin");
+            }
+            case "skip" -> {
+                if (!admin || run == null) { sender.sendMessage(ChatColor.GRAY + "Nothing to skip."); return true; }
+                Stage s = run.current();
+                if (s != null && run.state == 1) pl.rushKill(s.kind());
+                run.state = 2; run.t = (int) (c("break-seconds", 15) * 20);
+                sender.sendMessage(ChatColor.GREEN + "Skipped to the next boss.");
+            }
+            case "setarena" -> {
+                if (!admin || !(sender instanceof Player p) || args.length < 2) { sender.sendMessage(ChatColor.YELLOW + "/bossrush setarena <boss>  (where you stand)"); return true; }
+                Stage s = STAGES.stream().filter(x -> x.kind().equalsIgnoreCase(args[1])).findFirst().orElse(null);
+                if (s == null) { sender.sendMessage(ChatColor.RED + "Bosses: " + kinds()); return true; }
+                String key = "arenas." + s.kind();
+                data.set(key + ".world", p.getWorld().getName());
+                data.set(key + ".x", p.getLocation().getX()); data.set(key + ".y", p.getLocation().getY()); data.set(key + ".z", p.getLocation().getZ());
+                save();
+                sender.sendMessage(ChatColor.GREEN + s.name() + " is fought here now.");
+            }
+            case "arenas" -> {
+                if (!admin) return true;
+                for (Stage s : stages()) {
+                    String key = "arenas." + s.kind();
+                    sender.sendMessage(ChatColor.GOLD + s.name() + ": " + ChatColor.WHITE + (data.isConfigurationSection(key)
+                            ? data.getString(key + ".world") + " " + (int) data.getDouble(key + ".x") + ", " + (int) data.getDouble(key + ".y") + ", " + (int) data.getDouble(key + ".z")
+                            : ChatColor.GRAY + "not found yet (searched the first time it's needed)"));
+                }
+            }
+            case "clearcooldown" -> { if (admin) { cooldown.clear(); sender.sendMessage(ChatColor.GREEN + "Boss Rush cooldowns cleared."); } }
+            default -> {
+                sender.sendMessage(ChatColor.RED + "" + ChatColor.BOLD + "Boss Rush" + ChatColor.GRAY + ": every boss, back to back ("
+                        + stages().size() + "). You're teleported to each boss's home biome.");
+                sender.sendMessage(ChatColor.YELLOW + "/bossrush start " + ChatColor.GRAY + "- you and everyone within 10 blocks (in survival)");
+                sender.sendMessage(ChatColor.YELLOW + "/bossrush top " + ChatColor.GRAY + "- the fastest times");
+                sender.sendMessage(ChatColor.GRAY + "Bosses drop no loot in a rush. Die and you're out (you keep your things). Finish it for big rewards.");
+                if (run != null) sender.sendMessage(ChatColor.GOLD + "A rush is running: boss " + (run.stage + 1) + "/" + run.stages.size() + ".");
+                if (admin) sender.sendMessage(ChatColor.DARK_GRAY + "Admin: /bossrush stop | skip | setarena <boss> | arenas | clearcooldown");
+            }
+        }
+        return true;
+    }
+
+    String kinds() {
+        List<String> k = new ArrayList<>();
+        for (Stage s : STAGES) k.add(s.kind());
+        return String.join(", ", k);
+    }
+
+    @Override
+    public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+        List<String> o = new ArrayList<>();
+        if (args.length == 1) { o.addAll(List.of("start", "top")); if (sender.hasPermission("bosses.admin")) o.addAll(List.of("stop", "skip", "setarena", "arenas", "clearcooldown")); }
+        else if (args.length == 2 && args[0].equalsIgnoreCase("setarena")) for (Stage s : STAGES) o.add(s.kind());
+        String last = args[args.length - 1].toLowerCase();
+        o.removeIf(x -> !x.startsWith(last));
+        return o;
+    }
+}

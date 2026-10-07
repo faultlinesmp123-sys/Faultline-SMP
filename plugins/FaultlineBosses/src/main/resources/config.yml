@@ -471,3 +471,81 @@ explorer:
     enabled: true
     volume: 1.0
     length-seconds: 122             # Black Knife (Deltarune): from the snap through the tiger, then again from "You shall die."
+
+# ============================================================================
+# GRIMTUSK, THE PIGLIN WARLORD (the Nether boss, Warlord.java). Raise a Warlord's Challenge (4 gold blocks, 4 blaze rods,
+# 1 netherite scrap) inside a Bastion Remnant. Phase 1 he rides Ironhide (his war hoglin) and takes 60% less damage;
+# phase 2 on foot; phase 3 (below 35%) enraged. Music: Pigstep. /grimtusk summon | kill | phase | item
+# ============================================================================
+warlord:
+  require-bastion: true
+  health: 3000
+  health-per-extra-fighter: 0.2
+  scale: 1.8
+  melee-damage: 11
+  walk-speed: 0.3
+  enraged-speed: 0.38
+  mounted-damage-reduction: 0.6
+  damage-multiplier: 1.0
+  arena-radius: 36
+  fight-radius: 48
+  max-guards: 6
+  cooldown-minutes: 15
+  charge-speed: 1.1
+  move-gap-ticks:
+    phase1: 70
+    phase2: 55
+    phase3: 40
+  ironhide:
+    health: 600
+    scale: 1.7
+    damage: 9
+    speed: 0.32
+  guards:
+    guard-health: 40
+    crossbow-health: 24
+  moves:
+    tusk-charge: 12
+    cleave: 14
+    cleave-radius: 6.5
+    rally-count: 4
+    magma-slam: 11
+    slam-radius: 10
+    soul-fire: 9
+    soul-fire-length: 22
+    gold-rain: 14
+    warcry: 6
+  cleaver:
+    damage: 10
+    cooldown-seconds: 12
+  music:
+    enabled: true
+    sound: "minecraft:music_disc.pigstep"
+    length-seconds: 149
+    volume: 1.0
+  rewards:
+    mythic-bags-min: 6
+    mythic-bags-extra: 5
+    goodie-bags: 4
+    netherite-chance: 0.5
+    cleaver-chance: 0.25
+    xp: 2000
+
+# ============================================================================
+# THE BOSS RUSH (/bossrush start): every boss back to back, the team teleported to each boss's home biome first. Arenas
+# are found once (the nearest fitting biome to the world spawn, a bastion for Grimtusk) and saved in bossrush.yml;
+# /bossrush setarena <boss> sets one by hand. No loot from the bosses during a rush; dying puts you out (keep-inventory).
+# ============================================================================
+boss-rush:
+  bosses: [demoneye, frostbeard, dune, frostmaw, don, kraken, jacob, rocco, grimtusk]
+  world: ""
+  nether-world: ""
+  search-radius: 4000
+  search-chunks: 100
+  break-seconds: 15
+  cooldown-minutes: 60
+  keep-inventory: true
+  rewards:
+    mythic-bags: 32
+    xp: 5000
+    items: ["NETHERITE_INGOT:4", "DIAMOND_BLOCK:4", "TOTEM_OF_UNDYING:1"]

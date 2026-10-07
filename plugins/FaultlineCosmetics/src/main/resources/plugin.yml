@@ -1,5 +1,5 @@
 name: FaultlineCosmetics
-version: '1.0.1'
+version: '1.1.0'
 main: net.faultlinesmp.cosmetics.FaultlineCosmetics
 api-version: '1.21'
 author: FaultlineSMP
@@ -13,7 +13,7 @@ commands:
     aliases: [cosmetic-menu, wardrobe]
   cosmetic:
     description: Admin cosmetic tools (for everyone else it opens the cosmetics menu)
-    usage: /cosmetic <unlock|lock|list|reload> [player] [id|all]
+    usage: /cosmetic <unlock|lock|list|reload|season|tokens|shop> [player] [id|all]
 
 permissions:
   faultlinecosmetics.admin:

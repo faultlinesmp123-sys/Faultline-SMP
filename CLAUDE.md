@@ -35,11 +35,11 @@ All are Maven projects: Java 21, `paper-api 1.21.11-R0.1-SNAPSHOT`. Build with
 | Plugin | Package | What it does | Commands |
 |---|---|---|---|
 | **LimboBlackMarket** | `net.limbosmp.blackmarket` | Head-tier economy, kill/death stats, kill streaks, anti-farm, quests + Quest Book, friendly-fire logging, global reload | `/tier`, `/markethelp`, `/stats`, `/leaderboard`, `/tierleaderboard`, `/faultlinereload` (`/freload`), `/givequestbook` |
-| **FaultlineItems** | `net.faultlinesmp.items` | All custom items + accessories (3-slot `/accessories` GUI), staffs, spawn eggs, diving gear, Kraken & Diamond Jacob gear, Skeleton Wanderer cave trader, admin `/itemsmenu` | many `/give*` commands, `/itemsmenu` (`/fitems`), `/itemsreload`, `/cavetrader`, `/batform` |
+| **FaultlineItems** | `net.faultlinesmp.items` | All custom items + accessories (3-slot `/accessories` GUI), staffs, spawn eggs, diving gear, Kraken & Diamond Jacob gear, Skeleton Wanderer cave trader, **Meteor strikes** (`Meteor.java`), **the Caravan** (`Caravan.java`), admin `/itemsmenu` | many `/give*` commands, `/itemsmenu` (`/fitems`), `/itemsreload`, `/cavetrader`, `/batform`, `/meteor [now\|here\|stop\|egg]`, `/caravan [now\|here\|stop\|reroll]` |
 | **FaultlineRaids** | `net.faultlinesmp.raids` | Zombie Raids (Zombie Omens, Captains, Rotbeard), Skeleton Raids, and **Piglin Raids** (`Piglins.java`: War Horn, the Bulwark, the Great Hog) | `/zraid <start\|stop\|captain\|menu\|egg\|omen\|horn>` |
-| **FaultlineBosses** | `net.faultlinesmp.bosses` | Bosses in one ~585 KB file: Demon Eye, Frostbeard, Dune Devourer/Frostmaw, Don Lorenzo, Kraken, **Diamond Jacob**; admin boss form. **Rocco Vendetta** (+ Werner, the Vendetta Fist) lives in its own `Vendetta.java`. **The way down to the Lost Explorer** (Swarm, his staircase, the void world) is `Below.java`; **the Lost Explorer's fight** is `Explorer.java` (+ `ExplorerAnims.java`) | `/demoneye`, `/frostbeard`, `/dune`, `/don`, `/kraken <summon\|sea\|...>`, `/jacob <summon\|kill\|phase\|item>`, `/rocco <summon\|kill\|phase\|tattoos\|werner\|item>`, `/bossmorph <boss\|off\|release>`, `/below <swarm\|void\|leave\|close\|slayer\|info>`, `/explorer <start\|stop\|skip\|phase\|stun\|reset\|arena>` |
-| **FaultlineIndex** | `net.faultlinesmp.index` | The Faultline Index codex. Entries live in `src/main/resources/index.yml`, font glyphs in `glyphs.yml` | `/index [give\|reset] [player]` |
-| **FaultlineCosmetics** | `net.faultlinesmp.cosmetics` | Permanent cosmetic unlocks worn in 4 slots (Hat, Neck, Back, Body) over armor, for Java and Bedrock. Cosmetics are defined in its `config.yml`, unlocks saved in `players.yml` | `/cosmetics`, admin `/cosmetic <unlock\|lock\|list\|reload>` |
+| **FaultlineBosses** | `net.faultlinesmp.bosses` | Bosses in one ~585 KB file: Demon Eye, Frostbeard, Dune Devourer/Frostmaw, Don Lorenzo, Kraken, **Diamond Jacob**; admin boss form. **Rocco Vendetta** (+ Werner, the Vendetta Fist) lives in its own `Vendetta.java`. **The way down to the Lost Explorer** (Swarm, his staircase, the void world) is `Below.java`; **the Lost Explorer's fight** is `Explorer.java` (+ `ExplorerAnims.java`). **Grimtusk, the Piglin Warlord** (Nether boss) is `Warlord.java`; **the Boss Rush** is `BossRush.java` | `/demoneye`, `/frostbeard`, `/dune`, `/don`, `/kraken <summon\|sea\|...>`, `/jacob <summon\|kill\|phase\|item>`, `/rocco <summon\|kill\|phase\|tattoos\|werner\|item>`, `/bossmorph <boss\|off\|release>`, `/below <swarm\|void\|leave\|close\|slayer\|info>`, `/explorer <start\|stop\|skip\|phase\|stun\|reset\|arena>`, `/grimtusk <summon\|kill\|phase\|item>`, `/bossrush [start\|top]` (admin `stop\|skip\|setarena\|arenas\|clearcooldown`) |
+| **FaultlineIndex** | `net.faultlinesmp.index` | The Faultline Index codex + **Achievements** (`Achievements.java`). Entries and achievements live in `src/main/resources/index.yml`, font glyphs in `glyphs.yml` | `/index [achievements\|give\|reset] [player]`, `/index stat <player> <name> [n]` (other plugins), `/index discover <player> <entry>` |
+| **FaultlineCosmetics** | `net.faultlinesmp.cosmetics` | Permanent cosmetic unlocks worn in 4 slots (Hat, Neck, Back, Body) over armor, for Java and Bedrock. **Seasons** (`Seasons.java`: Halloween/Winter currency + Seasonal Shop). Cosmetics are defined in its `config.yml`, unlocks saved in `players.yml` | `/cosmetics [shop]`, admin `/cosmetic <unlock\|lock\|list\|reload\|season\|tokens\|shop>` |
 | **FaultlineShips** | `net.faultlinesmp.ships` | Ships: Dinghy, Sloop, Brigantine, Galleon, Pirate Ship. Blueprint → lay out on water → place every block → sail. Health, part damage, sinking, Shipwright's Hammer repair minigame, cannons, banners, names. **Skeleton ships** and the **Pirate Invasion** (`Pirates.java`). Ships saved in `ships.yml` | `/ship [list\|info\|name\|crew\|anchor\|stop\|banner\|scrap]`, admin `/ship <give\|repair\|wreck\|remove\|tp> [name\|#n]`, `/ship spawn <ship> [owner]`, `/ship pirates <ship\|invasion\|horn\|spawn\|egg\|stop>` |
 
 Notes:
@@ -203,6 +203,44 @@ Notes:
   **1.3.4**: skeleton ships sail on while out past the draw range (`Ship.tick`/`think` run when `unseenLoaded()`), so
   they keep chasing you instead of freezing; a lone ship sees you from `pirates.sight` 200 (was 110), invasion ships hunt
   fighters from `pirates.invasion.sight` 400 (none of the fleet drifts off).
+- **Meteor strikes** (`FaultlineItems/Meteor.java`, config `meteor:`): every `every-minutes` (60, real time) a meteor falls in the
+  Overworld `min/max-distance` (250-600) from a random survival player, announced a minute ahead (chat, title, boss bar with
+  X/Z). Only generated chunks, only natural ground (`NATURAL` set; any player-made block within 12 blocks = another spot; never
+  touches `LEGACY_` materials). Impact: crater of magma/blackstone/basalt, a rock with 3 Ancient Debris, the CORE (Gilded
+  Blackstone) on top, guards: 4 Molten Husks, 4 Meteor Crawlers (endermites), 1 Star Sentinel (blaze) (tags
+  `faultline_meteor_*`, `faultline_star_sentinel`). First to break the core gets `meteor.loot` (locked to them) +
+  `index stat <p> meteors 1`. Unclaimed after 30 min = obsidian. Tested in the items harness (`EventsTest`).
+- **The Caravan** (`FaultlineItems/Caravan.java`, config `caravan:`): every 3 h (first 30 min after start) a Wandering Trader
+  "Caravan Merchant" (tag `faultline_caravan`, 2 trader llamas, a camel) camps 40-100 blocks from a random survival player for
+  60 min (announced). 8 offers from `caravan.stock` (`id:emeralds:diamonds:netherite:weight:uses`; prices only in diamonds,
+  emeralds, netherite). Trades = `index stat <p> caravan_trades 1` (Paper `PlayerTradeEvent`). Tested in `EventsTest`.
+- **Grimtusk, the Piglin Warlord** (`FaultlineBosses/Warlord.java`, config `warlord:`): Warlord's Challenge (4 gold blocks,
+  4 blaze rods, netherite scrap; PDC `warlord_item=challenge`) raised in a Bastion Remnant (`Chunk#getStructures`). Real mobs
+  (Java + Bedrock see the same): a scaled Piglin Brute (tag `faultline_grimtusk`; real hp tracked in `hp`, entity healed every
+  tick) riding IRONHIDE (scaled hoglin, `faultline_ironhide`, 600 hp). 3000 hp +20%/extra fighter; phase 1 mounted = 60% less
+  damage; Ironhide dead or 70% = phase 2; 35% = phase 3 (enraged). Moves: Tusk Charge, Golden Cleave, Rally (Bastion Guards /
+  Crossbowmen), Fireball Volley, Magma Slam, Soul Fire Lines, Warcry, Gold Rain (block displays). Music: vanilla Pigstep.
+  Drops Mythic/Goodie bags, gold, debris, netherite and 25% GRIMTUSK'S CLEAVER (netherite axe, `warlord_item=cleaver`,
+  right-click Golden Cleave, 12 s). Boss form hooks done (`pilot`, `takeMove`, `morphMoves`, `MORPH_KINDS`, `startMorph`).
+  Tested in the bosses harness (`WarlordTest`).
+- **Boss Rush** (`FaultlineBosses/BossRush.java`, config `boss-rush:`, data `bossrush.yml`): `/bossrush start` = leader + everyone
+  in survival within 10 blocks; refused while any boss is out. Stages (`boss-rush.bosses`): demoneye, frostbeard, dune,
+  frostmaw, don, kraken, jacob, rocco, grimtusk. Each: teleport to that boss's biome (found once with `locateNearestBiome` /
+  `locateNearestStructure` from the world spawn, saved; `/bossrush setarena <boss>`), 5 s countdown, `rushSummon`. Every
+  boss's reward method starts with `rushDefeated(kind)` + `if (rushSuppressLoot(kind)) return;` (a NEW BOSS needs both, plus
+  cases in `rushSummon`/`rushAlive`/`rushKill`/`bossOutName`). Death = out with keep-inventory; all out or the boss leaves =
+  fail. Win: rewards, `index stat <p> boss_rush 1`, best time per player in `bossrush.yml` (`/bossrush top`), sent home.
+- **Achievements** (`FaultlineIndex/Achievements.java`, `achievements:` in index.yml): goals by `defeat` (+ `need`
+  all/any/n), `chapter`, `found(-items/-creatures)`, or `stat` + `count`. Checked on every unlock/kill/stat and 10 s after
+  join (retroactive). Done = server-wide message, title, reward items/xp, cosmetic via `cosmetic unlock`. Saved in
+  progress.yml (`achievements.<uuid>.done/stats`). The cover's "Achievements" line opens the book. Tested (`AchievementTest`).
+- **Seasons** (`FaultlineCosmetics/Seasons.java`, config `seasons:` with code defaults): Halloween 10-01..11-02 (Candy),
+  Winter 12-01..01-06 (Presents). In season, hostile mobs (`Enemy`) killed by a player drop 1-2 tokens 8% (PAPER, model
+  `faultline:season_candy/present`, PDC `faultlinecosmetics:candy/present`); the Seasonal Shop (button in /cosmetics,
+  `/cosmetics shop`) sells cosmetics with `season:` + `price:`. `/cosmetic season <id|off|auto>` forces one. New cosmetics in
+  the JAR's config load even when the server's config.yml doesn't list them (read from the defaults; Bukkit's
+  `getConfigurationSection` would create an empty section, so only ids the server's file really has are read from it).
+  Hats are head-pixel models (front -z, display.head scale 1.6), Bedrock helmet attachables. Tested (`SeasonTest`).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.
@@ -275,6 +313,10 @@ Bedrock players are detected by Floodgate UUID (top half 0) in every plugin (`be
 Diamond Jacob's knight, blaze form, hawk, and war mace (jacob_hammer) are generated by `tools/jacob_models.py` (Pillow + numpy).
 Run `python3 tools/jacob_models.py <unpacked-pack-dir> --preview tools/previews`, zip the output into
 `FaultlineSMP.zip`, and update the hash. The preview PNGs show the result without launching the game.
+
+The seasonal and achievement cosmetics are in `tools/cosmetics_new.py` (used by `cosmetics_assets.py`). Index icons and the
+Grimtusk items for the meteor/Caravan/Grimtusk/achievements come from `python3 tools/events_assets.py <unpacked-pack> --preview tools/previews`
+(run it after `cosmetics_assets.py`; it also adds glyphs to `glyphs.yml` and providers to `font/index.json`).
 
 Rocco Vendetta, Werner and the Vendetta Enforcers (`vendetta_goon`; skins → 6-piece rigs), the Vendetta Fist, the Vendetta Contract and their Index icons come from
 `python3 tools/vendetta_models.py <unpacked-pack-dir> --preview tools/previews` (it reuses `jacob_models.py` and `cosmetics_assets.py`).

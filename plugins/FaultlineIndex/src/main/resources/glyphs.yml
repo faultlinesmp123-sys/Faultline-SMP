@@ -490,3 +490,54 @@ skeleton_commander:
 skeleton_captain:
   large: 59227
   small: 58203
+grimtusk:
+  large: 59228
+  small: 58204
+ironhide:
+  large: 59229
+  small: 58205
+bastion_guard:
+  large: 59230
+  small: 58206
+bastion_crossbowman:
+  large: 59231
+  small: 58207
+warlord_challenge:
+  large: 59232
+  small: 58208
+warlord_cleaver:
+  large: 59233
+  small: 58209
+molten_husk:
+  large: 59234
+  small: 58210
+meteor_crawler:
+  large: 59235
+  small: 58211
+star_sentinel:
+  large: 59236
+  small: 58212
+meteorite:
+  large: 59237
+  small: 58213
+caravan_merchant:
+  large: 59238
+  small: 58214
+slayer_crown:
+  large: 59239
+  small: 58215
+champion_cape:
+  large: 59240
+  small: 58216
+meteor_pendant:
+  large: 59241
+  small: 58217
+pirate_hat:
+  large: 59242
+  small: 58218
+season_candy:
+  large: 59243
+  small: 58219
+season_present:
+  large: 59244
+  small: 58220

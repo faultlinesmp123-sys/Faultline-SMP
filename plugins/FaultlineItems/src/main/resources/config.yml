@@ -320,7 +320,7 @@ boots:
 item-textures:
   enabled: true
   url: "https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/main/FaultlineSMP.zip"
-  hash: "e7d4e5101309455ca89679f1a036a8f7fbd30945"
+  hash: "ad2e845cf4827badd89a6fea96ebcb7fe8a243ff"
 
 
 # Immunity charms: one accessory per debuff (Guardian Scale, Ginger Root, Blindfold, Salt Ration,
@@ -340,6 +340,45 @@ ankh-shield:
   damage-resistance: 0.05     # 5% less damage taken
   speed-bonus: 0.15           # +15% speed
   melee-damage-bonus: 0.025   # +2.5% melee damage
+
+# ---------------- Meteor strikes ----------------
+# Every hour (real time) a meteor falls in the Overworld, 250-600 blocks from a random survival player. Everyone is told
+# where a minute ahead. It lands in a crater (only on natural ground, never near builds), guarded by Molten Husks,
+# Meteor Crawlers and a Star Sentinel. The first player to break its core (the Gilded Blackstone on top) gets the loot.
+# The rock has Ancient Debris in it. Unclaimed, it cools to obsidian after 30 minutes.  /meteor now | here | stop
+meteor:
+  enabled: true
+  every-minutes: 60
+  warning-seconds: 60
+  min-distance: 250
+  max-distance: 600
+  lifetime-minutes: 30
+  crater-radius: 5
+  ancient-debris: 3
+  impact-damage: 14
+  guards:
+    molten-husks: 4
+    meteor-crawlers: 4
+    star-sentinels: 1
+    husk-health: 40
+    crawler-health: 12
+    sentinel-health: 80
+  loot:
+    xp: 300
+    items: ["DIAMOND:4-8", "EMERALD:6-12", "NETHERITE_SCRAP:1-2", "GOLD_INGOT:8-16", "AMETHYST_SHARD:8-16", "mythic_bag:1", "goodie_bag:2"]
+
+# ---------------- The Caravan (a traveling merchant) ----------------
+# Every 3 hours he sets up camp 40-100 blocks from a random survival player for one hour (everyone is told where), and
+# sells rare things for diamonds, emeralds and netherite. stock lines: id:emeralds:diamonds:netherite:weight:uses
+# (a trade takes at most two of the three). /caravan now | here | stop | reroll
+caravan:
+  enabled: true
+  first-minutes: 30
+  every-minutes: 180
+  stay-minutes: 60
+  min-distance: 40
+  max-distance: 100
+  offers: 8
 
 # ---------------- The Skeleton Wanderer (a cave trader who sells accessories) ----------------
 cave-trader:

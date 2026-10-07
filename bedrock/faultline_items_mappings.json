@@ -685,6 +685,18 @@
     "components": {
      "minecraft:max_stack_size": 1
     }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:warlord_cleaver",
+    "bedrock_identifier": "faultline:warlord_cleaver",
+    "bedrock_options": {
+     "icon": "faultline.warlord_cleaver",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    }
    }
   ],
   "minecraft:netherite_pickaxe": [
@@ -827,6 +839,32 @@
    },
    {
     "type": "definition",
+    "model": "faultline:season_candy",
+    "bedrock_identifier": "faultline:season_candy",
+    "bedrock_options": {
+     "icon": "faultline.season_candy",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    },
+    "display_name": "Candy"
+   },
+   {
+    "type": "definition",
+    "model": "faultline:season_present",
+    "bedrock_identifier": "faultline:season_present",
+    "bedrock_options": {
+     "icon": "faultline.season_present",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    },
+    "display_name": "Present"
+   },
+   {
+    "type": "definition",
     "model": "faultline:vendetta_contract",
     "bedrock_identifier": "faultline:vendetta_contract",
     "bedrock_options": {
@@ -843,6 +881,18 @@
     "bedrock_identifier": "faultline:vendetta_fist",
     "bedrock_options": {
      "icon": "faultline.vendetta_fist",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:warlord_challenge",
+    "bedrock_identifier": "faultline:warlord_challenge",
+    "bedrock_options": {
+     "icon": "faultline.warlord_challenge",
      "allow_offhand": true
     },
     "components": {

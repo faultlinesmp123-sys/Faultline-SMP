@@ -760,6 +760,12 @@ final class Pirates implements Listener {
         }
         Player by = null;
         for (Player p : s.world().getPlayers()) if (p.getLocation().distanceSquared(s.center()) < 80 * 80) { by = p; break; }
+        // the Pirate Hunter achievement (FaultlineIndex): everyone in the fight nearby gets the sinking
+        if (Bukkit.getPluginManager().getPlugin("FaultlineIndex") != null)
+            for (Player p : s.world().getPlayers())
+                if ((p.getGameMode() == org.bukkit.GameMode.SURVIVAL || p.getGameMode() == org.bukkit.GameMode.ADVENTURE)
+                        && p.getLocation().distanceSquared(s.center()) < 64 * 64)
+                    Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "index stat " + p.getName() + " skeleton_ships 1");
         if (b.inv != null) {
             for (UUID f : b.inv.fighters) { Player p = Bukkit.getPlayer(f); if (p != null) p.sendActionBar(Component.text("A skeleton ship goes down! " + (b.inv.alive()) + " left.", NamedTextColor.GOLD)); }
             if (b.flagship) for (int i = 0; i < 3; i++) { // bosses still waiting on its deck: they'll come through the water instead

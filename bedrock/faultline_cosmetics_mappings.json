@@ -24,6 +24,116 @@
    },
    {
     "type": "definition",
+    "model": "faultline:cosmetic/pumpkin_head_icon",
+    "bedrock_identifier": "faultline:pumpkin_head_icon",
+    "display_name": "Pumpkin Head",
+    "bedrock_options": {
+     "icon": "faultline.pumpkin_head_icon",
+     "allow_offhand": false
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:cosmetic/witch_hat_icon",
+    "bedrock_identifier": "faultline:witch_hat_icon",
+    "display_name": "Witch Hat",
+    "bedrock_options": {
+     "icon": "faultline.witch_hat_icon",
+     "allow_offhand": false
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:cosmetic/bat_wings_icon",
+    "bedrock_identifier": "faultline:bat_wings_icon",
+    "display_name": "Bat Wings",
+    "bedrock_options": {
+     "icon": "faultline.bat_wings_icon",
+     "allow_offhand": false
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:cosmetic/santa_hat_icon",
+    "bedrock_identifier": "faultline:santa_hat_icon",
+    "display_name": "Santa Hat",
+    "bedrock_options": {
+     "icon": "faultline.santa_hat_icon",
+     "allow_offhand": false
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:cosmetic/reindeer_antlers_icon",
+    "bedrock_identifier": "faultline:reindeer_antlers_icon",
+    "display_name": "Reindeer Antlers",
+    "bedrock_options": {
+     "icon": "faultline.reindeer_antlers_icon",
+     "allow_offhand": false
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:cosmetic/winter_scarf_icon",
+    "bedrock_identifier": "faultline:winter_scarf_icon",
+    "display_name": "Winter Scarf",
+    "bedrock_options": {
+     "icon": "faultline.winter_scarf_icon",
+     "allow_offhand": false
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:cosmetic/gift_sack_icon",
+    "bedrock_identifier": "faultline:gift_sack_icon",
+    "display_name": "Gift Sack",
+    "bedrock_options": {
+     "icon": "faultline.gift_sack_icon",
+     "allow_offhand": false
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:cosmetic/slayer_crown_icon",
+    "bedrock_identifier": "faultline:slayer_crown_icon",
+    "display_name": "Slayer's Crown",
+    "bedrock_options": {
+     "icon": "faultline.slayer_crown_icon",
+     "allow_offhand": false
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:cosmetic/champion_cape_icon",
+    "bedrock_identifier": "faultline:champion_cape_icon",
+    "display_name": "Champion's Cape",
+    "bedrock_options": {
+     "icon": "faultline.champion_cape_icon",
+     "allow_offhand": false
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:cosmetic/meteor_pendant_icon",
+    "bedrock_identifier": "faultline:meteor_pendant_icon",
+    "display_name": "Meteor Pendant",
+    "bedrock_options": {
+     "icon": "faultline.meteor_pendant_icon",
+     "allow_offhand": false
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:cosmetic/pirate_hat_icon",
+    "bedrock_identifier": "faultline:pirate_hat_icon",
+    "display_name": "Pirate Captain's Hat",
+    "bedrock_options": {
+     "icon": "faultline.pirate_hat_icon",
+     "allow_offhand": false
+    }
+   },
+   {
+    "type": "definition",
     "model": "faultline:cosmetic/rocco_chains",
     "bedrock_identifier": "faultline:rocco_chains",
     "display_name": "Rocco's Golden Chains",
@@ -56,11 +166,219 @@
    },
    {
     "type": "definition",
+    "model": "faultline:cosmetic/winter_scarf",
+    "bedrock_identifier": "faultline:winter_scarf",
+    "display_name": "Winter Scarf",
+    "bedrock_options": {
+     "icon": "faultline.winter_scarf_icon",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "legs"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:cosmetic/meteor_pendant",
+    "bedrock_identifier": "faultline:meteor_pendant",
+    "display_name": "Meteor Pendant",
+    "bedrock_options": {
+     "icon": "faultline.meteor_pendant_icon",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "legs"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:cosmetic/bat_wings",
+    "bedrock_identifier": "faultline:bat_wings",
+    "display_name": "Bat Wings",
+    "bedrock_options": {
+     "icon": "faultline.bat_wings_icon",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "feet"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:cosmetic/gift_sack",
+    "bedrock_identifier": "faultline:gift_sack",
+    "display_name": "Gift Sack",
+    "bedrock_options": {
+     "icon": "faultline.gift_sack_icon",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "feet"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:cosmetic/champion_cape",
+    "bedrock_identifier": "faultline:champion_cape",
+    "display_name": "Champion's Cape",
+    "bedrock_options": {
+     "icon": "faultline.champion_cape_icon",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "feet"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:cosmetic/pumpkin_head",
+    "bedrock_identifier": "faultline:pumpkin_head",
+    "display_name": "Pumpkin Head",
+    "bedrock_options": {
+     "icon": "faultline.pumpkin_head_icon",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:cosmetic/witch_hat",
+    "bedrock_identifier": "faultline:witch_hat",
+    "display_name": "Witch Hat",
+    "bedrock_options": {
+     "icon": "faultline.witch_hat_icon",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:cosmetic/santa_hat",
+    "bedrock_identifier": "faultline:santa_hat",
+    "display_name": "Santa Hat",
+    "bedrock_options": {
+     "icon": "faultline.santa_hat_icon",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:cosmetic/reindeer_antlers",
+    "bedrock_identifier": "faultline:reindeer_antlers",
+    "display_name": "Reindeer Antlers",
+    "bedrock_options": {
+     "icon": "faultline.reindeer_antlers_icon",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:cosmetic/slayer_crown",
+    "bedrock_identifier": "faultline:slayer_crown",
+    "display_name": "Slayer's Crown",
+    "bedrock_options": {
+     "icon": "faultline.slayer_crown_icon",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:cosmetic/pirate_hat",
+    "bedrock_identifier": "faultline:pirate_hat",
+    "display_name": "Pirate Captain's Hat",
+    "bedrock_options": {
+     "icon": "faultline.pirate_hat_icon",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
     "model": "faultline:cosmetic/rocco_coat_icon",
     "bedrock_identifier": "faultline:rocco_coat",
     "display_name": "Rocco's Coat",
     "bedrock_options": {
      "icon": "faultline.rocco_coat_icon",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "chest"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:cosmetic/skeleton_suit_icon",
+    "bedrock_identifier": "faultline:skeleton_suit",
+    "display_name": "Skeleton Suit",
+    "bedrock_options": {
+     "icon": "faultline.skeleton_suit_icon",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "chest"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:cosmetic/ugly_sweater_icon",
+    "bedrock_identifier": "faultline:ugly_sweater",
+    "display_name": "Ugly Sweater",
+    "bedrock_options": {
+     "icon": "faultline.ugly_sweater_icon",
      "allow_offhand": false
     },
     "components": {

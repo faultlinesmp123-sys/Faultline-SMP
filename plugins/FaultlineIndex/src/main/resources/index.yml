@@ -728,3 +728,86 @@ entries:
   - {chapter: enemies, name: "Ghost Pirate", icon: cursed_wraith, detect-tag: faultline_pirate_wraith,
      where: "Some skeleton ship crews, and the Skeleton Captain's ghost crew (4 rise when he drops below half health). 34 health.",
      does: "A drowned sailor's ghost: you only see its glowing outline and its cutlass, trailing souls. It drifts down slowly instead of falling, and its blade withers you.", drops: ["1-3 Bones|100%", "2-6 Gold Nuggets|30%", "1-3 Cannonballs|20%"]}
+
+  # ---------------------------------------------------------------- 1.5: meteors, the Caravan, Grimtusk, seasons
+  - {chapter: bosses, id: grimtusk, name: "Grimtusk, the Piglin Warlord", icon: grimtusk, detect-tag: faultline_grimtusk,
+     where: "Raise a Warlord's Challenge inside a Bastion Remnant in the Nether. 3,000 health (+20% per extra fighter), over 3 phases. Music: Pigstep.",
+     does: "Phase 1: he rides Ironhide, his armored war hoglin, and takes 60% less damage while mounted: Tusk Charge (a red line, then Ironhide charges down it), Golden Cleave (a flaming arc in front of him), Rally the Bastion (Bastion Guards and Crossbowmen pour out) and Fireball Volley. Bring Ironhide down, or Grimtusk drops to 70% and Ironhide collapses. Phase 2 on foot adds Magma Slam (he leaps at you: jump over the ring of magma), Soul Fire Lines and Warcry (throws everyone back and drives his guards on). Below 35% he's enraged: faster, harder hitting, and Gold Rain drops gold blocks onto glowing circles.",
+     drops: ["6-10 Mythic Goodie Bags|100%", "4 Goodie Bags|100%", "8-16 Gold Blocks|100%", "2-4 Ancient Debris|100%", "1-3 Netherite Ingots|50%", "Grimtusk's Cleaver|25%", "2,000 XP|100%"]}
+  - {chapter: bosses, id: ironhide, name: "Ironhide", icon: ironhide, detect-tag: faultline_ironhide,
+     where: "Grimtusk's war hoglin: he rides it out of the bastion. 600 health.",
+     does: "Charges where its tusks point, gores anyone close, and shields its rider (Grimtusk takes 60% less damage while he's on it).",
+     drops: ["6-11 Cooked Porkchops|100%", "4-7 Leather|100%"]}
+  - {chapter: enemies, name: "Bastion Guard", icon: bastion_guard, detect-tag: faultline_grimtusk_guard,
+     where: "Called out by Grimtusk's Rally the Bastion. 40 health.", does: "A Piglin Brute with a golden axe. His Warcry makes them stronger and faster.",
+     drops: ["3-7 Gold Nuggets|60%"]}
+  - {chapter: enemies, name: "Bastion Crossbowman", icon: bastion_crossbowman, detect-tag: faultline_grimtusk_xbow,
+     where: "Called out by Grimtusk's Rally the Bastion. 24 health.", does: "A piglin with a crossbow that keeps its distance.",
+     drops: ["3-7 Gold Nuggets|60%"]}
+  - {chapter: consumables, name: "Warlord's Challenge", icon: warlord_challenge, detect: "faultlinebosses:warlord_item=challenge",
+     how: "Craft it: Gold Blocks in the corners, Blaze Rods on the edges, a Netherite Scrap in the middle.",
+     does: "Raise it inside a Bastion Remnant in the Nether to summon Grimtusk, the Piglin Warlord."}
+  - {chapter: weapons, name: "Grimtusk's Cleaver", icon: warlord_cleaver, detect: "faultlinebosses:warlord_item=cleaver",
+     how: "25% from Grimtusk, the Piglin Warlord (each fighter rolls).",
+     does: "A netherite axe. Right-click: Golden Cleave, a burning sweep in front of you (10 damage, sets them on fire, 12 second cooldown)."}
+  - {chapter: enemies, name: "Molten Husk", icon: molten_husk, detect-tag: faultline_meteor_husk,
+     where: "Guards a fallen meteor (every hour, somewhere in the Overworld). 40 health.", does: "A burning husk with a magma head and a Fire Aspect II golden sword.",
+     drops: ["3-8 Gold Nuggets|100%", "1-2 Magma Cream|30%"]}
+  - {chapter: enemies, name: "Meteor Crawler", icon: meteor_crawler, detect-tag: faultline_meteor_crawler,
+     where: "Crawls out of a fallen meteor. 12 health.", does: "Small, fast and bitey, in a pack of four. Pops in embers when it dies.",
+     drops: ["2-5 Iron Nuggets|50%"]}
+  - {chapter: enemies, name: "Star Sentinel", icon: star_sentinel, detect-tag: faultline_star_sentinel,
+     where: "Floats over a fallen meteor. 80 health.", does: "A big glowing blaze that throws fireballs at anyone going for the meteor's core.",
+     drops: ["2-4 Blaze Rods|100%", "1-2 Diamonds|40%"]}
+  - {chapter: friends, id: caravan_merchant, name: "Caravan Merchant", icon: caravan_merchant, detect-tag: faultline_caravan,
+     where: "Every 3 hours the Caravan sets up camp 40-100 blocks from a random player for one hour (the whole server is told where; /caravan says where he is or when he's back).",
+     does: "Sells rare things for diamonds, emeralds and netherite: Totems, Elytra, Mythic Goodie Bags, top enchanted books, smithing templates, a Nether Star, a Bait Worm, sometimes even the Ankh or the Cross. 8 offers each visit, a few of each."}
+  - {chapter: consumables, name: "Candy", icon: season_candy, detect: "faultlinecosmetics:candy",
+     how: "Halloween only (October 1 - November 2): hostile mobs you kill sometimes drop 1-2.",
+     does: "Spend it on Halloween cosmetics in the Seasonal Shop (/cosmetics): Pumpkin Head, Witch Hat, Bat Wings, Skeleton Suit. They're yours forever."}
+  - {chapter: consumables, name: "Present", icon: season_present, detect: "faultlinecosmetics:present",
+     how: "Winter only (December 1 - January 6): hostile mobs you kill sometimes drop 1-2.",
+     does: "Spend it on Winter cosmetics in the Seasonal Shop (/cosmetics): Santa Hat, Reindeer Antlers, Winter Scarf, Gift Sack, Ugly Sweater. They're yours forever."}
+
+# ============================================================================
+# ACHIEVEMENTS (their own book, from the Index cover). A goal is one of:
+#   defeat: [entry ids] + need: all | any | <total kills across them>
+#   chapter: <chapter id> (everything in it)     found / found-items / found-creatures: <how many entries>
+#   stat: <name> + count: <n>   (other plugins count things with "/index stat <player> <name> [amount]")
+# reward: items ("MATERIAL:amount"), xp, cosmetic (unlocked through FaultlineCosmetics)
+# ============================================================================
+achievements:
+  - {id: first_blood, name: "First Blood", icon: demon_eye, desc: "Defeat any boss.",
+     defeat: [the_demon_eye, queen_spider, mortimer_freeze, the_dune_devourer, the_frostmaw, don_lorenzo, the_kraken, the_kraken_at_sea, diamond_jacob, rocco_vendetta, grimtusk, captain_rotbeard, the_great_hog, the_skeleton_captain],
+     need: any, reward: {items: ["DIAMOND:8"], xp: 200}}
+  - {id: raid_breaker, name: "Raid Breaker", icon: great_hog, desc: "Defeat Captain Rotbeard and the Great Hog (the Zombie and Piglin Raid bosses).",
+     defeat: [captain_rotbeard, the_great_hog], need: all, reward: {items: ["DIAMOND:12"], xp: 300}}
+  - {id: lord_of_the_deep, name: "Lord of the Deep", icon: kraken, desc: "Defeat the Kraken.",
+     defeat: [the_kraken], need: all, reward: {items: ["DIAMOND:10", "HEART_OF_THE_SEA:1"], xp: 500}}
+  - {id: hold_the_line, name: "Hold the Line", icon: kraken, desc: "Defeat the Kraken at Sea without losing your ship.",
+     defeat: [the_kraken_at_sea], need: all, reward: {items: ["DIAMOND:10"], xp: 500}}
+  - {id: warlords_bane, name: "Warlord's Bane", icon: grimtusk, desc: "Defeat Grimtusk, the Piglin Warlord.",
+     defeat: [grimtusk], need: all, reward: {items: ["NETHERITE_INGOT:1", "GOLD_BLOCK:8"], xp: 500}}
+  - {id: slayer_of_faultline, name: "Slayer of Faultline", icon: slayer_crown, desc: "Defeat every boss: the Demon Eye, Queen Spider, Frostbeard, the Dune Devourer, the Frostmaw, Don Lorenzo, the Kraken, Diamond Jacob, Rocco Vendetta and Grimtusk.",
+     defeat: [the_demon_eye, queen_spider, mortimer_freeze, the_dune_devourer, the_frostmaw, don_lorenzo, the_kraken, diamond_jacob, rocco_vendetta, grimtusk],
+     need: all, reward: {cosmetic: slayer_crown, items: ["NETHERITE_INGOT:2"], xp: 2000}}
+  - {id: the_lost_king, name: "The Lost King", icon: lost_explorer, desc: "Face the Lost Explorer, below the bedrock.",
+     defeat: [the_lost_explorer], need: all, reward: {items: ["NETHERITE_INGOT:2"], xp: 1000}}
+  - {id: boss_rush_champion, name: "Boss Rush Champion", icon: champion_cape, desc: "Finish a Boss Rush (/bossrush): every boss, back to back.",
+     stat: boss_rush, count: 1, reward: {cosmetic: champion_cape, items: ["NETHERITE_INGOT:2"], xp: 3000}}
+  - {id: stargazer, name: "Stargazer", icon: meteorite, desc: "Claim a meteor: be the first to break its core after it lands.",
+     stat: meteors, count: 1, reward: {items: ["EMERALD:8"], xp: 200}}
+  - {id: star_collector, name: "Star Collector", icon: meteor_pendant, desc: "Claim 10 meteors.",
+     stat: meteors, count: 10, reward: {cosmetic: meteor_pendant, items: ["DIAMOND:10"], xp: 1000}}
+  - {id: good_customer, name: "Good Customer", icon: caravan_merchant, desc: "Make 10 trades with the Caravan Merchant.",
+     stat: caravan_trades, count: 10, reward: {items: ["EMERALD:16"], xp: 300}}
+  - {id: pirate_hunter, name: "Pirate Hunter", icon: skeleton_navigator, desc: "Sink 5 skeleton ships.",
+     stat: skeleton_ships, count: 5, reward: {items: ["DIAMOND:10"], xp: 500}}
+  - {id: scourge_of_the_seas, name: "Scourge of the Seas", icon: pirate_hat, desc: "Defeat the Skeleton Captain, the last boss of the Pirate Invasion.",
+     defeat: [the_skeleton_captain], need: all, reward: {cosmetic: pirate_hat, items: ["DIAMOND:12"], xp: 1000}}
+  - {id: collector, name: "Collector", icon: golden_ring, desc: "Collect 40 different items in the Index.",
+     found-items: 40, reward: {items: ["DIAMOND:10"], xp: 500}}
+  - {id: archivist, name: "Archivist", icon: faultline_index, desc: "Collect every accessory in the Index.",
+     chapter: accessories, reward: {items: ["NETHERITE_INGOT:1"], xp: 1000}}
+  - {id: monster_hunter, name: "Monster Hunter", icon: vampire, desc: "Defeat 40 different creatures.",
+     found-creatures: 40, reward: {items: ["DIAMOND:16"], xp: 800}}

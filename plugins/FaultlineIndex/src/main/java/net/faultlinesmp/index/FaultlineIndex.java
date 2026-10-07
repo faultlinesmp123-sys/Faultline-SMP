@@ -121,6 +121,7 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
     private boolean dirty;
 
     private NamespacedKey bookKey;
+    final Achievements achievements = new Achievements(this);
 
     // ===================== LIFECYCLE =====================
 
@@ -193,6 +194,7 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
         for (String name : g.getKeys(false)) {
             glyphs.put(name, new int[]{g.getInt(name + ".small"), g.getInt(name + ".large")});
         }
+        achievements.load(yml);
     }
 
     private static String str(Map<?, ?> m, String key) {
@@ -206,6 +208,7 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
         if (!dataFile.exists()) return;
         YamlConfiguration yml = YamlConfiguration.loadConfiguration(dataFile);
         for (String s : yml.getStringList("got-book")) gotBook.add(UUID.fromString(s));
+        achievements.loadProgress(yml);
         ConfigurationSection players = yml.getConfigurationSection("players");
         if (players == null) return;
         for (String id : players.getKeys(false)) {
@@ -229,6 +232,7 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
                 yml.set("players." + e.getKey() + ".kills." + k.getKey(), k.getValue());
             }
         }
+        achievements.saveProgress(yml);
         try {
             getDataFolder().mkdirs();
             yml.save(dataFile);
@@ -268,6 +272,8 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
                     + ". Right-click it to see every item, boss, and enemy!");
             dirty = true;
         }
+        // achievements added in an update count what players already did
+        Bukkit.getScheduler().runTaskLater(this, () -> { if (p.isOnline()) achievements.check(p); }, 200L);
     }
 
     @EventHandler
@@ -376,6 +382,7 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
             if (p == null) continue;
             kills.computeIfAbsent(id, k -> new HashMap<>()).merge(entry.id, 1, Integer::sum);
             unlock(p, entry, true);
+            achievements.check(p); // kill counts
         }
         dirty = true;
     }
@@ -397,7 +404,35 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
                         .hoverEvent(HoverEvent.showText(Component.text("Open your Faultline Index"))));
         p.sendMessage(msg);
         p.playSound(p.getLocation(), creature ? Sound.UI_TOAST_CHALLENGE_COMPLETE : Sound.ENTITY_PLAYER_LEVELUP, 0.6f, creature ? 1f : 1.6f);
+        achievements.check(p);
     }
+
+    // ---- for Achievements
+    void markDirty() { dirty = true; }
+
+    boolean hasEntry(UUID player, String entryId) {
+        Set<String> s = found.get(player);
+        return s != null && s.contains(entryId);
+    }
+
+    int killCount(UUID player, String entryId) { return kills.getOrDefault(player, Map.of()).getOrDefault(entryId, 0); }
+
+    int[] chapterProgress(UUID player, String chapterId) {
+        int have = 0, all = 0;
+        for (Entry e : entries) if (e.chapter.equals(chapterId)) { all++; if (has(player, e)) have++; }
+        return new int[]{have, Math.max(1, all)};
+    }
+
+    /** Entries found: creature = null for all, true for creatures, false for items. */
+    int foundCount(UUID player, Boolean creature) {
+        int n = 0;
+        for (Entry e : entries) if ((creature == null || e.creature == creature) && has(player, e)) n++;
+        return n;
+    }
+
+    Component iconComponent(String name, boolean large) { return icon(name, large); }
+    static Component pageOf(List<Component> lines) { return page(lines); }
+    static String fitText(String text, int maxWidth) { return fit(text, maxWidth, false); }
 
     private boolean has(UUID player, Entry e) {
         Set<String> s = found.get(player);
@@ -559,7 +594,10 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
         lines.add(BLANK);
         lines.add(progress("Items", itemsHave, itemsAll));
         lines.add(progress("Creatures", mobsHave, mobsAll));
-        lines.add(BLANK);
+        int achDone = achievements.doneCount(id), achAll = achievements.goals.size();
+        lines.add(progress("Achievements", achDone, achAll)
+                .clickEvent(ClickEvent.runCommand("/index achievements"))
+                .hoverEvent(HoverEvent.showText(Component.text("Open your achievements"))));
         lines.add(Component.text("Chapters", INK, TextDecoration.UNDERLINED));
         for (Map.Entry<String, List<Entry>> ch : byChapter.entrySet()) {
             Chapter c = chapters.stream().filter(x -> x.id().equals(ch.getKey())).findFirst().orElseThrow();
@@ -707,6 +745,10 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
                 if (sender instanceof Player p) openChapter(p, args.length > 1 ? args[1] : "");
                 return true;
             }
+            if (args[0].equalsIgnoreCase("achievements")) {
+                if (sender instanceof Player p) achievements.open(p);
+                return true;
+            }
             if (!sender.hasPermission("faultlineindex.admin")) {
                 sender.sendMessage(ChatColor.RED + "You don't have permission to do that.");
                 return true;
@@ -724,6 +766,7 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
                 case "reset" -> {
                     found.remove(target.getUniqueId());
                     kills.remove(target.getUniqueId());
+                    achievements.reset(target.getUniqueId());
                     dirty = true;
                     sender.sendMessage(ChatColor.GREEN + "Reset " + target.getName() + "'s Index progress.");
                 }
@@ -734,7 +777,13 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
                     unlock(target, e, e.creature);
                     dirty = true;
                 }
-                default -> sender.sendMessage(ChatColor.YELLOW + "/index | /index give [player] | /index reset [player] | /index discover <player> <entry>");
+                case "stat" -> { // other plugins count things for achievements: /index stat <player> <name> [amount]
+                    if (args.length < 3) { sender.sendMessage(ChatColor.YELLOW + "/index stat <player> <name> [amount]"); return true; }
+                    int n = 1;
+                    try { n = args.length > 3 ? Integer.parseInt(args[3]) : 1; } catch (NumberFormatException ignored) { }
+                    achievements.addStat(target, args[2].toLowerCase(), n);
+                }
+                default -> sender.sendMessage(ChatColor.YELLOW + "/index | /index achievements | /index give [player] | /index reset [player] | /index discover <player> <entry> | /index stat <player> <name> [n]");
             }
             return true;
         }

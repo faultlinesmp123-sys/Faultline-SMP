@@ -27,6 +27,100 @@ cosmetics:
     slot: BODY
     source: "Dropped by Rocco Vendetta"
 
+  # ---- Halloween (bought with Candy in the Seasonal Shop during the Halloween season)
+  pumpkin_head:
+    name: "&6Pumpkin Head"
+    slot: HAT
+    season: halloween
+    price: 25
+  witch_hat:
+    name: "&5Witch Hat"
+    slot: HAT
+    season: halloween
+    price: 20
+  bat_wings:
+    name: "&8Bat Wings"
+    slot: BACK
+    season: halloween
+    price: 35
+  skeleton_suit:
+    name: "&fSkeleton Suit"
+    slot: BODY
+    season: halloween
+    price: 30
+
+  # ---- Winter (bought with Presents during the Winter season)
+  santa_hat:
+    name: "&cSanta Hat"
+    slot: HAT
+    season: winter
+    price: 20
+  reindeer_antlers:
+    name: "&6Reindeer Antlers"
+    slot: HAT
+    season: winter
+    price: 25
+  winter_scarf:
+    name: "&cWinter Scarf"
+    slot: NECK
+    season: winter
+    price: 15
+  gift_sack:
+    name: "&2Gift Sack"
+    slot: BACK
+    season: winter
+    price: 30
+  ugly_sweater:
+    name: "&aUgly Sweater"
+    slot: BODY
+    season: winter
+    price: 30
+
+  # ---- Achievements (FaultlineIndex unlocks these)
+  slayer_crown:
+    name: "&6&lSlayer's Crown"
+    slot: HAT
+    source: "Achievement: Slayer of Faultline (defeat every boss)"
+  champion_cape:
+    name: "&c&lChampion's Cape"
+    slot: BACK
+    source: "Achievement: Boss Rush Champion (finish a Boss Rush)"
+  meteor_pendant:
+    name: "&5Meteor Pendant"
+    slot: NECK
+    source: "Achievement: Star Collector (claim 10 meteors)"
+  pirate_hat:
+    name: "&8Pirate Captain's Hat"
+    slot: HAT
+    source: "Achievement: Scourge of the Seas (defeat the Skeleton Captain)"
+
+# Seasons come back every year (dates are MM-DD). While one runs, hostile mobs killed by players drop its currency
+# and the Seasonal Shop in /cosmetics sells its cosmetics. "/cosmetic season <id|off|auto>" forces one for testing.
+seasons:
+  halloween:
+    name: "Halloween"
+    color: "&6"
+    start: "10-01"
+    end: "11-02"
+    token: candy
+    token-name: "Candy"
+    token-model: season_candy
+    drop-chance: 0.08
+    drop-min: 1
+    drop-max: 2
+  winter:
+    name: "Winter"
+    color: "&b"
+    start: "12-01"
+    end: "01-06"
+    token: present
+    token-name: "Present"
+    token-model: season_present
+    drop-chance: 0.08
+    drop-min: 1
+    drop-max: 2
+force-season: ""
+
 # Show your own NECK/BACK cosmetics to yourself (seen in third person; a little of it shows when you look down).
 show-own: true
 

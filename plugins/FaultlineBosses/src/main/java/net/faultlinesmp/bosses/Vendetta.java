@@ -1103,6 +1103,8 @@ final class Vendetta implements Listener {
         }
 
         void rewards() {
+            pl.rushDefeated("rocco");
+            if (pl.rushSuppressLoot("rocco")) return; // a Boss Rush: no loot
             for (UUID id : fighters) {
                 Player p = Bukkit.getPlayer(id);
                 if (p == null || !p.getWorld().equals(world)) continue;

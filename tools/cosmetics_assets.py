@@ -21,6 +21,7 @@ from PIL import Image
 
 sys.path.insert(0, os.path.dirname(__file__))
 from jacob_models import Atlas, box, plate, noise_fill, render, set_anchor, C  # shared helpers
+import cosmetics_new as NEW  # the seasonal + achievement cosmetics
 
 GOLD = dict(base=(232, 184, 46), light=(255, 236, 140), dark=(150, 98, 14), hi=(255, 250, 210))
 NS = "faultline"
@@ -203,12 +204,46 @@ def jwrite(path, obj):
     with open(path, "w") as f: json.dump(obj, f, indent=1)
 
 
+def to_bedrock_head_geo(identifier, elements, tex_w, tex_h):
+    """Java hat model (head pixels, centre 8,8,8, front -z, +x = right) -> Bedrock geometry on the head bone
+    (front -z, +x = the wearer's left: x is mirrored, so east/west faces swap)."""
+    cubes = []
+    for e in elements:
+        f, t = e["from"], e["to"]
+        x0, x1 = -(t[0] - C), -(f[0] - C)
+        y0, y1 = f[1] - C + 28, t[1] - C + 28
+        z0, z1 = f[2] - C, t[2] - C
+        uv = {}
+        swap = {"east": "west", "west": "east"}
+        for face, fd in e["faces"].items():
+            u0, u1 = fd["uv"][0] * tex_w / 16, fd["uv"][2] * tex_w / 16
+            v0, v1 = fd["uv"][1] * tex_h / 16, fd["uv"][3] * tex_h / 16
+            uv[swap.get(face, face)] = {"uv": [round(u0, 3), round(v0, 3)], "uv_size": [round(u1 - u0, 3), round(v1 - v0, 3)]}
+        cube = {"origin": [round(x0, 3), round(y0, 3), round(z0, 3)], "size": [round(x1 - x0, 3), round(y1 - y0, 3), round(z1 - z0, 3)], "uv": uv}
+        if e.get("rotation"):
+            r = e["rotation"]
+            cube["pivot"] = [-(r["origin"][0] - C), r["origin"][1] - C + 28, r["origin"][2] - C]
+            cube["rotation"] = {"x": [r["angle"], 0, 0], "y": [0, -r["angle"], 0], "z": [0, 0, -r["angle"]]}[r["axis"]]
+        cubes.append(cube)
+    return {"format_version": "1.16.0", "minecraft:geometry": [{
+        "description": {"identifier": identifier, "texture_width": tex_w, "texture_height": tex_h,
+                        "visible_bounds_width": 3, "visible_bounds_height": 3.5, "visible_bounds_offset": [0, 1.75, 0]},
+        "bones": [{"name": "head", "pivot": [0, 24, 0], "cubes": cubes}]}]}
+
+
 def main():
     jout, bout = sys.argv[1], sys.argv[2]
     prev = sys.argv[sys.argv.index("--preview") + 1] if "--preview" in sys.argv else None
     A = os.path.join(jout, "assets", NS)
     rp = os.path.join(bout, "rp")
-    worn = {"rocco_chains": chains(21), "rocco_book": book(22)}
+    seeds = iter(range(31, 99))
+    hats = {k: f(next(seeds)) for k, f in NEW.HATS.items()}
+    worn = {"rocco_chains": chains(21), "rocco_book": book(22)}                 # torso models: NECK / BACK
+    torso_slot = {"rocco_chains": "neck", "rocco_book": "back"}
+    for k, f in NEW.NECKS.items(): worn[k] = f(next(seeds)); torso_slot[k] = "neck"
+    for k, f in NEW.BACKS.items(): worn[k] = f(next(seeds)); torso_slot[k] = "back"
+    bodies = {"rocco_coat": coat_texture(23)}
+    for k, f in NEW.BODIES.items(): bodies[k] = f(next(seeds))
     mappings = {"format_version": 2, "items": {"minecraft:paper": []}}
     item_tex = {"resource_pack_name": "faultline_cosmetics", "texture_name": "atlas.items", "texture_data": {}}
 
@@ -219,18 +254,21 @@ def main():
         mappings["items"]["minecraft:paper"].append(d)
 
     names = {"rocco_chains": "Rocco's Golden Chains", "rocco_book": "Rocco's Book", "rocco_coat": "Rocco's Coat"}
+    names.update(NEW.NAMES)
+    def icon_img(kind):
+        return icon(kind) if kind.startswith("rocco_") else NEW.draw(NEW.ICONS[kind])
     # ---- menu icons (both editions)
     for kind in names:
-        ic = icon(kind)
+        ic = icon_img(kind)
         p = os.path.join(A, "textures/item/cosmetic", kind + "_icon.png"); os.makedirs(os.path.dirname(p), exist_ok=True); ic.save(p)
         jwrite(os.path.join(A, "models/item/cosmetic", kind + "_icon.json"), {"parent": "minecraft:item/generated", "textures": {"layer0": f"{NS}:item/cosmetic/{kind}_icon"}})
         jwrite(os.path.join(A, "items/cosmetic", kind + "_icon.json"), {"model": {"type": "minecraft:model", "model": f"{NS}:item/cosmetic/{kind}_icon"}})
         bp = os.path.join(rp, "textures/items/faultline", kind + "_icon.png"); os.makedirs(os.path.dirname(bp), exist_ok=True); ic.save(bp)
         item_tex["texture_data"][f"faultline.{kind}_icon"] = {"textures": f"textures/items/faultline/{kind}_icon"}
-        map_item(f"{NS}:cosmetic/{kind}_icon", f"faultline:{kind}_icon", names[kind], f"faultline.{kind}_icon")
+        if kind not in bodies: map_item(f"{NS}:cosmetic/{kind}_icon", f"faultline:{kind}_icon", names[kind], f"faultline.{kind}_icon")
 
     # ---- worn torso models: Java item models (for the ItemDisplay) + Bedrock attachables (fake legs/feet item)
-    slot_for = {"rocco_chains": ("legs", "v.leg_layer_visible = 0.0;"), "rocco_book": ("feet", "v.boot_layer_visible = 0.0;")}
+    slot_for = {"neck": ("legs", "v.leg_layer_visible = 0.0;"), "back": ("feet", "v.boot_layer_visible = 0.0;")}
     for kind, (atlas, el) in worn.items():
         tex = save_tex(atlas)
         p = os.path.join(A, "textures/item/cosmetic", kind + ".png"); tex.save(p)
@@ -239,7 +277,7 @@ def main():
         jwrite(os.path.join(A, "items/cosmetic", kind + ".json"), {"model": {"type": "minecraft:model", "model": f"{NS}:item/cosmetic/{kind}"}})
         bt = os.path.join(rp, "textures/faultline", kind + ".png"); os.makedirs(os.path.dirname(bt), exist_ok=True); tex.save(bt)
         jwrite(os.path.join(rp, "models/entity/faultline", kind + ".geo.json"), to_bedrock_geo(f"geometry.faultline.{kind}", el, atlas.size, atlas.size))
-        slot, hide = slot_for[kind]
+        slot, hide = slot_for[torso_slot[kind]]
         jwrite(os.path.join(rp, "attachables", f"faultline.{kind}.json"), {"format_version": "1.10.0", "minecraft:attachable": {"description": {
             "identifier": f"faultline:{kind}", "materials": {"default": "armor", "enchanted": "armor_enchanted"},
             "textures": {"default": f"textures/faultline/{kind}", "enchanted": "textures/misc/enchanted_actor_glint"},
@@ -248,27 +286,52 @@ def main():
         map_item(f"{NS}:cosmetic/{kind}", f"faultline:{kind}", names[kind], f"faultline.{kind}_icon",
                  {"minecraft:equippable": {"slot": slot}, "minecraft:max_stack_size": 1})
 
-    # ---- the coat: an armor-layer texture (Java equipment asset + Bedrock chestplate attachable)
-    coat = coat_texture(23)
-    p = os.path.join(A, "textures/entity/equipment/humanoid/rocco_coat.png"); os.makedirs(os.path.dirname(p), exist_ok=True); coat.save(p)
-    jwrite(os.path.join(A, "equipment/rocco_coat.json"), {"layers": {"humanoid": [{"texture": f"{NS}:rocco_coat"}]}})
-    bt = os.path.join(rp, "textures/faultline/rocco_coat.png"); coat.save(bt)
-    jwrite(os.path.join(rp, "attachables", "faultline.rocco_coat.json"), {"format_version": "1.21.50", "minecraft:attachable": {"description": {
-        "identifier": "faultline:rocco_coat", "materials": {"default": "armor", "enchanted": "armor_enchanted"},
-        "textures": {"default": "textures/faultline/rocco_coat", "enchanted": "textures/misc/enchanted_actor_glint"},
-        "geometry": {"default": "geometry.player.armor.chestplate"}, "scripts": {"parent_setup": "v.chest_layer_visible = 0.0;"},
-        "render_controllers": ["controller.render.armor"]}}})
-    # the worn coat item reuses its icon model (the armor layer is what shows), so it needs its own Bedrock item
-    mappings["items"]["minecraft:paper"] = [d for d in mappings["items"]["minecraft:paper"] if d["model"] != f"{NS}:cosmetic/rocco_coat_icon"]
-    map_item(f"{NS}:cosmetic/rocco_coat_icon", "faultline:rocco_coat", names["rocco_coat"], "faultline.rocco_coat_icon",
-             {"minecraft:equippable": {"slot": "chest"}, "minecraft:max_stack_size": 1})
+    # ---- hats: Java item model worn on the head (display.head scale 1.6 = head pixels) + Bedrock helmet attachable
+    for kind, (atlas, el) in hats.items():
+        tex = save_tex(atlas)
+        tex.save(os.path.join(A, "textures/item/cosmetic", kind + ".png"))
+        jwrite(os.path.join(A, "models/item/cosmetic", kind + ".json"),
+               {"textures": {"t": f"{NS}:item/cosmetic/{kind}", "particle": f"{NS}:item/cosmetic/{kind}"}, "elements": el,
+                "display": {"head": {"scale": [1.6, 1.6, 1.6]}}})
+        jwrite(os.path.join(A, "items/cosmetic", kind + ".json"), {"model": {"type": "minecraft:model", "model": f"{NS}:item/cosmetic/{kind}"}})
+        tex.save(os.path.join(rp, "textures/faultline", kind + ".png"))
+        jwrite(os.path.join(rp, "models/entity/faultline", kind + ".geo.json"), to_bedrock_head_geo(f"geometry.faultline.{kind}", el, atlas.size, atlas.size))
+        jwrite(os.path.join(rp, "attachables", f"faultline.{kind}.json"), {"format_version": "1.10.0", "minecraft:attachable": {"description": {
+            "identifier": f"faultline:{kind}", "materials": {"default": "armor", "enchanted": "armor_enchanted"},
+            "textures": {"default": f"textures/faultline/{kind}", "enchanted": "textures/misc/enchanted_actor_glint"},
+            "geometry": {"default": f"geometry.faultline.{kind}"}, "scripts": {"parent_setup": "v.helmet_layer_visible = 0.0;"},
+            "render_controllers": ["controller.render.armor"]}}})
+        map_item(f"{NS}:cosmetic/{kind}", f"faultline:{kind}", names[kind], f"faultline.{kind}_icon",
+                 {"minecraft:equippable": {"slot": "head"}, "minecraft:max_stack_size": 1})
+
+    # ---- body cosmetics: an armor-layer texture (Java equipment asset + Bedrock chestplate attachable)
+    for kind, tex in bodies.items():
+        p = os.path.join(A, "textures/entity/equipment/humanoid", kind + ".png"); os.makedirs(os.path.dirname(p), exist_ok=True); tex.save(p)
+        jwrite(os.path.join(A, "equipment", kind + ".json"), {"layers": {"humanoid": [{"texture": f"{NS}:{kind}"}]}})
+        tex.save(os.path.join(rp, "textures/faultline", kind + ".png"))
+        jwrite(os.path.join(rp, "attachables", f"faultline.{kind}.json"), {"format_version": "1.21.50", "minecraft:attachable": {"description": {
+            "identifier": f"faultline:{kind}", "materials": {"default": "armor", "enchanted": "armor_enchanted"},
+            "textures": {"default": f"textures/faultline/{kind}", "enchanted": "textures/misc/enchanted_actor_glint"},
+            "geometry": {"default": "geometry.player.armor.chestplate"}, "scripts": {"parent_setup": "v.chest_layer_visible = 0.0;"},
+            "render_controllers": ["controller.render.armor"]}}})
+        # the worn body item reuses its icon model (the armor layer is what shows), so it maps to its own Bedrock item
+        map_item(f"{NS}:cosmetic/{kind}_icon", f"faultline:{kind}", names[kind], f"faultline.{kind}_icon",
+                 {"minecraft:equippable": {"slot": "chest"}, "minecraft:max_stack_size": 1})
+
+    # ---- seasonal currency (Candy, Presents): item textures for both editions (Index icons are copied by the caller)
+    for kind, grid in NEW.TOKENS.items():
+        im = NEW.draw(grid)
+        p = os.path.join(A, "textures/item", kind + ".png"); os.makedirs(os.path.dirname(p), exist_ok=True); im.save(p)
+        jwrite(os.path.join(A, "models/item", kind + ".json"), {"parent": "minecraft:item/generated", "textures": {"layer0": f"{NS}:item/{kind}"}})
+        jwrite(os.path.join(A, "items", kind + ".json"), {"model": {"type": "minecraft:model", "model": f"{NS}:item/{kind}"}})
+        ip = os.path.join(A, "textures/index", kind + ".png"); os.makedirs(os.path.dirname(ip), exist_ok=True); im.save(ip)
 
     # ---- the Bedrock pack
     jwrite(os.path.join(rp, "textures/item_texture.json"), item_tex)
     jwrite(os.path.join(rp, "manifest.json"), {"format_version": 2, "header": {
         "name": "Faultline SMP Cosmetics", "description": "Cosmetics for Bedrock players (Geyser)",
-        "uuid": "5f0a1c2e-7b3d-4e8f-9a61-2c4d8e0b1f37", "version": [1, 0, 0], "min_engine_version": [1, 21, 0]},
-        "modules": [{"description": "Cosmetics", "type": "resources", "uuid": "8c2e4a6b-1d3f-4b5a-8e7c-9f0a2b4c6d81", "version": [1, 0, 0]}]})
+        "uuid": "5f0a1c2e-7b3d-4e8f-9a61-2c4d8e0b1f37", "version": [1, 1, 0], "min_engine_version": [1, 21, 0]},
+        "modules": [{"description": "Cosmetics", "type": "resources", "uuid": "8c2e4a6b-1d3f-4b5a-8e7c-9f0a2b4c6d81", "version": [1, 1, 0]}]})
     os.makedirs(bout, exist_ok=True)
     with zipfile.ZipFile(os.path.join(bout, "FaultlineCosmetics.mcpack"), "w", zipfile.ZIP_DEFLATED) as z:
         for root, _, files in os.walk(rp):
@@ -276,23 +339,43 @@ def main():
                 full = os.path.join(root, fn); z.write(full, os.path.relpath(full, rp))
     jwrite(os.path.join(bout, "faultline_cosmetics_mappings.json"), mappings)
 
-    if prev:  # worn models on a stand-in torso, so the placement can be checked
+    if prev:  # worn models on a stand-in torso / head, so the placement can be checked
         os.makedirs(prev, exist_ok=True)
         tatlas = Atlas(128, 2); torso = [box(tatlas, (-4, -6, -2), (4, 6, 2), lambda reg, f, w, h: noise_fill(reg, (90, 120, 160), random.Random(1), 4))]
         timg = np.asarray(save_tex(tatlas)).astype(float)
-        set_anchor(0.7)
+        set_anchor(0.62)
         sheets = []
         for kind, (atlas, el) in worn.items():
             img = np.asarray(save_tex(atlas)).astype(float)
             for yaw in (25, 155):
-                sheets.append(render([(torso, timg, (0, 0, 0)), (el, img, (0, 0, 0))], yaw, 10, 22, (300, 360)))
-        out = Image.new("RGBA", (300 * len(sheets), 360))
-        for i, s in enumerate(sheets): out.paste(s, (i * 300, 0))
+                sheets.append(render([(torso, timg, (0, 0, 0)), (el, img, (0, 0, 0))], yaw, 10, 16, (240, 300)))
+        out = Image.new("RGBA", (240 * 6, 300 * ((len(sheets) + 5) // 6)), (34, 38, 46, 255))
+        for i, s_ in enumerate(sheets): out.paste(s_, ((i % 6) * 240, (i // 6) * 300))
         out.save(os.path.join(prev, "cosmetics_worn.png"))
-        icons = Image.new("RGBA", (3 * 136, 136), (34, 38, 46, 255))
-        for i, k in enumerate(names): icons.paste(icon(k).resize((128, 128), Image.NEAREST), (i * 136 + 4, 4), icon(k).resize((128, 128), Image.NEAREST))
+        hatlas = Atlas(64, 2)
+        def skin(reg, f, w, h):
+            noise_fill(reg, (196, 150, 120), random.Random(2), 4)
+            if f == "north": reg[reg.shape[0] // 2, 2:5, :3] = (40, 40, 80); reg[reg.shape[0] // 2, -5:-2, :3] = (40, 40, 80)
+        head = [box(hatlas, (-4, -4, -4), (4, 4, 4), skin)]
+        himg = np.asarray(save_tex(hatlas)).astype(float)
+        set_anchor(0.72)
+        hs = []
+        for kind, (atlas, el) in hats.items():
+            img = np.asarray(save_tex(atlas)).astype(float)
+            for yaw in (205, 335):  # the face is -z: these views show it from the front-left and front-right
+                hs.append(render([(head, himg, (0, 0, 0)), (el, img, (0, 0, 0))], yaw, 15, 11, (220, 260)))
+        out = Image.new("RGBA", (220 * 4, 260 * ((len(hs) + 3) // 4)), (34, 38, 46, 255))
+        for i, s_ in enumerate(hs): out.paste(s_, ((i % 4) * 220, (i // 4) * 260))
+        out.save(os.path.join(prev, "cosmetics_hats.png"))
+        allicons = list(names) + list(NEW.TOKENS)
+        icons = Image.new("RGBA", (8 * 136, 136 * ((len(allicons) + 7) // 8)), (34, 38, 46, 255))
+        for i, k in enumerate(allicons):
+            im = (icon_img(k) if k in names else NEW.draw(NEW.TOKENS[k])).resize((128, 128), Image.NEAREST)
+            icons.paste(im, ((i % 8) * 136 + 4, (i // 8) * 136 + 4), im)
         icons.save(os.path.join(prev, "cosmetics_icons.png"))
-        coat.resize((512, 256), Image.NEAREST).save(os.path.join(prev, "cosmetics_coat_texture.png"))
+        bsheet = Image.new("RGBA", (512 * len(bodies), 256))
+        for i, (k, tex) in enumerate(bodies.items()): bsheet.paste(tex.resize((512, 256), Image.NEAREST), (i * 512, 0))
+        bsheet.save(os.path.join(prev, "cosmetics_coat_texture.png"))
 
 
 if __name__ == "__main__":

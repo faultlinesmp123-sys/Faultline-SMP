@@ -213,9 +213,13 @@ Notes:
 - **The Caravan** (`FaultlineItems/Caravan.java`, config `caravan:`): every 3 h (first 30 min after start) a Wandering Trader
   "Caravan Merchant" (tag `faultline_caravan`, 2 trader llamas, a camel) camps 40-100 blocks from a random survival player for
   60 min (announced). 8 offers from `caravan.stock` (`id:emeralds:diamonds:netherite:weight:uses`; prices only in diamonds,
-  emeralds, netherite). Trades = `index stat <p> caravan_trades 1` (Paper `PlayerTradeEvent`). Tested in `EventsTest`.
+  emeralds, netherite). Trades = `index stat <p> caravan_trades 1` (Paper `PlayerTradeEvent`). His chunk has a plugin chunk ticket while he's there
+  (non-persistent entities vanished with an unloaded chunk); the meteor's landing chunk too. Tested in `EventsTest`.
 - **Grimtusk, the Piglin Warlord** (`FaultlineBosses/Warlord.java`, config `warlord:`): Warlord's Challenge (4 gold blocks,
-  4 blaze rods, netherite scrap; PDC `warlord_item=challenge`) raised in a Bastion Remnant (`Chunk#getStructures`). Real mobs
+  4 blaze rods, netherite scrap; PDC `warlord_item=challenge`) raised in a Bastion Remnant (`inBastion`: any of a 5x5-chunk
+  `World#getStructures` lookup, `locateNearestStructure` within 96 blocks, or 40+ blackstone-brick/gilded blocks within 8; the
+  3x3-chunk-only check failed on the live server). He spawns via `spawnSpot` (3x3x3 open, solid floor, no lava, clear line
+  from you, 3-8 blocks ahead; also used by /grimtusk summon and the rush). Ironhide has Fire Resistance. Real mobs
   (Java + Bedrock see the same): a scaled Piglin Brute (tag `faultline_grimtusk`; real hp tracked in `hp`, entity healed every
   tick) riding IRONHIDE (scaled hoglin, `faultline_ironhide`, 600 hp). 3000 hp +20%/extra fighter; phase 1 mounted = 60% less
   damage; Ironhide dead or 70% = phase 2; 35% = phase 3 (enraged). Moves: Tusk Charge, Golden Cleave, Rally (Bastion Guards /
@@ -223,7 +227,10 @@ Notes:
   Drops Mythic/Goodie bags, gold, debris, netherite and 25% GRIMTUSK'S CLEAVER (netherite axe, `warlord_item=cleaver`,
   right-click Golden Cleave, 12 s). Boss form hooks done (`pilot`, `takeMove`, `morphMoves`, `MORPH_KINDS`, `startMorph`).
   Tested in the bosses harness (`WarlordTest`).
-- **Boss Rush** (`FaultlineBosses/BossRush.java`, config `boss-rush:`, data `bossrush.yml`): `/bossrush start` = leader + everyone
+- **Boss Rush** (`FaultlineBosses/BossRush.java`, config `boss-rush:`, data `bossrush.yml`): started by right-clicking the
+  **Boss Rush Sigil** (NETHER_STAR, model `faultline:boss_rush_sigil`, PDC `rush_sigil`; 8 netherite blocks around a nether star;
+  never used up, never a crafting ingredient; `/bossrush sigil [amount] [player]` for admins, in /itemsmenu, Index entry);
+  `/bossrush start` needs a Sigil in your inventory (admins don't). Leader + everyone
   in survival within 10 blocks; refused while any boss is out. Stages (`boss-rush.bosses`, 14): rotbeard (beach), bulwark
   (badlands), great_hog (crimson forest) = the raid bosses, spawned through `zraid spawnboss <egg> <world> <x> <y> <z>`, and
   queen_spider (dark forest / pale garden, FaultlineItems `queenspider spawn <world> <x> <y> <z>`); these "external" bosses
@@ -243,7 +250,7 @@ Notes:
   join (retroactive). Done = server-wide message, title, reward items/xp, cosmetic via `cosmetic unlock`. Saved in
   progress.yml (`achievements.<uuid>.done/stats`). The cover's "Achievements" line opens the book. Tested (`AchievementTest`).
 - **Seasons** (`FaultlineCosmetics/Seasons.java`, config `seasons:` with code defaults): Halloween 10-01..11-02 (Candy),
-  Winter 12-01..01-06 (Presents). In season, hostile mobs (`Enemy`) killed by a player drop 1-2 tokens 8% (PAPER, model
+  Winter 12-01..01-06 (Presents). In season, hostile mobs (`Enemy`) killed by a player drop 1-2 tokens 8% (not from spawners / trial spawners / spawn eggs: no farms) (PAPER, model
   `faultline:season_candy/present`, PDC `faultlinecosmetics:candy/present`); the Seasonal Shop (button in /cosmetics,
   `/cosmetics shop`) sells cosmetics with `season:` + `price:`. `/cosmetic season <id|off|auto>` forces one. New cosmetics in
   the JAR's config load even when the server's config.yml doesn't list them (read from the defaults; Bukkit's

@@ -158,6 +158,9 @@ final class Meteor implements Listener, CommandExecutor {
         s.bar = Bukkit.createBossBar("", BarColor.RED, BarStyle.SOLID);
         for (Player p : w.getPlayers()) s.bar.addPlayer(p);
         strike = s;
+        // BUG FIX: the landing chunk could unload during the fall or the wait (guards gone, the core checked by loading the
+        // chunk again every second). It stays loaded until the meteor is done.
+        w.addPluginChunkTicket(x >> 4, z >> 4, plugin);
         String where = ChatColor.WHITE + "X " + x + ", Z " + z;
         Bukkit.broadcastMessage(ChatColor.GOLD + "" + ChatColor.BOLD + "☄ A METEOR IS FALLING! " + ChatColor.YELLOW + "It lands near " + where
                 + ChatColor.YELLOW + " in " + (int) cfg("warning-seconds", 60) + " seconds. First to break its core claims the loot!");
@@ -431,6 +434,7 @@ final class Meteor implements Listener, CommandExecutor {
             g.remove();
         }
         if (s.rock != null) s.rock.remove();
+        s.world.removePluginChunkTicket(s.x >> 4, s.z >> 4, plugin);
         if (strike == s) strike = null;
     }
 

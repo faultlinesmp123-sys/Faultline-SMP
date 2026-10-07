@@ -182,6 +182,9 @@ final class Caravan implements Listener, CommandExecutor {
         }));
         w.spawnParticle(Particle.CLOUD, at.clone().add(0, 1, 0), 30, 1.5, 0.5, 1.5, 0.02);
         camp = c;
+        // BUG FIX: when nobody was near, his chunk unloaded and took him with it (he's not saved), so whoever came looking
+        // found nothing. His chunk now stays loaded until he leaves.
+        w.addPluginChunkTicket(at.getBlockX() >> 4, at.getBlockZ() >> 4, plugin);
     }
 
     private Location safe(Location l) {
@@ -198,6 +201,7 @@ final class Caravan implements Listener, CommandExecutor {
             Bukkit.broadcastMessage(ChatColor.GOLD + "The Caravan " + ChatColor.GRAY + "has packed up and moved on. It'll be back.");
         }
         c.remove();
+        c.at.getWorld().removePluginChunkTicket(c.at.getBlockX() >> 4, c.at.getBlockZ() >> 4, plugin);
     }
 
     // ===================================================================== his wares

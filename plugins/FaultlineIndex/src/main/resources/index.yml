@@ -769,6 +769,10 @@ entries:
      how: "Winter only (December 1 - January 6): hostile mobs you kill sometimes drop 1-2.",
      does: "Spend it on Winter cosmetics in the Seasonal Shop (/cosmetics): Santa Hat, Reindeer Antlers, Winter Scarf, Gift Sack, Ugly Sweater. They're yours forever."}
 
+  - {chapter: weapons, name: "Boss Rush Sigil", icon: boss_rush_sigil, detect: "faultlinebosses:rush_sigil",
+     how: "Craft it: 8 Netherite Blocks around a Nether Star.",
+     does: "Right-click it to start a Boss Rush: every boss back to back (14 of them), with everyone in survival within 10 blocks on your team. It's never used up. Each player can run one Boss Rush an hour."}
+
 # ============================================================================
 # ACHIEVEMENTS (their own book, from the Index cover). A goal is one of:
 #   defeat: [entry ids] + need: all | any | <total kills across them>
@@ -793,7 +797,7 @@ achievements:
      need: all, reward: {cosmetic: slayer_crown, items: ["NETHERITE_INGOT:2"], xp: 2000}}
   - {id: the_lost_king, name: "The Lost King", icon: lost_explorer, desc: "Face the Lost Explorer, below the bedrock.",
      defeat: [the_lost_explorer], need: all, reward: {items: ["NETHERITE_INGOT:2"], xp: 1000}}
-  - {id: boss_rush_champion, name: "Boss Rush Champion", icon: champion_cape, desc: "Finish a Boss Rush (/bossrush): every boss, back to back.",
+  - {id: boss_rush_champion, name: "Boss Rush Champion", icon: champion_cape, desc: "Finish a Boss Rush (right-click a Boss Rush Sigil): every boss, back to back.",
      stat: boss_rush, count: 1, reward: {cosmetic: champion_cape, items: ["NETHERITE_INGOT:2"], xp: 3000}}
   - {id: stargazer, name: "Stargazer", icon: meteorite, desc: "Claim a meteor: be the first to break its core after it lands.",
      stat: meteors, count: 1, reward: {items: ["EMERALD:8"], xp: 200}}

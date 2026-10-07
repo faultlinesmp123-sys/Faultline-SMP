@@ -95,11 +95,66 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
         Stage current() { return stage >= 0 && stage < stages.size() ? stages.get(stage) : null; }
     }
 
+    final org.bukkit.NamespacedKey sigilKey;
+
     BossRush(FaultlineBosses pl) {
         this.pl = pl;
         file = new File(pl.getDataFolder(), "bossrush.yml");
         data = YamlConfiguration.loadConfiguration(file);
+        sigilKey = new org.bukkit.NamespacedKey(pl, "rush_sigil");
+        org.bukkit.inventory.ShapedRecipe rec = new org.bukkit.inventory.ShapedRecipe(new org.bukkit.NamespacedKey(pl, "boss_rush_sigil"), sigil());
+        rec.shape("NNN", "NSN", "NNN");
+        rec.setIngredient('N', Material.NETHERITE_BLOCK);
+        rec.setIngredient('S', Material.NETHER_STAR);
+        addRecipeSafely(rec);
     }
+
+    // ===================================================================== the Boss Rush Sigil (starts a rush; never used up)
+
+    ItemStack sigil() {
+        ItemStack it = new ItemStack(Material.NETHER_STAR);
+        org.bukkit.inventory.meta.ItemMeta m = it.getItemMeta();
+        m.setDisplayName(ChatColor.RED + "" + ChatColor.BOLD + "Boss Rush Sigil");
+        m.setLore(List.of(ChatColor.GRAY + "Right-click: start a Boss Rush.",
+                ChatColor.GRAY + "Everyone in survival within 10 blocks joins.",
+                ChatColor.GRAY + "Every boss, back to back.",
+                ChatColor.GOLD + "Never used up.",
+                ChatColor.DARK_GRAY + "8 Netherite Blocks around a Nether Star."));
+        m.setItemModel(new org.bukkit.NamespacedKey("faultline", "boss_rush_sigil"));
+        m.setEnchantmentGlintOverride(true);
+        m.setMaxStackSize(1);
+        m.getPersistentDataContainer().set(sigilKey, org.bukkit.persistence.PersistentDataType.BYTE, (byte) 1);
+        it.setItemMeta(m);
+        return it;
+    }
+
+    boolean isSigil(ItemStack it) {
+        return it != null && it.hasItemMeta() && it.getItemMeta().getPersistentDataContainer().has(sigilKey, org.bukkit.persistence.PersistentDataType.BYTE);
+    }
+
+    boolean hasSigil(Player p) {
+        for (ItemStack it : p.getInventory().getContents()) if (isSigil(it)) return true;
+        return false;
+    }
+
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onSigil(org.bukkit.event.player.PlayerInteractEvent e) {
+        if (e.getHand() != org.bukkit.inventory.EquipmentSlot.HAND || !isSigil(e.getItem())) return;
+        if (e.getAction() != org.bukkit.event.block.Action.RIGHT_CLICK_AIR && e.getAction() != org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK) return;
+        e.setUseInteractedBlock(org.bukkit.event.Event.Result.DENY);
+        e.setUseItemInHand(org.bukkit.event.Event.Result.DENY);
+        if (run != null) { e.getPlayer().sendMessage(ChatColor.RED + "A Boss Rush is already running."); return; }
+        start(e.getPlayer());
+    }
+
+    /** It's a Nether Star underneath: never a crafting ingredient (no beacons out of a Sigil). */
+    @EventHandler
+    public void onSigilCraft(org.bukkit.event.inventory.PrepareItemCraftEvent e) {
+        for (ItemStack i : e.getInventory().getMatrix()) if (isSigil(i)) { e.getInventory().setResult(null); return; }
+    }
+
+    @EventHandler
+    public void onJoinRecipe(org.bukkit.event.player.PlayerJoinEvent e) { e.getPlayer().discoverRecipe(new org.bukkit.NamespacedKey(pl, "boss_rush_sigil")); }
 
     double c(String path, double def) { return pl.getConfig().getDouble("boss-rush." + path, def); }
 
@@ -470,7 +525,22 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
         String sub = args.length > 0 ? args[0].toLowerCase() : "";
         boolean admin = sender.hasPermission("bosses.admin");
         switch (sub) {
-            case "start" -> { if (sender instanceof Player p) start(p); }
+            case "start" -> {
+                if (!(sender instanceof Player p)) return true;
+                if (!admin && !hasSigil(p)) { p.sendMessage(ChatColor.RED + "You need a Boss Rush Sigil " + ChatColor.GRAY + "(8 Netherite Blocks around a Nether Star). Right-click it to start."); return true; }
+                start(p);
+            }
+            case "sigil" -> { // admin: /bossrush sigil [amount] [player]
+                if (!admin) { sender.sendMessage(ChatColor.RED + "You don't have permission to do that."); return true; }
+                int amount = 1; Player target = sender instanceof Player sp ? sp : null;
+                for (int i = 1; i < args.length; i++) {
+                    Player o = Bukkit.getPlayerExact(args[i]);
+                    if (o != null) target = o; else try { amount = Math.max(1, Math.min(64, Integer.parseInt(args[i]))); } catch (NumberFormatException ignored) { }
+                }
+                if (target == null) { sender.sendMessage("Who should get it?"); return true; }
+                for (int i = 0; i < amount; i++) pl.give(target, sigil());
+                sender.sendMessage(ChatColor.GREEN + "Gave " + target.getName() + " " + amount + " Boss Rush Sigil" + (amount == 1 ? "" : "s") + ".");
+            }
             case "top", "leaderboard" -> leaderboard(sender);
             case "stop" -> {
                 if (!admin) { sender.sendMessage(ChatColor.RED + "You don't have permission to do that."); return true; }
@@ -507,11 +577,12 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
             default -> {
                 sender.sendMessage(ChatColor.RED + "" + ChatColor.BOLD + "Boss Rush" + ChatColor.GRAY + ": every boss, back to back ("
                         + stages().size() + "). You're teleported to each boss's home biome.");
-                sender.sendMessage(ChatColor.YELLOW + "/bossrush start " + ChatColor.GRAY + "- you and everyone within 10 blocks (in survival)");
+                sender.sendMessage(ChatColor.YELLOW + "Right-click a Boss Rush Sigil " + ChatColor.GRAY + "(8 Netherite Blocks around a Nether Star, never used up)"
+                        + " - you and everyone within 10 blocks (in survival)");
                 sender.sendMessage(ChatColor.YELLOW + "/bossrush top " + ChatColor.GRAY + "- the fastest times");
                 sender.sendMessage(ChatColor.GRAY + "Bosses drop no loot in a rush. Die and you're out (you keep your things). Finish it for big rewards.");
                 if (run != null) sender.sendMessage(ChatColor.GOLD + "A rush is running: boss " + (run.stage + 1) + "/" + run.stages.size() + ".");
-                if (admin) sender.sendMessage(ChatColor.DARK_GRAY + "Admin: /bossrush stop | skip | setarena <boss> | arenas | clearcooldown");
+                if (admin) sender.sendMessage(ChatColor.DARK_GRAY + "Admin: /bossrush start | stop | skip | setarena <boss> | arenas | clearcooldown | sigil [amount] [player]");
             }
         }
         return true;
@@ -526,7 +597,7 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         List<String> o = new ArrayList<>();
-        if (args.length == 1) { o.addAll(List.of("start", "top")); if (sender.hasPermission("bosses.admin")) o.addAll(List.of("stop", "skip", "setarena", "arenas", "clearcooldown")); }
+        if (args.length == 1) { o.addAll(List.of("start", "top")); if (sender.hasPermission("bosses.admin")) o.addAll(List.of("stop", "skip", "setarena", "arenas", "clearcooldown", "sigil")); }
         else if (args.length == 2 && args[0].equalsIgnoreCase("setarena")) for (Stage s : STAGES) o.add(s.kind());
         String last = args[args.length - 1].toLowerCase();
         o.removeIf(x -> !x.startsWith(last));

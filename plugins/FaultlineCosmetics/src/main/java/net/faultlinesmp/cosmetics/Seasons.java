@@ -166,6 +166,10 @@ final class Seasons implements Listener {
         LivingEntity dead = e.getEntity();
         Player killer = dead.getKiller();
         if (killer == null || !(dead instanceof Enemy) || killer.getGameMode() == GameMode.CREATIVE) return;
+        // BUG FIX: spawner mob farms would have printed Candy/Presents (8% of every mob). Only naturally spawned mobs count.
+        var why = dead.getEntitySpawnReason();
+        if (why == org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.SPAWNER || why == org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.TRIAL_SPAWNER
+                || why == org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.SPAWNER_EGG) return;
         Season s = current();
         if (s == null || random.nextDouble() >= s.chance()) return;
         int n = s.min() + random.nextInt(Math.max(1, s.max() - s.min() + 1));

@@ -7101,6 +7101,8 @@ public final class FaultlineItems extends JavaPlugin {
                         "rocco item fist {amount} {player}", "FaultlineBosses"));
                 list.add(external(icon(Material.WITHER_SKELETON_SKULL, "explorer_head", ChatColor.WHITE + "" + ChatColor.BOLD + "The Lost Explorer " + ChatColor.GRAY + "(go to his arena)", "FaultlineBosses"),
                         "explorer arena {player}", "FaultlineBosses"));
+                list.add(external(icon(Material.NETHER_STAR, "boss_rush_sigil", ChatColor.RED + "" + ChatColor.BOLD + "Boss Rush Sigil", "FaultlineBosses"),
+                        "bossrush sigil {amount} {player}", "FaultlineBosses"));
                 list.add(external(icon(Material.PAPER, "warlord_challenge", ChatColor.GOLD + "" + ChatColor.BOLD + "Warlord's Challenge " + ChatColor.GRAY + "(Grimtusk)", "FaultlineBosses"),
                         "grimtusk item challenge {amount} {player}", "FaultlineBosses"));
                 list.add(external(icon(Material.NETHERITE_AXE, "warlord_cleaver", ChatColor.GOLD + "" + ChatColor.BOLD + "Grimtusk's Cleaver", "FaultlineBosses"),

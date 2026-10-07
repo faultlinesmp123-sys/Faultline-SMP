@@ -217,6 +217,24 @@ ICONS = {
         "................",
         "................",
     ],
+    "boss_rush_sigil": [
+        "......NNNN......",
+        "....NNMMMMNN....",
+        "...NMMRrrRMMN...",
+        "..NMRrryyrrRMN..",
+        "..NMrryeeyrrMN..",
+        ".NMRryeeeeyrRMN.",
+        ".NMrryeeeeyrrMN.",
+        ".NMRrryeeyrrRMN.",
+        ".NMMRrryyrrRMMN.",
+        "..NMMRrrrrRMMN..",
+        "..NNMMRRRRMMNN..",
+        "...NNMMMMMMNN...",
+        "....NNNMMNNN....",
+        "...LL.NNNN.LL...",
+        "..LL........LL..",
+        "................",
+    ],
     "caravan_merchant": [
         "................",
         "....uuuuuuuu....",
@@ -256,7 +274,8 @@ def main():
     for k in ("season_candy", "season_present"): imgs[k] = COS.draw(COS.TOKENS[k])
     for k, im in imgs.items(): im.save(os.path.join(A, "textures/index", k + ".png"))
     # the two items
-    for k, parent in (("warlord_challenge", "minecraft:item/generated"), ("warlord_cleaver", "minecraft:item/handheld")):
+    for k, parent in (("warlord_challenge", "minecraft:item/generated"), ("warlord_cleaver", "minecraft:item/handheld"),
+                      ("boss_rush_sigil", "minecraft:item/generated")):
         imgs[k].save(os.path.join(A, "textures/item", k + ".png"))
         with open(os.path.join(A, "models/item", k + ".json"), "w") as f:
             json.dump({"parent": parent, "textures": {"layer0": "faultline:item/" + k}}, f, indent=2)

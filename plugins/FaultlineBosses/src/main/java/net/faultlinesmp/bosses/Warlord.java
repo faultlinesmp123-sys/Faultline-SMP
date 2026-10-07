@@ -141,17 +141,80 @@ final class Warlord implements Listener {
         return s.getItemMeta().getPersistentDataContainer().get(itemKey, PersistentDataType.STRING);
     }
 
-    /** Inside (or right by) a Bastion Remnant. */
+    /**
+     * Inside (or right by) a Bastion Remnant. BUG FIX: this only asked the 3x3 chunks around you for the structure, which
+     * failed on the live server, so the challenge never worked. Now any one of three checks is enough:
+     *   1. a structure lookup over 5x5 chunks (a bastion is up to ~5 chunks wide),
+     *   2. the nearest bastion (locate) within 96 blocks,
+     *   3. the blocks around you: plenty of blackstone bricks / gilded blackstone = you're standing in one.
+     */
     static boolean inBastion(Location l) {
-        if (l.getWorld().getEnvironment() != World.Environment.NETHER) return false;
+        World w = l.getWorld();
+        if (w.getEnvironment() != World.Environment.NETHER) return false;
         int cx = l.getBlockX() >> 4, cz = l.getBlockZ() >> 4;
-        for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) {
-            if (!l.getWorld().isChunkLoaded(cx + dx, cz + dz)) continue;
-            for (org.bukkit.generator.structure.GeneratedStructure gs : l.getWorld().getChunkAt(cx + dx, cz + dz).getStructures(org.bukkit.generator.structure.Structure.BASTION_REMNANT)) {
-                if (gs.getBoundingBox().clone().expand(12).contains(l.toVector())) return true;
+        try {
+            for (int dx = -2; dx <= 2; dx++) for (int dz = -2; dz <= 2; dz++) {
+                if (!w.isChunkLoaded(cx + dx, cz + dz)) continue;
+                for (org.bukkit.generator.structure.GeneratedStructure gs : w.getStructures(cx + dx, cz + dz, org.bukkit.generator.structure.Structure.BASTION_REMNANT))
+                    if (gs.getBoundingBox().clone().expand(16).contains(l.toVector())) return true;
+            }
+        } catch (RuntimeException ignored) { }
+        try {
+            var r = w.locateNearestStructure(l, org.bukkit.generator.structure.Structure.BASTION_REMNANT, 6, false);
+            if (r != null && Math.hypot(r.getLocation().getX() - l.getX(), r.getLocation().getZ() - l.getZ()) < 96) return true;
+        } catch (RuntimeException ignored) { }
+        return bastionBlocks(l) >= 40;
+    }
+
+    /** How many bastion blocks (polished blackstone bricks, gilded blackstone, ...) are within 8 blocks. */
+    static int bastionBlocks(Location l) {
+        World w = l.getWorld();
+        int n = 0;
+        for (int dx = -8; dx <= 8; dx++) for (int dy = -6; dy <= 6; dy++) for (int dz = -8; dz <= 8; dz++) {
+            Material m = w.getBlockAt(l.getBlockX() + dx, l.getBlockY() + dy, l.getBlockZ() + dz).getType();
+            if (m == Material.POLISHED_BLACKSTONE_BRICKS || m == Material.CRACKED_POLISHED_BLACKSTONE_BRICKS || m == Material.GILDED_BLACKSTONE
+                    || m == Material.POLISHED_BLACKSTONE_BRICK_SLAB || m == Material.POLISHED_BLACKSTONE_BRICK_STAIRS || m == Material.POLISHED_BLACKSTONE_BRICK_WALL
+                    || m == Material.CHISELED_POLISHED_BLACKSTONE) n++;
+        }
+        return n;
+    }
+
+    /** Somewhere he fits (3x3, 3 tall, a solid floor, no lava) 4-9 blocks in front of you, else right beside you. */
+    static Location spawnSpot(Player p) {
+        Location base = p.getLocation();
+        Vector f = Vendetta.flatDir(base);
+        World w = base.getWorld();
+        for (double d = 8; d >= 3; d -= 1) for (int side = 0; side < 5; side++) {
+            double off = new double[]{0, 2, -2, 4, -4}[side];
+            Location at = base.clone().add(f.clone().multiply(d)).add(new Vector(-f.getZ(), 0, f.getX()).multiply(off));
+            for (int dy = 2; dy >= -3; dy--) {
+                int x = at.getBlockX(), y = base.getBlockY() + dy, z = at.getBlockZ();
+                if (fits(w, x, y, z) && clear(w, base, x + 0.5, y, z + 0.5)) return new Location(w, x + 0.5, y, z + 0.5, base.getYaw() + 180, 0);
             }
         }
-        return false;
+        return base.clone();
+    }
+
+    /** Nothing solid between you and the spot (so he never appears on the other side of a wall). */
+    static boolean clear(World w, Location from, double x, double y, double z) {
+        double dx = x - from.getX(), dz = z - from.getZ(), len = Math.hypot(dx, dz);
+        for (double t = 0.5; t < len; t += 0.5) {
+            double px = from.getX() + dx * t / len, pz = from.getZ() + dz * t / len, py = from.getY() + (y - from.getY()) * t / len;
+            if (w.getBlockAt((int) Math.floor(px), (int) Math.floor(py + 1.2), (int) Math.floor(pz)).getType().isSolid()) return false;
+        }
+        return true;
+    }
+
+    static boolean fits(World w, int x, int y, int z) {
+        for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) {
+            org.bukkit.block.Block floor = w.getBlockAt(x + dx, y - 1, z + dz);
+            if (!floor.getType().isSolid() || floor.getType() == Material.MAGMA_BLOCK) return false;
+            for (int dy = 0; dy < 3; dy++) {
+                org.bukkit.block.Block b = w.getBlockAt(x + dx, y + dy, z + dz);
+                if (b.getType().isSolid() || b.isLiquid()) return false;
+            }
+        }
+        return true;
     }
 
     @EventHandler(priority = EventPriority.HIGH)
@@ -170,11 +233,12 @@ final class Warlord implements Listener {
         if (p.getWorld().getDifficulty() == Difficulty.PEACEFUL) { p.sendActionBar(legacy(ChatColor.RED + "He won't come on Peaceful.")); return; }
         if (System.currentTimeMillis() < cooldownUntil) { p.sendActionBar(legacy(ChatColor.GRAY + "The bastion is still rebuilding... try again in a few minutes.")); return; }
         if (pl.getConfig().getBoolean("warlord.require-bastion", true) && !inBastion(p.getLocation())) {
-            p.sendMessage(ChatColor.RED + "Raise it inside a Bastion Remnant in the Nether." + ChatColor.GRAY + " (The challenge wasn't used.)");
+            p.sendMessage(ChatColor.RED + (p.getWorld().getEnvironment() != World.Environment.NETHER ? "Only in the Nether: raise it inside a Bastion Remnant."
+                    : "You're not inside a Bastion Remnant (the big blackstone fortresses). Go in and try again.") + ChatColor.GRAY + " (The challenge wasn't used.)");
             return;
         }
         if (p.getGameMode() != GameMode.CREATIVE) p.getInventory().getItemInMainHand().setAmount(p.getInventory().getItemInMainHand().getAmount() - 1);
-        summon(p.getLocation().add(Vendetta.flatDir(p.getLocation()).multiply(8)), p);
+        summon(spawnSpot(p), p);
     }
 
     /** Grimtusk's Cleaver: a burning sweep in front of you. */
@@ -264,6 +328,7 @@ final class Warlord implements Listener {
                 attr(h, Attribute.ATTACK_DAMAGE, c("ironhide.damage", 9));
                 attr(h, Attribute.MOVEMENT_SPEED, c("ironhide.speed", 0.32));
                 attr(h, Attribute.FOLLOW_RANGE, 48);
+                h.addPotionEffect(new PotionEffect(PotionEffectType.FIRE_RESISTANCE, PotionEffect.INFINITE_DURATION, 0, false, false)); // bastions are full of lava
             });
             body = world.spawn(at, PiglinBrute.class, b -> {
                 b.addScoreboardTag(TAG);

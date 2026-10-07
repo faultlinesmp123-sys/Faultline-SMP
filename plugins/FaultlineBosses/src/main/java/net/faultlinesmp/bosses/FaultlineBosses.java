@@ -10674,7 +10674,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 }
                 case "jacob" -> summonJacob(ahead, by);
                 case "rocco" -> vendetta.summon(ahead, by);
-                case "grimtusk" -> warlord.summon(ahead, by);
+                case "grimtusk" -> warlord.summon(Warlord.spawnSpot(by), by);
                 case "rotbeard", "bulwark", "great_hog", "queen_spider" -> { if (!rush.spawnRaidBoss(kind, ahead)) return false; }
                 case "explorer" -> { // the leader walks into his arena; everyone else watches from the path (he fights alone)
                     if (explorer.fight != null) return false;
@@ -10712,7 +10712,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             case "summon" -> {
                 if (self == null) { sender.sendMessage("Players only."); return true; }
                 if (g != null) { sender.sendMessage(ChatColor.GRAY + "Grimtusk is already here."); return true; }
-                warlord.summon(self.getLocation().add(Vendetta.flatDir(self.getLocation()).multiply(8)), self);
+                warlord.summon(Warlord.spawnSpot(self), self);
                 sender.sendMessage(ChatColor.GRAY + "(Fight him in survival; creative players don't count as fighters.)");
             }
             case "kill" -> { if (g != null) { g.leave(null); sender.sendMessage(ChatColor.GREEN + "Removed Grimtusk."); } else sender.sendMessage(ChatColor.GRAY + "He isn't here."); }

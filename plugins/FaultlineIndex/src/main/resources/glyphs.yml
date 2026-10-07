@@ -541,3 +541,6 @@ season_candy:
 season_present:
   large: 59244
   small: 58220
+boss_rush_sigil:
+  large: 59245
+  small: 58221

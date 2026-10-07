@@ -773,6 +773,18 @@
   "minecraft:nether_star": [
    {
     "type": "definition",
+    "model": "faultline:boss_rush_sigil",
+    "bedrock_identifier": "faultline:boss_rush_sigil",
+    "bedrock_options": {
+     "icon": "faultline.boss_rush_sigil",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   },
+   {
+    "type": "definition",
     "model": "faultline:nightwatch_charm",
     "bedrock_identifier": "faultline:nightwatch_charm",
     "bedrock_options": {

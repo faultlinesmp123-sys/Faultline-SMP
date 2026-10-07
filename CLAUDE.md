@@ -224,12 +224,18 @@ Notes:
   right-click Golden Cleave, 12 s). Boss form hooks done (`pilot`, `takeMove`, `morphMoves`, `MORPH_KINDS`, `startMorph`).
   Tested in the bosses harness (`WarlordTest`).
 - **Boss Rush** (`FaultlineBosses/BossRush.java`, config `boss-rush:`, data `bossrush.yml`): `/bossrush start` = leader + everyone
-  in survival within 10 blocks; refused while any boss is out. Stages (`boss-rush.bosses`): demoneye, frostbeard, dune,
-  frostmaw, don, kraken, jacob, rocco, grimtusk. Each: teleport to that boss's biome (found once with `locateNearestBiome` /
+  in survival within 10 blocks; refused while any boss is out. Stages (`boss-rush.bosses`, 13): rotbeard (beach), bulwark
+  (badlands), great_hog (crimson forest) = the raid bosses, spawned through `zraid spawnboss <egg> <world> <x> <y> <z>` and
+  followed by their tag (`raidBoss`; their death = stage won, drops cleared at MONITOR; skipped without FaultlineRaids), then
+  demoneye, frostbeard, dune, frostmaw, don, kraken, jacob, rocco, grimtusk, and the finale explorer: the team goes to the
+  void path (`below.returns` set, cleared at the end), the leader is put in his arena and fights alone; his defeat goes through
+  `rewards()` (hooked like the others); losing (all downed) in a rush skips the speech/Yes-No and fails the rush. A server
+  config still holding 1.3.0's 9-boss list (`OLD_DEFAULT`) gets the new full list. Each: teleport to that boss's biome (found once with `locateNearestBiome` /
   `locateNearestStructure` from the world spawn, saved; `/bossrush setarena <boss>`), 5 s countdown, `rushSummon`. Every
   boss's reward method starts with `rushDefeated(kind)` + `if (rushSuppressLoot(kind)) return;` (a NEW BOSS needs both, plus
   cases in `rushSummon`/`rushAlive`/`rushKill`/`bossOutName`). Death = out with keep-inventory; all out or the boss leaves =
-  fail. Win: rewards, `index stat <p> boss_rush 1`, best time per player in `bossrush.yml` (`/bossrush top`), sent home.
+  fail. Win: rewards, `index stat <p> boss_rush 1`, best time per player in `bossrush.yml` (`/bossrush top`), sent home. Tested in `WarlordTest` and `RushTest`
+  (Raids loaded alongside: Bulwark, Rotbeard, then the Explorer, win and loss).
 - **Achievements** (`FaultlineIndex/Achievements.java`, `achievements:` in index.yml): goals by `defeat` (+ `need`
   all/any/n), `chapter`, `found(-items/-creatures)`, or `stat` + `count`. Checked on every unlock/kill/stat and 10 s after
   join (retroactive). Done = server-wide message, title, reward items/xp, cosmetic via `cosmetic unlock`. Saved in

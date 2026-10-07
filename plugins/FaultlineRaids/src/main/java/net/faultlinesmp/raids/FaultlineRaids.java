@@ -2254,6 +2254,18 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
                     for (ZombieRaid raid : new ArrayList<>(raids)) endRaid(raid, false, "The raid was called off.");
                     return msg(sender, ChatColor.GREEN + "Stopped " + count + " raid(s).");
                 }
+                case "spawnboss" -> { // /zraid spawnboss <rotbeard|bulwark|great_hog> <world> <x> <y> <z>  (the Boss Rush uses this)
+                    Egg egg = args.length > 1 ? Egg.byName(args[1]) : null;
+                    World w = args.length > 5 ? Bukkit.getWorld(args[2]) : null;
+                    if (egg == null || egg.kind == null || w == null) return msg(sender, ChatColor.RED + "Usage: /zraid spawnboss <rotbeard|bulwark|great_hog> <world> <x> <y> <z>");
+                    Location at;
+                    try { at = new Location(w, Double.parseDouble(args[3]), Double.parseDouble(args[4]), Double.parseDouble(args[5])); }
+                    catch (NumberFormatException e) { return msg(sender, ChatColor.RED + "Bad coordinates."); }
+                    LivingEntity mob = spawnKind(egg.kind, at);
+                    if (mob == null) return false;
+                    tag(mob, ARMY_TAG);
+                    return msg(sender, ChatColor.GREEN + "Spawned " + ChatColor.stripColor(egg.name) + ".");
+                }
                 case "captain" -> {
                     if (!(sender instanceof Player p)) return msg(sender, "Only players can do that.");
                     spawnCaptain(p);

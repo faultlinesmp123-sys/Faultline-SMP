@@ -46,6 +46,10 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
     record Stage(String kind, String name, World.Environment env, List<Biome> biomes) {}
 
     static final List<Stage> STAGES = List.of(
+            // the raid bosses (FaultlineRaids) open the rush
+            new Stage("rotbeard", "Captain Rotbeard", World.Environment.NORMAL, List.of(Biome.BEACH, Biome.STONY_SHORE, Biome.SNOWY_BEACH)),
+            new Stage("bulwark", "The Bulwark", World.Environment.NORMAL, List.of(Biome.BADLANDS, Biome.ERODED_BADLANDS, Biome.WOODED_BADLANDS)),
+            new Stage("great_hog", "The Great Hog", World.Environment.NETHER, List.of(Biome.CRIMSON_FOREST)),
             new Stage("demoneye", "The Demon Eye", World.Environment.NORMAL, List.of(Biome.PLAINS, Biome.SUNFLOWER_PLAINS, Biome.MEADOW)),
             new Stage("frostbeard", "Frostbeard", World.Environment.NORMAL, List.of(Biome.SNOWY_PLAINS, Biome.SNOWY_TAIGA, Biome.GROVE)),
             new Stage("dune", "The Dune Devourer", World.Environment.NORMAL, List.of(Biome.DESERT)),
@@ -54,7 +58,12 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
             new Stage("kraken", "The Kraken", World.Environment.NORMAL, List.of(Biome.DEEP_OCEAN, Biome.DEEP_COLD_OCEAN, Biome.DEEP_LUKEWARM_OCEAN)),
             new Stage("jacob", "Diamond Jacob", World.Environment.NORMAL, List.of(Biome.JAGGED_PEAKS, Biome.STONY_PEAKS, Biome.FROZEN_PEAKS)),
             new Stage("rocco", "Rocco Vendetta", World.Environment.NORMAL, List.of(Biome.PLAINS, Biome.SAVANNA, Biome.MEADOW)),
-            new Stage("grimtusk", "Grimtusk, the Piglin Warlord", World.Environment.NETHER, List.of(Biome.NETHER_WASTES, Biome.CRIMSON_FOREST)));
+            new Stage("grimtusk", "Grimtusk, the Piglin Warlord", World.Environment.NETHER, List.of(Biome.NETHER_WASTES, Biome.CRIMSON_FOREST)),
+            // the finale: the Lost Explorer in his arena below the bedrock (solo: the leader fights him, the rest watch from the path)
+            new Stage("explorer", "The Lost Explorer", World.Environment.THE_END, List.of()));
+
+    /** The list 1.3.0 wrote into server configs: still that list = use the full default (raid bosses + the Explorer). */
+    static final List<String> OLD_DEFAULT = List.of("demoneye", "frostbeard", "dune", "frostmaw", "don", "kraken", "jacob", "rocco", "grimtusk");
 
     final FaultlineBosses pl;
     private final File file;
@@ -97,7 +106,7 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
 
     List<Stage> stages() {
         List<String> order = pl.getConfig().getStringList("boss-rush.bosses");
-        if (order.isEmpty()) return STAGES;
+        if (order.isEmpty() || order.equals(OLD_DEFAULT)) return STAGES;
         List<Stage> out = new ArrayList<>();
         for (String k : order) STAGES.stream().filter(s -> s.kind().equalsIgnoreCase(k.trim())).findFirst().ifPresent(out::add);
         return out.isEmpty() ? STAGES : out;
@@ -125,6 +134,10 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
 
     /** Where this boss is fought: remembered, or found once (the nearest fitting biome / a bastion) and remembered. */
     Location arena(Stage s) {
+        if (s.kind().equals("explorer")) { // on the white path, just short of his arena
+            World v = pl.below.voidWorld();
+            return v == null ? null : new Location(v, 0.5, Below.PATH_Y + 1, Below.ARENA_Z - 24.5, 0, 0);
+        }
         String key = "arenas." + s.kind();
         if (data.isConfigurationSection(key)) {
             World w = Bukkit.getWorld(data.getString(key + ".world", ""));
@@ -223,10 +236,12 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
         r.arena = a;
         r.state = 0; r.t = 0;
         int i = 0;
+        boolean below = s.kind().equals("explorer");
         for (Player p : r.alive()) {
             double ang = i++ * Math.PI * 2 / Math.max(1, r.alive().size());
             Location to = a.clone().add(Math.cos(ang) * 2, 0, Math.sin(ang) * 2);
-            Location safe = surface(to, s);
+            Location safe = below ? a.clone().add((i - 1) % 3 - 1, 0, -((i - 1) / 3)) : surface(to, s);
+            if (below && !pl.below.returns.containsKey(p.getUniqueId())) { pl.below.returns.put(p.getUniqueId(), r.home.get(p.getUniqueId())); pl.below.dirty = true; }
             p.teleport(safe != null ? safe : a);
             p.setFallDistance(0);
             p.playSound(p.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1f, 0.8f);
@@ -269,7 +284,7 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
                     r.state = 2; r.t = 0;
                     msgTeam(r, ChatColor.GREEN + "" + ChatColor.BOLD + s.name() + " down! " + ChatColor.GRAY + "Next boss in " + (int) c("break-seconds", 15) + " seconds.");
                     for (Player p : alive) p.playSound(p.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 0.8f, 1.2f);
-                } else if (r.t > 100 && !pl.rushAlive(s.kind())) fail(r, s.name() + " left the fight");
+                } else if (r.t > 100 && !pl.rushAlive(s.kind())) fail(r, "beaten by " + s.name());
             }
             case 2 -> { if (r.t >= c("break-seconds", 15) * 20) next(r); }
             default -> { }
@@ -320,6 +335,9 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
     /** Ends the run: everyone still in it goes back to where they started. */
     void finish(Run r, boolean won) {
         r.bar.removeAll();
+        boolean voidUsed = false;
+        for (UUID id : r.team) if (pl.below.returns.remove(id) != null) voidUsed = true; // they go home from here, not through the rift
+        if (voidUsed) pl.below.dirty = true;
         long until = System.currentTimeMillis() + (long) (c("cooldown-minutes", 60) * 60000);
         for (UUID id : r.team) cooldown.put(id, until);
         for (UUID id : r.team) {
@@ -387,6 +405,49 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
     public void onQuit(PlayerQuitEvent e) {
         Run r = run;
         if (r != null && r.team.contains(e.getPlayer().getUniqueId())) { r.out.add(e.getPlayer().getUniqueId()); r.bar.removePlayer(e.getPlayer()); }
+    }
+
+    // ---------- the raid bosses (FaultlineRaids): spawned with "zraid spawnboss", followed by their tag ----------
+    static final Map<String, String> RAID_TAGS = Map.of("rotbeard", "faultline_rotbeard", "bulwark", "faultline_bulwark", "great_hog", "faultline_great_hog");
+    UUID raidBoss;
+
+    boolean spawnRaidBoss(String kind, Location at) {
+        org.bukkit.plugin.Plugin raids = Bukkit.getPluginManager().getPlugin("FaultlineRaids");
+        if (raids == null || !raids.isEnabled()) return false;
+        raidBoss = null;
+        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "zraid spawnboss " + kind + " " + at.getWorld().getName() + " " + at.getX() + " " + at.getY() + " " + at.getZ());
+        String tag = RAID_TAGS.get(kind);
+        double best = Double.MAX_VALUE;
+        for (org.bukkit.entity.Entity e : at.getWorld().getNearbyEntities(at, 6, 6, 6)) {
+            if (!(e instanceof org.bukkit.entity.LivingEntity) || !e.getScoreboardTags().contains(tag)) continue;
+            double d = e.getLocation().distanceSquared(at);
+            if (d < best) { best = d; raidBoss = e.getUniqueId(); }
+        }
+        return raidBoss != null;
+    }
+
+    boolean raidBossAlive() {
+        if (raidBoss == null) return false;
+        org.bukkit.entity.Entity e = Bukkit.getEntity(raidBoss);
+        return e instanceof org.bukkit.entity.LivingEntity le && le.isValid() && !le.isDead();
+    }
+
+    void removeRaidBoss() {
+        org.bukkit.entity.Entity e = raidBoss == null ? null : Bukkit.getEntity(raidBoss);
+        if (e != null) e.remove();
+        raidBoss = null;
+    }
+
+    /** A raid boss killed in the rush: the stage is won, and (after FaultlineRaids added its loot) there's none. */
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onRaidBossDeath(org.bukkit.event.entity.EntityDeathEvent e) {
+        if (raidBoss == null || !e.getEntity().getUniqueId().equals(raidBoss)) return;
+        raidBoss = null;
+        Run r = run;
+        if (r == null || r.state != 1 || r.current() == null || !RAID_TAGS.containsKey(r.current().kind())) return;
+        r.defeated = true;
+        e.getDrops().clear();
+        e.setDroppedExp(0);
     }
 
     void shutdown() {

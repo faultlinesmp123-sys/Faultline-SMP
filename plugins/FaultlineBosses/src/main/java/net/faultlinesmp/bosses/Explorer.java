@@ -360,7 +360,7 @@ final class Explorer implements Listener, CommandExecutor {
             }
             if (st != St.LOSS && st != St.DEFEAT && st != St.INTRO) {
                 if (alive().isEmpty()) {
-                    if (!downed.isEmpty()) startLoss();
+                    if (!downed.isEmpty()) { startLoss(); if (over) return; }
                     else { end(false); return; } // everyone left: he waits again
                 }
             }
@@ -1266,6 +1266,11 @@ final class Explorer implements Listener, CommandExecutor {
         };
 
         void startLoss() {
+            if (pl.rushSuppressLoot("explorer")) { // a Boss Rush: no speech, no second chance; the rush is over
+                say("You cannot defeat me...");
+                end(false);
+                return;
+            }
             st = St.LOSS; t = 0; move = Move.NONE;
             stopMusic();
             clearAttacks();
@@ -1417,6 +1422,11 @@ final class Explorer implements Listener, CommandExecutor {
         }
 
         void rewards() {
+            pl.rushDefeated("explorer");
+            if (pl.rushSuppressLoot("explorer")) { // a Boss Rush: no loot (the Index still counts it)
+                for (UUID id : fighters) { Player p = Bukkit.getPlayer(id); if (p != null) pl.console("index discover " + p.getName() + " the_lost_explorer", p); }
+                return;
+            }
             List<String> names = new ArrayList<>();
             for (UUID id : fighters) {
                 Player p = Bukkit.getPlayer(id);

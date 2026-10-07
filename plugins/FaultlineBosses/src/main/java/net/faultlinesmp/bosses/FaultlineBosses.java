@@ -10638,6 +10638,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         if (jacob != null) return "Diamond Jacob";
         if (vendetta != null && vendetta.rocco != null) return "Rocco Vendetta";
         if (warlord != null && warlord.boss != null) return "Grimtusk";
+        if (explorer != null && explorer.fight != null) return "The Lost Explorer";
         return null;
     }
 
@@ -10646,6 +10647,8 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             case "demoneye" -> eye != null; case "frostbeard" -> mortimer != null; case "dune", "frostmaw" -> dune != null;
             case "don" -> don != null; case "kraken" -> kraken != null; case "jacob" -> jacob != null;
             case "rocco" -> vendetta != null && vendetta.rocco != null; case "grimtusk" -> warlord != null && warlord.boss != null;
+            case "explorer" -> explorer != null && explorer.fight != null;
+            case "rotbeard", "bulwark", "great_hog" -> rush != null && rush.raidBossAlive();
             default -> false;
         };
     }
@@ -10672,6 +10675,15 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 case "jacob" -> summonJacob(ahead, by);
                 case "rocco" -> vendetta.summon(ahead, by);
                 case "grimtusk" -> warlord.summon(ahead, by);
+                case "rotbeard", "bulwark", "great_hog" -> { if (!rush.spawnRaidBoss(kind, ahead)) return false; }
+                case "explorer" -> { // the leader walks into his arena; everyone else watches from the path (he fights alone)
+                    if (explorer.fight != null) return false;
+                    World v = below.voidWorld();
+                    if (v == null) return false;
+                    by.teleport(new Location(v, 0.5, Below.PATH_Y + 1, Below.ARENA_Z - 15.5, 0, 0));
+                    below.removeStatue();
+                    explorer.begin(v, by);
+                }
                 default -> { return false; }
             }
         } catch (RuntimeException e) {
@@ -10685,8 +10697,9 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         String cmd = switch (kind) {
             case "demoneye" -> "demoneye kill"; case "frostbeard" -> "frostbeard kill"; case "dune", "frostmaw" -> "dune kill";
             case "don" -> "don kill"; case "kraken" -> "kraken kill"; case "jacob" -> "jacob kill"; case "rocco" -> "rocco kill";
-            case "grimtusk" -> "grimtusk kill"; default -> null;
+            case "grimtusk" -> "grimtusk kill"; case "explorer" -> "explorer stop"; default -> null;
         };
+        if (kind.equals("rotbeard") || kind.equals("bulwark") || kind.equals("great_hog")) { if (rush != null) rush.removeRaidBoss(); return; }
         if (cmd != null) Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd);
     }
 

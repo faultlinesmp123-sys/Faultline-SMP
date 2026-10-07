@@ -2821,8 +2821,9 @@ public final class FaultlineItems extends JavaPlugin {
     //
     // The Ankh Shield accessory does nothing on its own. In an anvil: any Shield (a regular one,
     // or the Shield of the Demon Eye) on the left + the Ankh Shield on the right = the same shield,
-    // imbued. While you hold an imbued shield (either hand): immune to every debuff, freezing and
-    // fire, no knockback, +5% damage resistance, +15% speed, +2.5% melee damage.
+    // imbued. While you hold an imbued shield (either hand): immune to every debuff (you still take
+    // knockback). ankh-shield.old-effects: true adds the old extras: freezing and fire immunity,
+    // no knockback, +5% damage resistance, +15% speed, +2.5% melee damage.
 
     static class AnkhImbue implements Listener {
         private static NamespacedKey imbuedKey;
@@ -2838,8 +2839,32 @@ public final class FaultlineItems extends JavaPlugin {
                     && item.getItemMeta().getPersistentDataContainer().has(imbuedKey, PersistentDataType.BYTE);
         }
 
-        /** NERF: the Ankh Shield only stops knockback now. ankh-shield.old-effects: true brings back everything else. */
+        /** ankh-shield.old-effects: true brings back the old fire/freeze immunity, resistance, speed and damage. */
         static boolean fullPowers(FaultlineItems plugin) { return plugin.getConfig().getBoolean("ankh-shield.old-effects", false); }
+
+        /** Immune to every debuff (on by default). */
+        static boolean debuffs(FaultlineItems plugin) {
+            return plugin.getConfig().getBoolean("ankh-shield.debuff-immunity", true) || fullPowers(plugin);
+        }
+
+        /** No knockback: off by default now (you take knockback like anyone else). */
+        static boolean noKnockback(FaultlineItems plugin) {
+            return plugin.getConfig().getBoolean("ankh-shield.no-knockback", false) || fullPowers(plugin);
+        }
+
+        static final String LORE = ChatColor.GREEN + "While held: immune to all debuffs.";
+        private static final String OLD_LORE = ChatColor.GREEN + "While held: no knockback.";
+
+        /** Shields imbued before the change still say "no knockback": fix the line. */
+        static void fixLore(ItemStack item) {
+            if (!isImbued(item)) return;
+            ItemMeta meta = item.getItemMeta();
+            if (!meta.hasLore() || !meta.getLore().contains(OLD_LORE)) return;
+            List<String> lore = new ArrayList<>(meta.getLore());
+            lore.replaceAll(l -> l.equals(OLD_LORE) ? LORE : l);
+            meta.setLore(lore);
+            item.setItemMeta(meta);
+        }
 
         /** Is this player holding an Ankh-imbued shield in either hand? */
         static boolean active(Player player) {
@@ -2863,7 +2888,7 @@ public final class FaultlineItems extends JavaPlugin {
             List<String> lore = meta.hasLore() ? new ArrayList<>(meta.getLore()) : new ArrayList<>();
             lore.add("");
             lore.add(ChatColor.YELLOW + "" + ChatColor.BOLD + "✦ Ankh Shield");
-            lore.add(ChatColor.GREEN + "While held: no knockback.");
+            lore.add(LORE);
             meta.setLore(lore);
             meta.setEnchantmentGlintOverride(true);
             result.setItemMeta(meta);
@@ -3506,7 +3531,7 @@ public final class FaultlineItems extends JavaPlugin {
             return make(plugin, Material.NAUTILUS_SHELL, ChatColor.YELLOW + "" + ChatColor.BOLD + "Ankh Shield", plugin.getAnkhShieldKey(),
                     ChatColor.GOLD + "Does nothing on its own: put a Shield",
                     ChatColor.GOLD + "and this in an anvil to imbue it.",
-                    ChatColor.GREEN + "While holding the shield: no knockback.");
+                    ChatColor.GREEN + "While holding the shield: immune to all debuffs.");
         }
 
         /** Gold Ingots in the corners, Diamonds on the edges, Netherite Block in the middle. */
@@ -3653,7 +3678,9 @@ public final class FaultlineItems extends JavaPlugin {
             boolean harpy = acc.hasEquipped(player, plugin.getHarpyRingKey());
             boolean spelunker = acc.hasEquipped(player, plugin.getSpelunkerAmuletKey());
             boolean ankh = AnkhImbue.active(player); // only works on a shield (combined in an anvil)
-            boolean ankhFull = ankh && AnkhImbue.fullPowers(plugin); // NERF: just no knockback now, unless old-effects is on
+            boolean ankhFull = ankh && AnkhImbue.fullPowers(plugin); // the old extras, only with old-effects on
+            boolean ankhDebuffs = ankh && AnkhImbue.debuffs(plugin);
+            if (ankh) { AnkhImbue.fixLore(player.getInventory().getItemInMainHand()); AnkhImbue.fixLore(player.getInventory().getItemInOffHand()); }
 
             applyModifier(player, Attribute.MOVEMENT_SPEED, frostSpeedKey,
                     plugin.getConfig().getDouble("frost-flare.speed-bonus", 0.05), AttributeModifier.Operation.MULTIPLY_SCALAR_1, frost);
@@ -3661,7 +3688,7 @@ public final class FaultlineItems extends JavaPlugin {
                     plugin.getConfig().getDouble("harpy-ring.speed-bonus", 0.075), AttributeModifier.Operation.MULTIPLY_SCALAR_1, harpy);
             applyModifier(player, Attribute.BLOCK_BREAK_SPEED, spelunkerMiningKey,
                     plugin.getConfig().getDouble("spelunker-amulet.mining-speed-bonus", 0.02), AttributeModifier.Operation.MULTIPLY_SCALAR_1, spelunker);
-            applyModifier(player, Attribute.KNOCKBACK_RESISTANCE, ankhKnockbackKey, 1.0, AttributeModifier.Operation.ADD_NUMBER, ankh);
+            applyModifier(player, Attribute.KNOCKBACK_RESISTANCE, ankhKnockbackKey, 1.0, AttributeModifier.Operation.ADD_NUMBER, ankh && AnkhImbue.noKnockback(plugin));
             applyModifier(player, Attribute.MOVEMENT_SPEED, ankhSpeedKey,
                     plugin.getConfig().getDouble("ankh-shield.speed-bonus", 0.15), AttributeModifier.Operation.MULTIPLY_SCALAR_1, ankhFull);
             applyModifier(player, Attribute.ATTACK_DAMAGE, ankhDamageKey,
@@ -3676,11 +3703,13 @@ public final class FaultlineItems extends JavaPlugin {
                     player.setExhaustion(Math.min(40f, player.getExhaustion() + extra));
                 }
             }
-            if (ankhFull) {
-                // Clears anything that was already on them when they equipped it.
+            if (ankhDebuffs) {
+                // Clears anything that was already on them when they picked it up.
                 for (PotionEffect effect : new ArrayList<>(player.getActivePotionEffects())) {
-                    if (FiveAccessoryListener.ankhBlocks(effect.getType())) player.removePotionEffect(effect.getType());
+                    if (FiveAccessoryListener.ankhBlocks(effect)) player.removePotionEffect(effect.getType());
                 }
+            }
+            if (ankhFull) {
                 player.setFreezeTicks(0); // no freezing either (powder snow, Frostbeard's beam)
                 if (player.getFireTicks() > 0) player.setFireTicks(0);
             }
@@ -3882,6 +3911,12 @@ public final class FaultlineItems extends JavaPlugin {
             return type.getEffectCategory() == PotionEffectType.Category.HARMFUL;
         }
 
+        /** A harmful effect, but not a cutscene one (the bosses' black screens and the Below's darkness are
+         *  hidden: no icon, no particles). */
+        static boolean ankhBlocks(PotionEffect effect) {
+            return ankhBlocks(effect.getType()) && (effect.hasIcon() || effect.hasParticles());
+        }
+
         private final FaultlineItems plugin;
         private final Random random = new Random();
 
@@ -3901,7 +3936,7 @@ public final class FaultlineItems extends JavaPlugin {
             PotionEffectType type = event.getNewEffect().getType();
             if (type.equals(PotionEffectType.SLOWNESS) && (wearing(player, plugin.getFrostFlareKey()) || wearing(player, plugin.getWeirdClockKey()))) {
                 event.setCancelled(true);
-            } else if (ankhBlocks(type) && AnkhImbue.active(player) && AnkhImbue.fullPowers(plugin)) {
+            } else if (ankhBlocks(event.getNewEffect()) && AnkhImbue.active(player) && AnkhImbue.debuffs(plugin)) {
                 event.setCancelled(true);
             }
         }

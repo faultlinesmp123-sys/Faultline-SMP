@@ -104,8 +104,10 @@ Notes:
   `setImmuneToZombification(true)`. Raid piglins (tag `faultline_piglin_unit`) drop no gear: killed by a player, 80% for 3-5 gold nuggets (`nugget-chance/min/max`); the Bulwark and the Great Hog drop their own gold. `/zraid start <lvl> piglin`, `/zraid horn <3-5>`, eggs in `/zraid menu` and `/itemsmenu`.
   Art: `python3 tools/piglin_assets.py <pack> --preview tools/previews` (horn texture + Index icons).
   Tested with MockBukkit (a full level V raid, horn drop rate, and every ability).
-- Items nerfs: the **Ankh Shield** only stops knockback (`ankh-shield.old-effects: true` brings the rest back); the
-  **Harpy Ring** is +7.5% speed.
+- Items: the **Ankh Shield** (held, imbued into a shield) makes you immune to every debuff but NOT knockback
+  (`ankh-shield.debuff-immunity: true`, `no-knockback: false`; `old-effects: true` brings back all the old powers).
+  Hidden effects (no icon, no particles: cutscene Blindness, the Below's Darkness) still get through. Old imbued shields'
+  lore is fixed when held. Tested in `AnkhTest`. The **Harpy Ring** is +7.5% speed.
 - Changing a plugin's default `config.yml` does NOT update the copy already on the server. Tell the owner
   which values to change in `plugins/<Plugin>/config.yml` on the VPS.
 - **Ships** (`FaultlineShips`; `ShipType.java` = the 5 layouts, `Ship.java` = one ship, `FaultlineShips.java` = items,

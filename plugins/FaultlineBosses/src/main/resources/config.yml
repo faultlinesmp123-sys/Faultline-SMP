@@ -541,8 +541,8 @@ boss-rush:
   bosses: [rotbeard, bulwark, great_hog, queen_spider, demoneye, frostbeard, dune, frostmaw, don, kraken, jacob, rocco, grimtusk, explorer]
   world: ""
   nether-world: ""
-  search-radius: 4000
-  search-chunks: 100
+  search-radius: 6400
+  search-chunks: 150
   break-seconds: 15
   cooldown-minutes: 60
   keep-inventory: true

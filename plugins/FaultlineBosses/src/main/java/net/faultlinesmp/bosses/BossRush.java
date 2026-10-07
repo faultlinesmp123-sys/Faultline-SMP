@@ -191,6 +191,21 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
     }
 
     /** Where this boss is fought: remembered, or found once (the nearest fitting biome / a bastion) and remembered. */
+    /** If none of a stage's own biomes turns up, these are tried next (rarer biomes like badlands can be far away). */
+    static final Map<String, List<Biome>> FALLBACK = Map.of(
+            "rotbeard", List.of(Biome.MANGROVE_SWAMP, Biome.SWAMP, Biome.RIVER, Biome.PLAINS),
+            "bulwark", List.of(Biome.SAVANNA, Biome.SAVANNA_PLATEAU, Biome.DESERT, Biome.PLAINS),
+            "queen_spider", List.of(Biome.OLD_GROWTH_SPRUCE_TAIGA, Biome.TAIGA, Biome.FOREST, Biome.PLAINS),
+            "frostbeard", List.of(Biome.ICE_SPIKES, Biome.FROZEN_PEAKS, Biome.SNOWY_SLOPES),
+            "frostmaw", List.of(Biome.SNOWY_TAIGA, Biome.GROVE, Biome.SNOWY_SLOPES),
+            "dune", List.of(Biome.BADLANDS, Biome.SAVANNA),
+            "jacob", List.of(Biome.SNOWY_SLOPES, Biome.WINDSWEPT_HILLS, Biome.MEADOW),
+            "kraken", List.of(Biome.OCEAN, Biome.COLD_OCEAN, Biome.LUKEWARM_OCEAN, Biome.WARM_OCEAN),
+            "great_hog", List.of(Biome.NETHER_WASTES, Biome.WARPED_FOREST));
+
+    /** The team's spot, for a boss whose biome couldn't be found anywhere: they fight it right where they are. */
+    Location here;
+
     Location arena(Stage s) {
         if (s.kind().equals("explorer")) { // on the white path, just short of his arena
             World v = pl.below.voidWorld();
@@ -203,26 +218,54 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
         }
         World w = world(s.env());
         if (w == null) return null;
-        Location origin = w.getSpawnLocation();
-        Location found = null;
-        try {
-            if (s.kind().equals("grimtusk")) {
-                var r = w.locateNearestStructure(origin, org.bukkit.generator.structure.Structure.BASTION_REMNANT, (int) c("search-chunks", 100), false);
-                if (r != null) found = r.getLocation();
-            } else {
-                var r = w.locateNearestBiome(origin, (int) c("search-radius", 4000), s.biomes().toArray(new Biome[0]));
-                if (r != null) found = r.getLocation();
+        // BUG FIX: only the world spawn was searched, only 4000 blocks out, and a spot in water was thrown away, so bosses
+        // with rare or watery biomes (Rotbeard's beach, the Bulwark's badlands) were skipped. Now: from the spawn AND from
+        // where the team stands, 6400 blocks out, then fallback biomes, and a watery spot walks out to dry land.
+        List<Location> origins = new ArrayList<>(List.of(w.getSpawnLocation()));
+        if (here != null && here.getWorld().equals(w)) origins.add(0, here);
+        Location spot = null;
+        for (List<Biome> biomes : List.of(s.biomes(), FALLBACK.getOrDefault(s.kind(), List.of()))) {
+            if (spot != null) break;
+            for (Location origin : origins) {
+                Location found = null;
+                try {
+                    if (s.kind().equals("grimtusk")) {
+                        if (biomes != s.biomes()) break;
+                        var r = w.locateNearestStructure(origin, org.bukkit.generator.structure.Structure.BASTION_REMNANT, (int) Math.max(150, c("search-chunks", 150)), false);
+                        if (r != null) found = r.getLocation();
+                    } else if (!biomes.isEmpty()) {
+                        var r = w.locateNearestBiome(origin, (int) Math.max(6400, c("search-radius", 6400)), 32, 64, biomes.toArray(new Biome[0]));
+                        if (r != null) found = r.getLocation();
+                    }
+                } catch (RuntimeException e) {
+                    pl.getLogger().warning("[Boss Rush] couldn't search for " + s.name() + "'s biome: " + e);
+                }
+                if (found == null) continue;
+                spot = surface(found, s);
+                if (spot == null) spot = dryNear(found, s);
+                if (spot != null) break;
             }
-        } catch (RuntimeException e) {
-            pl.getLogger().warning("[Boss Rush] couldn't search for " + s.name() + "'s biome: " + e.getMessage());
         }
-        if (found == null) return null;
-        Location spot = surface(found, s);
-        if (spot == null) return null;
+        if (spot == null) {
+            pl.getLogger().warning("[Boss Rush] no " + s.name() + " arena found (biomes " + s.biomes() + "); the team fights it where they are."
+                    + " Set one with /bossrush setarena " + s.kind());
+            return null;
+        }
         data.set(key + ".world", spot.getWorld().getName());
         data.set(key + ".x", spot.getX()); data.set(key + ".y", spot.getY()); data.set(key + ".z", spot.getZ());
         save();
         return spot;
+    }
+
+    /** Around a watery or unusable spot, the nearest place to stand (out to 64 blocks). */
+    Location dryNear(Location l, Stage s) {
+        for (int rad = 4; rad <= 64; rad += 4)
+            for (int a = 0; a < 360; a += 15) {
+                Location at = l.clone().add(Math.cos(Math.toRadians(a)) * rad, 0, Math.sin(Math.toRadians(a)) * rad);
+                Location sp = surface(at, s);
+                if (sp != null) return sp;
+            }
+        return null;
     }
 
     /** A place to stand: the top of the ground (on the water for the Kraken, a floor inside the bastion for Grimtusk). */
@@ -285,7 +328,17 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
         r.defeated = false;
         if (r.stage >= r.stages.size()) { win(r); return; }
         Stage s = r.current();
+        List<Player> team = r.alive();
+        here = team.isEmpty() ? null : team.get(0).getLocation();
         Location a = arena(s);
+        if (a == null && !s.kind().equals("explorer") && here != null && world(s.env()) != null) {
+            // no arena anywhere: fight it right here (in the right dimension: the Overworld spawn area / the Nether spawn)
+            World w = world(s.env());
+            Location base = here.getWorld().equals(w) ? here : w.getSpawnLocation();
+            a = surface(base, s);
+            if (a == null) a = dryNear(base, s);
+            if (a != null) msgTeam(r, ChatColor.GRAY + "(No " + s.name() + " biome nearby, so you fight it right here.)");
+        }
         if (a == null) {
             msgTeam(r, ChatColor.GRAY + "(No " + s.name() + " arena could be found in this world, so that boss is skipped.)");
             next(r);

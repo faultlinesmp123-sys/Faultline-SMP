@@ -240,7 +240,11 @@ Notes:
   void path (`below.returns` set, cleared at the end), the leader is put in his arena and fights alone; his defeat goes through
   `rewards()` (hooked like the others); losing (all downed) in a rush skips the speech/Yes-No and fails the rush. A server
   config still holding 1.3.0's or 1.3.1's list (`OLD_DEFAULT`, `OLD_DEFAULT_2`) gets the new full list. Each: teleport to that boss's biome (found once with `locateNearestBiome` /
-  `locateNearestStructure` from the world spawn, saved; `/bossrush setarena <boss>`), 5 s countdown, `rushSummon`. Every
+  `locateNearestStructure`, saved; `/bossrush setarena <boss>`), 5 s countdown, `rushSummon`. The search (1.3.4) runs from where
+  the team stands and from the world spawn, at least 6400 blocks / 150 chunks out (`Math.max` over the config, since server
+  configs still say 4000), then `FALLBACK` biomes; a spot in water walks out to dry land (`dryNear`, 64 blocks); nothing found
+  at all = the team fights that boss where it stands (not cached). Before this Rotbeard (beach) and the Bulwark (badlands)
+  were skipped on the live server. Every
   boss's reward method starts with `rushDefeated(kind)` + `if (rushSuppressLoot(kind)) return;` (a NEW BOSS needs both, plus
   cases in `rushSummon`/`rushAlive`/`rushKill`/`bossOutName`). Death = out with keep-inventory; all out or the boss leaves =
   fail. Win: rewards, `index stat <p> boss_rush 1`, best time per player in `bossrush.yml` (`/bossrush top`), sent home. Tested in `WarlordTest` and `RushTest`

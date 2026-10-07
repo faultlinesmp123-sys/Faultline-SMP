@@ -50,6 +50,7 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
             new Stage("rotbeard", "Captain Rotbeard", World.Environment.NORMAL, List.of(Biome.BEACH, Biome.STONY_SHORE, Biome.SNOWY_BEACH)),
             new Stage("bulwark", "The Bulwark", World.Environment.NORMAL, List.of(Biome.BADLANDS, Biome.ERODED_BADLANDS, Biome.WOODED_BADLANDS)),
             new Stage("great_hog", "The Great Hog", World.Environment.NETHER, List.of(Biome.CRIMSON_FOREST)),
+            new Stage("queen_spider", "The Queen Spider", World.Environment.NORMAL, List.of(Biome.DARK_FOREST, Biome.PALE_GARDEN)),
             new Stage("demoneye", "The Demon Eye", World.Environment.NORMAL, List.of(Biome.PLAINS, Biome.SUNFLOWER_PLAINS, Biome.MEADOW)),
             new Stage("frostbeard", "Frostbeard", World.Environment.NORMAL, List.of(Biome.SNOWY_PLAINS, Biome.SNOWY_TAIGA, Biome.GROVE)),
             new Stage("dune", "The Dune Devourer", World.Environment.NORMAL, List.of(Biome.DESERT)),
@@ -64,6 +65,8 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
 
     /** The list 1.3.0 wrote into server configs: still that list = use the full default (raid bosses + the Explorer). */
     static final List<String> OLD_DEFAULT = List.of("demoneye", "frostbeard", "dune", "frostmaw", "don", "kraken", "jacob", "rocco", "grimtusk");
+    /** 1.3.1's list (without the Queen Spider): also upgraded to the full default. */
+    static final List<String> OLD_DEFAULT_2 = List.of("rotbeard", "bulwark", "great_hog", "demoneye", "frostbeard", "dune", "frostmaw", "don", "kraken", "jacob", "rocco", "grimtusk", "explorer");
 
     final FaultlineBosses pl;
     private final File file;
@@ -106,7 +109,7 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
 
     List<Stage> stages() {
         List<String> order = pl.getConfig().getStringList("boss-rush.bosses");
-        if (order.isEmpty() || order.equals(OLD_DEFAULT)) return STAGES;
+        if (order.isEmpty() || order.equals(OLD_DEFAULT) || order.equals(OLD_DEFAULT_2)) return STAGES;
         List<Stage> out = new ArrayList<>();
         for (String k : order) STAGES.stream().filter(s -> s.kind().equalsIgnoreCase(k.trim())).findFirst().ifPresent(out::add);
         return out.isEmpty() ? STAGES : out;
@@ -407,15 +410,21 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
         if (r != null && r.team.contains(e.getPlayer().getUniqueId())) { r.out.add(e.getPlayer().getUniqueId()); r.bar.removePlayer(e.getPlayer()); }
     }
 
-    // ---------- the raid bosses (FaultlineRaids): spawned with "zraid spawnboss", followed by their tag ----------
-    static final Map<String, String> RAID_TAGS = Map.of("rotbeard", "faultline_rotbeard", "bulwark", "faultline_bulwark", "great_hog", "faultline_great_hog");
+    // ---------- bosses from other plugins: the raid bosses (FaultlineRaids, "zraid spawnboss") and the Queen Spider
+    // (FaultlineItems, "queenspider spawn"), spawned by console command and followed by their tag ----------
+    static final Map<String, String> RAID_TAGS = Map.of("rotbeard", "faultline_rotbeard", "bulwark", "faultline_bulwark", "great_hog", "faultline_great_hog",
+            "queen_spider", "faultline_queen_spider");
     UUID raidBoss;
 
+    static boolean external(String kind) { return RAID_TAGS.containsKey(kind); }
+
     boolean spawnRaidBoss(String kind, Location at) {
-        org.bukkit.plugin.Plugin raids = Bukkit.getPluginManager().getPlugin("FaultlineRaids");
-        if (raids == null || !raids.isEnabled()) return false;
+        boolean queen = kind.equals("queen_spider");
+        org.bukkit.plugin.Plugin other = Bukkit.getPluginManager().getPlugin(queen ? "FaultlineItems" : "FaultlineRaids");
+        if (other == null || !other.isEnabled()) return false;
         raidBoss = null;
-        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "zraid spawnboss " + kind + " " + at.getWorld().getName() + " " + at.getX() + " " + at.getY() + " " + at.getZ());
+        String where = at.getWorld().getName() + " " + at.getX() + " " + at.getY() + " " + at.getZ();
+        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), queen ? "queenspider spawn " + where : "zraid spawnboss " + kind + " " + where);
         String tag = RAID_TAGS.get(kind);
         double best = Double.MAX_VALUE;
         for (org.bukkit.entity.Entity e : at.getWorld().getNearbyEntities(at, 6, 6, 6)) {

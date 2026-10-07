@@ -1,5 +1,5 @@
 name: FaultlineItems
-version: '1.1.0'
+version: '1.1.1'
 main: net.faultlinesmp.items.FaultlineItems
 api-version: '1.21'
 author: FaultlineSMP
@@ -95,6 +95,10 @@ commands:
     description: Spawn, remove, or reroll the Skeleton Wanderer
     usage: /cavetrader <spawn|kill|reroll>
     permission: items.cavetrader
+  queenspider:
+    description: Spawn a Queen Spider (admin)
+    usage: /queenspider spawn [<world> <x> <y> <z>]
+    permission: items.queenspider
   meteor:
     description: When the next meteor falls (admins - now, here, stop, egg)
     usage: /meteor [now|here|stop|egg <husk|crawler|sentinel>]
@@ -131,6 +135,9 @@ permissions:
     default: op
   items.cavetrader:
     description: Allows managing the Skeleton Wanderer
+    default: op
+  items.queenspider:
+    description: Allows spawning the Queen Spider
     default: op
   items.meteor:
     description: Allows starting and stopping meteor strikes

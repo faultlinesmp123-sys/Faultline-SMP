@@ -35,7 +35,7 @@ All are Maven projects: Java 21, `paper-api 1.21.11-R0.1-SNAPSHOT`. Build with
 | Plugin | Package | What it does | Commands |
 |---|---|---|---|
 | **LimboBlackMarket** | `net.limbosmp.blackmarket` | Head-tier economy, kill/death stats, kill streaks, anti-farm, quests + Quest Book, friendly-fire logging, global reload | `/tier`, `/markethelp`, `/stats`, `/leaderboard`, `/tierleaderboard`, `/faultlinereload` (`/freload`), `/givequestbook` |
-| **FaultlineItems** | `net.faultlinesmp.items` | All custom items + accessories (3-slot `/accessories` GUI), staffs, spawn eggs, diving gear, Kraken & Diamond Jacob gear, Skeleton Wanderer cave trader, **Meteor strikes** (`Meteor.java`), **the Caravan** (`Caravan.java`), admin `/itemsmenu` | many `/give*` commands, `/itemsmenu` (`/fitems`), `/itemsreload`, `/cavetrader`, `/batform`, `/meteor [now\|here\|stop\|egg]`, `/caravan [now\|here\|stop\|reroll]` |
+| **FaultlineItems** | `net.faultlinesmp.items` | All custom items + accessories (3-slot `/accessories` GUI), staffs, spawn eggs, diving gear, Kraken & Diamond Jacob gear, Skeleton Wanderer cave trader, **Meteor strikes** (`Meteor.java`), **the Caravan** (`Caravan.java`), admin `/itemsmenu` | many `/give*` commands, `/itemsmenu` (`/fitems`), `/itemsreload`, `/cavetrader`, `/batform`, `/meteor [now\|here\|stop\|egg]`, `/caravan [now\|here\|stop\|reroll]`, `/queenspider spawn` |
 | **FaultlineRaids** | `net.faultlinesmp.raids` | Zombie Raids (Zombie Omens, Captains, Rotbeard), Skeleton Raids, and **Piglin Raids** (`Piglins.java`: War Horn, the Bulwark, the Great Hog) | `/zraid <start\|stop\|captain\|menu\|egg\|omen\|horn>` |
 | **FaultlineBosses** | `net.faultlinesmp.bosses` | Bosses in one ~585 KB file: Demon Eye, Frostbeard, Dune Devourer/Frostmaw, Don Lorenzo, Kraken, **Diamond Jacob**; admin boss form. **Rocco Vendetta** (+ Werner, the Vendetta Fist) lives in its own `Vendetta.java`. **The way down to the Lost Explorer** (Swarm, his staircase, the void world) is `Below.java`; **the Lost Explorer's fight** is `Explorer.java` (+ `ExplorerAnims.java`). **Grimtusk, the Piglin Warlord** (Nether boss) is `Warlord.java`; **the Boss Rush** is `BossRush.java` | `/demoneye`, `/frostbeard`, `/dune`, `/don`, `/kraken <summon\|sea\|...>`, `/jacob <summon\|kill\|phase\|item>`, `/rocco <summon\|kill\|phase\|tattoos\|werner\|item>`, `/bossmorph <boss\|off\|release>`, `/below <swarm\|void\|leave\|close\|slayer\|info>`, `/explorer <start\|stop\|skip\|phase\|stun\|reset\|arena>`, `/grimtusk <summon\|kill\|phase\|item>`, `/bossrush [start\|top]` (admin `stop\|skip\|setarena\|arenas\|clearcooldown`) |
 | **FaultlineIndex** | `net.faultlinesmp.index` | The Faultline Index codex + **Achievements** (`Achievements.java`). Entries and achievements live in `src/main/resources/index.yml`, font glyphs in `glyphs.yml` | `/index [achievements\|give\|reset] [player]`, `/index stat <player> <name> [n]` (other plugins), `/index discover <player> <entry>` |
@@ -224,18 +224,20 @@ Notes:
   right-click Golden Cleave, 12 s). Boss form hooks done (`pilot`, `takeMove`, `morphMoves`, `MORPH_KINDS`, `startMorph`).
   Tested in the bosses harness (`WarlordTest`).
 - **Boss Rush** (`FaultlineBosses/BossRush.java`, config `boss-rush:`, data `bossrush.yml`): `/bossrush start` = leader + everyone
-  in survival within 10 blocks; refused while any boss is out. Stages (`boss-rush.bosses`, 13): rotbeard (beach), bulwark
-  (badlands), great_hog (crimson forest) = the raid bosses, spawned through `zraid spawnboss <egg> <world> <x> <y> <z>` and
-  followed by their tag (`raidBoss`; their death = stage won, drops cleared at MONITOR; skipped without FaultlineRaids), then
+  in survival within 10 blocks; refused while any boss is out. Stages (`boss-rush.bosses`, 14): rotbeard (beach), bulwark
+  (badlands), great_hog (crimson forest) = the raid bosses, spawned through `zraid spawnboss <egg> <world> <x> <y> <z>`, and
+  queen_spider (dark forest / pale garden, FaultlineItems `queenspider spawn <world> <x> <y> <z>`); these "external" bosses
+  (`BossRush.RAID_TAGS`) are followed by their tag (`raidBoss`; their death = stage won, drops cleared at MONITOR; skipped
+  without their plugin), then
   demoneye, frostbeard, dune, frostmaw, don, kraken, jacob, rocco, grimtusk, and the finale explorer: the team goes to the
   void path (`below.returns` set, cleared at the end), the leader is put in his arena and fights alone; his defeat goes through
   `rewards()` (hooked like the others); losing (all downed) in a rush skips the speech/Yes-No and fails the rush. A server
-  config still holding 1.3.0's 9-boss list (`OLD_DEFAULT`) gets the new full list. Each: teleport to that boss's biome (found once with `locateNearestBiome` /
+  config still holding 1.3.0's or 1.3.1's list (`OLD_DEFAULT`, `OLD_DEFAULT_2`) gets the new full list. Each: teleport to that boss's biome (found once with `locateNearestBiome` /
   `locateNearestStructure` from the world spawn, saved; `/bossrush setarena <boss>`), 5 s countdown, `rushSummon`. Every
   boss's reward method starts with `rushDefeated(kind)` + `if (rushSuppressLoot(kind)) return;` (a NEW BOSS needs both, plus
   cases in `rushSummon`/`rushAlive`/`rushKill`/`bossOutName`). Death = out with keep-inventory; all out or the boss leaves =
   fail. Win: rewards, `index stat <p> boss_rush 1`, best time per player in `bossrush.yml` (`/bossrush top`), sent home. Tested in `WarlordTest` and `RushTest`
-  (Raids loaded alongside: Bulwark, Rotbeard, then the Explorer, win and loss).
+  (Raids + Items loaded alongside: Bulwark, Queen Spider, Rotbeard, then the Explorer, win and loss).
 - **Achievements** (`FaultlineIndex/Achievements.java`, `achievements:` in index.yml): goals by `defeat` (+ `need`
   all/any/n), `chapter`, `found(-items/-creatures)`, or `stat` + `count`. Checked on every unlock/kill/stat and 10 s after
   join (retroactive). Done = server-wide message, title, reward items/xp, cosmetic via `cosmetic unlock`. Saved in

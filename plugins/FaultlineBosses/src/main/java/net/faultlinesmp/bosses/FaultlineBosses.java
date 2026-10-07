@@ -10648,7 +10648,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             case "don" -> don != null; case "kraken" -> kraken != null; case "jacob" -> jacob != null;
             case "rocco" -> vendetta != null && vendetta.rocco != null; case "grimtusk" -> warlord != null && warlord.boss != null;
             case "explorer" -> explorer != null && explorer.fight != null;
-            case "rotbeard", "bulwark", "great_hog" -> rush != null && rush.raidBossAlive();
+            case "rotbeard", "bulwark", "great_hog", "queen_spider" -> rush != null && rush.raidBossAlive();
             default -> false;
         };
     }
@@ -10675,7 +10675,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 case "jacob" -> summonJacob(ahead, by);
                 case "rocco" -> vendetta.summon(ahead, by);
                 case "grimtusk" -> warlord.summon(ahead, by);
-                case "rotbeard", "bulwark", "great_hog" -> { if (!rush.spawnRaidBoss(kind, ahead)) return false; }
+                case "rotbeard", "bulwark", "great_hog", "queen_spider" -> { if (!rush.spawnRaidBoss(kind, ahead)) return false; }
                 case "explorer" -> { // the leader walks into his arena; everyone else watches from the path (he fights alone)
                     if (explorer.fight != null) return false;
                     World v = below.voidWorld();
@@ -10699,7 +10699,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             case "don" -> "don kill"; case "kraken" -> "kraken kill"; case "jacob" -> "jacob kill"; case "rocco" -> "rocco kill";
             case "grimtusk" -> "grimtusk kill"; case "explorer" -> "explorer stop"; default -> null;
         };
-        if (kind.equals("rotbeard") || kind.equals("bulwark") || kind.equals("great_hog")) { if (rush != null) rush.removeRaidBoss(); return; }
+        if (BossRush.external(kind)) { if (rush != null) rush.removeRaidBoss(); return; }
         if (cmd != null) Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd);
     }
 

@@ -537,8 +537,8 @@ warlord:
 # /bossrush setarena <boss> sets one by hand. No loot from the bosses during a rush; dying puts you out (keep-inventory).
 # ============================================================================
 boss-rush:
-  # the raid bosses need FaultlineRaids (skipped without it); the Lost Explorer is fought by the leader alone
-  bosses: [rotbeard, bulwark, great_hog, demoneye, frostbeard, dune, frostmaw, don, kraken, jacob, rocco, grimtusk, explorer]
+  # the raid bosses need FaultlineRaids and the Queen Spider FaultlineItems (skipped without them); the Lost Explorer is fought by the leader alone
+  bosses: [rotbeard, bulwark, great_hog, queen_spider, demoneye, frostbeard, dune, frostmaw, don, kraken, jacob, rocco, grimtusk, explorer]
   world: ""
   nether-world: ""
   search-radius: 4000

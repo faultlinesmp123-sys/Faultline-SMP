@@ -429,6 +429,21 @@ public final class FaultlineItems extends JavaPlugin {
         this.queenSpiderManager = new QueenSpiderManager(this);
         getServer().getPluginManager().registerEvents(queenSpiderManager, this);
         getServer().getScheduler().runTaskTimer(this, queenSpiderManager::tick, 10L, 10L);
+        getCommand("queenspider").setExecutor((sender, cmd, label, args) -> { // /queenspider spawn [<world> <x> <y> <z>] (the Boss Rush uses this)
+            if (args.length == 0 || !args[0].equalsIgnoreCase("spawn")) { sender.sendMessage(ChatColor.YELLOW + "/queenspider spawn [<world> <x> <y> <z>]"); return true; }
+            Location at;
+            if (args.length >= 5) {
+                World w = Bukkit.getWorld(args[1]);
+                if (w == null) { sender.sendMessage(ChatColor.RED + "No world " + args[1]); return true; }
+                try { at = new Location(w, Double.parseDouble(args[2]), Double.parseDouble(args[3]), Double.parseDouble(args[4])); }
+                catch (NumberFormatException e) { sender.sendMessage(ChatColor.RED + "Bad coordinates."); return true; }
+            } else if (sender instanceof Player p) at = p.getLocation().add(p.getLocation().getDirection().setY(0).normalize().multiply(4));
+            else { sender.sendMessage("Give a world and coordinates."); return true; }
+            if (!(at.getWorld().spawnEntity(at, EntityType.SPIDER, false) instanceof Spider spider) || !spider.isValid()) return false;
+            queenSpiderManager.makeQueen(spider);
+            sender.sendMessage(ChatColor.GREEN + "A Queen Spider appeared.");
+            return true;
+        });
         getCommand("givespiderstaff").setExecutor(new GiveItemCommand(this, "items.givespiderstaff", "/givespiderstaff [amount] [player]", ItemCatalog.single(SpiderStaffItem::create)));
         getCommand("givequeenspideregg").setExecutor(new GiveItemCommand(this, "items.givequeenspideregg", "/givequeenspideregg [amount] [player]", ItemCatalog.single(QueenSpiderEggItem::create)));
 

@@ -120,7 +120,7 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(this, this);
         pirates = new Pirates(this);
         getServer().getPluginManager().registerEvents(pirates, this);
-        for (World w : Bukkit.getWorlds()) for (var ch : w.getLoadedChunks()) cleanup(ch.getEntities());
+        for (World w : Bukkit.getWorlds()) for (var ch : w.getLoadedChunks()) { cleanup(ch.getEntities()); cleanDeck(ch); }
         Bukkit.getScheduler().runTaskTimer(this, this::tick, 1L, 1L);
         Bukkit.getScheduler().runTaskTimer(this, () -> { if (dirty) saveNow(); }, 100L, 100L);
         getLogger().info("Faultline Ships enabled: " + ships.size() + " ships.");
@@ -672,6 +672,8 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
         if (isBall(hand)) { fire(p); return; }
         if (hand.getType().name().endsWith("_BANNER")) { hangBanner(p, s, hand); return; }
         if (p.isSneaking()) { openHold(p, s); return; }
+        // in the water beside it: climb up onto the deck (a free seat isn't needed, and a full ship still takes you back)
+        if (!s.anchored && s.deckOn() && (p.isInWater() || p.getLocation().getY() < s.y + s.type.deckY)) { s.climbAboard(p); return; }
         s.board(p, false, p.getLocation());
     }
 
@@ -863,6 +865,16 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
         int seat = -1;
         for (int i = 0; i < s.seats.length; i++) if (event.getDismounted().equals(s.seats[i])) seat = i;
         if (seat < 0) return;
+        if (!s.anchored && s.deckOn() && !s.building) {
+            // the deck is solid under way too: stand up where you sat (the deck carries you along)
+            if (s.releasing || !event.isCancellable()) return;
+            Location at = s.seatLoc(seat);
+            at.setY(s.y + s.type.seats[seat][1] + 0.02);
+            at.setYaw(p.getLocation().getYaw()); at.setPitch(p.getLocation().getPitch());
+            s.updateDeck();
+            Bukkit.getScheduler().runTask(this, () -> { if (p.isOnline() && !p.isInsideVehicle()) p.teleport(at); });
+            return;
+        }
         if (!s.anchored) {
             // Not anchored = no solid deck: stepping off would drop you through the ship. Anchor first (or go over the side).
             if (s.releasing || s.wrecked || s.building || s.ai != null || !event.isCancellable() || !p.isOnline() || p.isDead()) return;
@@ -1020,7 +1032,45 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
     }
 
     @EventHandler
-    public void onChunkLoad(ChunkLoadEvent event) { cleanup(event.getChunk().getEntities()); }
+    public void onChunkLoad(ChunkLoadEvent event) { cleanup(event.getChunk().getEntities()); cleanDeck(event.getChunk()); }
+
+    // ---- the moving deck's barriers, remembered in each chunk's own data (saved with its blocks, so a crash never
+    //      leaves stray barriers in the sea: whatever a chunk still lists when it loads, and no ship owns, goes) ----
+    final NamespacedKey deckKey = new NamespacedKey(this, "deck");
+
+    static long local(Block b) { return (b.getX() & 15) | ((long) (b.getZ() & 15) << 4) | ((long) (b.getY() + 4096) << 8); }
+
+    void deckMark(Block b, boolean add) {
+        try {
+            var pdc = b.getChunk().getPersistentDataContainer();
+            long[] have = pdc.getOrDefault(deckKey, org.bukkit.persistence.PersistentDataType.LONG_ARRAY, new long[0]);
+            long me = local(b);
+            java.util.LinkedHashSet<Long> set = new java.util.LinkedHashSet<>();
+            for (long v : have) set.add(v);
+            if (add ? !set.add(me) : !set.remove(me)) return;
+            if (set.isEmpty()) pdc.remove(deckKey);
+            else pdc.set(deckKey, org.bukkit.persistence.PersistentDataType.LONG_ARRAY, set.stream().mapToLong(Long::longValue).toArray());
+        } catch (RuntimeException ignored) { }
+    }
+
+    void cleanDeck(org.bukkit.Chunk ch) {
+        try {
+            var pdc = ch.getPersistentDataContainer();
+            long[] have = pdc.get(deckKey, org.bukkit.persistence.PersistentDataType.LONG_ARRAY);
+            if (have == null) return;
+            List<Long> keep = new ArrayList<>();
+            for (long v : have) {
+                int bx = (ch.getX() << 4) | (int) (v & 15), bz = (ch.getZ() << 4) | (int) ((v >> 4) & 15), by = (int) (v >> 8) - 4096;
+                boolean live = false;
+                for (Ship s : ships.values()) if (s.deck.containsKey(Ship.key(bx, by, bz))) { live = true; break; }
+                if (live) { keep.add(v); continue; }
+                Block b = ch.getWorld().getBlockAt(bx, by, bz);
+                if (b.getType() == Material.BARRIER) b.setType(Material.AIR, false);
+            }
+            if (keep.isEmpty()) pdc.remove(deckKey);
+            else pdc.set(deckKey, org.bukkit.persistence.PersistentDataType.LONG_ARRAY, keep.stream().mapToLong(Long::longValue).toArray());
+        } catch (RuntimeException ignored) { }
+    }
 
     /** Ship entities never save; anything left over (a crash) is removed and the ship respawns itself. */
     void cleanup(Entity[] list) {

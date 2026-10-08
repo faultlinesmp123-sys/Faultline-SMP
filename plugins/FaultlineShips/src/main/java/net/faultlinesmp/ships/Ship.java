@@ -108,6 +108,10 @@ final class Ship {
     Pirates.Brain ai;                              // a skeleton ship: steered by the plugin, crewed by skeletons, never saved
     Ship lastBlockShip;                            // ...if that was another ship
     final java.util.Map<Integer, Long> cannonReady = new java.util.HashMap<>();
+    // ---- the deck you can walk on while it sails (player ships) ----
+    final java.util.Map<Long, Block> deck = new java.util.HashMap<>(); // barriers that follow the ship, by block position
+    final java.util.Map<UUID, double[]> walkers = new java.util.HashMap<>(); // {x, y, z, ship dx, ship dz} last tick
+    final java.util.Map<UUID, Integer> climbing = new java.util.HashMap<>(); // swimmers holding Jump against the hull
     long lastRam, lastHurtFx;
     int filled;
 
@@ -170,7 +174,7 @@ final class Ship {
 
     double visualY() {
         if (wrecked || sink > 0) return -sink;
-        if (sailing()) return Math.sin(ticks * 0.08) * 0.06 + Math.sin(ticks * 0.031) * 0.04; // a gentle swell
+        if (sailing() && !deckOn()) return Math.sin(ticks * 0.08) * 0.06 + Math.sin(ticks * 0.031) * 0.04; // a gentle swell (not under walkers' feet)
         return 0;
     }
 
@@ -191,7 +195,7 @@ final class Ship {
                 double[] wp = toWorld(px, pz, pyaw, c.x() + o[0], c.z() + o[1]);
                 Block b = w.getBlockAt((int) Math.floor(wp[0]), (int) Math.floor(y + c.y() + 0.5), (int) Math.floor(wp[1]));
                 if (!w.isChunkLoaded(b.getX() >> 4, b.getZ() >> 4)) { ok = false; if (bad == null) return false; continue; }
-                boolean fine = c.y() == 0 ? water(b) : air(b);
+                boolean fine = c.y() == 0 ? water(b) : air(b) || deck.containsKey(key(b));
                 if (fine && c.y() == 0 && type.deep && c.z() == 0 && !water(b.getRelative(0, -1, 0))) fine = false;
                 Ship other = fine ? pl.shipCellAt(b, this) : null;
                 if (other != null) fine = false; // another ship
@@ -342,6 +346,7 @@ final class Ship {
     }
 
     void despawn() {
+        clearDeck();
         if (seats != null) for (ArmorStand s : seats) if (s != null && s.isValid()) { s.eject(); s.remove(); }
         if (stand != null && stand.isValid()) stand.remove();
         stand = null;
@@ -594,6 +599,8 @@ final class Ship {
             }
             return;
         }
+        double ox = x, oz = z;
+        float oyaw = yaw;
         if (anchorStep >= 0) stepAnchor();
         else if (anchored && !building) helmWhileAnchored();
         else if (sailing() && anchorForLeave) anchorToLeave();
@@ -611,6 +618,11 @@ final class Ship {
             if ((Math.abs(yaw - sentYaw) >= 0.5f || (sinking && ticks % 10 == 0)) && ticks % every == 0) sendRotation();
             place();
         }
+        if (deckOn() && !anchored && (sailing() || anchorStep >= 0)) {
+            carry(ox, oz, oyaw);
+            updateDeck();
+            if (ticks % 2 == 0) climbers();
+        } else if (!deck.isEmpty() || !walkers.isEmpty()) { clearDeck(); walkers.clear(); }
         if (ticks % 10 == 0) {
             effects();
             hud();
@@ -850,6 +862,8 @@ final class Ship {
 
     /** Snap is done: barriers in every built cell, so the deck can be walked on. Returns how many cells are solid. */
     int anchor() {
+        clearDeck();
+        walkers.clear();
         anchored = true;
         speed = 0; turnRate = 0; braking = false; anchorQueued = false; allStop = false;
         removeHitboxes();
@@ -909,8 +923,10 @@ final class Ship {
         clearBarriers();
         anchored = false;
         refreshLadders();
-        // whoever is standing on the deck gets a seat, or is left behind (not on a skeleton ship: its seats are its crew's)
-        if (ai == null) for (Player p : world().getPlayers()) {
+        // whoever is standing on the deck gets a seat, or is left behind (not on a skeleton ship: its seats are its crew's).
+        // With the walkable deck (player ships) they just stay on their feet: the deck sails with them.
+        if (deckOn()) updateDeck();
+        else if (ai == null) for (Player p : world().getPlayers()) {
             if (p.isInsideVehicle() || p.getLocation().distanceSquared(center()) > radius() * radius() + 25) continue;
             Location l = p.getLocation();
             if (cellAt(l.getX(), l.getY() - 0.2, l.getZ()) < 0 && cellAt(l.getX(), l.getY() - 1.2, l.getZ()) < 0) continue;
@@ -1079,6 +1095,8 @@ final class Ship {
         speed = 0; turnRate = 0;
         if (seats != null) for (ArmorStand s : seats) if (s != null && s.isValid()) s.eject();
         anchorStep = -1;
+        clearDeck();
+        walkers.clear();
         if (anchored) { // it's going down: the deck can't be stood on any more
             clearBarriers();
             anchored = false;
@@ -1248,6 +1266,164 @@ final class Ship {
             cap.sendActionBar(Component.text(String.format("⚓ %.1f m/s", ms), NamedTextColor.AQUA)
                     .append(Component.text(braking ? "   BRAKING" : anchorQueued ? "   dropping anchor..." : "   W sail · S brake · A/D steer · Sprint full sail · Jump anchor", braking || anchorQueued ? NamedTextColor.YELLOW : NamedTextColor.GRAY)));
         }
+    }
+
+    // =====================================================================================================
+    //  the walkable deck while sailing
+    // =====================================================================================================
+    /**
+     * Player ships keep a solid deck under way: barriers that follow the ship block by block (every built cell above
+     * the water; deck-level cells cover every block they overlap, so there's no gap under your feet at an angle), and
+     * everyone standing on it is carried along with the ship's motion (velocity, so they can still walk around: a
+     * teleport every tick would freeze their movement until each one is confirmed). Skeleton ships keep the old seats.
+     */
+    boolean deckOn() { return ai == null && !building && !wrecked && pl.getConfig().getBoolean("walkable-deck", true); }
+
+    static long key(Block b) { return key(b.getX(), b.getY(), b.getZ()); }
+    static long key(int bx, int by, int bz) { return ((long) (bx & 0x3FFFFFF) << 38) | ((long) (bz & 0x3FFFFFF) << 12) | (by & 0xFFF); }
+
+    /** Carry everyone standing on the ship by how far the spot under them moved (and turned) this tick. */
+    void carry(double ox, double oz, float oyaw) {
+        World w = world();
+        if (w == null) return;
+        Set<UUID> seen = new HashSet<>();
+        double ofx = fx(oyaw), ofz = fz(oyaw), r = radius() + 2;
+        for (Player p : w.getPlayers()) {
+            if (p.isInsideVehicle() || p.isFlying() || p.getGameMode() == org.bukkit.GameMode.SPECTATOR || p.isDead()) continue;
+            Location l = p.getLocation();
+            double dx = l.getX() - ox, dz = l.getZ() - oz;
+            if (dx * dx + dz * dz > r * r || l.getY() < y + 1.5 || l.getY() > y + type.height + 3) continue;
+            double lx = dx * ofx + dz * ofz, lz = -dx * ofz + dz * ofx;
+            boolean on = false; // a ship cell (where it was) under their feet: standing, walking, or mid-jump
+            for (double d = 0.05; d <= 2.6 && !on; d += 0.5)
+                on = type.cellAt((int) Math.round(lx), (int) Math.floor(l.getY() - d - y), (int) Math.round(lz)) >= 0;
+            if (!on) continue;
+            seen.add(p.getUniqueId());
+            double[] nw = toWorld(x, z, yaw, lx, lz);
+            double sdx = nw[0] - l.getX(), sdz = nw[1] - l.getZ();
+            double[] last = walkers.get(p.getUniqueId());
+            double rx = 0, rz = 0, vy = 0;
+            if (last != null) { // their own walking last tick (what they moved, minus what we moved them)
+                rx = l.getX() - last[0] - last[3]; rz = l.getZ() - last[2] - last[4]; vy = l.getY() - last[1];
+                double m = Math.hypot(rx, rz);
+                if (m > 0.6) { rx *= 0.6 / m; rz *= 0.6 / m; }
+            }
+            walkers.put(p.getUniqueId(), new double[]{l.getX(), l.getY(), l.getZ(), sdx, sdz});
+            if (Math.abs(sdx) + Math.abs(sdz) < 0.002) { walkers.get(p.getUniqueId())[3] = 0; walkers.get(p.getUniqueId())[4] = 0; continue; } // not moving: leave them be
+            @SuppressWarnings("deprecation") boolean ground = p.isOnGround();
+            double keep = ground ? 0.546 : 0.91; // what the client keeps of their own momentum each tick (block friction / air)
+            double vy2 = ground ? 0 : Math.max(-3, (vy - 0.08) * 0.98);
+            p.setVelocity(new org.bukkit.util.Vector(sdx + rx * keep, vy2, sdz + rz * keep));
+        }
+        walkers.keySet().retainAll(seen);
+    }
+
+    /** Move the deck's barriers to where the ship is now: new ones in, the ones it left behind back to air. */
+    void updateDeck() {
+        World w = world();
+        if (w == null) return;
+        java.util.Map<Long, int[]> want = new java.util.HashMap<>();
+        for (int i = 0; i < blocks.length; i++) {
+            if (blocks[i] == null || broken.contains(i)) continue;
+            ShipType.Cell c = type.cells.get(i);
+            if (c.y() < 1) continue; // the bottom row sits in the water: nothing to stand on
+            int by = (int) Math.floor(y + c.y() + 0.5);
+            boolean floor = c.y() <= type.deckY && type.cellAt(c.x(), c.y() + 1, c.z()) < 0; // something you stand on
+            double h = floor ? 0.45 : 0;
+            // the centre, the corners and the edge middles (at an angle the corners alone can all miss the middle block)
+            for (double ax : floor ? new double[]{-h, 0, h} : new double[]{0}) for (double az : floor ? new double[]{-h, 0, h} : new double[]{0}) {
+                double[] wp = toWorld(x, z, yaw, c.x() + ax, c.z() + az);
+                int bx = (int) Math.floor(wp[0]), bz = (int) Math.floor(wp[1]);
+                want.putIfAbsent(key(bx, by, bz), new int[]{bx, by, bz});
+            }
+        }
+        // the ones it left behind
+        for (java.util.Iterator<java.util.Map.Entry<Long, Block>> it = deck.entrySet().iterator(); it.hasNext(); ) {
+            var e = it.next();
+            if (want.containsKey(e.getKey())) continue;
+            Block b = e.getValue();
+            if (b.getType() == Material.BARRIER) b.setType(Material.AIR, false);
+            pl.deckMark(b, false);
+            it.remove();
+        }
+        // new ones, never inside anybody (they'd be stuck) and only into open air
+        List<org.bukkit.util.BoundingBox> bodies = new ArrayList<>();
+        double r = radius() + 3;
+        for (Entity e : w.getNearbyEntities(new Location(w, x, y + type.height / 2.0, z), r, type.height + 3, r))
+            if (e instanceof org.bukkit.entity.LivingEntity && !(e instanceof ArmorStand)) bodies.add(e.getBoundingBox());
+        for (var e : want.entrySet()) {
+            if (deck.containsKey(e.getKey())) continue;
+            int[] q = e.getValue();
+            Block b = w.getBlockAt(q[0], q[1], q[2]);
+            if (!b.getType().isAir()) continue;
+            org.bukkit.util.BoundingBox box = new org.bukkit.util.BoundingBox(q[0], q[1], q[2], q[0] + 1, q[1] + 1, q[2] + 1);
+            boolean inside = false;
+            for (org.bukkit.util.BoundingBox bb : bodies) if (bb.overlaps(box)) { inside = true; break; }
+            if (inside) continue;
+            b.setType(Material.BARRIER, false);
+            pl.deckMark(b, true);
+            deck.put(e.getKey(), b);
+        }
+    }
+
+    void clearDeck() {
+        for (Block b : deck.values()) {
+            if (b.getType() == Material.BARRIER) b.setType(Material.AIR, false);
+            pl.deckMark(b, false);
+        }
+        deck.clear();
+        climbing.clear();
+    }
+
+    /** Swimmers holding Jump right against the hull (or a ladder) for half a second climb up onto the deck. */
+    void climbers() {
+        World w = world();
+        if (w == null) return;
+        double r = radius() + 3;
+        for (Player p : w.getPlayers()) {
+            Location l = p.getLocation();
+            if (p.isInsideVehicle() || Math.abs(l.getX() - x) > r || Math.abs(l.getZ() - z) > r) { climbing.remove(p.getUniqueId()); continue; }
+            if (l.getY() < y - 3 || l.getY() > y + type.deckY + 0.5 || !(p.isInWater() || l.getBlock().isLiquid())) { climbing.remove(p.getUniqueId()); continue; }
+            Input in = input(p);
+            if (in == null || !in.isJump() || hullDistance(l) > 1.8) { climbing.remove(p.getUniqueId()); continue; }
+            int n = climbing.merge(p.getUniqueId(), 1, Integer::sum);
+            if (n == 1) p.sendActionBar(Component.text("Climbing aboard...", NamedTextColor.AQUA));
+            if (n >= 5) { climbing.remove(p.getUniqueId()); climbAboard(p); }
+        }
+    }
+
+    /** How far a spot is from the ship's hull, sideways (0 = touching it). */
+    double hullDistance(Location l) {
+        double dx = l.getX() - x, dz = l.getZ() - z, fx = fx(yaw), fz = fz(yaw);
+        double lx = dx * fx + dz * fz, lz = -dx * fz + dz * fx;
+        double ox = Math.max(0, Math.max(type.minX - 0.5 - lx, lx - type.maxX - 0.5));
+        double oz = Math.max(0, Math.abs(lz) - type.halfWidth - 0.5);
+        return Math.hypot(ox, oz);
+    }
+
+    /** Up onto the deck, at the open deck spot nearest to where they are. Returns false if there's nowhere to stand. */
+    boolean climbAboard(Player p) {
+        World w = world();
+        if (w == null || building || wrecked) return false;
+        Location l = p.getLocation();
+        double best = Double.MAX_VALUE;
+        double[] spot = null;
+        for (int i = 0; i < blocks.length; i++) {
+            ShipType.Cell c = type.cells.get(i);
+            if (blocks[i] == null || broken.contains(i) || c.y() != type.deckY) continue;
+            if (type.cellAt(c.x(), c.y() + 1, c.z()) >= 0 || type.cellAt(c.x(), c.y() + 2, c.z()) >= 0) continue; // a rail, mast, cabin...
+            double[] wp = toWorld(x, z, yaw, c.x(), c.z());
+            double d = (wp[0] - l.getX()) * (wp[0] - l.getX()) + (wp[1] - l.getZ()) * (wp[1] - l.getZ());
+            if (d < best) { best = d; spot = wp; }
+        }
+        if (spot == null) return false;
+        if (!anchored && deckOn()) updateDeck();
+        Location to = new Location(w, spot[0], y + type.deckY + 1.02, spot[1], l.getYaw(), l.getPitch());
+        p.teleport(to);
+        p.setFallDistance(0);
+        w.playSound(to, Sound.BLOCK_LADDER_STEP, SoundCategory.PLAYERS, 1f, 1f);
+        w.playSound(to, Sound.ENTITY_PLAYER_SPLASH, SoundCategory.PLAYERS, 0.6f, 1.3f);
+        return true;
     }
 
     // =====================================================================================================

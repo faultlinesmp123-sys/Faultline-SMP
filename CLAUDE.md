@@ -203,6 +203,15 @@ Notes:
   **1.3.4**: skeleton ships sail on while out past the draw range (`Ship.tick`/`think` run when `unseenLoaded()`), so
   they keep chasing you instead of freezing; a lone ship sees you from `pirates.sight` 200 (was 110), invasion ships hunt
   fighters from `pirates.invasion.sight` 400 (none of the fleet drifts off).
+  **1.4.0 walkable deck** (`walkable-deck: true`): player ships keep a solid deck UNDER SAIL. `updateDeck()` lays barriers on
+  every built cell above the water at the ship's current pose (deck-level cells cover every block they overlap, so no gaps
+  at an angle), never inside anyone, only into air, and takes the old ones out; `carry()` moves everyone standing on it by
+  the spot under them (VELOCITY, plus their own walking momentum: a teleport every tick would freeze their movement until
+  confirmed). Standing up from a seat under sail = on the deck; raising the anchor no longer forces anyone into a seat.
+  Fell off? Hold Jump against the hull for 0.5 s (`climbers()`) or right-click the hull from the water (`climbAboard`).
+  The barriers are recorded in each chunk's PDC (`deckMark`); `cleanDeck` removes any no ship owns when a chunk loads
+  (crash safety). The ship's own deck blocks don't count as obstacles in `clear()`. No swell bob under walkers.
+  Skeleton ships keep seats. Tested in `DeckTest`.
 - **Meteor strikes** (`FaultlineItems/Meteor.java`, config `meteor:`): every `every-minutes` (60, real time) a meteor falls in the
   Overworld `min/max-distance` (250-600) from a random survival player, announced a minute ahead (chat, title, boss bar with
   X/Z). Only generated chunks, only natural ground (`NATURAL` set; never touches `LEGACY_` materials). `base()` (1.1.3) keeps

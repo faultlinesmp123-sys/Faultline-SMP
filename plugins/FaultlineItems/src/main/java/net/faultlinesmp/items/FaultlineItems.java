@@ -400,6 +400,7 @@ public final class FaultlineItems extends JavaPlugin {
         weather = new Weather(this);
         getServer().getPluginManager().registerEvents(weather, this);
         getCommand("fevent").setExecutor(weather);
+        getServer().getPluginManager().registerEvents(new StandGuard(this), this);
         creatures = new Creatures(this);
         getServer().getPluginManager().registerEvents(creatures, this);
         getCommand("fcreature").setExecutor(creatures);

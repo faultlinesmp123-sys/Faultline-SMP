@@ -364,6 +364,22 @@ Bedrock players are detected by Floodgate UUID (top half 0) in every plugin (`be
   name), dumped by building them in a MockBukkit server (the mock forgets item_model; the test copy records it in the PDC);
   the other plugins' items are found by scanning their source. Rerun after adding items, sounds or Index icons.
 - **Ghost Pirates** (invisible + glowing): Bedrock has no glow outline, so Bedrock players get their shape in dust.
+- **Pack versions**: Bedrock clients cache packs by UUID + version, so a changed pack with the same version is never
+  downloaded again (players keep the old models). Every asset tool now calls `tools/mcpack_version.py` `stamp()`, which sets
+  the manifest version to `[1, a, b]` from a hash of the pack's content. Rerun it (`python3 tools/mcpack_version.py bedrock/*.mcpack`)
+  after editing an .mcpack by hand.
+- **Block mirrors** (`BedrockFx`, Bosses 1.4.1): a chunky block display (largest side 0.3-10, smallest/largest >= 0.45: boulders,
+  ice chunks, rock spikes, amethyst; never thin warning lines) near a Bedrock player gets a MIRROR, an armor stand only
+  Bedrock players see (`MIRROR_TAG`), wearing that block on its head (`HEAD_Y` 1.72, `HEAD_BLOCK` 0.625 at scale 1), scaled
+  and moved with it; invulnerable, unclickable, projectiles pass through. Max 120. Any plugin can tag a display
+  `faultline_no_bedrock_fx` (`BedrockFx.SKIP_TAG`) when Bedrock already sees it another way. Tested (`MirrorTest`).
+- **Bedrock-only stands must be guarded**: Bedrock players hit and click the stand, not the thing it draws. Items'
+  `StandGuard` (tag `faultline_bedrock_stand`): hits are cancelled and passed on to the creature (`StandGuard.forward`:
+  Mimics, locusts), a pedestal's stand acts as the pedestal (`Gear.clickPedestal`), robbing is cancelled, and an upkeep
+  shows every stand to Bedrock players who arrive from another world. Before 1.2.1 punching a pedestal's stand dropped a
+  copy of the exhibit, and punching a Mimic broke its stand. Captain Hollow's stand forwards hits (`GhostShip.onStandHit`);
+  ship banner stands and the captain's stand are in `bedrockUpkeep`. The Mimic's lid lifts on Bedrock (a stand can't tilt).
+  Tested (`BedrockStandTest`, `GhostTest`).
 - Ships, cosmetics and the wild models have their own Bedrock packs (`FaultlineShips`, `FaultlineCosmetics`, `FaultlineWild`).
   `tools/bedrock/items.tsv` also lists the wild bosses' summon items/weapons and the Ancient Core by hand (not in the MENU dump).
 

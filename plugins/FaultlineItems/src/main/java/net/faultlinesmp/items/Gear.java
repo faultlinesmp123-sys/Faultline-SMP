@@ -430,10 +430,15 @@ final class Gear implements Listener, CommandExecutor {
     public void onPedestal(PlayerInteractEvent e) {
         if (e.getAction() != Action.RIGHT_CLICK_BLOCK || e.getHand() != EquipmentSlot.HAND || e.getClickedBlock() == null) return;
         Block b = e.getClickedBlock();
+        if (pedestal(b) == null) return;
+        e.setCancelled(true);
+        clickPedestal(e.getPlayer(), b);
+    }
+
+    /** Put what's in your hand on show, or take your exhibit back (the block, or for Bedrock players its stand). */
+    void clickPedestal(Player p, Block b) {
         String exhibit = pedestal(b);
         if (exhibit == null) return;
-        e.setCancelled(true);
-        Player p = e.getPlayer();
         ItemStack hand = p.getInventory().getItemInMainHand();
         if (exhibit.isEmpty()) {
             if (hand.getType().isAir()) { p.sendActionBar(Meteor.legacy(ChatColor.GRAY + "Hold something to put it on show.")); return; }
@@ -472,6 +477,7 @@ final class Gear implements Listener, CommandExecutor {
                 x.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.FIXED);
                 x.setPersistent(false);
                 x.addScoreboardTag(TAG);
+                x.addScoreboardTag("faultline_no_bedrock_fx"); // Bedrock players see the stand instead
                 x.setBrightness(new Display.Brightness(15, 15));
                 x.setInterpolationDuration(10);
                 x.setTransformation(new Transformation(new Vector3f(), new Quaternionf(), new Vector3f(0.7f, 0.7f, 0.7f), new Quaternionf()));
@@ -481,14 +487,20 @@ final class Gear implements Listener, CommandExecutor {
                 s.setVisibleByDefault(false);
                 s.setPersistent(false);
                 s.addScoreboardTag(TAG);
+                s.addScoreboardTag(StandGuard.TAG);
                 s.setInvisible(true);
                 s.setGravity(false);
                 s.setSmall(true);
+                for (EquipmentSlot slot : EquipmentSlot.values()) {
+                    try { s.addEquipmentLock(slot, ArmorStand.LockType.REMOVING_OR_CHANGING); } catch (RuntimeException ignored) { }
+                }
                 s.setMarker(false);
                 s.getEquipment().setHelmet(it.clone());
                 String name = it.hasItemMeta() && it.getItemMeta().hasDisplayName() ? it.getItemMeta().getDisplayName() : null;
                 if (name != null) { s.setCustomName(name); s.setCustomNameVisible(true); }
             });
+            StandGuard.PEDESTAL.put(stand.getUniqueId(), b);
+            StandGuard.track(stand);
             for (Player p : b.getWorld().getPlayers()) if (Weather.bedrock(p)) p.showEntity(plugin, stand);
         }
         void turn(int t) {
@@ -496,7 +508,7 @@ final class Gear implements Listener, CommandExecutor {
             d.setInterpolationDelay(0);
             d.setTransformation(new Transformation(new Vector3f(0, (float) Math.sin(t * 0.05) * 0.05f, 0), new Quaternionf().rotationY(t * 0.05f), new Vector3f(0.7f, 0.7f, 0.7f), new Quaternionf()));
         }
-        void remove() { if (d.isValid()) d.remove(); if (stand.isValid()) stand.remove(); }
+        void remove() { if (d.isValid()) d.remove(); StandGuard.forget(stand); if (stand.isValid()) stand.remove(); }
     }
 
     void showChunk(Chunk ch) {

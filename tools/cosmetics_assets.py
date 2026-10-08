@@ -337,6 +337,7 @@ def main():
         for root, _, files in os.walk(rp):
             for fn in sorted(files):
                 full = os.path.join(root, fn); z.write(full, os.path.relpath(full, rp))
+    from mcpack_version import stamp; stamp(os.path.join(bout, "FaultlineCosmetics.mcpack"))
     jwrite(os.path.join(bout, "faultline_cosmetics_mappings.json"), mappings)
 
     if prev:  # worn models on a stand-in torso / head, so the placement can be checked

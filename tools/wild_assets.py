@@ -1218,6 +1218,7 @@ def main():
         for root, _, files in os.walk(rp):
             for fn in sorted(files):
                 full = os.path.join(root, fn); z.write(full, os.path.relpath(full, rp))
+    from mcpack_version import stamp; stamp(os.path.join(bout, "FaultlineWild.mcpack"))
     jw(os.path.join(bout, "faultline_wild_mappings.json"), {"format_version": 2, "items": mappings})
     # ---- WildParts.java (display scale + offset per part) for the plugins that draw them
     lines = []

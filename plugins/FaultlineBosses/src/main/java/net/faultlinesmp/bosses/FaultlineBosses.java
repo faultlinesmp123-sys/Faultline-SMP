@@ -385,6 +385,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         registerIdolRecipe();
         removeLeftovers();
         getServer().getPluginManager().registerEvents(this, this);
+        getServer().getPluginManager().registerEvents(bedrockFx, this);
         vendetta = new Vendetta(this);
         getServer().getPluginManager().registerEvents(vendetta, this);
         below = new Below(this);
@@ -538,6 +539,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         safely("shutdown: Don Lorenzo", () -> { if (don != null) don.cleanup(); }); // restores the arena and anyone mid-cutscene
         safely("shutdown: Lorenzo's Ball", () -> { for (KickedBall b : kickedBalls) if (b.display.isValid()) b.display.remove(); });
         safely("shutdown: Dune worm", () -> { if (dune != null) dune.removeEverything(); });
+        safely("shutdown: Bedrock mirrors", bedrockFx::clearMirrors);
         safely("shutdown: stand-ins", () -> { for (Proxy px : proxies.values()) if (px.stand.isValid()) px.stand.remove(); });
         safely("shutdown: Frostbeard", () -> { if (mortimer != null) mortimer.removeEverything(); });
         safely("shutdown: Twin Eyes", () -> { for (UUID owner : new ArrayList<>(minions.keySet())) dismissMinions(owner); });

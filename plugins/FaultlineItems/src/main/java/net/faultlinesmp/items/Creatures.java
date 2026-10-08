@@ -151,6 +151,8 @@ final class Creatures implements Listener, CommandExecutor {
             lid = WildRig.display(w, at, "mimic_lid", MIMIC_FX);
             baseStand = WildRig.stand(plugin, w, at, "mimic_base", 1.0, MIMIC_FX);
             lidStand = WildRig.stand(plugin, w, at, "mimic_lid", 1.0, MIMIC_FX);
+            StandGuard.forward(baseStand, body);
+            StandGuard.forward(lidStand, body);
             tick();
         }
 
@@ -166,11 +168,16 @@ final class Creatures implements Listener, CommandExecutor {
             Location bl = l.clone().add(0, hop, 0);
             WildRig.pose(base, baseStand, "mimic_base", 1.0, bl, yaw, null);
             Location hinge = bl.clone().add(Wildish.dir(yaw).multiply(-0.45)).add(0, 0.62, 0);
-            WildRig.pose(lid, lidStand, "mimic_lid", 1.0, hinge, yaw, new Quaternionf(new AxisAngle4f((float) Math.toRadians(open), 0, 0, 1)));
+            WildRig.pose(lid, null, "mimic_lid", 1.0, hinge, yaw, new Quaternionf(new AxisAngle4f((float) Math.toRadians(open), 0, 0, 1)));
+            // Bedrock: an armor stand can't tilt its helmet, so the lid lifts and slides back as it opens instead
+            double lift = Math.sin(Math.toRadians(open));
+            Location lidAt = hinge.clone().add(Wildish.dir(yaw).multiply(-0.15 * lift)).add(0, 0.35 * lift, 0);
+            WildRig.pose(null, lidStand, "mimic_lid", 1.0, lidAt, yaw, null);
             if (hunting && t % 8 == 0) body.getWorld().playSound(l, Sound.BLOCK_CHEST_CLOSE, SoundCategory.HOSTILE, 0.8f, 1.4f);
         }
 
         void remove() {
+            StandGuard.forget(baseStand); StandGuard.forget(lidStand);
             for (Entity e : new Entity[]{base, lid, baseStand, lidStand}) if (e != null && e.isValid()) e.remove();
             if (body.isValid() && !body.isDead()) body.remove();
         }

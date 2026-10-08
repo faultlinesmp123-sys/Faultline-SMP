@@ -546,13 +546,14 @@ final class Weather implements Listener, CommandExecutor {
                 });
                 model = WildRig.display(world, at, "locust", TAG);
                 stand = WildRig.stand(plugin, world, at, "locust", 1.0, TAG);
+                StandGuard.forward(stand, body);
             }
             boolean alive() { return body.isValid() && !body.isDead(); }
             void follow() {
                 Location l = body.getLocation().add(0, 0.3, 0);
                 WildRig.pose(model, stand, "locust", 1.0, l, l.getYaw(), null);
             }
-            void remove() { if (body.isValid()) body.remove(); if (model.isValid()) model.remove(); if (stand.isValid()) stand.remove(); }
+            void remove() { if (body.isValid()) body.remove(); if (model.isValid()) model.remove(); StandGuard.forget(stand); if (stand.isValid()) stand.remove(); }
         }
 
         @Override void begin() {

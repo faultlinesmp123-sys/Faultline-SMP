@@ -548,6 +548,7 @@ def bedrock_pack(bout, layouts, icons):
         for root, _, files in os.walk(rp):
             for fn in sorted(files):
                 full = os.path.join(root, fn); z.write(full, os.path.relpath(full, rp))
+    from mcpack_version import stamp; stamp(os.path.join(bout, "FaultlineShips.mcpack"))
     _w(os.path.join(bout, "faultline_ships_mappings.json"), {"format_version": 2, "items": {"minecraft:paper": paper, "minecraft:stick": stick}})
     return rp, tex
 

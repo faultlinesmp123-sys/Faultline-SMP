@@ -46,6 +46,7 @@ final class WildRig {
             d.setInterpolationDuration(2);
             d.setPersistent(false);
             d.addScoreboardTag(tag);
+            d.addScoreboardTag("faultline_no_bedrock_fx"); // Bedrock players see the stand instead
             d.setBrightness(new Display.Brightness(12, 12));
         });
     }
@@ -55,6 +56,7 @@ final class WildRig {
             s.setVisibleByDefault(false);
             s.setPersistent(false);
             s.addScoreboardTag(tag);
+            s.addScoreboardTag(StandGuard.TAG);
             s.setInvisible(true);
             s.setGravity(false);
             s.setSilent(true);
@@ -68,6 +70,7 @@ final class WildRig {
         AttributeInstance sc = a.getAttribute(Attribute.SCALE);
         if (sc != null) sc.setBaseValue(Math.max(0.0625, Math.min(16, k)));
         for (Player p : w.getPlayers()) if (Weather.bedrock(p)) p.showEntity(plugin, a);
+        StandGuard.track(a);
         return a;
     }
 

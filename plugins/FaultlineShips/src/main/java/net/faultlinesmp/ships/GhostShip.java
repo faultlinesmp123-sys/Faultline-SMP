@@ -25,7 +25,12 @@ import org.bukkit.entity.Player;
 import org.bukkit.entity.WitherSkeleton;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.EventPriority;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
+import org.bukkit.event.player.PlayerArmorStandManipulateEvent;
+import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
@@ -414,6 +419,23 @@ final class GhostShip implements Listener {
     void run(String cmd) {
         try { Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd); } catch (RuntimeException ignored) { }
     }
+
+    /** Bedrock players see (and so hit) the captain's stand, not the invisible skeleton: pass their hits on to him. */
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onStandHit(EntityDamageEvent e) {
+        if (capStand == null || !e.getEntity().equals(capStand)) return;
+        e.setCancelled(true);
+        if (!(e instanceof EntityDamageByEntityEvent ee) || captain == null || !captain.isValid() || captain.isDead()) return;
+        org.bukkit.entity.Entity by = ee.getDamager();
+        if (by instanceof org.bukkit.entity.Projectile pr && pr.getShooter() instanceof org.bukkit.entity.Entity sh) { pr.remove(); by = sh; }
+        if (by != null && !by.equals(captain)) captain.damage(Math.max(0.5, e.getDamage()), by);
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onStandClick(PlayerInteractEntityEvent e) { if (capStand != null && e.getRightClicked().equals(capStand)) e.setCancelled(true); }
+
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onStandRob(PlayerArmorStandManipulateEvent e) { if (capStand != null && e.getRightClicked().equals(capStand)) e.setCancelled(true); }
 
     @EventHandler
     public void onJoin(PlayerJoinEvent e) {

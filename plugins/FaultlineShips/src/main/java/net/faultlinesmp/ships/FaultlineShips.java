@@ -26,6 +26,7 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Interaction;
+import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
 import org.bukkit.entity.AbstractArrow;
@@ -1141,8 +1142,13 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
                     if (bedrock(p)) { if (!p.canSee(s.stand)) p.showEntity(this, s.stand); }
                     else if (p.canSee(s.stand)) p.hideEntity(this, s.stand);
                 }
+            if (s.flagStand != null && s.flagStand.isValid())
+                for (Player p : s.world().getPlayers()) if (bedrock(p) && !p.canSee(s.flagStand)) p.showEntity(this, s.flagStand);
             if (s.building && now % 40 == 5) showAllFakes(s);
         }
+        ArmorStand cap = pirates == null || pirates.ghost == null ? null : pirates.ghost.capStand;
+        if (cap != null && cap.isValid())
+            for (Player p : cap.getWorld().getPlayers()) if (bedrock(p) && !p.canSee(cap)) p.showEntity(this, cap);
     }
 
     /** Bedrock players can't see the glowing outline either: the empty cells near them sparkle instead. */

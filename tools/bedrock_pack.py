@@ -100,6 +100,7 @@ def main():
     with zipfile.ZipFile(dest, "w") as zz:
         for path in sorted(files):
             zz.writestr(path, files[path], compress_type=zipfile.ZIP_STORED if path.endswith(".ogg") else zipfile.ZIP_DEFLATED)
+    from mcpack_version import stamp; stamp(dest)
     print(f"wrote {dest}: {os.path.getsize(dest) / 1e6:.1f} MB")
     if prev:
         os.makedirs(prev, exist_ok=True)

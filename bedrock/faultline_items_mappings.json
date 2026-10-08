@@ -227,6 +227,34 @@
     "display_name": "Diamond Heart"
    }
   ],
+  "minecraft:diamond_sword": [
+   {
+    "type": "definition",
+    "model": "faultline:glacial_fang",
+    "bedrock_identifier": "faultline:glacial_fang",
+    "bedrock_options": {
+     "icon": "faultline.glacial_fang",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    },
+    "display_name": "Glacial Fang"
+   },
+   {
+    "type": "definition",
+    "model": "faultline:sandworm_fang",
+    "bedrock_identifier": "faultline:sandworm_fang",
+    "bedrock_options": {
+     "icon": "faultline.sandworm_fang",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    },
+    "display_name": "Sandworm Fang"
+   }
+  ],
   "minecraft:echo_shard": [
    {
     "type": "definition",
@@ -800,6 +828,44 @@
   "minecraft:paper": [
    {
     "type": "definition",
+    "model": "faultline:abyssal_lure",
+    "bedrock_identifier": "faultline:abyssal_lure",
+    "bedrock_options": {
+     "icon": "faultline.abyssal_lure",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Abyssal Lure"
+   },
+   {
+    "type": "definition",
+    "model": "faultline:ancient_core",
+    "bedrock_identifier": "faultline:ancient_core",
+    "bedrock_options": {
+     "icon": "faultline.ancient_core",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    },
+    "display_name": "Ancient Core"
+   },
+   {
+    "type": "definition",
+    "model": "faultline:ancient_gear_part",
+    "bedrock_identifier": "faultline:ancient_gear_part",
+    "bedrock_options": {
+     "icon": "faultline.ancient_gear_part",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   },
+   {
+    "type": "definition",
     "model": "faultline:banner_of_defiance",
     "bedrock_identifier": "faultline:banner_of_defiance",
     "bedrock_options": {
@@ -848,6 +914,57 @@
      "minecraft:max_stack_size": 16
     },
     "display_name": "Discount Card"
+   },
+   {
+    "type": "definition",
+    "model": "faultline:frozen_horn",
+    "bedrock_identifier": "faultline:frozen_horn",
+    "bedrock_options": {
+     "icon": "faultline.frozen_horn",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Frozen Horn"
+   },
+   {
+    "type": "definition",
+    "model": "faultline:lantern_of_souls",
+    "bedrock_identifier": "faultline:lantern_of_souls",
+    "bedrock_options": {
+     "icon": "faultline.lantern_of_souls",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:lich_phylactery",
+    "bedrock_identifier": "faultline:lich_phylactery",
+    "bedrock_options": {
+     "icon": "faultline.lich_phylactery",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Cursed Phylactery"
+   },
+   {
+    "type": "definition",
+    "model": "faultline:sandworm_drum",
+    "bedrock_identifier": "faultline:sandworm_drum",
+    "bedrock_options": {
+     "icon": "faultline.sandworm_drum",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Sandworm Drum"
    },
    {
     "type": "definition",
@@ -938,6 +1055,20 @@
      "minecraft:max_stack_size": 16
     },
     "display_name": "Flipper"
+   }
+  ],
+  "minecraft:polished_blackstone_brick_wall": [
+   {
+    "type": "definition",
+    "model": "faultline:museum_pedestal",
+    "bedrock_identifier": "faultline:museum_pedestal",
+    "bedrock_options": {
+     "icon": "faultline.museum_pedestal",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
    }
   ],
   "minecraft:potion": [
@@ -1216,6 +1347,19 @@
    },
    {
     "type": "definition",
+    "model": "faultline:lich_staff",
+    "bedrock_identifier": "faultline:lich_staff",
+    "bedrock_options": {
+     "icon": "faultline.lich_staff",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    },
+    "display_name": "Staff of the Lich"
+   },
+   {
+    "type": "definition",
     "model": "faultline:spider_staff",
     "bedrock_identifier": "faultline:spider_staff_stick",
     "bedrock_options": {
@@ -1240,6 +1384,21 @@
      "minecraft:max_stack_size": 1
     },
     "display_name": "Queen's Silk"
+   }
+  ],
+  "minecraft:trident": [
+   {
+    "type": "definition",
+    "model": "faultline:tidebreaker",
+    "bedrock_identifier": "faultline:tidebreaker",
+    "bedrock_options": {
+     "icon": "faultline.tidebreaker",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    },
+    "display_name": "Tidebreaker"
    }
   ],
   "minecraft:turtle_scute": [

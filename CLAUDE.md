@@ -35,12 +35,12 @@ All are Maven projects: Java 21, `paper-api 1.21.11-R0.1-SNAPSHOT`. Build with
 | Plugin | Package | What it does | Commands |
 |---|---|---|---|
 | **LimboBlackMarket** | `net.limbosmp.blackmarket` | Head-tier economy, kill/death stats, kill streaks, anti-farm, quests + Quest Book, friendly-fire logging, global reload | `/tier`, `/markethelp`, `/stats`, `/leaderboard`, `/tierleaderboard`, `/faultlinereload` (`/freload`), `/givequestbook` |
-| **FaultlineItems** | `net.faultlinesmp.items` | All custom items + accessories (3-slot `/accessories` GUI), staffs, spawn eggs, diving gear, Kraken & Diamond Jacob gear, Skeleton Wanderer cave trader, **Meteor strikes** (`Meteor.java`), **the Caravan** (`Caravan.java`), admin `/itemsmenu` | many `/give*` commands, `/itemsmenu` (`/fitems`), `/itemsreload`, `/cavetrader`, `/batform`, `/meteor [now\|here\|target\|at\|check\|stop\|egg]`, `/caravan [now\|here\|stop\|reroll]`, `/queenspider spawn` |
+| **FaultlineItems** | `net.faultlinesmp.items` | All custom items + accessories (3-slot `/accessories` GUI), staffs, spawn eggs, diving gear, Kraken & Diamond Jacob gear, Skeleton Wanderer cave trader, **Meteor strikes** (`Meteor.java`), **the Caravan** (`Caravan.java`), **weather events** (`Weather.java`), **Mimics + Skeleton Knights** (`Creatures.java`), **new gear, music discs, museum pedestals** (`Gear.java`), admin `/itemsmenu` | many `/give*` commands, `/itemsmenu` (`/fitems`), `/itemsreload`, `/cavetrader`, `/batform`, `/meteor [now\|here\|target\|at\|check\|stop\|egg]`, `/caravan [now\|here\|stop\|reroll]`, `/queenspider spawn`, `/fevent <kind\|stop\|status>`, `/fcreature <mimic\|knights>`, `/fgear`, `/giveancientgear`, `/givedisc <id> [player]` |
 | **FaultlineRaids** | `net.faultlinesmp.raids` | Zombie Raids (Zombie Omens, Captains, Rotbeard), Skeleton Raids, and **Piglin Raids** (`Piglins.java`: War Horn, the Bulwark, the Great Hog) | `/zraid <start\|stop\|captain\|menu\|egg\|omen\|horn>` |
-| **FaultlineBosses** | `net.faultlinesmp.bosses` | Bosses in one ~585 KB file: Demon Eye, Frostbeard, Dune Devourer/Frostmaw, Don Lorenzo, Kraken, **Diamond Jacob**; admin boss form. **Rocco Vendetta** (+ Werner, the Vendetta Fist) lives in its own `Vendetta.java`. **The way down to the Lost Explorer** (Swarm, his staircase, the void world) is `Below.java`; **the Lost Explorer's fight** is `Explorer.java` (+ `ExplorerAnims.java`). **Grimtusk, the Piglin Warlord** (Nether boss) is `Warlord.java`; **the Boss Rush** is `BossRush.java` | `/demoneye`, `/frostbeard`, `/dune`, `/don`, `/kraken <summon\|sea\|...>`, `/jacob <summon\|kill\|phase\|item>`, `/rocco <summon\|kill\|phase\|tattoos\|werner\|item>`, `/bossmorph <boss\|off\|release>`, `/below <swarm\|void\|leave\|close\|slayer\|info>`, `/explorer <start\|stop\|skip\|phase\|stun\|reset\|arena>`, `/grimtusk <summon\|kill\|phase\|item>`, `/bossrush [start\|top]` (admin `stop\|skip\|setarena\|arenas\|clearcooldown`) |
-| **FaultlineIndex** | `net.faultlinesmp.index` | The Faultline Index codex + **Achievements** (`Achievements.java`). Entries and achievements live in `src/main/resources/index.yml`, font glyphs in `glyphs.yml` | `/index [achievements\|give\|reset] [player]`, `/index stat <player> <name> [n]` (other plugins), `/index discover <player> <entry>` |
+| **FaultlineBosses** | `net.faultlinesmp.bosses` | Bosses in one ~585 KB file: Demon Eye, Frostbeard, Dune Devourer/Frostmaw, Don Lorenzo, Kraken, **Diamond Jacob**; admin boss form. **Rocco Vendetta** (+ Werner, the Vendetta Fist) lives in its own `Vendetta.java`. **The way down to the Lost Explorer** (Swarm, his staircase, the void world) is `Below.java`; **the Lost Explorer's fight** is `Explorer.java` (+ `ExplorerAnims.java`). **Grimtusk, the Piglin Warlord** (Nether boss) is `Warlord.java`; **the Boss Rush** is `BossRush.java`. **The wild bosses** (Leviathan, Sandworm King, Lich, Frost Wyrm, Stone Golem) are `Wild.java` + one class each | `/demoneye`, `/frostbeard`, `/dune`, `/don`, `/kraken <summon\|sea\|...>`, `/jacob <summon\|kill\|phase\|item>`, `/rocco <summon\|kill\|phase\|tattoos\|werner\|item>`, `/bossmorph <boss\|off\|release>`, `/below <swarm\|void\|leave\|close\|slayer\|info>`, `/explorer <start\|stop\|skip\|phase\|stun\|reset\|arena>`, `/grimtusk <summon\|kill\|phase\|item>`, `/bossrush [start\|top]` (admin `stop\|skip\|setarena\|arenas\|clearcooldown`), `/leviathan`, `/sandworm`, `/lich`, `/frostwyrm`, `/stonegolem` |
+| **FaultlineIndex** | `net.faultlinesmp.index` | The Faultline Index codex + **Achievements** (`Achievements.java`). **Museum** (`Museum.java`: trophies, discs, Hall of Firsts), **Discord bridge** (`Discord.java`), `/serverstats` (`ServerStats.java`). Entries and achievements live in `src/main/resources/index.yml`, font glyphs in `glyphs.yml`, settings in `config.yml` | `/index [achievements\|give\|reset] [player]`, `/index stat <player> <name> [n]` (other plugins), `/index discover <player> <entry>`, `/museum [bosses\|items]`, `/serverstats`, admin `/discord test [msg]` |
 | **FaultlineCosmetics** | `net.faultlinesmp.cosmetics` | Permanent cosmetic unlocks worn in 4 slots (Hat, Neck, Back, Body) over armor, for Java and Bedrock. **Seasons** (`Seasons.java`: Halloween/Winter currency + Seasonal Shop). Cosmetics are defined in its `config.yml`, unlocks saved in `players.yml` | `/cosmetics [shop]`, admin `/cosmetic <unlock\|lock\|list\|reload\|season\|tokens\|shop>` |
-| **FaultlineShips** | `net.faultlinesmp.ships` | Ships: Dinghy, Sloop, Brigantine, Galleon, Pirate Ship. Blueprint → lay out on water → place every block → sail. Health, part damage, sinking, Shipwright's Hammer repair minigame, cannons, banners, names. **Skeleton ships** and the **Pirate Invasion** (`Pirates.java`). Ships saved in `ships.yml` | `/ship [list\|info\|name\|crew\|anchor\|stop\|banner\|scrap]`, admin `/ship <give\|repair\|wreck\|remove\|tp> [name\|#n]`, `/ship spawn <ship> [owner]`, `/ship pirates <ship\|invasion\|horn\|spawn\|egg\|stop>` |
+| **FaultlineShips** | `net.faultlinesmp.ships` | Ships: Dinghy, Sloop, Brigantine, Galleon, Pirate Ship. Blueprint → lay out on water → place every block → sail. Health, part damage, sinking, Shipwright's Hammer repair minigame, cannons, banners, names. **Skeleton ships** and the **Pirate Invasion** (`Pirates.java`). Ships saved in `ships.yml` | `/ship [list\|info\|name\|crew\|anchor\|stop\|banner\|scrap]`, admin `/ship <give\|repair\|wreck\|remove\|tp> [name\|#n]`, `/ship spawn <ship> [owner]`, `/ship pirates <ship\|invasion\|horn\|spawn\|egg\|ghost\|stop>` |
 
 Notes:
 - `FaultlineItems.java` (~350 KB) and `FaultlineBosses.java` (~585 KB) are huge. Search them instead of reading them whole.
@@ -273,6 +273,45 @@ Notes:
   the JAR's config load even when the server's config.yml doesn't list them (read from the defaults; Bukkit's
   `getConfigurationSection` would create an empty section, so only ids the server's file really has are read from it).
   Hats are head-pixel models (front -z, display.head scale 1.6), Bedrock helmet attachables. Tested (`SeasonTest`).
+- **The wild update** (Bosses 1.4.0, Items 1.2.0, Ships 1.5.0, Index 1.6.0). All models come from
+  `python3 tools/wild_assets.py <unpacked-pack> bedrock --preview tools/previews` (Java item models `faultline:wild/<part>`,
+  flat items, 9 discs `faultline:disc/disc_<id>`, 17 trophies `faultline:trophy/trophy_<icon>`, worn knight_helm/mining_helmet,
+  Index icons + glyphs; Bedrock: `bedrock/FaultlineWild.mcpack` + `faultline_wild_mappings.json`). It writes `WildParts.java`
+  (each part's display scale/offset). Bedrock sees every model part as the helmet of an armor stand only Floodgate players
+  can see (`setVisibleByDefault(false)` + `showEntity`); hitting the stand hits the boss.
+  **Wild bosses** (`FaultlineBosses/Wild.java`: rig, shared fight loop, summon items, weapons; config `wild:`; summon items
+  only work in their biome unless `wild.require-biome: false`): **Leviathan** (`Leviathan.java`, 2400 hp, Abyssal Lure over
+  deep ocean or 0.4% at night sailing; Tidal Ram / Water Spout / Bile / Roar / Coil / Tail Sweep / Drowned; hits near a ship
+  break its parts via ShipLink, `ship-damage.*`; drops Tidebreaker trident 25%), **Sandworm King** (`Sandworm.java`, 3600,
+  Sandworm Drum on sand; Eruption / Slither / Boulders / Quicksand / Brood (Larvae) / Tremor; Sandworm Fang sword: Burrow Dash),
+  **Lich** (`Lich.java`, 2800, Cursed Phylactery in the Deep Dark; Soul Bolts / Raise (Revenants with players' heads) / Death
+  Ring / Blink / Darkness / Life Drain; phase 2: 3 end-crystal phylacteries (`Lich.CRYSTAL_TAG`) shield him; Staff of the
+  Lich), **Frost Wyrm** (`FrostWyrm.java`, 3200, Frozen Horn on frozen peaks; Breath / Icicles / Dive / Roar / Wyrmguard
+  Archers / blizzard; Glacial Fang), **Stone Golem** (`StoneGolem.java`, mini boss 900, wakes 3%/min near explorers in lush
+  caves; invisible IronGolem walks it; Pound / Boulder / Crystal Spikes / Overgrowth; drops Ancient Gear Parts). All 5 have
+  boss form hooks, Boss Rush stages (19 total, `OLD_DEFAULT_3` upgrades old lists), Index entries, /itemsmenu eggs and
+  summons. Music is vanilla discs (`wild.<boss>.music`). Tested in the bosses harness (`WildTest`).
+  **Weather** (`FaultlineItems/Weather.java`, `weather:`): Aurora (night, XP x2, enchanting x0.7; Java ItemDisplay
+  ribbons `wild/aurora`, Bedrock dust), Sandstorm (deserts: dust, slowness, husks, treasure from dug sand), Blizzard (snowy:
+  freezing unless near fire/leather, strays), Eclipse (midday dark 5 min, neutral mobs hostile), Locusts (Vex with
+  `wild/locust` model eat a farm's crops; drive off = `index stat locust_swarms`). `/fevent`.
+  **Creatures** (`Creatures.java`): Mimics (1% of loot-table chests; Spider + `wild/mimic_base`/`mimic_lid`; chest loot on death;
+  `index stat mimics`), Skeleton Knight patrols (night, skeleton horses, Knight's Helm 6%, gone at dawn). `/fcreature`.
+  **Gear** (`Gear.java`, PDC `faultlineitems:gear=<id>`): Mining Helmet (night vision + headlamp LIGHT block), Lantern of Souls
+  (held: light, reveals invisibles, clears Darkness, makes the Ghost Ship solid), Knight's Helm, Ancient Gear Part → Ancient
+  Core accessory, Museum Pedestal (chunk PDC `pedestals` + `pedestal_<local>`; ItemDisplay / Bedrock stand), 9 boss music
+  discs (`disc_<id>`, jukebox plays `faultline:<boss>.music`, TileState PDC `jukebox_disc`), grappling hook recipe.
+  **Ghost Ship** (`FaultlineShips/GhostShip.java`, `pirates.ghost-ship:`): "The Wailing Mary", a Galleon of pale glass/pale oak
+  (`Brain.ghost`), at night near ocean sailors (3%, x2 in rain) or `/ship pirates ghost`. Untouchable/unboardable unless a
+  Lantern of Souls is within `lantern-range`: then she anchors and Captain Hollow (invisible wither skeleton + `wild/ghost_captain`,
+  400 hp: blink, sweep, wraiths, soul chains) fights; loot + `index stat ghost_ships`. Fades at dawn / after 20 s without the
+  lantern. Bedrock model `faultline:ship/galleon_ghost` (`ship_assets.py`). Tested (`GhostTest`).
+  **Museum** (`FaultlineIndex/Museum.java`, Index `config.yml` `museum:`): first defeat of a boss = its trophy (PAPER,
+  `faultlineindex:trophy`); each defeat rolls `disc-chance` for that boss's disc (`givedisc`; one roll per defeat even when
+  the kill credit and `index discover` both fire); server firsts saved in `museum.yml`, announced, shown in `/museum`.
+  **Discord** (`Discord.java`, `discord:`): webhook URL; broadcasts matching `discord.forward` regexes are posted (1.5 s apart).
+  **/serverstats** (`ServerStats.java`): totals from vanilla stats + Index stats, top 3s, cached 1 min.
+  Tested in the Index harness (`MuseumTest`).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.
@@ -295,7 +334,7 @@ Notes:
 | `FaultlineBloodMoon.zip` | Blood Moon pack: replaces moon phase textures |
 | `FaultlineBosses.zip` | Very old zip of the FaultlineBosses source (Demon Eye only). Ignore it; the live copy is `plugins/FaultlineBosses/` |
 | `plugins/` | Source code for all seven custom plugins (edit these) |
-| `bedrock/` | Bedrock (Geyser) packs + custom item mappings: cosmetics (`tools/cosmetics_assets.py`) and ships (`tools/ship_assets.py --bedrock`) |
+| `bedrock/` | Bedrock (Geyser) packs + custom item mappings: cosmetics (`tools/cosmetics_assets.py`), ships (`tools/ship_assets.py --bedrock`), wild models (`tools/wild_assets.py`) |
 
 Resource packs are served from raw GitHub links on `main`, e.g.
 `https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/main/FaultlineBossesPack.zip`
@@ -325,7 +364,8 @@ Bedrock players are detected by Floodgate UUID (top half 0) in every plugin (`be
   name), dumped by building them in a MockBukkit server (the mock forgets item_model; the test copy records it in the PDC);
   the other plugins' items are found by scanning their source. Rerun after adding items, sounds or Index icons.
 - **Ghost Pirates** (invisible + glowing): Bedrock has no glow outline, so Bedrock players get their shape in dust.
-- Ships and cosmetics have their own Bedrock packs (below / Ships notes).
+- Ships, cosmetics and the wild models have their own Bedrock packs (`FaultlineShips`, `FaultlineCosmetics`, `FaultlineWild`).
+  `tools/bedrock/items.tsv` also lists the wild bosses' summon items/weapons and the Ancient Core by hand (not in the MENU dump).
 
 ## Cosmetics (FaultlineCosmetics)
 - `/cosmetics` opens the menu; `/cosmetic` (the admin command) also opens it for non-admins. A menu error is shown to the

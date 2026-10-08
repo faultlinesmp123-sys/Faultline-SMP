@@ -1,0 +1,681 @@
+{
+ "format_version": 2,
+ "items": {
+  "minecraft:paper": [
+   {
+    "type": "definition",
+    "model": "faultline:wild/lev_head",
+    "bedrock_identifier": "faultline:wild_lev_head",
+    "display_name": "lev_head",
+    "bedrock_options": {
+     "icon": "faultline.leviathan",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:wild/lev_body",
+    "bedrock_identifier": "faultline:wild_lev_body",
+    "display_name": "lev_body",
+    "bedrock_options": {
+     "icon": "faultline.leviathan",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:wild/lev_tail",
+    "bedrock_identifier": "faultline:wild_lev_tail",
+    "display_name": "lev_tail",
+    "bedrock_options": {
+     "icon": "faultline.leviathan",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:wild/worm_head",
+    "bedrock_identifier": "faultline:wild_worm_head",
+    "display_name": "worm_head",
+    "bedrock_options": {
+     "icon": "faultline.sandworm_king",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:wild/worm_body",
+    "bedrock_identifier": "faultline:wild_worm_body",
+    "display_name": "worm_body",
+    "bedrock_options": {
+     "icon": "faultline.sandworm_king",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:wild/worm_tail",
+    "bedrock_identifier": "faultline:wild_worm_tail",
+    "display_name": "worm_tail",
+    "bedrock_options": {
+     "icon": "faultline.sandworm_king",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:wild/wyrm_body",
+    "bedrock_identifier": "faultline:wild_wyrm_body",
+    "display_name": "wyrm_body",
+    "bedrock_options": {
+     "icon": "faultline.frost_wyrm",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:wild/wyrm_head",
+    "bedrock_identifier": "faultline:wild_wyrm_head",
+    "display_name": "wyrm_head",
+    "bedrock_options": {
+     "icon": "faultline.frost_wyrm",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:wild/wyrm_wing_l",
+    "bedrock_identifier": "faultline:wild_wyrm_wing_l",
+    "display_name": "wyrm_wing_l",
+    "bedrock_options": {
+     "icon": "faultline.frost_wyrm",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:wild/wyrm_wing_r",
+    "bedrock_identifier": "faultline:wild_wyrm_wing_r",
+    "display_name": "wyrm_wing_r",
+    "bedrock_options": {
+     "icon": "faultline.frost_wyrm",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:wild/wyrm_tail",
+    "bedrock_identifier": "faultline:wild_wyrm_tail",
+    "display_name": "wyrm_tail",
+    "bedrock_options": {
+     "icon": "faultline.frost_wyrm",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:wild/lich",
+    "bedrock_identifier": "faultline:wild_lich",
+    "display_name": "lich",
+    "bedrock_options": {
+     "icon": "faultline.lich",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:wild/golem_body",
+    "bedrock_identifier": "faultline:wild_golem_body",
+    "display_name": "golem_body",
+    "bedrock_options": {
+     "icon": "faultline.stone_golem",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:wild/golem_arm",
+    "bedrock_identifier": "faultline:wild_golem_arm",
+    "display_name": "golem_arm",
+    "bedrock_options": {
+     "icon": "faultline.stone_golem",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:wild/golem_leg",
+    "bedrock_identifier": "faultline:wild_golem_leg",
+    "display_name": "golem_leg",
+    "bedrock_options": {
+     "icon": "faultline.stone_golem",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:wild/mimic_base",
+    "bedrock_identifier": "faultline:wild_mimic_base",
+    "display_name": "mimic_base",
+    "bedrock_options": {
+     "icon": "faultline.mimic",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:wild/mimic_lid",
+    "bedrock_identifier": "faultline:wild_mimic_lid",
+    "display_name": "mimic_lid",
+    "bedrock_options": {
+     "icon": "faultline.mimic",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:wild/locust",
+    "bedrock_identifier": "faultline:wild_locust",
+    "display_name": "locust",
+    "bedrock_options": {
+     "icon": "faultline.locust",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:wild/ghost_captain",
+    "bedrock_identifier": "faultline:wild_ghost_captain",
+    "display_name": "ghost_captain",
+    "bedrock_options": {
+     "icon": "faultline.ghost_captain",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:knight_helm",
+    "bedrock_identifier": "faultline:knight_helm",
+    "display_name": "Knight's Helm",
+    "bedrock_options": {
+     "icon": "faultline.knight_helm",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:mining_helmet",
+    "bedrock_identifier": "faultline:mining_helmet",
+    "display_name": "Mining Helmet",
+    "bedrock_options": {
+     "icon": "faultline.mining_helmet",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:disc/disc_demon_eye",
+    "bedrock_identifier": "faultline:disc_demon_eye",
+    "display_name": "Music Disc",
+    "bedrock_options": {
+     "icon": "faultline.disc_demon_eye",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:disc/disc_dune",
+    "bedrock_identifier": "faultline:disc_dune",
+    "display_name": "Music Disc",
+    "bedrock_options": {
+     "icon": "faultline.disc_dune",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:disc/disc_don",
+    "bedrock_identifier": "faultline:disc_don",
+    "display_name": "Music Disc",
+    "bedrock_options": {
+     "icon": "faultline.disc_don",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:disc/disc_kraken",
+    "bedrock_identifier": "faultline:disc_kraken",
+    "display_name": "Music Disc",
+    "bedrock_options": {
+     "icon": "faultline.disc_kraken",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:disc/disc_jacob1",
+    "bedrock_identifier": "faultline:disc_jacob1",
+    "display_name": "Music Disc",
+    "bedrock_options": {
+     "icon": "faultline.disc_jacob1",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:disc/disc_jacob2",
+    "bedrock_identifier": "faultline:disc_jacob2",
+    "display_name": "Music Disc",
+    "bedrock_options": {
+     "icon": "faultline.disc_jacob2",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:disc/disc_rocco",
+    "bedrock_identifier": "faultline:disc_rocco",
+    "display_name": "Music Disc",
+    "bedrock_options": {
+     "icon": "faultline.disc_rocco",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:disc/disc_explorer",
+    "bedrock_identifier": "faultline:disc_explorer",
+    "display_name": "Music Disc",
+    "bedrock_options": {
+     "icon": "faultline.disc_explorer",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:disc/disc_pirates",
+    "bedrock_identifier": "faultline:disc_pirates",
+    "display_name": "Music Disc",
+    "bedrock_options": {
+     "icon": "faultline.disc_pirates",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:trophy/trophy_demon_eye",
+    "bedrock_identifier": "faultline:trophy_demon_eye",
+    "display_name": "Boss Trophy",
+    "bedrock_options": {
+     "icon": "faultline.trophy_demon_eye",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:trophy/trophy_mortimer_freeze",
+    "bedrock_identifier": "faultline:trophy_mortimer_freeze",
+    "display_name": "Boss Trophy",
+    "bedrock_options": {
+     "icon": "faultline.trophy_mortimer_freeze",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:trophy/trophy_dune_devourer",
+    "bedrock_identifier": "faultline:trophy_dune_devourer",
+    "display_name": "Boss Trophy",
+    "bedrock_options": {
+     "icon": "faultline.trophy_dune_devourer",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:trophy/trophy_frostmaw",
+    "bedrock_identifier": "faultline:trophy_frostmaw",
+    "display_name": "Boss Trophy",
+    "bedrock_options": {
+     "icon": "faultline.trophy_frostmaw",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:trophy/trophy_don_lorenzo",
+    "bedrock_identifier": "faultline:trophy_don_lorenzo",
+    "display_name": "Boss Trophy",
+    "bedrock_options": {
+     "icon": "faultline.trophy_don_lorenzo",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:trophy/trophy_kraken",
+    "bedrock_identifier": "faultline:trophy_kraken",
+    "display_name": "Boss Trophy",
+    "bedrock_options": {
+     "icon": "faultline.trophy_kraken",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:trophy/trophy_diamond_jacob",
+    "bedrock_identifier": "faultline:trophy_diamond_jacob",
+    "display_name": "Boss Trophy",
+    "bedrock_options": {
+     "icon": "faultline.trophy_diamond_jacob",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:trophy/trophy_rocco_vendetta",
+    "bedrock_identifier": "faultline:trophy_rocco_vendetta",
+    "display_name": "Boss Trophy",
+    "bedrock_options": {
+     "icon": "faultline.trophy_rocco_vendetta",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:trophy/trophy_grimtusk",
+    "bedrock_identifier": "faultline:trophy_grimtusk",
+    "display_name": "Boss Trophy",
+    "bedrock_options": {
+     "icon": "faultline.trophy_grimtusk",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:trophy/trophy_lost_explorer",
+    "bedrock_identifier": "faultline:trophy_lost_explorer",
+    "display_name": "Boss Trophy",
+    "bedrock_options": {
+     "icon": "faultline.trophy_lost_explorer",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:trophy/trophy_queen_spider",
+    "bedrock_identifier": "faultline:trophy_queen_spider",
+    "display_name": "Boss Trophy",
+    "bedrock_options": {
+     "icon": "faultline.trophy_queen_spider",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:trophy/trophy_leviathan",
+    "bedrock_identifier": "faultline:trophy_leviathan",
+    "display_name": "Boss Trophy",
+    "bedrock_options": {
+     "icon": "faultline.trophy_leviathan",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:trophy/trophy_sandworm_king",
+    "bedrock_identifier": "faultline:trophy_sandworm_king",
+    "display_name": "Boss Trophy",
+    "bedrock_options": {
+     "icon": "faultline.trophy_sandworm_king",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:trophy/trophy_lich",
+    "bedrock_identifier": "faultline:trophy_lich",
+    "display_name": "Boss Trophy",
+    "bedrock_options": {
+     "icon": "faultline.trophy_lich",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:trophy/trophy_frost_wyrm",
+    "bedrock_identifier": "faultline:trophy_frost_wyrm",
+    "display_name": "Boss Trophy",
+    "bedrock_options": {
+     "icon": "faultline.trophy_frost_wyrm",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:trophy/trophy_stone_golem",
+    "bedrock_identifier": "faultline:trophy_stone_golem",
+    "display_name": "Boss Trophy",
+    "bedrock_options": {
+     "icon": "faultline.trophy_stone_golem",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:trophy/trophy_ghost_captain",
+    "bedrock_identifier": "faultline:trophy_ghost_captain",
+    "display_name": "Boss Trophy",
+    "bedrock_options": {
+     "icon": "faultline.trophy_ghost_captain",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    }
+   }
+  ]
+ }
+}

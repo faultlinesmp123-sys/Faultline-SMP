@@ -260,6 +260,38 @@
    },
    {
     "type": "definition",
+    "model": "faultline:ship/galleon_ghost",
+    "bedrock_identifier": "faultline:ship_galleon_ghost",
+    "display_name": "Ghost Galleon",
+    "bedrock_options": {
+     "icon": "faultline.ship_icon",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:ship/galleon_ghost_wreck",
+    "bedrock_identifier": "faultline:ship_galleon_ghost_wreck",
+    "display_name": "Ghost Galleon (wrecked)",
+    "bedrock_options": {
+     "icon": "faultline.ship_icon",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
     "model": "faultline:ship_cannon",
     "bedrock_identifier": "faultline:ship_cannon",
     "display_name": "Ship Cannon",

@@ -1,0 +1,18 @@
+# FaultlineIndex settings (the Index's content lives in the jar's index.yml).
+
+# The museum: boss trophies (first defeat), boss music discs (a chance on every defeat), and /museum (the Hall of Firsts).
+museum:
+  disc-chance: 0.2
+  announce-firsts: true          # "X is the first to defeat Y!" (bosses and creatures)
+  announce-item-firsts: false    # also for every first item found (chatty)
+
+# The Discord bridge: the server's big moments posted to a channel. Make a webhook in Discord (channel settings >
+# Integrations > Webhooks > New Webhook > Copy URL), paste it below, then /discord test in game.
+discord:
+  enabled: true
+  webhook-url: ""
+  username: "Faultline SMP"
+  # announcements matching any of these (Java regexes) are posted
+  forward: ["(?i)has been defeated", "(?i)has fallen", "(?i)has been laid to rest", "(?i)meteor", "(?i)caravan", "(?i)achievement",
+            "(?i)is the first to", "(?i)aurora", "(?i)sandstorm", "(?i)blizzard", "(?i)eclipse", "(?i)locust", "(?i)ghost ship|wailing mary",
+            "(?i)invasion", "(?i)boss rush"]

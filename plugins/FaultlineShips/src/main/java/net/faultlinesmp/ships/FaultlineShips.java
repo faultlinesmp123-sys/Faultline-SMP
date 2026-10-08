@@ -120,6 +120,7 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(this, this);
         pirates = new Pirates(this);
         getServer().getPluginManager().registerEvents(pirates, this);
+        getServer().getPluginManager().registerEvents(pirates.ghost, this);
         for (World w : Bukkit.getWorlds()) for (var ch : w.getLoadedChunks()) { cleanup(ch.getEntities()); cleanDeck(ch); }
         Bukkit.getScheduler().runTaskTimer(this, this::tick, 1L, 1L);
         Bukkit.getScheduler().runTaskTimer(this, () -> { if (dirty) saveNow(); }, 100L, 100L);

@@ -313,7 +313,7 @@ final class Ship {
     }
 
     /** Geyser maps paper with this item model to the Bedrock ship model (tools/ship_assets.py --bedrock). */
-    String standModel() { return "faultline:ship/" + type.name().toLowerCase() + (ai != null ? "_dark" : "") + (wrecked ? "_wreck" : ""); }
+    String standModel() { return "faultline:ship/" + type.name().toLowerCase() + (ai != null ? (ai.ghost ? "_ghost" : "_dark") : "") + (wrecked ? "_wreck" : ""); }
 
     ItemStack standItem() {
         ItemStack it = new ItemStack(Material.PAPER);
@@ -1072,6 +1072,7 @@ final class Ship {
     /** at: where it was hit (the blocks nearest it break), or null for anywhere. */
     void damage(double amount, Player by, Location at) {
         if (building || wrecked || amount <= 0) return;
+        if (ai != null && ai.ghost && !anchored) return; // the Ghost Ship: nothing touches her until a lantern makes her solid
         hp = Math.max(0, hp - amount);
         pl.dirty = true;
         breakAcc += amount;

@@ -392,6 +392,17 @@ public final class FaultlineItems extends JavaPlugin {
         caveTrader = new CaveTrader(this, divingGear);
         getServer().getPluginManager().registerEvents(caveTrader, this);
         getCommand("cavetrader").setExecutor(caveTrader);
+        gear = new Gear(this);
+        getServer().getPluginManager().registerEvents(gear, this);
+        getCommand("fgear").setExecutor(gear);
+        getCommand("giveancientgear").setExecutor(gear);
+        getCommand("givedisc").setExecutor(gear);
+        weather = new Weather(this);
+        getServer().getPluginManager().registerEvents(weather, this);
+        getCommand("fevent").setExecutor(weather);
+        creatures = new Creatures(this);
+        getServer().getPluginManager().registerEvents(creatures, this);
+        getCommand("fcreature").setExecutor(creatures);
         meteor = new Meteor(this);
         getServer().getPluginManager().registerEvents(meteor, this);
         getCommand("meteor").setExecutor(meteor);
@@ -532,6 +543,9 @@ public final class FaultlineItems extends JavaPlugin {
     public void onDisable() {
         if (caveTrader != null) caveTrader.removeAll();
         if (meteor != null) meteor.shutdown();
+        if (weather != null) weather.shutdown();
+        if (creatures != null) creatures.shutdown();
+        if (gear != null) gear.shutdown();
         if (caravan != null) caravan.shutdown();
         if (accessoryManager != null) {
             accessoryManager.save();
@@ -770,6 +784,10 @@ public final class FaultlineItems extends JavaPlugin {
     private CaveTrader caveTrader;
     Meteor meteor;
     Caravan caravan;
+    Weather weather;
+    Creatures creatures;
+    Gear gear;
+    Gear getGear() { return gear; }
 
     DivingGear getDivingGear() { return divingGear; }
 
@@ -7060,6 +7078,28 @@ public final class FaultlineItems extends JavaPlugin {
                             "ship pirates egg " + egg[0] + " {amount} {player}", "FaultlineShips"));
                 }
             }
+            // the wild update: gear, discs, eggs
+            list.add(external(icon(Material.PAPER, "mining_helmet", ChatColor.YELLOW + "" + ChatColor.BOLD + "Mining Helmet", "FaultlineItems"), "fgear mining_helmet {amount} {player}", "FaultlineItems"));
+            list.add(external(icon(Material.PAPER, "lantern_of_souls", ChatColor.AQUA + "" + ChatColor.BOLD + "Lantern of Souls", "FaultlineItems"), "fgear lantern_of_souls {amount} {player}", "FaultlineItems"));
+            list.add(external(icon(Material.PAPER, "knight_helm", ChatColor.WHITE + "" + ChatColor.BOLD + "Knight's Helm", "FaultlineItems"), "fgear knight_helm {amount} {player}", "FaultlineItems"));
+            list.add(external(icon(Material.PAPER, "ancient_gear_part", ChatColor.GREEN + "Ancient Gear Part", "FaultlineItems"), "fgear ancient_gear_part {amount} {player}", "FaultlineItems"));
+            list.add(external(icon(Material.PAPER, "ancient_core", ChatColor.DARK_GREEN + "" + ChatColor.BOLD + "Ancient Core", "FaultlineItems"), "fgear ancient_core {amount} {player}", "FaultlineItems"));
+            list.add(external(icon(Material.POLISHED_BLACKSTONE_BRICK_WALL, "museum_pedestal", ChatColor.GOLD + "" + ChatColor.BOLD + "Museum Pedestal", "FaultlineItems"), "fgear museum_pedestal {amount} {player}", "FaultlineItems"));
+            for (var d : Gear.DISCS.entrySet())
+                list.add(external(icon(Material.PAPER, "disc/disc_" + d.getKey(), ChatColor.AQUA + "Music Disc " + ChatColor.GRAY + "(" + d.getValue()[0] + ")", "FaultlineItems"), "fgear disc_" + d.getKey() + " {amount} {player}", "FaultlineItems"));
+            list.add(external(icon(Material.CHEST, null, ChatColor.GOLD + "" + ChatColor.BOLD + "Mimic " + ChatColor.GRAY + "(spawns one)", "FaultlineItems"), "fcreature mimic {player}", "FaultlineItems"));
+            list.add(external(icon(Material.SKELETON_HORSE_SPAWN_EGG, null, ChatColor.WHITE + "" + ChatColor.BOLD + "Skeleton Knight Patrol " + ChatColor.GRAY + "(spawns one)", "FaultlineItems"), "fcreature knights {player}", "FaultlineItems"));
+            if (enabled("FaultlineBosses")) {
+                list.add(external(icon(Material.PAPER, "abyssal_lure", ChatColor.DARK_AQUA + "" + ChatColor.BOLD + "Abyssal Lure " + ChatColor.GRAY + "(the Leviathan)", "FaultlineBosses"), "leviathan item abyssal_lure {amount} {player}", "FaultlineBosses"));
+                list.add(external(icon(Material.PAPER, "sandworm_drum", ChatColor.GOLD + "" + ChatColor.BOLD + "Sandworm Drum " + ChatColor.GRAY + "(the Sandworm King)", "FaultlineBosses"), "sandworm item sandworm_drum {amount} {player}", "FaultlineBosses"));
+                list.add(external(icon(Material.PAPER, "lich_phylactery", ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + "Cursed Phylactery " + ChatColor.GRAY + "(the Lich)", "FaultlineBosses"), "lich item lich_phylactery {amount} {player}", "FaultlineBosses"));
+                list.add(external(icon(Material.PAPER, "frozen_horn", ChatColor.AQUA + "" + ChatColor.BOLD + "Frozen Horn " + ChatColor.GRAY + "(the Frost Wyrm)", "FaultlineBosses"), "frostwyrm item frozen_horn {amount} {player}", "FaultlineBosses"));
+                list.add(external(icon(Material.IRON_GOLEM_SPAWN_EGG, null, ChatColor.DARK_GREEN + "" + ChatColor.BOLD + "The Stone Golem " + ChatColor.GRAY + "(summons it)", "FaultlineBosses"), "stonegolem summon {world} {x} {y} {z}", "FaultlineBosses"));
+                list.add(external(icon(Material.TRIDENT, "tidebreaker", ChatColor.DARK_AQUA + "" + ChatColor.BOLD + "Tidebreaker", "FaultlineBosses"), "leviathan item tidebreaker {amount} {player}", "FaultlineBosses"));
+                list.add(external(icon(Material.DIAMOND_SWORD, "sandworm_fang", ChatColor.GOLD + "" + ChatColor.BOLD + "Sandworm Fang", "FaultlineBosses"), "sandworm item sandworm_fang {amount} {player}", "FaultlineBosses"));
+                list.add(external(icon(Material.STICK, "lich_staff", ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + "Staff of the Lich", "FaultlineBosses"), "lich item lich_staff {amount} {player}", "FaultlineBosses"));
+                list.add(external(icon(Material.DIAMOND_SWORD, "glacial_fang", ChatColor.AQUA + "" + ChatColor.BOLD + "Glacial Fang", "FaultlineBosses"), "frostwyrm item glacial_fang {amount} {player}", "FaultlineBosses"));
+            }
             if (enabled("FaultlineCosmetics")) { // the seasonal currency (Candy at Halloween, Presents in Winter)
                 list.add(external(icon(Material.PAPER, "season_candy", ChatColor.GOLD + "" + ChatColor.BOLD + "Candy " + ChatColor.GRAY + "(Halloween)", "FaultlineCosmetics"),
                         "cosmetic tokens {player} halloween {amount}", "FaultlineCosmetics"));
@@ -7204,7 +7244,10 @@ public final class FaultlineItems extends JavaPlugin {
                 ItemCatalog.give(plugin, player, factory, amount);
                 return;
             }
-            String cmd = command.replace("{amount}", String.valueOf(amount)).replace("{player}", player.getName());
+            Location ahead = player.getLocation().add(player.getLocation().getDirection().setY(0).normalize().multiply(4));
+            String cmd = command.replace("{amount}", String.valueOf(amount)).replace("{player}", player.getName())
+                    .replace("{world}", player.getWorld().getName()).replace("{x}", String.valueOf(ahead.getBlockX() + 0.5))
+                    .replace("{y}", String.valueOf(player.getLocation().getBlockY())).replace("{z}", String.valueOf(ahead.getBlockZ() + 0.5));
             if (!enabled(pluginName) || !Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd)) {
                 player.sendMessage(ChatColor.RED + "Couldn't get that item: " + pluginName + " isn't responding.");
             }

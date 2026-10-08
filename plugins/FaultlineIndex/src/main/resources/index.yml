@@ -773,6 +773,102 @@ entries:
      how: "Craft it: 8 Netherite Blocks around a Nether Star.",
      does: "Right-click it to start a Boss Rush: every boss back to back (14 of them), with everyone in survival within 10 blocks on your team. It's never used up. Each player can run one Boss Rush an hour."}
 
+  # ---------------------------------------------------------------- 1.6: the wild update
+  - {chapter: bosses, id: leviathan, name: "The Leviathan", icon: leviathan, detect-tag: faultline_leviathan,
+     where: "The deep ocean. Drop an Abyssal Lure over open water (from a ship, a boat or swimming), or meet it sailing the deep ocean at night. 2,400 health (+20% per extra fighter).",
+     does: "A sea serpent that breaches the waves as it circles you. Tidal Ram (it dives, a blue line shows, it surges along it: ships in the way take a big hit), Water Spout (geysers under you), Bile (poison globs), Abyssal Roar. From 60%: the Coil (it circles you tight and crushes, ships inside break), Tail Sweep, and Drowned of the Deep. From 30% it rams more. Takes half damage while diving. Music: Creator.",
+     drops: ["4-6 Mythic Goodie Bags|100%", "3 Goodie Bags|100%", "6-12 Diamonds|100%", "Heart of the Sea|100%", "Tidebreaker|25%", "2,000 XP|100%"]}
+  - {chapter: bosses, id: sandworm_king, name: "The Sandworm King", icon: sandworm_king, detect-tag: faultline_sandworm_king,
+     where: "Deserts and badlands. Beat a Sandworm Drum on the sand. 3,600 health.",
+     does: "A colossal worm that swims through the sand. Eruption (a ring under you, then it bursts up there and arcs back down), Slither (it rides the surface at you), Sandstone Boulders, Quicksand (slows you and drags you in). From 60%: Sandworm Larvae. From 30%: Tremor (rings race along the ground: be in the air when one passes). Music: 5.",
+     drops: ["4-6 Mythic Goodie Bags|100%", "3 Goodie Bags|100%", "6-12 Diamonds|100%", "4-8 Gold Blocks|100%", "Sandworm Fang|25%", "2,000 XP|100%"]}
+  - {chapter: bosses, id: lich, name: "The Lich", icon: lich, detect-tag: faultline_lich,
+     where: "The Deep Dark. Break a Cursed Phylactery there. 2,800 health.",
+     does: "An undead sorcerer-king who floats and blinks around. Soul Bolts (homing skulls), Raise the Fallen (Revenants wearing YOUR faces), Death Ring (jump the soul fire), Blink Strike. At 60% he hides his life in three Phylacteries (end crystals): he can't be hurt until they're broken. + Darkness. From 30%: Life Drain (beams from everyone near him heal him). Music: 13.",
+     drops: ["4-6 Mythic Goodie Bags|100%", "3 Goodie Bags|100%", "2-4 Echo Shards|100%", "Totem of Undying|50%", "Staff of the Lich|25%", "2,500 XP|100%"]}
+  - {chapter: bosses, id: frost_wyrm, name: "The Frost Wyrm", icon: frost_wyrm, detect-tag: faultline_frost_wyrm,
+     where: "Frozen peaks, snowy slopes, groves and ice spikes. Sound a Frozen Horn up there. 3,200 health.",
+     does: "An ice dragon that circles high above (bring a bow). Frost Breath (it hovers and freezes a cone), Icicle Rain, Dive Bomb (a swoop down a red line), Glacial Roar (it lands and ice spikes burst out around it). From 60%: Wyrmguard Archers. From 30%: a blizzard around it all fight. Music: Relic.",
+     drops: ["4-6 Mythic Goodie Bags|100%", "3 Goodie Bags|100%", "8-16 Diamonds|100%", "Elytra|10%", "Glacial Fang|25%", "2,500 XP|100%"]}
+  - {chapter: bosses, id: stone_golem, name: "The Stone Golem", icon: stone_golem, detect-tag: faultline_stone_golem,
+     where: "A mini boss of the lush caves: it wakes by itself near someone exploring one. 900 health.",
+     does: "An ancient mossy guardian with amber eyes. Ground Pound (a shockwave ring), Boulder Throw, Crystal Spikes (amethyst bursts along a line). Below 60% it roots itself and heals (Overgrowth) until you hit it hard enough.",
+     drops: ["2-4 Ancient Gear Parts|100%", "Mythic Goodie Bag|100%", "2 Goodie Bags|100%", "8-16 Amethyst Shards|100%", "600 XP|100%"]}
+  - {chapter: bosses, id: ghost_captain, name: "Captain Hollow", icon: ghost_captain, detect-tag: faultline_ghost_captain,
+     where: "On the deck of the Ghost Ship, the Wailing Mary, on dark nights at sea. She's untouchable until someone near her holds a Lantern of Souls: then she anchors and you can board. 400 health.",
+     does: "A drowned captain's ghost. Blinks behind you, sweeps with a spectral cutlass, calls up Ghost Pirates, and drags you to him with soul chains (Darkness). Beat him and her hold is yours.",
+     drops: ["2 Mythic Goodie Bags|100%", "2 Goodie Bags|100%", "4-8 Diamonds|100%", "Music Disc (The Pirate Invasion)|25%", "Her hold: gold, diamonds, echo shards...|100%"]}
+  - {chapter: enemies, id: revenant, name: "Revenant", icon: revenant, detect-tag: faultline_revenant,
+     where: "Raised by the Lich.", does: "A zombie wearing the face of someone fighting the Lich."}
+  - {chapter: enemies, id: sandworm_larva, name: "Sandworm Larva", icon: sandworm_king, detect-tag: faultline_sandworm_larva,
+     where: "Burrows out of the sand around the Sandworm King.", does: "A big, fast silverfish."}
+  - {chapter: enemies, id: drowned_of_the_deep, name: "Drowned of the Deep", icon: leviathan, detect-tag: faultline_leviathan_minion,
+     where: "Called up by the Leviathan.", does: "Drowned with tridents."}
+  - {chapter: enemies, id: wyrmguard_archer, name: "Wyrmguard Archer", icon: frost_wyrm, detect-tag: faultline_frost_wyrm_minion,
+     where: "Called down from the snow by the Frost Wyrm.", does: "A stray that keeps its distance and shoots."}
+  - {chapter: enemies, id: mimic, name: "Mimic", icon: mimic, detect-tag: faultline_mimic,
+     where: "1% of the loot chests you find (dungeons, temples, mineshafts...) bite back.",
+     does: "The chest grows teeth and legs and comes after you, lid snapping. 60 health.", drops: ["Everything the chest held|100%", "2-6 Gold Ingots|100%", "1-2 Diamonds|35%"]}
+  - {chapter: enemies, id: locust, name: "Locust", icon: locust, detect-tag: faultline_locust,
+     where: "A locust swarm sometimes finds a farm by day.", does: "They eat your crops back to seedlings until the swarm is driven off. Drive it off for emeralds and bone meal."}
+  - {chapter: enemies, id: skeleton_knight, name: "Skeleton Knight", icon: skeleton_knight, detect-tag: faultline_skeleton_knight,
+     where: "Patrols ride out at night on skeleton horses (a captain and his knights). They ride off at dawn.",
+     does: "Armoured skeletons with swords and shields, in great helms that keep the sun off.", drops: ["Knight's Helm|6%", "Iron Nuggets|100%", "2-5 Emeralds (the captain)|100%"]}
+  - {chapter: enemies, id: sandstorm_husk, name: "Sandstorm Husk", icon: molten_husk, detect-tag: faultline_sandstorm_husk,
+     where: "Ride in on a sandstorm.", does: "Husks that come with the dust."}
+  - {chapter: enemies, id: blizzard_stray, name: "Blizzard Stray", icon: frost_archer, detect-tag: faultline_blizzard_stray,
+     where: "Come with a blizzard, in packs.", does: "Strays: slowing arrows out of the snow."}
+  - {chapter: weapons, name: "Tidebreaker", icon: tidebreaker, detect: "faultlinebosses:wild_item=tidebreaker",
+     how: "25% from the Leviathan (each fighter rolls).", does: "A trident. Where it lands the sea bursts up: enemies nearby are thrown and slowed."}
+  - {chapter: weapons, name: "Sandworm Fang", icon: sandworm_fang, detect: "faultlinebosses:wild_item=sandworm_fang",
+     how: "25% from the Sandworm King.", does: "A diamond-strong sword. Right-click: Burrow Dash (a lunge that blinds and hurts what you pass, 10 s)."}
+  - {chapter: weapons, name: "Staff of the Lich", icon: lich_staff, detect: "faultlinebosses:wild_item=lich_staff",
+     how: "25% from the Lich.", does: "Right-click: Soul Bolt (a withering skull that doesn't break blocks, 3 s)."}
+  - {chapter: weapons, name: "Glacial Fang", icon: glacial_fang, detect: "faultlinebosses:wild_item=glacial_fang",
+     how: "25% from the Frost Wyrm.", does: "A diamond-strong sword whose hits freeze and slow."}
+  - {chapter: weapons, name: "Lantern of Souls", icon: lantern_of_souls, detect: "faultlineitems:gear=lantern_of_souls",
+     how: "Craft: a soul lantern ringed with 4 phantom membranes and 4 amethyst shards.",
+     does: "Hold it: lights the dark, makes invisible creatures nearby glow, lifts Darkness, and makes the Ghost Ship solid so you can board her."}
+  - {chapter: consumables, name: "Abyssal Lure", icon: abyssal_lure, detect: "faultlinebosses:wild_item=abyssal_lure",
+     how: "Craft: a Heart of the Sea ringed with nautilus shells and prismarine crystals.", does: "Drop it over open ocean to call the Leviathan."}
+  - {chapter: consumables, name: "Sandworm Drum", icon: sandworm_drum, detect: "faultlinebosses:wild_item=sandworm_drum",
+     how: "Craft: a gold block ringed with rabbit hide and chiseled sandstone.", does: "Beat it in a desert or badlands to call the Sandworm King."}
+  - {chapter: consumables, name: "Cursed Phylactery", icon: lich_phylactery, detect: "faultlinebosses:wild_item=lich_phylactery",
+     how: "Craft: a Totem of Undying ringed with echo shards and bone blocks.", does: "Break it open in the Deep Dark to call the Lich."}
+  - {chapter: consumables, name: "Frozen Horn", icon: frozen_horn, detect: "faultlinebosses:wild_item=frozen_horn",
+     how: "Craft: a goat horn ringed with blue ice and diamonds.", does: "Sound it on a frozen peak or snowy slope to call the Frost Wyrm."}
+  - {chapter: consumables, name: "Ancient Gear Part", icon: ancient_gear_part, detect: "faultlineitems:gear=ancient_gear_part",
+     how: "2-4 from the Stone Golem.", does: "Four around an amethyst block (with amethyst shards) make an Ancient Core."}
+  - {chapter: consumables, name: "Museum Pedestal", icon: museum_pedestal, detect: "faultlineitems:gear=museum_pedestal",
+     how: "Craft: gold, a quartz slab, a blackstone brick wall and blackstone bricks (makes 2).",
+     does: "Place it and right-click it with anything to put it on show (it floats and turns). Only you can take it back. Trophies look best."}
+  - {chapter: consumables, name: "Boss Trophy", icon: champion_cape, detect: "faultlineindex:trophy",
+     how: "The first time you help defeat a boss you get its trophy.", does: "Show it off on a Museum Pedestal. /museum shows who got there first."}
+  - {chapter: consumables, name: "Music Disc: It Sees Everything", icon: disc_demon_eye, detect: "faultlineitems:disc=demon_eye",
+     how: "20% from the Demon Eye.", does: "The Demon Eye's theme. Put it in a jukebox."}
+  - {chapter: consumables, name: "Music Disc: The Dune Devourer", icon: disc_dune, detect: "faultlineitems:disc=dune",
+     how: "20% from the Dune Devourer.", does: "The Dune Devourer's theme. Put it in a jukebox."}
+  - {chapter: consumables, name: "Music Disc: Don Lorenzo", icon: disc_don, detect: "faultlineitems:disc=don",
+     how: "20% from Don Lorenzo.", does: "Don Lorenzo's theme. Put it in a jukebox."}
+  - {chapter: consumables, name: "Music Disc: The Kraken", icon: disc_kraken, detect: "faultlineitems:disc=kraken",
+     how: "20% from the Kraken.", does: "The Kraken's theme. Put it in a jukebox."}
+  - {chapter: consumables, name: "Music Disc: Diamond Jacob I", icon: disc_jacob1, detect: "faultlineitems:disc=jacob1",
+     how: "20% from Diamond Jacob (one of his two).", does: "Diamond Jacob's first theme. Put it in a jukebox."}
+  - {chapter: consumables, name: "Music Disc: Diamond Jacob II", icon: disc_jacob2, detect: "faultlineitems:disc=jacob2",
+     how: "20% from Diamond Jacob (one of his two).", does: "Diamond Jacob's second theme. Put it in a jukebox."}
+  - {chapter: consumables, name: "Music Disc: Rocco Vendetta", icon: disc_rocco, detect: "faultlineitems:disc=rocco",
+     how: "20% from Rocco Vendetta.", does: "Rocco Vendetta's theme. Put it in a jukebox."}
+  - {chapter: consumables, name: "Music Disc: Black Knife", icon: disc_explorer, detect: "faultlineitems:disc=explorer",
+     how: "20% from the Lost Explorer.", does: "The Lost Explorer's theme. Put it in a jukebox."}
+  - {chapter: consumables, name: "Music Disc: The Pirate Invasion", icon: disc_pirates, detect: "faultlineitems:disc=pirates",
+     how: "20% from the Skeleton Captain, 25% from Captain Hollow.", does: "The Pirate Invasion's theme. Put it in a jukebox."}
+  - {chapter: accessories, name: "Ancient Core", icon: ancient_core, detect: "faultlineitems:ancient_core",
+     how: "Craft: 4 Ancient Gear Parts around an amethyst block, with 4 amethyst shards.", does: "+3 armor, +25% knockback resistance, +2 hearts."}
+  - {chapter: armor, name: "Mining Helmet", icon: mining_helmet, detect: "faultlineitems:gear=mining_helmet",
+     how: "Craft: an iron helmet, glowstone and a redstone torch.", does: "Wear it: night vision, and a headlamp that lights up whatever you look at. +2 armor."}
+  - {chapter: armor, name: "Knight's Helm", icon: knight_helm, detect: "faultlineitems:gear=knight_helm",
+     how: "6% from Skeleton Knights.", does: "A great helm with a red plume. +3 armor, +1 toughness."}
+
 # ============================================================================
 # ACHIEVEMENTS (their own book, from the Index cover). A goal is one of:
 #   defeat: [entry ids] + need: all | any | <total kills across them>
@@ -815,3 +911,11 @@ achievements:
      chapter: accessories, reward: {items: ["NETHERITE_INGOT:1"], xp: 1000}}
   - {id: monster_hunter, name: "Monster Hunter", icon: vampire, desc: "Defeat 40 different creatures.",
      found-creatures: 40, reward: {items: ["DIAMOND:16"], xp: 800}}
+  - {id: wild_hunter, name: "Wild Hunter", icon: frost_wyrm, desc: "Defeat the Leviathan, the Sandworm King, the Lich, the Frost Wyrm and the Stone Golem.",
+     defeat: [leviathan, sandworm_king, lich, frost_wyrm, stone_golem], need: all, reward: {items: ["NETHERITE_INGOT:2", "DIAMOND_BLOCK:2"], xp: 2000}}
+  - {id: ghostbuster, name: "Ghostbuster", icon: ghost_captain, desc: "Lay Captain Hollow to rest on the Ghost Ship.",
+     stat: ghost_ships, count: 1, reward: {items: ["DIAMOND:8", "ECHO_SHARD:2"], xp: 800}}
+  - {id: pest_control, name: "Pest Control", icon: locust, desc: "Drive off a locust swarm.",
+     stat: locust_swarms, count: 1, reward: {items: ["EMERALD:12", "BONE_MEAL:32"], xp: 300}}
+  - {id: mimic_hunter, name: "It Had Teeth", icon: mimic, desc: "Kill 5 Mimics.",
+     stat: mimics, count: 5, reward: {items: ["DIAMOND:6", "GOLD_BLOCK:2"], xp: 500}}

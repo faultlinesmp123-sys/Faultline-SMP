@@ -144,6 +144,7 @@ final class Pirates implements Listener {
         long gapAt = -99;
         int shots;          // cannonballs fired: they shell you before they board
         boolean beaten;     // the invasion's flagship after you've won: it stays put (its hold is yours) and fades when you leave
+        boolean ghost;      // the Ghost Ship (GhostShip.java): her own mind
 
         Brain(Ship ship, Invasion inv, boolean flagship) { this.ship = ship; this.inv = inv; this.flagship = flagship; born = pl.now; }
     }
@@ -178,8 +179,10 @@ final class Pirates implements Listener {
     final Map<UUID, Long> nextRoll = new HashMap<>();
     final NamespacedKey hornKey, grenadeKey, eggKey;
     final Random rnd = new Random();
+    final GhostShip ghost;
 
     Pirates(FaultlineShips pl) {
+        ghost = new GhostShip(pl, this);
         this.pl = pl;
         hornKey = new NamespacedKey(pl, "pirate_horn");
         grenadeKey = new NamespacedKey(pl, "pirate_grenade");
@@ -526,6 +529,7 @@ final class Pirates implements Listener {
             try { think(b, now); } catch (RuntimeException ex) { pl.getLogger().warning("Skeleton ship: " + ex); }
         }
         if (now % 5 == 0) crewTick(now);
+        try { ghost.tick(now); } catch (RuntimeException ex) { pl.getLogger().warning("Ghost Ship: " + ex); }
         if (now % 20 == 7) {
             for (Invasion inv : new ArrayList<>(invasions)) invasionTick(inv, now);
             rolls(now);
@@ -536,6 +540,7 @@ final class Pirates implements Listener {
         Ship s = b.ship;
         if (!pl.ships.containsKey(s.id)) { brains.remove(s.id); return; }
         if (!s.spawned() && !s.unseenLoaded()) return; // out past the draw range it still thinks (and sails) while its water is loaded
+        if (b.ghost && !s.wrecked) { ghost.think(b, now); return; }
         AiInput in = b.input;
         if (s.wrecked) {
             in.clear();
@@ -1132,6 +1137,7 @@ final class Pirates implements Listener {
             if (on == null || on.ai != null || !on.sailing() || !fighting(p)) continue;
             if (pl.getConfig().getBoolean("pirates.require-ocean", true) && !ocean(p.getLocation())) continue;
             if (shipNear(p.getLocation(), 250) || invasionNear(p.getLocation(), 400) != null) continue;
+            if (ghost.roll(p, on)) continue;
             double r = rnd.nextDouble();
             if (r < cfg("invasion-chance", 0.01)) startInvasion(p, on);
             else if (r < cfg("invasion-chance", 0.01) + cfg("ship-chance", 0.05)) spawnNear(p, on);
@@ -1381,6 +1387,7 @@ final class Pirates implements Listener {
 
     /** Plugin off: no skeleton ship or pirate stays behind. */
     void shutdown() {
+        ghost.shutdown();
         for (Invasion inv : new ArrayList<>(invasions)) end(inv, false);
         for (Brain b : new ArrayList<>(brains.values())) discard(b.ship);
         for (UUID id : new ArrayList<>(crew.keySet())) { Entity m = Bukkit.getEntity(id); if (m != null) m.remove(); }
@@ -1435,13 +1442,23 @@ final class Pirates implements Listener {
                 LivingEntity m = spawnMob(k, p.getLocation().add(p.getLocation().getDirection().setY(0).normalize().multiply(3)), null);
                 return msg(sender, m == null ? ChatColor.RED + "Couldn't." : ChatColor.GREEN + "Spawned a " + k.title + ".");
             }
+            case "ghost" -> {
+                if (p == null) return msg(sender, "Players only.");
+                Ship on = pl.ridingOn(p);
+                if (on == null) on = standingOn(p);
+                if (on == null) return msg(sender, ChatColor.RED + "Be on a ship at sea.");
+                if (ghost.ship != null) return msg(sender, ChatColor.RED + "The Wailing Mary is already out.");
+                Ship s2 = ghost.spawn(p, on);
+                return msg(sender, s2 == null ? ChatColor.RED + "No open water for her nearby." : ChatColor.AQUA + "The Wailing Mary drifts out of the fog. (Hold a Lantern of Souls near her to make her solid.)");
+            }
             case "stop" -> {
+                ghost.removeCaptain();
                 for (Invasion inv : new ArrayList<>(invasions)) end(inv, false);
                 for (Brain b : new ArrayList<>(brains.values())) discard(b.ship);
                 return msg(sender, ChatColor.YELLOW + "All skeleton ships are gone.");
             }
             default -> {
-                return msg(sender, ChatColor.GRAY + "/ship pirates <ship|invasion|horn [amount] [player]|spawn <mob>|egg <mob> [amount] [player]|stop>  (" + brains.size() + " skeleton ships, " + invasions.size() + " invasions)");
+                return msg(sender, ChatColor.GRAY + "/ship pirates <ship|invasion|ghost|horn [amount] [player]|spawn <mob>|egg <mob> [amount] [player]|stop>  (" + brains.size() + " skeleton ships, " + invasions.size() + " invasions)");
             }
         }
     }

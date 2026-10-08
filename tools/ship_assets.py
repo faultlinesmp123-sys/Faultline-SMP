@@ -289,8 +289,10 @@ def preview_cannon(tex, out):
 TILE = {"planks": (0, 0), "log_side": (16, 0), "log_top": (32, 0), "wool": (48, 0),
         "barrel_side": (0, 16), "barrel_top": (16, 16), "lantern": (32, 16), "dark": (48, 16),
         "iron": (0, 32), "iron_dark": (16, 32), "glass": (32, 32), "ladder": (48, 32),
-        "dplanks": (0, 48), "dlog_side": (16, 48), "dlog_top": (32, 48), "black_wool": (48, 48)}
-ATLAS_H = 64
+        "dplanks": (0, 48), "dlog_side": (16, 48), "dlog_top": (32, 48), "black_wool": (48, 48),
+        "gplanks": (0, 64), "glog_side": (16, 64), "glog_top": (32, 64), "ghost_wool": (48, 64)}
+ATLAS_H = 128
+GHOST_SHIPS = ("galleon",)  # the Ghost Ship (the Wailing Mary): Ship.standModel adds _ghost
 DARK_SHIPS = ("sloop", "brigantine", "pirate")  # the ones skeletons sail (Ship.standModel adds _dark)
 
 
@@ -382,6 +384,25 @@ def atlas():
     for y in range(16):
         for x in range(16):
             px((ox + x, oy + y), noise((26, 26, 30), 5))
+    # the Ghost Ship: pale, spectral glass-blue planks, bleached wood, sails like mist
+    ox, oy = TILE["gplanks"]
+    for y in range(16):
+        for x in range(16):
+            c = (150, 220, 232) if (y % 4) else (100, 170, 190)
+            px((ox + x, oy + y), noise(c, 8)[:3] + (255,))
+    ox, oy = TILE["glog_side"]
+    for y in range(16):
+        for x in range(16):
+            px((ox + x, oy + y), noise((214, 214, 206) if x % 3 else (170, 172, 166), 6))
+    ox, oy = TILE["glog_top"]
+    for y in range(16):
+        for x in range(16):
+            r = max(abs(x - 7.5), abs(y - 7.5))
+            px((ox + x, oy + y), noise((214, 214, 206) if r > 6 else (190, 192, 184), 5))
+    ox, oy = TILE["ghost_wool"]
+    for y in range(16):
+        for x in range(16):
+            px((ox + x, oy + y), noise((200, 240, 246) if (x + y) % 5 else (150, 220, 232), 6))
     return im
 
 
@@ -389,6 +410,7 @@ FULL = {"PLANKS", "LOG", "WOOL", "SAIL_BLACK", "SAIL_WHITE", "STAIRS", "CHEST"}
 SAILS = {"WOOL", "SAIL_BLACK", "SAIL_WHITE"}
 # a skeleton ship (dark=True): dark oak, black sails
 DARK = {"planks": "dplanks", "log_side": "dlog_side", "log_top": "dlog_top", "wool": "black_wool"}
+GHOST = {"planks": "gplanks", "log_side": "glog_side", "log_top": "glog_top", "wool": "ghost_wool", "black_wool": "ghost_wool"}
 # local +x (bow) -> Bedrock -z (an entity's front), local +z (starboard) -> Bedrock -x (its right)
 FACE_OF = {(1, 0, 0): "north", (-1, 0, 0): "south", (0, 0, 1): "west", (0, 0, -1): "east", (0, 1, 0): "up", (0, -1, 0): "down"}
 
@@ -409,8 +431,8 @@ def to_bedrock(x0, y0, z0, x1, y1, z1):
 
 
 def ship_cubes(cells, wreck, dark=False):
-    def face_uv(tile, *a):  # a skeleton ship swaps in its dark tiles
-        return _face_uv(DARK.get(tile, tile) if dark else tile, *a)
+    def face_uv(tile, *a):  # a skeleton ship swaps in its dark tiles, the Ghost Ship its pale ones
+        return _face_uv(GHOST.get(tile, tile) if dark == "ghost" else DARK.get(tile, tile) if dark else tile, *a)
     torn = set()
     if wreck:  # same rule as Ship.scaleOf: torn sails
         for i, c in enumerate(cells):
@@ -490,10 +512,11 @@ def bedrock_pack(bout, layouts, icons):
     icons["ship_cannon"].save(os.path.join(rp, "textures/items/faultline/ship_cannon.png"))
     icons["cannonball"].save(os.path.join(rp, "textures/items/faultline/cannonball.png"))
     paper, stick = [], []
-    variants = [(name, lay, False) for name, lay in layouts.items()] + [(name, lay, True) for name, lay in layouts.items() if name in DARK_SHIPS]
+    variants = [(name, lay, False) for name, lay in layouts.items()] + [(name, lay, True) for name, lay in layouts.items() if name in DARK_SHIPS] \
+        + [(name, lay, "ghost") for name, lay in layouts.items() if name in GHOST_SHIPS]
     for name, lay, dark in variants:
         for wreck in (False, True):
-            key = name + ("_dark" if dark else "") + ("_wreck" if wreck else "")
+            key = name + ("_ghost" if dark == "ghost" else "_dark" if dark else "") + ("_wreck" if wreck else "")
             cubes = ship_cubes(lay["cells"], wreck, dark)
             geo = {"format_version": "1.16.0", "minecraft:geometry": [{
                 "description": {"identifier": f"geometry.faultline.ship_{key}", "texture_width": 64, "texture_height": ATLAS_H,
@@ -506,7 +529,7 @@ def bedrock_pack(bout, layouts, icons):
                 "geometry": {"default": f"geometry.faultline.ship_{key}"}, "scripts": {"parent_setup": "v.helmet_layer_visible = 0.0;"},
                 "render_controllers": ["controller.render.armor"]}}})
             paper.append({"type": "definition", "model": f"faultline:ship/{key}", "bedrock_identifier": f"faultline:ship_{key}",
-                          "display_name": ("Skeleton " if dark else "") + lay["title"] + (" (wrecked)" if wreck else ""),
+                          "display_name": ("Ghost " if dark == "ghost" else "Skeleton " if dark else "") + lay["title"] + (" (wrecked)" if wreck else ""),
                           "bedrock_options": {"icon": "faultline.ship_icon", "allow_offhand": False},
                           "components": {"minecraft:equippable": {"slot": "head"}, "minecraft:max_stack_size": 1}})
     for key, title in (("ship_cannon", "Ship Cannon"), ("cannonball", "Cannonball")):

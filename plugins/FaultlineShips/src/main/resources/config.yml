@@ -76,6 +76,11 @@ ram-other-multiplier: 1.6
 # holds) calls the invasion too. Admin: /ship pirates <ship|invasion|horn|spawn <mob>|stop>
 # ============================================================================
 pirates:
+  # THE GHOST SHIP, "The Wailing Mary" (GhostShip.java): on dark nights she may appear instead of a skeleton ship (chance per
+  # roll, doubled in rain). Untouchable until someone within lantern-range holds a Lantern of Souls (FaultlineItems): then
+  # she anchors and turns solid; without the lantern for solid-seconds she fades again. Captain Hollow fights on her deck.
+  ghost-ship: {enabled: true, chance: 0.03, spawn-distance: 55, sight: 160, lantern-range: 30, solid-seconds: 20, lifetime-minutes: 15,
+               captain-health: 400, captain-damage: 9, sweep-damage: 9, rewards: {mythic-bags: 2, goodie-bags: 2, disc-chance: 0.25}}
   enabled: true
   check-seconds: 60
   ship-chance: 0.05

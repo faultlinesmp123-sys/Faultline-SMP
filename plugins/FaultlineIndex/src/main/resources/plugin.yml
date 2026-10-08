@@ -1,5 +1,5 @@
 name: FaultlineIndex
-version: '1.5.1'
+version: '1.6.0'
 main: net.faultlinesmp.index.FaultlineIndex
 api-version: '1.21'
 author: FaultlineSMP
@@ -10,6 +10,17 @@ commands:
   index:
     description: Open your Faultline Index
     usage: /index [achievements|give|reset] [player]
+
+  museum:
+    description: The Hall of Firsts (who defeated each boss and found each item first)
+    usage: /museum [bosses|items]
+  serverstats:
+    description: The whole server in numbers
+    usage: /serverstats
+  discord:
+    description: "Admin: test the Discord bridge (/discord test [message]); reloads its settings"
+    usage: /discord test [message]
+    permission: faultlineindex.admin
 
 permissions:
   faultlineindex.admin:

@@ -450,3 +450,25 @@ mirror:
   cooldown-seconds: 45
   min-hit-share: 0.33      # only hits taking at least this share of your max health
   max-reflect: 30          # most damage sent back
+
+# ---------------- Weather events (Weather.java) ----------------
+# AURORA some nights (XP x2, cheaper enchanting till dawn), SANDSTORM in deserts (dust, husks, buried treasure), BLIZZARD
+# in snowy biomes (keep warm: a fire within 4 blocks or 2+ leather pieces), ECLIPSE at midday (5 min night, neutral mobs
+# turn hostile), LOCUSTS on farms (they eat crops until driven off). /fevent <kind> | stop | status
+weather:
+  enabled: true
+  aurora: {enabled: true, chance-per-night: 0.2, xp-multiplier: 2.0, enchant-cost-multiplier: 0.7, height: 70}
+  sandstorm: {enabled: true, chance-per-minute: 0.006, minutes: 6, radius: 110, husks-per-player: 4, treasure-chance: 0.04,
+              treasure: ["GOLD_INGOT:2-6", "EMERALD:1-4", "DIAMOND:1-2:25", "GOLDEN_APPLE:1:15", "RABBIT_FOOT:1:30"]}
+  blizzard: {enabled: true, chance-per-minute: 0.006, minutes: 6, radius: 110, cold-per-half-second: 26, strays-per-player: 6}
+  eclipse: {enabled: true, chance-per-minute: 0.003, minutes: 5}
+  locusts: {enabled: true, chance-per-minute: 0.004, minutes: 4, count: 12, health: 6, min-crops: 16,
+            rewards: ["EMERALD:3-6", "BONE_MEAL:16", "WHEAT_SEEDS:8"]}
+
+# ---------------- Creatures (Creatures.java) ----------------
+mimic: {enabled: true, chance: 0.01, health: 60, damage: 8, speed: 0.32, xp: 40}
+skeleton-knights: {enabled: true, check-seconds: 300, chance: 0.12, health: 32, captain-health: 50, helm-chance: 0.06}
+
+# ---------------- Gear (Gear.java): mining helmet headlamp ----------------
+gear: {headlamp-reach: 12, light-level: 13}
+

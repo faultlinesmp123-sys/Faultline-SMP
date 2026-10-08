@@ -49,6 +49,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -122,6 +123,8 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
 
     private NamespacedKey bookKey;
     final Achievements achievements = new Achievements(this);
+    Museum museum;
+    Discord discord;
 
     // ===================== LIFECYCLE =====================
 
@@ -137,8 +140,27 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
         recipe.addIngredient(Material.BOOK);
         FaultlineIndex.addRecipeSafely(recipe);
 
+        saveDefaultConfig();
         getServer().getPluginManager().registerEvents(this, this);
         getCommand("index").setExecutor(new IndexCommand());
+        museum = new Museum(this);
+        getServer().getPluginManager().registerEvents(museum, this);
+        getCommand("museum").setExecutor((sender, cmd, label, args) -> {
+            if (sender instanceof Player p) museum.open(p, args.length == 0 || !args[0].equalsIgnoreCase("items"), 0);
+            else sender.sendMessage("Players only.");
+            return true;
+        });
+        discord = new Discord(this);
+        getServer().getPluginManager().registerEvents(discord, this);
+        getCommand("serverstats").setExecutor(new ServerStats(this));
+        getCommand("discord").setExecutor((sender, cmd, label, args) -> {
+            if (!sender.hasPermission("faultlineindex.admin")) { sender.sendMessage(ChatColor.RED + "You don't have permission to do that."); return true; }
+            reloadConfig(); discord.reload();
+            if (!discord.on()) { sender.sendMessage(ChatColor.YELLOW + "The Discord bridge is off: set discord.webhook-url in plugins/FaultlineIndex/config.yml, then /discord test."); return true; }
+            discord.post(args.length > 1 ? String.join(" ", Arrays.copyOfRange(args, 1, args.length)) : "Faultline SMP is connected to Discord.");
+            sender.sendMessage(ChatColor.GREEN + "Sent (" + discord.queued() + " in the queue).");
+            return true;
+        });
         getServer().getScheduler().runTaskTimer(this, this::scanInventories, 40L, 40L);
         getServer().getScheduler().runTaskTimer(this, () -> { if (dirty) saveProgress(); }, 20L * 60, 20L * 60);
         // creatures that despawn or unload never fire a death event; forget who hit them
@@ -152,6 +174,7 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
     @Override
     public void onDisable() {
         saveProgress();
+        if (museum != null) museum.save();
     }
 
     private void loadContent() {
@@ -382,6 +405,7 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
             if (p == null) continue;
             kills.computeIfAbsent(id, k -> new HashMap<>()).merge(entry.id, 1, Integer::sum);
             unlock(p, entry, true);
+            if (museum != null) museum.bossDefeated(p, entry);
             achievements.check(p); // kill counts
         }
         dirty = true;
@@ -396,6 +420,7 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
     private void unlock(Player p, Entry e, boolean creature) {
         if (!found.computeIfAbsent(p.getUniqueId(), k -> new HashSet<>()).add(e.id)) return;
         dirty = true;
+        if (museum != null) museum.found(p, e);
         Component msg = Component.text("✦ ", NamedTextColor.GOLD)
                 .append(Component.text(creature ? "New creature in your Index: " : "New item in your Index: ", NamedTextColor.YELLOW))
                 .append(Component.text(e.name, NamedTextColor.WHITE, TextDecoration.BOLD))
@@ -416,6 +441,17 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
     }
 
     int killCount(UUID player, String entryId) { return kills.getOrDefault(player, Map.of()).getOrDefault(entryId, 0); }
+
+    /** Every boss this player has been credited with defeating, counting each time. */
+    int bossKills(UUID player) {
+        int n = 0;
+        Map<String, Integer> k = kills.get(player);
+        if (k == null) return 0;
+        for (Entry e : entries) if (e.chapter.equals("bosses")) n += k.getOrDefault(e.id, 0);
+        return n;
+    }
+
+    List<Entry> entries() { return entries; }
 
     int[] chapterProgress(UUID player, String chapterId) {
         int have = 0, all = 0;
@@ -775,6 +811,7 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
                     Entry e = entries.stream().filter(x -> x.id.equalsIgnoreCase(want)).findFirst().orElse(null);
                     if (e == null) { sender.sendMessage(ChatColor.RED + "No Index entry called " + want + "."); return true; }
                     unlock(target, e, e.creature);
+                    if (e.creature && museum != null) museum.bossDefeated(target, e); // a boss's own reward (trophy, disc)
                     dirty = true;
                 }
                 case "stat" -> { // other plugins count things for achievements: /index stat <player> <name> [amount]

@@ -1,5 +1,5 @@
 name: FaultlineItems
-version: '1.1.3'
+version: '1.2.0'
 main: net.faultlinesmp.items.FaultlineItems
 api-version: '1.21'
 author: FaultlineSMP
@@ -117,6 +117,25 @@ commands:
     description: Give the Mirror..?? (the Lost Explorer's accessory)
     usage: /givelostmirror [amount] [player]
     permission: items.givelostmirror
+  fevent:
+    description: "Weather events now (admins: start/stop aurora, sandstorm, blizzard, eclipse, locusts)"
+    usage: /fevent <aurora|sandstorm|blizzard|eclipse|locusts|stop [kind]|status>
+  fcreature:
+    description: "Admin: spawn a Mimic or a Skeleton Knight patrol"
+    usage: /fcreature <mimic|knights> [player]
+    permission: items.fcreature
+  fgear:
+    description: "Admin: give the new gear (mining helmet, lantern, knight's helm, ancient gear/core, pedestal, music discs)"
+    usage: /fgear <id> [amount] [player]
+    permission: items.fgear
+  giveancientgear:
+    description: "Admin/console: give Ancient Gear Parts (the Stone Golem drops them)"
+    usage: /giveancientgear [amount] [player]
+    permission: items.fgear
+  givedisc:
+    description: "Admin/console: give a boss music disc"
+    usage: /givedisc <id|random> [player]
+    permission: items.fgear
 permissions:
   items.givelostmirror:
     description: Allows giving the Mirror..??
@@ -195,4 +214,13 @@ permissions:
     default: op
   items.giveaccessory:
     description: Allows giving accessory items
+    default: op
+  items.weather:
+    description: Allows starting and stopping weather events
+    default: op
+  items.fcreature:
+    description: Allows spawning Mimics and Skeleton Knights
+    default: op
+  items.fgear:
+    description: Allows giving the new gear
     default: op

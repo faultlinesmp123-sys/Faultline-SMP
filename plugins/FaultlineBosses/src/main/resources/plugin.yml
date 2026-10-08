@@ -1,5 +1,5 @@
 name: FaultlineBosses
-version: '1.3.4'
+version: '1.4.0'
 main: net.faultlinesmp.bosses.FaultlineBosses
 api-version: '1.21'
 author: FaultlineSMP
@@ -49,11 +49,31 @@ commands:
     usage: /lostexplorer <skip|yes|no>
   bossmorph:
     description: "Admin: become a boss and control it (your hotbar becomes its moves)"
-    usage: /bossmorph <demoneye|frostbeard|dune|frostmaw|kraken|jacob|don|rocco|grimtusk|off|release>
+    usage: /bossmorph <demoneye|frostbeard|dune|frostmaw|kraken|jacob|don|rocco|grimtusk|leviathan|sandworm|lich|frostwyrm|golem|off|release>
     permission: bosses.admin
   grimtusk:
     description: "Admin: summon or remove Grimtusk, the Piglin Warlord, skip to a phase, or give his items"
     usage: /grimtusk <summon|kill|phase|item>
+    permission: bosses.admin
+  leviathan:
+    description: "Admin: summon or remove the Leviathan, skip to a phase, or give its items"
+    usage: /leviathan <summon [world x y z]|kill|phase|item>
+    permission: bosses.admin
+  sandworm:
+    description: "Admin: summon or remove the Sandworm King, skip to a phase, or give its items"
+    usage: /sandworm <summon [world x y z]|kill|phase|item>
+    permission: bosses.admin
+  lich:
+    description: "Admin: summon or remove the Lich, skip to a phase, or give his items"
+    usage: /lich <summon [world x y z]|kill|phase|item>
+    permission: bosses.admin
+  frostwyrm:
+    description: "Admin: summon or remove the Frost Wyrm, skip to a phase, or give its items"
+    usage: /frostwyrm <summon [world x y z]|kill|phase|item>
+    permission: bosses.admin
+  stonegolem:
+    description: "Admin: summon or remove the Stone Golem (a lush-cave mini boss)"
+    usage: /stonegolem <summon [world x y z]|kill|phase>
     permission: bosses.admin
   bossrush:
     description: "The Boss Rush: every boss, back to back (start, top)"

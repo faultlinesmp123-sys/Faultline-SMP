@@ -60,6 +60,12 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
             new Stage("jacob", "Diamond Jacob", World.Environment.NORMAL, List.of(Biome.JAGGED_PEAKS, Biome.STONY_PEAKS, Biome.FROZEN_PEAKS)),
             new Stage("rocco", "Rocco Vendetta", World.Environment.NORMAL, List.of(Biome.PLAINS, Biome.SAVANNA, Biome.MEADOW)),
             new Stage("grimtusk", "Grimtusk, the Piglin Warlord", World.Environment.NETHER, List.of(Biome.NETHER_WASTES, Biome.CRIMSON_FOREST)),
+            // the wild bosses (1.4)
+            new Stage("golem", "The Stone Golem", World.Environment.NORMAL, List.of(Biome.LUSH_CAVES, Biome.JUNGLE, Biome.FOREST)),
+            new Stage("sandworm", "The Sandworm King", World.Environment.NORMAL, List.of(Biome.DESERT, Biome.BADLANDS)),
+            new Stage("leviathan", "The Leviathan", World.Environment.NORMAL, List.of(Biome.DEEP_OCEAN, Biome.DEEP_COLD_OCEAN, Biome.DEEP_LUKEWARM_OCEAN)),
+            new Stage("lich", "The Lich", World.Environment.NORMAL, List.of(Biome.DEEP_DARK, Biome.DARK_FOREST)),
+            new Stage("frostwyrm", "The Frost Wyrm", World.Environment.NORMAL, List.of(Biome.FROZEN_PEAKS, Biome.SNOWY_SLOPES, Biome.JAGGED_PEAKS)),
             // the finale: the Lost Explorer in his arena below the bedrock (solo: the leader fights him, the rest watch from the path)
             new Stage("explorer", "The Lost Explorer", World.Environment.THE_END, List.of()));
 
@@ -67,6 +73,8 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
     static final List<String> OLD_DEFAULT = List.of("demoneye", "frostbeard", "dune", "frostmaw", "don", "kraken", "jacob", "rocco", "grimtusk");
     /** 1.3.1's list (without the Queen Spider): also upgraded to the full default. */
     static final List<String> OLD_DEFAULT_2 = List.of("rotbeard", "bulwark", "great_hog", "demoneye", "frostbeard", "dune", "frostmaw", "don", "kraken", "jacob", "rocco", "grimtusk", "explorer");
+    /** 1.3.2-1.3.4's list (before the wild bosses): upgraded too. */
+    static final List<String> OLD_DEFAULT_3 = List.of("rotbeard", "bulwark", "great_hog", "queen_spider", "demoneye", "frostbeard", "dune", "frostmaw", "don", "kraken", "jacob", "rocco", "grimtusk", "explorer");
 
     final FaultlineBosses pl;
     private final File file;
@@ -164,7 +172,7 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
 
     List<Stage> stages() {
         List<String> order = pl.getConfig().getStringList("boss-rush.bosses");
-        if (order.isEmpty() || order.equals(OLD_DEFAULT) || order.equals(OLD_DEFAULT_2)) return STAGES;
+        if (order.isEmpty() || order.equals(OLD_DEFAULT) || order.equals(OLD_DEFAULT_2) || order.equals(OLD_DEFAULT_3)) return STAGES;
         List<Stage> out = new ArrayList<>();
         for (String k : order) STAGES.stream().filter(s -> s.kind().equalsIgnoreCase(k.trim())).findFirst().ifPresent(out::add);
         return out.isEmpty() ? STAGES : out;
@@ -201,6 +209,7 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
             "dune", List.of(Biome.BADLANDS, Biome.SAVANNA),
             "jacob", List.of(Biome.SNOWY_SLOPES, Biome.WINDSWEPT_HILLS, Biome.MEADOW),
             "kraken", List.of(Biome.OCEAN, Biome.COLD_OCEAN, Biome.LUKEWARM_OCEAN, Biome.WARM_OCEAN),
+            "leviathan", List.of(Biome.OCEAN, Biome.COLD_OCEAN, Biome.LUKEWARM_OCEAN, Biome.WARM_OCEAN),
             "great_hog", List.of(Biome.NETHER_WASTES, Biome.WARPED_FOREST));
 
     /** The team's spot, for a boss whose biome couldn't be found anywhere: they fight it right where they are. */
@@ -284,7 +293,7 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
             return null;
         }
         Block top = w.getHighestBlockAt(l.getBlockX(), l.getBlockZ(), HeightMap.MOTION_BLOCKING_NO_LEAVES);
-        if (s.kind().equals("kraken")) return top.isLiquid() ? top.getLocation().add(0.5, 1, 0.5) : null;
+        if (s.kind().equals("kraken") || s.kind().equals("leviathan")) return top.isLiquid() ? top.getLocation().add(0.5, 1, 0.5) : null;
         if (top.isLiquid()) return null;
         return top.getLocation().add(0.5, 1, 0.5);
     }

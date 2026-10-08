@@ -45,7 +45,7 @@ final class BedrockFx {
     static final Pattern BODY = Pattern.compile("^(cosmetic/.*|jacob_armor_.*|jacob_blaze_.*|jacob_bird_.*|werner_.*|rocco_.*|vendetta_goon_.*"
             + "|swarm_.*|explorer_(leg|arm|body|head).*|explorer_tiger_.*|wanderer_.*|don_(leg|arm|body|head).*|demon_eye(_mouth)?"
             + "|mf_wizard.*|mf_snow_monster.*|mf_snowflake|mf_icicle_runner|kraken_mantle.*|kraken_beak|kraken_pupil"
-            + "|vulture_.*|snow_owl_.*|dune_(head|body|tail).*|frostmaw_.*|ship/.*|ship_cannon|"
+            + "|vulture_.*|snow_owl_.*|dune_(head|body|tail).*|frostmaw_.*|ship/.*|ship_cannon|wild/.*|"
             // what they hold (it moves with the stand-in's hands, and would just be noise at their side)
             + "jacob_hammer|jacob_sword|explorer_blade|explorer_axe|below_pickaxe)$");
 

@@ -397,6 +397,12 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         warlord = new Warlord(this);
         getServer().getPluginManager().registerEvents(warlord, this);
         getCommand("grimtusk").setExecutor(this::grimtuskCommand);
+        wild = new Wild(this);
+        getServer().getPluginManager().registerEvents(wild, this);
+        for (String kind : Wild.KINDS) {
+            String cmd = kind.equals("golem") ? "stonegolem" : kind;
+            getCommand(cmd).setExecutor((sender, command, label, args) -> wild.command(kind, sender, args));
+        }
         rush = new BossRush(this);
         getServer().getPluginManager().registerEvents(rush, this);
         getCommand("bossrush").setExecutor(rush);
@@ -414,6 +420,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             safely("The way down", () -> { if (below != null) below.tick(); });
             safely("The Lost Explorer", () -> { if (explorer != null) explorer.tick(); });
             safely("Grimtusk", () -> { if (warlord != null) warlord.tick(); });
+            safely("Wild bosses", () -> { if (wild != null) wild.tick(); });
             safely("Boss Rush", () -> { if (rush != null) rush.tick(); });
             safely("Bedrock moves", bedrockFx::tick);
             safely("Boss form", this::morphTick);
@@ -542,6 +549,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         safely("shutdown: The Lost Explorer", () -> { if (explorer != null) explorer.shutdown(); }); // drops the pillars and walls first
         safely("shutdown: The way down", () -> { if (below != null) below.shutdown(); }); // puts Swarm's staircase back
         safely("shutdown: Grimtusk", () -> { if (warlord != null) warlord.shutdown(); });
+        safely("shutdown: Wild bosses", () -> { if (wild != null) wild.shutdown(); });
         safely("shutdown: Boss Rush", () -> { if (rush != null) rush.shutdown(); });
         don = null; dune = null; mortimer = null; eye = null; kraken = null; jacob = null;
         proxies.clear();
@@ -571,7 +579,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                         || tags.contains(DON_TAG) || tags.contains(DON_ORB_TAG) || tags.contains(KRAKEN_TAG) || tags.contains(KRAKEN_TENT_TAG)
                         || tags.contains(KRAKEN_PINK_TAG) || tags.contains(KRAKEN_EEL_TAG) || tags.contains(KRAKEN_MINION_TAG)
                         || tags.contains(JACOB_TAG) || tags.contains(JACOB_BIRD_TAG) || tags.contains(JACOB_ORB_TAG) || tags.contains(JACOB_MINION_TAG)
-                        || Vendetta.ours(e) || Below.ours(e) || Explorer.ours(e) || Warlord.ours(e)) e.remove();
+                        || Vendetta.ours(e) || Below.ours(e) || Explorer.ours(e) || Warlord.ours(e) || Wild.ours(e)) e.remove();
             }
         }
     }
@@ -10616,12 +10624,14 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
     //  Everyone else fights it like the real thing: its health, phases, cutscenes, and defeat all work normally.
     // =====================================================================================================
     static final Set<UUID> MORPHED = new HashSet<>();
-    static final List<String> MORPH_KINDS = List.of("demoneye", "frostbeard", "dune", "frostmaw", "kraken", "jacob", "don", "rocco", "grimtusk", "off", "release");
+    static final List<String> MORPH_KINDS = List.of("demoneye", "frostbeard", "dune", "frostmaw", "kraken", "jacob", "don", "rocco", "grimtusk",
+            "leviathan", "sandworm", "lich", "frostwyrm", "golem", "off", "release");
     private Morph morph;
     Vendetta vendetta;
     Below below;
     Explorer explorer;
     Warlord warlord;
+    Wild wild;
     BossRush rush;
 
     // ---------- the Boss Rush (BossRush.java) asks these ----------
@@ -10639,6 +10649,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         if (vendetta != null && vendetta.rocco != null) return "Rocco Vendetta";
         if (warlord != null && warlord.boss != null) return "Grimtusk";
         if (explorer != null && explorer.fight != null) return "The Lost Explorer";
+        if (wild != null && wild.any() != null) return wild.any().name();
         return null;
     }
 
@@ -10649,6 +10660,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             case "rocco" -> vendetta != null && vendetta.rocco != null; case "grimtusk" -> warlord != null && warlord.boss != null;
             case "explorer" -> explorer != null && explorer.fight != null;
             case "rotbeard", "bulwark", "great_hog", "queen_spider" -> rush != null && rush.raidBossAlive();
+            case "leviathan", "sandworm", "lich", "frostwyrm", "golem" -> wild != null && wild.get(kind) != null;
             default -> false;
         };
     }
@@ -10675,6 +10687,11 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 case "jacob" -> summonJacob(ahead, by);
                 case "rocco" -> vendetta.summon(ahead, by);
                 case "grimtusk" -> warlord.summon(Warlord.spawnSpot(by), by);
+                case "leviathan", "sandworm", "lich", "frostwyrm", "golem" -> {
+                    Location l = kind.equals("leviathan") ? at : ahead;
+                    if (kind.equals("golem")) { Location f = StoneGolem.openFloor(by.getLocation(), 6, 12); if (f != null) l = f; }
+                    if (wild.summon(kind, l, by) == null) return false;
+                }
                 case "rotbeard", "bulwark", "great_hog", "queen_spider" -> { if (!rush.spawnRaidBoss(kind, ahead)) return false; }
                 case "explorer" -> { // the leader walks into his arena; everyone else watches from the path (he fights alone)
                     if (explorer.fight != null) return false;
@@ -10699,6 +10716,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             case "don" -> "don kill"; case "kraken" -> "kraken kill"; case "jacob" -> "jacob kill"; case "rocco" -> "rocco kill";
             case "grimtusk" -> "grimtusk kill"; case "explorer" -> "explorer stop"; default -> null;
         };
+        if (wild != null && wild.get(kind) != null) { wild.get(kind).leave(null); return; }
         if (BossRush.external(kind)) { if (rush != null) rush.removeRaidBoss(); return; }
         if (cmd != null) Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd);
     }
@@ -10892,6 +10910,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         }
         else if (vendetta != null && vendetta.rocco != null && b == vendetta.rocco) m.addAll(vendetta.morphMoves());
         else if (warlord != null && warlord.boss != null && b == warlord.boss) m.addAll(warlord.morphMoves());
+        else if (wild != null && wild.isBoss(b)) m.addAll(((Wild.Boss) b).morphMoves());
         return m.size() > 8 ? m.subList(0, 8) : m;
     }
 
@@ -10940,13 +10959,15 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         if (!(sender instanceof Player p)) { sender.sendMessage("Players only."); return true; }
         if (morph != null) { sender.sendMessage(ChatColor.RED + "Someone is already in boss form. (/bossmorph off)"); return true; }
         if (!MORPH_KINDS.contains(kind) || kind.equals("off") || kind.equals("release")) {
-            sender.sendMessage(ChatColor.YELLOW + "/bossmorph <demoneye|frostbeard|dune|frostmaw|kraken|jacob|don|rocco|grimtusk>  |  /bossmorph off  |  /bossmorph release");
+            sender.sendMessage(ChatColor.YELLOW + "/bossmorph <demoneye|frostbeard|dune|frostmaw|kraken|jacob|don|rocco|grimtusk|leviathan|sandworm|lich|frostwyrm|golem>  |  /bossmorph off  |  /bossmorph release");
             return true;
         }
         boolean busy = switch (kind) {
             case "demoneye" -> eye != null; case "frostbeard" -> mortimer != null; case "dune", "frostmaw" -> dune != null;
             case "kraken" -> kraken != null; case "jacob" -> jacob != null; case "rocco" -> vendetta.rocco != null;
-            case "grimtusk" -> warlord.boss != null; default -> don != null;
+            case "grimtusk" -> warlord.boss != null;
+            case "leviathan", "sandworm", "lich", "frostwyrm", "golem" -> wild.get(kind) != null;
+            default -> don != null;
         };
         if (busy) { sender.sendMessage(ChatColor.RED + "That boss is already out. Remove it first (/" + (kind.equals("frostmaw") ? "dune" : kind) + " kill)."); return true; }
         startMorph(p, kind);
@@ -10992,6 +11013,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 case "kraken" -> { summonKraken(at.clone().add(look.clone().multiply(14)), null); morph.boss = kraken; }
                 case "jacob" -> { summonJacob(at, null); morph.boss = jacob; }
                 case "grimtusk" -> { warlord.summon(at.clone().add(look.clone().multiply(3)), null); morph.boss = warlord.boss; }
+                case "leviathan", "sandworm", "lich", "frostwyrm", "golem" -> morph.boss = wild.summon(kind, kind.equals("leviathan") ? at : at.clone().add(look.clone().multiply(4)), null);
                 case "rocco" -> {
                     vendetta.summon(at.clone().add(look.clone().multiply(3)), null);
                     morph.boss = vendetta.rocco;
@@ -11023,6 +11045,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                     : m.boss == kraken ? "kraken kill" : m.boss == jacob ? "jacob kill" : m.boss == don ? "don kill"
                     : m.boss == vendetta.rocco ? "rocco kill" : m.boss == warlord.boss ? "grimtusk kill" : null;
             if (cmd != null) Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd);
+            else if (wild != null && wild.isBoss(m.boss)) ((Wild.Boss) m.boss).leave(null);
         }
         Player p = Bukkit.getPlayer(m.player);
         if (p != null) { restoreMorphed(p); if (message != null) p.sendMessage(message); }
@@ -11055,7 +11078,8 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         Player p = Bukkit.getPlayer(morph.player);
         if (p == null) { endMorph(true, null); return; }
         boolean alive = morph.boss != null && (morph.boss == eye || morph.boss == mortimer || morph.boss == dune
-                || morph.boss == kraken || morph.boss == jacob || morph.boss == don || morph.boss == vendetta.rocco || morph.boss == warlord.boss);
+                || morph.boss == kraken || morph.boss == jacob || morph.boss == don || morph.boss == vendetta.rocco || morph.boss == warlord.boss
+                || wild != null && wild.isBoss(morph.boss));
         if (!alive) { endMorph(false, ChatColor.GOLD + "Your boss was defeated! You're yourself again."); return; }
         if (++morph.ticks % 10 == 0) {
             refreshMorphHotbar(p);

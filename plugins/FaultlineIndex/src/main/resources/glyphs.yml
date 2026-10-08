@@ -544,3 +544,105 @@ season_present:
 boss_rush_sigil:
   large: 59245
   small: 58221
+leviathan:
+  large: 59246
+  small: 58222
+sandworm_king:
+  large: 59247
+  small: 58223
+lich:
+  large: 59248
+  small: 58224
+frost_wyrm:
+  large: 59249
+  small: 58225
+stone_golem:
+  large: 59250
+  small: 58226
+mimic:
+  large: 59251
+  small: 58227
+locust:
+  large: 59252
+  small: 58228
+skeleton_knight:
+  large: 59253
+  small: 58229
+ghost_ship:
+  large: 59254
+  small: 58230
+ghost_captain:
+  large: 59255
+  small: 58231
+revenant:
+  large: 59256
+  small: 58232
+mining_helmet:
+  large: 59257
+  small: 58233
+knight_helm:
+  large: 59258
+  small: 58234
+lantern_of_souls:
+  large: 59259
+  small: 58235
+museum_pedestal:
+  large: 59260
+  small: 58236
+ancient_gear_part:
+  large: 59261
+  small: 58237
+ancient_core:
+  large: 59262
+  small: 58238
+tidebreaker:
+  large: 59263
+  small: 58239
+sandworm_fang:
+  large: 59264
+  small: 58240
+lich_staff:
+  large: 59265
+  small: 58241
+glacial_fang:
+  large: 59266
+  small: 58242
+abyssal_lure:
+  large: 59267
+  small: 58243
+sandworm_drum:
+  large: 59268
+  small: 58244
+lich_phylactery:
+  large: 59269
+  small: 58245
+frozen_horn:
+  large: 59270
+  small: 58246
+disc_demon_eye:
+  large: 59271
+  small: 58247
+disc_dune:
+  large: 59272
+  small: 58248
+disc_don:
+  large: 59273
+  small: 58249
+disc_kraken:
+  large: 59274
+  small: 58250
+disc_jacob1:
+  large: 59275
+  small: 58251
+disc_jacob2:
+  large: 59276
+  small: 58252
+disc_rocco:
+  large: 59277
+  small: 58253
+disc_explorer:
+  large: 59278
+  small: 58254
+disc_pirates:
+  large: 59279
+  small: 58255

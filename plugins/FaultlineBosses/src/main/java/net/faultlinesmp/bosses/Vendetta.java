@@ -217,8 +217,10 @@ final class Vendetta implements Listener {
         if (System.currentTimeMillis() < cooldownUntil) { p.sendActionBar(legacy(ChatColor.GRAY + "The family is still licking its wounds... try again in a few minutes.")); return; }
         String problem = pl.flatProblem(p.getLocation());
         if (problem != null) { p.sendMessage(ChatColor.RED + problem.replace("He ", "Rocco ") + ChatColor.GRAY + " (The contract wasn't used.)"); return; }
+        // BUG FIX: the contract was used up before he spawned: a failed spawn ate it
+        try { summon(p.getLocation().add(flatDir(p.getLocation()).multiply(6)), p); } catch (RuntimeException ex) { pl.getLogger().log(java.util.logging.Level.WARNING, "Couldn't summon Rocco Vendetta", ex); }
+        if (rocco == null) { p.sendMessage(ChatColor.RED + "Rocco couldn't appear here. " + ChatColor.GRAY + "(The contract wasn't used.)"); return; }
         if (p.getGameMode() != GameMode.CREATIVE) p.getInventory().getItemInMainHand().setAmount(p.getInventory().getItemInMainHand().getAmount() - 1);
-        summon(p.getLocation().add(flatDir(p.getLocation()).multiply(6)), p);
     }
 
     // =====================================================================================================
@@ -1122,9 +1124,9 @@ final class Vendetta implements Listener {
         }
 
         void leave(String message) {
+            if (rocco == this) rocco = null; // first: even if the cleanup below fails, he's no longer "already here"
             if (message != null) Bukkit.broadcastMessage(message);
             removeEverything();
-            if (rocco == this) rocco = null;
         }
 
         void updateBar() {

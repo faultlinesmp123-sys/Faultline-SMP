@@ -4097,8 +4097,18 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             if (k >= (int) kcfg("sink-ticks", 160)) { // 8 seconds: it's gone... and then he comes
                 it.remove();
                 Location at = l.clone();
+                ItemStack worm = item.getItemStack().clone();
                 item.remove();
-                Bukkit.getScheduler().runTaskLater(this, () -> summonKraken(at, by), 30L);
+                Bukkit.getScheduler().runTaskLater(this, () -> {
+                    // BUG FIX: the worm was already gone, so if he couldn't come (an error, or a Kraken already out by
+                    // then) the bait was simply lost. Now it comes back.
+                    Kraken before = kraken;
+                    try { summonKraken(at, by); } catch (RuntimeException ex) { getLogger().log(Level.WARNING, "Couldn't summon the Kraken", ex); }
+                    if (kraken == null || kraken == before) {
+                        if (by != null && by.isOnline()) { give(by, worm); by.sendActionBar(legacy(ChatColor.DARK_AQUA + "Nothing came up. " + ChatColor.GRAY + "(You got the worm back.)")); }
+                        else at.getWorld().dropItemNaturally(at, worm);
+                    }
+                }, 30L);
             }
         }
     }
@@ -5627,8 +5637,10 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 if (!mountainPeak(p.getLocation())) { p.sendActionBar(legacy(ChatColor.AQUA + "The horn only carries from a mountain peak.")); return; }
                 if (jacob != null) { p.sendActionBar(legacy(ChatColor.GRAY + "Diamond Jacob is already here.")); return; }
                 if (now < jacobCooldownUntil) { p.sendActionBar(legacy(ChatColor.GRAY + "The mountains are still echoing... try again in a few minutes.")); return; }
-                p.getInventory().getItemInMainHand().setAmount(p.getInventory().getItemInMainHand().getAmount() - 1);
-                summonJacob(p.getLocation(), p);
+                // BUG FIX: the horn was used up BEFORE he spawned (and even in creative): a failed spawn ate it
+                try { summonJacob(p.getLocation(), p); } catch (RuntimeException ex) { getLogger().log(Level.WARNING, "Couldn't summon Diamond Jacob", ex); }
+                if (jacob == null) { p.sendMessage(ChatColor.RED + "Diamond Jacob couldn't appear here. " + ChatColor.GRAY + "(The horn wasn't used.)"); return; }
+                if (p.getGameMode() != GameMode.CREATIVE) p.getInventory().getItemInMainHand().setAmount(p.getInventory().getItemInMainHand().getAmount() - 1);
             }
             case "hammer" -> { // Ground Slam
                 if (now < jacobHammerCooldown.getOrDefault(p.getUniqueId(), 0L)) return;
@@ -8445,19 +8457,57 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
 
     /** Runs one part of a boss's update; an error is logged and the rest of the boss keeps going. */
     void bossPart(String boss, String what, Runnable r) {
-        try { r.run(); } catch (RuntimeException e) { logBossPart(boss, what, e); }
+        try {
+            r.run();
+            if (what.equals("fight") && !failStreak.isEmpty()) failStreak.remove(boss);
+        } catch (RuntimeException e) {
+            logBossPart(boss, what, e);
+            if (what.equals("fight")) stuck(boss); // a fight that errors every tick is stuck (the Lost Explorer)
+        }
     }
 
     private void safely(String what, Runnable r) {
         try {
             r.run();
+            if (!failStreak.isEmpty()) failStreak.remove(what);
         } catch (Throwable t) {
             long now = System.currentTimeMillis();
             if (now - lastErrorLog.getOrDefault(what, 0L) > 30000) {
                 lastErrorLog.put(what, now);
                 getLogger().log(java.util.logging.Level.SEVERE, "[" + what + "] error while updating (it keeps running; please report this):", t);
             }
+            stuck(what);
         }
+    }
+
+    /** How many updates in a row have failed, per boss. */
+    private final Map<String, Integer> failStreak = new HashMap<>();
+
+    /**
+     * A boss whose update has failed every tick for 5 seconds is frozen for good: before 1.4.8 it stayed "already here"
+     * until a restart, so nobody could summon it again. Now it's removed (its model, hitbox, music, arena) and can be
+     * summoned again; the error is still in the console.
+     */
+    void stuck(String what) {
+        int n = failStreak.merge(what, 1, Integer::sum);
+        if (n < 100) return;
+        failStreak.remove(what);
+        Runnable reset = switch (what) {
+            case "Demon Eye" -> () -> { try { if (eye != null) eye.removeEverything(); } finally { eye = null; } };
+            case "Frostbeard" -> () -> { try { if (mortimer != null) mortimer.removeEverything(); } finally { mortimer = null; } };
+            case "Dune worm" -> () -> { try { if (dune != null) dune.removeEverything(); } finally { dune = null; } };
+            case "Don Lorenzo" -> () -> { try { if (don != null) don.cleanup(); } finally { don = null; } };
+            case "Kraken" -> () -> { try { if (kraken != null) kraken.removeEverything(); } finally { kraken = null; } };
+            case "Diamond Jacob" -> () -> { try { if (jacob != null) jacob.removeEverything(); } finally { jacob = null; } };
+            case "Rocco Vendetta" -> () -> { if (vendetta != null) try { if (vendetta.rocco != null) vendetta.rocco.removeEverything(); } finally { vendetta.rocco = null; } };
+            case "Grimtusk" -> () -> { if (warlord != null) try { if (warlord.boss != null) warlord.boss.removeEverything(); } finally { warlord.boss = null; } };
+            case "Boss Rush" -> () -> { if (rush != null && rush.run != null) { BossRush.Run r = rush.run; try { rush.fail(r, "an error"); } finally { rush.run = null; } } };
+            case "The Lost Explorer" -> () -> { if (explorer != null) try { if (explorer.fight != null) explorer.fight.end(false); } finally { explorer.fight = null; } };
+            default -> null;
+        };
+        if (reset == null) return;
+        getLogger().severe("[" + what + "] kept failing for 5 seconds: removed so it can be summoned again (the error is above).");
+        try { reset.run(); } catch (Throwable t) { getLogger().log(java.util.logging.Level.WARNING, "[" + what + "] cleanup also failed", t); }
     }
 
     // =====================================================================================
@@ -10094,21 +10144,22 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         }
 
         void cleanup() {
-            unmark(); // never leave anyone slowed
-            stopMusic();
-            if (cutscene != null) cutscene.finish(false);
-            if (box != null) box.restore();
-            if (bar != null) bar.removeAll();
-            if (timer != null) timer.removeAll();
-            for (ItemDisplay d : parts) if (d != null && d.isValid()) d.remove();
-            if (sword != null && sword.isValid()) sword.remove();
-            if (ball.isValid()) ball.remove();
-            for (DonShot s : shots) s.display.remove();
-            for (DonOrb o : orbs) { o.display.remove(); if (o.hitbox.isValid()) o.hitbox.remove(); }
-            for (ItemDisplay s : spears) if (s.isValid()) s.remove();
-            hitbox.remove(); // even if it already died
+            if (don == this) don = null; // first, and every step on its own: one failing step used to leave him "already here"
             state = LEAVING;
-            if (don == this) don = null;
+            bossPart("Don Lorenzo", "cleanup", this::unmark); // never leave anyone slowed
+            bossPart("Don Lorenzo", "cleanup", this::stopMusic);
+            bossPart("Don Lorenzo", "cleanup", () -> { if (cutscene != null) cutscene.finish(false); });
+            bossPart("Don Lorenzo", "cleanup", () -> { if (box != null) box.restore(); });
+            bossPart("Don Lorenzo", "cleanup", () -> { if (bar != null) bar.removeAll(); if (timer != null) timer.removeAll(); });
+            bossPart("Don Lorenzo", "cleanup", () -> {
+                for (ItemDisplay d : parts) if (d != null && d.isValid()) d.remove();
+                if (sword != null && sword.isValid()) sword.remove();
+                if (ball.isValid()) ball.remove();
+                for (DonShot s : shots) s.display.remove();
+                for (DonOrb o : orbs) { o.display.remove(); if (o.hitbox.isValid()) o.hitbox.remove(); }
+                for (ItemDisplay s : spears) if (s.isValid()) s.remove();
+            });
+            bossPart("Don Lorenzo", "cleanup", hitbox::remove); // even if it already died
         }
     }
 

@@ -237,8 +237,10 @@ final class Warlord implements Listener {
                     : "You're not inside a Bastion Remnant (the big blackstone fortresses). Go in and try again.") + ChatColor.GRAY + " (The challenge wasn't used.)");
             return;
         }
+        // BUG FIX: the challenge was used up before he spawned: a failed spawn ate it
+        try { summon(spawnSpot(p), p); } catch (RuntimeException ex) { pl.getLogger().log(java.util.logging.Level.WARNING, "Couldn't summon Grimtusk", ex); }
+        if (boss == null) { p.sendMessage(ChatColor.RED + "Grimtusk couldn't appear here (no room). " + ChatColor.GRAY + "(The challenge wasn't used.)"); return; }
         if (p.getGameMode() != GameMode.CREATIVE) p.getInventory().getItemInMainHand().setAmount(p.getInventory().getItemInMainHand().getAmount() - 1);
-        summon(spawnSpot(p), p);
     }
 
     /** Grimtusk's Cleaver: a burning sweep in front of you. */
@@ -936,9 +938,9 @@ final class Warlord implements Listener {
         }
 
         void leave(String message) {
+            if (boss == this) boss = null; // first: even if the cleanup below fails, he's no longer "already here"
             if (message != null) Bukkit.broadcastMessage(message);
             removeEverything();
-            if (boss == this) boss = null;
         }
 
         void removeEverything() {

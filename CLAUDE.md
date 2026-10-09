@@ -374,6 +374,14 @@ Notes:
   a Cloud Potion keeps its double-jump flag but never real flight. `AccessoryManager.hasEquipped` reads the open
   /accessories menu (an accessory taken out kept its powers until the menu closed). Moon Stone lifesteal ignores armor
   stands. Tested (`FlightTest`, `ItemsTest`).
+- **Bosses 1.4.8 (bosses that couldn't be summoned again)**: `safely()` counts failed updates per boss (`failStreak`);
+  100 in a row (5 s) = `stuck(what)` removes that boss (Demon Eye, Frostbeard, Dune worm, Don, Kraken, Jacob, Rocco,
+  Grimtusk, the Lost Explorer's fight via `bossPart(..., "fight", ...)`, the Boss Rush) so it can be summoned again; before,
+  an error every tick kept it "already here" until a restart. Rocco's/Grimtusk's `leave()`, Don's `cleanup()` (each step
+  in `bossPart`) and the Boss Rush's `finish()` clear their field FIRST. The Diamond Jacob horn, Rocco's contract and
+  Grimtusk's challenge are used up only once the boss really appeared (and never in creative for the horn); a Kraken
+  Bait worm that sank but brought no Kraken comes back. Tested (`StuckTest`: every boss after its area unloads, and the
+  watchdog).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

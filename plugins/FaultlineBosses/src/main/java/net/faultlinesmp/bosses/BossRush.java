@@ -448,12 +448,14 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
         Bukkit.broadcastMessage(ChatColor.RED + "" + ChatColor.BOLD + "Boss Rush failed " + ChatColor.GRAY + "(" + why + ") at boss "
                 + (r.stage + 1) + "/" + r.stages.size() + ".");
         Stage s = r.current();
-        if (s != null && r.state == 1) pl.rushKill(s.kind());
+        try { if (s != null && r.state == 1) pl.rushKill(s.kind()); }
+        catch (RuntimeException e) { pl.getLogger().log(java.util.logging.Level.WARNING, "Boss Rush: couldn't remove " + s.kind(), e); }
         finish(r, false);
     }
 
     /** Ends the run: everyone still in it goes back to where they started. */
     void finish(Run r, boolean won) {
+        if (run == r) run = null; // first: a failing step below must never leave "a Boss Rush is already running" for good
         r.bar.removeAll();
         boolean voidUsed = false;
         for (UUID id : r.team) if (pl.below.returns.remove(id) != null) voidUsed = true; // they go home from here, not through the rift

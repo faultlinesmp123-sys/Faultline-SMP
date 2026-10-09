@@ -387,6 +387,10 @@ Notes:
   middle of a deep ocean; swimming, kelp at the surface read as the coast). A failed wild summon tells the real reason
   (`Wild.lastFail`: the IllegalStateException's message, or the error) instead of a hard-coded "needs open water / no room",
   and sweeps whatever the half-built boss left behind. Tested (`KelpTest`).
+- **Bosses 1.4.10**: `Wild.live()`'s "stopped updating" check counts server ticks (`lastTick = ticks`, stale after 100),
+  not real time: a 5 s lag spike made every live wild boss look stale and the next summon deleted it. A failed summon's
+  chat message names the error and where in our code it broke (`Wild.where(e)`). Tested every wild boss through its
+  command with Items + Raids loaded, survival and creative (`CmdTest`, run with `runall.sh`).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

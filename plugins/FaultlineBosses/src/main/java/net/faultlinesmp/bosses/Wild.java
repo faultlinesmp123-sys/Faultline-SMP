@@ -346,7 +346,7 @@ final class Wild implements Listener {
         } catch (RuntimeException | LinkageError e) { // LinkageError: an API the server's Paper doesn't have
             boolean expected = e instanceof IllegalStateException; // "no open water" and the like: not a bug
             if (!expected) pl.getLogger().log(java.util.logging.Level.WARNING, "Couldn't summon " + kind, e);
-            lastFail = expected ? e.getMessage() : "an error: " + e + " (full error in the console)";
+            lastFail = expected ? e.getMessage() : "an error: " + e + where(e) + " (full error in the console)";
             sweep(false); // whatever it built before failing (model pieces, hitboxes) must not hang frozen in the world
             return null;
         }
@@ -357,6 +357,17 @@ final class Wild implements Listener {
     }
 
     Boss get(String kind) { return live(kind); }
+
+    /** " at Leviathan.java:66 < Wild.java:340": where in our code it broke, so a screenshot of the chat is enough. */
+    static String where(Throwable e) {
+        StringBuilder sb = new StringBuilder();
+        for (StackTraceElement el : e.getStackTrace()) {
+            if (!el.getClassName().startsWith("net.faultlinesmp")) continue;
+            sb.append(sb.length() == 0 ? " at " : " < ").append(el.getFileName()).append(':').append(el.getLineNumber());
+            if (sb.length() > 90) break;
+        }
+        return sb.toString();
+    }
 
     /** Why the last summon failed (shown to whoever ran the command). */
     String lastFail;
@@ -369,7 +380,8 @@ final class Wild implements Listener {
     Boss live(String kind) {
         Boss b = bosses.get(kind);
         if (b == null) return null;
-        boolean stale = b.lastTick > 0 && System.currentTimeMillis() - b.lastTick > 5000;
+        // in server ticks, not real time: a lag spike (autosave, chunk generation) used to make every boss look "stale"
+        boolean stale = b.lastTick > 0 && ticks - b.lastTick > 100;
         boolean gone;
         try { gone = !b.dying && !b.valid(); } catch (RuntimeException | LinkageError e) { gone = true; }
         if (!stale && !gone) return b;
@@ -391,7 +403,7 @@ final class Wild implements Listener {
     void tick() {
         ticks++;
         for (Boss b : new ArrayList<>(bosses.values())) {
-            try { b.tick(); b.lastTick = System.currentTimeMillis(); }
+            try { b.tick(); b.lastTick = ticks; }
             catch (RuntimeException | LinkageError e) {
                 pl.getLogger().log(java.util.logging.Level.SEVERE, "[" + b.name() + "] error (it leaves; please report this):", e);
                 bosses.values().remove(b);

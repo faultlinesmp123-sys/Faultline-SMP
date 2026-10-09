@@ -31,7 +31,11 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockExplodeEvent;
+import org.bukkit.event.block.BlockPistonExtendEvent;
+import org.bukkit.event.block.BlockPistonRetractEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.inventory.PrepareItemCraftEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
@@ -87,7 +91,7 @@ final class Gear implements Listener, CommandExecutor {
     }
 
     private final FaultlineItems plugin;
-    final NamespacedKey gearKey, discKey, coreKey, pedestalKey, jukeKey, coreArmor, coreKb, coreHealth, mineArmor, knightArmor, knightTough;
+    final NamespacedKey gearKey, discKey, coreKey, pedestalKey, lampKey, jukeKey, coreArmor, coreKb, coreHealth, mineArmor, knightArmor, knightTough;
     private final Map<UUID, Block> lights = new HashMap<>();
     private final Map<Long, Show> shows = new HashMap<>();
     private int ticks;
@@ -99,6 +103,7 @@ final class Gear implements Listener, CommandExecutor {
         coreKey = new NamespacedKey(plugin, "ancient_core");
         pedestalKey = new NamespacedKey(plugin, "pedestals");
         jukeKey = new NamespacedKey(plugin, "jukebox_disc");
+        lampKey = new NamespacedKey(plugin, "headlamps");
         coreArmor = new NamespacedKey(plugin, "ancient_core_armor");
         coreKb = new NamespacedKey(plugin, "ancient_core_knockback");
         coreHealth = new NamespacedKey(plugin, "ancient_core_health");
@@ -107,7 +112,7 @@ final class Gear implements Listener, CommandExecutor {
         knightTough = new NamespacedKey(plugin, "knight_helm_toughness");
         recipes();
         for (World w : Bukkit.getWorlds()) for (Entity e : w.getEntities()) if (e.getScoreboardTags().contains(TAG)) e.remove();
-        for (World w : Bukkit.getWorlds()) for (Chunk c : w.getLoadedChunks()) showChunk(c);
+        for (World w : Bukkit.getWorlds()) for (Chunk c : w.getLoadedChunks()) { showChunk(c); cleanLamps(c); }
         Bukkit.getScheduler().runTaskTimer(plugin, this::tick, 20L, 5L);
     }
 
@@ -307,13 +312,42 @@ final class Gear implements Listener, CommandExecutor {
     void light(Player p, Block want) {
         Block old = lights.get(p.getUniqueId());
         if (old != null && old.equals(want)) return;
-        if (old != null && old.getType() == Material.LIGHT) old.setType(Material.AIR, false);
+        if (old != null) { if (old.getType() == Material.LIGHT) old.setType(Material.AIR, false); lightMark(old, false); }
         lights.remove(p.getUniqueId());
         if (want == null || !want.getType().isAir()) return;
         Light l = (Light) Material.LIGHT.createBlockData();
         l.setLevel((int) Math.max(1, Math.min(15, plugin.getConfig().getDouble("gear.light-level", 13))));
         want.setBlockData(l, false);
         lights.put(p.getUniqueId(), want);
+        lightMark(want, true);
+    }
+
+    /** Headlamp blocks are noted in their chunk, so ones a crash left behind are taken out when the chunk next loads. */
+    void lightMark(Block b, boolean on) {
+        try {
+            PersistentDataContainer c = b.getChunk().getPersistentDataContainer();
+            long[] all = c.getOrDefault(lampKey, PersistentDataType.LONG_ARRAY, new long[0]);
+            LinkedHashSet<Long> set = new LinkedHashSet<>();
+            for (long v : all) set.add(v);
+            if (on ? !set.add(local(b)) : !set.remove(local(b))) return;
+            if (set.isEmpty()) c.remove(lampKey); else c.set(lampKey, PersistentDataType.LONG_ARRAY, set.stream().mapToLong(Long::longValue).toArray());
+        } catch (RuntimeException ignored) { }
+    }
+
+    void cleanLamps(Chunk ch) {
+        try {
+            PersistentDataContainer c = ch.getPersistentDataContainer();
+            long[] all = c.get(lampKey, PersistentDataType.LONG_ARRAY);
+            if (all == null) return;
+            Collection<Block> live = lights.values();
+            LinkedHashSet<Long> keep = new LinkedHashSet<>();
+            for (long v : all) {
+                Block b = ch.getWorld().getBlockAt((ch.getX() << 4) | (int) (v & 15), (int) (v >> 8) - 4096, (ch.getZ() << 4) | (int) ((v >> 4) & 15));
+                if (live.contains(b)) { keep.add(v); continue; }
+                if (b.getType() == Material.LIGHT) b.setType(Material.AIR, false);
+            }
+            if (keep.isEmpty()) c.remove(lampKey); else c.set(lampKey, PersistentDataType.LONG_ARRAY, keep.stream().mapToLong(Long::longValue).toArray());
+        } catch (RuntimeException ignored) { }
     }
 
     @EventHandler
@@ -370,12 +404,42 @@ final class Gear implements Listener, CommandExecutor {
         // a pedestal: its exhibit and the pedestal itself come back
         String exhibit = pedestal(b);
         if (exhibit == null) return;
+        String own = owner(exhibit);
+        if (own != null && !own.equals(e.getPlayer().getUniqueId().toString()) && !e.getPlayer().hasPermission("items.fgear")) {
+            // breaking it would hand someone else's exhibit to whoever broke it
+            e.setCancelled(true);
+            e.getPlayer().sendActionBar(Meteor.legacy(ChatColor.GRAY + "On show by " + new OfflineName(own) + ". Only they can take it down."));
+            return;
+        }
         e.setDropItems(false);
         ItemStack shown = decode(exhibit);
         if (shown != null) b.getWorld().dropItemNaturally(b.getLocation().add(0.5, 1, 0.5), shown);
         if (e.getPlayer().getGameMode() != GameMode.CREATIVE) b.getWorld().dropItemNaturally(b.getLocation().add(0.5, 0.5, 0.5), item("museum_pedestal"));
         setPedestal(b, null, false);
     }
+
+    /** Explosions: pedestals stand (their record would be left behind), jukeboxes give their boss disc back. */
+    void exploded(List<Block> blocks) {
+        blocks.removeIf(b -> pedestal(b) != null);
+        for (Block b : blocks) {
+            if (b.getType() != Material.JUKEBOX || !(b.getState() instanceof Jukebox jb)) continue;
+            String stored = jb.getPersistentDataContainer().get(jukeKey, PersistentDataType.STRING);
+            if (stored != null) eject(b, jb, stored);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onEntityExplode(EntityExplodeEvent e) { exploded(e.blockList()); }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onBlockExplode(BlockExplodeEvent e) { exploded(e.blockList()); }
+
+    // a piston would move the wall and leave the pedestal's record (and its exhibit) floating where it was
+    @EventHandler(ignoreCancelled = true)
+    public void onPistonPush(BlockPistonExtendEvent e) { if (e.getBlocks().stream().anyMatch(b -> pedestal(b) != null)) e.setCancelled(true); }
+
+    @EventHandler(ignoreCancelled = true)
+    public void onPistonPull(BlockPistonRetractEvent e) { if (e.getBlocks().stream().anyMatch(b -> pedestal(b) != null)) e.setCancelled(true); }
 
     // =====================================================================================================
     //  museum pedestals (remembered in their chunk; the exhibit floats above)
@@ -527,7 +591,7 @@ final class Gear implements Listener, CommandExecutor {
     }
 
     @EventHandler
-    public void onChunkLoad(ChunkLoadEvent e) { showChunk(e.getChunk()); }
+    public void onChunkLoad(ChunkLoadEvent e) { showChunk(e.getChunk()); cleanLamps(e.getChunk()); }
 
     @EventHandler
     public void onChunkUnload(ChunkUnloadEvent e) {
@@ -544,7 +608,7 @@ final class Gear implements Listener, CommandExecutor {
     }
 
     void shutdown() {
-        for (UUID u : new ArrayList<>(lights.keySet())) { Block b = lights.remove(u); if (b != null && b.getType() == Material.LIGHT) b.setType(Material.AIR, false); }
+        for (UUID u : new ArrayList<>(lights.keySet())) { Block b = lights.remove(u); if (b != null) { if (b.getType() == Material.LIGHT) b.setType(Material.AIR, false); lightMark(b, false); } }
         for (Show s : shows.values()) s.remove();
         shows.clear();
     }

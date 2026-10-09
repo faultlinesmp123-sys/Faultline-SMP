@@ -49,6 +49,7 @@ import org.bukkit.entity.Wolf;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.enchantment.EnchantItemEvent;
 import org.bukkit.event.enchantment.PrepareItemEnchantEvent;
 import org.bukkit.event.entity.EntityCombustEvent;
@@ -346,6 +347,8 @@ final class Weather implements Listener, CommandExecutor, org.bukkit.command.Tab
     // =====================================================================================================
     final class Sandstorm extends Event {
         final Location center;
+        final Set<Long> placed = new HashSet<>();          // sand put down during the storm: never treasure (no place-and-dig farm)
+        final Map<UUID, Integer> found = new HashMap<>();   // treasures per player this storm
         Sandstorm(Location at) { super("sandstorm", at.getWorld(), Weather.this.cfg("sandstorm.minutes", 6)); center = at.clone(); }
 
         @Override String where() { return " near X " + center.getBlockX() + ", Z " + center.getBlockZ(); }
@@ -402,11 +405,23 @@ final class Weather implements Listener, CommandExecutor, org.bukkit.command.Tab
     }
 
     @EventHandler(ignoreCancelled = true)
+    public void onPlaceSand(BlockPlaceEvent e) {
+        if (!(active.get("sandstorm") instanceof Sandstorm s)) return;
+        Material m = e.getBlockPlaced().getType();
+        if ((m == Material.SAND || m == Material.RED_SAND || m == Material.SUSPICIOUS_SAND) && e.getBlockPlaced().getWorld().equals(s.world))
+            s.placed.add(e.getBlockPlaced().getBlockKey());
+    }
+
+    @EventHandler(ignoreCancelled = true)
     public void onDig(BlockBreakEvent e) {
         if (!(active.get("sandstorm") instanceof Sandstorm s) || !s.inside(e.getPlayer())) return;
         Material m = e.getBlock().getType();
         if (m != Material.SAND && m != Material.RED_SAND && m != Material.SUSPICIOUS_SAND) return;
+        if (s.placed.remove(e.getBlock().getBlockKey())) return;
+        int had = s.found.getOrDefault(e.getPlayer().getUniqueId(), 0);
+        if (had >= (int) cfg("sandstorm.treasure-per-player", 3)) return;
         if (random.nextDouble() >= cfg("sandstorm.treasure-chance", 0.04)) return;
+        s.found.put(e.getPlayer().getUniqueId(), had + 1);
         Location l = e.getBlock().getLocation().add(0.5, 0.5, 0.5);
         List<String> loot = plugin.getConfig().getStringList("weather.sandstorm.treasure");
         if (loot.isEmpty()) loot = List.of("GOLD_INGOT:2-6", "EMERALD:1-4", "DIAMOND:1-2:25", "GOLDEN_APPLE:1:15", "RABBIT_FOOT:1:30");

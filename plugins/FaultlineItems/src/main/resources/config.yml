@@ -458,7 +458,7 @@ mirror:
 weather:
   enabled: true
   aurora: {enabled: true, chance-per-night: 0.2, xp-multiplier: 2.0, enchant-cost-multiplier: 0.7, height: 38, size: 1.2}  # height above the ground, size 1 = 24 blocks wide
-  sandstorm: {enabled: true, chance-per-minute: 0.006, minutes: 6, radius: 110, husks-per-player: 4, treasure-chance: 0.04,
+  sandstorm: {enabled: true, chance-per-minute: 0.006, minutes: 6, radius: 110, husks-per-player: 4, treasure-chance: 0.04, treasure-per-player: 3,
               treasure: ["GOLD_INGOT:2-6", "EMERALD:1-4", "DIAMOND:1-2:25", "GOLDEN_APPLE:1:15", "RABBIT_FOOT:1:30"]}
   blizzard: {enabled: true, chance-per-minute: 0.006, minutes: 6, radius: 110, cold-per-half-second: 26, strays-per-player: 6}
   eclipse: {enabled: true, chance-per-minute: 0.003, minutes: 5, sun-height: 55, sun-size: 1.0}   # only each player's sky goes dark: the world's time keeps running

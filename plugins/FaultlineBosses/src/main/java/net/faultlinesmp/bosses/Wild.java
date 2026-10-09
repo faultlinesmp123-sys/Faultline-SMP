@@ -221,14 +221,14 @@ final class Wild implements Listener {
         if (kind == null) return;
         event.setUseInteractedBlock(Result.DENY);
         event.setUseItemInHand(Result.DENY);
-        if (bosses.containsKey(kind)) { p.sendActionBar(legacy(ChatColor.GRAY + NAMES.get(kind) + " is already out there.")); return; }
+        if (live(kind) != null) { p.sendActionBar(legacy(ChatColor.GRAY + NAMES.get(kind) + " is already out there. " + ChatColor.WHITE + "/" + (kind.equals("golem") ? "stonegolem" : kind) + " kill" + ChatColor.GRAY + " (admins)")); return; }
         if (p.getWorld().getDifficulty() == Difficulty.PEACEFUL) { p.sendActionBar(legacy(ChatColor.RED + "Nothing answers on Peaceful.")); return; }
         long cd = cooldownUntil.getOrDefault(kind, 0L);
         if (System.currentTimeMillis() < cd) { p.sendActionBar(legacy(ChatColor.GRAY + "Nothing answers yet... try again in " + ((cd - System.currentTimeMillis()) / 60000 + 1) + " min.")); return; }
         String why = whyNot(kind, p);
         if (why != null) { p.sendMessage(ChatColor.RED + why + ChatColor.GRAY + " (It wasn't used.)"); return; }
+        if (summon(kind, p.getLocation(), p) == null) { p.sendMessage(ChatColor.RED + "It couldn't appear here (no room). " + ChatColor.GRAY + "(It wasn't used.)"); return; }
         if (p.getGameMode() != GameMode.CREATIVE) hand.setAmount(hand.getAmount() - 1);
-        summon(kind, p.getLocation(), p);
     }
 
     // =====================================================================================================
@@ -331,7 +331,7 @@ final class Wild implements Listener {
     //  summoning, ticking, cleanup
     // =====================================================================================================
     Boss summon(String kind, Location at, Player by) {
-        if (bosses.containsKey(kind)) return bosses.get(kind);
+        if (live(kind) != null) return bosses.get(kind);
         Boss b;
         try {
             b = switch (kind) {
@@ -352,7 +352,25 @@ final class Wild implements Listener {
         return b;
     }
 
-    Boss get(String kind) { return bosses.get(kind); }
+    Boss get(String kind) { return live(kind); }
+
+    /**
+     * The boss of that kind that is really out there, or null. One whose body is gone, or that stopped updating (an error,
+     * a stuck chunk), is cleared away here: before 1.4.6 it stayed in the list for good, so its model hung frozen in the
+     * world and every new summon said "already out there".
+     */
+    Boss live(String kind) {
+        Boss b = bosses.get(kind);
+        if (b == null) return null;
+        boolean stale = b.lastTick > 0 && System.currentTimeMillis() - b.lastTick > 5000;
+        boolean gone;
+        try { gone = !b.dying && !b.valid(); } catch (RuntimeException | LinkageError e) { gone = true; }
+        if (!stale && !gone) return b;
+        pl.getLogger().warning(b.name() + (stale ? " stopped updating" : " lost its body") + ": cleared away so it can be summoned again.");
+        b.leave(null);
+        bosses.values().remove(b);
+        return null;
+    }
 
     Boss any() { return bosses.isEmpty() ? null : bosses.values().iterator().next(); }
 
@@ -366,12 +384,14 @@ final class Wild implements Listener {
     void tick() {
         ticks++;
         for (Boss b : new ArrayList<>(bosses.values())) {
-            try { b.tick(); }
+            try { b.tick(); b.lastTick = System.currentTimeMillis(); }
             catch (RuntimeException | LinkageError e) {
                 pl.getLogger().log(java.util.logging.Level.SEVERE, "[" + b.name() + "] error (it leaves; please report this):", e);
+                bosses.values().remove(b);
                 b.leave(null);
             }
         }
+        if (ticks % 100 == 50) sweep(false);
         if (ticks % 40 == 0) standUpkeep();
         if (ticks % 1200 == 600) StoneGolem.naturalSpawns(this);
         if (ticks % 2400 == 1200) Leviathan.naturalSpawns(this);
@@ -445,7 +465,7 @@ final class Wild implements Listener {
             else if (SANDS.contains(b) && b != Biome.BEACH && l.getBlockY() >= l.getWorld().getHighestBlockYAt(l) - 2 && isDay(p.getWorld())) kind = "sandworm";
             else if (PEAKS.contains(b) && b != Biome.FROZEN_OCEAN && l.getBlockY() >= l.getWorld().getHighestBlockYAt(l) - 2) kind = "frostwyrm";
             else if (OCEANS.contains(b) && b.getKey().getKey().startsWith("deep_") && (p.isInWater() || p.isInsideVehicle() || ShipLink.of(p) != null)) kind = "leviathan";
-            if (kind == null || bosses.containsKey(kind)) continue;
+            if (kind == null || live(kind) != null) continue;
             if (System.currentTimeMillis() < cooldownUntil.getOrDefault(kind, 0L)) continue;
             double def = switch (kind) { case "lich" -> 0.04; case "leviathan" -> 0.02; default -> 0.015; };
             if (random.nextDouble() >= c(kind + ".natural-chance-per-minute", def)) continue;
@@ -469,6 +489,33 @@ final class Wild implements Listener {
         for (Boss b : new ArrayList<>(bosses.values())) b.removeEverything();
         bosses.clear();
         for (World w : Bukkit.getWorlds()) for (Entity e : w.getEntities()) if (ours(e)) e.remove();
+    }
+
+    /**
+     * Model pieces, hitboxes and stands that no boss owns any more (a boss that errored out, a crash, a reload) are
+     * removed; with no boss of any kind out, its minions and effects go too. Returns how many were removed.
+     */
+    int sweep(boolean all) {
+        Set<UUID> owned = new HashSet<>();
+        for (Boss b : bosses.values()) {
+            for (Part p : b.rig.parts) { if (p.d != null) owned.add(p.d.getUniqueId()); if (p.stand != null) owned.add(p.stand.getUniqueId()); }
+            for (LivingEntity h : b.hitboxes) owned.add(h.getUniqueId());
+            for (LivingEntity m : b.minions) owned.add(m.getUniqueId());
+            for (UUID u : b.extra()) owned.add(u);
+        }
+        boolean none = bosses.isEmpty();
+        int n = 0;
+        for (World wd : Bukkit.getWorlds()) for (Entity e : wd.getEntities()) {
+            Set<String> t = e.getScoreboardTags();
+            boolean body = t.contains(PART_TAG) || t.contains(STAND_TAG) || t.contains(HIT_TAG) || t.contains(Lich.CRYSTAL_TAG);
+            boolean loose = none && (t.contains(MOB_TAG) || all && t.contains(FX_TAG));
+            if (!body && !loose || owned.contains(e.getUniqueId())) continue;
+            if (e.getVehicle() != null && owned.contains(e.getVehicle().getUniqueId())) continue;
+            e.remove();
+            n++;
+        }
+        if (n > 0 && !all) pl.getLogger().info("Removed " + n + " leftover wild boss pieces.");
+        return n;
     }
 
     /** Java players never see a Bedrock stand; Bedrock players always do. */
@@ -568,7 +615,7 @@ final class Wild implements Listener {
         if (!sender.hasPermission("bosses.admin")) { sender.sendMessage(ChatColor.RED + "You don't have permission to do that."); return true; }
         String sub = args.length > 0 ? args[0].toLowerCase() : "";
         Player self = sender instanceof Player p ? p : null;
-        Boss b = bosses.get(kind);
+        Boss b = live(kind);
         String label = kind.equals("golem") ? "stonegolem" : kind;
         switch (sub) {
             case "summon" -> {
@@ -584,7 +631,11 @@ final class Wild implements Listener {
                 sender.sendMessage(nb != null ? ChatColor.GREEN + NAMES.get(kind) + " is coming. " + ChatColor.GRAY + "(Fight it in survival; creative players don't count.)"
                         : ChatColor.RED + "It couldn't appear there (" + (kind.equals("leviathan") ? "it needs open water: 8+ blocks deep nearby" : "no room") + ").");
             }
-            case "kill" -> { if (b != null) { b.leave(null); sender.sendMessage(ChatColor.GREEN + "Removed " + NAMES.get(kind) + "."); } else sender.sendMessage(ChatColor.GRAY + "It isn't out."); }
+            case "kill" -> {
+                if (b != null) b.leave(null);
+                int stray = sweep(true);
+                sender.sendMessage(b != null || stray > 0 ? ChatColor.GREEN + "Removed " + NAMES.get(kind) + (stray > 0 ? " (+" + stray + " leftover model pieces)" : "") + "." : ChatColor.GRAY + "It isn't out.");
+            }
             case "phase" -> {
                 if (b == null || args.length < 2) { sender.sendMessage(ChatColor.YELLOW + "/" + label + " phase <2|3>"); return true; }
                 int ph;
@@ -738,8 +789,10 @@ final class Wild implements Listener {
         final List<BooleanSupplier> fx = new ArrayList<>();
         final BossBar bar;
         final Set<UUID> listeners = new HashSet<>();
-        long musicStart = -1;
+        long musicStart = -1, lastTick;
         Player focus, pilot;
+        /** Other entities the boss owns that carry the body tags (e.g. a hitbox kept outside hitboxes). */
+        Collection<UUID> extra() { return List.of(); }
 
         Boss(Wild w, String kind, Location at, Player by) {
             this.w = w;
@@ -806,6 +859,16 @@ final class Wild implements Listener {
             return a;
         }
 
+        /** Creative players in the fight radius (it fights them for show when nobody is in survival). */
+        List<Player> onlookers() {
+            List<Player> a = new ArrayList<>();
+            double r = c("fight-radius", 56);
+            Location c = center();
+            for (Player p : world.getPlayers())
+                if (p.getGameMode() == GameMode.CREATIVE && !MORPHED.contains(p.getUniqueId()) && p.getLocation().distanceSquared(c) < r * r) a.add(p);
+            return a;
+        }
+
         /** Anyone (an admin in creative too) close by: it waits for a fight instead of leaving after 30 s. */
         boolean watched() {
             Location c = center();
@@ -829,18 +892,20 @@ final class Wild implements Listener {
             if (!valid()) { leave(null); return; }
             List<Player> a = active();
             for (Player p : a) fighters.add(p.getUniqueId());
+            int real = a.size();
             pilot = pl.pilot(this);
-            if (a.isEmpty() && pilot == null && ticks % 60 == 0) {
-                // an admin testing in creative: say why it isn't fighting (it only fights survival players)
-                Location cc = center();
-                for (Player p : world.getPlayers())
-                    if ((p.getGameMode() == GameMode.CREATIVE || p.getGameMode() == GameMode.SPECTATOR) && p.getLocation().distanceSquared(cc) < 64 * 64)
-                        p.sendActionBar(legacy(color() + name() + ChatColor.GRAY + " ignores creative players. " + ChatColor.WHITE + "/gamemode survival" + ChatColor.GRAY + " to fight it, " + ChatColor.WHITE + "/" + (kind.equals("golem") ? "stonegolem" : kind) + " kill" + ChatColor.GRAY + " to remove it."));
+            if (a.isEmpty() && pilot == null && pl.getConfig().getBoolean("wild.fight-creative", true)) {
+                // an admin testing in creative: with nobody in survival it still flies, swims and uses its moves at them
+                // (for show: hit() never hurts a creative player, they can't hurt it, and they never count as fighters).
+                // Before 1.4.6 it just hung there, which looked like a frozen boss.
+                a = onlookers();
+                if (!a.isEmpty() && ticks % 60 == 0) for (Player p : a)
+                    p.sendActionBar(legacy(color() + name() + ChatColor.GRAY + " is fighting you for show (creative: no damage). " + ChatColor.WHITE + "/gamemode survival" + ChatColor.GRAY + " for real, " + ChatColor.WHITE + "/" + (kind.equals("golem") ? "stonegolem" : kind) + " kill" + ChatColor.GRAY + " to remove it."));
             }
             if (a.isEmpty() && pilot == null && !watched()) {
                 if (++lonely > c("leave-after-ticks", 600)) { leave(line("leave")); return; }
             } else lonely = 0;
-            if (ticks % 100 == 0) scaleFor(a.size());
+            if (ticks % 100 == 0) scaleFor(real);
             if (phase == 1 && hp < maxHp * c("phase2-at", 0.6)) startPhase(2);
             if (phase == 2 && hp < maxHp * c("phase3-at", 0.3)) startPhase(3);
             musicTick();
@@ -1030,21 +1095,28 @@ final class Wild implements Listener {
         }
 
         void leave(String message) {
+            w.bosses.values().remove(this); // first: whatever fails below, it's no longer "out there"
             if (message != null) Bukkit.broadcastMessage(message);
             removeEverything();
-            w.bosses.values().remove(this);
         }
 
         void removeEverything() {
-            stopMusic();
-            bar.removeAll();
-            rig.remove();
-            for (LivingEntity h : hitboxes) if (h.isValid()) h.remove();
-            hitboxes.clear();
-            for (LivingEntity m : minions) if (m.isValid()) m.remove();
-            minions.clear();
+            // each step on its own: one failing must not leave the rest of the body standing in the world
+            quietly(this::stopMusic);
+            quietly(bar::removeAll);
+            quietly(rig::remove);
+            quietly(() -> { for (LivingEntity h : hitboxes) if (h.isValid()) h.remove(); hitboxes.clear(); });
+            quietly(() -> { for (LivingEntity m : minions) if (m.isValid()) m.remove(); minions.clear(); });
             fx.clear();
-            for (Entity e : world.getEntities()) if (e.getScoreboardTags().contains(FX_TAG) && e.getLocation().distanceSquared(home) < 160 * 160) e.remove();
+            quietly(this::cleanup);
+            quietly(() -> { for (Entity e : world.getEntities()) if (e.getScoreboardTags().contains(FX_TAG) && e.getLocation().distanceSquared(home) < 160 * 160) e.remove(); });
+        }
+
+        /** Anything else the boss made (its own extra entities, blocks it changed). */
+        void cleanup() { }
+
+        void quietly(Runnable r) {
+            try { r.run(); } catch (RuntimeException | LinkageError e) { pl.getLogger().log(java.util.logging.Level.WARNING, "[" + name() + "] cleanup step failed", e); }
         }
 
         // ---------- helpers ----------

@@ -310,7 +310,7 @@ Notes:
   `faultlineindex:trophy`); each defeat rolls `disc-chance` for that boss's disc (`givedisc`; one roll per defeat even when
   the kill credit and `index discover` both fire); server firsts saved in `museum.yml`, announced, shown in `/museum`.
   **Discord** (`Discord.java`, `discord:`): webhook URL; broadcasts matching `discord.forward` regexes are posted (1.5 s apart).
-  **/serverstats** (`ServerStats.java`): totals from vanilla stats + Index stats, top 3s, cached 1 min.
+  **/serverstats** (`ServerStats.java`): totals from vanilla stats + Index stats, top 3s, cached 5 min (counted async).
   Tested in the Index harness (`MuseumTest`).
 - **1.4.3 / 1.2.3 fixes (wild update)**:
   Bosses: `Wild.ground(world, l)` searches 12 up / 32 down and otherwise keeps the caller's height (it used to jump to the
@@ -351,6 +351,18 @@ Notes:
   /itemsmenu) rung at night at sea calls her (`GhostShip.call`): from a FaultlineShips ship, or the water top under a boat /
   a swimmer in an ocean biome (`waterTop`, `spawnAt`). `/ship pirates ghost [player]` (console too, any time of day: `forced`
   = she doesn't fade at dawn), `/ship pirates bell [n] [player]`. Tested (`TerrainTest`, `BellTest`).
+- **1.4.6 / Items 1.2.7 / Index 1.6.2 (bug hunt)**: wild bosses: `Wild.live(kind)` clears a boss whose body is gone or
+  that stopped updating for 5 s (it used to hang frozen in the world and block every summon with "already out there");
+  `leave()` takes it off the list FIRST and every cleanup step runs on its own (`quietly`); `sweep()` (every 5 s, and
+  `/<boss> kill`) removes model pieces/stands/hitboxes/Lich crystals no live boss owns. With nobody in survival nearby a
+  wild boss fights creative players for show (`onlookers()`, `wild.fight-creative: true`; no damage either way, never a
+  fighter). A summon item that can't spawn its boss isn't used up. Items: a pedestal with someone else's exhibit can't be
+  broken by others; explosions skip pedestals, pistons can't move them; a blown-up jukebox ejects its boss disc; a Mimic
+  that unloads (or the server stops) turns back into its chest with the loot table; Mimics wake at HIGH priority (after
+  claim plugins); sandstorm treasure ignores sand placed during the storm and caps at `treasure-per-player` (3); headlamp
+  LIGHT blocks are recorded in the chunk PDC (`headlamps`) and cleaned on chunk load. Index: `/serverstats` reads offline
+  players' stats files (`players/stats` on 26.x, else `stats`) off the main thread, cached 5 min.
+  Tested: `OceanTest` (bosses), `AuditTest` (items), `MuseumTest` (index).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

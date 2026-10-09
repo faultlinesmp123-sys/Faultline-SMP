@@ -345,8 +345,7 @@ final class Sandworm extends Wild.Boss {
 
     @Override
     void removeEverything() {
-        for (BlockDisplay r : rocks) if (r.isValid()) r.remove();
-        rocks.clear();
+        quietly(() -> { for (BlockDisplay r : rocks) if (r.isValid()) r.remove(); rocks.clear(); });
         super.removeEverything();
     }
 

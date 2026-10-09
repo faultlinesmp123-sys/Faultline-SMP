@@ -361,9 +361,11 @@ final class Lich extends Wild.Boss {
     }
 
     @Override
+    Collection<UUID> extra() { List<UUID> u = new ArrayList<>(); for (EnderCrystal cr : crystals) u.add(cr.getUniqueId()); return u; }
+
+    @Override
     void removeEverything() {
-        for (EnderCrystal cr : crystals) if (cr.isValid()) cr.remove();
-        crystals.clear();
+        quietly(() -> { for (EnderCrystal cr : crystals) if (cr.isValid()) cr.remove(); crystals.clear(); });
         super.removeEverything();
     }
 

@@ -560,6 +560,8 @@ boss-rush:
 # Admin: /leviathan, /sandworm, /lich, /frostwyrm, /stonegolem <summon [world x y z]|kill|phase <2|3>|item <name>>
 wild:
   require-biome: true
+  # With nobody in survival nearby, a wild boss fights creative players for show (no damage either way, no loot).
+  fight-creative: true
   # Natural spawns (checked every minute for each survival player in the right place; 0 = off):
   #   Lich: in the Deep Dark. Sandworm King: on the surface of a desert/badlands by day. Frost Wyrm: out on frozen
   #   peaks / snowy slopes / groves / ice spikes. Leviathan: in a deep ocean, swimming, in a boat or on a ship.

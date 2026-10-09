@@ -75,7 +75,12 @@ final class Creatures implements Listener, CommandExecutor {
 
     private void tick() {
         ticks++;
-        mimics.removeIf(m -> { if (!m.alive()) { m.remove(); return true; } m.tick(); return false; });
+        mimics.removeIf(m -> {
+            // still listed but gone = unloaded or removed, not killed (onDeath takes killed ones off the list): the chest comes back.
+            // (isDead() can't tell: Bukkit reports a removed mob as dead too)
+            if (!m.alive()) { m.restore(); m.remove(); return true; }
+            m.tick(); return false;
+        });
         if (ticks % (int) Math.max(200, cfg("skeleton-knights.check-seconds", 300) * 20) == 0 && plugin.getConfig().getBoolean("skeleton-knights.enabled", true)) patrols();
         if (ticks % 200 == 0) dawn();
     }
@@ -83,7 +88,8 @@ final class Creatures implements Listener, CommandExecutor {
     // =====================================================================================================
     //  MIMICS
     // =====================================================================================================
-    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    // HIGH: after protection plugins, so a chest you aren't allowed to open never wakes up
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onOpen(PlayerInteractEvent e) {
         if (e.getAction() != Action.RIGHT_CLICK_BLOCK || e.getHand() != EquipmentSlot.HAND || e.getClickedBlock() == null) return;
         Block b = e.getClickedBlock();
@@ -101,11 +107,13 @@ final class Creatures implements Listener, CommandExecutor {
 
     Mimic awaken(Block b, LootTable table, Player by) {
         float yaw = b.getBlockData() instanceof org.bukkit.block.data.Directional d ? faceYaw(d.getFacing()) : 0;
+        org.bukkit.block.data.BlockData was = b.getBlockData();
         if (b.getState() instanceof Chest c) c.getBlockInventory().clear();
         b.setType(Material.AIR);
         Location at = b.getLocation().add(0.5, 0, 0.5);
         at.setYaw(yaw);
         Mimic m = new Mimic(at, table);
+        m.home = b; m.homeData = was;
         mimics.add(m);
         World w = b.getWorld();
         w.playSound(at, Sound.BLOCK_CHEST_OPEN, SoundCategory.HOSTILE, 1.5f, 0.5f);
@@ -127,6 +135,8 @@ final class Creatures implements Listener, CommandExecutor {
         final ItemDisplay base, lid;
         final ArmorStand baseStand, lidStand;
         final LootTable table;
+        Block home;
+        org.bukkit.block.data.BlockData homeData;
         int t;
 
         Mimic(Location at, LootTable table) {
@@ -174,6 +184,17 @@ final class Creatures implements Listener, CommandExecutor {
             Location lidAt = hinge.clone().add(Wildish.dir(yaw).multiply(-0.15 * lift)).add(0, 0.35 * lift, 0);
             WildRig.pose(null, lidStand, "mimic_lid", 1.0, lidAt, yaw, null);
             if (hunting && t % 8 == 0) body.getWorld().playSound(l, Sound.BLOCK_CHEST_CLOSE, SoundCategory.HOSTILE, 0.8f, 1.4f);
+        }
+
+        /** It went away without being killed (chunk unloaded, restart): put its chest back, loot table and all. */
+        void restore() {
+            if (home == null || homeData == null) return;
+            try {
+                if (!home.getType().isAir() && !home.isLiquid()) return;
+                home.setBlockData(homeData, false);
+                if (home.getState() instanceof Chest c) { c.setLootTable(table); c.update(true, false); }
+            } catch (RuntimeException ignored) { }
+            home = null;
         }
 
         void remove() {
@@ -315,7 +336,7 @@ final class Creatures implements Listener, CommandExecutor {
             if (s.isValid()) { if (Weather.bedrock(p)) p.showEntity(plugin, s); else p.hideEntity(plugin, s); }
     }
 
-    void shutdown() { for (Mimic m : mimics) m.remove(); mimics.clear(); }
+    void shutdown() { for (Mimic m : mimics) { m.restore(); m.remove(); } mimics.clear(); }
 
     static void attr(LivingEntity e, Attribute a, double v) {
         AttributeInstance ai = e.getAttribute(a);

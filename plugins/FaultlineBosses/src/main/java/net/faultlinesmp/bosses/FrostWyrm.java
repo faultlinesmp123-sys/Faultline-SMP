@@ -434,8 +434,7 @@ final class FrostWyrm extends Wild.Boss {
 
     @Override
     void removeEverything() {
-        for (BlockDisplay d : ice) if (d.isValid()) d.remove();
-        ice.clear();
+        quietly(() -> { for (BlockDisplay d : ice) if (d.isValid()) d.remove(); ice.clear(); });
         super.removeEverything();
     }
 

@@ -1,5 +1,7 @@
 package net.faultlinesmp.bosses;
 
+import org.bukkit.entity.EntityType;
+
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Color;
@@ -56,7 +58,7 @@ final class StoneGolem extends Wild.Boss {
         super(w, "golem", at, by);
         k = c("scale", 1.0);
         Location spot = at.clone();
-        mover = world.spawn(spot, IronGolem.class, g -> {
+        mover = Wild.spawnAs(world, spot, EntityType.IRON_GOLEM, IronGolem.class, g -> {
             g.setPlayerCreated(false);
             g.setPersistent(false);
             g.setRemoveWhenFarAway(false);

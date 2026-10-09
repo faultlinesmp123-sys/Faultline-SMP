@@ -391,6 +391,14 @@ Notes:
   not real time: a 5 s lag spike made every live wild boss look stale and the next summon deleted it. A failed summon's
   chat message names the error and where in our code it broke (`Wild.where(e)`). Tested every wild boss through its
   command with Items + Raids loaded, survival and creative (`CmdTest`, run with `runall.sh`).
+- **Bosses 1.4.11 (THE reason the wild bosses wouldn't summon)**: on the live 26.2 server `world.spawn(at, Slime.class, ...)`
+  throws `IllegalArgumentException: Cannot spawn an entity for org.bukkit.entity.AbstractCubeMob` (Paper rewrites an old
+  plugin's `Slime` to the new abstract `AbstractCubeMob`). Every wild boss's hitboxes were spawned that way, so the model
+  appeared, the constructor threw, and the boss hung frozen / "couldn't appear". MockBukkit doesn't reproduce it.
+  RULE: spawn mobs BY ENTITY TYPE: `Wild.spawnAs(world, at, EntityType.X, X.class, setup)` (= `spawnEntity(at, type,
+  false)` + setup), like the older bosses' `(Slime) world.spawnEntity(at, EntityType.SLIME, false)`. Never
+  `world.spawn(at, Slime.class, ...)`. Wild minions (`minion(at, EntityType, Class, ...)`), the Golem's walker, the Lich's
+  crystals, Don's hitbox and the Kraken's drowned use it too.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

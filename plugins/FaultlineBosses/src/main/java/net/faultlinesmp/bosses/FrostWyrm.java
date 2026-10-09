@@ -1,5 +1,7 @@
 package net.faultlinesmp.bosses;
 
+import org.bukkit.entity.EntityType;
+
 import org.bukkit.ChatColor;
 import org.bukkit.Color;
 import org.bukkit.HeightMap;
@@ -408,7 +410,7 @@ final class FrostWyrm extends Wild.Boss {
                 Player t = a.isEmpty() ? null : a.get(random.nextInt(a.size()));
                 Location l = (t != null ? t.getLocation() : pos).clone().add(random.nextGaussian() * 8, 0, random.nextGaussian() * 8);
                 l.setY(ground(l));
-                Stray s = minion(l, Stray.class, ChatColor.AQUA + "Wyrmguard Archer", 26, m -> {
+                Stray s = minion(l, EntityType.STRAY, Stray.class, ChatColor.AQUA + "Wyrmguard Archer", 26, m -> {
                     m.getEquipment().setItemInMainHand(new ItemStack(Material.BOW));
                     m.getEquipment().setItemInMainHandDropChance(0);
                     m.setShouldBurnInDay(false);

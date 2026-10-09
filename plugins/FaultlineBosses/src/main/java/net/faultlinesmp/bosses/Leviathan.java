@@ -1,5 +1,7 @@
 package net.faultlinesmp.bosses;
 
+import org.bukkit.entity.EntityType;
+
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Color;
@@ -440,7 +442,7 @@ final class Leviathan extends Wild.Boss {
                 Player t = a.isEmpty() ? null : a.get(random.nextInt(a.size()));
                 Location l = (t != null ? t.getLocation() : headPos).clone().add(random.nextGaussian() * 4, 0, random.nextGaussian() * 4);
                 l.setY(Math.max(surfaceY - 1, ground(l)));
-                Drowned d = minion(l, Drowned.class, ChatColor.DARK_AQUA + "Drowned of the Deep", 30, m -> {
+                Drowned d = minion(l, EntityType.DROWNED, Drowned.class, ChatColor.DARK_AQUA + "Drowned of the Deep", 30, m -> {
                     m.getEquipment().setItemInMainHand(new ItemStack(Material.TRIDENT));
                     m.getEquipment().setItemInMainHandDropChance(0);
                     m.setShouldBurnInDay(false);

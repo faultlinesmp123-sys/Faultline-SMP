@@ -5098,7 +5098,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                     double ang = random.nextDouble() * Math.PI * 2;
                     Location l = pos.toLocation(world).add(Math.cos(ang) * 6, -2, Math.sin(ang) * 6);
                     if (!isWater(l.getBlock())) continue;
-                    org.bukkit.entity.Drowned d = world.spawn(l, org.bukkit.entity.Drowned.class, z -> {
+                    org.bukkit.entity.Drowned d = Wild.spawnAs(world, l, EntityType.DROWNED, org.bukkit.entity.Drowned.class, z -> {
                         z.getEquipment().setItemInMainHand(new ItemStack(Material.TRIDENT));
                         z.getEquipment().setItemInMainHandDropChance(0f);
                         z.setPersistent(false);
@@ -8994,7 +8994,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             this.floorY = spot.getBlockY();
             this.pos = spot.toVector();
             this.yaw = by.getLocation().getYaw() + 180;
-            this.hitbox = world.spawn(spot, Zombie.class, z -> {
+            this.hitbox = Wild.spawnAs(world, spot, EntityType.ZOMBIE, Zombie.class, z -> {
                 z.setAI(false); z.setSilent(true); z.setGravity(false); z.setAdult(); z.setShouldBurnInDay(false);
                 z.setPersistent(false); z.setRemoveWhenFarAway(false); z.setCanPickupItems(false);
                 z.getEquipment().clear();

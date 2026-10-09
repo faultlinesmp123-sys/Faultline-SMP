@@ -26,6 +26,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Display;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.ExperienceOrb;
 import org.bukkit.entity.ItemDisplay;
 import org.bukkit.entity.LivingEntity;
@@ -357,6 +358,19 @@ final class Wild implements Listener {
     }
 
     Boss get(String kind) { return live(kind); }
+
+    /**
+     * Spawns a mob BY ITS ENTITY TYPE, then sets it up. BUG FIX (1.4.11): every wild boss's hitboxes were spawned with
+     * world.spawn(at, Slime.class, ...); Paper 26.2 turns an older plugin's Slime into its new AbstractCubeMob, which it
+     * can't spawn ("Cannot spawn an entity for org.bukkit.entity.AbstractCubeMob"), so the model appeared, the summon
+     * failed halfway, and the boss hung there frozen. The older bosses always spawned theirs by EntityType and worked.
+     */
+    static <T extends Entity> T spawnAs(World w, Location at, EntityType type, Class<T> cls, java.util.function.Consumer<T> setup) {
+        Entity e = w.spawnEntity(at, type, false);
+        T t = cls.cast(e);
+        if (setup != null) setup.accept(t);
+        return t;
+    }
 
     /** " at Leviathan.java:66 < Wild.java:340": where in our code it broke, so a screenshot of the chat is enough. */
     static String where(Throwable e) {
@@ -1141,7 +1155,7 @@ final class Wild implements Listener {
 
         // ---------- helpers ----------
         Slime hitbox(Location at, int size, String name) {
-            Slime s = world.spawn(at, Slime.class, sl -> {
+            Slime s = spawnAs(world, at, EntityType.SLIME, Slime.class, sl -> {
                 sl.setSize(size);
                 sl.addScoreboardTag(HIT_TAG);
                 sl.addScoreboardTag("faultline_" + INDEX.get(kind));
@@ -1151,8 +1165,8 @@ final class Wild implements Listener {
             return s;
         }
 
-        <T extends LivingEntity> T minion(Location at, Class<T> type, String name, double health, java.util.function.Consumer<T> more) {
-            T m = world.spawn(at, type, e -> {
+        <T extends LivingEntity> T minion(Location at, EntityType et, Class<T> type, String name, double health, java.util.function.Consumer<T> more) {
+            T m = spawnAs(world, at, et, type, e -> {
                 e.addScoreboardTag(MOB_TAG);
                 e.addScoreboardTag("faultline_" + INDEX.get(kind) + "_minion");
                 e.setPersistent(false);

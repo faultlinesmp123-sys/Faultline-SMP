@@ -1,5 +1,7 @@
 package net.faultlinesmp.bosses;
 
+import org.bukkit.entity.EntityType;
+
 import org.bukkit.ChatColor;
 import org.bukkit.Color;
 import org.bukkit.Location;
@@ -300,7 +302,7 @@ final class Sandworm extends Wild.Boss {
                 Player t = a.isEmpty() ? null : a.get(random.nextInt(a.size()));
                 Location l = (t != null ? t.getLocation() : headPos).clone().add(random.nextGaussian() * 5, 0, random.nextGaussian() * 5);
                 l.setY(groundAt(l));
-                Silverfish s = minion(l, Silverfish.class, ChatColor.GOLD + "Sandworm Larva", 24, m -> {
+                Silverfish s = minion(l, EntityType.SILVERFISH, Silverfish.class, ChatColor.GOLD + "Sandworm Larva", 24, m -> {
                     attr(m, Attribute.SCALE, 2.4);
                     attr(m, Attribute.ATTACK_DAMAGE, 5);
                     attr(m, Attribute.MOVEMENT_SPEED, 0.3);

@@ -1,5 +1,7 @@
 package net.faultlinesmp.bosses;
 
+import org.bukkit.entity.EntityType;
+
 import org.bukkit.ChatColor;
 import org.bukkit.Color;
 import org.bukkit.Location;
@@ -142,7 +144,7 @@ final class Lich extends Wild.Boss {
                 double ang = i * Math.PI * 2 / 3 + random.nextDouble();
                 Location l = home.clone().add(Math.cos(ang) * c("crystal-distance", 12), 0, Math.sin(ang) * c("crystal-distance", 12));
                 l.setY(ground(l) + 1);
-                EnderCrystal cr = world.spawn(l, EnderCrystal.class, e -> {
+                EnderCrystal cr = Wild.spawnAs(world, l, EntityType.END_CRYSTAL, EnderCrystal.class, e -> {
                     e.setShowingBottom(false);
                     e.setPersistent(false);
                     e.addScoreboardTag(Wild.FX_TAG);
@@ -261,7 +263,7 @@ final class Lich extends Wild.Boss {
                 Player face = a.isEmpty() ? null : a.get(i % a.size());
                 Location l = pos.clone().add(random.nextGaussian() * 4, 0, random.nextGaussian() * 4);
                 l.setY(ground(l));
-                Zombie z = minion(l, Zombie.class, ChatColor.DARK_PURPLE + "Revenant" + (face != null ? " of " + face.getName() : ""), 30, m -> {
+                Zombie z = minion(l, EntityType.ZOMBIE, Zombie.class, ChatColor.DARK_PURPLE + "Revenant" + (face != null ? " of " + face.getName() : ""), 30, m -> {
                     m.setShouldBurnInDay(false);
                     m.setAdult();
                     m.setCanPickupItems(false);

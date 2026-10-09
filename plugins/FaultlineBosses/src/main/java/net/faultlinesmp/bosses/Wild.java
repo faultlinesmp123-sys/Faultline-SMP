@@ -372,6 +372,8 @@ final class Wild implements Listener {
         return t;
     }
 
+    static final Map<String, Double> OLD_HEALTH = Map.of("leviathan", 2400.0, "sandworm", 3600.0, "lich", 2800.0, "frostwyrm", 3200.0);
+
     /** " at Leviathan.java:66 < Wild.java:340": where in our code it broke, so a screenshot of the chat is enough. */
     static String where(Throwable e) {
         StringBuilder sb = new StringBuilder();
@@ -773,6 +775,8 @@ final class Wild implements Listener {
         /** Put the part's origin at pos, facing yaw (pitch: nose down +, roll: right side down +), with an extra turn in its own frame. */
         void pose(Location pos, float yaw, float pitch, float roll, Quaternionf local) {
             if (d == null || !d.isValid()) return;
+            // real Paper refuses to teleport to a non-finite spot (an error every tick = the boss removed); skip that frame
+            if (!Double.isFinite(pos.getX() + pos.getY() + pos.getZ()) || !Float.isFinite(yaw + pitch + roll)) return;
             at = pos.clone(); at.setYaw(yaw); at.setPitch(pitch);
             Location l = pos.clone(); l.setYaw(0); l.setPitch(0);
             d.teleport(l);
@@ -836,12 +840,31 @@ final class Wild implements Listener {
             this.world = at.getWorld();
             this.home = at.clone();
             this.rig = w.new Rig(world);
-            maxHp = hp = c("health", defHealth());
+            maxHp = hp = baseHealth();
             if (by != null && survival(by)) fighters.add(by.getUniqueId());
             bar = Bukkit.createBossBar(color() + "" + ChatColor.BOLD + name(), barColor(), BarStyle.SEGMENTED_10);
         }
 
         double c(String path, double def) { return pl.getConfig().getDouble("wild." + kind + "." + path, def); }
+
+        /**
+         * They're all mini bosses now (1.4.12): the Stone Golem's 900 health and +25% per extra fighter. A server config
+         * still holding the OLD default (2400 / 3600 / 2800 / 3200, +20%) gets the new one; any other number is kept.
+         */
+        double baseHealth() {
+            double v = c("health", defHealth());
+            return OLD_HEALTH.getOrDefault(kind, -1.0) == v ? defHealth() : v;
+        }
+
+        double perFighter() {
+            double v = c("health-per-extra-fighter", 0.25);
+            return v == 0.2 ? 0.25 : v;
+        }
+
+        /** Ticks left of a flinch after a hit (eases out). */
+        int flinch;
+        /** 0..1 how hard it's flinching right now. */
+        double flinchAmt() { return flinch <= 0 ? 0 : Math.sin(Math.PI * (8 - flinch) / 8.0) * (flinch / 8.0 + 0.3); }
         String name() { return NAMES.get(kind); }
         ChatColor color() { return COLOR.get(kind); }
         BarColor barColor() { return BarColor.WHITE; }
@@ -916,12 +939,13 @@ final class Wild implements Listener {
             if (n <= scaledFor) return;
             double frac = hp / maxHp;
             scaledFor = n;
-            maxHp = c("health", defHealth()) * (1 + c("health-per-extra-fighter", 0.2) * (n - 1));
+            maxHp = baseHealth() * (1 + perFighter() * (n - 1));
             hp = maxHp * frac;
         }
 
         void tick() {
             ticks++;
+            if (flinch > 0) flinch--;
             if (dying) { deathTick(); return; }
             if (!valid()) { leave(null); return; }
             List<Player> a = active();
@@ -1050,6 +1074,7 @@ final class Wild implements Listener {
             }
             amount = damageTaken(amount);
             if (amount <= 0) return;
+            if (amount >= 4) flinch = 8; // a real hit: the body recoils (each boss's pose reads it)
             hp -= amount;
             if (hp <= 0) { hp = 0; defeat(); }
         }

@@ -280,7 +280,7 @@ Notes:
   (each part's display scale/offset). Bedrock sees every model part as the helmet of an armor stand only Floodgate players
   can see (`setVisibleByDefault(false)` + `showEntity`); hitting the stand hits the boss.
   **Wild bosses** (`FaultlineBosses/Wild.java`: rig, shared fight loop, summon items, weapons; config `wild:`; summon items
-  only work in their biome unless `wild.require-biome: false`): **Leviathan** (`Leviathan.java`, 2400 hp, Abyssal Lure over
+  only work in their biome unless `wild.require-biome: false`): **Leviathan** (`Leviathan.java`, 900 hp (all five are mini bosses since 1.4.12), Abyssal Lure over
   deep ocean or 0.4% at night sailing; Tidal Ram / Water Spout / Bile / Roar / Coil / Tail Sweep / Drowned; hits near a ship
   break its parts via ShipLink, `ship-damage.*`; drops Tidebreaker trident 25%), **Sandworm King** (`Sandworm.java`, 3600,
   Sandworm Drum on sand; Eruption / Slither / Boulders / Quicksand / Brood (Larvae) / Tremor; Sandworm Fang sword: Burrow Dash),
@@ -399,6 +399,18 @@ Notes:
   false)` + setup), like the older bosses' `(Slime) world.spawnEntity(at, EntityType.SLIME, false)`. Never
   `world.spawn(at, Slime.class, ...)`. Wild minions (`minion(at, EntityType, Class, ...)`), the Golem's walker, the Lich's
   crystals, Don's hitbox and the Kraken's drowned use it too.
+- **Bosses 1.4.12 / Index 1.6.3: the 5 wild bosses are all MINI BOSSES**: 900 health, +25% per extra fighter (the Golem's).
+  `Boss.baseHealth()`/`perFighter()` treat a server config still holding the old defaults (`Wild.OLD_HEALTH` 2400/3600/
+  2800/3200, +0.2) as the new one. Damage on the Golem's 10-14 scale (Tidal Ram 15 -> 14, Eruption 16 -> 14). Animations:
+  `Boss.flinch`/`flinchAmt()` (set by a hit of 4+, every boss recoils); Lich `animate()` (eased lift/pitch/roll/scale/spin
+  per move: lean into the drift, bolt recoil, Raise arms-up then slam, Ring spin, Blink shrink to a speck and back,
+  Darkness hunch/throw, Drain high and shuddering; death: rise, crumple, dwindle); Sandworm `place()` draws a sideways
+  slither + ring ripple (per-segment scale) + twist on the chain (hitboxes untouched), head shake on Eruption/Tremor, head
+  lift for Boulders/Brood, death sinks ring by ring (`sinkFrom`); Leviathan head eases + recoils + snaps at the end of the
+  ram, the roll runs down the body with the humps, death rolls belly-up (`deathRoll`); Frost Wyrm eases its neck between
+  poses (it SNAPPED), banks into turns (`aBank`), power-stroke wingbeat with the body bobbing, wings swept back in a dive,
+  head tracks its target (not during Breath), tail swings, death = limp wings + spiral. `Part.pose` skips non-finite
+  positions (real Paper throws on them). Index entries say "A mini boss ..., 900 health".
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

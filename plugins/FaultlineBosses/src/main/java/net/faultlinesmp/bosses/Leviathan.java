@@ -87,7 +87,7 @@ final class Leviathan extends Wild.Boss {
         cd = 80;
     }
 
-    @Override double defHealth() { return 2400; }
+    @Override double defHealth() { return 900; } // a mini boss, like the Stone Golem
     @Override BarColor barColor() { return BarColor.BLUE; }
     @Override String music() { return "minecraft:music_disc.creator"; }
     @Override double musicLength() { return 176; }
@@ -214,7 +214,12 @@ final class Leviathan extends Wild.Boss {
         chain.lead(headPos, gaps);
         Vector hf = chain.facing(0);
         float hy = yawOf(flat(hf)), hp = attack == ROAR ? -35 : pitchOf(hf.lengthSquared() < 1e-4 ? dirOf(yaw) : hf);
-        head.pose(headPos, yaw, Math.max(-40, Math.min(40, hp)), 0, null);
+        // the head: eases between poses, sways as it swims, recoils when hit, snaps when the ram lands
+        double fl = flinchAmt();
+        double wantPitch = Math.max(-40, Math.min(40, hp)) - fl * 18 + (attack == RAM && at > 0 && at % 20 < 4 ? 18 : 0);
+        aHeadPitch += (wantPitch - aHeadPitch) * 0.3;
+        double headRoll = Math.sin(ticks * 0.09) * 7 + fl * (ticks % 2 == 0 ? 9 : -9) + deathRoll;
+        head.pose(headPos, yaw, (float) aHeadPitch, (float) headRoll, null);
         // The spine breaches: segments near the surface rise in travelling humps (a wave running down the body), so the
         // body shows above the water and not just the head (before 1.4.7 the whole body swam ~1 block under the surface).
         List<Location> shown = new ArrayList<>(chain.pts.size());
@@ -222,10 +227,12 @@ final class Leviathan extends Wild.Boss {
         for (int i = 1; i < chain.pts.size(); i++) shown.add(chain.pts.get(i).clone().add(0, hump(i, chain.pts.get(i)), 0));
         for (int i = 0; i < segs; i++) {
             Vector f = shown.get(i).toVector().subtract(shown.get(i + 1).toVector());
-            body.get(i).pose(shown.get(i + 1), yawOf(flat(f)), Math.max(-50, Math.min(50, pitchOf(f))), (float) (Math.sin(ticks * 0.15 + i * 0.6) * 6), null);
+            // each segment rolls into its hump and back: the twist runs down the body with the wave
+            float roll = (float) (Math.sin(ticks * 0.14 - i * 0.95) * 11 + deathRoll * Math.min(1, 0.4 + i * 0.08));
+            body.get(i).pose(shown.get(i + 1), yawOf(flat(f)), Math.max(-50, Math.min(50, pitchOf(f))), roll, null);
         }
         Vector tf = shown.get(segs).toVector().subtract(shown.get(segs + 1).toVector());
-        tail.pose(shown.get(segs + 1), yawOf(flat(tf)), Math.max(-50, Math.min(50, pitchOf(tf))), (float) (Math.sin(ticks * 0.2) * 20), null);
+        tail.pose(shown.get(segs + 1), yawOf(flat(tf)), Math.max(-50, Math.min(50, pitchOf(tf))), (float) (Math.sin(ticks * 0.2) * 28 + deathRoll), null);
         // hitboxes: the head, then every other segment
         if (!hitboxes.isEmpty()) hitboxes.get(0).teleport(headPos.clone().add(0, -1.0 * k, 0));
         for (int h = 1, i = 1; h < hitboxes.size() && i < chain.pts.size(); h++, i += 2)
@@ -329,7 +336,7 @@ final class Leviathan extends Wild.Boss {
         headPos.setY(Math.min(surfaceY + 0.4, headPos.getY() + 0.5));
         world.spawnParticle(Particle.SPLASH, headPos, 40, 1.2, 0.6, 1.2, 0.3);
         for (Player p : near(headPos, 3.2 * k, 5)) if (hitThisMove.add(p.getUniqueId())) {
-            hit(p, c("moves.ram", 15), headPos.toVector(), Guard.HEAVY);
+            hit(p, c("moves.ram", 14), headPos.toVector(), Guard.HEAVY);
             p.setVelocity(lineDir.clone().multiply(1.2).setY(0.9));
         }
         shipHit(headPos, c("ship-damage.ram", 0.1), 4 * k);
@@ -454,9 +461,13 @@ final class Leviathan extends Wild.Boss {
         if (at > 20) end();
     }
 
+    double aHeadPitch, deathRoll;
+
     @Override
     void deathAnim(int t) {
-        headPos = headPos.clone().add(0, -0.08, 0);
+        // a last thrash, then it rolls belly-up and sinks into the dark
+        deathRoll = Math.min(170, Math.max(0, t - 10) * 3.5) + (t < 20 ? Math.sin(t * 1.5) * 20 : 0);
+        headPos = headPos.clone().add(0, t < 20 ? 0.03 : -0.1, 0);
         place();
         if (t % 3 == 0) world.spawnParticle(Particle.BUBBLE_COLUMN_UP, headPos, 30, 2, 1, 2, 0.1);
         if (t % 10 == 0) world.playSound(headPos, Sound.ENTITY_ELDER_GUARDIAN_DEATH, SoundCategory.HOSTILE, 2.5f, 0.5f);

@@ -778,23 +778,23 @@ entries:
 
   # ---------------------------------------------------------------- 1.6: the wild update
   - {chapter: bosses, id: leviathan, name: "The Leviathan", icon: leviathan, detect-tag: faultline_leviathan,
-     where: "The deep ocean. Drop an Abyssal Lure over open water (from a ship, a boat or swimming), or meet it sailing the deep ocean at night. 2,400 health (+20% per extra fighter).",
+     where: "The deep ocean. A mini boss of the deep ocean. Drop an Abyssal Lure over open water (from a ship, a boat or swimming), or meet it sailing the deep ocean at night. 900 health (+25% per extra fighter).",
      does: "A sea serpent that breaches the waves as it circles you. Tidal Ram (it dives, a blue line shows, it surges along it: ships in the way take a big hit), Water Spout (geysers under you), Bile (poison globs), Abyssal Roar. From 60%: the Coil (it circles you tight and crushes, ships inside break), Tail Sweep, and Drowned of the Deep. From 30% it rams more. Takes half damage while diving. Music: Creator.",
      drops: ["4-6 Mythic Goodie Bags|100%", "3 Goodie Bags|100%", "6-12 Diamonds|100%", "Heart of the Sea|100%", "Tidebreaker|25%", "2,000 XP|100%"]}
   - {chapter: bosses, id: sandworm_king, name: "The Sandworm King", icon: sandworm_king, detect-tag: faultline_sandworm_king,
-     where: "Deserts and badlands. Beat a Sandworm Drum on the sand. 3,600 health.",
+     where: "A mini boss of the deserts and badlands. Beat a Sandworm Drum on the sand. 900 health (+25% per extra fighter).",
      does: "A colossal worm that swims through the sand. Eruption (a ring under you, then it bursts up there and arcs back down), Slither (it rides the surface at you), Sandstone Boulders, Quicksand (slows you and drags you in). From 60%: Sandworm Larvae. From 30%: Tremor (rings race along the ground: be in the air when one passes). Music: 5.",
      drops: ["4-6 Mythic Goodie Bags|100%", "3 Goodie Bags|100%", "6-12 Diamonds|100%", "4-8 Gold Blocks|100%", "Sandworm Fang|25%", "2,000 XP|100%"]}
   - {chapter: bosses, id: lich, name: "The Lich", icon: lich, detect-tag: faultline_lich,
-     where: "The Deep Dark. Break a Cursed Phylactery there. 2,800 health.",
+     where: "A mini boss of the Deep Dark. Break a Cursed Phylactery there. 900 health (+25% per extra fighter).",
      does: "An undead sorcerer-king who floats and blinks around. Soul Bolts (homing skulls), Raise the Fallen (Revenants wearing YOUR faces), Death Ring (jump the soul fire), Blink Strike. At 60% he hides his life in three Phylacteries (end crystals): he can't be hurt until they're broken. + Darkness. From 30%: Life Drain (beams from everyone near him heal him). Music: 13.",
      drops: ["4-6 Mythic Goodie Bags|100%", "3 Goodie Bags|100%", "2-4 Echo Shards|100%", "Totem of Undying|50%", "Staff of the Lich|25%", "2,500 XP|100%"]}
   - {chapter: bosses, id: frost_wyrm, name: "The Frost Wyrm", icon: frost_wyrm, detect-tag: faultline_frost_wyrm,
-     where: "Frozen peaks, snowy slopes, groves and ice spikes. Sound a Frozen Horn up there. 3,200 health.",
+     where: "A mini boss of the frozen peaks, snowy slopes, groves and ice spikes. Sound a Frozen Horn up there. 900 health (+25% per extra fighter).",
      does: "An ice dragon that circles high above (bring a bow). Frost Breath (it hovers and freezes a cone), Icicle Rain, Dive Bomb (a swoop down a red line), Glacial Roar (it lands and ice spikes burst out around it). From 60%: Wyrmguard Archers. From 30%: a blizzard around it all fight. Music: Relic.",
      drops: ["4-6 Mythic Goodie Bags|100%", "3 Goodie Bags|100%", "8-16 Diamonds|100%", "Elytra|10%", "Glacial Fang|25%", "2,500 XP|100%"]}
   - {chapter: bosses, id: stone_golem, name: "The Stone Golem", icon: stone_golem, detect-tag: faultline_stone_golem,
-     where: "A mini boss of the lush caves: it wakes by itself near someone exploring one. 900 health.",
+     where: "A mini boss of the lush caves: it wakes by itself near someone exploring one. 900 health (+25% per extra fighter).",
      does: "An ancient mossy guardian with amber eyes. Ground Pound (a shockwave ring), Boulder Throw, Crystal Spikes (amethyst bursts along a line). Below 60% it roots itself and heals (Overgrowth) until you hit it hard enough.",
      drops: ["2-4 Ancient Gear Parts|100%", "Mythic Goodie Bag|100%", "2 Goodie Bags|100%", "8-16 Amethyst Shards|100%", "600 XP|100%"]}
   - {chapter: bosses, id: ghost_captain, name: "Captain Hollow", icon: ghost_captain, detect-tag: faultline_ghost_captain,

@@ -67,7 +67,7 @@ final class Lich extends Wild.Boss {
         cd = 50;
     }
 
-    @Override double defHealth() { return 2800; }
+    @Override double defHealth() { return 900; } // a mini boss, like the Stone Golem
     @Override BarColor barColor() { return BarColor.PURPLE; }
     @Override String music() { return "minecraft:music_disc.13"; }
     @Override double musicLength() { return 178; }
@@ -110,7 +110,7 @@ final class Lich extends Wild.Boss {
         }
         double gy = ground(pos);
         pos.setY(gy + 0.5 + Math.sin(ticks * 0.07) * 0.25);
-        model.pose(pos, yaw, 0, (float) Math.sin(ticks * 0.05) * 3, null);
+        animate();
         for (int i = 0; i < hitboxes.size(); i++) hitboxes.get(i).teleport(pos.clone().add(0, i * 1.5 * k, 0));
         if (ticks % 3 == 0) world.spawnParticle(Particle.SOUL_FIRE_FLAME, pos.clone().add(0, 0.2, 0), 2, 0.4, 0.1, 0.4, 0.01);
         if (ticks % 6 == 0) world.spawnParticle(Particle.DUST, center().add(0, 1.3 * k, 0), 2, 0.2, 0.1, 0.2, 0, new Particle.DustOptions(Color.fromRGB(90, 255, 130), 1.2f));
@@ -124,6 +124,62 @@ final class Lich extends Wild.Boss {
                 world.playSound(pos, Sound.ENTITY_WITHER_HURT, SoundCategory.HOSTILE, 3f, 0.5f);
             } else if (ticks % 10 == 0) world.spawnParticle(Particle.ENCHANT, center(), 30, 0.8, 1.2, 0.8, 0.5);
         }
+    }
+
+    // =====================================================================================================
+    //  animation: one model, so the whole body acts. Every value eases toward the move's target pose.
+    // =====================================================================================================
+    double aLift, aPitch, aRoll, aScale = 1, aSpin;
+    Location lastPos;
+
+    void animate() {
+        double lift = Math.sin(ticks * 0.07) * 0.1, pitch = 0, roll = Math.sin(ticks * 0.05) * 3, scale = 1, spin = 0;
+        // lean into the drift: forward when closing in, back when backing off
+        if (lastPos != null && lastPos.getWorld() == pos.getWorld()) {
+            Vector mv = pos.toVector().subtract(lastPos.toVector()).setY(0);
+            double fwd = mv.dot(dirOf(yaw));
+            pitch += Math.max(-8, Math.min(10, fwd * 60));
+            roll += Math.max(-8, Math.min(8, mv.dot(dirOf(yaw + 90)) * 60));
+        }
+        lastPos = pos.clone();
+        switch (attack) {
+            case BOLTS -> { // each skull: a wind-up back, then thrust forward as it flies
+                int ph = at % 8;
+                pitch += ph < 4 ? -10 : ph < 6 ? 14 : 4;
+                lift += 0.3;
+            }
+            case RAISE -> { // rises, arms up and leaning back... then slams the dead up out of the ground
+                if (at < 16) { lift += 0.9 * Math.min(1, at / 10.0); pitch -= 18; roll += Math.sin(at * 0.6) * 4; }
+                else { lift -= 0.3; pitch += 20; }
+            }
+            case RING -> { // floats up and turns slowly while the soul fire spreads
+                lift += at < 18 ? 0.7 * at / 18.0 : 0.7;
+                spin = at < 18 ? at * 4 : 72 + (at - 18) * 2;
+                pitch -= 6;
+            }
+            case BLINK -> { // fades to a speck, reappears behind you, then the strike
+                if (at <= 8) scale = Math.max(0.08, 1 - at / 8.0);
+                else if (at <= 14) scale = Math.min(1, (at - 8) / 6.0);
+                if (at >= 16 && at <= 22) pitch += at < 19 ? -14 : 26; // raise... and cut
+            }
+            case DARKNESS -> { // hunched over the gathering dark, then throws it out
+                if (at < 10) { pitch += 16; lift -= 0.25; } else { pitch -= 22; lift += 0.3; }
+            }
+            case DRAIN -> { // hanging high, head back, shuddering as he feeds
+                lift += 1.1;
+                pitch -= 14;
+                roll += Math.sin(ticks * 0.9) * 3;
+            }
+            default -> { }
+        }
+        if (shielded) lift += 0.4; // held up by the phylacteries' beams
+        double f = flinchAmt();
+        pitch -= f * 14; roll += f * (ticks % 2 == 0 ? 5 : -5);
+        double e = 0.22;
+        aLift += (lift - aLift) * e; aPitch += (pitch - aPitch) * e; aRoll += (roll - aRoll) * e;
+        aScale += (scale - aScale) * (attack == BLINK ? 0.6 : e); aSpin += (spin - aSpin) * e;
+        model.k = k * aScale;
+        model.pose(pos.clone().add(0, aLift, 0), (float) (yaw + aSpin), (float) aPitch, (float) aRoll, null);
     }
 
     @Override
@@ -356,8 +412,12 @@ final class Lich extends Wild.Boss {
 
     @Override
     void deathAnim(int t) {
-        pos = pos.clone().add(0, 0.04, 0);
-        model.pose(pos, yaw + t * 6, 0, 0, null);
+        // he shudders, rises, crumples forward as the soul leaves, and dwindles to nothing
+        double rise = Math.min(1.5, t * 0.03);
+        double crumple = Math.min(70, Math.max(0, t - 30) * 2.5);
+        double shrink = t < 50 ? 1 : Math.max(0.05, 1 - (t - 50) / 30.0);
+        model.k = k * shrink;
+        model.pose(pos.clone().add(0, rise, 0), (float) (yaw + Math.sin(t * 0.8) * (t < 30 ? 6 : 1)), (float) crumple, (float) (Math.sin(t * 1.3) * 4), null);
         if (t % 2 == 0) world.spawnParticle(Particle.SOUL, center(), 10, 0.5, 1, 0.5, 0.05);
         if (t % 15 == 0) world.playSound(pos, Sound.ENTITY_WITHER_DEATH, SoundCategory.HOSTILE, 1.5f, 1.4f);
     }

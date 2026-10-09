@@ -79,7 +79,7 @@ final class Sandworm extends Wild.Boss {
 
     private void at_(Player by) { focus = by; at = 0; startMove(ERUPT, by); }
 
-    @Override double defHealth() { return 3600; }
+    @Override double defHealth() { return 900; } // a mini boss, like the Stone Golem
     @Override BarColor barColor() { return BarColor.YELLOW; }
     @Override String music() { return "minecraft:music_disc.5"; }
     @Override double musicLength() { return 178; }
@@ -124,6 +124,10 @@ final class Sandworm extends Wild.Boss {
             if (attack == BOULDERS || attack == TREMOR) g.setY(gy + 1.6);
             steer(g, c("speed", 0.38) * (phase >= 2 ? 1.2 : 1), 7);
         }
+        double wantShake = attack == TREMOR ? 10 : attack == ERUPT && at > (phase == 3 ? 26 : 36) && at < (phase == 3 ? 46 : 56) ? 7 : 0;
+        double wantLift = attack == BOULDERS && at < 20 ? 1.2 : attack == BROOD ? 0.6 : 0;
+        rageShake += (wantShake - rageShake) * 0.2;
+        headLift += (wantLift - headLift) * 0.15;
         place();
         // sand where it breaks the surface
         if (ticks % 2 == 0) for (int i = 0; i < chain.pts.size(); i += 2) {
@@ -137,17 +141,41 @@ final class Sandworm extends Wild.Boss {
         if (ticks % 40 == 0) world.playSound(headPos, Sound.BLOCK_SAND_BREAK, SoundCategory.HOSTILE, 3f, 0.4f);
     }
 
+    double rageShake, headLift;
+    int sinkFrom = -1; // dying: segments from this index on have gone under
+
     void place() {
         chain.lead(headPos, gaps);
-        Vector hf = chain.facing(0);
-        float hp = pitchOf(hf.lengthSquared() < 1e-4 ? dirOf(yaw) : hf);
-        head.pose(headPos, yaw, Math.max(-80, Math.min(80, hp)), 0, null);
-        for (int i = 0; i < segs; i++) {
-            Vector f = chain.facing(i + 1);
-            body.get(i).pose(chain.pts.get(i + 1), yawOf(flat(f)), Math.max(-80, Math.min(80, pitchOf(f))), 0, null);
+        // What's drawn rides on the chain: a sideways slither running down the body, a ripple of the armour rings
+        // (each segment swells and eases in turn) and a slow twist. The chain and hitboxes stay where they are.
+        int n = chain.pts.size();
+        List<Location> shown = new ArrayList<>(n);
+        double travel = ticks * (attack == SLITHER ? 0.45 : 0.22);
+        for (int i = 0; i < n; i++) {
+            Location p = chain.pts.get(i).clone();
+            if (i > 0) {
+                Vector f = flat(chain.facing(i));
+                Vector side = new Vector(-f.getZ(), 0, f.getX());
+                double amp = (dying ? 0.15 : 0.45) * k * Math.min(1, i / 3.0);
+                p.add(side.multiply(Math.sin(travel - i * 0.75) * amp));
+            }
+            if (sinkFrom >= 0 && i >= sinkFrom) p.add(0, -3.5 * k, 0);
+            shown.add(p);
         }
-        Vector tf = chain.facing(segs + 1);
-        tail.pose(chain.pts.get(segs + 1), yawOf(flat(tf)), Math.max(-80, Math.min(80, pitchOf(tf))), 0, null);
+        Vector hf = shown.get(0).toVector().subtract(shown.get(1).toVector());
+        float hp = pitchOf(hf.lengthSquared() < 1e-4 ? dirOf(yaw) : hf);
+        double fl = flinchAmt();
+        float headRoll = (float) (Math.sin(ticks * 1.7) * rageShake + Math.sin(ticks * 0.11) * 6 + fl * 12);
+        Location hpPos = shown.get(0).clone().add(0, headLift, 0);
+        head.pose(hpPos, yaw, (float) Math.max(-80, Math.min(80, hp - headLift * 12 - fl * 10)), headRoll, null);
+        for (int i = 0; i < segs; i++) {
+            Vector sf = shown.get(i).toVector().subtract(shown.get(i + 1).toVector());
+            Wild.Part b = body.get(i);
+            b.k = k * (1 - 0.025 * i) * (1 + 0.07 * Math.sin(ticks * 0.3 - i * 0.9));
+            b.pose(shown.get(i + 1), yawOf(flat(sf)), Math.max(-80, Math.min(80, pitchOf(sf))), (float) (Math.sin(travel * 0.6 - i * 0.5) * 10), null);
+        }
+        Vector tf = shown.get(segs).toVector().subtract(shown.get(segs + 1).toVector());
+        tail.pose(shown.get(segs + 1), yawOf(flat(tf)), Math.max(-80, Math.min(80, pitchOf(tf))), (float) (Math.sin(ticks * 0.25) * 25), null);
         if (!hitboxes.isEmpty()) hitboxes.get(0).teleport(headPos.clone().add(0, -1.6 * k, 0));
         for (int h = 1, i = 3; h < hitboxes.size() && i < chain.pts.size(); h++, i += 3)
             hitboxes.get(h).teleport(chain.pts.get(i).clone().add(0, -1.4 * k, 0));
@@ -225,7 +253,7 @@ final class Sandworm extends Wild.Boss {
             world.spawnParticle(Particle.BLOCK, mark.clone().add(0, 0.5, 0), 160, 2.5, 1, 2.5, 0.2, Material.SAND.createBlockData());
             world.spawnParticle(Particle.EXPLOSION, mark, 4, 1.5, 0.5, 1.5, 0);
             world.playSound(mark, Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.HOSTILE, 3f, 0.5f);
-            for (Player pp : near(mark, 3.8, 6)) { hit(pp, c("moves.eruption", 16), mark.toVector(), Guard.HEAVY); pp.setVelocity(new Vector(0, 1.3, 0)); }
+            for (Player pp : near(mark, 3.8, 6)) { hit(pp, c("moves.eruption", 14), mark.toVector(), Guard.HEAVY); pp.setVelocity(new Vector(0, 1.3, 0)); }
         }
         for (Player pp : near(headPos.clone().add(0, -2, 0), 2.6 * k, 5)) if (hitThisMove.add(pp.getUniqueId())) hit(pp, c("moves.eruption-body", 9), headPos.toVector(), Guard.BLOCKABLE);
         if (t >= dur) end();
@@ -339,7 +367,10 @@ final class Sandworm extends Wild.Boss {
 
     @Override
     void deathAnim(int t) {
+        // it rears up, thrashing, then goes under from the tail forward, ring by ring
         headPos = headPos.clone().add(0, t < 30 ? 0.2 : -0.35, 0);
+        rageShake = t < 30 ? 12 : 4;
+        if (t >= 30) sinkFrom = Math.max(1, chain.pts.size() - 1 - (t - 30) / 3);
         place();
         if (t % 3 == 0) world.spawnParticle(Particle.BLOCK, headPos, 30, 2, 1, 2, 0.1, Material.SAND.createBlockData());
         if (t % 12 == 0) world.playSound(headPos, Sound.ENTITY_RAVAGER_DEATH, SoundCategory.HOSTILE, 3f, 0.4f);

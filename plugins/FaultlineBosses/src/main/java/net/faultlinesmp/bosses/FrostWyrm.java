@@ -83,7 +83,7 @@ final class FrostWyrm extends Wild.Boss {
         cd = 60;
     }
 
-    @Override double defHealth() { return 3200; }
+    @Override double defHealth() { return 900; } // a mini boss, like the Stone Golem
     @Override BarColor barColor() { return BarColor.BLUE; }
     @Override String music() { return "minecraft:music_disc.relic"; }
     @Override double musicLength() { return 218; }
@@ -178,12 +178,38 @@ final class FrostWyrm extends Wild.Boss {
 
     Location mouth() { return offset(headBase(), yaw, 2.8 * k, -0.4 * k, 0); }
 
+    // eased pose values (1.4.12): the neck used to SNAP between its breath / roar / flying shapes
+    double aFwd = 2.4, aUp = 1.3, aHeadPitch, aBank, aWing, aLook;
+    float lastYaw = Float.NaN;
+    boolean deathLimp;
+
     void place() {
-        bodyP.pose(pos, yaw, pitch, 0, null);
+        // banking: it leans into its turns (from how fast its heading is changing), eased
+        if (Float.isNaN(lastYaw)) lastYaw = yaw;
+        double dyaw = ((yaw - lastYaw + 540) % 360) - 180;
+        lastYaw = yaw;
+        double bank = landed ? 0 : Math.max(-28, Math.min(28, -dyaw * 4));
+        aBank += (bank - aBank) * 0.12;
+        double fl0 = flinchAmt();
+        // a wingbeat: a quick powerful downstroke, a slower recovery; the body rises a little on each downstroke
+        double beat = Math.sin(flap) + 0.3 * Math.sin(2 * flap);
+        double bob = landed ? Math.sin(ticks * 0.06) * 0.05 * k : -beat * 0.22 * k;
+        Location bodyAt = pos.clone().add(0, bob, 0);
+        bodyP.pose(bodyAt, yaw, (float) (pitch - fl0 * 8), (float) (aBank + fl0 * 6), null);
         // the neck: three segments along a curve from the chest up to the head (low and forward to breathe, high to roar)
         boolean breath = attack == BREATH, roaring = attack == ROAR && landed;
-        double fwd = breath ? 2.9 : roaring ? 2.5 : 2.4, up = breath ? 0.1 : roaring ? 1.9 : 1.3;
-        double sway = Math.sin(ticks * 0.07) * 0.25;
+        double wantFwd = breath ? 2.9 : roaring ? 2.5 : attack == DIVE ? 2.8 : 2.4;
+        double wantUp = breath ? 0.1 : roaring ? 1.9 : attack == DIVE ? 0.5 : 1.3;
+        aFwd += (wantFwd - aFwd) * 0.15; aUp += (wantUp - aUp) * 0.15;
+        double fwd = aFwd, up = aUp - fl0 * 0.5;
+        // the head turns to watch whoever it's after (up to 35 degrees off its heading)
+        double look = 0;
+        if (attack != BREATH && focus != null && focus.isOnline() && focus.getWorld().equals(world)) { // breathing: the head points where the breath goes
+            Vector to = focus.getLocation().toVector().subtract(pos.toVector()).setY(0);
+            if (to.lengthSquared() > 1) look = Math.max(-35, Math.min(35, ((yawOf(to) - yaw + 540) % 360) - 180));
+        }
+        aLook += (look - aLook) * 0.12;
+        double sway = Math.sin(ticks * 0.07) * 0.25 + Math.sin(Math.toRadians(aLook)) * 0.8;
         Location base = offset(pos, yaw, 1.75 * k, 0.35 * k, 0);
         Location head = offset(pos, yaw, (1.75 + fwd) * k, (0.35 + up) * k, sway * k);
         Location ctrl = offset(pos, yaw, (1.75 + fwd * 0.45) * k, (0.35 + up * 0.95) * k, sway * 0.4 * k);
@@ -194,15 +220,24 @@ final class FrostWyrm extends Wild.Boss {
             neckP.get(i).pose(pt.toLocation(world), yawOf(flat(d)), Math.max(-70, Math.min(70, pitchOf(d) + pitch)), 0, null);
         }
         headAt = head;
-        float headPitch = breath ? 25 : roaring ? -30 : pitch + 8;
-        headP.pose(head, (float) (yaw + sway * 8), headPitch, 0, null);
-        // wings: a full flap in the air; folded up and back on the ground
-        float fl = landed ? (float) (62 + Math.sin(flap) * 4) : (float) (Math.sin(flap) * 38);
+        double wantHeadPitch = breath ? 25 : roaring ? -30 : attack == DIVE ? 18 : pitch + 8 - fl0 * 20;
+        aHeadPitch += (wantHeadPitch - aHeadPitch) * 0.2;
+        headP.pose(head, (float) (yaw + aLook * 0.6 + sway * 4), (float) aHeadPitch, (float) (aBank * 0.5), null);
+        // wings: full beats in the air, swept back into a dive, folded up on the ground, limp in death
+        double wantWing = deathLimp ? 70 + Math.sin(flap) * 6
+                : landed ? 62 + Math.sin(flap) * 4
+                : attack == DIVE ? 48 + Math.sin(flap * 2) * 3
+                : beat * 34;
+        aWing += (wantWing - aWing) * (landed || attack == DIVE || deathLimp ? 0.15 : 0.6);
+        float fl = (float) aWing;
         Location shL = offset(pos, yaw, 0.35 * k, 0.65 * k, -0.95 * k), shR = offset(pos, yaw, 0.35 * k, 0.65 * k, 0.95 * k);
         // a flap turns each wing about its own front-back axis (left wing tip up = roll one way, right the other)
-        wingL.pose(shL, yaw, pitch, 0, new Quaternionf(new AxisAngle4f((float) Math.toRadians(fl), 1, 0, 0)));
-        wingR.pose(shR, yaw, pitch, 0, new Quaternionf(new AxisAngle4f((float) Math.toRadians(-fl), 1, 0, 0)));
-        tail.lead(offset(pos, yaw, -2.2 * k, landed ? -0.6 * k : 0, 0), tailGaps);
+        shL.add(0, bob, 0); shR.add(0, bob, 0);
+        wingL.pose(shL, yaw, pitch, (float) aBank, new Quaternionf(new AxisAngle4f((float) Math.toRadians(fl), 1, 0, 0)));
+        wingR.pose(shR, yaw, pitch, (float) aBank, new Quaternionf(new AxisAngle4f((float) Math.toRadians(-fl), 1, 0, 0)));
+        // the tail swings opposite the head's sway and whips harder in a dive
+        double tailSwing = Math.sin(ticks * 0.09) * (attack == DIVE ? 0.9 : 0.45) * k - Math.sin(Math.toRadians(aLook)) * 0.5;
+        tail.lead(offset(pos, yaw, -2.2 * k, (landed ? -0.6 * k : 0) + bob, tailSwing), tailGaps);
         for (int i = 0; i < tailP.size(); i++) {
             Vector f = tail.facing(i + 1);
             tailP.get(i).pose(tail.pts.get(i + 1), yawOf(flat(f)), Math.max(-60, Math.min(60, pitchOf(f))), 0, null);
@@ -425,6 +460,8 @@ final class FrostWyrm extends Wild.Boss {
 
     @Override
     void deathAnim(int t) {
+        deathLimp = true;
+        if (t % 2 == 0) yaw += 4; // spiralling down
         double gy = ground(pos);
         if (pos.getY() > gy + 1.2 * k) pos = pos.clone().add(dirOf(yaw).multiply(0.2)).add(0, -0.35, 0);
         pitch = Math.min(40, pitch + 1.5f);

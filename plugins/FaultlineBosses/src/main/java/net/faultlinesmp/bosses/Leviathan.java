@@ -201,16 +201,34 @@ final class Leviathan extends Wild.Boss {
         Vector hf = chain.facing(0);
         float hy = yawOf(flat(hf)), hp = attack == ROAR ? -35 : pitchOf(hf.lengthSquared() < 1e-4 ? dirOf(yaw) : hf);
         head.pose(headPos, yaw, Math.max(-40, Math.min(40, hp)), 0, null);
+        // The spine breaches: segments near the surface rise in travelling humps (a wave running down the body), so the
+        // body shows above the water and not just the head (before 1.4.7 the whole body swam ~1 block under the surface).
+        List<Location> shown = new ArrayList<>(chain.pts.size());
+        shown.add(headPos);
+        for (int i = 1; i < chain.pts.size(); i++) shown.add(chain.pts.get(i).clone().add(0, hump(i, chain.pts.get(i)), 0));
         for (int i = 0; i < segs; i++) {
-            Vector f = chain.facing(i + 1);
-            body.get(i).pose(chain.pts.get(i + 1), yawOf(flat(f)), Math.max(-50, Math.min(50, pitchOf(f))), (float) (Math.sin(ticks * 0.15 + i * 0.6) * 6), null);
+            Vector f = shown.get(i).toVector().subtract(shown.get(i + 1).toVector());
+            body.get(i).pose(shown.get(i + 1), yawOf(flat(f)), Math.max(-50, Math.min(50, pitchOf(f))), (float) (Math.sin(ticks * 0.15 + i * 0.6) * 6), null);
         }
-        Vector tf = chain.facing(segs + 1);
-        tail.pose(chain.pts.get(segs + 1), yawOf(flat(tf)), Math.max(-50, Math.min(50, pitchOf(tf))), (float) (Math.sin(ticks * 0.2) * 20), null);
+        Vector tf = shown.get(segs).toVector().subtract(shown.get(segs + 1).toVector());
+        tail.pose(shown.get(segs + 1), yawOf(flat(tf)), Math.max(-50, Math.min(50, pitchOf(tf))), (float) (Math.sin(ticks * 0.2) * 20), null);
         // hitboxes: the head, then every other segment
         if (!hitboxes.isEmpty()) hitboxes.get(0).teleport(headPos.clone().add(0, -1.0 * k, 0));
         for (int h = 1, i = 1; h < hitboxes.size() && i < chain.pts.size(); h++, i += 2)
             hitboxes.get(h).teleport(chain.pts.get(i).clone().add(0, -0.9 * k, 0));
+    }
+
+    /**
+     * How far segment i is lifted to break the surface: a wave of humps travelling down the body while it swims at the
+     * surface. Nothing while it's down deep (diving for a Tidal Ram, rising from the deep).
+     */
+    double hump(int i, Location p) {
+        if (submerged || dying) return 0;
+        double below = surfaceY - p.getY(); // how deep that point swims
+        if (below > 3.5 || below < -1) return 0;
+        double fade = Math.min(1, (3.5 - below) / 2.0);
+        double wave = Math.max(0, Math.sin(i * 0.95 - ticks * 0.14));
+        return fade * (0.2 * k + wave * c("hump-height", 1.5) * k);
     }
 
     // =====================================================================================================

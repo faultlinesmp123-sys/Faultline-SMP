@@ -363,6 +363,9 @@ Notes:
   LIGHT blocks are recorded in the chunk PDC (`headlamps`) and cleaned on chunk load. Index: `/serverstats` reads offline
   players' stats files (`players/stats` on 26.x, else `stats`) off the main thread, cached 5 min.
   Tested: `OceanTest` (bosses), `AuditTest` (items), `MuseumTest` (index).
+- **1.4.7**: the Leviathan's body swam ~1 block under the surface, so players only saw its head. `Leviathan.hump(i, p)`
+  lifts each segment near the surface (0.2*k plus a wave of humps running down the body, `wild.leviathan.hump-height` 1.5);
+  only the drawn pose moves (the chain and hitboxes don't); nothing while `submerged` (Tidal Ram) or dying.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

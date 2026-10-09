@@ -329,6 +329,19 @@ Notes:
   No Weather event starts while FaultlineEvents has an event active (`faultlineevents:active_event` on the main world,
   `FaultlineItems.faultlineEvent()`) or in `faultline_void`. Tested (`WildSpawnTest`, `WildItemsTest`).
   FaultlineEvents (Blood Moon, Snowy Day, Lantern Night, fog...) is a separate plugin whose source is NOT in this repo.
+- **Wild models v2 (Bosses 1.4.4)**: the FROST WYRM is a real dragon: `wyrm_body` (chest, four clawed legs, spine spikes),
+  3 `wyrm_neck` segments placed along a quadratic curve from the chest to the head in `FrostWyrm.place()` (low and forward
+  for Frost Breath, high for the landed roar), a horned `wyrm_head` (`headBase()` = the head's joint, `mouth()`), bat wings
+  with finger bones and scalloped membranes (`_stairs`/`_lerp_pts` in wild_assets.py), and a `wyrm_tail_tip` ice blade on the
+  last tail segment; landed = body 2.45*k up (on its legs), wings folded at 62 degrees. New models for the Leviathan (fanged
+  jaws, horns, crest, gill frills, barbels, glowing spots, crescent fluke), the Sandworm King (armour rings, four fanged maw
+  petals, two tooth rings, a glowing throat, a crown of bone spikes, a stinger) and the Lich (hooded skull, crown, collar,
+  pauldrons, ribcage with a soul, raised hand with an orb, skull staff, soul wisps). The STONE GOLEM has a separate
+  `golem_head` (tracks its target) and eased poses (`animate()`/`place()`: every joint eases toward the move's target: idle
+  breathing, walk sway and bob, Pound wind-up then slam, Boulder bend-heave-throw with one arm, Spikes fists into the
+  ground, Overgrowth kneel, a flinch on big hits, and a death where the whole body (not just the torso) sags and topples).
+  `python3 tools/wild_rig_preview.py tools/previews` renders the whole bosses assembled with the plugin's pose math
+  (`rig_<boss>.png`).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

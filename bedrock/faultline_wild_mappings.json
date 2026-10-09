@@ -116,6 +116,22 @@
    },
    {
     "type": "definition",
+    "model": "faultline:wild/wyrm_neck",
+    "bedrock_identifier": "faultline:wild_wyrm_neck",
+    "display_name": "wyrm_neck",
+    "bedrock_options": {
+     "icon": "faultline.frost_wyrm",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
     "model": "faultline:wild/wyrm_head",
     "bedrock_identifier": "faultline:wild_wyrm_head",
     "display_name": "wyrm_head",
@@ -180,6 +196,22 @@
    },
    {
     "type": "definition",
+    "model": "faultline:wild/wyrm_tail_tip",
+    "bedrock_identifier": "faultline:wild_wyrm_tail_tip",
+    "display_name": "wyrm_tail_tip",
+    "bedrock_options": {
+     "icon": "faultline.frost_wyrm",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
     "model": "faultline:wild/lich",
     "bedrock_identifier": "faultline:wild_lich",
     "display_name": "lich",
@@ -199,6 +231,22 @@
     "model": "faultline:wild/golem_body",
     "bedrock_identifier": "faultline:wild_golem_body",
     "display_name": "golem_body",
+    "bedrock_options": {
+     "icon": "faultline.stone_golem",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:wild/golem_head",
+    "bedrock_identifier": "faultline:wild_golem_head",
+    "display_name": "golem_head",
     "bedrock_options": {
      "icon": "faultline.stone_golem",
      "allow_offhand": false

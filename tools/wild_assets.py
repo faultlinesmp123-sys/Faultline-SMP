@@ -256,38 +256,55 @@ YEL, MOUTH, HORN = (255, 222, 70), (96, 22, 34), (58, 56, 70)
 
 
 def leviathan():
-    h = Part("lev_head", 6, 128)
+    """A sea serpent-dragon: long fanged jaws, swept horns, a crest fin, gill frills, barbels and glowing spots; finned
+    body segments with a webbed dorsal crest; a crescent tail fluke."""
     sc = scales(TEAL, TEAL_D)
-    h.add(-1.2, -0.9, -1.1, 1.0, 0.9, 1.1, sc)
-    h.add(1.0, -0.2, -0.75, 2.7, 0.7, 0.75, sc)
-    h.add(0.6, -0.95, -0.7, 2.5, -0.38, 0.7, solid(BELLY))
-    h.add(1.0, -0.38, -0.65, 2.55, -0.2, 0.65, solid(MOUTH, 4))
-    for i in range(5):
-        x = 1.2 + i * 0.28
-        for z in (-0.6, 0.48):
-            h.add(x, -0.36, z, x + 0.14, -0.08, z + 0.12, teeth)
-            h.add(x + 0.1, -0.5, z, x + 0.24, -0.36, z + 0.12, teeth)
-    for z0, z1 in ((-1.16, -0.98), (0.98, 1.16)):
-        h.add(0.45, 0.22, z0, 0.9, 0.55, z1, glow(YEL))
-    h.add(0.3, 0.55, -1.15, 1.05, 0.82, -0.55, solid(TEAL_D))
-    h.add(0.3, 0.55, 0.55, 1.05, 0.82, 1.15, solid(TEAL_D))
+    fin = membrane(FIN, (30, 120, 140))
+    spot = glow((120, 255, 230))
+    h = Part("lev_head", 6, 128)
+    h.add(-1.3, -0.95, -1.15, 1.0, 0.95, 1.15, sc)                 # skull
+    h.add(1.0, -0.25, -0.8, 3.0, 0.65, 0.8, sc)                   # upper jaw
+    h.add(3.0, -0.2, -0.6, 3.5, 0.45, 0.6, sc)
+    h.add(0.6, -1.35, -0.72, 2.9, -0.8, 0.72, sc)                 # lower jaw, dropped open
+    h.add(0.8, -1.42, -0.55, 2.8, -1.3, 0.55, solid(BELLY))
+    h.add(1.0, -0.8, -0.62, 2.85, -0.25, 0.62, solid(MOUTH, 4))   # the gape
+    for i in range(7):
+        x = 1.15 + i * 0.27
+        for z in (-0.72, 0.6):
+            h.add(x, -0.6, z, x + 0.13, -0.25, z + 0.12, teeth)   # upper fangs
+            h.add(x + 0.1, -0.8, z, x + 0.22, -0.5, z + 0.12, teeth)  # lower fangs
+    h.add(3.1, -0.55, -0.12, 3.35, -0.2, 0.12, teeth)             # a front tusk
+    h.add(-1.4, 0.95, -0.08, 1.2, 2.0, 0.08, fin)                 # crest fin
+    for x in (-1.1, -0.3, 0.5):
+        h.add(x - 0.06, 0.95, -0.1, x + 0.06, 2.15, 0.1, solid(HORN, 6))
     for s in (-1, 1):
-        h.add(-2.2, 0.6, s * 0.6, -0.6, 1.0, s * 0.92, solid(HORN, 8))
-        h.add(-2.9, 0.9, s * 0.62, -2.0, 1.28, s * 0.86, solid(HORN, 8))
-        h.add(-1.1, -0.6, s * 1.1, -0.4, 0.5, s * 1.55, membrane(FIN, (30, 120, 140)))
-    h.add(-1.3, 0.9, -0.08, 0.5, 1.7, 0.08, membrane(FIN, (30, 120, 140)))
+        h.add(0.55, 0.2, s * 1.15, 1.0, 0.6, s * 1.24, glow(YEL))     # eyes
+        h.add(0.4, 0.6, s * 0.6, 1.2, 0.85, s * 1.2, solid(TEAL_D))   # brow
+        h.add(-2.2, 0.55, s * 0.62, -0.5, 1.0, s * 0.95, solid(HORN, 8))   # horns
+        h.add(-3.1, 0.85, s * 0.66, -2.1, 1.3, s * 0.9, solid(HORN, 8))
+        h.add(-3.7, 1.15, s * 0.7, -3.0, 1.45, s * 0.84, solid(HORN, 8))
+        h.add(-1.2, -0.8, s * 1.15, -0.2, 0.6, s * 1.75, fin)              # gill frills
+        h.add(-0.9, -0.5, s * 1.75, -0.4, 0.3, s * 2.05, fin)
+        h.add(2.6, -0.4, s * 0.8, 2.75, -0.25, s * 0.95, solid(TEAL_D))    # barbels
+        h.add(2.5, -1.4, s * 0.86, 2.65, -0.4, s * 0.98, solid((40, 110, 120), 4))
+        h.add(2.45, -1.9, s * 0.88, 2.6, -1.4, s * 1.0, spot)
+        for x in (-0.8, 0.0, 1.5, 2.2): h.add(x, 0.0, s * 1.15 if x < 1 else s * 0.8, x + 0.18, 0.15, s * (1.18 if x < 1 else 0.83), spot)
     seg = Part("lev_body", 6, 128)
-    seg.add(-1.2, -1.0, -1.1, 1.2, 1.0, 1.1, sc)
-    seg.add(-1.15, -1.08, -0.9, 1.15, -0.6, 0.9, stripes_h(BELLY, (160, 170, 140)))
-    seg.add(-0.9, 1.0, -0.08, 0.8, 1.95, 0.08, membrane(FIN, (30, 120, 140)))
-    seg.add(-0.1, 1.0, -0.12, 0.1, 2.1, 0.12, solid(HORN, 6))
-    for s in (-1, 1): seg.add(-0.4, -0.5, s * 1.1, 0.4, -0.1, s * 1.5, membrane(FIN, (30, 120, 140)))
+    seg.add(-1.25, -1.05, -1.15, 1.25, 1.05, 1.15, sc)
+    seg.add(-1.2, -1.13, -0.92, 1.2, -0.62, 0.92, stripes_h(BELLY, (160, 170, 140)))
+    seg.add(-1.1, 1.05, -0.08, 1.0, 2.3, 0.08, fin)                 # dorsal crest
+    for x in (-0.8, 0.0, 0.8): seg.add(x - 0.06, 1.05, -0.1, x + 0.06, 2.45 - abs(x) * 0.4, 0.1, solid(HORN, 6))
+    for s in (-1, 1):
+        seg.add(-0.6, -0.55, s * 1.15, 0.5, -0.1, s * 1.85, fin)      # side fins
+        for x in (-0.7, 0.1, 0.8): seg.add(x, 0.1, s * 1.15, x + 0.2, 0.3, s * 1.18, spot)
     tail = Part("lev_tail", 6, 128)
-    tail.add(-1.4, -0.8, -0.9, 0.7, 0.8, 0.9, sc)
-    tail.add(-2.6, -0.55, -0.6, -1.4, 0.55, 0.6, sc)
-    tail.add(-3.8, -1.5, -0.1, -2.4, 1.5, 0.1, membrane(FIN, (30, 120, 140)))
-    tail.add(-3.5, -0.1, -1.3, -2.6, 0.1, 1.3, membrane(FIN, (30, 120, 140)))
-    tail.add(-1.2, 0.8, -0.07, 0.2, 1.4, 0.07, membrane(FIN, (30, 120, 140)))
+    tail.add(-1.4, -0.85, -0.95, 0.75, 0.85, 0.95, sc)
+    tail.add(-2.7, -0.6, -0.65, -1.4, 0.6, 0.65, sc)
+    tail.add(-3.4, -0.35, -0.4, -2.7, 0.35, 0.4, sc)
+    tail.add(-1.2, 0.85, -0.07, 0.4, 1.6, 0.07, fin)
+    for (y0, y1, x0, x1) in ((0.3, 2.6, -4.2, -3.2), (2.0, 3.4, -4.9, -3.8), (-2.6, -0.3, -4.2, -3.2), (-3.4, -2.0, -4.9, -3.8)):
+        tail.add(x0, y0, -0.09, x1, y1, 0.09, fin)                  # the crescent fluke (upright)
+    tail.add(-3.6, -0.5, -0.12, -3.1, 0.5, 0.12, spot)
     return [h, seg, tail]
 
 
@@ -295,107 +312,220 @@ SAND, SAND_D, MAW, THROAT, BONE = (200, 164, 104), (118, 88, 50), (74, 24, 24), 
 
 
 def sandworm():
-    h = Part("worm_head", 5, 128)
+    """The Sandworm KING: an armoured, plated head with a four-petal maw (each petal fanged), two rings of teeth down a
+    glowing throat and a crown of bone spikes; plated, ridged body rings; a tail ending in a barbed stinger."""
     pl = bands(SAND, SAND_D, 5)
-    h.add(-1.4, -1.4, -1.4, 1.0, 1.4, 1.4, pl)
-    h.add(-0.65, -1.52, -1.52, -0.3, 1.52, 1.52, solid(SAND_D, 8))
-    h.add(1.0, -1.25, -1.25, 1.4, 1.25, 1.25, solid(MAW, 6))
-    h.add(1.4, -0.7, -0.7, 1.46, 0.7, 0.7, solid(THROAT, 3))
-    for k in range(12):
-        a = k * math.pi / 6
-        y, z = math.sin(a) * 0.98, math.cos(a) * 0.98
-        h.add(1.4, y - 0.11, z - 0.11, 1.85, y + 0.11, z + 0.11, teeth)
-    for (y0, y1, z0, z1) in ((1.1, 1.5, -0.6, 0.6), (-1.5, -1.1, -0.6, 0.6), (-0.6, 0.6, 1.1, 1.5), (-0.6, 0.6, -1.5, -1.1)):
-        h.add(1.0, y0, z0, 2.4, y1, z1, pl)
-        h.add(2.4, y0, z0, 2.85, y1, z1, teeth)
-    s = Part("worm_body", 5, 128)
-    s.add(-1.3, -1.3, -1.3, 1.3, 1.3, 1.3, pl)
-    s.add(-1.35, -1.44, -1.44, -0.95, 1.44, 1.44, solid(SAND_D, 8))
-    s.add(-0.3, 1.3, -0.22, 0.3, 1.95, 0.22, solid(BONE, 6))
-    s.add(-0.2, 1.95, -0.14, 0.2, 2.25, 0.14, solid(BONE, 6))
+    armor = stone((176, 140, 86))
+    crown = solid(BONE, 6)
+    h = Part("worm_head", 5, 128)
+    h.add(-1.5, -1.5, -1.5, 0.9, 1.5, 1.5, pl)
+    for x in (-1.2, -0.45, 0.3):                                     # overlapping armour rings
+        h.add(x, -1.62, -1.62, x + 0.45, 1.62, 1.62, armor)
+    h.add(0.9, -1.3, -1.3, 1.3, 1.3, 1.3, solid(MAW, 6))
+    h.add(1.3, -0.85, -0.85, 1.36, 0.85, 0.85, solid(THROAT, 3))
+    h.add(1.2, -0.4, -0.4, 1.38, 0.4, 0.4, glow((255, 120, 40)))   # the glow deep in its throat
+    for ring, r, x in ((0, 1.05, 1.3), (1, 0.62, 1.32)):
+        for kk in range(12 if ring == 0 else 8):
+            a = kk * math.pi / (6 if ring == 0 else 4) + ring * 0.3
+            y, z = math.sin(a) * r, math.cos(a) * r
+            h.add(x, y - 0.1, z - 0.1, x + (0.5 if ring == 0 else 0.3), y + 0.1, z + 0.1, teeth)
+    for (y0, y1, z0, z1, ty0, ty1, tz0, tz1) in ((1.0, 1.55, -0.75, 0.75, 1.3, 1.55, -0.2, 0.2), (-1.55, -1.0, -0.75, 0.75, -1.55, -1.3, -0.2, 0.2),
+                                                 (-0.75, 0.75, 1.0, 1.55, -0.2, 0.2, 1.3, 1.55), (-0.75, 0.75, -1.55, -1.0, -0.2, 0.2, -1.55, -1.3)):
+        h.add(1.0, y0, z0, 2.5, y1, z1, armor)                       # the four petals of the maw, flared open
+        h.add(2.5, ty0, tz0, 3.1, ty1, tz1, teeth)                   # each tipped with a fang
+        for xx in (1.4, 1.9):
+            h.add(xx, (y0 + y1) / 2 - 0.08, (z0 + z1) / 2 - 0.08, xx + 0.12, (y0 + y1) / 2 + 0.08, (z0 + z1) / 2 + 0.08, teeth)
+    for kk in range(8):                                               # the crown of bone spikes
+        a = kk * math.pi / 4 + math.pi / 8
+        y, z = math.sin(a), math.cos(a)
+        h.add(-0.9, y * 1.6 - 0.14, z * 1.6 - 0.14, -0.5, y * 1.6 + 0.14, z * 1.6 + 0.14, crown)
+        h.add(-1.4, y * 2.1 - 0.1, z * 2.1 - 0.1, -0.8, y * 2.1 + 0.1, z * 2.1 + 0.1, crown) if y > 0 else None
+    h.add(-1.1, 1.62, -0.18, -0.2, 2.6, 0.18, crown)                 # the tallest spike
+    s2 = Part("worm_body", 5, 128)
+    s2.add(-1.35, -1.35, -1.35, 1.35, 1.35, 1.35, pl)
+    s2.add(-1.4, -1.48, -1.48, -0.9, 1.48, 1.48, armor)
+    s2.add(0.2, -1.42, -1.42, 0.7, 1.42, 1.42, armor)
+    for x in (-0.6, 0.6):
+        s2.add(x - 0.28, 1.35, -0.2, x + 0.28, 2.0, 0.2, crown)
+        s2.add(x - 0.16, 2.0, -0.12, x + 0.16, 2.4, 0.12, crown)
+    for sgn in (-1, 1): s2.add(-0.25, 0.2, sgn * 1.35, 0.25, 0.6, sgn * 1.85, crown)
     t = Part("worm_tail", 5, 128)
-    t.add(-0.8, -1.0, -1.0, 1.2, 1.0, 1.0, pl)
-    t.add(-1.9, -0.7, -0.7, -0.8, 0.7, 0.7, pl)
-    t.add(-2.9, -0.32, -0.32, -1.9, 0.32, 0.32, solid(SAND_D, 8))
-    t.add(-3.4, -0.14, -0.14, -2.9, 0.14, 0.14, solid(BONE, 4))
-    return [h, s, t]
+    t.add(-0.8, -1.05, -1.05, 1.2, 1.05, 1.05, pl)
+    t.add(-0.2, -1.12, -1.12, 0.3, 1.12, 1.12, armor)
+    t.add(-1.9, -0.75, -0.75, -0.8, 0.75, 0.75, pl)
+    t.add(-2.9, -0.42, -0.42, -1.9, 0.42, 0.42, armor)
+    t.add(-3.9, -0.2, -0.2, -2.9, 0.2, 0.2, crown)                   # the stinger
+    for sgn in (-1, 1): t.add(-3.2, -0.08, sgn * 0.2, -2.9, 0.08, sgn * 0.5, crown)
+    t.add(-1.4, 0.75, -0.14, -0.9, 1.3, 0.14, crown)
+    return [h, s2, t]
 
 
 ICE, ICE_D, FROST, CYAN, WMEM = (150, 200, 232), (90, 140, 186), (232, 244, 252), (110, 240, 255), (126, 176, 224)
 
 
+def _stairs(p, x0, z0, x1, z1, y0, y1, w, paint, steps=7):
+    """A diagonal bone as a run of small boxes from (x0, z0) to (x1, z1) (boxes can't be turned)."""
+    for i in range(steps):
+        t0, t1 = i / steps, (i + 1) / steps
+        xa, xb = x0 + (x1 - x0) * t0, x0 + (x1 - x0) * t1
+        za, zb = z0 + (z1 - z0) * t0, z0 + (z1 - z0) * t1
+        p.add(min(xa, xb) - w, y0, min(za, zb) - w, max(xa, xb) + w, y1, max(za, zb) + w, paint)
+
+
+def _lerp_pts(pts, z):
+    """x at z along a polyline of (z, x) points (z falling)."""
+    for (za, xa), (zb, xb) in zip(pts, pts[1:]):
+        if za >= z >= zb:
+            t = 0 if za == zb else (za - z) / (za - zb)
+            return xa + (xb - xa) * t
+    return pts[-1][1]
+
+
 def frost_wyrm():
+    """A real ice DRAGON: chest, four clawed legs, a spiked spine, a long neck (3 segments), a horned head, bat wings with
+    finger bones and scalloped membranes, a spiked tail ending in an ice blade."""
     sc = scales(ICE, ICE_D)
+    plate = stripes_h(FROST, (200, 216, 232))
+    claw = solid((52, 66, 86), 4)
+    bone = ice(FROST)
     b = Part("wyrm_body", 6, 128)
-    b.add(-1.6, -0.8, -1.0, 1.6, 0.8, 1.0, sc)
-    b.add(-1.5, -0.92, -0.8, 1.5, -0.5, 0.8, stripes_h(FROST, (200, 216, 232)))
-    for x in (-1.2, 0.0, 1.2):
-        b.add(x - 0.22, 0.8, -0.14, x + 0.22, 1.55, 0.14, ice(FROST))
+    b.add(-1.6, -0.85, -1.0, 1.0, 0.85, 1.0, sc)                 # torso
+    b.add(0.4, -1.0, -1.15, 1.85, 0.92, 1.15, sc)                # deep chest
+    b.add(-2.3, -0.75, -0.85, -1.4, 0.65, 0.85, sc)              # hips
+    b.add(-2.1, -1.1, -0.7, 1.75, -0.84, 0.7, plate)             # belly plates
+    for i, x in enumerate((1.4, 0.75, 0.1, -0.55, -1.2, -1.85)):  # spine spikes, biggest over the shoulders
+        h = 0.8 - i * 0.09
+        b.add(x - 0.2, 0.85, -0.12, x + 0.2, 0.85 + h, 0.12, bone)
+        b.add(x - 0.32, 0.85 + h * 0.6, -0.06, x - 0.1, 0.85 + h + 0.25, 0.06, bone)
     for s in (-1, 1):
-        for x0, x1 in ((0.75, 1.3), (-1.3, -0.75)):
-            b.add(x0, -1.8, s * 0.55, x1, -0.6, s * 0.98, sc)
-            b.add(x0 - 0.05, -1.95, s * 0.5, x1 + 0.2, -1.8, s * 1.02, solid((70, 90, 110)))
-    hd = Part("wyrm_head", 6, 128)
-    hd.add(0.0, -0.42, -0.45, 1.45, 0.42, 0.45, sc)
-    hd.add(1.4, -0.45, -0.6, 2.6, 0.55, 0.6, sc)
-    hd.add(2.6, -0.35, -0.45, 3.55, 0.25, 0.45, sc)
-    hd.add(1.6, -0.68, -0.4, 3.35, -0.35, 0.4, solid(FROST))
+        b.add(-0.1, 0.45, s * 0.85, 0.95, 1.05, s * 1.25, sc)        # shoulder (the wing joint)
+        b.add(0.9, -1.65, s * 0.75, 1.5, -0.55, s * 1.22, sc)        # front leg: upper arm
+        b.add(1.3, -2.2, s * 0.8, 1.95, -1.55, s * 1.15, sc)         # forearm, reaching forward
+        for dz in (-0.14, 0.0, 0.14):
+            b.add(1.95, -2.3, s * 0.97 + dz - 0.045, 2.3, -2.08, s * 0.97 + dz + 0.045, claw)
+        b.add(-2.15, -1.55, s * 0.7, -1.05, -0.25, s * 1.32, sc)      # hind leg: thigh
+        b.add(-2.5, -2.3, s * 0.82, -1.9, -1.4, s * 1.22, sc)        # shin
+        b.add(-2.6, -2.5, s * 0.76, -1.55, -2.28, s * 1.28, sc)      # foot
+        for dz in (-0.16, 0.0, 0.16):
+            b.add(-1.55, -2.5, s * 1.02 + dz - 0.05, -1.25, -2.32, s * 1.02 + dz + 0.05, claw)
+    n = Part("wyrm_neck", 6, 64)
+    n.add(-0.62, -0.48, -0.48, 0.62, 0.48, 0.48, sc)
+    n.add(-0.58, -0.57, -0.34, 0.58, -0.44, 0.34, plate)
+    n.add(-0.16, 0.48, -0.08, 0.16, 0.95, 0.08, bone)
+    for s in (-1, 1): n.add(-0.15, -0.1, s * 0.48, 0.15, 0.12, s * 0.66, bone)
+    hd = Part("wyrm_head", 7, 128)
+    hd.add(-0.25, -0.5, -0.56, 1.2, 0.56, 0.56, sc)              # skull
+    hd.add(1.2, -0.42, -0.42, 2.6, 0.28, 0.42, sc)               # snout
+    hd.add(2.6, -0.36, -0.33, 3.0, 0.16, 0.33, sc)               # nose
+    hd.add(0.45, -0.86, -0.38, 2.75, -0.52, 0.38, sc)            # lower jaw, hanging a little open
+    hd.add(0.55, -0.92, -0.3, 2.65, -0.84, 0.3, plate)
+    hd.add(1.25, -0.52, -0.34, 2.6, -0.44, 0.34, solid(MOUTH, 4)) # the dark of the mouth
+    for i in range(6):
+        x = 1.3 + i * 0.24
+        for z in (-0.38, 0.3):
+            hd.add(x, -0.62, z, x + 0.1, -0.42, z + 0.08, teeth)  # upper fangs
+            hd.add(x + 0.12, -0.54, z, x + 0.2, -0.4, z + 0.08, teeth)
+    hd.add(0.0, 0.56, -0.07, 1.05, 0.86, 0.07, bone)              # crest
+    hd.add(1.3, 0.28, -0.05, 2.2, 0.42, 0.05, bone)               # ridge down the snout
     for s in (-1, 1):
-        hd.add(2.25, 0.12, s * 0.58, 2.55, 0.4, s * 0.66, glow(CYAN))
-        hd.add(0.9, 0.45, s * 0.22, 1.85, 0.72, s * 0.5, ice(FROST))
-        hd.add(0.3, 0.68, s * 0.24, 1.0, 1.1, s * 0.44, ice(FROST))
-        hd.add(1.15, -0.3, s * 0.6, 1.6, 0.42, s * 0.92, membrane(WMEM, ICE_D))
-    for i in range(4):
-        x = 2.0 + i * 0.32
-        hd.add(x, -0.42, -0.4, x + 0.12, -0.3, 0.4, teeth)
+        hd.add(2.78, -0.04, s * 0.1, 2.98, 0.08, s * 0.24, glow(CYAN))           # frosty nostrils
+        hd.add(0.7, 0.38, s * 0.26, 1.55, 0.66, s * 0.62, bone)                  # brow ridge
+        hd.add(1.12, 0.12, s * 0.53, 1.46, 0.36, s * 0.6, glow(CYAN))            # eye
+        hd.add(-0.1, 0.42, s * 0.26, 0.55, 0.8, s * 0.52, bone)                  # horns, swept back
+        hd.add(-0.95, 0.62, s * 0.3, -0.1, 0.94, s * 0.5, bone)
+        hd.add(-1.65, 0.84, s * 0.34, -0.95, 1.08, s * 0.47, bone)
+        hd.add(-2.1, 0.98, s * 0.36, -1.65, 1.16, s * 0.44, glow((200, 240, 255)))
+        hd.add(-0.05, -0.5, s * 0.55, 0.7, -0.08, s * 0.68, bone)                # cheek spikes
+        hd.add(-0.6, -0.42, s * 0.6, -0.05, -0.16, s * 0.82, bone)
+        hd.add(-0.35, -0.45, s * 0.54, 0.35, 0.45, s * 0.6, membrane(WMEM, ICE_D)) # frill
     wl = Part("wyrm_wing_l", 5, 128)
-    wl.add(0.05, 0.0, -4.1, 0.4, 0.26, 0.0, ice(FROST))
-    wl.add(-2.5, 0.04, -3.9, 0.1, 0.14, -0.2, membrane(WMEM, ICE_D))
-    for z in (-1.4, -2.7, -3.9):
-        wl.add(-2.3, 0.1, z - 0.06, 0.1, 0.2, z + 0.06, ice(FROST))
-    for z in (-0.6, -1.8, -3.1):
-        wl.add(-2.9, 0.06, z - 0.35, -2.5, 0.12, z + 0.35, membrane(WMEM, ICE_D))
-    wl.add(0.1, 0.0, -4.5, 0.65, 0.26, -4.1, solid((70, 90, 110)))
+    # the arm along the leading edge
+    wl.add(-0.05, 0.0, -2.5, 0.38, 0.34, 0.0, bone)
+    wl.add(0.22, 0.03, -5.15, 0.56, 0.3, -2.4, bone)
+    wl.add(0.15, -0.02, -5.5, 0.7, 0.36, -5.05, solid((90, 120, 150), 4))      # wrist
+    wl.add(0.7, 0.08, -5.35, 1.12, 0.24, -5.2, claw)                          # thumb claw
+    tips = [(-1.25, -7.1), (-3.25, -5.95), (-3.45, -3.65)]                   # finger tips (x, z)
+    for tx, tz in tips: _stairs(wl, 0.35, -5.2, tx, tz, 0.08, 0.2, 0.07, bone, 8)
+    trail = [(0.0, -1.8), (-1.8, -2.3), (-3.65, -3.45), (-4.8, -2.55), (-5.95, -3.25), (-6.5, -2.15), (-7.1, -1.25)]
+    lead = [(0.0, 0.25), (-5.2, 0.25), (-7.1, -1.25)]
+    z = 0.0
+    while z > -7.0:
+        zc = z - 0.25
+        xl, xt = _lerp_pts(lead, zc), _lerp_pts(trail, zc)
+        if xl - xt > 0.15: wl.add(xt, 0.05, z - 0.5, xl, 0.12, z, membrane(WMEM, ICE_D))
+        z -= 0.5
     wr = wl.mirror_z("wyrm_wing_r")
     seg = Part("wyrm_tail", 6, 64)
-    seg.add(-0.6, -0.45, -0.5, 0.6, 0.45, 0.5, sc)
-    seg.add(-0.16, 0.45, -0.1, 0.16, 0.92, 0.1, ice(FROST))
-    return [b, hd, wl, wr, seg]
+    seg.add(-0.62, -0.45, -0.48, 0.62, 0.45, 0.48, sc)
+    seg.add(-0.58, -0.53, -0.32, 0.58, -0.42, 0.32, plate)
+    seg.add(-0.18, 0.45, -0.1, 0.18, 0.98, 0.1, bone)
+    for s in (-1, 1): seg.add(-0.18, -0.05, s * 0.48, 0.18, 0.13, s * 0.74, bone)
+    tip = Part("wyrm_tail_tip", 6, 64)
+    tip.add(-0.25, -0.33, -0.34, 0.6, 0.33, 0.34, sc)
+    tip.add(-1.7, -0.06, -0.75, -0.2, 0.06, 0.75, bone)          # the ice blade (flat)
+    tip.add(-2.1, -0.05, -0.36, -1.7, 0.05, 0.36, bone)
+    tip.add(-1.5, -0.62, -0.05, -0.2, 0.62, 0.05, glow((170, 235, 255)))  # and its fin (upright)
+    return [b, n, hd, wl, wr, seg, tip]
 
 
 ROBE, ROBE_D, LBONE, GREEN, GOLD, DMETAL = (62, 30, 84), (40, 18, 56), (222, 216, 198), (90, 255, 130), (214, 168, 60), (52, 46, 62)
 
 
 def lich():
+    """The Lich: a hooded skull under a spiked gold crown, a high flared collar, spiked pauldrons, a robe open over a bare
+    ribcage with a green soul burning inside, tattered layered hems, bony hands (one raised with a soul orb), and a staff
+    crowned with a horned skull and a green crystal. Soul wisps float at its sides."""
     p = Part("lich", 10, 128)
-    p.add(-0.8, 0.0, -0.8, 0.8, 0.65, 0.8, robe(ROBE))
-    p.add(-0.62, 0.65, -0.62, 0.62, 1.42, 0.62, robe(ROBE))
-    p.add(-0.5, 1.42, -0.56, 0.5, 2.02, 0.56, robe(ROBE_D))
-    p.add(0.5, 1.48, -0.3, 0.57, 1.96, 0.3, stripes_h(LBONE, (150, 144, 130), 2))
-    p.add(-0.53, 1.34, -0.58, 0.53, 1.44, 0.58, metal(GOLD))
-    for s in (-1, 1):
-        p.add(-0.36, 1.86, s * 0.54, 0.36, 2.12, s * 0.88, metal(DMETAL))
-    p.add(-0.12, 1.2, 0.64, 0.12, 1.9, 0.86, solid(LBONE))
-    p.add(0.1, 1.2, 0.64, 0.72, 1.36, 0.86, solid(LBONE))
-    p.add(-0.12, 1.86, -0.86, 0.12, 2.5, -0.64, solid(LBONE))
-    p.add(-0.1, 2.5, -0.86, 0.1, 2.66, -0.64, solid(LBONE))
-    p.add(-0.46, 2.0, -0.46, 0.46, 2.72, 0.46, robe(ROBE_D))
-    p.add(0.42, 2.05, -0.28, 0.49, 2.52, 0.28, solid(LBONE, 4))
-    for z0, z1 in ((-0.21, -0.07), (0.07, 0.21)):
-        p.add(0.48, 2.3, z0, 0.52, 2.42, z1, glow(GREEN))
-    for k in range(8):
-        a = k * math.pi / 4
-        x, z = math.cos(a) * 0.36, math.sin(a) * 0.36
-        p.add(x - 0.07, 2.72, z - 0.07, x + 0.07, 2.86 + (0.16 if k % 2 == 0 else 0), z + 0.07, metal(GOLD))
-    p.add(0.66, 0.15, 0.7, 0.79, 2.62, 0.83, wood((62, 40, 30), None))
-    p.add(0.56, 2.6, 0.6, 0.9, 2.7, 0.94, solid(LBONE))
-    for dx, dz in ((0.56, 0.6), (0.82, 0.6), (0.56, 0.86), (0.82, 0.86)):
-        p.add(dx, 2.7, dz, dx + 0.08, 3.02, dz + 0.08, solid(LBONE))
-    p.add(0.62, 2.74, 0.66, 0.84, 2.96, 0.88, glow(GREEN))
-    for k in range(10):
-        a = k * math.pi / 5
-        x, z = math.cos(a) * 0.7, math.sin(a) * 0.7
-        p.add(x - 0.1, -0.35, z - 0.1, x + 0.1, 0.05, z + 0.1, robe(ROBE_D))
+    rag = robe(ROBE_D)
+    for kk in range(12):                                             # the tattered hem, wisping away
+        a = kk * math.pi / 6
+        x, z = math.cos(a) * 0.78, math.sin(a) * 0.78
+        p.add(x - 0.12, -0.55 + (kk % 3) * 0.12, z - 0.12, x + 0.12, 0.1, z + 0.12, rag)
+    p.add(-0.85, 0.0, -0.85, 0.85, 0.6, 0.85, robe(ROBE))
+    p.add(-0.7, 0.6, -0.7, 0.7, 1.35, 0.7, robe(ROBE))
+    p.add(-0.55, 1.35, -0.6, 0.35, 2.05, 0.6, robe(ROBE_D))          # torso (open in front)
+    p.add(0.35, 1.4, -0.32, 0.5, 2.0, 0.32, stripes_h(LBONE, (40, 30, 50), 2))   # ribcage
+    p.add(0.3, 1.6, -0.12, 0.42, 1.8, 0.12, glow(GREEN))             # the soul inside
+    for sgn in (-1, 1): p.add(0.35, 1.35, sgn * 0.32, 0.6, 2.05, sgn * 0.6, robe(ROBE))  # robe edges
+    p.add(-0.6, 1.3, -0.62, 0.6, 1.4, 0.62, metal(GOLD))             # belt
+    p.add(0.55, 1.28, -0.1, 0.65, 1.42, 0.1, glow(GREEN))
+    p.add(-0.62, 1.95, -0.62, -0.3, 2.95, 0.62, robe(ROBE_D))        # high collar behind the head
+    for sgn in (-1, 1):
+        p.add(-0.62, 2.55, sgn * 0.62, -0.2, 3.1, sgn * 0.8, robe(ROBE_D))
+        p.add(-0.45, 1.85, sgn * 0.5, 0.45, 2.2, sgn * 0.98, metal(DMETAL))      # pauldrons
+        p.add(-0.42, 2.15, sgn * 0.55, 0.42, 2.22, sgn * 0.95, metal(GOLD))
+        for xx in (-0.25, 0.15): p.add(xx - 0.07, 2.2, sgn * 0.78 - 0.07, xx + 0.07, 2.6, sgn * 0.78 + 0.07, solid(LBONE))
+    # right arm (+z): down to the staff
+    p.add(-0.15, 1.2, 0.6, 0.2, 1.9, 0.9, robe(ROBE))
+    p.add(0.05, 1.15, 0.65, 0.65, 1.32, 0.88, solid(LBONE))
+    # left arm (-z): raised, a soul orb over the open hand
+    p.add(-0.1, 1.85, -0.95, 0.25, 2.25, -0.65, robe(ROBE))
+    p.add(0.05, 2.2, -1.0, 0.4, 2.75, -0.75, robe(ROBE))
+    for dz in (-0.95, -0.87, -0.79): p.add(0.2, 2.75, dz, 0.28, 2.98, dz + 0.05, solid(LBONE))
+    p.add(0.12, 3.05, -0.98, 0.42, 3.35, -0.68, glow(GREEN))
+    # the hood and the skull in it
+    p.add(-0.5, 2.15, -0.5, 0.38, 3.05, 0.5, robe(ROBE_D))
+    p.add(-0.15, 2.95, -0.38, 0.32, 3.2, 0.38, robe(ROBE_D))        # hood peak
+    p.add(0.12, 2.25, -0.33, 0.48, 2.85, 0.33, solid(LBONE, 4))      # skull face
+    p.add(0.46, 2.55, -0.24, 0.5, 2.72, -0.06, solid((14, 10, 18), 2))   # sockets
+    p.add(0.46, 2.55, 0.06, 0.5, 2.72, 0.24, solid((14, 10, 18), 2))
+    p.add(0.49, 2.6, -0.19, 0.53, 2.68, -0.11, glow(GREEN))
+    p.add(0.49, 2.6, 0.11, 0.53, 2.68, 0.19, glow(GREEN))
+    p.add(0.4, 2.2, -0.24, 0.52, 2.38, 0.24, stripes_h(LBONE, (60, 50, 50), 2))   # jaw, teeth
+    for kk in range(8):                                              # the crown
+        a = kk * math.pi / 4
+        x, z = math.cos(a) * 0.42, math.sin(a) * 0.42
+        p.add(x - 0.08, 3.05, z - 0.08, x + 0.08, 3.25 + (0.22 if kk % 2 == 0 else 0.08), z + 0.08, metal(GOLD))
+    p.add(-0.45, 3.05, -0.45, 0.45, 3.13, 0.45, metal(GOLD))
+    p.add(0.4, 3.12, -0.07, 0.48, 3.26, 0.07, glow(GREEN))
+    # the staff
+    p.add(0.68, -0.3, 0.72, 0.8, 3.2, 0.84, wood((52, 36, 30), None))
+    p.add(0.58, 3.1, 0.62, 0.9, 3.4, 0.94, solid(LBONE))             # skull on the staff
+    p.add(0.88, 3.2, 0.68, 0.92, 3.3, 0.88, solid((14, 10, 18), 2))
+    for dz in (0.58, 0.9): p.add(0.62, 3.3, dz, 0.75, 3.75, dz + 0.06, solid(LBONE))   # its horns
+    p.add(0.64, 3.45, 0.68, 0.84, 3.7, 0.88, glow(GREEN))            # the crystal
+    for (x, y, z) in ((-0.2, 2.4, 1.25), (-0.4, 1.4, -1.25), (0.2, 0.7, 1.2)):   # soul wisps
+        p.add(x - 0.09, y - 0.09, z - 0.09, x + 0.09, y + 0.09, z + 0.09, glow((150, 255, 170)))
     return [p]
 
 
@@ -403,28 +533,47 @@ STONE, STONE_D, MOSS, AMBER, AMETH = (112, 112, 106), (78, 78, 74), (72, 122, 44
 
 
 def golem():
+    """The Stone Golem: a massive mossy torso with a cracked chest showing its amber core and amethyst growing from its
+    shoulders; a separate head (it turns to look at you) with a heavy brow, amber eyes and a mossy beard; long arms with
+    huge fists and crystal-studded forearms; thick legs."""
     st = stone(STONE, MOSS)
+    dk = stone(STONE_D)
     b = Part("golem_body", 5, 128)
-    b.add(-0.8, 0.0, -1.0, 0.8, 0.6, 1.0, stone(STONE_D))
-    b.add(-1.1, 0.6, -1.6, 1.1, 2.4, 1.6, st)
-    b.add(1.1, 1.3, -0.32, 1.28, 1.92, 0.32, glow(AMBER))
-    b.add(-1.1, 2.4, -1.6, 1.1, 2.58, 1.6, solid(MOSS, 14))
-    b.add(-0.6, 2.4, -0.7, 0.8, 3.4, 0.7, st)
-    b.add(0.7, 3.0, -0.72, 0.96, 3.22, 0.72, stone(STONE_D))
-    for z0, z1 in ((-0.5, -0.2), (0.2, 0.5)):
-        b.add(0.8, 2.74, z0, 0.86, 2.94, z1, glow(AMBER))
-    b.add(-0.3, 2.5, 1.15, 0.3, 3.15, 1.5, glow(AMETH))
-    b.add(-0.55, 2.5, -1.5, -0.05, 2.95, -1.12, glow(AMETH))
-    b.add(-1.2, 1.0, -0.4, -1.1, 2.2, 0.4, solid(MOSS, 14))
+    b.add(-0.8, 0.0, -1.0, 0.8, 0.6, 1.0, dk)                        # pelvis
+    b.add(-1.0, 0.6, -1.3, 1.0, 1.4, 1.3, st)                       # waist
+    b.add(-1.2, 1.4, -1.75, 1.2, 2.65, 1.75, st)                    # chest
+    b.add(1.2, 1.55, -0.55, 1.32, 2.35, 0.55, dk)                   # the crack...
+    b.add(1.25, 1.75, -0.3, 1.36, 2.15, 0.3, glow(AMBER))           # ...and the core in it
+    b.add(-1.2, 2.65, -1.75, 1.2, 2.82, 1.75, solid(MOSS, 14))
+    for sgn in (-1, 1):
+        b.add(-0.9, 2.3, sgn * 1.5, 0.9, 2.95, sgn * 2.05, dk)          # shoulder blocks
+        b.add(-0.3, 2.95, sgn * 1.6, 0.3, 3.6, sgn * 1.95, glow(AMETH))  # amethyst
+        b.add(-0.65, 2.95, sgn * 1.75, -0.35, 3.3, sgn * 1.98, glow(AMETH))
+        b.add(-1.3, 0.8, sgn * 0.9, -1.2, 2.4, sgn * 1.5, solid(MOSS, 14))
+    b.add(-1.25, 1.2, -0.5, -1.2, 2.6, 0.5, solid((60, 110, 40), 10))  # vines down the back
+    hd = Part("golem_head", 5, 64)
+    hd.add(-0.62, 0.0, -0.7, 0.75, 1.15, 0.7, st)
+    hd.add(0.62, 0.72, -0.72, 0.95, 0.98, 0.72, dk)                 # brow
+    for z0, z1 in ((-0.5, -0.18), (0.18, 0.5)):
+        hd.add(0.74, 0.5, z0, 0.8, 0.7, z1, glow(AMBER))            # eyes
+    hd.add(0.75, 0.25, -0.1, 0.95, 0.6, 0.1, dk)                    # nose
+    hd.add(0.6, -0.35, -0.5, 0.82, 0.25, 0.5, solid((60, 110, 40), 10))  # mossy beard
+    hd.add(-0.62, 1.15, -0.7, 0.75, 1.27, 0.7, solid(MOSS, 14))
+    hd.add(-0.2, 1.15, 0.35, 0.15, 1.6, 0.6, glow(AMETH))          # a crystal on its head
     arm = Part("golem_arm", 5, 64)
-    arm.add(-0.5, -2.6, -0.5, 0.5, 0.0, 0.5, st)
-    arm.add(-0.62, -3.3, -0.62, 0.62, -2.6, 0.62, stone(STONE_D))
-    arm.add(-0.55, -0.15, -0.55, 0.55, 0.1, 0.55, solid(MOSS, 14))
-    arm.add(0.5, -1.7, -0.08, 0.56, -0.2, 0.08, solid((60, 110, 40), 10))
+    arm.add(-0.55, -1.6, -0.55, 0.55, 0.0, 0.55, st)               # upper arm
+    arm.add(-0.6, -2.8, -0.6, 0.6, -1.6, 0.6, st)                  # forearm
+    arm.add(-0.85, -3.75, -0.8, 0.85, -2.8, 0.8, dk)               # the fist
+    arm.add(0.85, -3.6, -0.6, 0.98, -3.0, 0.6, stone((92, 92, 88)))   # knuckles
+    arm.add(-0.6, -0.15, -0.6, 0.6, 0.12, 0.6, solid(MOSS, 14))
+    arm.add(-0.15, -2.5, 0.6, 0.15, -1.9, 0.85, glow(AMETH))        # crystals on the forearm
+    arm.add(-0.1, -2.3, -0.82, 0.18, -1.85, -0.6, glow(AMETH))
     leg = Part("golem_leg", 5, 64)
-    leg.add(-0.55, -2.0, -0.55, 0.55, 0.0, 0.55, st)
-    leg.add(-0.62, -2.3, -0.66, 0.92, -2.0, 0.66, stone(STONE_D))
-    return [b, arm, leg]
+    leg.add(-0.62, -1.1, -0.62, 0.62, 0.0, 0.62, st)
+    leg.add(-0.58, -2.0, -0.58, 0.58, -1.1, 0.58, dk)
+    leg.add(-0.7, -2.3, -0.7, 1.0, -2.0, 0.7, dk)                  # foot
+    leg.add(1.0, -2.3, -0.5, 1.1, -2.15, 0.5, stone((92, 92, 88)))
+    return [b, hd, arm, leg]
 
 
 WOOD, IRON, TONGUE, RED = (150, 100, 52), (70, 70, 76), (210, 80, 112), (255, 50, 40)

@@ -42,6 +42,8 @@ final class FrostWyrm extends Wild.Boss {
     final double k;
     final Wild.Part bodyP, headP, wingL, wingR;
     final List<Wild.Part> tailP = new ArrayList<>();
+    final List<Wild.Part> neckP = new ArrayList<>();
+    Location headAt;
     final Wild.Chain tail;
     final double[] tailGaps;
     Location pos;
@@ -62,12 +64,13 @@ final class FrostWyrm extends Wild.Boss {
         pos.setY(ground(at) + 18);
         yaw = at.getYaw();
         bodyP = rig.add("wyrm_body", k, pos);
+        for (int i = 0; i < 3; i++) neckP.add(rig.add("wyrm_neck", k * (1 - 0.06 * i), pos));
         headP = rig.add("wyrm_head", k, pos);
         wingL = rig.add("wyrm_wing_l", k * 1.2, pos);
         wingR = rig.add("wyrm_wing_r", k * 1.2, pos);
         int n = (int) Math.max(3, c("tail-segments", 6));
         tailGaps = new double[n + 1];
-        for (int i = 0; i < n; i++) { tailP.add(rig.add("wyrm_tail", k * (1.0 - 0.1 * i), pos)); tailGaps[i] = 1.0 * k * (1.0 - 0.08 * i); }
+        for (int i = 0; i < n; i++) { tailP.add(rig.add(i == n - 1 ? "wyrm_tail_tip" : "wyrm_tail", k * (1.0 - 0.1 * i), pos)); tailGaps[i] = 1.05 * k * (1.0 - 0.08 * i); }
         tailGaps[n] = 0.8 * k;
         tail = new Wild.Chain(pos, n, 1.0 * k, dirOf(yaw).multiply(-1));
         hitbox(pos, (int) Math.round(3.5 * k), "The Frost Wyrm");
@@ -144,24 +147,42 @@ final class FrostWyrm extends Wild.Boss {
         if (!landed && ticks % 18 == 0) world.playSound(pos, Sound.ENTITY_ENDER_DRAGON_FLAP, SoundCategory.HOSTILE, 3f, 1.2f);
     }
 
-    Location headBase() { return offset(pos, yaw, 1.5 * k, 0.25 * k, 0); }
+    /** Where the head is (its neck joint); the mouth is ~3 blocks further on. */
+    Location headBase() { return headAt != null ? headAt.clone() : offset(pos, yaw, 4.0 * k, 1.6 * k, 0); }
+
+    Location mouth() { return offset(headBase(), yaw, 2.8 * k, -0.4 * k, 0); }
 
     void place() {
         bodyP.pose(pos, yaw, pitch, 0, null);
-        float headPitch = attack == BREATH ? 25 : attack == ROAR && landed ? -30 : pitch;
-        headP.pose(headBase(), yaw, headPitch, 0, null);
-        float fl = (float) (Math.sin(flap) * (landed ? 8 : 38));
-        Location shL = offset(pos, yaw, 0.35 * k, 0.65 * k, -0.85 * k), shR = offset(pos, yaw, 0.35 * k, 0.65 * k, 0.85 * k);
+        // the neck: three segments along a curve from the chest up to the head (low and forward to breathe, high to roar)
+        boolean breath = attack == BREATH, roaring = attack == ROAR && landed;
+        double fwd = breath ? 2.9 : roaring ? 2.5 : 2.4, up = breath ? 0.1 : roaring ? 1.9 : 1.3;
+        double sway = Math.sin(ticks * 0.07) * 0.25;
+        Location base = offset(pos, yaw, 1.75 * k, 0.35 * k, 0);
+        Location head = offset(pos, yaw, (1.75 + fwd) * k, (0.35 + up) * k, sway * k);
+        Location ctrl = offset(pos, yaw, (1.75 + fwd * 0.45) * k, (0.35 + up * 0.95) * k, sway * 0.4 * k);
+        for (int i = 0; i < neckP.size(); i++) {
+            double t = (i + 0.5) / neckP.size(), u = 1 - t;
+            Vector pt = base.toVector().multiply(u * u).add(ctrl.toVector().multiply(2 * u * t)).add(head.toVector().multiply(t * t));
+            Vector d = ctrl.toVector().subtract(base.toVector()).multiply(2 * u).add(head.toVector().subtract(ctrl.toVector()).multiply(2 * t));
+            neckP.get(i).pose(pt.toLocation(world), yawOf(flat(d)), Math.max(-70, Math.min(70, pitchOf(d) + pitch)), 0, null);
+        }
+        headAt = head;
+        float headPitch = breath ? 25 : roaring ? -30 : pitch + 8;
+        headP.pose(head, (float) (yaw + sway * 8), headPitch, 0, null);
+        // wings: a full flap in the air; folded up and back on the ground
+        float fl = landed ? (float) (62 + Math.sin(flap) * 4) : (float) (Math.sin(flap) * 38);
+        Location shL = offset(pos, yaw, 0.35 * k, 0.65 * k, -0.95 * k), shR = offset(pos, yaw, 0.35 * k, 0.65 * k, 0.95 * k);
         // a flap turns each wing about its own front-back axis (left wing tip up = roll one way, right the other)
         wingL.pose(shL, yaw, pitch, 0, new Quaternionf(new AxisAngle4f((float) Math.toRadians(fl), 1, 0, 0)));
         wingR.pose(shR, yaw, pitch, 0, new Quaternionf(new AxisAngle4f((float) Math.toRadians(-fl), 1, 0, 0)));
-        tail.lead(offset(pos, yaw, -1.5 * k, 0, 0), tailGaps);
+        tail.lead(offset(pos, yaw, -2.2 * k, landed ? -0.6 * k : 0, 0), tailGaps);
         for (int i = 0; i < tailP.size(); i++) {
             Vector f = tail.facing(i + 1);
             tailP.get(i).pose(tail.pts.get(i + 1), yawOf(flat(f)), Math.max(-60, Math.min(60, pitchOf(f))), 0, null);
         }
         hitboxes.get(0).teleport(pos.clone().add(0, -0.9 * k, 0));
-        hitboxes.get(1).teleport(offset(pos, yaw, 2.6 * k, -0.3 * k, 0));
+        hitboxes.get(1).teleport(offset(head, yaw, 1.4 * k, -0.6 * k, 0));
     }
 
     void blizzard(List<Player> a) {
@@ -305,7 +326,7 @@ final class FrostWyrm extends Wild.Boss {
     /** It lands, roars, and spikes of ice burst out of the ground in rings around it. */
     void roar(List<Player> a) {
         if (!landed) {
-            Location to = mark.clone().add(0, 1.6 * k, 0);
+            Location to = mark.clone().add(0, 2.45 * k, 0);
             fly(to, 0.8, 16);
             if (pos.distanceSquared(to) < 1.5 || at > 70) { landed = true; at = 1000; world.playSound(pos, Sound.ENTITY_RAVAGER_STEP, SoundCategory.HOSTILE, 3f, 0.5f); }
             return;

@@ -42,8 +42,11 @@ final class StoneGolem extends Wild.Boss {
 
     final double k;
     final IronGolem mover;
-    final Wild.Part bodyP, armL, armR, legL, legR;
+    final Wild.Part bodyP, headP, armL, armR, legL, legR;
     double walk, healLeft, staggerDamage;
+    /** The pose, eased toward a target every tick (degrees; drop in blocks). */
+    double aL, aR, sL, sR, lL, lR, bPitch, bRoll, drop, hYaw, hPitch;
+    int flinch;
     final List<BlockDisplay> rocks = new ArrayList<>();
     Location mark;
     Vector lineDir;
@@ -74,6 +77,7 @@ final class StoneGolem extends Wild.Boss {
         hitboxes.add(mover);
         Location l = mover.getLocation();
         bodyP = rig.add("golem_body", k, l);
+        headP = rig.add("golem_head", k, l);
         armL = rig.add("golem_arm", k, l);
         armR = rig.add("golem_arm", k, l);
         legL = rig.add("golem_leg", k, l);
@@ -155,21 +159,92 @@ final class StoneGolem extends Wild.Boss {
         }
         Location l = mover.getLocation();
         Vector v = mover.getVelocity().setY(0);
-        double moving = Math.min(1, v.length() * 8);
-        walk += 0.12 + moving * 0.12;
-        float yaw = l.getYaw();
-        float swing = (float) (Math.sin(walk) * 28 * moving);
-        Location hip = l.clone().add(0, 2.3 * k, 0);
-        bodyP.pose(hip, yaw, (float) (attack == POUND && at < 24 ? -12 : 0), 0, null);
-        legL.pose(offset(hip, yaw, 0, 0, -0.6 * k), yaw, 0, 0, rotZ(swing));
-        legR.pose(offset(hip, yaw, 0, 0, 0.6 * k), yaw, 0, 0, rotZ(-swing));
-        float armPose = armAngle();
-        Location shL = offset(hip, yaw, 0, 2.3 * k, -2.1 * k), shR = offset(hip, yaw, 0, 2.3 * k, 2.1 * k);
-        armL.pose(shL, yaw, 0, 0, rotZ(armPose != 0 ? armPose : -swing));
-        armR.pose(shR, yaw, 0, 0, rotZ(armPose != 0 ? armPose : swing));
+        double moving = attack >= 0 && attack != BOULDER ? 0 : Math.min(1, v.length() * 8);
+        walk += 0.1 + moving * 0.14;
+        animate(l, moving);
         if (phase == 3 && ticks % 4 == 0) world.spawnParticle(Particle.DUST, center(), 2, 0.6, 0.6, 0.6, 0, new Particle.DustOptions(Color.ORANGE, 1.4f));
-        if (moving > 0.3 && ticks % 12 == 0) world.playSound(l, Sound.ENTITY_IRON_GOLEM_STEP, SoundCategory.HOSTILE, 2f, 0.5f);
+        if (moving > 0.3 && ticks % 12 == 0) {
+            world.playSound(l, Sound.ENTITY_IRON_GOLEM_STEP, SoundCategory.HOSTILE, 2f, 0.5f);
+            world.spawnParticle(Particle.BLOCK, l.clone().add(0, 0.1, 0), 6, 0.6, 0.05, 0.6, 0, Material.MOSS_BLOCK.createBlockData());
+        }
     }
+
+    // =====================================================================================================
+    //  animation: every joint eases toward where the current move wants it (no snapping)
+    // =====================================================================================================
+    static double ease(double cur, double to, double rate) { return cur + (to - cur) * rate; }
+
+    void animate(Location l, double moving) {
+        double swing = Math.sin(walk) * moving;
+        // targets: idle breathing + walking
+        double tAL = -swing * 22 + Math.sin(ticks * 0.05) * 3, tAR = swing * 22 - Math.sin(ticks * 0.05) * 3;
+        double tSL = 6 + Math.sin(ticks * 0.05) * 2, tSR = 6 + Math.sin(ticks * 0.05) * 2;
+        double tLL = swing * 26, tLR = -swing * 26;
+        double tPitch = moving * 5, tRoll = Math.cos(walk) * 3 * moving;
+        double tDrop = Math.sin(ticks * 0.06) * 0.04 - Math.abs(Math.cos(walk)) * 0.12 * moving;
+        double rate = 0.22;
+        int t = at;
+        switch (attack) {
+            case POUND -> {
+                if (t < 20) { tAL = tAR = 165; tSL = tSR = 18; tPitch = -10; tDrop = 0.1; rate = 0.12; }          // arms up, leaning back
+                else if (t < 24) { tAL = tAR = 170; tSL = tSR = 14; tPitch = -12; tDrop = 0.15; }
+                else if (t < 34) { tAL = tAR = -8; tSL = tSR = 10; tPitch = 20; tDrop = 0.45; rate = 0.6; }        // SLAM
+                else { tAL = tAR = 10; tPitch = 8; tDrop = 0.2; rate = 0.1; }
+            }
+            case BOULDER -> {
+                if (t < 10) { tAR = 55; tSR = 5; tAL = 20; tPitch = 24; tDrop = 0.35; rate = 0.2; }              // bend down for the rock
+                else if (t < 18) { tAR = 175; tSR = 12; tAL = 35; tPitch = -14; tDrop = 0.05; rate = 0.18; }      // heave it overhead
+                else if (t < 26) { tAR = 70; tSR = 6; tAL = -25; tPitch = 16; tDrop = 0.2; rate = 0.55; }         // THROW
+                else { tAR = 15; tAL = 0; tPitch = 4; rate = 0.1; }
+            }
+            case SPIKES -> {
+                if (t < 14) { tAL = tAR = 120; tSL = tSR = 25; tPitch = -6; tDrop = 0.1; rate = 0.15; }
+                else if (t < 20) { tAL = tAR = 35; tSL = tSR = 8; tPitch = 26; tDrop = 0.6; rate = 0.6; }          // fists into the ground
+                else { tAL = tAR = 38; tPitch = 24; tDrop = 0.55; rate = 0.15; }                                   // held there while they burst
+            }
+            case OVERGROWTH -> {
+                double pulse = Math.sin(t * 0.15);
+                tAL = tAR = 30; tSL = tSR = 14; tLL = 38; tLR = -28; tPitch = 18 + pulse * 2; tDrop = 0.75 + pulse * 0.03; rate = 0.08;  // kneels, rooted
+            }
+            default -> { }
+        }
+        if (flinch > 0) { flinch--; tPitch -= 7; tAL -= 12; tAR -= 12; rate = Math.max(rate, 0.4); }
+        aL = ease(aL, tAL, rate); aR = ease(aR, tAR, rate); sL = ease(sL, tSL, rate); sR = ease(sR, tSR, rate);
+        lL = ease(lL, tLL, rate); lR = ease(lR, tLR, rate); bPitch = ease(bPitch, tPitch, rate); bRoll = ease(bRoll, tRoll, rate);
+        drop = ease(drop, tDrop, rate);
+        // the head looks at whoever it's fighting (within its neck's reach), and down when kneeling
+        float yaw = l.getYaw();
+        double wantYaw = 0, wantPitch = attack == OVERGROWTH ? 22 : attack == POUND && at >= 24 && at < 34 ? 18 : 0;
+        Player look = focus != null && focus.isOnline() && focus.getWorld().equals(world) ? focus : target(active());
+        if (look != null) {
+            Vector to = look.getEyeLocation().toVector().subtract(l.clone().add(0, 5.2 * k, 0).toVector());
+            wantYaw = Math.max(-55, Math.min(55, wrap(yawOf(flat(to)) - yaw)));
+            if (attack != OVERGROWTH) wantPitch = Math.max(-25, Math.min(30, pitchOf(to)));
+        }
+        hYaw = ease(hYaw, wantYaw, 0.15); hPitch = ease(hPitch, wantPitch, 0.15);
+        place(l, yaw);
+    }
+
+    static double wrap(double d) { d = ((d % 360) + 540) % 360 - 180; return d; }
+
+    /** Put every part where the pose says: legs from the hip, the torso leaning on them, arms and head riding the torso. */
+    void place(Location l, float yaw) {
+        Location hip = l.clone().add(0, (2.3 - drop) * k, 0);
+        double p = Math.toRadians(bPitch);
+        bodyP.pose(hip, yaw, (float) bPitch, (float) bRoll, null);
+        legL.pose(offset(hip, yaw, 0, 0, -0.65 * k), yaw, 0, 0, rotZ((float) lL));
+        legR.pose(offset(hip, yaw, 0, 0, 0.65 * k), yaw, 0, 0, rotZ((float) lR));
+        // a point on the torso h blocks up, after the lean (nose-down pitch tips the top forward)
+        double sh = 2.45 * k, top = 2.82 * k;
+        Location shL = offset(hip, yaw, Math.sin(p) * sh, Math.cos(p) * sh, -2.15 * k);
+        Location shR = offset(hip, yaw, Math.sin(p) * sh, Math.cos(p) * sh, 2.15 * k);
+        armL.pose(shL, yaw, (float) bPitch, 0, rotZ((float) aL).mul(rotX((float) sL)));
+        armR.pose(shR, yaw, (float) bPitch, 0, rotZ((float) aR).mul(rotX((float) -sR)));
+        Location neck = offset(hip, yaw, Math.sin(p) * top, Math.cos(p) * top, 0);
+        headP.pose(neck, (float) (yaw + hYaw), (float) (bPitch + hPitch), 0, null);
+    }
+
+    static Quaternionf rotX(float deg) { return new Quaternionf(new AxisAngle4f((float) Math.toRadians(deg), 1, 0, 0)); }
 
     void walkTo(Location l) {
         mover.getPathfinder().moveTo(l, 1.0);
@@ -182,12 +257,6 @@ final class StoneGolem extends Wild.Boss {
     /** A turn about its own sideways axis (the part swings forward/back like a leg or an arm). */
     static Quaternionf rotZ(float deg) { return new Quaternionf(new AxisAngle4f((float) Math.toRadians(deg), 0, 0, 1)); }
 
-    float armAngle() {
-        if (attack == POUND) return at < 24 ? 160 : at < 30 ? 160 - (at - 24) * 30 : 0;      // up overhead, then down
-        if (attack == BOULDER) return at < 18 ? 150 : at < 22 ? 150 - (at - 18) * 45 : 0;     // the throw
-        if (attack == OVERGROWTH) return 40;
-        return 0;
-    }
 
     // =====================================================================================================
     //  moves
@@ -319,6 +388,7 @@ final class StoneGolem extends Wild.Boss {
 
     @Override
     double damageTaken(double amount) {
+        if (amount >= 6 && flinch <= 0) flinch = 6;
         if (attack == OVERGROWTH) {
             staggerDamage -= amount;
             if (staggerDamage <= 0) {
@@ -337,7 +407,18 @@ final class StoneGolem extends Wild.Boss {
         Location l = mover.getLocation();
         if (t % 3 == 0) world.spawnParticle(Particle.BLOCK, center(), 30, 1, 1.5, 1, 0, Material.MOSSY_COBBLESTONE.createBlockData());
         if (t % 12 == 0) world.playSound(l, Sound.ENTITY_IRON_GOLEM_DAMAGE, SoundCategory.HOSTILE, 2.5f, 0.5f);
-        bodyP.pose(l.clone().add(0, 2.3 * k - Math.min(1.5, t * 0.03), 0), l.getYaw(), Math.min(60, t * 1.2f), 0, null);
+        if (t == 34) {
+            world.playSound(l, Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.HOSTILE, 2f, 0.4f);
+            world.spawnParticle(Particle.BLOCK, l.clone().add(0, 0.3, 0), 160, 2.5, 0.3, 2.5, 0, Material.MOSSY_COBBLESTONE.createBlockData());
+        }
+        // it sags to its knees, its arms go limp, then it topples forward into the moss
+        double f = Math.min(1, t / 36.0);
+        aL = ease(aL, -5, 0.15); aR = ease(aR, 5, 0.15); sL = ease(sL, 4, 0.15); sR = ease(sR, 4, 0.15);
+        lL = ease(lL, 45, 0.12); lR = ease(lR, -20, 0.12);
+        bPitch = ease(bPitch, 20 + f * f * 65, 0.25); bRoll = ease(bRoll, 6, 0.1);
+        drop = ease(drop, 0.8 + f * 0.9, 0.2);
+        hPitch = ease(hPitch, 30, 0.1); hYaw = ease(hYaw, 0, 0.1);
+        place(l, l.getYaw());
     }
 
     @Override

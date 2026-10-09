@@ -37,10 +37,13 @@ import static net.faultlinesmp.bosses.FaultlineBosses.*;
  *            Glacial Roar (it lands: ice spikes burst out of the ground around it).
  *   Phase 2 (60%): + Frost Archers (strays) and it flies faster.
  *   Phase 3 (30%): + a Blizzard around it (snow, cold, slowness the whole fight).
+ *   1.5.0: + Ice Shard Volley (fans of ice shards from its mouth as it circles) from phase 1, + Wing Gust (it rears up
+ *          in the air and three huge wingbeats blast everyone in front of it away) from phase 2.
  */
 final class FrostWyrm extends Wild.Boss {
 
-    static final int BREATH = 1, ICICLES = 2, DIVE = 3, ROAR = 4, ARCHERS = 5;
+    static final int BREATH = 1, ICICLES = 2, DIVE = 3, ROAR = 4, ARCHERS = 5, GUST = 6, SHARDS = 7;
+    static final String SHARD_TAG = "faultline_wyrm_shard";
 
     final double k;
     final Wild.Part bodyP, headP, wingL, wingR;
@@ -153,7 +156,8 @@ final class FrostWyrm extends Wild.Boss {
 
     @Override
     void bodyTick(List<Player> a) {
-        if (!landed && (attack < 0 || attack == ICICLES || attack == ARCHERS)) {
+        ice.removeIf(d -> !d.isValid());
+        if (!landed && (attack < 0 || attack == ICICLES || attack == ARCHERS || attack == SHARDS)) {
             Location c = fightCenter(a);
             if (pilot != null) {
                 Location to = c.clone().add(0, 4, 0);
@@ -166,7 +170,7 @@ final class FrostWyrm extends Wild.Boss {
                 fly(to, c("speed", 0.55) * (phase >= 2 ? 1.2 : 1), 6);
             }
         }
-        flap += landed ? 0.04 : attack == BREATH ? 0.35 : 0.22;
+        flap += landed ? 0.04 : attack == BREATH ? 0.35 : attack == GUST ? 0 : 0.22;
         place();
         if (phase == 3 && ticks % 40 == 0) blizzard(a);
         if (ticks % 3 == 0) world.spawnParticle(Particle.SNOWFLAKE, pos, 4, 1.5, 0.5, 1.5, 0.02);
@@ -179,7 +183,8 @@ final class FrostWyrm extends Wild.Boss {
     Location mouth() { return offset(headBase(), yaw, 2.8 * k, -0.4 * k, 0); }
 
     // eased pose values (1.4.12): the neck used to SNAP between its breath / roar / flying shapes
-    double aFwd = 2.4, aUp = 1.3, aHeadPitch, aBank, aWing, aLook;
+    double aFwd = 2.4, aUp = 1.3, aHeadPitch, aBank, aWing, aLook, aRear, gustWing;
+    int spit;
     float lastYaw = Float.NaN;
     boolean deathLimp;
 
@@ -195,7 +200,8 @@ final class FrostWyrm extends Wild.Boss {
         double beat = Math.sin(flap) + 0.3 * Math.sin(2 * flap);
         double bob = landed ? Math.sin(ticks * 0.06) * 0.05 * k : -beat * 0.22 * k;
         Location bodyAt = pos.clone().add(0, bob, 0);
-        bodyP.pose(bodyAt, yaw, (float) (pitch - fl0 * 8), (float) (aBank + fl0 * 6), null);
+        aRear += ((attack == GUST && at > 14 ? -32 : 0) - aRear) * 0.12;
+        bodyP.pose(bodyAt, yaw, (float) (pitch + aRear - fl0 * 8), (float) (aBank + fl0 * 6), null);
         // the neck: three segments along a curve from the chest up to the head (low and forward to breathe, high to roar)
         boolean breath = attack == BREATH, roaring = attack == ROAR && landed;
         double wantFwd = breath ? 2.9 : roaring ? 2.5 : attack == DIVE ? 2.8 : 2.4;
@@ -220,15 +226,18 @@ final class FrostWyrm extends Wild.Boss {
             neckP.get(i).pose(pt.toLocation(world), yawOf(flat(d)), Math.max(-70, Math.min(70, pitchOf(d) + pitch)), 0, null);
         }
         headAt = head;
-        double wantHeadPitch = breath ? 25 : roaring ? -30 : attack == DIVE ? 18 : pitch + 8 - fl0 * 20;
+        double wantHeadPitch = breath ? 25 : roaring ? -30 : attack == DIVE ? 18 : attack == GUST ? 10 : pitch + 8 - fl0 * 20;
+        if (attack == SHARDS) wantHeadPitch = spit > 0 ? -18 : 14; // snaps back as each volley leaves its mouth
+        if (spit > 0) spit--;
         aHeadPitch += (wantHeadPitch - aHeadPitch) * 0.2;
         headP.pose(head, (float) (yaw + aLook * 0.6 + sway * 4), (float) aHeadPitch, (float) (aBank * 0.5), null);
         // wings: full beats in the air, swept back into a dive, folded up on the ground, limp in death
         double wantWing = deathLimp ? 70 + Math.sin(flap) * 6
                 : landed ? 62 + Math.sin(flap) * 4
                 : attack == DIVE ? 48 + Math.sin(flap * 2) * 3
+                : attack == GUST ? gustWing
                 : beat * 34;
-        aWing += (wantWing - aWing) * (landed || attack == DIVE || deathLimp ? 0.15 : 0.6);
+        aWing += (wantWing - aWing) * (landed || attack == DIVE || deathLimp ? 0.15 : attack == GUST ? 0.45 : 0.6);
         float fl = (float) aWing;
         Location shL = offset(pos, yaw, 0.35 * k, 0.65 * k, -0.95 * k), shR = offset(pos, yaw, 0.35 * k, 0.65 * k, 0.95 * k);
         // a flap turns each wing about its own front-back axis (left wing tip up = roll one way, right the other)
@@ -260,7 +269,9 @@ final class FrostWyrm extends Wild.Boss {
     @Override
     int pick(List<Player> a) {
         List<Integer> pool = new ArrayList<>(List.of(BREATH, BREATH, ICICLES, DIVE, ROAR));
+        pool.add(SHARDS);
         if (phase >= 2 && minions.size() < 4) pool.add(ARCHERS);
+        if (phase >= 2) { pool.add(GUST); pool.add(GUST); }
         if (phase == 3) pool.add(DIVE);
         return pool.get(random.nextInt(pool.size()));
     }
@@ -286,6 +297,8 @@ final class FrostWyrm extends Wild.Boss {
             }
             case ROAR -> { mark = tl.clone().add(flat(pos.toVector().subtract(tl.toVector())).multiply(7)); mark.setY(ground(mark)); }
             case ARCHERS -> world.playSound(pos, Sound.ENTITY_STRAY_AMBIENT, SoundCategory.HOSTILE, 3f, 0.6f);
+            case GUST -> { mark = tl.clone(); world.playSound(pos, Sound.ENTITY_ENDER_DRAGON_GROWL, SoundCategory.HOSTILE, 3f, 1.1f); }
+            case SHARDS -> world.playSound(pos, Sound.BLOCK_AMETHYST_CLUSTER_BREAK, SoundCategory.HOSTILE, 3f, 0.5f);
             default -> { }
         }
     }
@@ -298,6 +311,8 @@ final class FrostWyrm extends Wild.Boss {
             case DIVE -> dive(a);
             case ROAR -> roar(a);
             case ARCHERS -> archers(a);
+            case GUST -> gust(a);
+            case SHARDS -> shards(a);
             default -> end();
         }
     }
@@ -458,6 +473,89 @@ final class FrostWyrm extends Wild.Boss {
         if (at > 20) end();
     }
 
+
+    /** It hovers in front of its target, rears back, and three huge wingbeats blast everyone in front of it away. */
+    void gust(List<Player> a) {
+        Location hover = mark.clone().add(flat(pos.toVector().subtract(mark.toVector())).multiply(11));
+        hover.setY(ground(mark) + 6);
+        if (at < 22) { fly(hover, 0.7, 14); gustWing = 30; if (focus != null && focus.isOnline()) mark = focus.getLocation(); return; }
+        yaw = turn(yaw, yawOf(flat(mark.toVector().subtract(pos.toVector()))), 5);
+        int t = at - 22, beat = t % 16;
+        // each beat: wings drawn high and back... then driven down hard
+        gustWing = beat < 9 ? 58 : -42;
+        if (beat == 9 && t < 48) {
+            world.playSound(pos, Sound.ENTITY_ENDER_DRAGON_FLAP, SoundCategory.HOSTILE, 4f, 0.6f);
+            world.playSound(pos, Sound.ENTITY_BREEZE_WIND_BURST, SoundCategory.HOSTILE, 3f, 0.6f);
+            Vector fw = dirOf(yaw);
+            double[] r = {1};
+            Location from = pos.clone();
+            fx.add(() -> { // the gust rolls out as a wall of snow
+                r[0] += 1.4;
+                Vector side = new Vector(-fw.getZ(), 0, fw.getX());
+                for (double s = -r[0] * 0.6; s <= r[0] * 0.6; s += 0.8) {
+                    Location l = from.clone().add(fw.clone().multiply(r[0])).add(side.clone().multiply(s));
+                    l.setY(ground(l) + 0.6);
+                    world.spawnParticle(Particle.SNOWFLAKE, l, 2, 0.2, 0.5, 0.2, 0.05);
+                    if (random.nextInt(3) == 0) world.spawnParticle(Particle.CLOUD, l, 1, 0.2, 0.3, 0.2, 0.02);
+                }
+                return r[0] > 20;
+            });
+            for (Player p : a) {
+                Vector to = p.getLocation().toVector().subtract(pos.toVector());
+                Vector f = flat(to);
+                if (to.lengthSquared() > 22 * 22 || f.dot(fw) < Math.cos(Math.toRadians(40))) continue;
+                hit(p, c("moves.gust", 4), pos.toVector(), Guard.UNBLOCKABLE);
+                Safe.vel(p, fw.clone().multiply(c("gust-push", 1.6)).setY(0.45));
+                p.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 40, 1));
+                p.setFreezeTicks(Math.min(p.getMaxFreezeTicks() + 40, p.getFreezeTicks() + 30));
+            }
+        }
+        if (t > 50) { gustWing = 0; end(); }
+    }
+
+    /** Circling, it spits fans of ice shards at whoever it's after. */
+    void shards(List<Player> a) {
+        int volleys = phase >= 2 ? 4 : 3;
+        if (at % 14 == 8 && at / 14 < volleys && !a.isEmpty()) {
+            Player t = a.get(random.nextInt(a.size()));
+            Location m = mouth();
+            Vector aim = t.getEyeLocation().toVector().subtract(m.toVector());
+            double dist = aim.length();
+            aim.normalize();
+            Vector side = new Vector(-aim.getZ(), 0, aim.getX());
+            if (side.lengthSquared() < 1e-4) side = new Vector(1, 0, 0); else side.normalize();
+            for (int i = -2; i <= 2; i++) {
+                Vector v = aim.clone().add(side.clone().multiply(i * 0.09)).normalize().multiply(1.5).add(new Vector(0, dist * 0.004, 0));
+                org.bukkit.entity.Snowball s = world.spawn(m, org.bukkit.entity.Snowball.class, b -> {
+                    b.setItem(new ItemStack(Material.ICE));
+                    b.addScoreboardTag(Wild.FX_TAG);
+                    b.addScoreboardTag(SHARD_TAG);
+                });
+                Safe.vel(s, v);
+                if (source() != null) s.setShooter(source());
+            }
+            spit = 6;
+            world.playSound(m, Sound.ENTITY_PLAYER_HURT_FREEZE, SoundCategory.HOSTILE, 3f, 0.5f);
+            world.playSound(m, Sound.BLOCK_GLASS_BREAK, SoundCategory.HOSTILE, 2f, 1.6f);
+            world.spawnParticle(Particle.SNOWFLAKE, m, 20, 0.3, 0.3, 0.3, 0.15);
+        }
+        if (at > volleys * 14 + 10) end();
+    }
+
+    /** An ice shard lands. */
+    static void shardLands(Wild w, org.bukkit.event.entity.ProjectileHitEvent e) {
+        e.setCancelled(true);
+        org.bukkit.entity.Entity pr = e.getEntity();
+        pr.getWorld().spawnParticle(Particle.BLOCK, pr.getLocation(), 12, 0.2, 0.2, 0.2, 0, Material.ICE.createBlockData());
+        pr.getWorld().playSound(pr.getLocation(), Sound.BLOCK_GLASS_BREAK, SoundCategory.HOSTILE, 1f, 1.4f);
+        Wild.Boss b = w.get("frostwyrm");
+        if (e.getHitEntity() instanceof Player p && b != null) {
+            b.hit(p, b.c("moves.ice-shard", 6), pr.getLocation().toVector(), Guard.BLOCKABLE);
+            if (survival(p)) p.setFreezeTicks(Math.min(p.getMaxFreezeTicks() + 40, p.getFreezeTicks() + 40));
+        }
+        pr.remove();
+    }
+
     @Override
     void deathAnim(int t) {
         deathLimp = true;
@@ -486,7 +584,11 @@ final class FrostWyrm extends Wild.Boss {
         m.add(new MoveSlot(ICICLES, "Icicle Rain", Material.POINTED_DRIPSTONE));
         m.add(new MoveSlot(DIVE, "Dive Bomb", Material.PHANTOM_MEMBRANE));
         m.add(new MoveSlot(ROAR, "Glacial Roar", Material.PACKED_ICE));
-        if (phase >= 2) m.add(new MoveSlot(ARCHERS, "Frost Archers", Material.STRAY_SPAWN_EGG));
+        m.add(new MoveSlot(SHARDS, "Ice Shard Volley", Material.ICE));
+        if (phase >= 2) {
+            m.add(new MoveSlot(ARCHERS, "Frost Archers", Material.STRAY_SPAWN_EGG));
+            m.add(new MoveSlot(GUST, "Wing Gust", Material.FEATHER));
+        }
         return m;
     }
 }

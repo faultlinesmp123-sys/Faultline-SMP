@@ -178,9 +178,31 @@ def serpent(built, head, body, tail, k, gap, segs, rise, tailk):
     return sc
 
 
-def lich(built):
+LICH_SH_L, LICH_SH_R, LICH_NECK, LICH_CAPE = (0.0, 0.8, -0.5), (0.0, 0.8, 0.5), (0.02, 0.86, 0), (-0.3, 0.9, 0)
+
+
+def lich(built, lift=0.0, lean=0.0, roll=0.0, hy=0.0, hp=0.0, lsw=14, lsp=12, rsw=24, rsp=8, staff=3, cape=10, staff_fall=None):
+    """Mirrors Lich.draw(): body at the waist, head on the neck, arms on the shoulders, the staff in the right hand."""
     sc = Scene(built)
-    sc.pose("lich", 1.3, [0, 0, 0], 0)
+    k, yaw = 1.3, 0.0
+    waist = np.array([0, 2.02 * k + lift, 0])
+    D = Ry(math.radians(-yaw)) @ Rx(math.radians(lean)) @ Rz(math.radians(roll)) @ Q0
+    def J(o, M, p): return np.asarray(o, float) + M @ (np.array(p, float) * k)
+    sc.pose("lich_body", k, waist, yaw, lean, roll)
+    sc.pose("lich_head", k, J(waist, D, LICH_NECK), yaw + hy, lean + hp, roll * 0.5)
+    sc.pose("lich_cape", k, J(waist, D, LICH_CAPE), yaw, lean, roll, Rz(math.radians(-cape)))
+    lq = Rz(math.radians(lsw)) @ Rx(math.radians(lsp))
+    rq = Rz(math.radians(rsw)) @ Rx(math.radians(-rsp))
+    shL, shR = J(waist, D, LICH_SH_L), J(waist, D, LICH_SH_R)
+    sc.pose("lich_arm", k, shL, yaw, lean, roll, lq)
+    sc.pose("lich_arm", k, shR, yaw, lean, roll, rq)
+    hand = J(shR, D @ rq, (0, -1.12, 0))
+    if staff_fall is None:
+        sc.pose("lich_staff", k, hand, yaw, lean, roll, Rz(math.radians(staff)))
+    else:
+        foot = np.array([hand[0], 0.0, hand[2]])
+        M = Ry(math.radians(-(yaw + 40))) @ Q0 @ Rz(math.radians(staff_fall))
+        sc.pose("lich_staff", k, J(foot, M, (0, 1.75, 0)), yaw + 40, 0, 0, Rz(math.radians(staff_fall)))
     return sc
 
 
@@ -205,7 +227,14 @@ SCENES = {
                             serpent(b, "lev_head", "lev_body", "lev_tail", 1.0, 2.2, 7, 2.5, 0.75).render(az=100, el=8, title="side")],
     "sandworm": lambda b: [serpent(b, "worm_head", "worm_body", "worm_tail", 1.5, 2.4 * 1.5, 7, 4, 0.8).render(title="the Sandworm King"),
                            serpent(b, "worm_head", "worm_body", "worm_tail", 1.5, 2.4 * 1.5, 7, 4, 0.8).render(az=-80, el=5, title="maw (front)")],
-    "lich": lambda b: [lich(b).render(az=-60, el=12, title="the Lich (front)"), lich(b).render(az=30, el=12, title="side"), lich(b).render(az=150, el=12, title="back")],
+    "lich": lambda b: [lich(b).render(az=-60, el=12, title="the Lich (front)", span=3.6),
+                       lich(b).render(az=150, el=12, title="back", span=3.6),
+                       lich(b, lift=0.3, lean=8, lsw=98, lsp=4, hy=-10).render(az=-30, el=12, title="soul bolt: throw", span=3.6),
+                       lich(b, lift=0.9, lean=-14, hp=-25, lsw=165, lsp=28, rsw=150, rsp=18, staff=-8).render(az=-60, el=12, title="raise: arms up", span=3.6),
+                       lich(b, lean=26, lsw=-20, lsp=30, rsw=55, rsp=0, staff=105).render(az=-100, el=12, title="blink: the strike", span=3.6),
+                       lich(b, lean=22, lift=-0.2, hp=30, lsw=40, lsp=18, staff=8).render(az=-60, el=12, title="grasp: reaching down", span=3.6),
+                       lich(b, lift=0.7, lean=-6, lsw=25, lsp=78, rsw=22, rsp=62, staff=0).render(az=-60, el=12, title="death ring", span=3.6),
+                       lich(b, lift=1.2, lean=60, hp=50, lsw=3, lsp=4, rsw=4, rsp=4, cape=4, staff_fall=84).render(az=-60, el=12, title="death", span=3.6)],
     "golem": lambda b: [golem(b, 3, -3, 6, 6, 0, 0, 0, 0).render(az=-50, el=12, title="idle", span=11),
                         golem(b, -20, 20, 6, 6, 24, -24, 5, 0.1).render(az=-50, el=12, title="walking", span=11),
                         golem(b, 168, 168, 16, 16, 0, 0, -11, 0.13).render(az=-50, el=12, title="pound: wind-up", span=11),

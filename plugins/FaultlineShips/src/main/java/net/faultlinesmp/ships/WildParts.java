@@ -25,7 +25,11 @@ final class WildParts {
         P.put("wyrm_wing_r", new double[]{2.44085, -1.20000, 3.64128, 3.58500});
         P.put("wyrm_tail", new double[]{1.00000, -0.00000, 0.97000, -0.00000});
         P.put("wyrm_tail_tip", new double[]{1.00000, -0.75000, 0.88000, -0.00000});
-        P.put("lich", new double[]{1.46383, 0.01000, 1.64575, -0.00000});
+        P.put("lich_body", new double[]{1.15664, -0.00568, -0.23267, -0.00000});
+        P.put("lich_head", new double[]{1.00000, -0.06750, 1.50000, -0.00000});
+        P.put("lich_arm", new double[]{1.00000, -0.01000, 0.06000, -0.00000});
+        P.put("lich_staff", new double[]{1.05872, 0.16400, -0.16191, -0.00000});
+        P.put("lich_cape", new double[]{1.00000, -0.03000, -0.61968, -0.00000});
         P.put("golem_body", new double[]{1.39574, 0.03000, 2.09362, -0.00000});
         P.put("golem_head", new double[]{1.00000, 0.16500, 1.15000, -0.00000});
         P.put("golem_arm", new double[]{1.31745, 0.06500, -1.77383, 0.01500});

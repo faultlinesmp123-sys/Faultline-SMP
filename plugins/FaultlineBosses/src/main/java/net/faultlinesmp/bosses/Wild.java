@@ -298,6 +298,7 @@ final class Wild implements Listener {
         }
         if (pr.getScoreboardTags().contains("faultline_leviathan_bile")) { Leviathan.bileLands(pr); pr.remove(); return; }
         if (pr.getScoreboardTags().contains("faultline_lich_bolt")) { Lich.boltLands(this, e); return; }
+        if (pr.getScoreboardTags().contains(FrostWyrm.SHARD_TAG)) { FrostWyrm.shardLands(this, e); return; }
         if (pr.getScoreboardTags().contains("faultline_wild_boulder")) { e.setCancelled(true); return; }
         if (pr.getScoreboardTags().contains("faultline_soul_bolt") && pr.getShooter() instanceof Player p) {
             e.setCancelled(true);

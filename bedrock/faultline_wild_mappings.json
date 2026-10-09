@@ -212,9 +212,73 @@
    },
    {
     "type": "definition",
-    "model": "faultline:wild/lich",
-    "bedrock_identifier": "faultline:wild_lich",
-    "display_name": "lich",
+    "model": "faultline:wild/lich_body",
+    "bedrock_identifier": "faultline:wild_lich_body",
+    "display_name": "lich_body",
+    "bedrock_options": {
+     "icon": "faultline.lich",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:wild/lich_head",
+    "bedrock_identifier": "faultline:wild_lich_head",
+    "display_name": "lich_head",
+    "bedrock_options": {
+     "icon": "faultline.lich",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:wild/lich_arm",
+    "bedrock_identifier": "faultline:wild_lich_arm",
+    "display_name": "lich_arm",
+    "bedrock_options": {
+     "icon": "faultline.lich",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:wild/lich_staff",
+    "bedrock_identifier": "faultline:wild_lich_staff",
+    "display_name": "lich_staff",
+    "bedrock_options": {
+     "icon": "faultline.lich",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:wild/lich_cape",
+    "bedrock_identifier": "faultline:wild_lich_cape",
+    "display_name": "lich_cape",
     "bedrock_options": {
      "icon": "faultline.lich",
      "allow_offhand": false

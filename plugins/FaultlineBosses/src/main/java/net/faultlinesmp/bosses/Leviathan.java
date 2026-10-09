@@ -39,11 +39,14 @@ import static net.faultlinesmp.bosses.FaultlineBosses.*;
  *   Phase 2 (60%): + the Coil (it circles you tight and crushes: ships inside take damage every second),
  *            Tail Sweep, and it calls Drowned up from the deep.
  *   Phase 3 (30%): faster, rams more.
+ *   1.5.0: + Breach (it dives, then leaps clean out of the sea in an arc and crashes down on a marked ring: ships there
+ *            take a big hit) from phase 1, + Whirlpool (it circles a spot faster and faster and the sea drags everyone,
+ *            boats too, into the middle) from phase 2.
  * Hits near a ship's hull break that part of the ship (FaultlineShips through ShipLink).
  */
 final class Leviathan extends Wild.Boss {
 
-    static final int RAM = 1, SPOUT = 2, COIL = 3, ROAR = 4, BILE = 5, TAIL = 6, DROWNED = 7;
+    static final int RAM = 1, SPOUT = 2, COIL = 3, ROAR = 4, BILE = 5, TAIL = 6, DROWNED = 7, BREACH = 8, WHIRL = 9;
 
     final int segs;
     final double k, gap;
@@ -197,6 +200,7 @@ final class Leviathan extends Wild.Boss {
     @Override
     void bodyTick(List<Player> a) {
         if (attack < 0 || attack == ROAR || attack == BILE || attack == SPOUT || attack == DROWNED) {
+            if (attack == DROWNED && at < 12) headPos.setY(Math.min(surfaceY + 1.8, headPos.getY() + 0.2)); // rears up out of the sea
             double speed = c("speed", 0.42) * (phase == 3 ? 1.25 : 1);
             if (pilot != null) {
                 Location p = pilot.getLocation().clone();
@@ -216,7 +220,10 @@ final class Leviathan extends Wild.Boss {
         float hy = yawOf(flat(hf)), hp = attack == ROAR ? -35 : pitchOf(hf.lengthSquared() < 1e-4 ? dirOf(yaw) : hf);
         // the head: eases between poses, sways as it swims, recoils when hit, snaps when the ram lands
         double fl = flinchAmt();
-        double wantPitch = Math.max(-40, Math.min(40, hp)) - fl * 18 + (attack == RAM && at > 0 && at % 20 < 4 ? 18 : 0);
+        double wantPitch = Math.max(-40, Math.min(40, hp)) - fl * 18 + (attack == RAM && at > 0 && at % 20 < 4 ? 18 : 0)
+                + (attack == BILE && at <= 20 ? (at % 8 < 3 ? -22 : at % 8 < 5 ? 14 : 0) : 0)   // rears back, then spits
+                + (attack == DROWNED && at < 12 ? -30 : 0);                                       // calls up at the sky
+        if (attack == BREACH && at > 0 && !submerged) wantPitch = Math.max(-60, Math.min(60, hp)); // follows its arc
         aHeadPitch += (wantPitch - aHeadPitch) * 0.3;
         double headRoll = Math.sin(ticks * 0.09) * 7 + fl * (ticks % 2 == 0 ? 9 : -9) + deathRoll;
         head.pose(headPos, yaw, (float) aHeadPitch, (float) headRoll, null);
@@ -257,8 +264,8 @@ final class Leviathan extends Wild.Boss {
     // =====================================================================================================
     @Override
     int pick(List<Player> a) {
-        List<Integer> pool = new ArrayList<>(List.of(RAM, SPOUT, BILE, ROAR));
-        if (phase >= 2) { pool.add(COIL); pool.add(TAIL); if (minions.size() < 4) pool.add(DROWNED); }
+        List<Integer> pool = new ArrayList<>(List.of(RAM, SPOUT, BILE, ROAR, BREACH));
+        if (phase >= 2) { pool.add(COIL); pool.add(TAIL); pool.add(WHIRL); pool.add(BREACH); if (minions.size() < 4) pool.add(DROWNED); }
         if (phase == 3) { pool.add(RAM); pool.add(RAM); }
         if (attack >= 0) return -1;
         return pool.get(random.nextInt(pool.size()));
@@ -291,6 +298,22 @@ final class Leviathan extends Wild.Boss {
             case ROAR -> world.playSound(headPos, Sound.ENTITY_RAVAGER_ROAR, SoundCategory.HOSTILE, 4f, 0.4f);
             case TAIL -> world.playSound(chain.pts.get(chain.pts.size() - 1), Sound.ENTITY_PLAYER_ATTACK_SWEEP, SoundCategory.HOSTILE, 3f, 0.5f);
             case DROWNED -> world.playSound(headPos, Sound.ENTITY_DROWNED_AMBIENT_WATER, SoundCategory.HOSTILE, 3f, 0.5f);
+            case BREACH -> {
+                submerged = true;
+                mark = tl.clone();
+                mark.setY(surfaceY);
+                lineDir = flat(tl.toVector().subtract(headPos.toVector()));
+                lineFrom = mark.clone().add(lineDir.clone().multiply(-14));
+                lineFrom.setY(surfaceY - 6);
+                landed = false;
+                world.playSound(headPos, Sound.ENTITY_ELDER_GUARDIAN_AMBIENT, SoundCategory.HOSTILE, 3f, 0.4f);
+            }
+            case WHIRL -> {
+                mark = tl.clone();
+                mark.setY(surfaceY);
+                world.playSound(mark, Sound.BLOCK_BUBBLE_COLUMN_WHIRLPOOL_AMBIENT, SoundCategory.HOSTILE, 4f, 0.5f);
+                say(ChatColor.DARK_AQUA + "The sea starts to turn...");
+            }
             default -> { }
         }
     }
@@ -305,6 +328,8 @@ final class Leviathan extends Wild.Boss {
             case BILE -> bile(a);
             case TAIL -> tailSweep(a);
             case DROWNED -> drowned(a);
+            case BREACH -> breach(a);
+            case WHIRL -> whirlpool(a);
             default -> end();
         }
     }
@@ -461,6 +486,96 @@ final class Leviathan extends Wild.Boss {
         if (at > 20) end();
     }
 
+
+    boolean landed;
+
+    /** It dives, then leaps clean out of the sea in an arc over the ring and crashes down on it. */
+    void breach(List<Player> a) {
+        int wind = phase == 3 ? 22 : 30;
+        if (at <= wind) {
+            swim(lineFrom, 0.75, 14);
+            headPos.setY(Math.max(surfaceY - 6, headPos.getY() - 0.35));
+            if (at % 3 == 0) { warnRing(mark, 4.5, Color.fromRGB(40, 200, 255)); world.spawnParticle(Particle.BUBBLE_POP, mark, 12, 2, 0.2, 2, 0.05); }
+            if (at == wind) { lineFrom = headPos.clone(); lineDir = flat(mark.toVector().subtract(headPos.toVector())); }
+            return;
+        }
+        // the arc: out of the water just past where it dived, the head crosses the surface again right on the mark
+        int t = at - wind, dur = phase == 3 ? 30 : 36;
+        double f = Math.min(1, t / (double) dur);
+        double run = lineFrom.toVector().setY(0).distance(mark.toVector().setY(0)) / 0.89;
+        double up = c("breach-height", 9) * k;
+        Location p = lineFrom.clone().add(lineDir.clone().multiply(run * f));
+        p.setY(surfaceY - 5 + (up + 5) * Math.sin(Math.PI * f));
+        Vector v = p.toVector().subtract(headPos.toVector());
+        if (v.lengthSquared() > 1e-4) yaw = yawOf(flat(v));
+        headPos = p;
+        submerged = false;
+        if (t == 1) {
+            world.playSound(headPos, Sound.ENTITY_GENERIC_SPLASH, SoundCategory.HOSTILE, 4f, 0.4f);
+            world.spawnParticle(Particle.SPLASH, headPos.clone().add(0, 1, 0), 160, 1.5, 1, 1.5, 0.5);
+        }
+        if (headPos.getY() > surfaceY) world.spawnParticle(Particle.FALLING_WATER, headPos, 6, 1, 0.6, 1, 0);
+        for (Player pp : near(headPos.clone().add(0, -1.5, 0), 2.8 * k, 4)) if (hitThisMove.add(pp.getUniqueId())) hit(pp, c("moves.breach-body", 9), headPos.toVector(), Guard.BLOCKABLE);
+        if (!landed && f > 0.5 && headPos.getY() <= surfaceY + 0.5) { // the crash
+            landed = true;
+            world.playSound(mark, Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.HOSTILE, 4f, 0.5f);
+            world.playSound(mark, Sound.ENTITY_GENERIC_SPLASH, SoundCategory.HOSTILE, 4f, 0.3f);
+            world.spawnParticle(Particle.SPLASH, mark.clone().add(0, 1, 0), 400, 4, 1.5, 4, 0.8);
+            world.spawnParticle(Particle.CLOUD, mark.clone().add(0, 0.5, 0), 40, 3, 0.4, 3, 0.1);
+            for (Player pp : near(mark, 4.5, 6)) {
+                hit(pp, c("moves.breach", 14), mark.toVector(), Guard.HEAVY);
+                Safe.vel(pp, flat(pp.getLocation().toVector().subtract(mark.toVector())).multiply(1.3).setY(0.9));
+            }
+            shipHit(mark, c("ship-damage.breach", 0.08), 5);
+            // a wave rolls out from the crash
+            double[] r = {1};
+            fx.add(() -> {
+                r[0] += 0.8;
+                int n = (int) (r[0] * 6);
+                for (int i = 0; i < n; i++) {
+                    double ang = i * Math.PI * 2 / n;
+                    world.spawnParticle(Particle.SPLASH, mark.getX() + Math.cos(ang) * r[0], surfaceY + 0.2, mark.getZ() + Math.sin(ang) * r[0], 2, 0.1, 0.1, 0.1, 0);
+                }
+                return r[0] > 12;
+            });
+        }
+        if (f >= 1) end();
+    }
+
+    /** It circles a spot faster and tighter, and the sea drags everyone in reach (boats too) into the middle. */
+    void whirlpool(List<Player> a) {
+        int dur = 110;
+        double reach = c("whirlpool-radius", 12);
+        double r = 9 - 5 * Math.min(1, at / (double) dur);
+        double ang = at * (0.1 + 0.12 * at / dur);
+        Location to = mark.clone().add(Math.cos(ang) * r, 0, Math.sin(ang) * r);
+        to.setY(surfaceY - 0.5);
+        swim(to, 0.95, 28);
+        // the vortex: spiral arms of foam turning in toward the middle
+        if (at % 2 == 0) for (int arm = 0; arm < 3; arm++) for (double d = 0.5; d < reach; d += 0.9) {
+            double aa = arm * Math.PI * 2 / 3 + ticks * 0.25 - d * 0.35;
+            world.spawnParticle(Particle.SPLASH, mark.getX() + Math.cos(aa) * d, surfaceY + 0.1, mark.getZ() + Math.sin(aa) * d, 1, 0.05, 0, 0.05, 0);
+        }
+        if (at % 4 == 0) world.spawnParticle(Particle.BUBBLE_COLUMN_UP, mark.clone().add(0, -1, 0), 20, 0.6, 0.6, 0.6, 0.1);
+        if (at % 30 == 0) world.playSound(mark, Sound.BLOCK_BUBBLE_COLUMN_WHIRLPOOL_INSIDE, SoundCategory.HOSTILE, 3f, 0.6f);
+        double pull = Math.min(1, at / 30.0) * c("whirlpool-pull", 0.09);
+        for (Player p : a) {
+            Entity mover = p.getVehicle() instanceof org.bukkit.entity.Boat b ? b : p;
+            Vector to2 = mark.toVector().subtract(mover.getLocation().toVector()).setY(0);
+            double d = to2.length();
+            if (d > reach || Math.abs(p.getLocation().getY() - surfaceY) > 4 || ShipLink.of(p) != null && ShipLink.of(p).ship != null) continue;
+            Vector in = d > 0.3 ? to2.clone().normalize() : new Vector();
+            Vector around = new Vector(-in.getZ(), 0, in.getX());
+            Safe.vel(mover, mover.getVelocity().multiply(0.85).add(in.multiply(pull)).add(around.multiply(pull * 0.8)).setY(d < 2.5 ? -0.12 : mover.getVelocity().getY()));
+            if (d < 2.5 && at % 10 == 0) {
+                hit(p, c("moves.whirlpool", 4), mark.toVector(), Guard.UNBLOCKABLE);
+                p.setRemainingAir(Math.max(0, p.getRemainingAir() - 60));
+            }
+        }
+        if (at % 20 == 0) { shipsHit.clear(); shipHit(mark, c("ship-damage.whirlpool-per-second", 0.015), 6); }
+        if (at > dur) end();
+    }
+
     double aHeadPitch, deathRoll;
 
     @Override
@@ -490,10 +605,12 @@ final class Leviathan extends Wild.Boss {
         m.add(new MoveSlot(SPOUT, "Water Spout", Material.WATER_BUCKET));
         m.add(new MoveSlot(BILE, "Bile", Material.SLIME_BALL));
         m.add(new MoveSlot(ROAR, "Abyssal Roar", Material.NAUTILUS_SHELL));
+        m.add(new MoveSlot(BREACH, "Breach", Material.PRISMARINE_CRYSTALS));
         if (phase >= 2) {
             m.add(new MoveSlot(COIL, "The Coil", Material.KELP));
             m.add(new MoveSlot(TAIL, "Tail Sweep", Material.TRIDENT));
             m.add(new MoveSlot(DROWNED, "Call the Drowned", Material.DROWNED_SPAWN_EGG));
+            m.add(new MoveSlot(WHIRL, "Whirlpool", Material.HEART_OF_THE_SEA));
         }
         return m;
     }

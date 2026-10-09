@@ -421,6 +421,19 @@ Notes:
   `Safe.vel`, never `setVelocity` directly. Checked too: config material names all exist in 26.2; `setHealth` calls are
   clamped; methods deprecated "does nothing" in 26.2 (arrow knockback, bite chance, keep-spawn) aren't used. To repeat:
   compile with `-Xlint:deprecation,removal` against both APIs and diff the warnings.
+- **Bosses 1.5.0 (new moves, the Lich remodel)**: the LICH is a jointed rig now (`lich_body` origin = waist, `lich_head`
+  on the neck, `lich_arm` x2 on the shoulders, `lich_staff` in the right hand, `lich_cape` between the shoulder blades;
+  `tools/wild_assets.py lich()`, grave palette `L_*`, painters `cloth`/`bone`/`skull_face`/`ribs`; the old one-piece
+  `wild/lich` model is gone). `Lich.target()` gives each move a pose (`Pose`: lift/lean/roll/spin, head turn, arm
+  swing/spread, staff tilt, cape), eased in `animate()`, drawn by `draw()` (joints `SH_L/SH_R/NECK/CAPE/HAND` match the
+  model; `tools/wild_rig_preview.py` mirrors it). Bolts leave his left hand; in death the staff topples on its own.
+  New moves: Lich GRASP (bone-finger hands under everyone, slowness 6) + SPEARS (phase 2, lines of bone spikes);
+  Leviathan BREACH (leaps out in an arc, crashes on a ring, `ship-damage.breach`) + WHIRL (phase 2, pulls players/boats
+  in, `ship-damage.whirlpool-per-second`); Sandworm SANDBLAST (rears up, sweeping blinding cone) + DEVOUR (phase 2:
+  swallowed = held in its mouth `devour-hold-ticks` 50, spat out; `devour-break` 4% of max hp in hits frees you;
+  released safely on death/leave); Frost Wyrm SHARDS (ice-shard snowballs, tag `FrostWyrm.SHARD_TAG`, landed in
+  `Wild.onBoltHit`) + GUST (phase 2, rears back, three wingbeats push you away). All in boss form and the Index.
+  Tested (`WildTest`: every move, the Lich's joints, Grasp, Devour + breaking free).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

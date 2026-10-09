@@ -33,10 +33,13 @@ import static net.faultlinesmp.bosses.FaultlineBosses.*;
  *            surface toward you), Sandstone Boulders (spat up at marked spots), Quicksand (slows you and drags you in).
  *   Phase 2 (60%): + Brood (Sandworm Larvae burrow out) and faster.
  *   Phase 3 (30%): + Tremor (rings race out along the ground: be in the air when one passes).
+ *   1.5.0: + Sandblast (it rears up out of the dunes and sweeps a blinding cone of sand across you) from phase 1,
+ *          + Devour (a shrinking ring under you, then its maw bursts straight up: caught = swallowed for a few seconds,
+ *            then spat out; hit it hard to make it let go) from phase 2.
  */
 final class Sandworm extends Wild.Boss {
 
-    static final int ERUPT = 1, SLITHER = 2, BOULDERS = 3, QUICKSAND = 4, BROOD = 5, TREMOR = 6;
+    static final int ERUPT = 1, SLITHER = 2, BOULDERS = 3, QUICKSAND = 4, BROOD = 5, TREMOR = 6, SANDBLAST = 7, DEVOUR = 8;
 
     final double k, gap;
     final int segs;
@@ -124,7 +127,8 @@ final class Sandworm extends Wild.Boss {
             if (attack == BOULDERS || attack == TREMOR) g.setY(gy + 1.6);
             steer(g, c("speed", 0.38) * (phase >= 2 ? 1.2 : 1), 7);
         }
-        double wantShake = attack == TREMOR ? 10 : attack == ERUPT && at > (phase == 3 ? 26 : 36) && at < (phase == 3 ? 46 : 56) ? 7 : 0;
+        double wantShake = attack == TREMOR ? 10 : attack == ERUPT && at > (phase == 3 ? 26 : 36) && at < (phase == 3 ? 46 : 56) ? 7
+                : attack == DEVOUR && victim != null ? 9 : attack == SANDBLAST && at > 18 ? 3 : 0;
         double wantLift = attack == BOULDERS && at < 20 ? 1.2 : attack == BROOD ? 0.6 : 0;
         rageShake += (wantShake - rageShake) * 0.2;
         headLift += (wantLift - headLift) * 0.15;
@@ -141,7 +145,11 @@ final class Sandworm extends Wild.Boss {
         if (ticks % 40 == 0) world.playSound(headPos, Sound.BLOCK_SAND_BREAK, SoundCategory.HOSTILE, 3f, 0.4f);
     }
 
-    double rageShake, headLift;
+    double rageShake, headLift, aHeadPitch;
+    // Devour: who it swallowed, for how long, and how hard they've hit it since
+    Player victim;
+    int held;
+    double struggle;
     int sinkFrom = -1; // dying: segments from this index on have gone under
 
     void place() {
@@ -167,7 +175,10 @@ final class Sandworm extends Wild.Boss {
         double fl = flinchAmt();
         float headRoll = (float) (Math.sin(ticks * 1.7) * rageShake + Math.sin(ticks * 0.11) * 6 + fl * 12);
         Location hpPos = shown.get(0).clone().add(0, headLift, 0);
-        head.pose(hpPos, yaw, (float) Math.max(-80, Math.min(80, hp - headLift * 12 - fl * 10)), headRoll, null);
+        if (attack == SANDBLAST && at > 12) hp = 35;                 // reared up, maw aimed down at you
+        if (attack == DEVOUR && at > 30) hp = victim != null ? -75 + (float) Math.sin(ticks * 1.1) * 8 : -80;   // straight up, gulping
+        aHeadPitch += (hp - headLift * 12 - fl * 10 - aHeadPitch) * 0.35;
+        head.pose(hpPos, yaw, (float) Math.max(-85, Math.min(80, aHeadPitch)), headRoll, null);
         for (int i = 0; i < segs; i++) {
             Vector sf = shown.get(i).toVector().subtract(shown.get(i + 1).toVector());
             Wild.Part b = body.get(i);
@@ -186,8 +197,9 @@ final class Sandworm extends Wild.Boss {
     // =====================================================================================================
     @Override
     int pick(List<Player> a) {
-        List<Integer> pool = new ArrayList<>(List.of(ERUPT, ERUPT, SLITHER, BOULDERS, QUICKSAND));
+        List<Integer> pool = new ArrayList<>(List.of(ERUPT, ERUPT, SLITHER, BOULDERS, QUICKSAND, SANDBLAST));
         if (phase >= 2 && minions.size() < 6) pool.add(BROOD);
+        if (phase >= 2) { pool.add(DEVOUR); pool.add(DEVOUR); }
         if (phase == 3) { pool.add(TREMOR); pool.add(ERUPT); }
         return pool.get(random.nextInt(pool.size()));
     }
@@ -214,6 +226,19 @@ final class Sandworm extends Wild.Boss {
             case QUICKSAND -> { mark = tl.clone(); mark.setY(groundAt(mark)); world.playSound(mark, Sound.BLOCK_SAND_STEP, SoundCategory.HOSTILE, 3f, 0.4f); }
             case BROOD -> world.playSound(headPos, Sound.ENTITY_SILVERFISH_AMBIENT, SoundCategory.HOSTILE, 3f, 0.5f);
             case TREMOR -> { mark = headPos.clone(); mark.setY(groundAt(mark)); world.playSound(mark, Sound.ENTITY_WARDEN_ROAR, SoundCategory.HOSTILE, 3f, 0.6f); }
+            case SANDBLAST -> {
+                mark = tl.clone();
+                // it comes up 9 blocks from the target, on the side it's already on
+                arcFrom = tl.clone().add(flat(headPos.toVector().subtract(tl.toVector())).multiply(9));
+                arcFrom.setY(groundAt(arcFrom));
+                arcDir = flat(tl.toVector().subtract(arcFrom.toVector()));
+                world.playSound(headPos, Sound.BLOCK_SAND_BREAK, SoundCategory.HOSTILE, 3f, 0.3f);
+            }
+            case DEVOUR -> {
+                mark = tl.clone(); mark.setY(groundAt(mark));
+                victim = null; held = 0; struggle = 0;
+                world.playSound(mark, Sound.ENTITY_WARDEN_DIG, SoundCategory.HOSTILE, 3f, 0.6f);
+            }
             default -> { }
         }
     }
@@ -227,6 +252,8 @@ final class Sandworm extends Wild.Boss {
             case QUICKSAND -> quicksand(a);
             case BROOD -> brood(a);
             case TREMOR -> tremor(a);
+            case SANDBLAST -> sandblast(a);
+            case DEVOUR -> devour(a);
             default -> end();
         }
     }
@@ -365,8 +392,121 @@ final class Sandworm extends Wild.Boss {
         if (ringR > 22) end();
     }
 
+
+    /** It rears up out of the dunes and sweeps a cone of blasting sand across the target. */
+    void sandblast(List<Player> a) {
+        int rise = 18, dur = 46;
+        if (at <= rise) { // tunnel there and rear up
+            Location up = arcFrom.clone().add(0, (at < 10 ? -3 : 3.2) * k, 0);
+            steer(up, 0.9, 25);
+            if (at % 3 == 0) world.spawnParticle(Particle.BLOCK, arcFrom.clone().add(0, 0.4, 0), 25, 1.5, 0.3, 1.5, 0.1, Material.SAND.createBlockData());
+            return;
+        }
+        int t = at - rise;
+        double sweep = -45 + 90 * Math.min(1, t / (double) dur);  // from one side of you to the other
+        yaw = yawOf(arcDir) + (float) sweep;
+        headPos = arcFrom.clone().add(0, 3.2 * k + Math.sin(ticks * 0.6) * 0.15, 0);
+        Vector dir = dirOf(yaw).add(new Vector(0, -0.35, 0)).normalize();
+        Location mouth = headPos.clone().add(dirOf(yaw).multiply(1.8 * k));
+        for (int i = 0; i < 8; i++) {
+            Vector d = dir.clone().add(new Vector(random.nextGaussian() * 0.16, random.nextGaussian() * 0.1, random.nextGaussian() * 0.16)).normalize();
+            world.spawnParticle(Particle.FALLING_DUST, mouth.clone().add(d.clone().multiply(random.nextDouble() * 12)), 1, 0.2, 0.2, 0.2, 0, Material.SAND.createBlockData());
+            world.spawnParticle(Particle.CLOUD, mouth, 0, d.getX(), d.getY(), d.getZ(), 0.6);
+        }
+        if (t % 6 == 0) world.playSound(mouth, Sound.BLOCK_SAND_FALL, SoundCategory.HOSTILE, 3f, 0.4f);
+        if (t % 4 == 0) for (Player p : a) {
+            Vector to = p.getEyeLocation().toVector().subtract(mouth.toVector());
+            double d = to.length();
+            if (d > c("sandblast-range", 16) || d < 0.1) continue;
+            Vector fl = flat(to);
+            if (fl.dot(dirOf(yaw)) < Math.cos(Math.toRadians(20))) continue;
+            hit(p, c("moves.sandblast", 3), mouth.toVector(), Guard.BLOCKABLE);
+            p.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 30, 0));
+            Safe.vel(p, p.getVelocity().add(fl.multiply(0.3)));
+        }
+        if (t >= dur) end();
+    }
+
+    /** A shrinking ring under the target, then the maw bursts straight up: whoever's still in it is swallowed. */
+    void devour(List<Player> a) {
+        int wind = phase == 3 ? 24 : 30;
+        if (at <= wind) {
+            steer(mark.clone().add(0, -7 * k, 0), 0.9, 25);
+            double r = 3.5 - 2.0 * at / wind;
+            if (at % 2 == 0) { warnRing(mark, r, Color.fromRGB(200, 60, 40)); world.spawnParticle(Particle.FALLING_DUST, mark.clone().add(0, 0.3, 0), 10, r * 0.5, 0.1, r * 0.5, 0, Material.SAND.createBlockData()); }
+            if (at == wind) { headPos = mark.clone().add(0, -6 * k, 0); yaw = yawOf(dirOf(yaw)); }
+            return;
+        }
+        int t = at - wind;
+        int hold = (int) c("devour-hold-ticks", 50);
+        if (t <= 8) { // the burst, straight up
+            headPos = mark.clone().add(0, -6 * k + (13 * k) * t / 8.0, 0);
+            if (t == 1) {
+                world.spawnParticle(Particle.BLOCK, mark.clone().add(0, 0.5, 0), 200, 2, 1, 2, 0.3, Material.SAND.createBlockData());
+                world.playSound(mark, Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.HOSTILE, 3f, 0.4f);
+                for (Player p : near(mark, 1.8, 4)) {
+                    if (victim == null && survival(p)) {
+                        victim = p;
+                        if (p.isInsideVehicle()) p.leaveVehicle();
+                        p.sendTitle(ChatColor.GOLD + "Swallowed!", ChatColor.GRAY + "Hit it hard to make it let go", 0, 30, 10);
+                        world.playSound(mark, Sound.ENTITY_GENERIC_EAT, SoundCategory.HOSTILE, 3f, 0.4f);
+                    } else hit(p, c("moves.devour-burst", 12), mark.toVector(), Guard.HEAVY);
+                }
+            }
+        }
+        if (victim != null) {
+            boolean gone = !victim.isOnline() || victim.isDead() || !survival(victim) || !victim.getWorld().equals(world);
+            if (!gone) {
+                held++;
+                Location in = headPos.clone().add(0, -0.3, 0);
+                in.setYaw(victim.getLocation().getYaw()); in.setPitch(victim.getLocation().getPitch());
+                victim.teleport(in);
+                victim.setFallDistance(0);
+                victim.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 25, 0, false, false));
+                if (held % 10 == 0) { hit(victim, c("moves.devour", 3), headPos.toVector(), Guard.UNBLOCKABLE); world.playSound(headPos, Sound.ENTITY_GENERIC_EAT, SoundCategory.HOSTILE, 2f, 0.5f); }
+                if (held % 4 == 0) world.spawnParticle(Particle.BLOCK, headPos, 12, 0.8, 0.8, 0.8, 0, Material.SAND.createBlockData());
+            }
+            boolean choke = struggle >= maxHp * c("devour-break", 0.04);
+            if (gone || held >= hold || choke) {
+                if (!gone) { // spat out
+                    Vector out = dirOf(yaw + 180 * random.nextFloat()).multiply(1.1).setY(0.9);
+                    victim.teleport(headPos.clone().add(out.clone().setY(0).normalize().multiply(2 * k)).add(0, 0.5, 0));
+                    Safe.vel(victim, out);
+                    victim.setFallDistance(0);
+                    victim.addPotionEffect(new PotionEffect(PotionEffectType.NAUSEA, 80, 0));
+                    world.playSound(headPos, Sound.ENTITY_LLAMA_SPIT, SoundCategory.HOSTILE, 3f, 0.3f);
+                    if (choke) say(ChatColor.GOLD + "It chokes and spits " + victim.getName() + " out!");
+                }
+                victim = null;
+                held = Integer.MAX_VALUE / 2; // done holding: it sinks back from here
+                t = Math.max(t, 9);
+                at = wind + Math.max(t, 9);
+                sinkAt = at;
+            }
+            return;
+        }
+        if (t > 8) { // nobody (or no longer anybody) in its mouth: back under
+            if (sinkAt < 0) sinkAt = at;
+            headPos = headPos.clone().add(0, -0.45, 0);
+            if (at - sinkAt > 22) { sinkAt = -1; end(); }
+        }
+    }
+
+    int sinkAt = -1;
+
+    @Override
+    double damageTaken(double amount) {
+        if (attack == DEVOUR && victim != null) struggle += amount;
+        return amount;
+    }
+
     @Override
     void deathAnim(int t) {
+        if (victim != null) { // it dies with someone in its mouth: let them down gently
+            victim.setFallDistance(0);
+            victim.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_FALLING, 80, 0));
+            victim = null;
+        }
         // it rears up, thrashing, then goes under from the tail forward, ring by ring
         headPos = headPos.clone().add(0, t < 30 ? 0.2 : -0.35, 0);
         rageShake = t < 30 ? 12 : 4;
@@ -379,6 +519,7 @@ final class Sandworm extends Wild.Boss {
     @Override
     void removeEverything() {
         quietly(() -> { for (BlockDisplay r : rocks) if (r.isValid()) r.remove(); rocks.clear(); });
+        quietly(() -> { if (victim != null) { victim.setFallDistance(0); victim.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_FALLING, 80, 0)); victim = null; } });
         super.removeEverything();
     }
 
@@ -392,6 +533,8 @@ final class Sandworm extends Wild.Boss {
         m.add(new MoveSlot(BOULDERS, "Sandstone Boulders", Material.CHISELED_SANDSTONE));
         m.add(new MoveSlot(QUICKSAND, "Quicksand", Material.SOUL_SAND));
         if (phase >= 2) m.add(new MoveSlot(BROOD, "Brood", Material.SILVERFISH_SPAWN_EGG));
+        m.add(new MoveSlot(SANDBLAST, "Sandblast", Material.SUSPICIOUS_SAND));
+        if (phase >= 2) m.add(new MoveSlot(DEVOUR, "Devour", Material.ROTTEN_FLESH));
         if (phase == 3) m.add(new MoveSlot(TREMOR, "Tremor", Material.CRACKED_STONE_BRICKS));
         return m;
     }

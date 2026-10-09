@@ -469,64 +469,180 @@ def frost_wyrm():
 
 
 ROBE, ROBE_D, LBONE, GREEN, GOLD, DMETAL = (62, 30, 84), (40, 18, 56), (222, 216, 198), (90, 255, 130), (214, 168, 60), (52, 46, 62)
+# the Lich (1.5.0): a desaturated grave palette instead of the old bright purple and gold
+L_CLOTH, L_CLOTH_D, L_INNER = (46, 38, 58), (30, 25, 40), (18, 15, 24)
+L_BONE, L_BONE_D, L_BRONZE, L_SOUL = (206, 198, 172), (150, 140, 116), (138, 108, 60), (110, 255, 196)
+
+
+def cloth(c, trim=None, ragged=True):
+    """Heavy old cloth: soft vertical folds (lit ridge, dark crease), darker toward the hem, an optional trim band at
+    the bottom edge and a frayed hem."""
+    def f(reg, face, rng):
+        _fill(reg, c, rng, 4)
+        h, w = reg.shape[:2]
+        if face in ("up", "down"): return
+        phase = rng.random() * 6
+        for x in range(w):
+            fold = math.sin(x * 1.3 + phase) * 0.5 + 0.5
+            for y in range(h):
+                dim = 1.0 - 0.28 * (y / max(1, h - 1))            # the hem is in shadow
+                reg[y, x, :3] = np.clip(np.array(c) * dim * (0.82 + 0.3 * fold) + rng.uniform(-3, 3), 0, 255)
+        if trim and h > 3:
+            reg[h - 2, :, :3] = trim
+            reg[h - 3, :, :3] = np.clip(np.array(trim) * 0.6, 0, 255)
+        if ragged and h > 2:
+            for x in range(w):
+                cut = rng.choice((0, 0, 1, 1, 2))
+                for y in range(cut): reg[h - 1 - y, x, 3] = 0
+    return f
+
+
+def bone(c=L_BONE):
+    def f(reg, face, rng):
+        _fill(reg, c, rng, 5)
+        h, w = reg.shape[:2]
+        for y in range(h):                                       # aged: darker toward the bottom, a few hairline cracks
+            reg[y, :, :3] = np.clip(reg[y, :, :3] * (1.0 - 0.18 * y / max(1, h - 1)), 0, 255)
+        for _ in range(max(1, w * h // 40)):
+            x, y = rng.randrange(w), rng.randrange(h)
+            for k in range(rng.randrange(1, 4)):
+                if 0 <= y + k < h: reg[y + k, min(w - 1, x + (k // 2)), :3] = L_BONE_D
+    return f
+
+
+def skull_face(reg, face, rng):
+    """The skull: a bone box whose front (east) face has the sockets, the nose hole and cheekbone shadows painted in."""
+    bone()(reg, face, rng)
+    if face != "east": return
+    h, w = reg.shape[:2]
+    dark = (20, 16, 22)
+    def px(x, y, c):
+        if 0 <= x < w and 0 <= y < h: reg[y, x, :3] = c
+    ew, eh = max(2, w // 4), max(2, h // 4)
+    ey = int(h * 0.38)
+    for cx in (int(w * 0.28), int(w * 0.72)):                # deep round sockets, a little brow ridge over them
+        for y in range(ey - eh // 2, ey + eh // 2 + 1):
+            for x in range(cx - ew // 2, cx + ew // 2 + 1):
+                if (x - cx) ** 2 / max(1, (ew / 2) ** 2) + (y - ey) ** 2 / max(1, (eh / 2) ** 2) <= 1.15: px(x, y, dark)
+        for x in range(cx - ew // 2, cx + ew // 2 + 1): px(x, ey - eh // 2 - 1, (236, 230, 206))
+    ny = int(h * 0.62)                                       # the nose: an upside-down heart
+    px(w // 2, ny, dark); px(w // 2 - 1, ny, dark); px(w // 2, ny + 1, dark)
+    for x in range(1, w - 1):                                # cheekbone shadow + the upper teeth line
+        px(x, int(h * 0.74), L_BONE_D)
+    for x in range(2, w - 2, 2): px(x, h - 2, dark)
+
+
+def ribs(reg, face, rng):
+    """Ribs over the dark inside of the chest."""
+    _fill(reg, L_INNER, rng, 3)
+    h, w = reg.shape[:2]
+    if face != "east": return
+    for y in range(1, h - 1, 3):
+        for x in range(w):
+            if x != w // 2: reg[y, x, :3] = L_BONE if abs(x - w / 2) < w * 0.45 else L_BONE_D
+    reg[:, w // 2, :3] = L_BONE_D                             # the sternum
 
 
 def lich():
-    """The Lich: a hooded skull under a spiked gold crown, a high flared collar, spiked pauldrons, a robe open over a bare
-    ribcage with a green soul burning inside, tattered layered hems, bony hands (one raised with a soul orb), and a staff
-    crowned with a horned skull and a green crystal. Soul wisps float at its sides."""
-    p = Part("lich", 10, 128)
-    rag = robe(ROBE_D)
-    for kk in range(12):                                             # the tattered hem, wisping away
-        a = kk * math.pi / 6
-        x, z = math.cos(a) * 0.78, math.sin(a) * 0.78
-        p.add(x - 0.12, -0.55 + (kk % 3) * 0.12, z - 0.12, x + 0.12, 0.1, z + 0.12, rag)
-    p.add(-0.85, 0.0, -0.85, 0.85, 0.6, 0.85, robe(ROBE))
-    p.add(-0.7, 0.6, -0.7, 0.7, 1.35, 0.7, robe(ROBE))
-    p.add(-0.55, 1.35, -0.6, 0.35, 2.05, 0.6, robe(ROBE_D))          # torso (open in front)
-    p.add(0.35, 1.4, -0.32, 0.5, 2.0, 0.32, stripes_h(LBONE, (40, 30, 50), 2))   # ribcage
-    p.add(0.3, 1.6, -0.12, 0.42, 1.8, 0.12, glow(GREEN))             # the soul inside
-    for sgn in (-1, 1): p.add(0.35, 1.35, sgn * 0.32, 0.6, 2.05, sgn * 0.6, robe(ROBE))  # robe edges
-    p.add(-0.6, 1.3, -0.62, 0.6, 1.4, 0.62, metal(GOLD))             # belt
-    p.add(0.55, 1.28, -0.1, 0.65, 1.42, 0.1, glow(GREEN))
-    p.add(-0.62, 1.95, -0.62, -0.3, 2.95, 0.62, robe(ROBE_D))        # high collar behind the head
-    for sgn in (-1, 1):
-        p.add(-0.62, 2.55, sgn * 0.62, -0.2, 3.1, sgn * 0.8, robe(ROBE_D))
-        p.add(-0.45, 1.85, sgn * 0.5, 0.45, 2.2, sgn * 0.98, metal(DMETAL))      # pauldrons
-        p.add(-0.42, 2.15, sgn * 0.55, 0.42, 2.22, sgn * 0.95, metal(GOLD))
-        for xx in (-0.25, 0.15): p.add(xx - 0.07, 2.2, sgn * 0.78 - 0.07, xx + 0.07, 2.6, sgn * 0.78 + 0.07, solid(LBONE))
-    # right arm (+z): down to the staff
-    p.add(-0.15, 1.2, 0.6, 0.2, 1.9, 0.9, robe(ROBE))
-    p.add(0.05, 1.15, 0.65, 0.65, 1.32, 0.88, solid(LBONE))
-    # left arm (-z): raised, a soul orb over the open hand
-    p.add(-0.1, 1.85, -0.95, 0.25, 2.25, -0.65, robe(ROBE))
-    p.add(0.05, 2.2, -1.0, 0.4, 2.75, -0.75, robe(ROBE))
-    for dz in (-0.95, -0.87, -0.79): p.add(0.2, 2.75, dz, 0.28, 2.98, dz + 0.05, solid(LBONE))
-    p.add(0.12, 3.05, -0.98, 0.42, 3.35, -0.68, glow(GREEN))
-    # the hood and the skull in it
-    p.add(-0.5, 2.15, -0.5, 0.38, 3.05, 0.5, robe(ROBE_D))
-    p.add(-0.15, 2.95, -0.38, 0.32, 3.2, 0.38, robe(ROBE_D))        # hood peak
-    p.add(0.12, 2.25, -0.33, 0.48, 2.85, 0.33, solid(LBONE, 4))      # skull face
-    p.add(0.46, 2.55, -0.24, 0.5, 2.72, -0.06, solid((14, 10, 18), 2))   # sockets
-    p.add(0.46, 2.55, 0.06, 0.5, 2.72, 0.24, solid((14, 10, 18), 2))
-    p.add(0.49, 2.6, -0.19, 0.53, 2.68, -0.11, glow(GREEN))
-    p.add(0.49, 2.6, 0.11, 0.53, 2.68, 0.19, glow(GREEN))
-    p.add(0.4, 2.2, -0.24, 0.52, 2.38, 0.24, stripes_h(LBONE, (60, 50, 50), 2))   # jaw, teeth
-    for kk in range(8):                                              # the crown
-        a = kk * math.pi / 4
-        x, z = math.cos(a) * 0.42, math.sin(a) * 0.42
-        p.add(x - 0.08, 3.05, z - 0.08, x + 0.08, 3.25 + (0.22 if kk % 2 == 0 else 0.08), z + 0.08, metal(GOLD))
-    p.add(-0.45, 3.05, -0.45, 0.45, 3.13, 0.45, metal(GOLD))
-    p.add(0.4, 3.12, -0.07, 0.48, 3.26, 0.07, glow(GREEN))
-    # the staff
-    p.add(0.68, -0.3, 0.72, 0.8, 3.2, 0.84, wood((52, 36, 30), None))
-    p.add(0.58, 3.1, 0.62, 0.9, 3.4, 0.94, solid(LBONE))             # skull on the staff
-    p.add(0.88, 3.2, 0.68, 0.92, 3.3, 0.88, solid((14, 10, 18), 2))
-    for dz in (0.58, 0.9): p.add(0.62, 3.3, dz, 0.75, 3.75, dz + 0.06, solid(LBONE))   # its horns
-    p.add(0.64, 3.45, 0.68, 0.84, 3.7, 0.88, glow(GREEN))            # the crystal
-    for (x, y, z) in ((-0.2, 2.4, 1.25), (-0.4, 1.4, -1.25), (0.2, 0.7, 1.2)):   # soul wisps
-        p.add(x - 0.09, y - 0.09, z - 0.09, x + 0.09, y + 0.09, z + 0.09, glow((150, 255, 170)))
-    return [p]
+    """The Lich (1.5.0): a jointed rig, so it can actually move. A tall, gaunt sorcerer-king in heavy grave-cloth: a deep
+    cowl over a cracked skull with two soul-lights for eyes, a thin bent bronze circlet with uneven tines, a stiff high
+    collar, an open chest showing the ribs and the soul inside, a long bell-sleeved robe that frays into ragged strips
+    (it floats; there are no feet), a torn cape, bony hands with long fingers, and a gnarled crook-staff with a soul
+    lantern hanging from the hook. Parts: body (origin = waist), head (origin = neck), arm (origin = shoulder, hangs
+    down; used for both), staff (origin = the grip), cape (origin = between the shoulder blades, hangs down)."""
+    cl, cd = cloth(L_CLOTH, L_BRONZE), cloth(L_CLOTH_D)
+    inner, br, soul = solid(L_INNER, 2), metal(L_BRONZE), glow(L_SOUL)
+    body = Part("lich_body", 16, 128)
+    # the robe: a long skirt widening to the hem, then ragged strips hanging off it
+    body.add(-0.3, -0.75, -0.36, 0.3, 0.0, 0.36, cd)
+    body.add(-0.38, -1.4, -0.44, 0.36, -0.7, 0.44, cl)
+    body.add(0.3, -1.38, -0.12, 0.39, -0.05, 0.12, inner)                # the robe opens at the front...
+    for s in (-1, 1):
+        body.add(0.3, -1.38, s * 0.12, 0.4, -0.05, s * 0.2, solid(L_BRONZE, 5))   # ...edged in bronze
+    rng = random.Random(7)
+    for i in range(14):                                                  # the strips: uneven, around the hem
+        a = (i + 0.5) * 2 * math.pi / 14 + rng.uniform(-0.12, 0.12)
+        x, z = math.cos(a) * 0.36, math.sin(a) * 0.42
+        ln = rng.uniform(0.25, 0.62)
+        wd = rng.uniform(0.07, 0.11)
+        body.add(x - wd, -1.4 - ln, z - wd, x + wd, -1.36, z + wd, cloth(L_CLOTH_D if i % 2 else L_CLOTH))
+    # the waist: a sash with a bronze clasp holding a soul stone, and a tail of it hanging down the front
+    body.add(-0.32, -0.1, -0.38, 0.32, 0.08, 0.38, cloth((64, 22, 30), None, False))
+    body.add(0.31, -0.12, -0.08, 0.37, 0.1, 0.08, br)
+    body.add(0.36, -0.06, -0.035, 0.39, 0.04, 0.035, soul)
+    body.add(0.3, -0.75, -0.3, 0.36, -0.1, -0.2, cloth((64, 22, 30)))
+    # the chest: narrow, open in front over the ribs, the soul burning inside
+    body.add(-0.26, 0.08, -0.34, 0.22, 0.86, 0.34, cd)
+    body.add(0.22, 0.28, -0.16, 0.27, 0.74, 0.16, ribs)
+    body.add(0.12, 0.42, -0.07, 0.24, 0.58, 0.07, soul)
+    for s in (-1, 1):
+        body.add(0.2, 0.08, s * 0.16, 0.3, 0.86, s * 0.34, cl)           # the robe's lapels
+        body.add(0.28, 0.68, s * 0.1, 0.33, 0.76, s * 0.22, br)          # clasps, and a chain between them
+    body.add(0.31, 0.7, -0.1, 0.32, 0.72, 0.1, br)
+    # the mantle over the shoulders and the stiff high collar standing up behind the head
+    body.add(-0.3, 0.78, -0.56, 0.26, 0.92, 0.56, cl)
+    body.add(-0.32, 0.8, -0.4, -0.2, 1.42, 0.4, cd)
+    for s in (-1, 1):
+        body.add(-0.3, 0.86, s * 0.34, 0.02, 1.32, s * 0.44, cd)
+        body.add(-0.3, 1.32, s * 0.3, 0.0, 1.36, s * 0.44, br)
+    body.add(-0.33, 1.38, -0.4, -0.19, 1.43, 0.4, br)
+
+    head = Part("lich_head", 32, 128)
+    head.add(-0.05, 0.0, -0.05, 0.05, 0.12, 0.05, bone())                # neck bone
+    head.add(-0.2, 0.1, -0.18, 0.2, 0.5, 0.18, skull_face)               # the skull
+    head.add(0.02, 0.02, -0.13, 0.19, 0.12, 0.13, bone(L_BONE_D))        # its jaw
+    for s in (-1, 1):
+        head.add(0.2, 0.25, s * 0.05, 0.215, 0.31, s * 0.12, soul)       # soul-lights in the sockets
+    # the cowl: deep, so the face sits in its shadow
+    head.add(-0.32, 0.04, -0.27, -0.2, 0.64, 0.27, cd)
+    for s in (-1, 1): head.add(-0.3, 0.04, s * 0.19, 0.16, 0.6, s * 0.28, cd)
+    head.add(-0.3, 0.5, -0.27, 0.12, 0.64, 0.27, cd)
+    head.add(0.1, 0.5, -0.24, 0.26, 0.58, 0.24, cloth(L_CLOTH_D, None, False))   # the brim overhanging the face
+    head.add(-0.42, 0.52, -0.1, -0.24, 0.74, 0.1, cd)                    # the cowl's peak falls back
+    # a thin bent circlet over the cowl with five uneven tines and one soul stone
+    for (x0, z0, x1, z1) in ((-0.31, -0.29, 0.27, -0.25), (-0.31, 0.25, 0.27, 0.29), (-0.31, -0.29, -0.27, 0.29), (0.23, -0.29, 0.27, 0.29)):
+        head.add(x0, 0.6, z0, x1, 0.65, z1, br)
+    for (x, z, ht) in ((0.25, 0.0, 0.26), (0.2, -0.2, 0.17), (0.2, 0.2, 0.2), (0.0, -0.28, 0.12), (0.0, 0.28, 0.1)):
+        head.add(x - 0.022, 0.64, z - 0.022, x + 0.022, 0.64 + ht, z + 0.022, br)
+    head.add(0.24, 0.66, -0.035, 0.285, 0.73, 0.035, soul)
+
+    arm = Part("lich_arm", 24, 128)
+    arm.add(-0.11, -0.52, -0.11, 0.11, 0.06, 0.11, cloth(L_CLOTH, None, False))  # the upper sleeve
+    arm.add(-0.19, -0.98, -0.17, 0.17, -0.5, 0.17, cl)                   # the bell sleeve, bronze-hemmed and frayed
+    arm.add(-0.13, -0.98, -0.11, 0.11, -0.94, 0.11, inner)
+    arm.add(-0.035, -1.06, -0.035, 0.035, -0.9, 0.035, bone())           # the wrist
+    arm.add(-0.06, -1.17, -0.075, 0.07, -1.04, 0.075, bone())            # the hand
+    for (z, ln) in ((-0.06, 0.22), (-0.02, 0.27), (0.025, 0.25), (0.065, 0.19)):   # long fingers, a little hooked
+        arm.add(-0.02, -1.17 - ln * 0.6, z - 0.015, 0.02, -1.17, z + 0.015, bone())
+        arm.add(0.0, -1.17 - ln, z - 0.013, 0.04, -1.17 - ln * 0.6, z + 0.013, bone(L_BONE_D))
+    arm.add(0.05, -1.16, -0.02, 0.1, -1.05, 0.02, bone())                # the thumb
+
+    staff = Part("lich_staff", 16, 128)
+    knot = wood((40, 32, 30), None)
+    staff.add(-0.045, -1.75, -0.045, 0.045, 1.3, 0.045, knot)            # the shaft
+    for (y, d) in ((-1.2, 0.015), (-0.5, -0.012), (0.55, 0.018)):        # gnarls
+        staff.add(-0.06 + d, y, -0.06, 0.06 + d, y + 0.14, 0.06, knot)
+    for y in (0.22, 0.95): staff.add(-0.06, y, -0.06, 0.06, y + 0.06, 0.06, br)   # bronze rings
+    staff.add(-0.05, 1.26, -0.045, 0.34, 1.36, 0.045, knot)              # the crook bends forward...
+    staff.add(0.27, 1.06, -0.045, 0.36, 1.33, 0.045, knot)               # ...and hooks down
+    staff.add(0.3, 0.88, -0.008, 0.32, 1.07, 0.008, br)                  # a chain, and the soul lantern on it
+    staff.add(0.22, 0.66, -0.09, 0.4, 0.68, 0.09, br)
+    staff.add(0.22, 0.86, -0.09, 0.4, 0.88, 0.09, br)
+    for (dx, dz) in ((0.22, -0.09), (0.38, -0.09), (0.22, 0.07), (0.38, 0.07)):
+        staff.add(dx, 0.68, dz, dx + 0.02, 0.86, dz + 0.02, br)
+    staff.add(0.26, 0.7, -0.05, 0.36, 0.84, 0.05, soul)
+
+    cape = Part("lich_cape", 12, 128)
+    cape.add(-0.06, -0.8, -0.42, 0.0, 0.0, 0.42, cloth(L_CLOTH_D, None, False))
+    cape.add(-0.06, -1.6, -0.5, 0.0, -0.8, 0.5, cloth(L_CLOTH_D, None, False))
+    cape.add(0.0, -1.6, -0.46, 0.01, -0.8, 0.46, solid((60, 20, 28), 4))         # a faded red lining on the inside
+    rng = random.Random(11)
+    for i in range(7):                                                   # torn at the bottom
+        z = -0.5 + (i + 0.5) * 1.0 / 7
+        ln = rng.uniform(0.15, 0.55)
+        cape.add(-0.06, -1.6 - ln, z - 0.06, 0.0, -1.6, z + 0.06, cloth(L_CLOTH_D))
+    cape.add(-0.07, -0.06, -0.44, 0.01, 0.02, 0.44, br)
+    return [body, head, arm, staff, cape]
 
 
 STONE, STONE_D, MOSS, AMBER, AMETH = (112, 112, 106), (78, 78, 74), (72, 122, 44), (255, 176, 60), (152, 92, 214)
@@ -692,6 +808,7 @@ PAL = {
     "K": (180, 184, 196), "c": (110, 114, 126), "P": (200, 30, 36),
     "D": (60, 40, 30), "E": (230, 190, 40), "l": (255, 250, 200),
     "1": (24, 24, 28), "2": (52, 52, 60), "3": (90, 90, 100),
+    "4": L_CLOTH, "5": L_CLOTH_D, "6": L_BRONZE, "7": L_SOUL, "8": L_BONE_D, "9": (64, 22, 30),
 }
 
 ICONS = {
@@ -732,21 +849,21 @@ ICONS = {
         "........S.......",
     ],
     "lich": [
-        ".....O.O.O......",
-        ".....OOOOO......",
-        "....rrrrrrr...L.",
-        "....rLLLLLr..LGL",
-        "....rLGLGLr...L.",
-        "....rLLLLLr...D.",
-        ".....rLLLr....D.",
-        "...xxRRRRRxx..D.",
-        "..LL.RLLLR.LLLD.",
-        "..L..RLLLR....D.",
-        ".....OOOOO....D.",
-        ".....RRRRR....D.",
-        "....RRRRRRR...D.",
-        "...RRRRRRRRR..D.",
-        "...rRrRrRrRr..D.",
+        "....6.6.6.......",
+        "...6666666..555.",
+        "...5555555..5.5.",
+        "..55LLLLL55...5.",
+        "..5L7LLL7L5..666",
+        "..55L8L8L55..676",
+        "...55LLL55...666",
+        "..4455555544..5.",
+        ".445.L8L8.544L5.",
+        ".L45.L777.5448..",
+        "..45.6996.54.5..",
+        "...4559554...5..",
+        "...45595554..5..",
+        "..4555955554.5..",
+        "..4.5.4.5.4..5..",
         "................",
     ],
     "frost_wyrm": [

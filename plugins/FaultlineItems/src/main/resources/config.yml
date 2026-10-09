@@ -29,6 +29,11 @@ nether:
   world: "world_nether"
   radius: 5000
 
+# Flight guard: a survival/adventure player only keeps "allowed to fly" for Bat Form, a Cloud Potion, or the
+# faultline.fly / essentials.fly permission (or op). Fixes the Moon Stone creative-flight glitch.
+flight-guard:
+  enabled: true
+
 # Cloud Potion settings
 cloud-potion:
   duration-seconds: 35

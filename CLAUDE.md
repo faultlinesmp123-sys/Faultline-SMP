@@ -366,6 +366,14 @@ Notes:
 - **1.4.7**: the Leviathan's body swam ~1 block under the surface, so players only saw its head. `Leviathan.hump(i, p)`
   lifts each segment near the surface (0.2*k plus a wave of humps running down the body, `wild.leviathan.hump-height` 1.5);
   only the drawn pose moves (the chain and hitboxes don't); nothing while `submerged` (Tidal Ram) or dying.
+- **Items 1.2.8 (Moon Stone flight glitch)**: Bat Form saved `allowFlight` when it started and put it back when it ended,
+  so a flag left on from anywhere (an older bug, a crash, saved in the player file) was carried on forever = creative-style
+  flight in survival. Now the end only keeps flight for a running Cloud Potion or `FlightGuard.mayFly` (op,
+  `faultline.fly`, `essentials.fly`, `bosses.admin`). `FlightGuard` (every 10 ticks, `flight-guard.enabled`) takes flight
+  away from any survival/adventure player without a reason (not a bat, no Cloud Potion, no permission), with Slow Falling;
+  a Cloud Potion keeps its double-jump flag but never real flight. `AccessoryManager.hasEquipped` reads the open
+  /accessories menu (an accessory taken out kept its powers until the menu closed). Moon Stone lifesteal ignores armor
+  stands. Tested (`FlightTest`, `ItemsTest`).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

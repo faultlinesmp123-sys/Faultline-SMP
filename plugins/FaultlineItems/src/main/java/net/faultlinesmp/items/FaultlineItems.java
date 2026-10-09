@@ -488,6 +488,8 @@ public final class FaultlineItems extends JavaPlugin {
         getServer().getPluginManager().registerEvents(batFormManager, this);
         getServer().getScheduler().runTaskTimer(this, batFormManager::tick, 2L, 2L);
         getCommand("batform").setExecutor(new BatFormCommand(this));
+        // Flight guard: no survival player flies without a reason (bat form, Cloud Potion, a /fly permission)
+        getServer().getScheduler().runTaskTimer(this, () -> FlightGuard.tick(this), 40L, 10L);
 
         // Necromancer Staff
         this.necromancerManager = new NecromancerManager(this);
@@ -896,6 +898,14 @@ public final class FaultlineItems extends JavaPlugin {
         /** True if the player has this specific tagged accessory item equipped in either slot. */
         public boolean hasEquipped(Player player, org.bukkit.NamespacedKey itemKey) {
             ItemStack[] items = getSlots(player.getUniqueId());
+            // BUG FIX: with /accessories open, what's really worn is what's in the menu right now (the saved slots only
+            // update when it closes). Taking an accessory out onto the cursor (or into your inventory, or dropping it
+            // for a friend) kept its powers until the menu was closed.
+            var top = player.getOpenInventory() == null ? null : player.getOpenInventory().getTopInventory();
+            if (top != null && top.getHolder() instanceof AccessoryGuiHolder) {
+                items = new ItemStack[AccessoryGuiHolder.SLOTS.length];
+                for (int i = 0; i < AccessoryGuiHolder.SLOTS.length; i++) items[i] = top.getItem(AccessoryGuiHolder.SLOTS[i]);
+            }
             for (ItemStack item : items) {
                 if (item == null || !item.hasItemMeta()) continue;
                 Byte tag = item.getItemMeta().getPersistentDataContainer().get(itemKey, PersistentDataType.BYTE);
@@ -3689,7 +3699,7 @@ public final class FaultlineItems extends JavaPlugin {
         @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
         public void onLifesteal(EntityDamageByEntityEvent event) {
             if (!(event.getDamager() instanceof Player attacker)) return; // melee only
-            if (!(event.getEntity() instanceof LivingEntity)) return;
+            if (!(event.getEntity() instanceof LivingEntity) || event.getEntity() instanceof org.bukkit.entity.ArmorStand) return; // no healing off armor stands
             if (!wearing(attacker, plugin.getMoonStoneKey())) return;
 
             AttributeInstance maxHealth = attacker.getAttribute(Attribute.MAX_HEALTH);
@@ -6108,10 +6118,11 @@ public final class FaultlineItems extends JavaPlugin {
             boolean creativeFlight = player.getGameMode() == GameMode.CREATIVE || player.getGameMode() == GameMode.SPECTATOR;
             if (!creativeFlight) {
                 player.setFlying(false);
-                // BUG FIX (free flight): with a Cloud Potion on when the bat form started, allowFlight was saved as "on"
-                // and put back even after the potion had worn off, so a survival player could fly forever. If the
-                // potion was the reason, flight now follows whether the potion is still active.
-                boolean allow = form.hadCloudPotion ? plugin.getDoubleJumpManager().isActive(player.getUniqueId()) : form.hadAllowFlight;
+                // BUG FIX (free flight): flight is never "put back" from what it was when the form started (a leftover
+                // allowFlight from anywhere was passed on by every bat form, = creative-style flight in survival).
+                // A survival player keeps it only for a Cloud Potion still running, or a /fly permission.
+                boolean allow = plugin.getDoubleJumpManager().isActive(player.getUniqueId())
+                        || form.hadAllowFlight && FlightGuard.mayFly(player);
                 player.setAllowFlight(allow);
             }
             if (!died && !player.isOnGround()) {

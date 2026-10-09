@@ -10,6 +10,7 @@ Usage: python3 tools/mcpack_version.py bedrock/*.mcpack   (the asset tools call 
 """
 import hashlib
 import json
+import os
 import sys
 import zipfile
 
@@ -38,7 +39,27 @@ def stamp(path):
                 data = json.dumps(manifest, indent=1).encode()
             z.writestr(info, data, compress_type=info.compress_type)
     print(f"{path}: version {'.'.join(map(str, ver))}")
+    record(os.path.basename(path)[:-len(".mcpack")], manifest["header"]["uuid"], ver)
     return ver
+
+
+EXPECTED = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "plugins", "FaultlineItems", "src", "main", "resources", "bedrock_packs.yml")
+
+
+def record(name, uuid, ver):
+    """FaultlineItems' /bedrockcheck compares the server's packs with these (name without .mcpack: uuid + version;
+    Bukkit's YAML would read the dot in "x.mcpack" as a path)."""
+    rows = {}
+    if os.path.exists(EXPECTED):
+        for line in open(EXPECTED):
+            if ": {" in line and not line.startswith("#"):
+                k, v = line.split(": ", 1)
+                rows[k.strip()] = v.strip()
+    rows[name] = "{uuid: %s, version: %s}" % (uuid, ".".join(map(str, ver)))
+    with open(EXPECTED, "w") as f:
+        f.write("# Written by tools/mcpack_version.py: the Bedrock packs this build expects in plugins/Geyser-Spigot/packs/\n")
+        for k in sorted(rows):
+            f.write(f"{k}: {rows[k]}\n")
 
 
 if __name__ == "__main__":

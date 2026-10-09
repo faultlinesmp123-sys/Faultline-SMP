@@ -98,7 +98,7 @@ final class Weather implements Listener, CommandExecutor {
 
     static boolean survival(Player p) { return p.getGameMode() == GameMode.SURVIVAL || p.getGameMode() == GameMode.ADVENTURE; }
 
-    static boolean bedrock(Player p) { return p.getUniqueId().getMostSignificantBits() == 0; }
+    static boolean bedrock(Player p) { return Edition.bedrock(p); }
 
     // =====================================================================================================
     //  the clock: every minute each kind rolls its chance where it can happen

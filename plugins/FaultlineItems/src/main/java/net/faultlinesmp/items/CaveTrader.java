@@ -103,7 +103,7 @@ final class CaveTrader implements Listener, CommandExecutor {
         }
     }
 
-    static boolean bedrock(Player p) { return p.getUniqueId().getMostSignificantBits() == 0; } // Floodgate players
+    static boolean bedrock(Player p) { return Edition.bedrock(p); } // Floodgate / Geyser players
 
     // ================= spawning =================
 

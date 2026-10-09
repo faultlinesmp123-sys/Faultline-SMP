@@ -401,6 +401,17 @@ public final class FaultlineItems extends JavaPlugin {
         getServer().getPluginManager().registerEvents(weather, this);
         getCommand("fevent").setExecutor(weather);
         getServer().getPluginManager().registerEvents(new StandGuard(this), this);
+        if (getCommand("bedrockcheck") != null) getCommand("bedrockcheck").setExecutor(new BedrockCheck(this));
+        // tell the console straight away when Bedrock players won't get the packs
+        getServer().getScheduler().runTaskLaterAsynchronously(this, () -> {
+            try {
+                List<String> rep = new BedrockCheck(this).report();
+                if (rep.stream().anyMatch(l -> l.contains(" !!  "))) {
+                    getLogger().warning("Bedrock packs: problems found (run /bedrockcheck in game for the full list):");
+                    for (String l : rep) if (l.contains(" !!  ")) getLogger().warning(ChatColor.stripColor(l).trim());
+                }
+            } catch (Throwable t) { getLogger().warning("Bedrock pack check failed: " + t); }
+        }, 200L);
         creatures = new Creatures(this);
         getServer().getPluginManager().registerEvents(creatures, this);
         getCommand("fcreature").setExecutor(creatures);

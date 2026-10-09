@@ -346,7 +346,10 @@ Keep `FaultlineSMP.zip` **under 25 MB**: the owner uploads it through GitHub's w
 Almost all of its size is boss music: encode new tracks as Ogg Vorbis at `ffmpeg -c:a libvorbis -q:a 1 -ar 44100` (~80 kbps).
 
 ## Bedrock (Geyser) coverage
-Bedrock players are detected by Floodgate UUID (top half 0) in every plugin (`bedrock(p)`). What each needs:
+Bedrock players are detected in every plugin by `bedrock(p)` → each plugin's `Edition.bedrock(p)` (Items, Bosses, Ships,
+Cosmetics): a Floodgate UUID (top half 0), OR Floodgate's / Geyser's API (by reflection; softdepend `floodgate`, `Geyser-Spigot`).
+Before 1.2.2 only the UUID was checked, so a Bedrock player who LINKED a Java account (Java UUID) got none of the Bedrock
+stand-ins, models or effects. A yes is cached; a no is re-asked after 5 s. What each needs:
 - **Boss bodies**: a vanilla stand-in mob per boss (`FaultlineBosses.proxy(...)`), shown only to Bedrock players.
 - **Boss moves** (`BedrockFx.java`, ticked by FaultlineBosses): Geyser can't draw display entities, so every item/block
   display near a Bedrock player (any plugin: boss moves, piglin balloons, ...) is traced in particles for them only:
@@ -380,6 +383,13 @@ Bedrock players are detected by Floodgate UUID (top half 0) in every plugin (`be
   copy of the exhibit, and punching a Mimic broke its stand. Captain Hollow's stand forwards hits (`GhostShip.onStandHit`);
   ship banner stands and the captain's stand are in `bedrockUpkeep`. The Mimic's lid lifts on Bedrock (a stand can't tilt).
   Tested (`BedrockStandTest`, `GhostTest`).
+- **`/bedrockcheck`** (FaultlineItems, op): checks Geyser/Floodgate, `enable-custom-content` / `force-resource-packs` in
+  Geyser's config, every pack in `plugins/Geyser-Spigot/packs/` against `bedrock_packs.yml` (written by `mcpack_version.py`:
+  missing / outdated / two copies / unzipped folder / wrong extension / left in the wrong folder), the four
+  `custom_mappings/*.json`, and who online is detected as Bedrock. Problems are also logged to the console 10 s after start.
+  `/bedrockcheck install [branch]` downloads the 4 packs + 4 mappings from `raw.githubusercontent.com/.../<branch>/bedrock/`
+  (default `main`, or `bedrock-packs.branch`), moving older copies of the same pack to `packs/old/`; then restart (Geyser reads
+  packs and mappings only at startup). Tested (`BedrockCheckTest`, with a fake FloodgateApi for linked accounts).
 - Ships, cosmetics and the wild models have their own Bedrock packs (`FaultlineShips`, `FaultlineCosmetics`, `FaultlineWild`).
   `tools/bedrock/items.tsv` also lists the wild bosses' summon items/weapons and the Ancient Core by hand (not in the MENU dump).
 

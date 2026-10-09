@@ -3620,7 +3620,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
     }
 
     static boolean bedrock(Player p) {
-        return p.getUniqueId().getMostSignificantBits() == 0;
+        return Edition.bedrock(p);
     }
 
     private boolean anyBedrockOnline() {

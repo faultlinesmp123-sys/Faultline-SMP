@@ -1,10 +1,10 @@
 name: FaultlineBosses
-version: 1.4.1
+version: 1.4.2
 main: net.faultlinesmp.bosses.FaultlineBosses
 api-version: '1.21'
 author: FaultlineSMP
 description: Summonable bosses for Faultline SMP — The Demon Eye
-softdepend: [FaultlineItems, FaultlineRaids, FaultlineCosmetics]
+softdepend: [FaultlineItems, FaultlineRaids, FaultlineCosmetics, floodgate, Geyser-Spigot]
 
 commands:
   demoneye:

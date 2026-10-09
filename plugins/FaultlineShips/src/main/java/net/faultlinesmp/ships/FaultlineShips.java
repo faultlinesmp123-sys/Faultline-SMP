@@ -146,7 +146,7 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
     }
 
     /** Floodgate gives Bedrock players a UUID whose top half is 0 (same check as FaultlineBosses). */
-    static boolean bedrock(Player p) { return p.getUniqueId().getMostSignificantBits() == 0; }
+    static boolean bedrock(Player p) { return Edition.bedrock(p); }
 
     /** Bedrock players can't see block displays: while a ship is built they're sent the real blocks instead. */
     void showFakes(Ship s, List<Integer> cells) {

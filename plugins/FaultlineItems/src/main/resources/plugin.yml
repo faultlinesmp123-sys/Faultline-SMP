@@ -1,11 +1,16 @@
 name: FaultlineItems
-version: 1.2.1
+version: 1.2.2
 main: net.faultlinesmp.items.FaultlineItems
 api-version: '1.21'
+softdepend: [floodgate, Geyser-Spigot]
 author: FaultlineSMP
 description: Custom items for Faultline SMP — Magic Mirror, Cloud Potion, Darkness Potion, Golden Ring, Goodie Bag
 
 commands:
+  bedrockcheck:
+    description: "Admin: why can't Bedrock players see the packs? Checks Geyser, its packs and mappings, and who is detected as Bedrock; 'install' fetches the files"
+    usage: /bedrockcheck [install [branch]]
+    permission: items.bedrockcheck
   givemirror:
     description: Give yourself or another player a Magic Mirror
     usage: /givemirror [amount] [player]
@@ -223,4 +228,7 @@ permissions:
     default: op
   items.fgear:
     description: Allows giving the new gear
+    default: op
+  items.bedrockcheck:
+    description: Allows /bedrockcheck
     default: op

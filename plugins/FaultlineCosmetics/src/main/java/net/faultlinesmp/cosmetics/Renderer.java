@@ -88,7 +88,7 @@ final class Renderer implements Listener {
             if (floodgate != null) return (boolean) floodgateCheck.invoke(floodgate, p.getUniqueId());
             if (geyser != null) return (boolean) geyserCheck.invoke(geyser, p.getUniqueId());
         } catch (Throwable ignored) { }
-        return p.getUniqueId().getMostSignificantBits() == 0;
+        return Edition.bedrock(p);
     }
 
     void start() {

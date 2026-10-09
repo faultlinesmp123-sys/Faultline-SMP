@@ -1,7 +1,8 @@
 name: FaultlineShips
-version: 1.5.1
+version: 1.5.2
 main: net.faultlinesmp.ships.FaultlineShips
 api-version: '1.21'
+softdepend: [floodgate, Geyser-Spigot]
 author: FaultlineSMP
 description: Build ships from blueprints, sail them, wreck them, repair them
 

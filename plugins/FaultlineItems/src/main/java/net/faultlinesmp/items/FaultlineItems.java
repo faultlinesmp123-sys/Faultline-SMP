@@ -399,7 +399,7 @@ public final class FaultlineItems extends JavaPlugin {
         getCommand("givedisc").setExecutor(gear);
         weather = new Weather(this);
         getServer().getPluginManager().registerEvents(weather, this);
-        getCommand("fevent").setExecutor(weather);
+        getCommand("fweather").setExecutor(weather);
         getServer().getPluginManager().registerEvents(new StandGuard(this), this);
         if (getCommand("bedrockcheck") != null) getCommand("bedrockcheck").setExecutor(new BedrockCheck(this));
         // tell the console straight away when Bedrock players won't get the packs
@@ -730,6 +730,13 @@ public final class FaultlineItems extends JavaPlugin {
     }
 
     /** True while FaultlineEvents is running this event (e.g. "LANTERN_NIGHT"). Safe if FaultlineEvents isn't installed. */
+    /** The FaultlineEvents event running now (BLOOD_MOON, ...), or null. */
+    public String faultlineEvent() {
+        if (Bukkit.getWorlds().isEmpty() || ACTIVE_EVENT_KEY == null) return null;
+        String active = Bukkit.getWorlds().get(0).getPersistentDataContainer().get(ACTIVE_EVENT_KEY, PersistentDataType.STRING);
+        return active == null || active.isBlank() ? null : active;
+    }
+
     public boolean isEventActive(String eventName) {
         if (Bukkit.getWorlds().isEmpty() || ACTIVE_EVENT_KEY == null) return false;
         String active = Bukkit.getWorlds().get(0).getPersistentDataContainer().get(ACTIVE_EVENT_KEY, PersistentDataType.STRING);

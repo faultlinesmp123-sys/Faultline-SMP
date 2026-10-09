@@ -3,13 +3,13 @@ package net.faultlinesmp.bosses;
 import org.bukkit.ChatColor;
 import org.bukkit.Color;
 import org.bukkit.Location;
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.block.data.BlockData;
-import org.bukkit.block.data.type.PointedDripstone;
 import org.bukkit.boss.BarColor;
 import org.bukkit.entity.BlockDisplay;
 import org.bukkit.entity.Player;
@@ -81,6 +81,15 @@ final class FrostWyrm extends Wild.Boss {
     @Override String music() { return "minecraft:music_disc.relic"; }
     @Override double musicLength() { return 218; }
     @Override Location center() { return pos.clone(); }
+    static BlockData icicle;
+    static BlockData icicleData() {
+        if (icicle == null) {
+            try { icicle = Bukkit.createBlockData("minecraft:pointed_dripstone[vertical_direction=down,thickness=tip]"); }
+            catch (RuntimeException e) { icicle = Material.POINTED_DRIPSTONE.createBlockData(); }
+        }
+        return icicle;
+    }
+
     @Override boolean valid() { return bodyP.d != null && bodyP.d.isValid(); }
 
     @Override String line(String what) {
@@ -239,7 +248,8 @@ final class FrostWyrm extends Wild.Boss {
     void icicles() {
         if (at < 26) { if (at % 3 == 0) for (Location m : marks) warnRing(m, 1.6, Color.fromRGB(170, 230, 255)); return; }
         if (at == 26) for (Location m : marks) {
-            BlockData drip = Material.POINTED_DRIPSTONE.createBlockData(b -> { if (b instanceof PointedDripstone pd) { pd.setVerticalDirection(org.bukkit.block.BlockFace.DOWN); pd.setThickness(PointedDripstone.Thickness.TIP); } });
+            // from a string: Paper 26.2 moved PointedDripstone.Thickness to Speleothem.Thickness, so the typed call breaks one API or the other
+            BlockData drip = icicleData();
             BlockDisplay d = world.spawn(m.clone().add(0, 14, 0), BlockDisplay.class, e -> {
                 e.setBlock(Material.PACKED_ICE.createBlockData());
                 e.setTransformation(new Transformation(new Vector3f(-0.3f, 0, -0.3f), new Quaternionf(), new Vector3f(0.6f, 1.6f, 0.6f), new Quaternionf()));

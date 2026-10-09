@@ -320,7 +320,7 @@ boots:
 item-textures:
   enabled: true
   url: "https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/main/FaultlineSMP.zip"
-  hash: "658a77517637cf2a7ef49606dddb3c4825959b27"
+  hash: "bf5764dbb2ababcb40240b7a26ff63aaa9f461f5"
 
 
 # Immunity charms: one accessory per debuff (Guardian Scale, Ginger Root, Blindfold, Salt Ration,
@@ -457,11 +457,11 @@ mirror:
 # turn hostile), LOCUSTS on farms (they eat crops until driven off). /fevent <kind> | stop | status
 weather:
   enabled: true
-  aurora: {enabled: true, chance-per-night: 0.2, xp-multiplier: 2.0, enchant-cost-multiplier: 0.7, height: 70}
+  aurora: {enabled: true, chance-per-night: 0.2, xp-multiplier: 2.0, enchant-cost-multiplier: 0.7, height: 38, size: 1.2}  # height above the ground, size 1 = 24 blocks wide
   sandstorm: {enabled: true, chance-per-minute: 0.006, minutes: 6, radius: 110, husks-per-player: 4, treasure-chance: 0.04,
               treasure: ["GOLD_INGOT:2-6", "EMERALD:1-4", "DIAMOND:1-2:25", "GOLDEN_APPLE:1:15", "RABBIT_FOOT:1:30"]}
   blizzard: {enabled: true, chance-per-minute: 0.006, minutes: 6, radius: 110, cold-per-half-second: 26, strays-per-player: 6}
-  eclipse: {enabled: true, chance-per-minute: 0.003, minutes: 5}
+  eclipse: {enabled: true, chance-per-minute: 0.003, minutes: 5, sun-height: 55, sun-size: 1.0}   # only each player's sky goes dark: the world's time keeps running
   locusts: {enabled: true, chance-per-minute: 0.004, minutes: 4, count: 12, health: 6, min-crops: 16,
             rewards: ["EMERALD:3-6", "BONE_MEAL:16", "WHEAT_SEEDS:8"]}
 

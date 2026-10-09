@@ -32,6 +32,7 @@ final class WildParts {
         P.put("locust", new double[]{1.00000, 0.09000, 1.32000, -0.00000});
         P.put("ghost_captain", new double[]{1.00000, 0.21000, 1.10000, -0.00000});
         P.put("aurora", new double[]{8.17021, -0.00000, 12.25532, -0.00000});
+        P.put("black_sun", new double[]{9.53191, -0.00000, 14.29787, -0.00000});
     }
 
     static double[] of(String part) { return P.getOrDefault(part, new double[]{1, 0, 0, 0}); }

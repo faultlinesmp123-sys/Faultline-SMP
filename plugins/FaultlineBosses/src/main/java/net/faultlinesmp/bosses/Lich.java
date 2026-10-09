@@ -53,8 +53,8 @@ final class Lich extends Wild.Boss {
     Lich(Wild w, Location at, Player by) {
         super(w, "lich", at, by);
         k = c("scale", 1.3);
-        pos = at.clone().add(dirOf(at.getYaw()).multiply(7));
-        pos.setY(ground(pos) + 0.4);
+        pos = Wild.freeSpot(at, 5, 9); // a free spot in the cave near you (not up on the surface)
+        pos.setY(pos.getY() + 0.4);
         yaw = at.getYaw() + 180;
         model = rig.add("lich", k, pos);
         hitbox(pos, (int) Math.round(3 * k), "The Lich");

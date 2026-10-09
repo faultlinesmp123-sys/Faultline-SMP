@@ -72,7 +72,7 @@ import java.util.*;
  *   BLIZZARD   in snowy biomes: snow, cold (you freeze unless you're near a fire or wearing leather), stray packs.
  *   ECLIPSE    at midday the sun goes dark for 5 minutes: it turns to night and every neutral mob turns on you.
  *   LOCUSTS    a swarm finds a farm and eats the crops (back to seedlings) until it's driven off.
- * Admin: /fevent <aurora|sandstorm|blizzard|eclipse|locusts> [here] | stop [kind] | status
+ * Admin: /fweather <aurora|sandstorm|blizzard|eclipse|locusts> [here] | stop [kind] | status
  */
 final class Weather implements Listener, CommandExecutor {
 
@@ -87,6 +87,19 @@ final class Weather implements Listener, CommandExecutor {
     private int ticks;
 
     Weather(FaultlineItems plugin) {
+        // 1.2.0's eclipse froze the daylight cycle at midnight and only undid it when it ended normally: a world it left
+        // stuck (daylight cycle off, time exactly 18000) gets its days and nights back
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            for (World w : Bukkit.getWorlds()) {
+                try {
+                    if (w.getEnvironment() != World.Environment.NORMAL || w.getName().equals("faultline_void")) continue;
+                    if (Boolean.FALSE.equals(w.getGameRuleValue(GameRule.DO_DAYLIGHT_CYCLE)) && Math.abs(w.getTime() % 24000 - 18000) <= 100) {
+                        w.setGameRule(GameRule.DO_DAYLIGHT_CYCLE, true);
+                        plugin.getLogger().warning("[Weather] " + w.getName() + " was stuck at midnight with the daylight cycle off (left by an old eclipse): turned the daylight cycle back on.");
+                    }
+                } catch (RuntimeException ignored) { }
+            }
+        });
         this.plugin = plugin;
         for (World w : Bukkit.getWorlds()) for (Entity e : w.getEntities()) if (e.getScoreboardTags().contains(TAG)) e.remove();
         Bukkit.getScheduler().runTaskTimer(plugin, this::tick, 40L, 1L);
@@ -114,8 +127,10 @@ final class Weather implements Listener, CommandExecutor {
             }
         }
         if (ticks % 1200 != 0 || !plugin.getConfig().getBoolean("weather.enabled", true)) return;
+        // never on top of a FaultlineEvents event (Blood Moon, fog...): one sky event at a time
+        if (plugin.faultlineEvent() != null) return;
         for (World w : Bukkit.getWorlds()) {
-            if (w.getEnvironment() != World.Environment.NORMAL) continue;
+            if (w.getEnvironment() != World.Environment.NORMAL || w.getName().equals("faultline_void")) continue;
             long t = w.getTime();
             // AURORA: rolled once each night, as it falls
             if (on("aurora") && !active.containsKey("aurora") && t >= 13000 && t < 14500) {
@@ -130,7 +145,7 @@ final class Weather implements Listener, CommandExecutor {
                     && random.nextDouble() < cfg("eclipse.chance-per-minute", 0.003)) start("eclipse", w, null);
         }
         for (Player p : Bukkit.getOnlinePlayers()) {
-            if (!survival(p) || p.getWorld().getEnvironment() != World.Environment.NORMAL) continue;
+            if (!survival(p) || p.getWorld().getEnvironment() != World.Environment.NORMAL || p.getWorld().getName().equals("faultline_void")) continue;
             Biome b = p.getLocation().getBlock().getBiome();
             if (on("sandstorm") && !active.containsKey("sandstorm") && SANDS.contains(b) && random.nextDouble() < cfg("sandstorm.chance-per-minute", 0.006)) start("sandstorm", p.getWorld(), p.getLocation());
             else if (on("blizzard") && !active.containsKey("blizzard") && SNOWY.contains(b) && random.nextDouble() < cfg("blizzard.chance-per-minute", 0.006)) start("blizzard", p.getWorld(), p.getLocation());
@@ -207,6 +222,7 @@ final class Weather implements Listener, CommandExecutor {
     //  AURORA
     // =====================================================================================================
     final class Aurora extends Event {
+        /** Each player's own ribbons: only they see them (everyone else's would hang in their sky too). */
         final Map<UUID, List<ItemDisplay>> ribbons = new HashMap<>();
         Aurora(World w) { super("aurora", w, 14); }
 
@@ -217,53 +233,65 @@ final class Weather implements Listener, CommandExecutor {
             }
         }
 
+        ItemDisplay ribbon(Player owner, Location at) {
+            ItemDisplay d = world.spawn(at, ItemDisplay.class, e -> {
+                e.setVisibleByDefault(false);
+                e.setItemStack(WildRig.model("aurora"));
+                e.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.NONE);
+                e.setBrightness(new Display.Brightness(15, 15));
+                e.setViewRange(4f);
+                e.setTeleportDuration(20);
+                e.setInterpolationDuration(20);
+                e.setPersistent(false);
+                e.addScoreboardTag(TAG);
+                e.addScoreboardTag("faultline_no_bedrock_fx");
+            });
+            owner.showEntity(plugin, d);
+            return d;
+        }
+
         @Override boolean tick() {
             t++;
             long time = world.getTime();
             if (t > 200 && (time >= 23000 || time < 12500)) return true;
-            if (t % 2 != 0) return false;
+            if (t % 10 != 0) return false;
             Set<UUID> here = new HashSet<>();
+            double size = Math.max(0.3, Math.min(3, cfg("aurora.size", 1.2)));
+            double up = Math.max(20, Math.min(80, cfg("aurora.height", 38)));
+            double[] meta = WildParts.of("aurora");
             for (Player p : world.getPlayers()) {
                 here.add(p.getUniqueId());
-                List<ItemDisplay> rs = ribbons.computeIfAbsent(p.getUniqueId(), k -> new ArrayList<>());
-                rs.removeIf(d -> !d.isValid());
-                Location base = p.getLocation().clone();
-                base.setY(Math.max(base.getY(), world.getHighestBlockYAt(base, HeightMap.MOTION_BLOCKING_NO_LEAVES)) + cfg("aurora.height", 70));
-                if (rs.isEmpty()) for (int i = 0; i < 3; i++) {
-                    int k = i;
-                    rs.add(world.spawn(base, ItemDisplay.class, d -> {
-                        ItemStack it = new ItemStack(Material.PAPER);
-                        ItemMeta m = it.getItemMeta();
-                        m.setItemModel(new NamespacedKey("faultline", "wild/aurora"));
-                        it.setItemMeta(m);
-                        d.setItemStack(it);
-                        d.setBrightness(new Display.Brightness(15, 15));
-                        d.setViewRange(8f);
-                        d.setTeleportDuration(10);
-                        d.setInterpolationDuration(10);
-                        d.setPersistent(false);
-                        d.addScoreboardTag(TAG);
-                        d.addScoreboardTag(PART_TAG + "_" + k);
-                    }));
-                }
-                if (t % 10 == 0) for (int i = 0; i < rs.size(); i++) {
-                    ItemDisplay d = rs.get(i);
-                    double phase = (t / 20.0) * 0.08 + i * 1.7;
-                    Location l = base.clone().add(Math.sin(phase) * 12, i * 6, -40 + i * 26);
-                    d.teleport(l);
-                    float s = (float) (WildParts.of("aurora")[0] * 5.0);
-                    d.setInterpolationDelay(0);
-                    d.setTransformation(new Transformation(new Vector3f(0, 0, 0),
-                            new Quaternionf().rotationY((float) (Math.sin(phase * 0.7) * 0.6 + i * 0.4)).rotateX((float) Math.toRadians(-20)),
-                            new Vector3f(s, s * 1.6f, s), new Quaternionf()));
-                }
-                if (bedrock(p) && t % 10 == 0) { // Bedrock can't draw the ribbons: a curtain of coloured dust instead
+                if (bedrock(p)) { // Bedrock can't draw the ribbons: a curtain of coloured dust across the northern sky
                     Color[] cols = {Color.fromRGB(60, 255, 150), Color.fromRGB(120, 160, 255), Color.fromRGB(190, 110, 255)};
                     for (int i = 0; i < 40; i++) {
                         double x = (i - 20) * 1.2;
                         double y = 22 + Math.sin(i * 0.35 + t * 0.05) * 2 + (i % 3);
                         p.spawnParticle(Particle.DUST, p.getLocation().add(x, y, -18), 1, 0.2, 0.4, 0.2, 0, new Particle.DustOptions(cols[i % 3], 2.4f));
                     }
+                    continue;
+                }
+                List<ItemDisplay> rs = ribbons.computeIfAbsent(p.getUniqueId(), k -> new ArrayList<>());
+                rs.removeIf(d -> !d.isValid());
+                Location eye = p.getLocation();
+                double top = Math.max(eye.getY(), world.getHighestBlockYAt(eye, HeightMap.MOTION_BLOCKING_NO_LEAVES));
+                for (int i = 0; i < 3; i++) {
+                    // three curtains across the northern sky, 45-60 blocks out, slowly swaying
+                    double ang = Math.toRadians(-40 + i * 40) + Math.sin(t * 0.004 + i) * 0.15;
+                    double dist = 48 + i * 6;
+                    double dx = Math.sin(ang) * dist, dz = -Math.cos(ang) * dist;
+                    Location l = new Location(world, eye.getX() + dx, top + up + i * 4, eye.getZ() + dz);
+                    if (rs.size() <= i) rs.add(ribbon(p, l));
+                    ItemDisplay d = rs.get(i);
+                    if (!d.getWorld().equals(world)) continue;
+                    d.teleport(l);
+                    // face the player (the ribbon's flat side toward them), tilted back a little
+                    float face = (float) Math.atan2(-dx, -dz);
+                    Quaternionf rot = new Quaternionf().rotationY(face).rotateX((float) Math.toRadians(-15)).rotateZ((float) (Math.sin(t * 0.006 + i * 2) * 0.08));
+                    float sc = (float) (meta[0] * size);
+                    Vector3f off = new Vector3f((float) (meta[1] * size), (float) (meta[2] * size), (float) (meta[3] * size));
+                    rot.transform(off);
+                    d.setInterpolationDelay(0);
+                    d.setTransformation(new Transformation(off, rot, new Vector3f(sc, sc, sc), new Quaternionf()));
                 }
             }
             for (Iterator<Map.Entry<UUID, List<ItemDisplay>>> it = ribbons.entrySet().iterator(); it.hasNext(); ) {
@@ -460,36 +488,98 @@ final class Weather implements Listener, CommandExecutor {
     // =====================================================================================================
     //  ECLIPSE
     // =====================================================================================================
+    /**
+     * The sun goes black. It never touches the world's time or its gamerules any more: the old version froze the daylight
+     * cycle at midnight and only gave it back when the eclipse ended normally, so a restart or crash mid-eclipse left the
+     * world stuck (no more days or nights: blood moons, fog and every other night event stopped). Now each player's own
+     * sky is set to midnight (setPlayerTime, never saved, undone on quit/relog), a BLACK SUN with a burning corona hangs
+     * straight overhead where the moon would be (Java: a model only they see; Bedrock: a ring of particles), and the
+     * real world keeps turning.
+     */
     final class Eclipse extends Event {
-        long savedTime;
-        Boolean cycle;
         BossBar bar;
+        final Map<UUID, ItemDisplay> suns = new HashMap<>();
         Eclipse(World w) { super("eclipse", w, Weather.this.cfg("eclipse.minutes", 5)); }
 
         @Override void begin() {
-            savedTime = world.getTime();
-            cycle = world.getGameRuleValue(GameRule.DO_DAYLIGHT_CYCLE);
-            world.setGameRule(GameRule.DO_DAYLIGHT_CYCLE, false);
-            world.setTime(18000);
             bar = Bukkit.createBossBar(ChatColor.DARK_RED + "" + ChatColor.BOLD + "☀ ECLIPSE", BarColor.RED, BarStyle.SOLID);
             for (Player p : world.getPlayers()) {
-                bar.addPlayer(p);
+                darken(p);
                 p.showTitle(net.kyori.adventure.title.Title.title(Meteor.legacy(ChatColor.DARK_RED + "" + ChatColor.BOLD + "ECLIPSE"),
-                        Meteor.legacy(ChatColor.GRAY + "The sun goes dark. Every beast turns on you.")));
+                        Meteor.legacy(ChatColor.GRAY + "The sun goes black. Every beast turns on you.")));
                 p.playSound(p.getLocation(), Sound.AMBIENT_CAVE, SoundCategory.AMBIENT, 1f, 0.5f);
                 p.playSound(p.getLocation(), Sound.ENTITY_WITHER_SPAWN, SoundCategory.AMBIENT, 0.4f, 0.5f);
             }
-            Bukkit.broadcastMessage(ChatColor.DARK_RED + "" + ChatColor.BOLD + "An eclipse darkens the sky! " + ChatColor.GRAY + "Wolves, bees, golems, endermen and bears turn hostile for 5 minutes.");
+            Bukkit.broadcastMessage(ChatColor.DARK_RED + "" + ChatColor.BOLD + "The sun turns black! " + ChatColor.GRAY + "Wolves, bees, golems, endermen and bears turn hostile for " + (int) cfg("eclipse.minutes", 5) + " minutes.");
+        }
+
+        void darken(Player p) {
+            p.setPlayerTime(18000, false); // only their sky; the world's own clock runs on
+            bar.addPlayer(p);
+        }
+
+        void lighten(Player p) {
+            p.resetPlayerTime();
+            if (bar != null) bar.removePlayer(p);
+            ItemDisplay d = suns.remove(p.getUniqueId());
+            if (d != null && d.isValid()) d.remove();
+        }
+
+        ItemDisplay sun(Player p) {
+            ItemDisplay d = suns.get(p.getUniqueId());
+            if (d != null && d.isValid() && d.getWorld().equals(p.getWorld())) return d;
+            if (d != null && d.isValid()) d.remove();
+            d = p.getWorld().spawn(p.getLocation().add(0, 50, 0), ItemDisplay.class, e -> {
+                e.setVisibleByDefault(false);
+                e.setItemStack(WildRig.model("black_sun"));
+                e.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.NONE);
+                e.setBrightness(new Display.Brightness(15, 15));
+                e.setViewRange(4f);
+                e.setTeleportDuration(3);
+                e.setPersistent(false);
+                e.addScoreboardTag(TAG);
+                e.addScoreboardTag("faultline_no_bedrock_fx");
+            });
+            double[] meta = WildParts.of("black_sun");
+            double k = Math.max(0.3, Math.min(3, cfg("eclipse.sun-size", 1.0)));
+            float sc = (float) (meta[0] * k);
+            d.setTransformation(new Transformation(new Vector3f((float) (meta[1] * k), (float) (meta[2] * k), (float) (meta[3] * k)),
+                    new Quaternionf(), new Vector3f(sc, sc, sc), new Quaternionf()));
+            p.showEntity(plugin, d);
+            suns.put(p.getUniqueId(), d);
+            return d;
         }
 
         @Override boolean tick() {
             t++;
             long left = endsAt - System.currentTimeMillis();
             if (left <= 0) return true;
-            if (t % 20 == 0) {
-                bar.setProgress(Math.max(0, Math.min(1, left / (cfg("eclipse.minutes", 5) * 60000))));
-                for (Player p : world.getPlayers()) if (!bar.getPlayers().contains(p)) bar.addPlayer(p);
+            double up = Math.max(30, Math.min(90, cfg("eclipse.sun-height", 55)));
+            for (Player p : world.getPlayers()) {
+                if (p.getPlayerTime() % 24000 != 18000 || p.isPlayerTimeRelative()) darken(p); // a new arrival, or a relog
+                if (bedrock(p)) {
+                    if (t % 5 == 0) { // Bedrock: a black disc ringed with fire, straight overhead
+                        Location c = p.getLocation().add(0, 30, 0);
+                        for (int i = 0; i < 28; i++) {
+                            double a = i * Math.PI * 2 / 28;
+                            p.spawnParticle(Particle.DUST, c.clone().add(Math.cos(a) * 6, 0, Math.sin(a) * 6), 1, 0, 0, 0, 0, new Particle.DustOptions(Color.fromRGB(255, 170, 60), 3f));
+                            if (i % 2 == 0) p.spawnParticle(Particle.DUST, c.clone().add(Math.cos(a) * 3.5, 0.1, Math.sin(a) * 3.5), 1, 0, 0, 0, 0, new Particle.DustOptions(Color.fromRGB(10, 10, 14), 4f));
+                        }
+                        p.spawnParticle(Particle.DUST, c, 6, 1.5, 0, 1.5, 0, new Particle.DustOptions(Color.fromRGB(10, 10, 14), 4f));
+                    }
+                } else {
+                    ItemDisplay d = sun(p);
+                    Location at = p.getLocation().add(0, up, 0);
+                    at.setYaw(0); at.setPitch(0);
+                    d.teleport(at);
+                }
             }
+            for (Iterator<Map.Entry<UUID, ItemDisplay>> it = suns.entrySet().iterator(); it.hasNext(); ) {
+                var e = it.next();
+                Player p = Bukkit.getPlayer(e.getKey());
+                if (p == null || !p.getWorld().equals(world)) { if (e.getValue().isValid()) e.getValue().remove(); if (p != null) lighten(p); it.remove(); }
+            }
+            if (t % 20 == 0) bar.setProgress(Math.max(0, Math.min(1, left / (cfg("eclipse.minutes", 5) * 60000))));
             if (t % 60 == 0) for (Player p : world.getPlayers()) {
                 if (!survival(p)) continue;
                 for (Entity e : p.getNearbyEntities(24, 12, 24)) {
@@ -508,8 +598,9 @@ final class Weather implements Listener, CommandExecutor {
         }
 
         @Override void finish(boolean natural) {
-            world.setTime(savedTime + 6000);
-            if (cycle != null) world.setGameRule(GameRule.DO_DAYLIGHT_CYCLE, cycle);
+            for (Player p : Bukkit.getOnlinePlayers()) if (suns.containsKey(p.getUniqueId()) || p.getWorld().equals(world)) lighten(p);
+            for (ItemDisplay d : suns.values()) if (d.isValid()) d.remove();
+            suns.clear();
             if (bar != null) bar.removeAll();
             if (natural) Bukkit.broadcastMessage(ChatColor.YELLOW + "The eclipse passes. The sun returns.");
         }
@@ -647,16 +738,17 @@ final class Weather implements Listener, CommandExecutor {
     public void onJoin(PlayerJoinEvent e) {
         Player p = e.getPlayer();
         if (active.get("locusts") instanceof Locusts l) for (Locusts.Swarmer s : l.swarm) if (s.stand.isValid()) { if (bedrock(p)) p.showEntity(plugin, s.stand); else p.hideEntity(plugin, s.stand); }
-        if (active.get("eclipse") instanceof Eclipse ec && ec.bar != null && p.getWorld().equals(ec.world)) ec.bar.addPlayer(p);
+        if (active.get("eclipse") instanceof Eclipse ec && ec.bar != null && p.getWorld().equals(ec.world)) ec.darken(p);
     }
 
     @EventHandler
     public void onQuit(PlayerQuitEvent e) {
         if (active.get("blizzard") instanceof Blizzard b && b.weathered.remove(e.getPlayer().getUniqueId())) e.getPlayer().resetPlayerWeather();
+        if (active.get("eclipse") instanceof Eclipse ec) ec.lighten(e.getPlayer());
     }
 
     // =====================================================================================================
-    //  helpers + /fevent
+    //  helpers + /fweather
     // =====================================================================================================
     static double sq(double v) { return v * v; }
 
@@ -705,8 +797,8 @@ final class Weather implements Listener, CommandExecutor {
             sender.sendMessage(ChatColor.GREEN + "Stopped.");
             return true;
         }
-        if (!KINDS.contains(sub)) { sender.sendMessage(ChatColor.YELLOW + "/fevent <aurora|sandstorm|blizzard|eclipse|locusts|stop [kind]|status>"); return true; }
-        if (active.containsKey(sub)) { sender.sendMessage(ChatColor.RED + "That's already happening (/fevent stop " + sub + ")."); return true; }
+        if (!KINDS.contains(sub)) { sender.sendMessage(ChatColor.YELLOW + "/fweather <aurora|sandstorm|blizzard|eclipse|locusts|stop [kind]|status>"); return true; }
+        if (active.containsKey(sub)) { sender.sendMessage(ChatColor.RED + "That's already happening (/fweather stop " + sub + ")."); return true; }
         World w = p != null ? p.getWorld() : Bukkit.getWorlds().get(0);
         Location at = p != null ? p.getLocation() : null;
         if (sub.equals("locusts") && p != null) {

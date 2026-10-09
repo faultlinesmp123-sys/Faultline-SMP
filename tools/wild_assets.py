@@ -500,7 +500,31 @@ def aurora():
     return [p]
 
 
-ALL_PARTS = leviathan() + sandworm() + frost_wyrm() + lich() + golem() + mimic() + locust() + ghost_captain() + aurora()
+def black_sun():
+    """The eclipse: a black disc with a burning corona, lying flat (seen from below, straight up)."""
+    p = Part("black_sun", 4, 64, java_only=True)
+    R, C = 8.0, 10.5
+    core, ring, rim = solid((4, 4, 8), 2), glow((255, 236, 190)), glow((255, 150, 40))
+    for z in range(-int(C), int(C)):
+        zc = z + 0.5
+        hw_c = math.sqrt(max(0.0, C * C - zc * zc))
+        hw_r = math.sqrt(max(0.0, R * R - zc * zc))
+        if hw_r > 0.3:
+            p.add(-hw_r, 0.0, z, hw_r, 0.25, z + 1, core)               # the dark disc (nearest the viewer below)
+        if hw_c > 0.3:
+            inner = hw_r if hw_r > 0.3 else 0.0
+            if inner > 0:
+                p.add(-hw_c, 0.2, z, -inner + 0.4, 0.3, z + 1, ring)    # the corona on each side
+                p.add(inner - 0.4, 0.2, z, hw_c, 0.3, z + 1, ring)
+            else:
+                p.add(-hw_c, 0.2, z, hw_c, 0.3, z + 1, ring)
+    for (x0, z0, x1, z1) in ((-0.6, C - 0.5, 0.6, C + 3.5), (-0.6, -C - 3.5, 0.6, -C + 0.5),
+                             (C - 0.5, -0.6, C + 3.5, 0.6), (-C - 3.5, -0.6, -C + 0.5, 0.6)):
+        p.add(x0, 0.22, z0, x1, 0.28, z1, rim)                           # four flares
+    return [p]
+
+
+ALL_PARTS = leviathan() + sandworm() + frost_wyrm() + lich() + golem() + mimic() + locust() + ghost_captain() + aurora() + black_sun()
 
 # =====================================================================================================================
 #  16x16 pixel art (flat items + Index icons)

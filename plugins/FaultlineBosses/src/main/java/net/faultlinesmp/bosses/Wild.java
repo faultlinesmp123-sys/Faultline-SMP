@@ -102,6 +102,7 @@ final class Wild implements Listener {
     final Map<String, Long> cooldownUntil = new HashMap<>();
     private final Map<UUID, Long> weaponCd = new HashMap<>();
     private int ticks;
+    private long nextNatural;
 
     Wild(FaultlineBosses pl) {
         this.pl = pl;
@@ -341,7 +342,7 @@ final class Wild implements Listener {
                 case "golem" -> new StoneGolem(this, at, by);
                 default -> null;
             };
-        } catch (RuntimeException e) {
+        } catch (RuntimeException | LinkageError e) { // LinkageError: an API the server's Paper doesn't have
             pl.getLogger().log(java.util.logging.Level.WARNING, "Couldn't summon " + kind, e);
             return null;
         }
@@ -366,7 +367,7 @@ final class Wild implements Listener {
         ticks++;
         for (Boss b : new ArrayList<>(bosses.values())) {
             try { b.tick(); }
-            catch (RuntimeException e) {
+            catch (RuntimeException | LinkageError e) {
                 pl.getLogger().log(java.util.logging.Level.SEVERE, "[" + b.name() + "] error (it leaves; please report this):", e);
                 b.leave(null);
             }
@@ -374,7 +375,86 @@ final class Wild implements Listener {
         if (ticks % 40 == 0) standUpkeep();
         if (ticks % 1200 == 600) StoneGolem.naturalSpawns(this);
         if (ticks % 2400 == 1200) Leviathan.naturalSpawns(this);
+        if (ticks % 1200 == 300) naturalSpawns();
     }
+
+    /**
+     * The floor under (or just over) l. Searches 12 up and 32 down from l, so a boss in a cave stays IN the cave: the old
+     * version gave up after 16 blocks and jumped to the surface, so a Lich called in the Deep Dark (or a Golem in a lush
+     * cave) appeared 60+ blocks overhead, out of everyone's reach, and left again unseen.
+     */
+    static double ground(World world, Location l) {
+        int x = l.getBlockX(), z = l.getBlockZ(), y0 = l.getBlockY();
+        for (int d = 0; d <= 32; d++) {
+            for (int y : d == 0 ? new int[]{y0} : new int[]{y0 - d, y0 + d}) {
+                if (d > 12 && y > y0) continue;
+                if (y <= world.getMinHeight() || y >= world.getMaxHeight() - 2) continue;
+                if (world.getBlockAt(x, y - 1, z).getType().isSolid() && !world.getBlockAt(x, y, z).getType().isSolid()
+                        && !world.getBlockAt(x, y + 1, z).getType().isSolid()) return y;
+            }
+        }
+        return y0; // solid rock all round: stay at the caller's height
+    }
+
+    /** A free spot (2 tall, a floor) between min and max blocks from l, ahead of yaw if possible; l itself if none. */
+    static Location freeSpot(Location l, double min, double max) {
+        World w = l.getWorld();
+        Random r = new Random();
+        for (int tries = 0; tries < 40; tries++) {
+            double ang = Math.toRadians(l.getYaw() + 90) + (tries < 10 ? (r.nextDouble() - 0.5) * 1.2 : r.nextDouble() * Math.PI * 2);
+            double d = min + r.nextDouble() * (max - min);
+            Location c = l.clone().add(Math.cos(ang) * d, 0, Math.sin(ang) * d);
+            double y = ground(w, c);
+            if (Math.abs(y - l.getY()) > 8) continue;
+            c.setY(y);
+            if (!w.getBlockAt(c).getType().isSolid() && !w.getBlockAt(c.clone().add(0, 1, 0)).getType().isSolid()
+                    && !w.getBlockAt(c.clone().add(0, 2, 0)).getType().isSolid()) return c;
+        }
+        return l.clone();
+    }
+
+    static boolean voidWorld(World w) { return w.getName().equals("faultline_void"); }
+
+    /**
+     * Natural spawns for the four wild bosses (once a minute, per eligible survival player, config wild.<kind>.natural-chance-per-minute;
+     * 0 turns it off). Before, the Sandworm King, the Lich and the Frost Wyrm only came from crafted summon items and the
+     * Leviathan only at night from a FaultlineShips ship (0.4% every 2 minutes), so in practice nobody ever met them.
+     * One wild boss at a time from this (natural-gap-minutes between any two natural spawns).
+     */
+    void naturalSpawns() {
+        if (!pl.getConfig().getBoolean("wild.natural-spawns", true)) return;
+        if (System.currentTimeMillis() < nextNatural) return;
+        List<Player> ps = new ArrayList<>(Bukkit.getOnlinePlayers());
+        java.util.Collections.shuffle(ps, random);
+        for (Player p : ps) {
+            if (!survival(p) || p.isDead() || p.getWorld().getEnvironment() != World.Environment.NORMAL || voidWorld(p.getWorld())) continue;
+            if (p.getWorld().getDifficulty() == Difficulty.PEACEFUL) continue;
+            Location l = p.getLocation();
+            Biome b = l.getBlock().getBiome();
+            String kind = null;
+            if (b == Biome.DEEP_DARK) kind = "lich";
+            else if (SANDS.contains(b) && b != Biome.BEACH && l.getBlockY() >= l.getWorld().getHighestBlockYAt(l) - 2 && isDay(p.getWorld())) kind = "sandworm";
+            else if (PEAKS.contains(b) && b != Biome.FROZEN_OCEAN && l.getBlockY() >= l.getWorld().getHighestBlockYAt(l) - 2) kind = "frostwyrm";
+            else if (OCEANS.contains(b) && b.getKey().getKey().startsWith("deep_") && (p.isInWater() || p.isInsideVehicle() || ShipLink.of(p) != null)) kind = "leviathan";
+            if (kind == null || bosses.containsKey(kind)) continue;
+            if (System.currentTimeMillis() < cooldownUntil.getOrDefault(kind, 0L)) continue;
+            double def = switch (kind) { case "lich" -> 0.04; case "leviathan" -> 0.02; default -> 0.015; };
+            if (random.nextDouble() >= c(kind + ".natural-chance-per-minute", def)) continue;
+            if (whyNot(kind, p) != null) continue;
+            p.sendMessage(COLOR.get(kind) + "" + ChatColor.ITALIC + switch (kind) {
+                case "lich" -> "The sculk falls silent. Something that should be dead has found you...";
+                case "sandworm" -> "The sand under your feet starts to tremble...";
+                case "frostwyrm" -> "A shadow with wings passes over the peaks...";
+                default -> "Something enormous passes beneath you...";
+            });
+            if (summon(kind, l, p) != null) {
+                nextNatural = System.currentTimeMillis() + (long) (pl.getConfig().getDouble("wild.natural-gap-minutes", 20) * 60000);
+                return;
+            }
+        }
+    }
+
+    static boolean isDay(World w) { long t = w.getTime(); return t < 12300 || t > 23800; }
 
     void shutdown() {
         for (Boss b : new ArrayList<>(bosses.values())) b.removeEverything();
@@ -717,6 +797,14 @@ final class Wild implements Listener {
             return a;
         }
 
+        /** Anyone (an admin in creative too) close by: it waits for a fight instead of leaving after 30 s. */
+        boolean watched() {
+            Location c = center();
+            double r = c("fight-radius", 56);
+            for (Player p : world.getPlayers()) if (p.getGameMode() != GameMode.SPECTATOR && p.getLocation().distanceSquared(c) < r * r) return true;
+            return false;
+        }
+
         void scaleFor(int n) {
             n = Math.max(1, Math.min(n, 10));
             if (n <= scaledFor) return;
@@ -733,7 +821,7 @@ final class Wild implements Listener {
             List<Player> a = active();
             for (Player p : a) fighters.add(p.getUniqueId());
             pilot = pl.pilot(this);
-            if (a.isEmpty() && pilot == null) {
+            if (a.isEmpty() && pilot == null && !watched()) {
                 if (++lonely > c("leave-after-ticks", 600)) { leave(line("leave")); return; }
             } else lonely = 0;
             if (ticks % 100 == 0) scaleFor(a.size());
@@ -972,14 +1060,7 @@ final class Wild implements Listener {
         }
 
         /** The ground under a spot (the top solid block +1), searching a few blocks up and down. */
-        double ground(Location l) {
-            int y = l.getBlockY() + 4;
-            for (int i = 0; i < 16; i++, y--) {
-                Block b = world.getBlockAt(l.getBlockX(), y - 1, l.getBlockZ());
-                if (b.getType().isSolid() && !world.getBlockAt(l.getBlockX(), y, l.getBlockZ()).getType().isSolid()) return y;
-            }
-            return world.getHighestBlockYAt(l.getBlockX(), l.getBlockZ(), HeightMap.MOTION_BLOCKING_NO_LEAVES) + 1;
-        }
+        double ground(Location l) { return Wild.ground(world, l); }
 
         void warnRing(Location c, double r, Color col) {
             int n = (int) Math.max(12, r * 6);

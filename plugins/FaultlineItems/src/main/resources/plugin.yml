@@ -1,5 +1,5 @@
 name: FaultlineItems
-version: 1.2.2
+version: 1.2.3
 main: net.faultlinesmp.items.FaultlineItems
 api-version: '1.21'
 softdepend: [floodgate, Geyser-Spigot]
@@ -122,9 +122,10 @@ commands:
     description: Give the Mirror..?? (the Lost Explorer's accessory)
     usage: /givelostmirror [amount] [player]
     permission: items.givelostmirror
-  fevent:
+  fweather:
+    aliases: [weatherevent]
     description: "Weather events now (admins: start/stop aurora, sandstorm, blizzard, eclipse, locusts)"
-    usage: /fevent <aurora|sandstorm|blizzard|eclipse|locusts|stop [kind]|status>
+    usage: /fweather <aurora|sandstorm|blizzard|eclipse|locusts|stop [kind]|status>
   fcreature:
     description: "Admin: spawn a Mimic or a Skeleton Knight patrol"
     usage: /fcreature <mimic|knights> [player]

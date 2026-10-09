@@ -35,7 +35,7 @@ All are Maven projects: Java 21, `paper-api 1.21.11-R0.1-SNAPSHOT`. Build with
 | Plugin | Package | What it does | Commands |
 |---|---|---|---|
 | **LimboBlackMarket** | `net.limbosmp.blackmarket` | Head-tier economy, kill/death stats, kill streaks, anti-farm, quests + Quest Book, friendly-fire logging, global reload | `/tier`, `/markethelp`, `/stats`, `/leaderboard`, `/tierleaderboard`, `/faultlinereload` (`/freload`), `/givequestbook` |
-| **FaultlineItems** | `net.faultlinesmp.items` | All custom items + accessories (3-slot `/accessories` GUI), staffs, spawn eggs, diving gear, Kraken & Diamond Jacob gear, Skeleton Wanderer cave trader, **Meteor strikes** (`Meteor.java`), **the Caravan** (`Caravan.java`), **weather events** (`Weather.java`), **Mimics + Skeleton Knights** (`Creatures.java`), **new gear, music discs, museum pedestals** (`Gear.java`), admin `/itemsmenu` | many `/give*` commands, `/itemsmenu` (`/fitems`), `/itemsreload`, `/cavetrader`, `/batform`, `/meteor [now\|here\|target\|at\|check\|stop\|egg]`, `/caravan [now\|here\|stop\|reroll]`, `/queenspider spawn`, `/fevent <kind\|stop\|status>`, `/fcreature <mimic\|knights>`, `/fgear`, `/giveancientgear`, `/givedisc <id> [player]` |
+| **FaultlineItems** | `net.faultlinesmp.items` | All custom items + accessories (3-slot `/accessories` GUI), staffs, spawn eggs, diving gear, Kraken & Diamond Jacob gear, Skeleton Wanderer cave trader, **Meteor strikes** (`Meteor.java`), **the Caravan** (`Caravan.java`), **weather events** (`Weather.java`), **Mimics + Skeleton Knights** (`Creatures.java`), **new gear, music discs, museum pedestals** (`Gear.java`), admin `/itemsmenu` | many `/give*` commands, `/itemsmenu` (`/fitems`), `/itemsreload`, `/cavetrader`, `/batform`, `/meteor [now\|here\|target\|at\|check\|stop\|egg]`, `/caravan [now\|here\|stop\|reroll]`, `/queenspider spawn`, `/fweather <kind\|stop\|status>` (was `/fevent`: renamed, FaultlineEvents owns that name), `/fcreature <mimic\|knights>`, `/fgear`, `/giveancientgear`, `/givedisc <id> [player]` |
 | **FaultlineRaids** | `net.faultlinesmp.raids` | Zombie Raids (Zombie Omens, Captains, Rotbeard), Skeleton Raids, and **Piglin Raids** (`Piglins.java`: War Horn, the Bulwark, the Great Hog) | `/zraid <start\|stop\|captain\|menu\|egg\|omen\|horn>` |
 | **FaultlineBosses** | `net.faultlinesmp.bosses` | Bosses in one ~585 KB file: Demon Eye, Frostbeard, Dune Devourer/Frostmaw, Don Lorenzo, Kraken, **Diamond Jacob**; admin boss form. **Rocco Vendetta** (+ Werner, the Vendetta Fist) lives in its own `Vendetta.java`. **The way down to the Lost Explorer** (Swarm, his staircase, the void world) is `Below.java`; **the Lost Explorer's fight** is `Explorer.java` (+ `ExplorerAnims.java`). **Grimtusk, the Piglin Warlord** (Nether boss) is `Warlord.java`; **the Boss Rush** is `BossRush.java`. **The wild bosses** (Leviathan, Sandworm King, Lich, Frost Wyrm, Stone Golem) are `Wild.java` + one class each | `/demoneye`, `/frostbeard`, `/dune`, `/don`, `/kraken <summon\|sea\|...>`, `/jacob <summon\|kill\|phase\|item>`, `/rocco <summon\|kill\|phase\|tattoos\|werner\|item>`, `/bossmorph <boss\|off\|release>`, `/below <swarm\|void\|leave\|close\|slayer\|info>`, `/explorer <start\|stop\|skip\|phase\|stun\|reset\|arena>`, `/grimtusk <summon\|kill\|phase\|item>`, `/bossrush [start\|top]` (admin `stop\|skip\|setarena\|arenas\|clearcooldown`), `/leviathan`, `/sandworm`, `/lich`, `/frostwyrm`, `/stonegolem` |
 | **FaultlineIndex** | `net.faultlinesmp.index` | The Faultline Index codex + **Achievements** (`Achievements.java`). **Museum** (`Museum.java`: trophies, discs, Hall of Firsts), **Discord bridge** (`Discord.java`), `/serverstats` (`ServerStats.java`). Entries and achievements live in `src/main/resources/index.yml`, font glyphs in `glyphs.yml`, settings in `config.yml` | `/index [achievements\|give\|reset] [player]`, `/index stat <player> <name> [n]` (other plugins), `/index discover <player> <entry>`, `/museum [bosses\|items]`, `/serverstats`, admin `/discord test [msg]` |
@@ -294,7 +294,7 @@ Notes:
   **Weather** (`FaultlineItems/Weather.java`, `weather:`): Aurora (night, XP x2, enchanting x0.7; Java ItemDisplay
   ribbons `wild/aurora`, Bedrock dust), Sandstorm (deserts: dust, slowness, husks, treasure from dug sand), Blizzard (snowy:
   freezing unless near fire/leather, strays), Eclipse (midday dark 5 min, neutral mobs hostile), Locusts (Vex with
-  `wild/locust` model eat a farm's crops; drive off = `index stat locust_swarms`). `/fevent`.
+  `wild/locust` model eat a farm's crops; drive off = `index stat locust_swarms`). `/fweather`.
   **Creatures** (`Creatures.java`): Mimics (1% of loot-table chests; Spider + `wild/mimic_base`/`mimic_lid`; chest loot on death;
   `index stat mimics`), Skeleton Knight patrols (night, skeleton horses, Knight's Helm 6%, gone at dawn). `/fcreature`.
   **Gear** (`Gear.java`, PDC `faultlineitems:gear=<id>`): Mining Helmet (night vision + headlamp LIGHT block), Lantern of Souls
@@ -312,6 +312,23 @@ Notes:
   **Discord** (`Discord.java`, `discord:`): webhook URL; broadcasts matching `discord.forward` regexes are posted (1.5 s apart).
   **/serverstats** (`ServerStats.java`): totals from vanilla stats + Index stats, top 3s, cached 1 min.
   Tested in the Index harness (`MuseumTest`).
+- **1.4.3 / 1.2.3 fixes (wild update)**:
+  Bosses: `Wild.ground(world, l)` searches 12 up / 32 down and otherwise keeps the caller's height (it used to jump to the
+  SURFACE after 16 blocks, so a Lich called in the Deep Dark appeared 60+ blocks overhead and left unseen); the Lich
+  spawns at `Wild.freeSpot` near you. Natural spawns for all four (`Wild.naturalSpawns`, every minute, `wild.<kind>.natural-chance-per-minute`:
+  Lich 0.04 in the Deep Dark, Sandworm 0.015 on desert/badlands surface by day, Frost Wyrm 0.015 on peaks/slopes/groves,
+  Leviathan 0.02 in a deep ocean swimming/boat/ship; `wild.natural-gap-minutes` 20 between any two; never in `faultline_void`).
+  A boss with anyone (even a creative admin) in range never times out (`watched()`). Summon/tick also catch `LinkageError`.
+  The Frost Wyrm's icicle is `Bukkit.createBlockData("minecraft:pointed_dripstone[...]")` (26.2 moved
+  `PointedDripstone.Thickness` to `Speleothem.Thickness`: the 1.21.11 jar's typed call was the only API difference).
+  Items Weather: the ECLIPSE never touches world time or gamerules (1.2.0 set doDaylightCycle false + time 18000 and only
+  undid it on a normal end: a crash left the world frozen, which stopped FaultlineEvents' nights). Now `setPlayerTime(18000)`
+  per player + a private BLACK SUN (`wild/black_sun`, Java model 50 blocks overhead; Bedrock: dust ring) + the beasts; a world
+  found stuck (cycle off, time ~18000) is repaired on start. The AURORA was 5x the model (~120 blocks wide) and everyone's
+  ribbons were visible to everyone: now 3 private ribbons per player (`aurora.size` 1.2 = ~29 wide, `aurora.height` 38).
+  No Weather event starts while FaultlineEvents has an event active (`faultlineevents:active_event` on the main world,
+  `FaultlineItems.faultlineEvent()`) or in `faultline_void`. Tested (`WildSpawnTest`, `WildItemsTest`).
+  FaultlineEvents (Blood Moon, Snowy Day, Lantern Night, fog...) is a separate plugin whose source is NOT in this repo.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

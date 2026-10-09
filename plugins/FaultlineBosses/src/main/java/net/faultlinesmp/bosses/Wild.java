@@ -248,7 +248,7 @@ final class Wild implements Listener {
     void burrowDash(Player p) {
         if (!ready(p, "Burrow Dash", c("weapons.sandworm-fang.cooldown-seconds", 10))) return;
         Vector f = Vendetta.flatDir(p.getLocation());
-        p.setVelocity(f.clone().multiply(1.6).setY(0.25));
+        Safe.vel(p, f.clone().multiply(1.6).setY(0.25));
         World w = p.getWorld();
         w.playSound(p.getLocation(), Sound.BLOCK_SAND_BREAK, 1.4f, 0.6f);
         Set<UUID> hitAlready = new HashSet<>();
@@ -291,7 +291,7 @@ final class Wild implements Listener {
                 if (en instanceof Player o && (!survival(o) || !o.getWorld().getPVP())) continue;
                 Vector away = en.getLocation().toVector().subtract(at.toVector()).setY(0);
                 if (away.lengthSquared() < 0.01) away = new Vector(1, 0, 0);
-                le.setVelocity(away.normalize().multiply(0.9).setY(0.6));
+                Safe.vel(le, away.normalize().multiply(0.9).setY(0.6));
                 le.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 60, 1));
                 le.damage(c("weapons.tidebreaker.burst-damage", 4), p);
             }

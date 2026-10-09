@@ -1314,7 +1314,7 @@ final class Ship {
             @SuppressWarnings("deprecation") boolean ground = p.isOnGround();
             double keep = ground ? 0.546 : 0.91; // what the client keeps of their own momentum each tick (block friction / air)
             double vy2 = ground ? 0 : Math.max(-3, (vy - 0.08) * 0.98);
-            p.setVelocity(new org.bukkit.util.Vector(sdx + rx * keep, vy2, sdz + rz * keep));
+            Safe.vel(p, new org.bukkit.util.Vector(sdx + rx * keep, vy2, sdz + rz * keep));
         }
         walkers.keySet().retainAll(seen);
     }

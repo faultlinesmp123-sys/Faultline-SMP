@@ -777,7 +777,7 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
         Snowball ball = w.spawn(mz, Snowball.class, b -> {
             b.setItem(ball());
             if (shooter != null) b.setShooter(shooter);
-            b.setVelocity(vel);
+            Safe.vel(b, vel);
             b.getPersistentDataContainer().set(ballTag, PersistentDataType.STRING, from.id.toString());
         });
         w.playSound(mz, Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.PLAYERS, 1.6f, 1.6f);
@@ -1192,7 +1192,7 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
                 double dmg = e instanceof Trident ? 6 : e instanceof AbstractArrow ar ? Math.max(1, ar.getDamage()) * (ar.getFireTicks() > 0 ? 1.5 : 1) : 2;
                 s.damage(dmg * cfg("damage.projectile-multiplier", 1.0), pr.getShooter() instanceof Player sp ? sp : null, l);
                 if (!(e instanceof Trident)) e.remove();
-                else e.setVelocity(new Vector(0, -0.2, 0));
+                else Safe.vel(e, new Vector(0, -0.2, 0));
             }
         }
         if (arrowsCounted.size() > 500) arrowsCounted.clear();

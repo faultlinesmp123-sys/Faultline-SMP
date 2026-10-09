@@ -253,7 +253,7 @@ final class Sandworm extends Wild.Boss {
             world.spawnParticle(Particle.BLOCK, mark.clone().add(0, 0.5, 0), 160, 2.5, 1, 2.5, 0.2, Material.SAND.createBlockData());
             world.spawnParticle(Particle.EXPLOSION, mark, 4, 1.5, 0.5, 1.5, 0);
             world.playSound(mark, Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.HOSTILE, 3f, 0.5f);
-            for (Player pp : near(mark, 3.8, 6)) { hit(pp, c("moves.eruption", 14), mark.toVector(), Guard.HEAVY); pp.setVelocity(new Vector(0, 1.3, 0)); }
+            for (Player pp : near(mark, 3.8, 6)) { hit(pp, c("moves.eruption", 14), mark.toVector(), Guard.HEAVY); Safe.vel(pp, new Vector(0, 1.3, 0)); }
         }
         for (Player pp : near(headPos.clone().add(0, -2, 0), 2.6 * k, 5)) if (hitThisMove.add(pp.getUniqueId())) hit(pp, c("moves.eruption-body", 9), headPos.toVector(), Guard.BLOCKABLE);
         if (t >= dur) end();
@@ -267,7 +267,7 @@ final class Sandworm extends Wild.Boss {
         yaw = yawOf(arcDir);
         headPos = n;
         for (int i = 0; i < chain.pts.size(); i += 2) for (Player p : near(chain.pts.get(i).clone().add(0, -1.5, 0), 2.4 * k, 4))
-            if (hitThisMove.add(p.getUniqueId())) { hit(p, c("moves.slither", 10), chain.pts.get(i).toVector(), Guard.BLOCKABLE); p.setVelocity(flat(p.getLocation().toVector().subtract(n.toVector())).multiply(1.1).setY(0.5)); }
+            if (hitThisMove.add(p.getUniqueId())) { hit(p, c("moves.slither", 10), chain.pts.get(i).toVector(), Guard.BLOCKABLE); Safe.vel(p, flat(p.getLocation().toVector().subtract(n.toVector())).multiply(1.1).setY(0.5)); }
         if (at > 14 + 40) end();
     }
 
@@ -316,7 +316,7 @@ final class Sandworm extends Wild.Boss {
             Vector to = mark.toVector().subtract(p.getLocation().toVector()).setY(0);
             double d = to.length();
             p.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 20, 2));
-            if (d > 0.5) p.setVelocity(p.getVelocity().add(to.normalize().multiply(0.18)));
+            if (d > 0.5) Safe.vel(p, p.getVelocity().add(to.normalize().multiply(0.18)));
             if (at % 20 == 0) hit(p, d < 1.6 ? c("moves.quicksand-center", 6) : c("moves.quicksand", 1.5), mark.toVector(), Guard.UNBLOCKABLE);
         }
         if (at % 20 == 0) warnRing(mark, r, Color.fromRGB(200, 160, 80));
@@ -359,7 +359,7 @@ final class Sandworm extends Wild.Boss {
             @SuppressWarnings("deprecation") boolean onGround = p.isOnGround();
             if (Math.abs(d - ringR) < 0.8 && onGround && Math.abs(p.getLocation().getY() - mark.getY()) < 2.5 && hitThisMove.add(p.getUniqueId())) {
                 hit(p, c("moves.tremor", 9), mark.toVector(), Guard.UNBLOCKABLE);
-                p.setVelocity(new Vector(0, 0.9, 0));
+                Safe.vel(p, new Vector(0, 0.9, 0));
             }
         }
         if (ringR > 22) end();

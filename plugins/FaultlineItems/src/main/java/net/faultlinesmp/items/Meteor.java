@@ -240,7 +240,7 @@ final class Meteor implements Listener, CommandExecutor {
             if (!(e instanceof LivingEntity le)) continue;
             Vector push = e.getLocation().toVector().subtract(c.toVector()).setY(0);
             if (push.lengthSquared() < 0.01) push = new Vector(1, 0, 0);
-            le.setVelocity(push.normalize().multiply(1.2).setY(0.6));
+            Safe.vel(le, push.normalize().multiply(1.2).setY(0.6));
             if (le instanceof Player pl && (pl.getGameMode() == GameMode.SURVIVAL || pl.getGameMode() == GameMode.ADVENTURE)) {
                 double d = e.getLocation().distance(c);
                 pl.damage(Math.max(2, cfg("impact-damage", 14) * (1 - d / 9)));
@@ -550,7 +550,7 @@ final class Meteor implements Listener, CommandExecutor {
         for (ItemStack it : loot()) {
             Item drop = at.getWorld().dropItem(at, it);
             drop.setOwner(p.getUniqueId());
-            drop.setVelocity(new Vector(random.nextGaussian() * 0.12, 0.35, random.nextGaussian() * 0.12));
+            Safe.vel(drop, new Vector(random.nextGaussian() * 0.12, 0.35, random.nextGaussian() * 0.12));
         }
         int xp = (int) cfg("loot.xp", 300);
         at.getWorld().spawn(at, ExperienceOrb.class, o -> o.setExperience(xp));

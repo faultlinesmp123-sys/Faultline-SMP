@@ -459,7 +459,7 @@ final class GhostShip implements Listener {
             }
             default -> { // soul chains: drags you in
                 Vector pull = l.toVector().subtract(t.getLocation().toVector());
-                t.setVelocity(pull.setY(0).normalize().multiply(1.3).setY(0.4));
+                Safe.vel(t, pull.setY(0).normalize().multiply(1.3).setY(0.4));
                 for (double d = 0; d < 1; d += 0.08) l.getWorld().spawnParticle(Particle.SOUL, t.getLocation().clone().add(pull.clone().multiply(d)).add(0, 1, 0), 1, 0, 0, 0, 0);
                 t.addPotionEffect(new PotionEffect(PotionEffectType.DARKNESS, 60, 0));
             }

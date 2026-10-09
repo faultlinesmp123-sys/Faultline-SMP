@@ -267,7 +267,7 @@ final class Warlord implements Listener {
             if (to.lengthSquared() > 5.5 * 5.5 || to.lengthSquared() > 0.01 && to.clone().normalize().dot(f) < Math.cos(Math.toRadians(65))) continue;
             le.damage(dmg, p);
             le.setFireTicks(Math.max(le.getFireTicks(), 80));
-            le.setVelocity(le.getVelocity().add(f.clone().multiply(0.8).setY(0.3)));
+            Safe.vel(le, le.getVelocity().add(f.clone().multiply(0.8).setY(0.3)));
         }
     }
 
@@ -536,7 +536,7 @@ final class Warlord implements Listener {
             phase = p;
             if (p == 2) {
                 if (body.getVehicle() != null) body.leaveVehicle();
-                body.setVelocity(new Vector(0, 0.6, 0));
+                Safe.vel(body, new Vector(0, 0.6, 0));
                 world.playSound(loc(), Sound.ENTITY_HOGLIN_DEATH, SoundCategory.HOSTILE, 3f, 0.6f);
                 world.playSound(loc(), Sound.ENTITY_PIGLIN_BRUTE_ANGRY, SoundCategory.HOSTILE, 3f, 0.5f);
                 say(ChatColor.GOLD + "\"IRONHIDE! ...You'll pay for that with your heads!\"");
@@ -642,7 +642,7 @@ final class Warlord implements Listener {
             for (Player p : active()) {
                 if (p.getLocation().distanceSquared(next) > 2.4 * 2.4) continue;
                 hit(p, c("moves.tusk-charge", 12), next.toVector(), Guard.HEAVY);
-                p.setVelocity(lineDir.clone().multiply(1.3).setY(0.7));
+                Safe.vel(p, lineDir.clone().multiply(1.3).setY(0.7));
             }
         }
 
@@ -674,7 +674,7 @@ final class Warlord implements Listener {
                 if (to.lengthSquared() > 1 && to.clone().normalize().dot(f) < Math.cos(Math.toRadians(70))) continue;
                 hit(p, c("moves.cleave", 14), c.toVector(), Guard.HEAVY);
                 p.setFireTicks(Math.max(p.getFireTicks(), 60));
-                p.setVelocity(to.normalize().multiply(1.1).setY(0.45));
+                Safe.vel(p, to.normalize().multiply(1.1).setY(0.45));
             }
             end();
         }
@@ -745,7 +745,7 @@ final class Warlord implements Listener {
                 if (d < prev - 0.3 || d > ring + 0.5 || !p.isOnGround()) continue;
                 if (Math.abs(p.getLocation().getY() - lineFrom.getY()) > 2.5) continue;
                 hit(p, c("moves.magma-slam", 11), lineFrom, Guard.UNBLOCKABLE);
-                p.setVelocity(p.getLocation().toVector().subtract(lineFrom).setY(0).normalize().multiply(0.9).setY(0.6));
+                Safe.vel(p, p.getLocation().toVector().subtract(lineFrom).setY(0).normalize().multiply(0.9).setY(0.6));
                 p.setFireTicks(Math.max(p.getFireTicks(), 40));
             }
             if (ring > c("moves.slam-radius", 10)) end();
@@ -829,7 +829,7 @@ final class Warlord implements Listener {
                 Vector to = p.getLocation().toVector().subtract(loc().toVector());
                 if (to.lengthSquared() > 10 * 10) continue;
                 hit(p, c("moves.warcry", 6), loc().toVector(), Guard.UNBLOCKABLE);
-                p.setVelocity(to.setY(0).normalize().multiply(1.6).setY(0.5));
+                Safe.vel(p, to.setY(0).normalize().multiply(1.6).setY(0.5));
             }
             for (LivingEntity g : guards) {
                 g.addPotionEffect(new PotionEffect(PotionEffectType.STRENGTH, 200, 0));
@@ -967,7 +967,8 @@ final class Warlord implements Listener {
             if (g.dying) { e.setCancelled(true); return; }
             if (e.getCause() == EntityDamageEvent.DamageCause.FIRE || e.getCause() == EntityDamageEvent.DamageCause.FIRE_TICK
                     || e.getCause() == EntityDamageEvent.DamageCause.LAVA || e.getCause() == EntityDamageEvent.DamageCause.FALL
-                    || e.getCause() == EntityDamageEvent.DamageCause.SUFFOCATION || e.getCause() == EntityDamageEvent.DamageCause.HOT_FLOOR) { e.setCancelled(true); return; }
+                    || e.getCause() == EntityDamageEvent.DamageCause.SUFFOCATION || e.getCause() == EntityDamageEvent.DamageCause.HOT_FLOOR
+                    || e.getCause() == EntityDamageEvent.DamageCause.CONTACT) { e.setCancelled(true); return; } // 26.2: magma blocks hurt as CONTACT
             Player by = null;
             if (e instanceof EntityDamageByEntityEvent ee) {
                 if (ours(ee.getDamager()) || ee.getDamager() instanceof Projectile pr && pr.getShooter() instanceof Entity s && ours(s)) { e.setCancelled(true); return; }

@@ -495,7 +495,7 @@ final class Vendetta implements Listener {
             if (stunTicks > 0) stun(p, stunTicks);
             if (knock > 0) {
                 Vector kb = p.getLocation().toVector().subtract(pos).setY(0);
-                if (kb.lengthSquared() > 0.01) p.setVelocity(kb.normalize().multiply(knock).setY(0.3 + knock * 0.15));
+                if (kb.lengthSquared() > 0.01) Safe.vel(p, kb.normalize().multiply(knock).setY(0.3 + knock * 0.15));
             }
             return true;
         }
@@ -509,7 +509,7 @@ final class Vendetta implements Listener {
             if (stunTicks > 0) stun(e, stunTicks);
             if (knock > 0) {
                 Vector kb = e.getLocation().toVector().subtract(pos).setY(0);
-                if (kb.lengthSquared() > 0.01) e.setVelocity(kb.normalize().multiply(knock).setY(0.3));
+                if (kb.lengthSquared() > 0.01) Safe.vel(e, kb.normalize().multiply(knock).setY(0.3));
             }
         }
 
@@ -907,7 +907,7 @@ final class Vendetta implements Listener {
                     world.playSound(p.getLocation(), Sound.ENTITY_PLAYER_HURT, 1.2f, 0.8f);
                     stun(p, (int) c("coupons.stun-ticks", 20));
                     Vector kb = rel.lengthSquared() > 0.01 ? rel.normalize() : new Vector(1, 0, 0);
-                    p.setVelocity(kb.multiply(1.0).setY(0.5));
+                    Safe.vel(p, kb.multiply(1.0).setY(0.5));
                 }
             } else if (t < charge + 24) pose = VendettaAnims.roccoGroundSmash(t - charge);
             else end(20);
@@ -1068,7 +1068,7 @@ final class Vendetta implements Listener {
                 for (Player p : a) {
                     Vector away = p.getLocation().toVector().subtract(pos).setY(0);
                     if (away.lengthSquared() > 64 || away.lengthSquared() < 0.01) continue;
-                    p.setVelocity(away.normalize().multiply(1.1).setY(0.45));
+                    Safe.vel(p, away.normalize().multiply(1.1).setY(0.45));
                 }
             }
             if (st >= 60) { state = FIGHT; st = 0; recover = 10; }
@@ -1774,7 +1774,7 @@ final class Vendetta implements Listener {
                 fistDamage(p, e, sel == 0 ? c("fist.kick-damage", 10) : c("fist.punch-damage", 9));
                 if (!bossLike(e)) stun(e, (int) c("stun-ticks", 60));
                 Vector kb = e.getLocation().toVector().subtract(p.getLocation().toVector()).setY(0);
-                if (kb.lengthSquared() > 0.01) e.setVelocity(kb.normalize().multiply(sel == 0 ? 1.0 : 0.6).setY(0.3));
+                if (kb.lengthSquared() > 0.01) Safe.vel(e, kb.normalize().multiply(sel == 0 ? 1.0 : 0.6).setY(0.3));
                 w.playSound(p.getLocation(), sel == 0 ? Sound.ENTITY_PLAYER_ATTACK_KNOCKBACK : Sound.ENTITY_PLAYER_ATTACK_STRONG, 1.2f, 0.7f);
                 w.spawnParticle(Particle.CRIT, e.getLocation().add(0, 1, 0), 12, 0.3, 0.3, 0.3, 0.2);
                 p.swingMainHand();
@@ -1812,7 +1812,7 @@ final class Vendetta implements Listener {
                 if (e == null) { p.sendActionBar(legacy(ChatColor.GRAY + "Look at an enemy first.")); return false; }
                 FistAct a = new FistAct(p, 8); a.target = e; acts.add(a);
                 setTattoos(p, 0);
-                p.setVelocity(new Vector(0, 1.6, 0));
+                Safe.vel(p, new Vector(0, 1.6, 0));
                 w.playSound(p.getLocation(), Sound.ENTITY_WITHER_SHOOT, 1f, 0.6f);
                 p.sendActionBar(legacy(ChatColor.DARK_RED + "" + ChatColor.BOLD + "COMPLETE AND TOTAL EXTERMINATION!!!"));
             }

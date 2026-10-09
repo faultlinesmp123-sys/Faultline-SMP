@@ -337,7 +337,7 @@ final class Leviathan extends Wild.Boss {
         world.spawnParticle(Particle.SPLASH, headPos, 40, 1.2, 0.6, 1.2, 0.3);
         for (Player p : near(headPos, 3.2 * k, 5)) if (hitThisMove.add(p.getUniqueId())) {
             hit(p, c("moves.ram", 14), headPos.toVector(), Guard.HEAVY);
-            p.setVelocity(lineDir.clone().multiply(1.2).setY(0.9));
+            Safe.vel(p, lineDir.clone().multiply(1.2).setY(0.9));
         }
         shipHit(headPos, c("ship-damage.ram", 0.1), 4 * k);
         if (at > wind + 34) end();
@@ -349,7 +349,7 @@ final class Leviathan extends Wild.Boss {
             world.spawnParticle(Particle.SPLASH, m.clone().add(0, 2, 0), 200, 0.6, 3, 0.6, 0.4);
             world.spawnParticle(Particle.CLOUD, m.clone().add(0, 4, 0), 30, 0.6, 2, 0.6, 0.05);
             world.playSound(m, Sound.ENTITY_GENERIC_SPLASH, SoundCategory.HOSTILE, 3f, 0.6f);
-            for (Player p : near(m, 2.3, 4)) { hit(p, c("moves.spout", 9), m.toVector(), Guard.UNBLOCKABLE); p.setVelocity(new Vector(0, 1.4, 0)); }
+            for (Player p : near(m, 2.3, 4)) { hit(p, c("moves.spout", 9), m.toVector(), Guard.UNBLOCKABLE); Safe.vel(p, new Vector(0, 1.4, 0)); }
             shipHit(m, c("ship-damage.spout", 0.03), 2.5);
         }
         if (at > 40) end();
@@ -385,7 +385,7 @@ final class Leviathan extends Wild.Boss {
                 Vector to = p.getLocation().toVector().subtract(headPos.toVector());
                 if (to.lengthSquared() > 20 * 20) continue;
                 hit(p, c("moves.roar", 6), headPos.toVector(), Guard.UNBLOCKABLE);
-                p.setVelocity(flat(to).multiply(1.4).setY(0.5));
+                Safe.vel(p, flat(to).multiply(1.4).setY(0.5));
                 p.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 80, 1));
                 p.addPotionEffect(new PotionEffect(PotionEffectType.NAUSEA, 100, 0));
             }
@@ -406,7 +406,7 @@ final class Leviathan extends Wild.Boss {
                     b.addScoreboardTag(Wild.FX_TAG);
                     b.addScoreboardTag("faultline_leviathan_bile");
                 });
-                s.setVelocity(v);
+                Safe.vel(s, v);
                 if (source() != null) s.setShooter(source());
             }
             world.playSound(headPos, Sound.ENTITY_LLAMA_SPIT, SoundCategory.HOSTILE, 3f, 0.4f);
@@ -435,7 +435,7 @@ final class Leviathan extends Wild.Boss {
             world.spawnParticle(Particle.SPLASH, tl, 200, 4, 0.5, 4, 0.5);
             for (Player p : near(tl.clone().add(0, Math.max(0, surfaceY - tl.getY()), 0), 7.5, 5)) {
                 hit(p, c("moves.tail", 12), tl.toVector(), Guard.HEAVY);
-                p.setVelocity(flat(p.getLocation().toVector().subtract(tl.toVector())).multiply(1.5).setY(0.7));
+                Safe.vel(p, flat(p.getLocation().toVector().subtract(tl.toVector())).multiply(1.5).setY(0.7));
             }
             shipHit(tl, c("ship-damage.tail", 0.06), 6);
         }

@@ -1910,7 +1910,7 @@ public final class FaultlineItems extends JavaPlugin {
             double jumpVelocity = plugin.getConfig().getDouble("cloud-potion.jump-velocity", 0.65);
             Vector velocity = player.getVelocity();
             velocity.setY(jumpVelocity);
-            player.setVelocity(velocity);
+            Safe.vel(player, velocity);
 
             player.getWorld().spawnParticle(Particle.CLOUD, player.getLocation(), 15, 0.3, 0.1, 0.3, 0.02);
             player.getWorld().playSound(player.getLocation(), Sound.ENTITY_BAT_TAKEOFF, 1f, 1.5f);
@@ -2627,7 +2627,7 @@ public final class FaultlineItems extends JavaPlugin {
 
                     Vector velocity = player.getVelocity();
                     velocity.setY(CLIMB_SPEED);
-                    player.setVelocity(velocity);
+                    Safe.vel(player, velocity);
                     player.setFallDistance(0f);
                 }
             }, 0L, 1L);
@@ -4266,7 +4266,7 @@ public final class FaultlineItems extends JavaPlugin {
                 // Pull it toward the player, like a caught item.
                 Vector pull = player.getLocation().toVector().subtract(at.toVector());
                 double dist = pull.length();
-                entity.setVelocity(new Vector(pull.getX() * 0.1, pull.getY() * 0.1 + Math.sqrt(dist) * 0.08, pull.getZ() * 0.1));
+                Safe.vel(entity, new Vector(pull.getX() * 0.1, pull.getY() * 0.1 + Math.sqrt(dist) * 0.08, pull.getZ() * 0.1));
                 spawned.add(entity);
             }
             return spawned;
@@ -4933,7 +4933,7 @@ public final class FaultlineItems extends JavaPlugin {
                         }
                     } else {
                         Vector toward = target.getEyeLocation().subtract(0, 0.4, 0).toVector().subtract(v.body.getLocation().toVector());
-                        if (toward.lengthSquared() > 0.01) v.body.setVelocity(toward.normalize().multiply(cfg("bat-speed", 0.5)));
+                        if (toward.lengthSquared() > 0.01) Safe.vel(v.body, toward.normalize().multiply(cfg("bat-speed", 0.5)));
                     }
                 } else if (ticks % 5 == 0) {
                     if (ticks % 10 == 0) {
@@ -5650,7 +5650,7 @@ public final class FaultlineItems extends JavaPlugin {
                     q.stomping = true;
                     q.landAt = now + 900;
                     q.nextStomp = now + cd(q, "stomp-cooldown-seconds", 7);
-                    queen.setVelocity(new Vector(0, 1.0, 0));
+                    Safe.vel(queen, new Vector(0, 1.0, 0));
                     queen.getWorld().playSound(queen.getLocation(), Sound.ENTITY_RAVAGER_ROAR, 1f, 1.4f);
                 } else if (dist >= 6 && dist <= 16 && queen.isOnGround() && now >= q.nextPounce) {
                     // Pounce: leap onto the target from a distance
@@ -5658,7 +5658,7 @@ public final class FaultlineItems extends JavaPlugin {
                     q.pounceLandAt = now + 1100;
                     q.nextPounce = now + cd(q, "pounce-cooldown-seconds", 9);
                     Vector jump = target.getLocation().toVector().subtract(queen.getLocation().toVector()).setY(0);
-                    queen.setVelocity(jump.normalize().multiply(Math.min(2.2, dist * 0.13)).setY(0.75));
+                    Safe.vel(queen, jump.normalize().multiply(Math.min(2.2, dist * 0.13)).setY(0.75));
                     queen.getWorld().playSound(queen.getLocation(), Sound.ENTITY_SPIDER_STEP, 2f, 0.5f);
                 } else if (dist >= 4 && dist <= 24 && now >= q.nextSpit && queen.hasLineOfSight(target)) {
                     spit(queen, target);
@@ -5809,7 +5809,7 @@ public final class FaultlineItems extends JavaPlugin {
             Vector aim = target.getEyeLocation().subtract(0, 0.5, 0).toVector().subtract(queen.getEyeLocation().toVector());
             double dist = aim.length();
             aim.setY(aim.getY() + dist * 0.08); // arc
-            glob.setVelocity(aim.normalize().multiply(1.3));
+            Safe.vel(glob, aim.normalize().multiply(1.3));
             queen.getWorld().playSound(queen.getLocation(), Sound.ENTITY_LLAMA_SPIT, 1.5f, 0.6f);
         }
 
@@ -5860,7 +5860,7 @@ public final class FaultlineItems extends JavaPlugin {
                 p.addPotionEffect(new PotionEffect(PotionEffectType.POISON, 60, 1));
                 Vector away = p.getLocation().toVector().subtract(at.toVector()).setY(0);
                 if (away.lengthSquared() < 0.01) away = new Vector(1, 0, 0);
-                p.setVelocity(away.normalize().multiply(1.2).setY(0.6));
+                Safe.vel(p, away.normalize().multiply(1.2).setY(0.6));
             }
         }
 
@@ -6428,7 +6428,7 @@ public final class FaultlineItems extends JavaPlugin {
             double speed = Math.min(cfg("grapple-max-speed", 2.6), 0.9 + dist * 0.12);
             Vector launch = toward.normalize().multiply(speed);
             launch.setY(launch.getY() + 0.35); // a little lift so you clear ledges
-            player.setVelocity(launch);
+            Safe.vel(player, launch);
             noFallUntil.put(player.getUniqueId(), now + 5000);
 
             player.getWorld().playSound(player.getLocation(), Sound.ENTITY_FISHING_BOBBER_RETRIEVE, 1f, 0.7f);
@@ -6473,7 +6473,7 @@ public final class FaultlineItems extends JavaPlugin {
             Snowball glob = player.launchProjectile(Snowball.class);
             glob.setItem(new ItemStack(Material.COBWEB));
             glob.addScoreboardTag(SILK_TAG);
-            glob.setVelocity(player.getEyeLocation().getDirection().multiply(1.8));
+            Safe.vel(glob, player.getEyeLocation().getDirection().multiply(1.8));
             player.getWorld().playSound(player.getLocation(), Sound.ENTITY_SPIDER_AMBIENT, 1f, 1.6f);
         }
 
@@ -6718,7 +6718,7 @@ public final class FaultlineItems extends JavaPlugin {
                 rocketAirborne.add(id);
                 Vector v = player.getVelocity();
                 v.setY(Math.max(v.getY(), lift));
-                player.setVelocity(v);
+                Safe.vel(player, v);
                 player.setFallDistance(0);
                 Location feet = player.getLocation();
                 player.getWorld().spawnParticle(Particle.FLAME, feet, 4, 0.15, 0.02, 0.15, 0.01);
@@ -6928,7 +6928,7 @@ public final class FaultlineItems extends JavaPlugin {
                 remaining -= count;
                 Item drop = at.getWorld().dropItem(at, item);
                 drop.setOwner(owner.getUniqueId());
-                drop.setVelocity(new Vector(r.nextGaussian() * 0.15, 0.3 + r.nextDouble() * 0.2, r.nextGaussian() * 0.15));
+                Safe.vel(drop, new Vector(r.nextGaussian() * 0.15, 0.3 + r.nextDouble() * 0.2, r.nextGaussian() * 0.15));
             }
         }
 

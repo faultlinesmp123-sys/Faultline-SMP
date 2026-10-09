@@ -475,7 +475,7 @@ final class Piglins implements Listener {
                     if (!(e instanceof LivingEntity v) || FaultlineRaids.isRaidMobStatic(v) || (v instanceof Player p && !FaultlineRaids.survivalStatic(p))) continue;
                     pl.guarded(v, cfg("mage.burst-damage", 5), mob, c.toVector(), false);
                     v.setFireTicks(Math.max(v.getFireTicks(), 50));
-                    v.setVelocity(v.getLocation().toVector().subtract(c.toVector()).setY(0).normalize().multiply(0.8).setY(0.35));
+                    Safe.vel(v, v.getLocation().toVector().subtract(c.toVector()).setY(0).normalize().multiply(0.8).setY(0.35));
                 }
                 next.put(mob.getUniqueId(), now + 2500);
             } else burst.put(mob.getUniqueId(), b - 1);
@@ -497,7 +497,7 @@ final class Piglins implements Listener {
         fb.addScoreboardTag(FIREBALL_TAG);
         Vector aim = target.getEyeLocation().subtract(0, 0.5, 0).toVector().subtract(mob.getEyeLocation().toVector());
         fb.setDirection(aim.normalize());
-        fb.setVelocity(aim.normalize().multiply(0.9));
+        Safe.vel(fb, aim.normalize().multiply(0.9));
         mob.swingMainHand();
         mob.getWorld().playSound(mob.getLocation(), Sound.ENTITY_BLAZE_SHOOT, 1f, 0.8f);
         next.put(mob.getUniqueId(), now + 2600 + random.nextInt(900));
@@ -598,7 +598,7 @@ final class Piglins implements Listener {
             s.setShooter(mob);
             s.addScoreboardTag(MAGMA_TAG);
         });
-        ball.setVelocity(v);
+        Safe.vel(ball, v);
         bombs.add(ball.getUniqueId()); // (gets a smoke trail too)
         mob.swingMainHand();
         mob.getWorld().playSound(from, Sound.ENTITY_SNOWBALL_THROW, 1f, 0.5f);
@@ -783,7 +783,7 @@ final class Piglins implements Listener {
         bombs.add(bomb.getUniqueId());
         double fall = Math.max(4, to.getY() - target.getLocation().getY());
         double flightTicks = Math.sqrt(2 * fall / 0.03);
-        bomb.setVelocity(flat.multiply(1 / flightTicks).setY(-0.1));
+        Safe.vel(bomb, flat.multiply(1 / flightTicks).setY(-0.1));
         w.playSound(to, Sound.ENTITY_TNT_PRIMED, 0.8f, 1.4f);
         next.put(mob.getUniqueId(), now + (long) (cfg("balloon.bomb-seconds", 3.5) * 1000));
     }
@@ -925,10 +925,10 @@ final class Piglins implements Listener {
                     return;
                 }
                 if (b.moveT == 8) mob.getWorld().playSound(mob.getLocation(), Sound.ENTITY_RAVAGER_ROAR, 1.2f, 1.1f);
-                mob.setVelocity(b.dir.clone().multiply(0.95).setY(mob.getVelocity().getY()));
+                Safe.vel(mob, b.dir.clone().multiply(0.95).setY(mob.getVelocity().getY()));
                 for (Entity e : mob.getNearbyEntities(1.8, 1.5, 1.8)) if (e instanceof Player p && FaultlineRaids.survivalStatic(p) && !recentlyHit(p, mob)) {
                     pl.guarded(p, cfg("bulwark.bash-damage", 9), mob, mob.getLocation().toVector(), true);
-                    p.setVelocity(b.dir.clone().multiply(1.6).setY(0.5));
+                    Safe.vel(p, b.dir.clone().multiply(1.6).setY(0.5));
                 }
                 if (b.moveT >= 16) endMove(b, now, 2500);
             }
@@ -941,7 +941,7 @@ final class Piglins implements Listener {
                 for (Entity e : mob.getNearbyEntities(5, 2.5, 5)) if (e instanceof LivingEntity v && !FaultlineRaids.isRaidMobStatic(v) && v.isOnGround()
                         && !(v instanceof Player p && !FaultlineRaids.survivalStatic(p))) {
                     pl.guarded(v, cfg("bulwark.slam-damage", 10), mob, c.toVector(), true);
-                    v.setVelocity(new Vector(0, 0.9, 0));
+                    Safe.vel(v, new Vector(0, 0.9, 0));
                 }
                 endMove(b, now, 3000);
             }
@@ -1028,12 +1028,12 @@ final class Piglins implements Listener {
                 for (Entity e : mob.getNearbyEntities(width + 1, 2, width + 1)) if (e instanceof LivingEntity v && !FaultlineRaids.isRaidMobStatic(v)
                         && !(v instanceof Player p && !FaultlineRaids.survivalStatic(p)) && !recentlyHit(v, mob)) {
                     pl.guarded(v, cfg("great-hog.charge-damage", 13), mob, here.toVector(), true);
-                    v.setVelocity(b.dir.clone().multiply(1.4).setY(0.8));
+                    Safe.vel(v, b.dir.clone().multiply(1.4).setY(0.8));
                 }
             }
             case "stomp" -> {
                 int wind = (int) (10 / spd);
-                if (b.moveT == 1) { mob.setVelocity(new Vector(0, 0.75, 0)); mob.getWorld().playSound(mob.getLocation(), Sound.ENTITY_HOGLIN_ANGRY, 2f, 0.4f); }
+                if (b.moveT == 1) { Safe.vel(mob, new Vector(0, 0.75, 0)); mob.getWorld().playSound(mob.getLocation(), Sound.ENTITY_HOGLIN_ANGRY, 2f, 0.4f); }
                 if (b.moveT <= wind) { ring(mob.getLocation(), 3, Color.fromRGB(230, 0, 0)); return; }
                 if (b.moveT == wind + 1) {
                     mob.getWorld().playSound(mob.getLocation(), Sound.ITEM_MACE_SMASH_GROUND_HEAVY, 2f, 0.4f);
@@ -1049,7 +1049,7 @@ final class Piglins implements Listener {
                 for (Entity e : mob.getNearbyEntities(r + 1, 2, r + 1)) if (e instanceof LivingEntity v && !FaultlineRaids.isRaidMobStatic(v) && v.isOnGround()
                         && !(v instanceof Player p && !FaultlineRaids.survivalStatic(p)) && Math.abs(v.getLocation().distance(c) - r) < 1.0 && !recentlyHit(v, mob)) {
                     pl.guarded(v, cfg("great-hog.stomp-damage", 9), mob, c.toVector(), true);
-                    v.setVelocity(v.getLocation().toVector().subtract(c.toVector()).setY(0).normalize().multiply(0.6).setY(0.9));
+                    Safe.vel(v, v.getLocation().toVector().subtract(c.toVector()).setY(0).normalize().multiply(0.6).setY(0.9));
                 }
                 if (r >= 12) endMove(b, now, 2200);
             }

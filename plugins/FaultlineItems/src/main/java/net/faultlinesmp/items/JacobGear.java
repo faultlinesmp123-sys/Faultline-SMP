@@ -119,7 +119,19 @@ final class JacobGear implements Listener {
         EntityDamageEvent.DamageCause c = event.getCause();
         if (c == EntityDamageEvent.DamageCause.FIRE_TICK) { event.setCancelled(true); p.setFireTicks(0); return; }
         if (c == EntityDamageEvent.DamageCause.FIRE || c == EntityDamageEvent.DamageCause.LAVA || c == EntityDamageEvent.DamageCause.HOT_FLOOR
-                || c == EntityDamageEvent.DamageCause.CAMPFIRE) event.setDamage(event.getDamage() * 0.75);
+                || c == EntityDamageEvent.DamageCause.CAMPFIRE || hotBlock(event)) event.setDamage(event.getDamage() * 0.75);
+    }
+
+    /**
+     * Magma blocks and campfires. Paper 26.2 reports them as CONTACT (HOT_FLOOR / CAMPFIRE are deprecated and no longer
+     * fired), with the block in the event, so the Ember Ward stopped covering them.
+     */
+    static boolean hotBlock(EntityDamageEvent e) {
+        if (e.getCause() != EntityDamageEvent.DamageCause.CONTACT || !(e instanceof org.bukkit.event.entity.EntityDamageByBlockEvent b)) return false;
+        org.bukkit.block.Block d = b.getDamager();
+        if (d == null) return false;
+        String n = d.getType().name();
+        return n.equals("MAGMA_BLOCK") || n.endsWith("CAMPFIRE");
     }
 
     @EventHandler(ignoreCancelled = true)

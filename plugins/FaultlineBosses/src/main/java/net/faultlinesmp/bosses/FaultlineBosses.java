@@ -1513,7 +1513,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 hurt(p, dmg, hitbox, pos, Guard.HEAVY); // rams: heavy
                 Vector push = p.getLocation().toVector().subtract(pos).setY(0);
                 if (push.lengthSquared() < 0.01) push = new Vector(1, 0, 0);
-                p.setVelocity(push.normalize().multiply(0.9).setY(0.45));
+                Safe.vel(p, push.normalize().multiply(0.9).setY(0.45));
                 contactCooldown.put(p.getUniqueId(), 12);
             }
         }
@@ -2131,7 +2131,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         }
         Vector dir = p.getLocation().getDirection().setY(0);
         if (dir.lengthSquared() < 0.01) return;
-        p.setVelocity(dir.normalize().multiply(cfg("shield.dash-speed", 1.8)).setY(0.25));
+        Safe.vel(p, dir.normalize().multiply(cfg("shield.dash-speed", 1.8)).setY(0.25));
         dashCooldown.put(p.getUniqueId(), now + (long) (cfg("shield.cooldown-seconds", 20) * 1000));
         dashingUntil.put(p.getUniqueId(), now + 600);
         dashHits.put(p.getUniqueId(), new HashSet<>());
@@ -2165,7 +2165,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 if (!dashLanded) continue;
                 Vector push = victim.getLocation().toVector().subtract(p.getLocation().toVector()).setY(0);
                 if (push.lengthSquared() < 0.01) push = p.getLocation().getDirection().setY(0);
-                victim.setVelocity(push.normalize().multiply(cfg("shield.knockback", 1.5)).setY(0.45));
+                Safe.vel(victim, push.normalize().multiply(cfg("shield.knockback", 1.5)).setY(0.45));
                 victim.getWorld().playSound(victim.getLocation(), org.bukkit.Sound.ITEM_SHIELD_BLOCK, 1f, 0.6f);
             }
         }
@@ -2716,7 +2716,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                             hurt(p, mcfg("whale-damage", 12), hitbox, spot, Guard.UNBLOCKABLE); // a slam: dodge it
                             Vector push = p.getLocation().toVector().subtract(spot).setY(0); // BUG FIX: standing still ON the spot = a zero
                             push = push.lengthSquared() > 0.0001 ? push.normalize().multiply(0.8) : new Vector(); // vector, NaN, an error,
-                            p.setVelocity(push.setY(0.7));                                  // and the whale left stuck in the ground
+                            Safe.vel(p, push.setY(0.7));                                  // and the whale left stuck in the ground
                         }
                     }
                     if (whale != null && t > 32 && t < 52) whale.teleport(spot.clone().add(new Vector(0, -(t - 32) * 0.15, 0)).toLocation(world));
@@ -3128,7 +3128,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             for (Player p : active()) {
                 if (p.getLocation().toVector().distanceSquared(at) < 1.6 * 1.6) {
                     hurt(p, mcfg("spike-damage", 8), hitbox, at, Guard.UNBLOCKABLE); // from the ground: jump or dodge
-                    p.setVelocity(p.getVelocity().setY(0.6));
+                    Safe.vel(p, p.getVelocity().setY(0.6));
                 }
             }
             Bukkit.getScheduler().runTaskLater(FaultlineBosses.this, () -> { props.remove(s); if (s.isValid()) s.remove(); }, 24L);
@@ -3159,7 +3159,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 hurt(p, mcfg("roll-damage", 10), hitbox, pos, Guard.HEAVY);
                 Vector push = p.getLocation().toVector().subtract(pos).setY(0);
                 if (push.lengthSquared() < 0.01) push = new Vector(1, 0, 0);
-                p.setVelocity(push.normalize().multiply(1.1).setY(0.5));
+                Safe.vel(p, push.normalize().multiply(1.1).setY(0.5));
                 hitCooldown.put(p.getUniqueId(), 14);
             }
         }
@@ -3240,7 +3240,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             world.spawnParticle(Particle.SNOWFLAKE, p.getEyeLocation(), 25, 0.3, 0.3, 0.3, 0.1);
             Vector push = p.getLocation().toVector().subtract(pos).setY(0);
             if (push.lengthSquared() < 0.01) push = new Vector(1, 0, 0);
-            p.setVelocity(push.normalize().multiply(1.2).setY(0.5));
+            Safe.vel(p, push.normalize().multiply(1.2).setY(0.5));
             p.sendActionBar(legacy(ChatColor.AQUA + "Frostbeard swats your mace away!"));
         }
 
@@ -4091,7 +4091,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             int k = ++s.sinking;
             Location l = item.getLocation();
             double wiggle = Math.sin(k * 0.4) * 0.05;
-            item.setVelocity(new Vector(wiggle, -0.06, Math.cos(k * 0.4) * 0.05)); // sinks, wriggling
+            Safe.vel(item, new Vector(wiggle, -0.06, Math.cos(k * 0.4) * 0.05)); // sinks, wriggling
             if (k % 3 == 0) l.getWorld().spawnParticle(Particle.BUBBLE, l.clone().add(0, 0.3, 0), 3, 0.1, 0.1, 0.1, 0.02);
             if (k % 40 == 0) l.getWorld().playSound(l, Sound.BLOCK_BUBBLE_COLUMN_UPWARDS_AMBIENT, 0.8f, 0.6f);
             if (k >= (int) kcfg("sink-ticks", 160)) { // 8 seconds: it's gone... and then he comes
@@ -4138,7 +4138,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                     legacy(ChatColor.GRAY + "from the depths..."),
                     Title.Times.times(java.time.Duration.ofMillis(300), java.time.Duration.ofMillis(3000), java.time.Duration.ofMillis(900))));
             Vector shake = new Vector(random.nextGaussian() * 0.25, 0.15, random.nextGaussian() * 0.25); // the water shakes
-            if (survival(p)) p.setVelocity(p.getVelocity().add(shake));
+            if (survival(p)) Safe.vel(p, p.getVelocity().add(shake));
         }
         kraken = new Kraken(at, by);
         Bukkit.broadcastMessage(ChatColor.DARK_AQUA + "" + ChatColor.BOLD + "The Kraken " + ChatColor.GRAY + "has risen from the deep" + (by != null ? " (summoned by " + by.getName() + ")" : "") + "!");
@@ -4672,7 +4672,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                     // second smash never killed anyone. hurt() is the path that gate lets through.
                     if (p.getHealth() - cut <= 0.5) hurt(p, 10000, hitbox, pos, Guard.UNBLOCKABLE); // the second smash
                     else { p.setHealth(p.getHealth() - cut); p.playHurtAnimation(0); }
-                    p.setVelocity(safeDir(p.getLocation().toVector().subtract(pos).setY(0), new Vector(1, 0, 0)).multiply(-0.6).setY(-0.4)); // dragged back toward the water
+                    Safe.vel(p, safeDir(p.getLocation().toVector().subtract(pos).setY(0), new Vector(1, 0, 0)).multiply(-0.6).setY(-0.4)); // dragged back toward the water
                     outTicks.put(p.getUniqueId(), (int) kcfg("out-of-water.smash-ticks", 50) - 20); // the next one comes fast
                 }
             }
@@ -4875,7 +4875,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                     seaHit(impact, kcfg("sea.ship-damage.slam", 0.04), 4.0);
                     for (Player p : a) if (p.getLocation().toVector().add(new Vector(0, 0.9, 0)).distanceSquared(impact) < 3.6 * 3.6) {
                         strike(p, kcfg("damage.slam", 22), Guard.HEAVY, arm.tipPos());
-                        p.setVelocity(p.getLocation().toVector().subtract(impact).setY(0).multiply(0.3).setY(-0.5));
+                        Safe.vel(p, p.getLocation().toVector().subtract(impact).setY(0).multiply(0.3).setY(-0.5));
                     }
                 }
             } else if (t <= w + 22) {
@@ -4917,11 +4917,11 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             if (atSea) away = safeDir(pos.clone().subtract(eye(p)).setY(0), new Vector(0, 0, 1)).add(new Vector(0, eye(p).getY() > surface() + 0.5 ? 0.35 : -0.2, 0)); // off the deck and into the sea
             // the tip wraps around you (circling your body) while the arm drags you down and away from the air
             arm.goal = eye(p).add(new Vector(Math.cos(gripT * 0.45) * 0.9, -0.4, Math.sin(gripT * 0.45) * 0.9)); arm.follow = 0.35;
-            p.setVelocity(safeDir(away, new Vector(0, -1, 0)).multiply(0.28));
+            Safe.vel(p, safeDir(away, new Vector(0, -1, 0)).multiply(0.28));
             if (gripT % 20 == 0) strike(p, kcfg("damage.grip-per-second", 4), Guard.UNBLOCKABLE, arm.tipPos());
             if (gripHits >= needHits || gripT >= maxT) {
                 p.sendActionBar(legacy(ChatColor.GREEN + "You broke free!"));
-                p.setVelocity(p.getVelocity().add(safeDir(eye(p).subtract(pos), new Vector(0, 1, 0)).multiply(0.8)));
+                Safe.vel(p, p.getVelocity().add(safeDir(eye(p).subtract(pos), new Vector(0, 1, 0)).multiply(0.8)));
                 releaseGrip();
             }
         }
@@ -4986,7 +4986,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 if (d > range || d < 0.1) continue;
                 double pull = pullBase * (counter(p, "eelskin_wrap") ? 0.5 : 1);
                 Vector swirl = safeDir(new Vector(-to.getZ(), 0, to.getX()), new Vector()).multiply(pull * 0.6); // straight above/below: no swirl (not NaN)
-                p.setVelocity(p.getVelocity().multiply(0.8).add(to.normalize().multiply(pull)).add(swirl));
+                Safe.vel(p, p.getVelocity().multiply(0.8).add(to.normalize().multiply(pull)).add(swirl));
                 if (d < 3.5 && t % 20 == 0) strike(p, kcfg("damage.whirlpool-bite", 8), Guard.UNBLOCKABLE, c);
             }
             if (t >= dur) endAttack(rest());
@@ -5082,7 +5082,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                     double flat = Math.hypot(d.getX(), d.getZ());
                     if (Math.abs(flat - r) < 1.2 && Math.abs(eye(p).getY() - pos.getY()) < (atSea ? 6.0 : 2.0)) { // at sea: it reaches the deck
                         strike(p, kcfg("damage.surge", 15), Guard.HEAVY, pos);
-                        p.setVelocity(safeDir(d.setY(0), new Vector(1, 0, 0)).multiply(1.1).setY(0.3));
+                        Safe.vel(p, safeDir(d.setY(0), new Vector(1, 0, 0)).multiply(1.1).setY(0.3));
                     }
                 }
                 if (r > 22) endAttack(rest());
@@ -5380,7 +5380,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 world.playSound(c, Sound.ENTITY_ENDER_DRAGON_GROWL, 3f, 0.35f);
                 world.playSound(c, Sound.ENTITY_ELDER_GUARDIAN_DEATH, 3f, 0.5f);
                 for (Player p : world.getPlayers()) if (p.getLocation().distanceSquared(c) < 48 * 48 && survival(p))
-                    p.setVelocity(p.getVelocity().add(new Vector(random.nextGaussian() * 0.2, 0.1, random.nextGaussian() * 0.2))); // the water shakes
+                    Safe.vel(p, p.getVelocity().add(new Vector(random.nextGaussian() * 0.2, 0.1, random.nextGaussian() * 0.2))); // the water shakes
             }
             if (deathT <= 40) {                                                  // 1) death throes
                 beakOpen = 1;
@@ -5652,7 +5652,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 for (Entity e : at.getWorld().getNearbyEntities(at, 5, 3, 5)) {
                     if (!(e instanceof LivingEntity le) || e == p || e instanceof Player || e.getScoreboardTags().contains(DISPLAY_TAG) || spareFromAbility(e)) continue;
                     le.damage(10, p);
-                    le.setVelocity(le.getLocation().toVector().subtract(at.toVector()).setY(0).multiply(0.3).setY(0.6));
+                    Safe.vel(le, le.getLocation().toVector().subtract(at.toVector()).setY(0).multiply(0.3).setY(0.6));
                 }
             }
             case "sword" -> { // Ember Dash
@@ -5661,7 +5661,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 Vector dir = p.getLocation().getDirection().setY(0);
                 if (dir.lengthSquared() < 1e-4) dir = new Vector(1, 0, 0);
                 dir.normalize();
-                p.setVelocity(dir.clone().multiply(1.8).setY(0.15));
+                Safe.vel(p, dir.clone().multiply(1.8).setY(0.15));
                 p.getWorld().playSound(p.getLocation(), Sound.ITEM_FIRECHARGE_USE, 1f, 1.2f);
                 Location start = p.getLocation();
                 for (int i = 0; i < 7; i++) {
@@ -6056,7 +6056,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
 
         /** Banner of Defiance: cancels the knockback of a hit from his army (applied after the hit, so next tick). */
         void steady(Player p) {
-            Bukkit.getScheduler().runTask(FaultlineBosses.this, () -> { if (p.isValid()) p.setVelocity(new Vector(0, Math.min(0, p.getVelocity().getY()), 0)); });
+            Bukkit.getScheduler().runTask(FaultlineBosses.this, () -> { if (p.isValid()) Safe.vel(p, new Vector(0, Math.min(0, p.getVelocity().getY()), 0)); });
         }
 
         /** Ender Anchor: wearers see a purple ring where his pearl is about to land. */
@@ -6379,7 +6379,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 if (t == 20) world.playSound(birdPos.toLocation(world), Sound.ENTITY_PHANTOM_FLAP, 3f, 0.3f);
                 for (Player p : a) if (p.getLocation().toVector().add(new Vector(0, 1, 0)).distanceSquared(birdPos) < 3.4 * 3.4) {
                     strike(p, jcfg("damage.talon-dive", 16), Guard.HEAVY, birdPos, false, false);
-                    p.setVelocity(safeDir(p.getLocation().toVector().subtract(birdPos).setY(0), new Vector(1, 0, 0)).multiply(1.0).setY(0.5));
+                    Safe.vel(p, safeDir(p.getLocation().toVector().subtract(birdPos).setY(0), new Vector(1, 0, 0)).multiply(1.0).setY(0.5));
                 }
             } else if (t < 70) { // climbs back up to its circle
                 Vector want = circleSpot(); // (it used to climb back to the summon point, through the mountain)
@@ -6621,11 +6621,11 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 Entity mount = s.getVehicle();
                 if (!(mount instanceof LivingEntity horse) || !horse.isValid()) continue;
                 Vector to = target.getLocation().toVector().subtract(horse.getLocation().toVector()).setY(0);
-                horse.setVelocity(safeDir(to, new Vector(1, 0, 0)).multiply(0.7).setY(horse.getVelocity().getY()));
+                Safe.vel(horse, safeDir(to, new Vector(1, 0, 0)).multiply(0.7).setY(horse.getVelocity().getY()));
                 if (t % 4 == 0) world.spawnParticle(Particle.BLOCK, horse.getLocation(), 6, 0.4, 0.1, 0.4, 0, horse.getLocation().subtract(0, 1, 0).getBlock().getBlockData());
                 for (Player p : a) if (p.getLocation().distanceSquared(horse.getLocation()) < 2.4 * 2.4) {
                     strike(p, jcfg("damage.cavalry", 9), Guard.HEAVY, horse.getLocation().toVector(), false, true);
-                    if (!jacobCounter(p, "banner_of_defiance")) p.setVelocity(safeDir(to, new Vector(1, 0, 0)).multiply(0.9).setY(0.4));
+                    if (!jacobCounter(p, "banner_of_defiance")) Safe.vel(p, safeDir(to, new Vector(1, 0, 0)).multiply(0.9).setY(0.4));
                 }
             }
             if (t > 55) end(40);
@@ -7790,7 +7790,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                                 if (d.getX() * d.getX() + d.getZ() * d.getZ() > 2.8 * 2.8 || Math.abs(d.getY()) > 3) continue;
                                 hurt(p, dcfg("ambush-damage", 12), head().hitbox, aim, Guard.HEAVY);
                                 chill(p);
-                                p.setVelocity(p.getVelocity().setY(1.0));
+                                Safe.vel(p, p.getVelocity().setY(1.0));
                                 hitCooldown.put(p.getUniqueId(), 12);
                             }
                             sub = 2; t = 0;
@@ -7826,7 +7826,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                             if (Math.abs(flat - r) > 1.0 || Math.abs(d.getY()) > 1.5) continue;
                             hurt(p, dcfg("tremor-damage", 7), head().hitbox, aim, Guard.UNBLOCKABLE);
                             chill(p);
-                            p.setVelocity(p.getVelocity().setY(0.8));
+                            Safe.vel(p, p.getVelocity().setY(0.8));
                             hitCooldown.put(p.getUniqueId(), 10);
                         }
                         if (t >= 20) next();
@@ -7993,7 +7993,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                     if (isHead) chill(p);
                     Vector push = p.getLocation().toVector().subtract(s.pos).setY(0);
                     if (push.lengthSquared() < 0.01) push = new Vector(1, 0, 0);
-                    p.setVelocity(push.normalize().multiply(isHead ? 1.0 : 0.6).setY(0.45));
+                    Safe.vel(p, push.normalize().multiply(isHead ? 1.0 : 0.6).setY(0.45));
                     hitCooldown.put(p.getUniqueId(), 12);
                     break;
                 }
@@ -8043,7 +8043,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 for (Player p : a) {
                     Vector d = p.getLocation().toVector().subtract(n.pos);
                     if (d.getY() < -1 || d.getY() > 12 || d.getX() * d.getX() + d.getZ() * d.getZ() > 2.2) continue;
-                    p.setVelocity(p.getVelocity().setY(0.9));
+                    Safe.vel(p, p.getVelocity().setY(0.9));
                     if (!hitCooldown.containsKey(p.getUniqueId())) {
                         hurt(p, dcfg("sandnado-damage", 4), head().hitbox, n.pos, Guard.UNBLOCKABLE);
                         chill(p);
@@ -9077,7 +9077,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 for (Player p : world.getPlayers()) { // a gentle shockwave (no damage)
                     Vector away = p.getLocation().toVector().subtract(pos).setY(0);
                     if (!survival(p) || away.lengthSquared() > 36 || away.lengthSquared() < 0.01) continue;
-                    p.setVelocity(away.normalize().multiply(0.55).setY(0.3));
+                    Safe.vel(p, away.normalize().multiply(0.55).setY(0.3));
                 }
             }
             if (t >= 48 && t < 56) pose = kneelPose(ticks);                                             // holds the landing
@@ -9624,7 +9624,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 for (Player p : a) if (inFront(p, 3.4, 0.2)) {
                     strike(p, ncfg("phase2.blink-damage", 9), Guard.BLOCKABLE);
                     Vector kb = p.getLocation().toVector().subtract(pos).setY(0);
-                    if (kb.lengthSquared() > 0.01) p.setVelocity(kb.normalize().multiply(0.9).setY(0.35));
+                    if (kb.lengthSquared() > 0.01) Safe.vel(p, kb.normalize().multiply(0.9).setY(0.35));
                 }
             } else if (t > 22) endAttack(14); // the follow-through is your window
             if (t > 7 && t <= 22) pose = anim(t, new int[]{7, 11, 18, 22}, new Pose[]{kickPose(), followThroughPose(), followThroughPose(), standPose()});
@@ -9709,7 +9709,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                     Vector rel = p.getLocation().toVector().subtract(c).setY(0);
                     if (Math.abs(rel.dot(aimAt)) < 1.0 && Math.abs(rel.dot(side)) < 2.0) {
                         strike(p, ncfg("phase2.shockwave-damage", 8), Guard.UNBLOCKABLE);
-                        p.setVelocity(p.getVelocity().setY(0.7));
+                        Safe.vel(p, p.getVelocity().setY(0.7));
                     }
                 }
                 pose = Pose.lerp(pose, standPose(), 0.15f);
@@ -9794,7 +9794,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 if (p.getLocation().toVector().distanceSquared(pos) > 1.5 * 1.5) continue;
                 strike(p, ncfg("phase2.dribble-damage", 9), Guard.HEAVY);
                 Vector push = p.getLocation().toVector().subtract(pos).setY(0);
-                p.setVelocity((push.lengthSquared() > 0.0001 ? push.normalize().multiply(0.9) : new Vector()).setY(0.45));
+                Safe.vel(p, (push.lengthSquared() > 0.0001 ? push.normalize().multiply(0.9) : new Vector()).setY(0.45));
             }
             if (t >= (int) ncfg("phase2.dribble-ticks", 45)) { dribbling = false; endAttack(16); }
         }
@@ -9854,7 +9854,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 for (Player p : a) if (inFront(p, 3.2, 0.1)) {
                     strike(p, ncfg("phase2.soulless-damage", 16), Guard.HEAVY);
                     Vector kb = p.getLocation().toVector().subtract(pos).setY(0);
-                    if (kb.lengthSquared() > 0.01) p.setVelocity(kb.normalize().multiply(1.6).setY(0.6));
+                    if (kb.lengthSquared() > 0.01) Safe.vel(p, kb.normalize().multiply(1.6).setY(0.6));
                 }
             }
             if (t > 50 && t < 64) pose = anim(t, new int[]{50, 54, 60, 64}, new Pose[]{kickPose(), followThroughPose(), followThroughPose(), standPose()});
@@ -9950,7 +9950,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                     if (remove) break;
                     if (p.getLocation().toVector().add(new Vector(0, 0.9, 0)).distanceSquared(s.pos) > 1.1) continue;
                     strike(p, s.damage, s.guard);
-                    p.setVelocity(p.getVelocity().add(s.vel.clone().normalize().multiply(0.8).setY(0.35)));
+                    Safe.vel(p, p.getVelocity().add(s.vel.clone().normalize().multiply(0.8).setY(0.35)));
                     if (!s.bounces) remove = true;
                 }
                 if (remove) { s.display.remove(); shots.remove(s); continue; }
@@ -10384,7 +10384,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             }
             try { p.setGameMode(GameMode.valueOf(saved.getString(key + ".gamemode", "SURVIVAL"))); } catch (Exception e) { p.setGameMode(GameMode.SURVIVAL); }
             p.setFallDistance(0);
-            p.setVelocity(new Vector());
+            Safe.vel(p, new Vector());
             p.setFireTicks(0);
             saved.set(key, null);
             try { if (saved.getKeys(false).isEmpty()) cutsceneFile().delete(); else saved.save(cutsceneFile()); } catch (Exception ignored) { }
@@ -10645,7 +10645,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
     void dropLocked(Location at, Player owner, ItemStack item) {
         org.bukkit.entity.Item drop = at.getWorld().dropItem(at, item);
         drop.setOwner(owner.getUniqueId());
-        drop.setVelocity(new Vector(random.nextGaussian() * 0.15, 0.3 + random.nextDouble() * 0.2, random.nextGaussian() * 0.15));
+        Safe.vel(drop, new Vector(random.nextGaussian() * 0.15, 0.3 + random.nextDouble() * 0.2, random.nextGaussian() * 0.15));
     }
 
     void give(Player p, ItemStack item) {

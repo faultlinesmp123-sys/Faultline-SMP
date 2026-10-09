@@ -286,7 +286,7 @@ final class Lich extends Wild.Boss {
                         Vector want = target.getEyeLocation().toVector().subtract(s.getLocation().toVector()).normalize();
                         Vector cur = s.getVelocity().lengthSquared() > 1e-4 ? s.getVelocity().clone().normalize() : want;
                         Vector nv = cur.multiply(0.88).add(want.multiply(0.12)).normalize().multiply(0.75);
-                        s.setVelocity(nv); s.setDirection(nv);
+                        Safe.vel(s, nv); s.setDirection(nv);
                     }
                     world.spawnParticle(Particle.SOUL, s.getLocation(), 2, 0.1, 0.1, 0.1, 0.01);
                     return false;

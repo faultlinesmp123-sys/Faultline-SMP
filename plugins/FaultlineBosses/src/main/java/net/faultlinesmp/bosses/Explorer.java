@@ -488,7 +488,7 @@ final class Explorer implements Listener, CommandExecutor {
                     pos.setY(home.getY());
                     world.spawnParticle(Particle.EXPLOSION, pos.toLocation(world), 6, 1.5, 0.1, 1.5, 0);
                     world.playSound(pos.toLocation(world), Sound.ITEM_MACE_SMASH_GROUND_HEAVY, SoundCategory.HOSTILE, 2f, 0.5f);
-                    for (Player pp : alive()) if (flatDist(pp) < 5) pp.setVelocity(pp.getLocation().toVector().subtract(pos).setY(0).normalize().multiply(0.8).setY(0.4));
+                    for (Player pp : alive()) if (flatDist(pp) < 5) Safe.vel(pp, pp.getLocation().toVector().subtract(pos).setY(0).normalize().multiply(0.8).setY(0.4));
                 }
                 return t < 178 ? ExplorerAnims.airborne(t) : ExplorerAnims.slam(0);
             }
@@ -1221,12 +1221,12 @@ final class Explorer implements Listener, CommandExecutor {
             p.getWorld().spawnParticle(Particle.DAMAGE_INDICATOR, p.getLocation().add(0, 1, 0), 6, 0.3, 0.4, 0.3, 0);
             if (left <= 0.01) { down(p); return; }
             p.setHealth(left);
-            p.setVelocity(dir.normalize().multiply(push).setY(0.4));
+            Safe.vel(p, dir.normalize().multiply(push).setY(0.4));
         }
 
         void down(Player p) {
             if (!downed.add(p.getUniqueId())) return;
-            p.setVelocity(new Vector());
+            Safe.vel(p, new Vector());
             AttributeInstance max = p.getAttribute(Attribute.MAX_HEALTH);
             p.setHealth(Math.min(max == null ? 20 : max.getValue(), 2));
             for (Attribute a : List.of(Attribute.MOVEMENT_SPEED, Attribute.JUMP_STRENGTH)) {
@@ -1313,7 +1313,7 @@ final class Explorer implements Listener, CommandExecutor {
                         if (downed.contains(p.getUniqueId())) restore(p);
                         Vector away = p.getLocation().toVector().subtract(pos).setY(0);
                         if (away.lengthSquared() < 0.01) away = fwd();
-                        p.setVelocity(away.normalize().multiply(1.6).setY(0.8));
+                        Safe.vel(p, away.normalize().multiply(1.6).setY(0.8));
                     }
                 }
                 if (t == outAt + 38) {
@@ -1681,7 +1681,7 @@ final class Explorer implements Listener, CommandExecutor {
                     if (t == 8) {
                         world.playSound(pos.toLocation(world), Sound.ENTITY_RAVAGER_ROAR, SoundCategory.HOSTILE, 2f, 0.5f);
                         for (Player p : f.alive()) if (p.getLocation().toVector().distance(pos) < 7) {
-                            p.setVelocity(p.getLocation().toVector().subtract(pos).setY(0).normalize().multiply(1.1).setY(0.4));
+                            Safe.vel(p, p.getLocation().toVector().subtract(pos).setY(0).normalize().multiply(1.1).setY(0.4));
                             p.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 40, 1, false, true, true));
                         }
                     }
@@ -1801,7 +1801,7 @@ final class Explorer implements Listener, CommandExecutor {
         f.counterT = 0;
         p.setAbsorptionAmount(0);
         p.setHealth(Math.min(p.getHealth(), 1.0)); // half a heart
-        p.setVelocity(p.getLocation().toVector().subtract(f.pos).setY(0).normalize().multiply(0.9).setY(0.4));
+        Safe.vel(p, p.getLocation().toVector().subtract(f.pos).setY(0).normalize().multiply(0.9).setY(0.4));
         f.world.playSound(p.getLocation(), Sound.ENTITY_PLAYER_ATTACK_CRIT, SoundCategory.HOSTILE, 1.5f, 0.5f);
         p.sendActionBar(legacy(ChatColor.DARK_RED + "" + ChatColor.BOLD + "Don't touch me."));
     }

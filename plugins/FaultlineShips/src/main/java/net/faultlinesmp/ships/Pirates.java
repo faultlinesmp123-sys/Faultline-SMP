@@ -745,7 +745,7 @@ final class Pirates implements Listener {
             for (Entity q : new ArrayList<>(seat.getPassengers())) {
                 seat.removePassenger(q);
                 Vector v = t.getLocation().toVector().subtract(q.getLocation().toVector()).setY(0).normalize().multiply(0.8).setY(0.5);
-                q.setVelocity(v);
+                Safe.vel(q, v);
                 done++;
             }
         }
@@ -779,7 +779,7 @@ final class Pirates implements Listener {
                 if (wc != null && wc.waiting) { crew.remove(w.getUniqueId()); w.remove(); b.inv.bosses[i] = null; }
             }
             if (b.flagship && b.inv.stage > 0 && b.inv.stage < 4 && b.inv.boss != null && b.inv.boss.isValid() && by != null) // the boss goes into the water after you
-                b.inv.boss.setVelocity(by.getLocation().toVector().subtract(b.inv.boss.getLocation().toVector()).setY(0).normalize().multiply(0.8).setY(0.6));
+                Safe.vel(b.inv.boss, by.getLocation().toVector().subtract(b.inv.boss.getLocation().toVector()).setY(0).normalize().multiply(0.8).setY(0.6));
         }
     }
 
@@ -830,7 +830,7 @@ final class Pirates implements Listener {
                 Vector h = v.clone().setY(0);
                 if (h.lengthSquared() > 1e-4) h.normalize().multiply(sp);
                 double up = m.getEyeLocation().getBlock().isLiquid() ? 0.12 : (v.getY() > 1 ? 0.35 : 0.02);
-                m.setVelocity(h.setY(up));
+                Safe.vel(m, h.setY(up));
             }
             if (c.fuse >= 0 && now >= c.fuse) { crew.remove(e.getKey()); blowUp(m); continue; }
             if (now < c.next || t == null) continue;
@@ -868,7 +868,7 @@ final class Pirates implements Listener {
                 if (d < 4 || d > 16) return;
                 if (m.isInsideVehicle()) m.leaveVehicle();
                 Vector v = t.getLocation().toVector().subtract(m.getLocation().toVector());
-                m.setVelocity(v.clone().setY(0).multiply(0.11).setY(0.75 + Math.max(0, v.getY()) * 0.08));
+                Safe.vel(m, v.clone().setY(0).multiply(0.11).setY(0.75 + Math.max(0, v.getY()) * 0.08));
                 w.playSound(m.getLocation(), Sound.ENTITY_SKELETON_AMBIENT, SoundCategory.HOSTILE, 1f, 1.4f);
                 w.spawnParticle(Particle.CLOUD, m.getLocation(), 8, 0.2, 0.1, 0.2, 0.02);
             }
@@ -880,7 +880,7 @@ final class Pirates implements Listener {
             case BOSUN -> { // the chain: drags you in, and drives the crew on
                 c.next = now + 100;
                 if (d < 10 && d > 2.5) {
-                    t.setVelocity(m.getLocation().toVector().subtract(t.getLocation().toVector()).normalize().multiply(0.9).setY(0.3));
+                    Safe.vel(t, m.getLocation().toVector().subtract(t.getLocation().toVector()).normalize().multiply(0.9).setY(0.3));
                     w.playSound(t.getLocation(), Sound.BLOCK_CHAIN_HIT, SoundCategory.HOSTILE, 1.2f, 0.7f);
                 }
                 for (Entity o : m.getNearbyEntities(8, 4, 8)) if (isPirate(o) && o instanceof LivingEntity le)
@@ -914,7 +914,7 @@ final class Pirates implements Listener {
         World w = m.getWorld();
         switch (rnd.nextInt(3)) {
             case 0 -> { // lunge
-                m.setVelocity(t.getLocation().toVector().subtract(m.getLocation().toVector()).setY(0).normalize().multiply(1.3).setY(0.25));
+                Safe.vel(m, t.getLocation().toVector().subtract(m.getLocation().toVector()).setY(0).normalize().multiply(1.3).setY(0.25));
                 w.playSound(m.getLocation(), Sound.ENTITY_PLAYER_ATTACK_SWEEP, SoundCategory.HOSTILE, 1.3f, 1.3f);
                 Bukkit.getScheduler().runTaskLater(pl, () -> { if (m.isValid() && t.isValid() && m.getLocation().distance(t.getLocation()) < 3) t.damage(cfg("bosses.son-lunge", 10), m); }, 8);
             }
@@ -986,7 +986,7 @@ final class Pirates implements Listener {
                 w.playSound(m.getLocation(), Sound.ENTITY_PLAYER_ATTACK_SWEEP, SoundCategory.HOSTILE, 2f, 0.6f);
                 for (Player p : w.getPlayers()) if (fighting(p) && p.getLocation().distanceSquared(m.getLocation()) < 4.8 * 4.8) {
                     p.damage(cfg("bosses.captain-sweep", 12), m);
-                    p.setVelocity(p.getLocation().toVector().subtract(m.getLocation().toVector()).setY(0).normalize().multiply(1.1).setY(0.45));
+                    Safe.vel(p, p.getLocation().toVector().subtract(m.getLocation().toVector()).setY(0).normalize().multiply(1.1).setY(0.45));
                 }
             }
             case 1 -> { // broadside: cannon fire comes down where you stand
@@ -1006,11 +1006,11 @@ final class Pirates implements Listener {
                 }, 30);
             }
             case 2 -> { // anchor slam: up, then down on you
-                m.setVelocity(new Vector(0, 1.1, 0));
+                Safe.vel(m, new Vector(0, 1.1, 0));
                 w.playSound(m.getLocation(), Sound.BLOCK_CHAIN_BREAK, SoundCategory.HOSTILE, 2f, 0.5f);
                 Bukkit.getScheduler().runTaskLater(pl, () -> {
                     if (!m.isValid()) return;
-                    m.setVelocity(t.getLocation().toVector().subtract(m.getLocation().toVector()).multiply(0.12).setY(-1.2));
+                    Safe.vel(m, t.getLocation().toVector().subtract(m.getLocation().toVector()).multiply(0.12).setY(-1.2));
                 }, 12);
                 Bukkit.getScheduler().runTaskLater(pl, () -> {
                     if (!m.isValid()) return;
@@ -1018,7 +1018,7 @@ final class Pirates implements Listener {
                     w.playSound(m.getLocation(), Sound.BLOCK_ANVIL_LAND, SoundCategory.HOSTILE, 2f, 0.5f);
                     for (Player p : w.getPlayers()) if (fighting(p) && p.getLocation().distanceSquared(m.getLocation()) < 6 * 6) {
                         p.damage(cfg("bosses.captain-slam", 14), m);
-                        p.setVelocity(new Vector(0, 0.8, 0));
+                        Safe.vel(p, new Vector(0, 0.8, 0));
                     }
                 }, 26);
             }
@@ -1073,7 +1073,7 @@ final class Pirates implements Listener {
         if (c == null || !(event.getProjectile() instanceof AbstractArrow a)) return;
         a.setPickupStatus(AbstractArrow.PickupStatus.DISALLOWED);
         if (c.kind == Kind.MUSKETEER) {
-            a.setVelocity(a.getVelocity().multiply(1.6));
+            Safe.vel(a, a.getVelocity().multiply(1.6));
             a.setDamage(a.getDamage() * 1.5);
             event.getEntity().getWorld().playSound(event.getEntity().getLocation(), Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.HOSTILE, 0.6f, 1.9f);
             event.getEntity().getWorld().spawnParticle(Particle.SMOKE, event.getEntity().getEyeLocation(), 8, 0.1, 0.1, 0.1, 0.02);

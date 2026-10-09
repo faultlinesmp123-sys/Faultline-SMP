@@ -379,7 +379,7 @@ final class FrostWyrm extends Wild.Boss {
         world.spawnParticle(Particle.SNOWFLAKE, pos, 20, 1.5, 0.5, 1.5, 0.1);
         for (Player pp : near(pos.clone().add(0, -2.5, 0), 3.2 * k, 5)) if (hitThisMove.add(pp.getUniqueId())) {
             hit(pp, c("moves.dive", 14), pos.toVector(), Guard.HEAVY);
-            pp.setVelocity(lineDir.clone().multiply(1.3).setY(0.8));
+            Safe.vel(pp, lineDir.clone().multiply(1.3).setY(0.8));
         }
         if (t >= dur) { pitch = 0; end(); }
     }
@@ -410,7 +410,7 @@ final class FrostWyrm extends Wild.Boss {
                 double d = Math.hypot(p.getLocation().getX() - mark.getX(), p.getLocation().getZ() - mark.getZ());
                 if (Math.abs(d - r) < 1.4 && Math.abs(p.getLocation().getY() - mark.getY()) < 3) {
                     hit(p, c("moves.ice-spikes", 11), mark.toVector(), Guard.UNBLOCKABLE);
-                    p.setVelocity(new Vector(0, 1.0, 0));
+                    Safe.vel(p, new Vector(0, 1.0, 0));
                 }
             }
         }

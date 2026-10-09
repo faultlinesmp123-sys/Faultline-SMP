@@ -1086,7 +1086,7 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
         Arrow arrow = mob.launchProjectile(Arrow.class);
         Vector aim = target.getEyeLocation().subtract(0, 0.5, 0).toVector().subtract(mob.getEyeLocation().toVector());
         aim.setY(aim.getY() + dist * 0.12); // lead the arc a little
-        arrow.setVelocity(aim.normalize().multiply(1.6));
+        Safe.vel(arrow, aim.normalize().multiply(1.6));
         arrow.setDamage(cfg("mobs.archer-arrow-damage", 2.0));
         arrow.setPickupStatus(AbstractArrow.PickupStatus.DISALLOWED);
         mob.getWorld().playSound(mob.getLocation(), Sound.ENTITY_SKELETON_SHOOT, 1f, 0.8f);
@@ -1109,7 +1109,7 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
             fuse.remove(id); // backed off, like a creeper
             return;
         }
-        mob.setVelocity(new Vector(0, mob.getVelocity().getY(), 0));
+        Safe.vel(mob, new Vector(0, mob.getVelocity().getY(), 0));
         mob.getWorld().spawnParticle(Particle.SMOKE, mob.getEyeLocation().add(0, 0.4, 0), 3, 0.1, 0.1, 0.1, 0.01);
         if (left <= 1) {
             fuse.remove(id);
@@ -1129,7 +1129,7 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
         Vector toward = player.getEyeLocation().subtract(0, 0.5, 0).toVector().subtract(bat.getLocation().toVector());
         double dist = toward.length();
         if (dist > 40) return;
-        if (dist > 0.1) bat.setVelocity(toward.normalize().multiply(0.45));
+        if (dist > 0.1) Safe.vel(bat, toward.normalize().multiply(0.45));
         if (dist < 1.4 && now >= batBite.getOrDefault(bat.getUniqueId(), 0L)) {
             if (facingBlock(player, bat.getLocation().toVector())) {
                 shieldHit(player, cfg("mobs.bat-bite-damage", 3.0), false); // blockable
@@ -1192,7 +1192,7 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
         }
         LivingEntity target = targetOf(mob);
         if (target == null || !target.getWorld().equals(mob.getWorld())) {
-            mob.setVelocity(new Vector(0, 0, 0));
+            Safe.vel(mob, new Vector(0, 0, 0));
             return;
         }
         Location loc = mob.getLocation();
@@ -1202,13 +1202,13 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
                 Location point = target.getLocation().add(Math.cos(f.angle) * 5, 6, Math.sin(f.angle) * 5);
                 Vector v = point.toVector().subtract(loc.toVector()).multiply(0.15);
                 if (v.length() > 0.5) v.normalize().multiply(0.5);
-                mob.setVelocity(v);
+                Safe.vel(mob, v);
                 if (now - f.phaseStart > 3000) { f.phase = 1; f.phaseStart = now; f.hit = false; }
             }
             case 1 -> { // dive
                 Vector v = target.getEyeLocation().toVector().subtract(loc.toVector());
                 double dist = v.length();
-                if (dist > 0.1) mob.setVelocity(v.normalize().multiply(0.8));
+                if (dist > 0.1) Safe.vel(mob, v.normalize().multiply(0.8));
                 if (dist < 1.7 && !f.hit) {
                     guardedDamage(target, cfg("mobs.flyer-dive-damage", 5.0), mob, mob.getLocation().toVector(), true); // heavy
                     f.hit = true;
@@ -1216,7 +1216,7 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
                 if (f.hit || now - f.phaseStart > 1500) { f.phase = 2; f.phaseStart = now; }
             }
             default -> { // climb back up
-                mob.setVelocity(new Vector(0, 0.45, 0));
+                Safe.vel(mob, new Vector(0, 0.45, 0));
                 if (now - f.phaseStart > 1200) { f.phase = 0; f.phaseStart = now; }
             }
         }
@@ -1251,7 +1251,7 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
         orb.setGravity(false);
         orb.addScoreboardTag(ORB_TAG);
         Vector aim = target.getEyeLocation().subtract(0, 0.4, 0).toVector().subtract(mob.getEyeLocation().toVector());
-        orb.setVelocity(aim.normalize().multiply(0.9));
+        Safe.vel(orb, aim.normalize().multiply(0.9));
         orbs.put(orb.getUniqueId(), now);
         mob.swingMainHand();
         mob.getWorld().playSound(mob.getLocation(), Sound.ENTITY_EVOKER_CAST_SPELL, 1f, 1.5f);
@@ -1459,7 +1459,7 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
                 Vector to = p.getLocation().toVector().subtract(boss.getLocation().toVector()).setY(0);
                 if (to.lengthSquared() > 0.01 && to.normalize().dot(facing) < 0) continue; // only in front of him
                 p.damage(cfg("boss.sweep-damage", 9), boss);
-                p.setVelocity(to.multiply(0.9).setY(0.35));
+                Safe.vel(p, to.multiply(0.9).setY(0.35));
             }
         }, 10L);
     }
@@ -1477,7 +1477,7 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
             Arrow shot = boss.launchProjectile(Arrow.class);
             double speed = 3.2;
             Vector aim = target.getEyeLocation().subtract(0, 0.4, 0).toVector().subtract(boss.getEyeLocation().toVector());
-            shot.setVelocity(aim.normalize().multiply(speed));
+            Safe.vel(shot, aim.normalize().multiply(speed));
             shot.setGravity(false);
             shot.setCritical(false);
             shot.setDamage(cfg("boss.flintlock-damage", 10) / speed); // arrow damage scales with speed
@@ -1531,7 +1531,7 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
         boss.getWorld().playSound(boss.getLocation(), Sound.ENTITY_FISHING_BOBBER_RETRIEVE, 1.5f, 0.6f);
         Vector pull = boss.getLocation().toVector().subtract(target.getLocation().toVector());
         pull = pull.lengthSquared() > 0.0001 ? pull.normalize().multiply(Math.min(2.2, 0.9 + length * 0.06)) : new Vector(); // never a NaN pull
-        target.setVelocity(pull.setY(0.55));
+        Safe.vel(target, pull.setY(0.55));
         target.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 60, 1));
         target.sendMessage(ChatColor.GOLD + "Rotbeard's hook catches you!");
     }
@@ -1559,7 +1559,7 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
 
     /** 6. Anchor Slam: leaps up and smashes down, launching everyone nearby. */
     private void anchorSlam(LivingEntity boss) {
-        boss.setVelocity(new Vector(0, 1.1, 0));
+        Safe.vel(boss, new Vector(0, 1.1, 0));
         boss.getWorld().playSound(boss.getLocation(), Sound.ENTITY_RAVAGER_ROAR, 1.5f, 1.2f);
         Bukkit.getScheduler().runTaskLater(this, () -> {
             if (!boss.isValid()) return;
@@ -1572,7 +1572,7 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
                 unblockable(p, cfg("boss.slam-damage", 10), boss); // a ground slam: dodge it
                 Vector away = p.getLocation().toVector().subtract(at.toVector()).setY(0);
                 if (away.lengthSquared() < 0.01) away = new Vector(1, 0, 0);
-                p.setVelocity(away.normalize().multiply(1.2).setY(0.75));
+                Safe.vel(p, away.normalize().multiply(1.2).setY(0.75));
             }
         }, 18L);
     }
@@ -1915,7 +1915,7 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
             Vector push = event.getDamager().getVelocity().setY(0);
             if (push.lengthSquared() > 0.01) {
                 Vector kb = push.normalize().multiply(cfg("skeleton-army.piercing-shot-knockback", 1.2)).setY(0.4);
-                Bukkit.getScheduler().runTask(this, () -> { if (p.isOnline()) p.setVelocity(p.getVelocity().add(kb)); });
+                Bukkit.getScheduler().runTask(this, () -> { if (p.isOnline()) Safe.vel(p, p.getVelocity().add(kb)); });
             }
         }
     }
@@ -1940,7 +1940,7 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
     private void disengage(LivingEntity c, Player target) {
         Vector away = c.getLocation().toVector().subtract(target.getLocation().toVector()).setY(0);
         if (away.lengthSquared() < 0.01) away = new Vector(1, 0, 0);
-        c.setVelocity(away.normalize().multiply(cfg("skeleton-army.disengage-strength", 1.1)).setY(0.55));
+        Safe.vel(c, away.normalize().multiply(cfg("skeleton-army.disengage-strength", 1.1)).setY(0.55));
         c.getWorld().spawnParticle(Particle.POOF, c.getLocation(), 12, 0.3, 0.1, 0.3, 0.02);
         c.getWorld().playSound(c.getLocation(), Sound.ENTITY_SKELETON_STEP, 1.5f, 0.6f);
         Bukkit.getScheduler().runTaskLater(this, () -> {
@@ -2307,7 +2307,7 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
                         if (dropAt != null) {
                             org.bukkit.entity.Item drop = dropAt.getWorld().dropItem(dropAt, omenItem(level));
                             drop.setOwner(target.getUniqueId());
-                            drop.setVelocity(new Vector(random.nextGaussian() * 0.15, 0.3 + random.nextDouble() * 0.2, random.nextGaussian() * 0.15));
+                            Safe.vel(drop, new Vector(random.nextGaussian() * 0.15, 0.3 + random.nextDouble() * 0.2, random.nextGaussian() * 0.15));
                         } else {
                             target.getInventory().addItem(omenItem(level)).values()
                                     .forEach(left -> target.getWorld().dropItemNaturally(target.getLocation(), left));

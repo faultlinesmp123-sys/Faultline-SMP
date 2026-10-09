@@ -1,5 +1,5 @@
 name: FaultlineShips
-version: 1.5.3
+version: 1.5.4
 main: net.faultlinesmp.ships.FaultlineShips
 api-version: '1.21'
 softdepend: [floodgate, Geyser-Spigot]

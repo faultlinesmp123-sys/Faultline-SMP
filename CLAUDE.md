@@ -411,6 +411,16 @@ Notes:
   poses (it SNAPPED), banks into turns (`aBank`), power-stroke wingbeat with the body bobbing, wings swept back in a dive,
   head tracks its target (not during Breath), tail swings, death = limp wings + spiral. `Part.pose` skips non-finite
   positions (real Paper throws on them). Index entries say "A mini boss ..., 900 health".
+- **26.2 runtime audit (Bosses 1.4.13, Items 1.2.9, Raids 1.0.2, Ships 1.5.4)**: things MockBukkit never catches.
+  (1) Only `Slime`/`MagmaCube` changed hierarchy in 26.2 (new `AbstractCubeMob`; `SulfurCube` is new): no other
+  `world.spawn(X.class)` is affected; every class-spawned type is concrete. (2) `DamageCause.HOT_FLOOR`/`CAMPFIRE` are
+  deprecated in 26.2 and magma blocks / campfires now hurt as `CONTACT` (block in the `EntityDamageByBlockEvent`): the
+  Ember Ward (`JacobGear.hotBlock`) and Grimtusk's magma immunity cover it now. (3) Paper throws on a non-finite velocity
+  (a push "away from" a point you stand exactly on = 0/0 = NaN), MockBukkit doesn't: EVERY `x.setVelocity(v)` in Bosses,
+  Raids, Ships and Items now goes through each plugin's `Safe.vel(entity, v)` (non-finite = a plain hop). RULE: use
+  `Safe.vel`, never `setVelocity` directly. Checked too: config material names all exist in 26.2; `setHealth` calls are
+  clamped; methods deprecated "does nothing" in 26.2 (arrow knockback, bite chance, keep-spawn) aren't used. To repeat:
+  compile with `-Xlint:deprecation,removal` against both APIs and diff the warnings.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

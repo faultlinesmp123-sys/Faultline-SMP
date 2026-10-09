@@ -315,7 +315,7 @@ final class StoneGolem extends Wild.Boss {
             world.spawnParticle(Particle.EXPLOSION, l, 3, 1.5, 0.3, 1.5, 0);
             for (Player p : near(l, 6.5, 3)) {
                 hit(p, c("moves.ground-pound", 14), l.toVector(), Guard.HEAVY);
-                p.setVelocity(flat(p.getLocation().toVector().subtract(l.toVector())).multiply(1.1).setY(0.8));
+                Safe.vel(p, flat(p.getLocation().toVector().subtract(l.toVector())).multiply(1.1).setY(0.8));
             }
         }
         if (at > 40) end();
@@ -372,7 +372,7 @@ final class StoneGolem extends Wild.Boss {
             later(30, () -> { if (c.isValid()) c.remove(); });
             world.playSound(l, Sound.BLOCK_AMETHYST_CLUSTER_BREAK, SoundCategory.HOSTILE, 2f, 0.6f);
             world.spawnParticle(Particle.BLOCK, l, 10, 0.4, 0.4, 0.4, 0, Material.AMETHYST_BLOCK.createBlockData());
-            for (Player p : near(l, 1.7, 3)) if (hitThisMove.add(p.getUniqueId())) { hit(p, c("moves.crystal-spikes", 10), l.toVector(), Guard.UNBLOCKABLE); p.setVelocity(new Vector(0, 0.9, 0)); }
+            for (Player p : near(l, 1.7, 3)) if (hitThisMove.add(p.getUniqueId())) { hit(p, c("moves.crystal-spikes", 10), l.toVector(), Guard.UNBLOCKABLE); Safe.vel(p, new Vector(0, 0.9, 0)); }
         }
         if (step > 22) end();
     }

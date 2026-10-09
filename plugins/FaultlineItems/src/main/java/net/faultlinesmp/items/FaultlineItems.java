@@ -400,6 +400,7 @@ public final class FaultlineItems extends JavaPlugin {
         weather = new Weather(this);
         getServer().getPluginManager().registerEvents(weather, this);
         getCommand("fweather").setExecutor(weather);
+        getCommand("fweather").setTabCompleter(weather);
         getServer().getPluginManager().registerEvents(new StandGuard(this), this);
         if (getCommand("bedrockcheck") != null) getCommand("bedrockcheck").setExecutor(new BedrockCheck(this));
         // tell the console straight away when Bedrock players won't get the packs
@@ -7106,6 +7107,12 @@ public final class FaultlineItems extends JavaPlugin {
             list.add(external(icon(Material.POLISHED_BLACKSTONE_BRICK_WALL, "museum_pedestal", ChatColor.GOLD + "" + ChatColor.BOLD + "Museum Pedestal", "FaultlineItems"), "fgear museum_pedestal {amount} {player}", "FaultlineItems"));
             for (var d : Gear.DISCS.entrySet())
                 list.add(external(icon(Material.PAPER, "disc/disc_" + d.getKey(), ChatColor.AQUA + "Music Disc " + ChatColor.GRAY + "(" + d.getValue()[0] + ")", "FaultlineItems"), "fgear disc_" + d.getKey() + " {amount} {player}", "FaultlineItems"));
+            // weather events: start one where the admin stands
+            list.add(external(icon(Material.AMETHYST_SHARD, null, ChatColor.GREEN + "" + ChatColor.BOLD + "Event: Aurora " + ChatColor.GRAY + "(starts it, at night)", "FaultlineItems"), "fweather aurora {player}", "FaultlineItems"));
+            list.add(external(icon(Material.SAND, null, ChatColor.GOLD + "" + ChatColor.BOLD + "Event: Sandstorm " + ChatColor.GRAY + "(starts it here)", "FaultlineItems"), "fweather sandstorm {player}", "FaultlineItems"));
+            list.add(external(icon(Material.POWDER_SNOW_BUCKET, null, ChatColor.AQUA + "" + ChatColor.BOLD + "Event: Blizzard " + ChatColor.GRAY + "(starts it here)", "FaultlineItems"), "fweather blizzard {player}", "FaultlineItems"));
+            list.add(external(icon(Material.BLACK_CONCRETE, null, ChatColor.DARK_RED + "" + ChatColor.BOLD + "Event: Eclipse " + ChatColor.GRAY + "(the black sun)", "FaultlineItems"), "fweather eclipse {player}", "FaultlineItems"));
+            list.add(external(icon(Material.WHEAT, null, ChatColor.YELLOW + "" + ChatColor.BOLD + "Event: Locust Swarm " + ChatColor.GRAY + "(at the farm near you)", "FaultlineItems"), "fweather locusts {player}", "FaultlineItems"));
             list.add(external(icon(Material.CHEST, null, ChatColor.GOLD + "" + ChatColor.BOLD + "Mimic " + ChatColor.GRAY + "(spawns one)", "FaultlineItems"), "fcreature mimic {player}", "FaultlineItems"));
             list.add(external(icon(Material.SKELETON_HORSE_SPAWN_EGG, null, ChatColor.WHITE + "" + ChatColor.BOLD + "Skeleton Knight Patrol " + ChatColor.GRAY + "(spawns one)", "FaultlineItems"), "fcreature knights {player}", "FaultlineItems"));
             if (enabled("FaultlineBosses")) {

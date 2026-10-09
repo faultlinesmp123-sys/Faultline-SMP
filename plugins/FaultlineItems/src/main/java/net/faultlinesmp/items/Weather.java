@@ -26,6 +26,10 @@ import org.bukkit.boss.BossBar;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.event.HoverEvent;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Bee;
 import org.bukkit.entity.CaveSpider;
@@ -74,11 +78,17 @@ import java.util.*;
  *   LOCUSTS    a swarm finds a farm and eats the crops (back to seedlings) until it's driven off.
  * Admin: /fweather <aurora|sandstorm|blizzard|eclipse|locusts> [here] | stop [kind] | status
  */
-final class Weather implements Listener, CommandExecutor {
+final class Weather implements Listener, CommandExecutor, org.bukkit.command.TabCompleter {
 
     static final String TAG = "faultline_weather", HUSK_TAG = "faultline_sandstorm_husk", STRAY_TAG = "faultline_blizzard_stray",
             LOCUST_TAG = "faultline_locust", PART_TAG = "faultline_weather_part";
     static final List<String> KINDS = List.of("aurora", "sandstorm", "blizzard", "eclipse", "locusts");
+    static final Map<String, String> ABOUT = Map.of(
+            "aurora", "night sky lights: double XP, cheaper enchanting until dawn",
+            "sandstorm", "deserts/badlands: dust, husks, treasure in the sand",
+            "blizzard", "snowy biomes: freezing cold, strays",
+            "eclipse", "a black sun: beasts turn on you for 5 min",
+            "locusts", "a swarm eats a farm until it's driven off");
 
     private final FaultlineItems plugin;
     private final Random random = new Random();
@@ -778,14 +788,48 @@ final class Weather implements Listener, CommandExecutor {
     }
 
     @Override
+    public List<String> onTabComplete(CommandSender sender, Command command, String label, String[] args) {
+        List<String> out = new ArrayList<>();
+        if (!sender.hasPermission("items.weather")) return out;
+        if (args.length == 1) {
+            for (String k : KINDS) if (k.startsWith(args[0].toLowerCase())) out.add(k);
+            for (String k : List.of("list", "stop", "status")) if (k.startsWith(args[0].toLowerCase())) out.add(k);
+        } else if (args.length == 2 && args[0].equalsIgnoreCase("stop")) {
+            for (String k : KINDS) if (k.startsWith(args[1].toLowerCase())) out.add(k);
+        } else if (args.length == 2 && KINDS.contains(args[0].toLowerCase())) {
+            for (Player o : Bukkit.getOnlinePlayers()) if (o.getName().toLowerCase().startsWith(args[1].toLowerCase())) out.add(o.getName());
+        }
+        return out;
+    }
+
+    @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!sender.hasPermission("items.weather")) {
             if (active.isEmpty()) sender.sendMessage(ChatColor.GRAY + "The skies are calm.");
             else for (Event e : active.values()) sender.sendMessage(ChatColor.YELLOW + "Happening now: " + ChatColor.WHITE + e.kind + e.where());
             return true;
         }
-        String sub = args.length > 0 ? args[0].toLowerCase() : "status";
+        String sub = args.length > 0 ? args[0].toLowerCase() : "list";
         Player p = sender instanceof Player pl ? pl : null;
+        // /fweather <event> <player>: at that player (the console and /itemsmenu use this)
+        if (args.length > 1 && KINDS.contains(sub)) {
+            Player who = Bukkit.getPlayerExact(args[1]);
+            if (who == null) { sender.sendMessage(ChatColor.RED + "No player called " + args[1] + " online."); return true; }
+            p = who;
+        }
+        if (sub.equals("list") || sub.equals("help")) {
+            sender.sendMessage(ChatColor.GOLD + "" + ChatColor.BOLD + "Weather events " + ChatColor.GRAY + "(click one to start it where you stand)");
+            for (String k : KINDS) {
+                Component line = Component.text(" [start] ", NamedTextColor.GREEN)
+                        .clickEvent(ClickEvent.runCommand("/fweather " + k))
+                        .hoverEvent(HoverEvent.showText(Component.text("/fweather " + k)))
+                        .append(Component.text(k, active.containsKey(k) ? NamedTextColor.YELLOW : NamedTextColor.WHITE))
+                        .append(Component.text(" - " + ABOUT.get(k) + (active.containsKey(k) ? " (happening now)" : ""), NamedTextColor.GRAY));
+                sender.sendMessage(line);
+            }
+            sender.sendMessage(ChatColor.GRAY + "/fweather stop [event] | status | <event> [player]");
+            return true;
+        }
         if (sub.equals("status")) {
             if (active.isEmpty()) sender.sendMessage(ChatColor.GRAY + "No weather events running.");
             for (Event e : active.values()) sender.sendMessage(ChatColor.YELLOW + e.kind + ChatColor.GRAY + e.where() + " (" + Math.max(0, (e.endsAt - System.currentTimeMillis()) / 1000) + "s left)");

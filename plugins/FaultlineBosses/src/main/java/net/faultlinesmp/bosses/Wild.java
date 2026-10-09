@@ -413,6 +413,15 @@ final class Wild implements Listener {
         return l.clone();
     }
 
+    /** Room to stand at l (its floor within `climb` blocks of fromY, 3 clear blocks above the floor). */
+    static boolean fits(World w, Location l, double fromY, int climb) {
+        double g = ground(w, l);
+        if (Math.abs(g - (fromY - 0.5)) > climb + 0.6 && Math.abs(g - fromY) > climb + 0.6) return false;
+        int x = l.getBlockX(), z = l.getBlockZ(), y = (int) Math.floor(g);
+        for (int dy = 0; dy < 3; dy++) if (w.getBlockAt(x, y + dy, z).getType().isSolid()) return false;
+        return true;
+    }
+
     static boolean voidWorld(World w) { return w.getName().equals("faultline_void"); }
 
     /**
@@ -821,6 +830,13 @@ final class Wild implements Listener {
             List<Player> a = active();
             for (Player p : a) fighters.add(p.getUniqueId());
             pilot = pl.pilot(this);
+            if (a.isEmpty() && pilot == null && ticks % 60 == 0) {
+                // an admin testing in creative: say why it isn't fighting (it only fights survival players)
+                Location cc = center();
+                for (Player p : world.getPlayers())
+                    if ((p.getGameMode() == GameMode.CREATIVE || p.getGameMode() == GameMode.SPECTATOR) && p.getLocation().distanceSquared(cc) < 64 * 64)
+                        p.sendActionBar(legacy(color() + name() + ChatColor.GRAY + " ignores creative players. " + ChatColor.WHITE + "/gamemode survival" + ChatColor.GRAY + " to fight it, " + ChatColor.WHITE + "/" + (kind.equals("golem") ? "stonegolem" : kind) + " kill" + ChatColor.GRAY + " to remove it."));
+            }
             if (a.isEmpty() && pilot == null && !watched()) {
                 if (++lonely > c("leave-after-ticks", 600)) { leave(line("leave")); return; }
             } else lonely = 0;

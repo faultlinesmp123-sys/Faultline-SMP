@@ -94,10 +94,17 @@ final class Lich extends Wild.Boss {
             double d = to.length();
             yaw = turn(yaw, yawOf(flat(to)), 10);
             double want = pilot != null ? 2.5 : c("keep-distance", 9);
-            if (pilot != null) { if (d > want) pos.add(flat(to).multiply(Math.min(0.4, d - want))); }
-            else if (d > want + 2) pos.add(flat(to).multiply(0.16));
-            else if (d < want - 3) pos.add(flat(to).multiply(-0.16));
-            else pos.add(new Vector(-to.getZ(), 0, to.getX()).normalize().multiply(0.06)); // drift sideways
+            Vector step;
+            if (pilot != null) step = d > want ? flat(to).multiply(Math.min(0.4, d - want)) : new Vector();
+            else if (d > want + 2) step = flat(to).multiply(0.16);
+            else if (d < want - 3) step = flat(to).multiply(-0.16);
+            else step = new Vector(-to.getZ(), 0, to.getX()).normalize().multiply(0.06); // drift sideways
+            // never through the cave walls: only where he fits (try the move, then each half of it)
+            for (Vector v : new Vector[]{step, new Vector(step.getX(), 0, 0), new Vector(0, 0, step.getZ())}) {
+                if (v.lengthSquared() < 1e-6) continue;
+                Location next = pos.clone().add(v);
+                if (Wild.fits(world, next, pos.getY(), 3)) { pos.add(v); break; }
+            }
         }
         double gy = ground(pos);
         pos.setY(gy + 0.5 + Math.sin(ticks * 0.07) * 0.25);

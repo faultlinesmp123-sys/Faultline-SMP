@@ -677,6 +677,9 @@ entries:
   - {chapter: weapons, name: "Pirate Ship Blueprint", icon: pirate_blueprint, detect: "faultlineships:pirate_blueprint",
      how: "Craft it: Black Dye in the corners, Paper on the sides, a Galleon Blueprint in the middle and a Wither Skeleton Skull at the bottom (D P D / P G P / D S D).",
      does: "The biggest ship: 882 blocks (522 Planks, 122 Black Wool and 50 White Wool for the skull-and-bones sails, 92 Fences, 47 Logs, 10 Ladders, 10 Ship Cannons, 8 Trapdoors, 7 Stairs, 6 Glass Panes, 5 Lanterns, 2 Chests, 1 hatch Trapdoor). Three masts, a crow's nest, a quarterdeck, a poop deck, a forecastle and a hold below deck (go down the hatch). 900 health, 9 seats, 10 cannons, a 54-slot hold. Needs water 2 deep under the keel."}
+  - {chapter: consumables, name: "Phantom Bell", icon: ghost_captain, detect: "faultlineships:phantom_bell",
+     how: "Craft: a bell ringed with 4 phantom membranes and 4 ghast tears.",
+     does: "Ring it at sea at night (on a ship, in a boat, or swimming in the ocean) and the Ghost Ship, the Wailing Mary, sails out of the fog. Bring a Lantern of Souls: without one she can't be touched or boarded."}
   - {chapter: consumables, name: "Cursed Pirate Horn", icon: pirate_horn, detect: "faultlineships:pirate_horn",
      how: "Only in the holds of skeleton ships (15% in a lone one, 5% in an invasion ship).",
      does: "Blow it while on a ship at sea to call the Pirate Invasion: 15+ skeleton ships come at you, with their flagship, the Black Gallows, in the back. Sink the fleet, then beat the flagship's three bosses one after the other. Its own music plays the whole time."}

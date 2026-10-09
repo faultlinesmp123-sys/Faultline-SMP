@@ -62,6 +62,9 @@ final class GhostShip implements Listener {
     final FaultlineShips pl;
     final Pirates pirates;
     final NamespacedKey gearKey = new NamespacedKey("faultlineitems", "gear");
+    /** The Phantom Bell: ring it at sea at night and the Wailing Mary comes (one use). */
+    final NamespacedKey bellKey;
+    boolean forced;
     Ship ship;
     Pirates.Brain brain;
     long lanternAt = -1, born, solidAt = -1;
@@ -73,7 +76,76 @@ final class GhostShip implements Listener {
     boolean beaten;
     long nextAbility;
 
-    GhostShip(FaultlineShips pl, Pirates pirates) { this.pl = pl; this.pirates = pirates; }
+    GhostShip(FaultlineShips pl, Pirates pirates) {
+        this.pl = pl; this.pirates = pirates;
+        bellKey = new NamespacedKey(pl, "phantom_bell");
+        try {
+            org.bukkit.inventory.ShapedRecipe r = new org.bukkit.inventory.ShapedRecipe(new NamespacedKey(pl, "phantom_bell"), bell());
+            r.shape("GPG", "PBP", "GPG");
+            r.setIngredient('G', Material.GHAST_TEAR); r.setIngredient('P', Material.PHANTOM_MEMBRANE); r.setIngredient('B', Material.BELL);
+            Bukkit.addRecipe(r);
+        } catch (RuntimeException ignored) { } // already there (a reload)
+    }
+
+    // =====================================================================================================
+    //  the Phantom Bell: a way to CALL her
+    // =====================================================================================================
+    ItemStack bell() {
+        ItemStack it = new ItemStack(Material.BELL);
+        ItemMeta m = it.getItemMeta();
+        m.setDisplayName(ChatColor.AQUA + "" + ChatColor.BOLD + "Phantom Bell");
+        m.setLore(List.of(ChatColor.GRAY + "Ring it at sea, at night: on a ship,",
+                ChatColor.GRAY + "in a boat, or swimming in the ocean.",
+                ChatColor.AQUA + "The Wailing Mary answers.",
+                ChatColor.DARK_GRAY + "Bring a Lantern of Souls, or she can't be touched."));
+        m.setEnchantmentGlintOverride(true);
+        m.setMaxStackSize(16);
+        m.getPersistentDataContainer().set(bellKey, PersistentDataType.BYTE, (byte) 1);
+        it.setItemMeta(m);
+        return it;
+    }
+
+    boolean isBell(ItemStack it) { return it != null && it.hasItemMeta() && it.getItemMeta().getPersistentDataContainer().has(bellKey, PersistentDataType.BYTE); }
+
+    /**
+     * Call her to a player at sea (the bell and /ship pirates ghost): from their ship if they're on one, else the water
+     * under their boat or around them. Null + a reason if she can't come.
+     */
+    String call(Player p, boolean needNight) {
+        if (ship != null) return "The Wailing Mary is already out there.";
+        forced = !needNight; // an admin's call: she stays by day (until her lifetime is up)
+        if (needNight && !night(p.getWorld())) return "She only sails at night.";
+        if (p.getWorld().getEnvironment() != World.Environment.NORMAL) return "Only on the Overworld's seas.";
+        Ship on = pl.ridingOn(p);
+        if (on == null) on = pirates.standingOn(p);
+        Ship s2;
+        if (on != null) s2 = spawn(p, on);
+        else {
+            String b = p.getLocation().getBlock().getBiome().getKey().getKey();
+            if (!b.contains("ocean")) return "Only out on the ocean.";
+            double top = waterTop(p.isInsideVehicle() && p.getVehicle() != null ? p.getVehicle().getLocation() : p.getLocation());
+            if (Double.isNaN(top)) return "Be on the water: on a ship, in a boat, or swimming.";
+            s2 = spawnAt(p, p.getWorld().getName(), p.getLocation().getX(), top, p.getLocation().getZ());
+        }
+        return s2 == null ? "No open water for her nearby: sail further out." : null;
+    }
+
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onBell(org.bukkit.event.player.PlayerInteractEvent e) {
+        if (e.getHand() != EquipmentSlot.HAND || !isBell(e.getItem())) return;
+        org.bukkit.event.block.Action a = e.getAction();
+        if (a != org.bukkit.event.block.Action.RIGHT_CLICK_AIR && a != org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK) return;
+        e.setCancelled(true); // never placed as a bell
+        Player p = e.getPlayer();
+        String why = call(p, true);
+        if (why != null) { p.sendMessage(ChatColor.RED + why + ChatColor.GRAY + " (The bell wasn't used.)"); return; }
+        p.getWorld().playSound(p.getLocation(), Sound.BLOCK_BELL_USE, SoundCategory.PLAYERS, 2f, 0.5f);
+        p.getWorld().playSound(p.getLocation(), Sound.BLOCK_BELL_RESONATE, SoundCategory.PLAYERS, 2f, 0.6f);
+        if (p.getGameMode() != org.bukkit.GameMode.CREATIVE) e.getItem().setAmount(e.getItem().getAmount() - 1);
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    public void onBellPlace(org.bukkit.event.block.BlockPlaceEvent e) { if (isBell(e.getItemInHand())) e.setCancelled(true); }
 
     double cfg(String k, double def) { return pl.getConfig().getDouble("pirates.ghost-ship." + k, def); }
 
@@ -115,16 +187,29 @@ final class GhostShip implements Listener {
         return spawn(p, on) != null;
     }
 
-    Ship spawn(Player p, Ship on) {
+    Ship spawn(Player p, Ship on) { return spawnAt(p, on.world, on.x, on.y, on.z); }
+
+    /** Near a player in the sea without a ship (a boat, or swimming): the top of the water under them, or NaN. */
+    static double waterTop(Location l) {
+        World w = l.getWorld();
+        int x = l.getBlockX(), z = l.getBlockZ();
+        for (int y = l.getBlockY() + 1; y >= l.getBlockY() - 6; y--) {
+            if (w.getBlockAt(x, y, z).getType() == Material.WATER && w.getBlockAt(x, y + 1, z).getType() != Material.WATER) return y;
+        }
+        return Double.NaN;
+    }
+
+    /** She appears 55-70 blocks from (cx, cz) on the water at height cy (the top water block), somewhere there's room. */
+    Ship spawnAt(Player p, String world, double cx, double cy, double cz) {
         if (ship != null) return null;
         double base = pirates.rnd.nextDouble() * 360;
         for (int i = 0; i < 16; i++) {
             double a = Math.toRadians(base + i * 22.5), r = cfg("spawn-distance", 55) + (i % 2) * 15;
-            double x = on.x - Math.sin(a) * r, z = on.z + Math.cos(a) * r;
-            float yaw = Pirates.bearing(x, z, on.x, on.z);
+            double x = cx - Math.sin(a) * r, z = cz + Math.cos(a) * r;
+            float yaw = Pirates.bearing(x, z, cx, cz);
             Ship s = new Ship(pl, UUID.randomUUID(), ShipType.GALLEON, Pirates.OWNER);
-            s.world = on.world;
-            s.x = Math.floor(x) + 0.5; s.y = on.y; s.z = Math.floor(z) + 0.5;
+            s.world = world;
+            s.x = Math.floor(x) + 0.5; s.y = cy; s.z = Math.floor(z) + 0.5;
             s.yaw = ((Math.round(yaw / 90f) * 90f) % 360 + 360) % 360;
             if (!s.clear(s.x, s.z, s.yaw, true, null)) continue;
             for (int k = 0; k < s.blocks.length; k++) s.blocks[k] = s.blockFor(k, ghost(s.type.cells.get(k).need()));
@@ -182,7 +267,7 @@ final class GhostShip implements Listener {
         Ship s = b.ship;
         Pirates.AiInput in = b.input;
         in.clear();
-        if (!night(s.world()) && !s.anchored) { fade("The Wailing Mary fades with the dawn..."); return; }
+        if (!forced && !night(s.world()) && !s.anchored) { fade("The Wailing Mary fades with the dawn..."); return; }
         if (now - born > cfg("lifetime-minutes", 15) * 1200 && captain == null) { fade("The Wailing Mary fades back into the fog."); return; }
         Player t = null; double td = cfg("sight", 160);
         boolean lanternNear = false;

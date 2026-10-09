@@ -1442,14 +1442,24 @@ final class Pirates implements Listener {
                 LivingEntity m = spawnMob(k, p.getLocation().add(p.getLocation().getDirection().setY(0).normalize().multiply(3)), null);
                 return msg(sender, m == null ? ChatColor.RED + "Couldn't." : ChatColor.GREEN + "Spawned a " + k.title + ".");
             }
-            case "ghost" -> {
-                if (p == null) return msg(sender, "Players only.");
-                Ship on = pl.ridingOn(p);
-                if (on == null) on = standingOn(p);
-                if (on == null) return msg(sender, ChatColor.RED + "Be on a ship at sea.");
-                if (ghost.ship != null) return msg(sender, ChatColor.RED + "The Wailing Mary is already out.");
-                Ship s2 = ghost.spawn(p, on);
-                return msg(sender, s2 == null ? ChatColor.RED + "No open water for her nearby." : ChatColor.AQUA + "The Wailing Mary drifts out of the fog. (Hold a Lantern of Souls near her to make her solid.)");
+            case "ghost" -> { // /ship pirates ghost [player]: on a ship, in a boat or swimming; any time of day (admins)
+                Player at = args.length > 2 ? Bukkit.getPlayerExact(args[2]) : p;
+                if (at == null) return msg(sender, ChatColor.RED + (p == null ? "/ship pirates ghost <player>" : "Player not found."));
+                String why = ghost.call(at, false);
+                return msg(sender, why != null ? ChatColor.RED + why : ChatColor.AQUA + "The Wailing Mary drifts out of the fog near " + at.getName() + ". (Hold a Lantern of Souls near her to make her solid.)");
+            }
+            case "bell" -> { // /ship pirates bell [amount] [player]
+                Player to = p;
+                int amount = 1;
+                for (int i = 2; i < args.length; i++) {
+                    Player o = Bukkit.getPlayerExact(args[i]);
+                    if (o != null) to = o;
+                    else try { amount = Integer.parseInt(args[i]); } catch (NumberFormatException ignored) { }
+                }
+                if (to == null) return msg(sender, ChatColor.RED + "Player not found.");
+                ItemStack b = ghost.bell(); b.setAmount(Math.max(1, Math.min(16, amount)));
+                to.getInventory().addItem(b).values().forEach(left -> sender.sendMessage(ChatColor.GRAY + "(inventory full)"));
+                return msg(sender, ChatColor.GREEN + "Gave " + b.getAmount() + " Phantom Bell(s) to " + to.getName() + ".");
             }
             case "stop" -> {
                 ghost.removeCaptain();
@@ -1458,7 +1468,7 @@ final class Pirates implements Listener {
                 return msg(sender, ChatColor.YELLOW + "All skeleton ships are gone.");
             }
             default -> {
-                return msg(sender, ChatColor.GRAY + "/ship pirates <ship|invasion|ghost|horn [amount] [player]|spawn <mob>|egg <mob> [amount] [player]|stop>  (" + brains.size() + " skeleton ships, " + invasions.size() + " invasions)");
+                return msg(sender, ChatColor.GRAY + "/ship pirates <ship|invasion|ghost [player]|bell [amount] [player]|horn [amount] [player]|spawn <mob>|egg <mob> [amount] [player]|stop>  (" + brains.size() + " skeleton ships, " + invasions.size() + " invasions)");
             }
         }
     }

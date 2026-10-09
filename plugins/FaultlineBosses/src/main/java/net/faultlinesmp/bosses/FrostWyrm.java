@@ -2,6 +2,7 @@ package net.faultlinesmp.bosses;
 
 import org.bukkit.ChatColor;
 import org.bukkit.Color;
+import org.bukkit.HeightMap;
 import org.bukkit.Location;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -62,6 +63,7 @@ final class FrostWyrm extends Wild.Boss {
         k = c("scale", 1.4);
         pos = at.clone().add(dirOf(at.getYaw()).multiply(-20));
         pos.setY(ground(at) + 18);
+        pos.setY(Math.max(pos.getY(), terrainTop(pos, 3 * k) + 6 * k)); // never born inside a mountain
         yaw = at.getYaw();
         bodyP = rig.add("wyrm_body", k, pos);
         for (int i = 0; i < 3; i++) neckP.add(rig.add("wyrm_neck", k * (1 - 0.06 * i), pos));
@@ -117,11 +119,33 @@ final class FrostWyrm extends Wild.Boss {
         return new Location(world, x / a.size(), y / a.size(), z / a.size());
     }
 
-    void fly(Location to, double speed, float turnMax) {
+    /** The highest terrain under/around p (a 3x3 of columns, wings span far), so it flies over mountains, not through them. */
+    double terrainTop(Location p, double reach) {
+        double top = world.getMinHeight();
+        for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++)
+            top = Math.max(top, world.getHighestBlockYAt((int) Math.floor(p.getX() + dx * reach), (int) Math.floor(p.getZ() + dz * reach), HeightMap.MOTION_BLOCKING_NO_LEAVES) + 1);
+        return top;
+    }
+
+    void fly(Location to, double speed, float turnMax) { fly(to, speed, turnMax, false); }
+
+    /** landing: straight to `to` (it's coming down on purpose), no terrain clearance. */
+    void fly(Location to, double speed, float turnMax, boolean landing) {
+        // keep clear of the terrain where it's going and where it is (legs hang 3.5 blocks below the body)
+        double clear = 4.5 * k;
+        to = to.clone();
+        double floor = -1e9;
+        if (!landing) {
+            to.setY(Math.max(to.getY(), terrainTop(to, 3 * k) + clear));
+            Location ahead = pos.clone().add(dirOf(yaw).multiply(5 * k));
+            floor = Math.max(terrainTop(pos, 3 * k), terrainTop(ahead, 3 * k)) + clear;
+            if (pos.getY() < floor) to.setY(Math.max(to.getY(), floor + 2));
+        }
         Vector d = to.toVector().subtract(pos.toVector());
         yaw = turn(yaw, yawOf(flat(d)), turnMax);
-        double dy = Math.max(-0.5, Math.min(0.5, d.getY() * 0.08));
+        double dy = Math.max(-0.5, Math.min(pos.getY() < floor ? 1.0 : 0.5, d.getY() * 0.08));
         pitch = (float) Math.max(-25, Math.min(25, -dy * 60));
+        if (!landing && pos.getY() < floor) speed *= 0.15; // a wall of rock ahead: rise first, then go on
         pos = pos.clone().add(dirOf(yaw).multiply(speed)).add(0, dy, 0);
     }
 
@@ -327,7 +351,7 @@ final class FrostWyrm extends Wild.Boss {
     void roar(List<Player> a) {
         if (!landed) {
             Location to = mark.clone().add(0, 2.45 * k, 0);
-            fly(to, 0.8, 16);
+            fly(to, 0.8, 16, true);
             if (pos.distanceSquared(to) < 1.5 || at > 70) { landed = true; at = 1000; world.playSound(pos, Sound.ENTITY_RAVAGER_STEP, SoundCategory.HOSTILE, 3f, 0.5f); }
             return;
         }

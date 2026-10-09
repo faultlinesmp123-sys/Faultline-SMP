@@ -7078,6 +7078,10 @@ public final class FaultlineItems extends JavaPlugin {
                         "ship give cannonball {amount} {player}", "FaultlineShips"));
                 list.add(external(icon(Material.GOAT_HORN, null, ChatColor.DARK_RED + "" + ChatColor.BOLD + "Cursed Pirate Horn", "FaultlineShips"),
                         "ship pirates horn {amount} {player}", "FaultlineShips"));
+                list.add(external(icon(Material.BELL, null, ChatColor.AQUA + "" + ChatColor.BOLD + "Phantom Bell " + ChatColor.GRAY + "(calls the Ghost Ship)", "FaultlineShips"),
+                        "ship pirates bell {amount} {player}", "FaultlineShips"));
+                list.add(external(icon(Material.SOUL_LANTERN, null, ChatColor.AQUA + "" + ChatColor.BOLD + "The Wailing Mary " + ChatColor.GRAY + "(summons the Ghost Ship near you, at sea)", "FaultlineShips"),
+                        "ship pirates ghost {player}", "FaultlineShips"));
                 Object[][] pirates = { // the Pirate Invasion's bosses first, then its mobs
                         {"son", Material.SKELETON_SPAWN_EGG, ChatColor.GOLD + "" + ChatColor.BOLD + "The Captain's Son (Boss)"},
                         {"commander", Material.SKELETON_SPAWN_EGG, ChatColor.GOLD + "" + ChatColor.BOLD + "The Skeleton Commander (Boss)"},

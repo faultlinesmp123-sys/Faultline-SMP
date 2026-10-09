@@ -63,7 +63,7 @@ final class Leviathan extends Wild.Boss {
     Leviathan(Wild w, Location at, Player by) {
         super(w, "leviathan", at, by);
         Location spot = seaSpot(at, 24);
-        if (spot == null) throw new IllegalStateException("no open water near " + at);
+        if (spot == null) throw new IllegalStateException("it needs open sea water at least 8 blocks deep within 24 blocks (in a loaded area)");
         surfaceY = spot.getY();
         k = c("scale", 1.0);
         gap = 2.2 * k;
@@ -116,9 +116,9 @@ final class Leviathan extends Wild.Boss {
                 if (!w.isChunkLoaded(x >> 4, z >> 4)) continue;
                 int top = w.getHighestBlockYAt(x, z, HeightMap.WORLD_SURFACE);
                 Block b = w.getBlockAt(x, top, z);
-                if (b.getType() != Material.WATER) continue;
+                if (!sea(b)) continue;
                 int depth = 0;
-                while (depth < 12 && w.getBlockAt(x, top - depth, z).getType() == Material.WATER) depth++;
+                while (depth < 12 && sea(w.getBlockAt(x, top - depth, z))) depth++;
                 if (depth >= 8) return new Location(w, x + 0.5, top + 1, z + 0.5);
             }
         }
@@ -126,8 +126,20 @@ final class Leviathan extends Wild.Boss {
     }
 
     boolean water(Location l) {
-        Block b = world.getBlockAt(l.getBlockX(), (int) Math.floor(surfaceY) - 1, l.getBlockZ());
-        return b.getType() == Material.WATER;
+        return sea(world.getBlockAt(l.getBlockX(), (int) Math.floor(surfaceY) - 1, l.getBlockZ()));
+    }
+
+    /**
+     * Open sea water: water, and what grows or bubbles in it (kelp, seagrass, bubble columns, waterlogged plants).
+     * BUG FIX (1.4.9): only plain WATER counted, so over a kelp forest or a seagrass bed no column reached 8 deep and
+     * the Leviathan "couldn't appear there (it needs open water)" in the middle of a deep ocean; swimming, it also took
+     * kelp reaching the surface for the coast and turned back.
+     */
+    static boolean sea(Block b) {
+        Material m = b.getType();
+        if (m == Material.WATER || m == Material.BUBBLE_COLUMN || m == Material.KELP || m == Material.KELP_PLANT
+                || m == Material.SEAGRASS || m == Material.TALL_SEAGRASS) return true;
+        return !m.isSolid() && b.getBlockData() instanceof org.bukkit.block.data.Waterlogged wl && wl.isWaterlogged();
     }
 
     /** It may come by itself: someone sailing the deep ocean at night. */

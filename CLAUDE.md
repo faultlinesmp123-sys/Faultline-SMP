@@ -382,6 +382,11 @@ Notes:
   Grimtusk's challenge are used up only once the boss really appeared (and never in creative for the horn); a Kraken
   Bait worm that sank but brought no Kraken comes back. Tested (`StuckTest`: every boss after its area unloads, and the
   watchdog).
+- **Bosses 1.4.9**: `Leviathan.sea(Block)` counts kelp, seagrass, bubble columns and waterlogged plants as sea water
+  (only plain WATER counted: over kelp forests `seaSpot` found no 8-deep column and `/leviathan summon` failed in the
+  middle of a deep ocean; swimming, kelp at the surface read as the coast). A failed wild summon tells the real reason
+  (`Wild.lastFail`: the IllegalStateException's message, or the error) instead of a hard-coded "needs open water / no room",
+  and sweeps whatever the half-built boss left behind. Tested (`KelpTest`).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

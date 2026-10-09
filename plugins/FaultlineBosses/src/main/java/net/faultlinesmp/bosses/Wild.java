@@ -227,7 +227,8 @@ final class Wild implements Listener {
         if (System.currentTimeMillis() < cd) { p.sendActionBar(legacy(ChatColor.GRAY + "Nothing answers yet... try again in " + ((cd - System.currentTimeMillis()) / 60000 + 1) + " min.")); return; }
         String why = whyNot(kind, p);
         if (why != null) { p.sendMessage(ChatColor.RED + why + ChatColor.GRAY + " (It wasn't used.)"); return; }
-        if (summon(kind, p.getLocation(), p) == null) { p.sendMessage(ChatColor.RED + "It couldn't appear here (no room). " + ChatColor.GRAY + "(It wasn't used.)"); return; }
+        lastFail = null;
+        if (summon(kind, p.getLocation(), p) == null) { p.sendMessage(ChatColor.RED + "It couldn't appear here: " + (lastFail != null ? lastFail : "no room") + ". " + ChatColor.GRAY + "(It wasn't used.)"); return; }
         if (p.getGameMode() != GameMode.CREATIVE) hand.setAmount(hand.getAmount() - 1);
     }
 
@@ -343,7 +344,10 @@ final class Wild implements Listener {
                 default -> null;
             };
         } catch (RuntimeException | LinkageError e) { // LinkageError: an API the server's Paper doesn't have
-            pl.getLogger().log(java.util.logging.Level.WARNING, "Couldn't summon " + kind, e);
+            boolean expected = e instanceof IllegalStateException; // "no open water" and the like: not a bug
+            if (!expected) pl.getLogger().log(java.util.logging.Level.WARNING, "Couldn't summon " + kind, e);
+            lastFail = expected ? e.getMessage() : "an error: " + e + " (full error in the console)";
+            sweep(false); // whatever it built before failing (model pieces, hitboxes) must not hang frozen in the world
             return null;
         }
         if (b == null) return null;
@@ -353,6 +357,9 @@ final class Wild implements Listener {
     }
 
     Boss get(String kind) { return live(kind); }
+
+    /** Why the last summon failed (shown to whoever ran the command). */
+    String lastFail;
 
     /**
      * The boss of that kind that is really out there, or null. One whose body is gone, or that stopped updating (an error,
@@ -627,9 +634,10 @@ final class Wild implements Listener {
                 } else if (self != null) at = self.getLocation();
                 if (at == null) { sender.sendMessage(ChatColor.YELLOW + "/" + label + " summon [<world> <x> <y> <z>]"); return true; }
                 if (b != null) { sender.sendMessage(ChatColor.GRAY + NAMES.get(kind) + " is already out."); return true; }
+                lastFail = null;
                 Boss nb = summon(kind, at, self);
-                sender.sendMessage(nb != null ? ChatColor.GREEN + NAMES.get(kind) + " is coming. " + ChatColor.GRAY + "(Fight it in survival; creative players don't count.)"
-                        : ChatColor.RED + "It couldn't appear there (" + (kind.equals("leviathan") ? "it needs open water: 8+ blocks deep nearby" : "no room") + ").");
+                sender.sendMessage(nb != null ? ChatColor.GREEN + NAMES.get(kind) + " is coming. " + ChatColor.GRAY + "(Fight it in survival; creative players get a show fight.)"
+                        : ChatColor.RED + "It couldn't appear there: " + (lastFail != null ? lastFail : "no room") + ".");
             }
             case "kill" -> {
                 if (b != null) b.leave(null);

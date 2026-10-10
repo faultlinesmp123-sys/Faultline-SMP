@@ -375,6 +375,7 @@ public final class FaultlineItems extends JavaPlugin {
         // diving gear (Calamity-style) and the Skeleton Wanderer (a cave trader who sells accessories)
         divingGear = new DivingGear(this);
         getServer().getPluginManager().registerEvents(divingGear, this);
+        getServer().getPluginManager().registerEvents(new AccessoryStacks(this), this); // 1.2.12: accessories don't stack
         getCommand("givediving").setExecutor(new GiveItemCommand(this, "items.givediving",
                 "/givediving <helmet|flipper|gear|depths|abyssal> [amount] [player]", divingGear.catalog(), "gear"));
         jacobGear = new JacobGear(this);
@@ -914,6 +915,15 @@ public final class FaultlineItems extends JavaPlugin {
             return false;
         }
 
+        /** The same accessory: the two share one of their own tags (other than the generic "accessory" one). */
+        static boolean same(FaultlineItems plugin, ItemStack a, ItemStack b) {
+            if (a == null || b == null || !a.hasItemMeta() || !b.hasItemMeta()) return false;
+            Set<org.bukkit.NamespacedKey> ka = new HashSet<>(a.getItemMeta().getPersistentDataContainer().getKeys());
+            ka.removeIf(k -> k.equals(plugin.getAccessoryKey()) || !k.getNamespace().equals(plugin.getAccessoryKey().getNamespace()));
+            for (org.bukkit.NamespacedKey k : b.getItemMeta().getPersistentDataContainer().getKeys()) if (ka.contains(k)) return true;
+            return false;
+        }
+
         public static boolean isAccessory(FaultlineItems plugin, ItemStack item) {
             if (item == null || !item.hasItemMeta()) return false;
             Byte tag = item.getItemMeta().getPersistentDataContainer()
@@ -1034,6 +1044,16 @@ public final class FaultlineItems extends JavaPlugin {
             ItemStack single = cursor.clone();
             single.setAmount(1);
             if (slotHasRealItem && currentSlotItem.isSimilar(single)) return; // already wearing that one
+            // 1.2.12: no stacking accessories: one of each (a second copy in another slot is refused)
+            for (int other : AccessoryGuiHolder.SLOTS) {
+                if (other == slot) continue;
+                ItemStack o = event.getClickedInventory().getItem(other);
+                if (isRealAccessory(o) && AccessoryManager.same(plugin, o, single)) {
+                    player.sendMessage(ChatColor.RED + "You're already wearing " + (single.getItemMeta().hasDisplayName() ? single.getItemMeta().getDisplayName() : "that accessory")
+                            + ChatColor.RED + ". Accessories don't stack.");
+                    return;
+                }
+            }
 
             ItemStack remainder = null;
             if (cursor.getAmount() > 1) {
@@ -1072,6 +1092,17 @@ public final class FaultlineItems extends JavaPlugin {
             for (int i = 0; i < AccessoryGuiHolder.SLOTS.length; i++) {
                 ItemStack item = event.getInventory().getItem(AccessoryGuiHolder.SLOTS[i]);
                 toSave[i] = isRealAccessory(item) ? item : null;
+                if (toSave[i] == null) continue;
+                // 1.2.12: a copy of one already worn (left over from before accessories stopped stacking) goes back
+                boolean dup = false;
+                for (int j = 0; j < i; j++) if (toSave[j] != null && AccessoryManager.same(plugin, toSave[j], toSave[i])) dup = true;
+                if (dup) {
+                    player.getInventory().addItem(toSave[i]).values().forEach(left -> player.getWorld().dropItemNaturally(player.getLocation(), left));
+                    player.sendMessage(ChatColor.RED + "Accessories don't stack: the second copy went back to your inventory.");
+                    toSave[i] = null;
+                    continue;
+                }
+                AccessoryStacks.refresh(plugin, toSave[i]);
             }
 
             plugin.getAccessoryManager().setSlots(player.getUniqueId(), toSave);
@@ -2443,7 +2474,7 @@ public final class FaultlineItems extends JavaPlugin {
             meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
 
             // Accessories stack to 16: they carry no per-item data, so stacking is safe.
-            meta.setMaxStackSize(16);
+            meta.setMaxStackSize(1); // accessories don't stack
 
             meta.getPersistentDataContainer().set(plugin.getGoldenRingKey(), PersistentDataType.BYTE, (byte) 1);
             meta.getPersistentDataContainer().set(plugin.getAccessoryKey(), PersistentDataType.BYTE, (byte) 1);
@@ -2553,7 +2584,7 @@ public final class FaultlineItems extends JavaPlugin {
             meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
 
             // Accessories stack to 16: they carry no per-item data, so stacking is safe.
-            meta.setMaxStackSize(16);
+            meta.setMaxStackSize(1); // accessories don't stack
 
             meta.getPersistentDataContainer().set(plugin.getClimbingClawsKey(), PersistentDataType.BYTE, (byte) 1);
             meta.getPersistentDataContainer().set(plugin.getAccessoryKey(), PersistentDataType.BYTE, (byte) 1);
@@ -2995,7 +3026,7 @@ public final class FaultlineItems extends JavaPlugin {
             meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
 
             // Accessories stack to 16: they carry no per-item data, so stacking is safe.
-            meta.setMaxStackSize(16);
+            meta.setMaxStackSize(1); // accessories don't stack
 
             meta.getPersistentDataContainer().set(plugin.getBezoarKey(), PersistentDataType.BYTE, (byte) 1);
             meta.getPersistentDataContainer().set(plugin.getAccessoryKey(), PersistentDataType.BYTE, (byte) 1);
@@ -3070,7 +3101,7 @@ public final class FaultlineItems extends JavaPlugin {
             meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
 
             // Accessories stack to 16: they carry no per-item data, so stacking is safe.
-            meta.setMaxStackSize(16);
+            meta.setMaxStackSize(1); // accessories don't stack
 
             meta.getPersistentDataContainer().set(plugin.getDiscountCardKey(), PersistentDataType.BYTE, (byte) 1);
             meta.getPersistentDataContainer().set(plugin.getAccessoryKey(), PersistentDataType.BYTE, (byte) 1);
@@ -3216,7 +3247,7 @@ public final class FaultlineItems extends JavaPlugin {
             meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
 
             // Accessories stack to 16: they carry no per-item data, so stacking is safe.
-            meta.setMaxStackSize(16);
+            meta.setMaxStackSize(1); // accessories don't stack
 
             meta.getPersistentDataContainer().set(plugin.getLifeJellyKey(), PersistentDataType.BYTE, (byte) 1);
             meta.getPersistentDataContainer().set(plugin.getAccessoryKey(), PersistentDataType.BYTE, (byte) 1);
@@ -3292,7 +3323,7 @@ public final class FaultlineItems extends JavaPlugin {
             meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
 
             // Accessories stack to 16: they carry no per-item data, so stacking is safe.
-            meta.setMaxStackSize(16);
+            meta.setMaxStackSize(1); // accessories don't stack
 
             meta.getPersistentDataContainer().set(plugin.getShieldOfTheOceanKey(), PersistentDataType.BYTE, (byte) 1);
             meta.getPersistentDataContainer().set(plugin.getAccessoryKey(), PersistentDataType.BYTE, (byte) 1);
@@ -3531,7 +3562,7 @@ public final class FaultlineItems extends JavaPlugin {
             meta.setLore(lore);
             meta.addEnchant(Enchantment.LURE, 1, true);
             meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
-            meta.setMaxStackSize(16); // accessories carry no per-item data, so stacking is safe
+            meta.setMaxStackSize(1); // 1.2.12: accessories don't stack
             meta.setItemModel(new NamespacedKey("faultline", key.getKey())); // texture from FaultlineItemTextures
             meta.getPersistentDataContainer().set(key, PersistentDataType.BYTE, (byte) 1);
             meta.getPersistentDataContainer().set(plugin.getAccessoryKey(), PersistentDataType.BYTE, (byte) 1);
@@ -3597,7 +3628,19 @@ public final class FaultlineItems extends JavaPlugin {
 
         static ItemStack cleftHorn(FaultlineItems plugin) {
             return make(plugin, Material.FLINT, ChatColor.GOLD + "" + ChatColor.BOLD + "Cleft Horn", plugin.getCleftHornKey(),
-                    ChatColor.GREEN + "Your hits ignore 5% of armor");
+                    cleftHornLore(plugin));
+        }
+
+        /** 1.2.12: nerfed to 1.5% (a server config still holding the old 0.05 gets the new number). */
+        static double cleftPenetration(FaultlineItems plugin) {
+            double v = plugin.getConfig().getDouble("cleft-horn.armor-penetration", 0.015);
+            return v == 0.05 ? 0.015 : v;
+        }
+
+        static String cleftHornLore(FaultlineItems plugin) {
+            double pct = cleftPenetration(plugin) * 100;
+            String s = pct == Math.floor(pct) ? String.valueOf((int) pct) : String.valueOf(Math.round(pct * 10) / 10.0);
+            return ChatColor.GREEN + "Your hits ignore " + s + "% of armor";
         }
 
         static ItemStack ankhShield(FaultlineItems plugin) {
@@ -4057,13 +4100,13 @@ public final class FaultlineItems extends JavaPlugin {
             }
         }
 
-        /** Cleft Horn: armor penetration. The target's armor reduces your hit 5% less. */
+        /** Cleft Horn: armor penetration. The target's armor reduces your hit 1.5% less (5% before 1.2.12). */
         @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
         public void onPierce(EntityDamageByEntityEvent event) {
             Player attacker = NewAccessoryListener.attackerOf(event.getDamager());
             if (attacker == null || !wearing(attacker, plugin.getCleftHornKey())) return;
             if (!event.isApplicable(EntityDamageEvent.DamageModifier.ARMOR)) return;
-            double pen = plugin.getConfig().getDouble("cleft-horn.armor-penetration", 0.05);
+            double pen = NewAccessoryItems.cleftPenetration(plugin);
             event.setDamage(EntityDamageEvent.DamageModifier.ARMOR, event.getDamage(EntityDamageEvent.DamageModifier.ARMOR) * (1 - pen));
         }
 

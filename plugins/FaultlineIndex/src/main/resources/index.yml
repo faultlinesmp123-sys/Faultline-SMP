@@ -67,7 +67,7 @@ entries:
      does: "Does nothing on its own: put a Shield (a regular one or the Shield of the Demon Eye) and the Ankh Shield in an anvil (15 levels). While you hold that shield, you are immune to every debuff (Poison, Wither, Slowness, Blindness...). You still take knockback."}
   - {chapter: accessories, name: "Cleft Horn", icon: cleft_horn, detect: "faultlineitems:cleft_horn",
      how: "2% from Goats.",
-     does: "Your hits ignore 5% of your target's armor."}
+     does: "Your hits ignore 1.5% of your target's armor."}
 
   - {chapter: accessories, name: "A Weird Clock...", icon: weird_clock, detect: "faultlineitems:weird_clock",
      how: "1% from hostile mobs killed deep in caves (underground, below Y=50).",
@@ -508,7 +508,7 @@ entries:
     icon: abyssal_diving_suit
     detect: faultlineitems:abyssal_diving_suit
     how: 40% from the Kraken.
-    does: Breathe underwater, immune to Crush Depth, everything the Abyssal Diving Gear does, and 3 plates that each absorb 15% of a hit underwater (a broken plate regrows after 20 seconds).
+    does: Breathe underwater, immune to Crush Depth, everything the Abyssal Diving Gear does, and 3 plates that each absorb 15% of a hit underwater (a broken plate regrows after 20 seconds). Doesn't work in combat (for 10 seconds after you hit or are hit by a player or a monster).
   # ---------------------------------------------------------------- DIAMOND JACOB
   - chapter: bosses
     name: Diamond Jacob

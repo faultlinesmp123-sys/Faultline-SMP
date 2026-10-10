@@ -57,6 +57,9 @@ final class DivingGear implements Listener {
                 ChatColor.GREEN + "Everything the Abyssal Diving Gear does",
                 ChatColor.GREEN + "3 plates: each absorbs 15% of a hit underwater",
                 ChatColor.DARK_GRAY + "(a broken plate regrows after 20 seconds)",
+                ChatColor.RED + "Doesn't work in combat",
+                ChatColor.DARK_GRAY + "(for 10 s after you hit or are hit by",
+                ChatColor.DARK_GRAY + "a player or a monster)",
                 ChatColor.DARK_GRAY + "Dropped by the Kraken.");
 
         final String id, name;
@@ -124,9 +127,43 @@ final class DivingGear implements Listener {
     }
 
     private boolean has(Player p, Piece... any) {
-        for (Piece piece : any) if (plugin.getAccessoryManager().hasEquipped(p, keys.get(piece))) return true;
+        for (Piece piece : any) {
+            if (piece == Piece.SUIT && inCombat(p)) continue; // 1.2.12: the suit does nothing in combat
+            if (plugin.getAccessoryManager().hasEquipped(p, keys.get(piece))) return true;
+        }
         return false;
     }
+
+    // ---------- 1.2.12: the Abyssal Diving Suit only works out of combat
+    private final Map<UUID, Long> fought = new java.util.HashMap<>();
+
+    boolean inCombat(Player p) {
+        Long t = fought.get(p.getUniqueId());
+        return t != null && System.currentTimeMillis() - t < (long) (cfg("suit.combat-seconds", 10) * 1000);
+    }
+
+    /** Combat = hitting, or being hit by, a player or a monster (a projectile counts as its shooter). */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onFight(org.bukkit.event.entity.EntityDamageByEntityEvent event) {
+        org.bukkit.entity.Entity by = event.getDamager();
+        if (by instanceof org.bukkit.entity.Projectile pr && pr.getShooter() instanceof org.bukkit.entity.Entity s) by = s;
+        org.bukkit.entity.Entity hurt = event.getEntity();
+        if (by == hurt) return;
+        boolean mobs = plugin.getConfig().getBoolean("diving.suit.combat-includes-monsters", true);
+        if (hurt instanceof Player p && (by instanceof Player || mobs && by instanceof org.bukkit.entity.Enemy)) tag(p);
+        if (by instanceof Player p && (hurt instanceof Player || mobs && hurt instanceof org.bukkit.entity.Enemy)) tag(p);
+    }
+
+    private void tag(Player p) {
+        boolean was = inCombat(p);
+        fought.put(p.getUniqueId(), System.currentTimeMillis());
+        if (!was && plugin.getAccessoryManager().hasEquipped(p, keys.get(Piece.SUIT)))
+            p.sendActionBar(ChatColor.RED + "In combat: " + ChatColor.DARK_PURPLE + "your Abyssal Diving Suit stops working "
+                    + ChatColor.GRAY + "(" + (int) cfg("suit.combat-seconds", 10) + " s after the fighting stops)");
+    }
+
+    @EventHandler
+    public void onQuit(org.bukkit.event.player.PlayerQuitEvent event) { fought.remove(event.getPlayer().getUniqueId()); }
 
     /** 0 none, 1 a helmet or a flipper, 2 Diving Gear, 3 Abyssal Diving Gear, 4 the Abyssal Diving Suit. */
     int tier(Player p) {

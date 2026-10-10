@@ -301,7 +301,7 @@ boss-loot:
 
 # Cleft Horn (accessory) — armor penetration
 cleft-horn:
-  armor-penetration: 0.05    # your hits ignore this much of the target's armor protection
+  armor-penetration: 0.015   # your hits ignore this much of the target's armor protection (1.5%; an old 0.05 reads as 0.015)
   goat-drop-chance: 0.02
 
 # A Weird Clock... (accessory) — immune to Slowness
@@ -443,6 +443,9 @@ diving:
     enabled: true
     below-y: 0
     damage: 2.0             # per second (halved by the Depths Charm or Abyssal Diving Gear)
+  suit:                     # the Abyssal Diving Suit does nothing in combat
+    combat-seconds: 10      # ...for this long after you hit or are hit by a player (or a monster)
+    combat-includes-monsters: true
 
 # ---------------- The Kraken's items ----------------
 kraken-gear:

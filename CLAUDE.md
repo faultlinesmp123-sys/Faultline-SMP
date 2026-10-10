@@ -108,6 +108,14 @@ Notes:
   (`ankh-shield.debuff-immunity: true`, `no-knockback: false`; `old-effects: true` brings back all the old powers).
   Hidden effects (no icon, no particles: cutscene Blindness, the Below's Darkness) still get through. Old imbued shields'
   lore is fixed when held. Tested in `AnkhTest`. The **Harpy Ring** is +7.5% speed.
+- **Items 1.2.12 (balance)**: the **Abyssal Diving Suit** does nothing in combat (`DivingGear.has()` skips SUIT while
+  `inCombat`: 10 s after hitting / being hit by a player or an `Enemy` mob, projectiles count as their shooter;
+  `diving.suit.combat-seconds`, `combat-includes-monsters`). **Cleft Horn** 5% -> 1.5% armor penetration
+  (`NewAccessoryItems.cleftPenetration`: an old config's 0.05 reads as 0.015; lore built from it). **Accessories don't
+  stack**: max stack 1 (was 16), and the /accessories menu refuses a second copy of one already worn
+  (`AccessoryManager.same`: shared PDC tag other than the generic accessory key); a duplicate saved from before goes back
+  to the inventory when the menu closes. `AccessoryStacks` splits old stacks (join, opening any container, pickup) and
+  refreshes the Cleft Horn / Suit lore. Tested (`NerfTest`).
 - Changing a plugin's default `config.yml` does NOT update the copy already on the server. Tell the owner
   which values to change in `plugins/<Plugin>/config.yml` on the VPS.
 - **Ships** (`FaultlineShips`; `ShipType.java` = the 5 layouts, `Ship.java` = one ship, `FaultlineShips.java` = items,

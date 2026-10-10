@@ -74,7 +74,16 @@ final class Discord implements Listener {
         }
     }
 
+    private final java.util.concurrent.atomic.AtomicBoolean sending = new java.util.concurrent.atomic.AtomicBoolean();
+
+    // BUG FIX: a slow webhook (up to 10 s a send) overlapped the next run (every 1.5 s): several sends at once, posted
+    // out of order. One at a time now.
     private void pump() {
+        if (!sending.compareAndSet(false, true)) return;
+        try { pumpOne(); } finally { sending.set(false); }
+    }
+
+    private void pumpOne() {
         String next;
         synchronized (queue) { next = queue.poll(); }
         if (next == null) return;

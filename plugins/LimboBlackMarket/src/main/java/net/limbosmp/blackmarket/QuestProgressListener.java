@@ -97,6 +97,27 @@ public class QuestProgressListener implements Listener {
         service.onMine(player, type);
     }
 
+    // BUG FIX: a piston moved a placed block WITHOUT its mark (place Ancient Debris, push it, mine it = counted, over and
+    // over). The marks now travel with the blocks a piston pushes or pulls.
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onPistonPush(org.bukkit.event.block.BlockPistonExtendEvent event) { movePlaced(event.getBlocks(), event.getDirection()); }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onPistonPull(org.bukkit.event.block.BlockPistonRetractEvent event) { movePlaced(event.getBlocks(), event.getDirection()); }
+
+    private void movePlaced(java.util.List<Block> blocks, org.bukkit.block.BlockFace dir) {
+        java.util.List<Block> marked = new java.util.ArrayList<>();
+        for (Block b : blocks) {
+            if (!trackedBlocks.contains(b.getType())) continue;
+            if (b.getChunk().getPersistentDataContainer().has(placedKey(b), PersistentDataType.BYTE)) marked.add(b);
+        }
+        for (Block b : marked) b.getChunk().getPersistentDataContainer().remove(placedKey(b));
+        for (Block b : marked) {
+            Block to = b.getRelative(dir);
+            to.getChunk().getPersistentDataContainer().set(placedKey(to), PersistentDataType.BYTE, (byte) 1);
+        }
+    }
+
     private NamespacedKey placedKey(Block block) {
         // Position within the chunk (0-15 on x/z). Y can be negative, which is
         // fine — '-' is allowed in NamespacedKey keys.

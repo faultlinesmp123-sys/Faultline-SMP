@@ -56,7 +56,7 @@ public class StatsManager {
     }
 
     /** Writes to disk only if something has changed since the last save. */
-    public void save() {
+    public synchronized void save() { // BUG FIX: the async autosave and the shutdown save could write the file at once
         if (!dirty) return;
         // BUG FIX: clear the flag BEFORE snapshotting. This runs off the main thread,
         // so a kill landing mid-save used to get marked "saved" without being written
@@ -74,7 +74,14 @@ public class StatsManager {
             yaml.set(id + ".streak", streaks.getOrDefault(id, 0));
         }
         try {
-            yaml.save(file);
+            // BUG FIX: written to a temp file and moved over, so a crash mid-write can't leave stats.yml half written
+            File tmp = new File(file.getParentFile(), "stats.yml.tmp");
+            yaml.save(tmp);
+            try {
+                java.nio.file.Files.move(tmp.toPath(), file.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING, java.nio.file.StandardCopyOption.ATOMIC_MOVE);
+            } catch (java.nio.file.AtomicMoveNotSupportedException e) {
+                java.nio.file.Files.move(tmp.toPath(), file.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            }
         } catch (IOException e) {
             dirty = true; // try again next time
             plugin.getLogger().log(Level.SEVERE, "Failed to save stats.yml", e);

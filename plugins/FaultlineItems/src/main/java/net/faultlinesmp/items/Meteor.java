@@ -183,6 +183,9 @@ final class Meteor implements Listener, CommandExecutor {
             int x = (int) Math.floor(p.getLocation().getX() + Math.cos(ang) * d), z = (int) Math.floor(p.getLocation().getZ() + Math.sin(ang) * d);
             if (!w.getWorldBorder().isInside(new Location(w, x, 64, z))) continue;
             if (!w.isChunkGenerated(x >> 4, z >> 4)) continue; // never generate new terrain for it (slow)
+            boolean edge = false; // nor right at the edge of the explored world (the crater would generate the next chunk)
+            for (int dx = -1; dx <= 1 && !edge; dx++) for (int dz = -1; dz <= 1; dz++) if (!w.isChunkGenerated((x >> 4) + dx, (z >> 4) + dz)) { edge = true; break; }
+            if (edge) continue;
             w.getChunkAt(x >> 4, z >> 4); // loads the landing chunk (and keeps it ticking through the fall)
             Block top = w.getHighestBlockAt(x, z, HeightMap.MOTION_BLOCKING_NO_LEAVES);
             if (!natural(top.getType()) || top.isLiquid() || top.getY() < w.getSeaLevel() - 6) continue;
@@ -216,13 +219,19 @@ final class Meteor implements Listener, CommandExecutor {
             }
         };
         if (!w.getWorldBorder().isInside(new Location(w, x, 64, z))) { next.run(); return; }
-        java.util.concurrent.CompletableFuture<org.bukkit.Chunk> f;
-        try { f = w.getChunkAtAsync(x >> 4, z >> 4, true); }
+        // the crater (radius ~6) and the guards (up to 8 out) reach into the neighbouring chunks: those are generated in
+        // the background too, or the impact would generate them on the main thread (a lag spike)
+        java.util.concurrent.CompletableFuture<?> f;
+        try {
+            List<java.util.concurrent.CompletableFuture<org.bukkit.Chunk>> all = new ArrayList<>();
+            for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) all.add(w.getChunkAtAsync((x >> 4) + dx, (z >> 4) + dz, true));
+            f = java.util.concurrent.CompletableFuture.allOf(all.toArray(new java.util.concurrent.CompletableFuture[0]));
+        }
         catch (RuntimeException | LinkageError e) { finding = false; schedule(retryMs()); return; }
         f.whenComplete((chunk, err) -> Bukkit.getScheduler().runTask(plugin, () -> guard(() -> {
             if (!finding) return; // stopped meanwhile
             if (strike != null) { finding = false; return; }
-            if (err != null || chunk == null) { next.run(); return; }
+            if (err != null || !w.isChunkLoaded(x >> 4, z >> 4) && !w.isChunkGenerated(x >> 4, z >> 4)) { next.run(); return; }
             Block top = w.getHighestBlockAt(x, z, HeightMap.MOTION_BLOCKING_NO_LEAVES);
             if (!natural(top.getType()) || top.isLiquid() || top.getY() < w.getSeaLevel() - 6 || base(w, x, top.getY(), z) != null) { next.run(); return; }
             finding = false;

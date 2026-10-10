@@ -4004,6 +4004,32 @@ public final class FaultlineItems extends JavaPlugin {
             }
         }
 
+        /**
+         * BUG FIX: the Crafter block (auto-crafting) never fires PrepareItemCraftEvent, so a hopper-fed Crafter ate custom
+         * items in vanilla recipes (an Abyssal Diving Suit into netherite, a staff into a stick recipe...). Same rules here.
+         */
+        @EventHandler(ignoreCancelled = true)
+        public void onCrafter(org.bukkit.event.block.CrafterCraftEvent event) {
+            if (ImmunityCharms.isOurRecipe(event.getRecipe())) return;
+            if (plugin.getDivingGear() != null && plugin.getDivingGear().isOurRecipe(event.getRecipe())) return;
+            if (!(event.getBlock().getState(false) instanceof org.bukkit.block.Crafter crafter)) return;
+            boolean craftingStaff = NecromancerStaffItem.isStaff(plugin, event.getResult());
+            for (ItemStack ingredient : crafter.getInventory().getContents()) {
+                if (ingredient == null) continue;
+                boolean protectedItem = AccessoryManager.isAccessory(plugin, ingredient)
+                        || (plugin.getKrakenGear() != null && plugin.getKrakenGear().isWorm(ingredient))
+                        || ImmunityCharms.isPiece(ingredient)
+                        || NecromancerStaffItem.isStaff(plugin, ingredient)
+                        || SpiderStaffItem.isStaff(plugin, ingredient)
+                        || QueenSilkItem.isSilk(plugin, ingredient)
+                        || GrapplingHookItem.isHook(plugin, ingredient)
+                        || GoodieBagItem.isGoodieBag(plugin, ingredient)
+                        || MythicGoodieBagItem.isMythicBag(plugin, ingredient)
+                        || IronStickItem.isIronStick(plugin, ingredient) && !craftingStaff;
+                if (protectedItem) { event.setCancelled(true); return; }
+            }
+        }
+
         @EventHandler(ignoreCancelled = true)
         public void onFuel(FurnaceBurnEvent event) {
             ItemStack fuel = event.getFuel();

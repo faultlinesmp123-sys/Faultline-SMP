@@ -88,9 +88,21 @@ final class AccessoryStacks implements Listener {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onOpen(InventoryOpenEvent e) {
         if (!(e.getPlayer() instanceof Player p)) return;
-        if (e.getInventory().getHolder() instanceof FaultlineItems.AccessoryGuiHolder) return;
         Inventory top = e.getInventory();
-        Bukkit.getScheduler().runTask(plugin, () -> { fix(top, p); fix(p.getInventory(), p); });
+        // BUG FIX (dupe): only real storage (chests, barrels, shulkers, hoppers, chest minecarts/boats, the ender chest).
+        // A plugin menu (null holder or its own holder) that SHOWS accessories in stacks would otherwise be "split" and
+        // the extra copies handed to the player.
+        boolean storage = realStorage(top);
+        Bukkit.getScheduler().runTask(plugin, () -> { if (storage) fix(top, p); fix(p.getInventory(), p); });
+    }
+
+    static boolean realStorage(Inventory inv) {
+        if (inv.getType() == org.bukkit.event.inventory.InventoryType.ENDER_CHEST) return true;
+        org.bukkit.inventory.InventoryHolder h;
+        try { h = inv.getHolder(false); } catch (NoSuchMethodError | RuntimeException e) { h = inv.getHolder(); }
+        return h instanceof org.bukkit.block.Container || h instanceof org.bukkit.block.DoubleChest
+                || h instanceof org.bukkit.entity.minecart.StorageMinecart || h instanceof org.bukkit.entity.minecart.HopperMinecart
+                || h instanceof org.bukkit.entity.ChestBoat;
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)

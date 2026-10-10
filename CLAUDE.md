@@ -116,6 +116,16 @@ Notes:
   (`AccessoryManager.same`: shared PDC tag other than the generic accessory key); a duplicate saved from before goes back
   to the inventory when the menu closes. `AccessoryStacks` splits old stacks (join, opening any container, pickup) and
   refreshes the Cleft Horn / Suit lore. Tested (`NerfTest`).
+- **Deep bug pass (Items 1.2.13, Bosses 1.5.1, Index 1.6.7, LimboBlackMarket 1.0.1)**: `AccessoryStacks` only splits
+  stacks in REAL storage (`realStorage`: block containers, double chests, chest/hopper minecarts, chest boats, the ender
+  chest): splitting a plugin menu that showed stacked accessories handed the copies to the player (a dupe). The
+  **Crafter** block never fires PrepareItemCraftEvent: `CraftGuardListener.onCrafter` applies the same custom-item rules.
+  Meteor: a far spot generates its whole 3x3 of chunks in the background, and a generated-land spot needs its 3x3
+  generated (the crater/guards used to generate neighbours on the main thread at impact). Sandworm Devour: logging out
+  while swallowed puts you on the ground first (`Wild.onQuit`). Black Market: placed-block marks move with pistons
+  (place debris, push, mine farmed the "mine Ancient Debris" quests); `StatsManager.save` is synchronized and written
+  through `stats.yml.tmp` + atomic move (the async autosave and the shutdown save could interleave). Discord: one webhook
+  send at a time. Tested: `NerfTest`, `WildTest`, `EventsTest`, `MarketTest` (scratch harness `mtest`).
 - Changing a plugin's default `config.yml` does NOT update the copy already on the server. Tell the owner
   which values to change in `plugins/<Plugin>/config.yml` on the VPS.
 - **Ships** (`FaultlineShips`; `ShipType.java` = the 5 layouts, `Ship.java` = one ship, `FaultlineShips.java` = items,

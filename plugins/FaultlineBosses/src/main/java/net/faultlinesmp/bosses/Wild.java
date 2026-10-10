@@ -277,6 +277,20 @@ final class Wild implements Listener {
         p.getWorld().playSound(p.getLocation(), Sound.ENTITY_WITHER_SHOOT, 0.7f, 1.5f);
     }
 
+    /** BUG FIX: logging out while swallowed by the Sandworm (Devour) left you 10 blocks up in the air at your next login. */
+    @EventHandler
+    public void onQuit(org.bukkit.event.player.PlayerQuitEvent e) {
+        if (get("sandworm") instanceof Sandworm sw && sw.victim == e.getPlayer()) {
+            Player p = e.getPlayer();
+            Location down = sw.mark != null ? sw.mark.clone() : p.getLocation();
+            down.setY(ground(down.getWorld(), down));
+            down.setYaw(p.getLocation().getYaw()); down.setPitch(p.getLocation().getPitch());
+            p.teleport(down);
+            p.setFallDistance(0);
+            sw.victim = null;
+        }
+    }
+
     @EventHandler(ignoreCancelled = true)
     public void onBoltHit(ProjectileHitEvent e) {
         Projectile pr = e.getEntity();

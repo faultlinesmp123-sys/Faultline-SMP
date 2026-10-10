@@ -347,16 +347,18 @@ ankh-shield:
   melee-damage-bonus: 0.025   # +2.5% melee damage
 
 # ---------------- Meteor strikes ----------------
-# Every hour (real time) a meteor falls in the Overworld, 250-600 blocks from a random survival player. Everyone is told
+# Every 4 hours (real time) a meteor falls in the Overworld, 1000 blocks from a random survival player. Everyone is told
 # where a minute ahead. It lands in a crater (only on natural ground, never near builds), guarded by Molten Husks,
 # Meteor Crawlers and a Star Sentinel. The first player to break its core (the Gilded Blackstone on top) gets the loot.
 # The rock has Ancient Debris in it. Unclaimed, it cools to obsidian after 30 minutes.  /meteor now | here | stop
 meteor:
   enabled: true
-  every-minutes: 60
+  every-minutes: 240          # every 4 hours (old configs saying 60 get 240)
+  retry-minutes: 10           # no spot / nobody online: try again this soon instead of waiting a whole interval
   warning-seconds: 60
-  min-distance: 250
-  max-distance: 600
+  min-distance: 1000          # how far from a random survival player (old configs saying 250-600 get 1000)
+  max-distance: 1000
+  generate-land: true         # far land that isn't generated yet is generated in the background for it
   # Random meteors never land within this many blocks of a build, a base (chests, beds, furnaces... near the surface,
   # or a chunk players have spent base-hours in) or anyone's respawn point. Villages are fine. Admins can aim one
   # anywhere: /meteor target (where you look) or /meteor at <x> <z>. /meteor check tells you if a spot is avoided.

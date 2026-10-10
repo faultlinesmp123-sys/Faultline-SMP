@@ -754,7 +754,7 @@ entries:
      how: "25% from Grimtusk, the Piglin Warlord (each fighter rolls).",
      does: "A netherite axe. Right-click: Golden Cleave, a burning sweep in front of you (10 damage, sets them on fire, 12 second cooldown)."}
   - {chapter: enemies, name: "Molten Husk", icon: molten_husk, detect-tag: faultline_meteor_husk,
-     where: "Guards a fallen meteor (every hour, somewhere in the Overworld). 40 health.", does: "A burning husk with a magma head and a Fire Aspect II golden sword.",
+     where: "Guards a fallen meteor (every 4 hours, 1000 blocks from someone). 40 health.", does: "A burning husk with a magma head and a Fire Aspect II golden sword.",
      drops: ["3-8 Gold Nuggets|100%", "1-2 Magma Cream|30%"]}
   - {chapter: enemies, name: "Meteor Crawler", icon: meteor_crawler, detect-tag: faultline_meteor_crawler,
      where: "Crawls out of a fallen meteor. 12 health.", does: "Small, fast and bitey, in a pack of four. Pops in embers when it dies.",

@@ -212,8 +212,12 @@ Notes:
   The barriers are recorded in each chunk's PDC (`deckMark`); `cleanDeck` removes any no ship owns when a chunk loads
   (crash safety). The ship's own deck blocks don't count as obstacles in `clear()`. No swell bob under walkers.
   Skeleton ships keep seats. Tested in `DeckTest`.
-- **Meteor strikes** (`FaultlineItems/Meteor.java`, config `meteor:`): every `every-minutes` (60, real time) a meteor falls in the
-  Overworld `min/max-distance` (250-600) from a random survival player, announced a minute ahead (chat, title, boss bar with
+- **Meteor strikes** (`FaultlineItems/Meteor.java`, config `meteor:`): every `every-minutes` (240 = 4 h, real time; 1.2.11) a meteor falls in the
+  Overworld `min/max-distance` (1000) from a random survival player (a server config still saying 60 / 250-600 is read as
+  240 / 1000: `everyMs()`, `distances()`). The next strike's time is saved in `plugins/FaultlineItems/meteor.yml` (restarts
+  used to reset the timer); no spot / nobody in survival = try again in `retry-minutes` (10), not a whole interval. Land
+  that far out is often ungenerated: `findFar` generates it in the background (`getChunkAtAsync(.., true)`, 8 tries,
+  `generate-land: true`) and runs the same checks. Announced a minute ahead (chat, title, boss bar with
   X/Z). Only generated chunks, only natural ground (`NATURAL` set; never touches `LEGACY_` materials). `base()` (1.1.3) keeps
   random ones off builds and bases within `build-check-radius` (48): any player-made surface block (stripped logs / bark count;
   upright logs, leaves and an old meteor's crater don't), a block entity near the surface (chest, bed, furnace...; not bee

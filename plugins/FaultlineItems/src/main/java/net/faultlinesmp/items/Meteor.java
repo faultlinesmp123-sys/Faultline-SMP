@@ -58,8 +58,8 @@ import java.util.Set;
 import java.util.function.Supplier;
 
 /**
- * METEOR STRIKES: every hour (real time) a meteor falls somewhere in the Overworld, a few hundred blocks from a random
- * player. Everyone is told roughly where, a minute ahead. It lands in a smoking crater, guarded by Molten Husks, Meteor
+ * METEOR STRIKES: every 4 hours (real time) a meteor falls somewhere in the Overworld, 1000 blocks from a random
+ * player (1.2.11; was every hour, 250-600 blocks). Everyone is told roughly where, a minute ahead. It lands in a smoking crater, guarded by Molten Husks, Meteor
  * Crawlers and a Star Sentinel; the first player to break its glowing core (Gilded Blackstone) claims its loot. The
  * meteor rock has some Ancient Debris in it, for anyone. Unclaimed, it cools after 30 minutes.
  *
@@ -89,11 +89,52 @@ final class Meteor implements Listener, CommandExecutor {
     Meteor(FaultlineItems plugin) {
         this.plugin = plugin;
         for (World w : Bukkit.getWorlds()) for (Entity e : w.getEntities()) if (e.getScoreboardTags().contains(TAG)) e.remove();
-        nextAt = System.currentTimeMillis() + (long) (cfg("every-minutes", 60) * 60000);
+        loadNext();
         Bukkit.getScheduler().runTaskTimer(plugin, () -> guard(this::tick), 20L, 1L);
     }
 
     private double cfg(String path, double def) { return plugin.getConfig().getDouble("meteor." + path, def); }
+
+    // 1.2.11: every 4 hours, 1000 blocks out. A server config still holding the old defaults (60 minutes, 250-600 blocks)
+    // gets the new ones; any other number the owner set is kept.
+    long everyMs() {
+        double m = cfg("every-minutes", 240);
+        if (m == 60) m = 240;
+        return (long) (Math.max(1, m) * 60000);
+    }
+
+    double[] distances() {
+        double min = cfg("min-distance", 1000), max = cfg("max-distance", 1000);
+        if (min == 250 && max == 600) { min = 1000; max = 1000; }
+        return new double[]{min, Math.max(min, max)};
+    }
+
+    /** When there was no spot (or nobody to drop it near), the next try (10 min), instead of a whole interval later. */
+    long retryMs() { return (long) (Math.max(1, cfg("retry-minutes", 10)) * 60000); }
+
+    // BUG FIX (1.2.11): the timer started over at every restart (with daily restarts and a long interval, a meteor might
+    // never fall). The next strike's time is saved in meteor.yml.
+    private java.io.File stateFile() { return new java.io.File(plugin.getDataFolder(), "meteor.yml"); }
+
+    private void loadNext() {
+        long now = System.currentTimeMillis(), saved = 0;
+        try { saved = org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(stateFile()).getLong("next-at", 0); } catch (RuntimeException ignored) { }
+        if (saved > now) nextAt = Math.min(saved, now + everyMs()); // (the interval may have been shortened since)
+        else if (saved > 0) nextAt = now + retryMs();                  // it was due while the server was off
+        else nextAt = now + everyMs();
+        saveNext();
+    }
+
+    private void schedule(long inMs) { nextAt = System.currentTimeMillis() + inMs; saveNext(); }
+
+    private void saveNext() {
+        try {
+            org.bukkit.configuration.file.YamlConfiguration y = new org.bukkit.configuration.file.YamlConfiguration();
+            y.set("next-at", nextAt);
+            plugin.getDataFolder().mkdirs();
+            y.save(stateFile());
+        } catch (java.io.IOException | RuntimeException e) { plugin.getLogger().warning("[Meteor] couldn't save meteor.yml: " + e.getMessage()); }
+    }
 
     private long errAt;
     private void guard(Runnable r) {
@@ -110,9 +151,9 @@ final class Meteor implements Listener, CommandExecutor {
     private void tick() {
         if (strike == null) {
             if (!plugin.getConfig().getBoolean("meteor.enabled", true)) return;
-            if (System.currentTimeMillis() >= nextAt) {
-                nextAt = System.currentTimeMillis() + (long) (cfg("every-minutes", 60) * 60000);
-                start(null);
+            if (System.currentTimeMillis() >= nextAt && !finding) {
+                schedule(everyMs());
+                if (!start(null)) schedule(retryMs());
             }
             return;
         }
@@ -124,7 +165,7 @@ final class Meteor implements Listener, CommandExecutor {
 
     /** Picks a spot near a random player (or near `near`) and announces it. Returns false if no spot was found. */
     boolean start(Player near) {
-        if (strike != null) return false;
+        if (strike != null || finding) return false;
         List<Player> pool = new ArrayList<>();
         for (Player p : Bukkit.getOnlinePlayers()) {
             if (near != null && p != near) continue;
@@ -135,7 +176,8 @@ final class Meteor implements Listener, CommandExecutor {
         if (pool.isEmpty()) return false;
         Player p = pool.get(random.nextInt(pool.size()));
         World w = p.getWorld();
-        double min = near != null ? cfg("test-distance", 30) : cfg("min-distance", 250), max = near != null ? min + 10 : cfg("max-distance", 600);
+        double[] dist = distances();
+        double min = near != null ? cfg("test-distance", 30) : dist[0], max = near != null ? min + 10 : dist[1];
         for (int tries = 0; tries < 40; tries++) {
             double ang = random.nextDouble() * Math.PI * 2, d = min + random.nextDouble() * (max - min);
             int x = (int) Math.floor(p.getLocation().getX() + Math.cos(ang) * d), z = (int) Math.floor(p.getLocation().getZ() + Math.sin(ang) * d);
@@ -148,13 +190,50 @@ final class Meteor implements Listener, CommandExecutor {
             begin(w, x, top.getY(), z);
             return true;
         }
-        plugin.getLogger().info("[Meteor] no clear landing spot this time (everything near players is built up or water). Trying again in an hour.");
+        // BUG FIX (1.2.11): 1000 blocks out the land usually isn't generated yet, so every try failed and the meteor
+        // waited a whole interval. Now the land there is generated in the background (never freezing the server).
+        if (near == null && plugin.getConfig().getBoolean("meteor.generate-land", true)) {
+            finding = true;
+            findFar(w, p.getLocation().getX(), p.getLocation().getZ(), min, max, 8);
+            return true;
+        }
+        plugin.getLogger().info("[Meteor] no clear landing spot this time (everything near players is built up or water). Trying again in " + retryMs() / 60000 + " minutes.");
         return false;
+    }
+
+    private boolean finding; // a far spot is being generated / checked
+
+    /** Generates the chunk at a random spot min..max out (async), checks it, and tries again elsewhere (left more times). */
+    private void findFar(World w, double px, double pz, double min, double max, int left) {
+        double ang = random.nextDouble() * Math.PI * 2, d = min + random.nextDouble() * (max - min);
+        int x = (int) Math.floor(px + Math.cos(ang) * d), z = (int) Math.floor(pz + Math.sin(ang) * d);
+        Runnable next = () -> {
+            if (left > 0) findFar(w, px, pz, min, max, left - 1);
+            else {
+                finding = false;
+                schedule(retryMs());
+                plugin.getLogger().info("[Meteor] no clear landing spot " + (int) min + " blocks out (water or builds everywhere). Trying again in " + retryMs() / 60000 + " minutes.");
+            }
+        };
+        if (!w.getWorldBorder().isInside(new Location(w, x, 64, z))) { next.run(); return; }
+        java.util.concurrent.CompletableFuture<org.bukkit.Chunk> f;
+        try { f = w.getChunkAtAsync(x >> 4, z >> 4, true); }
+        catch (RuntimeException | LinkageError e) { finding = false; schedule(retryMs()); return; }
+        f.whenComplete((chunk, err) -> Bukkit.getScheduler().runTask(plugin, () -> guard(() -> {
+            if (!finding) return; // stopped meanwhile
+            if (strike != null) { finding = false; return; }
+            if (err != null || chunk == null) { next.run(); return; }
+            Block top = w.getHighestBlockAt(x, z, HeightMap.MOTION_BLOCKING_NO_LEAVES);
+            if (!natural(top.getType()) || top.isLiquid() || top.getY() < w.getSeaLevel() - 6 || base(w, x, top.getY(), z) != null) { next.run(); return; }
+            finding = false;
+            begin(w, x, top.getY(), z);
+        })));
     }
 
     /** An admin's meteor, exactly where they say (no base check: they chose the spot). Returns an error, or null if it's falling. */
     String startAt(World w, int x, int z) {
         if (strike != null) return "A meteor is already out (/meteor stop).";
+        finding = false; // an admin's spot wins over a search still running
         if (w.getEnvironment() != World.Environment.NORMAL) return "Meteors only fall in the Overworld.";
         if (!w.getWorldBorder().isInside(new Location(w, x, 64, z))) return "That's outside the world border.";
         if (!w.isChunkGenerated(x >> 4, z >> 4)) return "That land hasn't been generated yet.";
@@ -638,8 +717,9 @@ final class Meteor implements Listener, CommandExecutor {
         switch (sub) {
             case "now" -> {
                 if (strike != null) { sender.sendMessage(ChatColor.RED + "A meteor is already out (/meteor stop)."); return true; }
-                nextAt = System.currentTimeMillis() + (long) (cfg("every-minutes", 60) * 60000);
-                sender.sendMessage(start(null) ? ChatColor.GREEN + "A meteor is on its way." : ChatColor.RED + "No survival player in the Overworld with clear ground around them.");
+                if (finding) { sender.sendMessage(ChatColor.YELLOW + "A landing spot is already being found..."); return true; }
+                schedule(everyMs());
+                sender.sendMessage(start(null) ? ChatColor.GREEN + "A meteor is on its way" + (finding ? " (finding a spot " + (int) distances()[0] + " blocks out...)" : ".") : ChatColor.RED + "No survival player in the Overworld with clear ground around them.");
             }
             case "here" -> {
                 if (!(sender instanceof Player p)) { sender.sendMessage("Players only."); return true; }
@@ -670,6 +750,7 @@ final class Meteor implements Listener, CommandExecutor {
                 sender.sendMessage(why == null ? ChatColor.GREEN + "A random meteor could land here." : ChatColor.YELLOW + "Random meteors avoid this spot: " + why + ".");
             }
             case "stop" -> {
+                finding = false;
                 if (strike == null) { sender.sendMessage(ChatColor.GRAY + "No meteor is out."); return true; }
                 shutdown();
                 sender.sendMessage(ChatColor.GREEN + "The meteor is gone (an unclaimed core turned to obsidian).");
@@ -690,5 +771,6 @@ final class Meteor implements Listener, CommandExecutor {
     }
 
     Strike active() { return strike; }
-    void setNext(long at) { nextAt = at; }
+    void setNext(long at) { nextAt = at; saveNext(); }
+    boolean finding() { return finding; }
 }

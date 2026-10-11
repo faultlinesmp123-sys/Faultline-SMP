@@ -376,6 +376,7 @@ public final class FaultlineItems extends JavaPlugin {
         divingGear = new DivingGear(this);
         getServer().getPluginManager().registerEvents(divingGear, this);
         getServer().getPluginManager().registerEvents(new AccessoryStacks(this), this); // 1.2.12: accessories don't stack
+        getServer().getPluginManager().registerEvents(new MaceRules(this), this); // 1.2.14: no crafting maces, maces only in your inventory
         getCommand("givediving").setExecutor(new GiveItemCommand(this, "items.givediving",
                 "/givediving <helmet|flipper|gear|depths|abyssal> [amount] [player]", divingGear.catalog(), "gear"));
         jacobGear = new JacobGear(this);

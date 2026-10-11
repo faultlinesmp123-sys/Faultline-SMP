@@ -482,3 +482,13 @@ skeleton-knights: {enabled: true, check-seconds: 300, chance: 0.12, health: 32, 
 # ---------------- Gear (Gear.java): mining helmet headlamp ----------------
 gear: {headlamp-reach: 12, light-level: 13}
 
+
+# ---------------- Mace rules (1.2.14) ----------------
+# Maces can't be crafted (the recipe is removed), and a mace only lives in a player's own inventory: never in a chest,
+# barrel, shulker box, ender chest, hopper, dropper, dispenser, crafter, animal/minecart/boat chest, ship hold, bundle,
+# item frame, armor stand, decorated pot, shelf or allay. Workstations (anvil, grindstone, enchanting...) still work.
+# Creative players and the faultline.mace.bypass permission skip these rules.
+mace:
+  enabled: true
+  no-crafting: true
+  inventory-only: true

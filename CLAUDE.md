@@ -126,6 +126,16 @@ Notes:
   (place debris, push, mine farmed the "mine Ancient Debris" quests); `StatsManager.save` is synchronized and written
   through `stats.yml.tmp` + atomic move (the async autosave and the shutdown save could interleave). Discord: one webhook
   send at a time. Tested: `NerfTest`, `WildTest`, `EventsTest`, `MarketTest` (scratch harness `mtest`).
+- **Mace rules (Items 1.2.14, `MaceRules.java`, config `mace:`)**: maces can't be crafted (the `minecraft:mace` recipe is
+  removed at startup, the crafting table result is cleared, the Crafter is cancelled), and a mace only lives in a player's
+  own inventory: every non-workstation top inventory refuses it (place, shift-click, number keys, F swap, drag: chests,
+  ender chests, shulkers, hoppers, droppers/dispensers, crafters, animal/minecart/boat chests, ship holds...); bundles refuse
+  it anywhere (`*_INTO_BUNDLE` actions); hoppers/hopper minecarts can't pick one up or move one (`InventoryPickupItemEvent`,
+  `InventoryMoveItemEvent`); mobs can't pick one up; item frames, allays, armor stands, decorated pots, shelves refuse it.
+  Workstations (anvil, grindstone, enchanting, smithing...) still work. Maces already in bundles are taken out on join.
+  Creative/spectator and `faultline.mace.bypass` (default false, so ops in survival are tested too) skip it. In vanilla the
+  only source of a mace is crafting; none of our plugins give a real MACE (the Shipwright's Hammer is a STICK with the mace
+  model; the boss-form hotbar icon is admin-only). Tested (`MaceTest`).
 - Changing a plugin's default `config.yml` does NOT update the copy already on the server. Tell the owner
   which values to change in `plugins/<Plugin>/config.yml` on the VPS.
 - **Ships** (`FaultlineShips`; `ShipType.java` = the 5 layouts, `Ship.java` = one ship, `FaultlineShips.java` = items,

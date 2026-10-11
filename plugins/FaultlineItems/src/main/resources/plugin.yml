@@ -1,5 +1,5 @@
 name: FaultlineItems
-version: 1.2.13
+version: 1.2.14
 main: net.faultlinesmp.items.FaultlineItems
 api-version: '1.21'
 softdepend: [floodgate, Geyser-Spigot]
@@ -143,6 +143,9 @@ commands:
     usage: /givedisc <id|random> [player]
     permission: items.fgear
 permissions:
+  faultline.mace.bypass:
+    description: Skips the mace rules (crafting, keeping maces in containers/bundles)
+    default: false
   faultline.fly:
     description: May fly in survival (the flight guard leaves you alone)
     default: op

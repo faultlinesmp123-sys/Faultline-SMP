@@ -71,10 +71,11 @@ goodie-bag:
   exclude-farmed-mobs: true
 
 # Mythic Goodie Bag — boss-only drop (player kill required). Loot table
-# (one roll per bag): 0.1% Elytra, 10% Netherite Block, 20% 5 Diamond
+# (one roll per bag): 0.001% Elytra (elytra-chance), then 10% Netherite Block, 20% 5 Diamond
 # Blocks, 20% Totem, 20% 2 Ancient Debris, 15% 16 XP Bottles + 2 Golden
-# Apples, 14.9% 16 Ender Pearls.
+# Apples, 15% 16 Ender Pearls.
 mythic-goodie-bag:
+  elytra-chance: 0.00001     # 0.001% (1 in 100,000)
   warden-drop-chance: 0.10
   wither-drop-chance: 0.125
 

@@ -2371,17 +2371,24 @@ public final class FaultlineItems extends JavaPlugin {
 
         private record Loot(double chance, String label, List<ItemStack> items) {}
 
-        // ONE roll per bag, top to bottom. Chances add up to 100%.
+        // ONE roll per bag, top to bottom. Chances add up to 100%. The Elytra's chance comes from the config
+        // (mythic-goodie-bag.elytra-chance, 0.001% since 1.2.16; was 0.1%): roll() checks it first, the rest are below.
         private static final List<Loot> LOOT = List.of(
-                new Loot(0.001, "an ELYTRA", List.of(new ItemStack(Material.ELYTRA, 1))),
                 new Loot(0.10, "a Netherite Block", List.of(new ItemStack(Material.NETHERITE_BLOCK, 1))),
                 new Loot(0.20, "5 Diamond Blocks", List.of(new ItemStack(Material.DIAMOND_BLOCK, 5))),
                 new Loot(0.20, "a Totem of Undying", List.of(new ItemStack(Material.TOTEM_OF_UNDYING, 1))),
                 new Loot(0.20, "2 Ancient Debris", List.of(new ItemStack(Material.ANCIENT_DEBRIS, 2))),
                 new Loot(0.15, "16 Bottles o' Enchanting + 2 Golden Apples",
                         List.of(new ItemStack(Material.EXPERIENCE_BOTTLE, 16), new ItemStack(Material.GOLDEN_APPLE, 2))),
-                new Loot(0.149, "16 Ender Pearls", List.of(new ItemStack(Material.ENDER_PEARL, 16)))
+                new Loot(0.15, "16 Ender Pearls", List.of(new ItemStack(Material.ENDER_PEARL, 16)))
         );
+        private static final Loot ELYTRA = new Loot(0.00001, "an ELYTRA", List.of(new ItemStack(Material.ELYTRA, 1)));
+
+        /** 0.001% (a server config still holding the old 0.1% default gets the new one). */
+        double elytraChance() {
+            double v = plugin.getConfig().getDouble("mythic-goodie-bag.elytra-chance", 0.00001);
+            return v == 0.001 ? 0.00001 : v;
+        }
 
         public MythicGoodieBagListener(FaultlineItems plugin) {
             this.plugin = plugin;
@@ -2444,6 +2451,7 @@ public final class FaultlineItems extends JavaPlugin {
         }
 
         private Loot roll() {
+            if (random.nextDouble() < elytraChance()) return ELYTRA;
             double r = random.nextDouble();
             double cumulative = 0;
             for (Loot loot : LOOT) {

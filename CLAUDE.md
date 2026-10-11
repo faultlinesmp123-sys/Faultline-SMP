@@ -145,6 +145,8 @@ Notes:
   mace taken. Creative players lose them too; only `faultline.mace.bypass` keeps one. Every removal is logged ("[Maces]
   removed N"). The /itemsmenu Shipwright's Hammer icon is a STICK with the minecraft:mace model, and the boss-form
   Hammer Slam icon is HEAVY_CORE (a real MACE icon would be swept). Tested (`MaceTest`).
+- **Items 1.2.16**: the Mythic Goodie Bag's Elytra is 0.001% (`mythic-goodie-bag.elytra-chance` 0.00001, rolled first;
+  an old config's 0.001 reads as the new value); Ender Pearls take the 0.1% back (15%).
 - Changing a plugin's default `config.yml` does NOT update the copy already on the server. Tell the owner
   which values to change in `plugins/<Plugin>/config.yml` on the VPS.
 - **Ships** (`FaultlineShips`; `ShipType.java` = the 5 layouts, `Ship.java` = one ship, `FaultlineShips.java` = items,

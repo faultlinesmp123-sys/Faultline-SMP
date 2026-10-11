@@ -136,6 +136,15 @@ Notes:
   Creative/spectator and `faultline.mace.bypass` (default false, so ops in survival are tested too) skip it. In vanilla the
   only source of a mace is crafting; none of our plugins give a real MACE (the Shipwright's Hammer is a STICK with the mace
   model; the boss-form hotbar icon is admin-only). Tested (`MaceTest`).
+- **Maces removed (Items 1.2.15 / Bosses 1.5.2)**: `mace.mode: remove` (default; `restrict` = the 1.2.14 rules above,
+  `off`). `MaceRules` deletes every MACE: online players every 2 s + on join/open/held (inventory, armor, offhand, cursor,
+  2x2 grid / open workstation / open real storage, ender chest), deep inside bundles and shulker-box items (`strip`,
+  `stripInside`), block containers on chunk load (`BlockInventoryHolder`), entities on load (items, frames, equipment,
+  entity inventories: allays, villagers, horses, chest minecarts/boats), all loaded worlds once at startup, new item
+  spawns, mob/block drops, loot generation, fishing, dispensers, pickups. A swing/use between sweeps is cancelled and the
+  mace taken. Creative players lose them too; only `faultline.mace.bypass` keeps one. Every removal is logged ("[Maces]
+  removed N"). The /itemsmenu Shipwright's Hammer icon is a STICK with the minecraft:mace model, and the boss-form
+  Hammer Slam icon is HEAVY_CORE (a real MACE icon would be swept). Tested (`MaceTest`).
 - Changing a plugin's default `config.yml` does NOT update the copy already on the server. Tell the owner
   which values to change in `plugins/<Plugin>/config.yml` on the VPS.
 - **Ships** (`FaultlineShips`; `ShipType.java` = the 5 layouts, `Ship.java` = one ship, `FaultlineShips.java` = items,

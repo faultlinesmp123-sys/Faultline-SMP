@@ -7151,7 +7151,7 @@ public final class FaultlineItems extends JavaPlugin {
                     list.add(external(icon(Material.GLOBE_BANNER_PATTERN, null, ChatColor.LIGHT_PURPLE + "" + ChatColor.BOLD + sh[2] + ChatColor.GRAY + " (built)", "FaultlineShips"),
                             "ship give built_" + sh[0] + " {amount} {player}", "FaultlineShips"));
                 }
-                list.add(external(icon(Material.MACE, null, ChatColor.GOLD + "" + ChatColor.BOLD + "Shipwright's Hammer", "FaultlineShips"),
+                list.add(external(maceLook(icon(Material.STICK, null, ChatColor.GOLD + "" + ChatColor.BOLD + "Shipwright's Hammer", "FaultlineShips")),
                         "ship give hammer {amount} {player}", "FaultlineShips"));
                 list.add(external(icon(Material.PAPER, "ship_cannon", ChatColor.GRAY + "" + ChatColor.BOLD + "Ship Cannon", "FaultlineShips"),
                         "ship give cannon {amount} {player}", "FaultlineShips"));
@@ -7337,6 +7337,14 @@ public final class FaultlineItems extends JavaPlugin {
 
         private static MenuEntry external(ItemStack icon, String command, String pluginName) {
             return new MenuEntry(icon, null, command, pluginName);
+        }
+
+        /** A stick drawn with the vanilla mace model (a real MACE icon would be swept away: maces are removed, 1.2.15). */
+        private static ItemStack maceLook(ItemStack it) {
+            ItemMeta m = it.getItemMeta();
+            m.setItemModel(NamespacedKey.minecraft("mace"));
+            it.setItemMeta(m);
+            return it;
         }
 
         private static ItemStack icon(Material material, String model, String name, String from) {

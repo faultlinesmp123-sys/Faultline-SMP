@@ -37,7 +37,12 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * MACE RULES (config mace:). Maces can't be crafted, and a mace only ever lives in a player's own inventory: it can't go
+ * MACE RULES (config mace:). mace.mode:
+ *   remove   (default, 1.2.15) maces are gone from the server: every mace anywhere is deleted (see the REMOVE section)
+ *   restrict (1.2.14) the rules below: no crafting, and a mace only lives in a player's own inventory
+ *   off      nothing
+ *
+ * RESTRICT: maces can't be crafted, and a mace only ever lives in a player's own inventory: it can't go
  * into a chest, barrel, shulker box, ender chest, hopper, dropper, dispenser, crafter, a donkey/llama/mule's chest, a
  * chest minecart or boat, a ship's hold or any other plugin storage, a bundle, an item frame, an armor stand, a
  * decorated pot, a shelf, or an allay. Hoppers and hopper minecarts can't pick a dropped mace up or move one along, and
@@ -65,16 +70,39 @@ final class MaceRules implements Listener {
     MaceRules(FaultlineItems plugin) {
         this.plugin = plugin;
         if (on("no-crafting")) removeRecipe();
+        // the sweep: every online player every 2 seconds; the worlds already loaded once, right after startup
+        Bukkit.getScheduler().runTaskTimer(plugin, () -> guard(this::sweepPlayers), 40L, 40L);
+        Bukkit.getScheduler().runTaskLater(plugin, () -> guard(this::sweepLoaded), 60L);
     }
 
+    private long errAt;
+    private void guard(Runnable r) {
+        try { r.run(); } catch (RuntimeException | LinkageError e) {
+            if (System.currentTimeMillis() - errAt > 60000) { errAt = System.currentTimeMillis(); plugin.getLogger().log(java.util.logging.Level.WARNING, "[Maces] sweep error", e); }
+        }
+    }
+
+    String mode() {
+        if (!plugin.getConfig().getBoolean("mace.enabled", true)) return "off";
+        String m = plugin.getConfig().getString("mace.mode", "remove");
+        return m == null ? "remove" : m.toLowerCase(java.util.Locale.ROOT);
+    }
+
+    boolean removing() { return mode().equals("remove"); }
+
     private boolean on(String what) {
-        return plugin.getConfig().getBoolean("mace.enabled", true) && plugin.getConfig().getBoolean("mace." + what, true);
+        String m = mode();
+        if (m.equals("off")) return false;
+        if (m.equals("remove")) return true; // removal includes every restriction (belt and braces between sweeps)
+        return plugin.getConfig().getBoolean("mace." + what, true);
     }
 
     static boolean mace(ItemStack it) { return it != null && it.getType() == Material.MACE; }
 
-    private static boolean bypass(Entity e) {
-        return e instanceof Player p && (p.getGameMode() == GameMode.CREATIVE || p.getGameMode() == GameMode.SPECTATOR || p.hasPermission("faultline.mace.bypass"));
+    private boolean bypass(Entity e) {
+        if (!(e instanceof Player p)) return false;
+        if (p.hasPermission("faultline.mace.bypass")) return true;
+        return !removing() && (p.getGameMode() == GameMode.CREATIVE || p.getGameMode() == GameMode.SPECTATOR); // removal: creative too
     }
 
     private static void no(Player p, String what) {
@@ -206,12 +234,262 @@ final class MaceRules implements Listener {
         }
     }
 
+
+    // ===================================================================== REMOVE (mace.mode: remove)
+    //
+    // Every mace is deleted wherever it turns up: players' inventories (armor, offhand, the cursor, the 2x2 grid, an open
+    // workstation), ender chests, inside bundles and shulker boxes (nested), every block container (chests, barrels,
+    // shulkers, hoppers, droppers, dispensers, crafters, pots, shelves...) as its chunk loads, entities as they load
+    // (items on the ground, item frames, armor stands, mobs' hands, allays, villagers, donkey/llama/mule chests, chest
+    // minecarts and boats), new item drops, mob and block drops, loot chests as they fill, fishing. A mace used in the
+    // second between sweeps does nothing (the hit is cancelled and the mace taken). Each removal is logged.
+
+    private static final String TAG = ChatColor.GOLD + "[Faultline] " + ChatColor.GRAY;
+
+    /** Deletes maces in an array of items (deep: bundles, shulker boxes). Returns how many maces went. */
+    static int strip(ItemStack[] items) {
+        int n = 0;
+        for (int i = 0; i < items.length; i++) {
+            ItemStack it = items[i];
+            if (it == null) continue;
+            if (mace(it)) { n += it.getAmount(); items[i] = null; continue; }
+            n += stripInside(it);
+        }
+        return n;
+    }
+
+    /** Maces inside a bundle or a shulker box item (the item itself stays). */
+    static int stripInside(ItemStack it) {
+        if (it == null || !it.hasItemMeta()) return 0;
+        int n = 0;
+        var meta = it.getItemMeta();
+        if (meta instanceof BundleMeta bm && bm.hasItems()) {
+            List<ItemStack> keep = new ArrayList<>();
+            boolean changed = false;
+            for (ItemStack in : bm.getItems()) {
+                if (mace(in)) { n += in.getAmount(); changed = true; continue; }
+                int inner = stripInside(in);
+                if (inner > 0) { n += inner; changed = true; }
+                keep.add(in);
+            }
+            if (changed) { bm.setItems(keep); it.setItemMeta(bm); }
+        } else if (meta instanceof org.bukkit.inventory.meta.BlockStateMeta bsm && bsm.hasBlockState()
+                && bsm.getBlockState() instanceof org.bukkit.block.Container box) {
+            ItemStack[] c = box.getInventory().getContents();
+            int inner = strip(c);
+            if (inner > 0) {
+                box.getInventory().setContents(c);
+                bsm.setBlockState(box);
+                it.setItemMeta(bsm);
+                n += inner;
+            }
+        }
+        return n;
+    }
+
+    /** Deletes maces in an inventory (deep). */
+    static int strip(Inventory inv) {
+        if (inv == null) return 0;
+        ItemStack[] c = inv.getContents();
+        int n = strip(c);
+        if (n > 0) inv.setContents(c);
+        return n;
+    }
+
+    private void report(String who, String where, int n) {
+        if (n <= 0) return;
+        plugin.getLogger().info("[Maces] removed " + n + " mace" + (n == 1 ? "" : "s") + " (" + who + ", " + where + ")");
+    }
+
+    /** One player: inventory, cursor, open grid/workstation or real storage, ender chest. */
+    int sweep(Player p) {
+        if (!removing() || p.hasPermission("faultline.mace.bypass")) return 0;
+        int n = strip(p.getInventory());
+        ItemStack cur = p.getItemOnCursor();
+        if (mace(cur)) { n += cur.getAmount(); p.setItemOnCursor(null); }
+        else if (stripInside(cur) > 0) { n++; p.setItemOnCursor(cur); }
+        Inventory top = p.getOpenInventory() == null ? null : p.getOpenInventory().getTopInventory();
+        if (top != null && top != p.getInventory() && (WORKSTATIONS.contains(top.getType()) || AccessoryStacks.realStorage(top))) n += strip(top);
+        n += strip(p.getEnderChest());
+        if (n > 0) {
+            p.sendMessage(TAG + "Maces are disabled on Faultline SMP. " + ChatColor.RED + n + " mace" + (n == 1 ? " was" : "s were") + " removed" + ChatColor.GRAY + ".");
+            report(p.getName(), "inventory/ender chest", n);
+        }
+        return n;
+    }
+
+    private void sweepPlayers() {
+        if (!removing()) return;
+        for (Player p : Bukkit.getOnlinePlayers()) sweep(p);
+    }
+
+    private void sweepLoaded() {
+        if (!removing()) return;
+        int n = 0;
+        for (org.bukkit.World w : Bukkit.getWorlds()) {
+            for (org.bukkit.Chunk c : w.getLoadedChunks()) n += sweepChunk(c, false);
+            for (Entity e : w.getEntities()) n += sweepEntity(e);
+        }
+        report("startup", "loaded worlds", n);
+    }
+
+    /** Every block container in the chunk (chests, barrels, shulkers, hoppers, pots, shelves, crafters...). */
+    int sweepChunk(org.bukkit.Chunk c, boolean log) {
+        int n = 0;
+        org.bukkit.block.BlockState[] tiles;
+        try { tiles = c.getTileEntities(false); } catch (RuntimeException e) { return 0; }
+        for (org.bukkit.block.BlockState t : tiles) {
+            if (!(t instanceof org.bukkit.inventory.BlockInventoryHolder h)) continue;
+            int k = strip(h.getInventory());
+            if (k > 0 && log) report("container", t.getType().name().toLowerCase() + " at " + t.getWorld().getName() + " " + t.getX() + " " + t.getY() + " " + t.getZ(), k);
+            n += k;
+        }
+        return n;
+    }
+
+    /** One entity: an item on the ground, a frame, anything with equipment or an inventory. */
+    int sweepEntity(Entity e) {
+        int n = 0;
+        if (e instanceof org.bukkit.entity.Item item) {
+            ItemStack it = item.getItemStack();
+            if (mace(it)) { n += it.getAmount(); item.remove(); return n; }
+            int k = stripInside(it);
+            if (k > 0) { item.setItemStack(it); n += k; }
+            return n;
+        }
+        if (e instanceof ItemFrame f) {
+            ItemStack it = f.getItem();
+            if (mace(it)) { n += it.getAmount(); f.setItem(null); }
+            else { int k = stripInside(it); if (k > 0) { f.setItem(it); n += k; } }
+        }
+        if (e instanceof org.bukkit.entity.LivingEntity le && !(e instanceof Player) && le.getEquipment() != null) {
+            var eq = le.getEquipment();
+            for (EquipmentSlot slot : EquipmentSlot.values()) {
+                try {
+                    ItemStack it = eq.getItem(slot);
+                    if (mace(it)) { n += it.getAmount(); eq.setItem(slot, null); }
+                } catch (RuntimeException ignored) { } // a slot this entity doesn't have
+            }
+        }
+        if (e instanceof org.bukkit.inventory.InventoryHolder h && !(e instanceof Player)) {
+            try { n += strip(h.getInventory()); } catch (RuntimeException ignored) { }
+        }
+        return n;
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onChunkLoad(org.bukkit.event.world.ChunkLoadEvent e) {
+        if (!removing()) return;
+        org.bukkit.Chunk c = e.getChunk();
+        Bukkit.getScheduler().runTask(plugin, () -> guard(() -> { if (c.isLoaded()) sweepChunk(c, true); }));
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onEntitiesLoad(org.bukkit.event.world.EntitiesLoadEvent e) {
+        if (!removing()) return;
+        List<Entity> list = new ArrayList<>(e.getEntities());
+        Bukkit.getScheduler().runTask(plugin, () -> guard(() -> {
+            int n = 0;
+            for (Entity en : list) if (en.isValid()) n += sweepEntity(en);
+            report("entities", e.getChunk().getWorld().getName() + " chunk " + e.getChunk().getX() + "," + e.getChunk().getZ(), n);
+        }));
+    }
+
+    /** No new mace items in the world (dropped, spawned, fished, spat out by anything). */
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onItemSpawn(org.bukkit.event.entity.ItemSpawnEvent e) {
+        if (!removing()) return;
+        ItemStack it = e.getEntity().getItemStack();
+        if (mace(it)) { e.setCancelled(true); report("item", "spawned in the world", it.getAmount()); return; }
+        if (stripInside(it) > 0) e.getEntity().setItemStack(it);
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onSpawn(org.bukkit.event.entity.CreatureSpawnEvent e) {
+        if (!removing()) return;
+        Entity en = e.getEntity();
+        Bukkit.getScheduler().runTask(plugin, () -> { if (en.isValid()) report("mob", en.getType().name().toLowerCase(), sweepEntity(en)); });
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onDeathDrops(org.bukkit.event.entity.EntityDeathEvent e) {
+        if (!removing()) return;
+        int n = 0;
+        for (java.util.Iterator<ItemStack> i = e.getDrops().iterator(); i.hasNext(); ) {
+            ItemStack it = i.next();
+            if (mace(it)) { n += it.getAmount(); i.remove(); } else n += stripInside(it);
+        }
+        report(e.getEntity().getName(), "death drops", n);
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onBlockDrops(org.bukkit.event.block.BlockDropItemEvent e) {
+        if (!removing()) return;
+        e.getItems().removeIf(item -> mace(item.getItemStack()));
+        for (org.bukkit.entity.Item item : e.getItems()) { ItemStack it = item.getItemStack(); if (stripInside(it) > 0) item.setItemStack(it); }
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onLoot(org.bukkit.event.world.LootGenerateEvent e) {
+        if (!removing()) return;
+        List<ItemStack> loot = new ArrayList<>(e.getLoot());
+        int before = loot.size();
+        loot.removeIf(MaceRules::mace);
+        if (loot.size() != before) e.setLoot(loot);
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onFish(org.bukkit.event.player.PlayerFishEvent e) {
+        if (removing() && e.getCaught() instanceof org.bukkit.entity.Item item && mace(item.getItemStack())) item.remove();
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onDispense(org.bukkit.event.block.BlockDispenseEvent e) {
+        if (removing() && mace(e.getItem())) {
+            e.setCancelled(true);
+            if (e.getBlock().getState(false) instanceof org.bukkit.inventory.BlockInventoryHolder h) strip(h.getInventory());
+        }
+    }
+
+    /** A player picking a mace up: it vanishes instead (and anything inside a picked-up bundle/shulker is cleaned). */
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onPlayerPickup(EntityPickupItemEvent e) {
+        if (!removing() || !(e.getEntity() instanceof Player p) || p.hasPermission("faultline.mace.bypass")) return;
+        ItemStack it = e.getItem().getItemStack();
+        if (mace(it)) { e.setCancelled(true); e.getItem().remove(); report(p.getName(), "picked up", it.getAmount()); return; }
+        if (stripInside(it) > 0) e.getItem().setItemStack(it);
+    }
+
+    /** Used between two sweeps: the swing does nothing and the mace is taken right away. */
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
+    public void onSmash(org.bukkit.event.entity.EntityDamageByEntityEvent e) {
+        if (!removing() || !(e.getDamager() instanceof Player p) || p.hasPermission("faultline.mace.bypass")) return;
+        if (mace(p.getInventory().getItemInMainHand())) { e.setCancelled(true); sweep(p); }
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onUse(PlayerInteractEvent e) {
+        if (removing() && mace(e.getItem()) && !e.getPlayer().hasPermission("faultline.mace.bypass")) { e.setCancelled(true); sweep(e.getPlayer()); }
+    }
+
+    @EventHandler
+    public void onHeld(org.bukkit.event.player.PlayerItemHeldEvent e) {
+        if (removing() && mace(e.getPlayer().getInventory().getItem(e.getNewSlot()))) sweep(e.getPlayer());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onOpenSweep(org.bukkit.event.inventory.InventoryOpenEvent e) {
+        if (!removing() || !(e.getPlayer() instanceof Player p)) return;
+        Bukkit.getScheduler().runTask(plugin, () -> { if (p.isOnline()) sweep(p); });
+    }
+
     // ===================================================================== maces already hidden in bundles
 
     @EventHandler
     public void onJoin(PlayerJoinEvent e) {
-        if (!on("inventory-only")) return;
         Player p = e.getPlayer();
+        if (removing()) { Bukkit.getScheduler().runTaskLater(plugin, () -> { if (p.isOnline()) sweep(p); }, 20L); return; }
+        if (!on("inventory-only")) return;
         Bukkit.getScheduler().runTaskLater(plugin, () -> { if (p.isOnline()) unbundle(p); }, 40L);
     }
 

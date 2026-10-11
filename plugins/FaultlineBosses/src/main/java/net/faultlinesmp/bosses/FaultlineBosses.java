@@ -10927,7 +10927,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                     m.add(new MoveSlot(4, "Arrow Rain", Material.TIPPED_ARROW));
                 }
                 case 2, 3 -> {
-                    m.add(new MoveSlot(10, "Hammer Slam", Material.MACE));
+                    m.add(new MoveSlot(10, "Hammer Slam", Material.HEAVY_CORE)); // not MACE: FaultlineItems removes maces
                     m.add(new MoveSlot(11, "Pearl Strike", Material.ENDER_PEARL));
                     m.add(new MoveSlot(12, "Whirlwind", Material.WIND_CHARGE));
                     m.add(new MoveSlot(13, "Hammer Throw", Material.NETHERITE_AXE));

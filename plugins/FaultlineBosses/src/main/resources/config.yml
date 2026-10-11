@@ -73,7 +73,10 @@ mortimer:                     # Frostbeard the Snow Wizard (the section keeps it
   hail-damage: 3              # Hailstorm pellets (blockable by looking up)
   nova-damage: 9              # Frost Nova ring (jump over it)
   nova-radius: 14
-  spawn-chance: 0.005
+  spawn-chance: 0.0001        # 0.01% every 30 s for each player in a snowy biome (an old 0.005 reads as this)
+  spawn-distance-min: 20      # he appears this far from the player...
+  spawn-distance-max: 40      # ...up to this far, on open snowy ground
+  require-torch: false        # true = the old way (he only snuffs a lit torch near the player)
   torch-radius: 16
   cooldown-minutes: 30        # after he's beaten or leaves
   health: 700
@@ -615,7 +618,7 @@ wild:
       staff-chance: 0.25
       items: ["ECHO_SHARD:2-4", "TOTEM_OF_UNDYING:1:50", "DIAMOND:6-10"]
   frostwyrm:
-    natural-chance-per-minute: 0.015
+    natural-chance-per-minute: 0.00001   # 0.001% a minute, any snowy biome, it flies in from 20 blocks away (old 0.015 reads as this)
     health: 900                     # a mini boss (like the Stone Golem)
     health-per-extra-fighter: 0.25
     scale: 1.4

@@ -2282,23 +2282,52 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
 
     private boolean inTheSnow(Location loc) {
         String biome = loc.getBlock().getBiome().getKey().getKey();
-        if (biome.contains("desert") || biome.contains("badlands")) return false;
-        return loc.getBlock().getTemperature() < 0.15 || snowyDay();
+        if (biome.contains("desert") || biome.contains("badlands") || biome.contains("ocean")) return false;
+        if (biome.contains("snow") || biome.contains("frozen") || biome.contains("ice") || biome.equals("grove") || biome.contains("jagged")) return true;
+        try { return loc.getBlock().getTemperature() < 0.15 || snowyDay(); } catch (RuntimeException e) { return snowyDay(); }
     }
 
-    /** Every 30 seconds: each player in the snow rolls; on a hit he snuffs a torch near them. */
+    /**
+     * Every 30 seconds: each player in a snowy biome rolls mortimer.spawn-chance (0.01% since 1.5.3; was 0.5% and needed
+     * a lit torch nearby). On a hit he appears on the snow mortimer.spawn-distance-min..max (20-40) blocks away from them.
+     * A server config still holding the old 0.005 default reads as the new one.
+     */
     private void mortimerSpawnTick() {
         if (mortimer != null || System.currentTimeMillis() < mortimerCooldownUntil) return;
         if (!getConfig().getBoolean("mortimer.enabled", true)) return;
+        double chance = mcfg("spawn-chance", 0.0001);
+        if (chance == 0.005) chance = 0.0001;
         for (Player p : Bukkit.getOnlinePlayers()) {
             if (!survival(p) || p.getWorld().getEnvironment() != World.Environment.NORMAL) continue;
             if (p.getWorld().getDifficulty() == Difficulty.PEACEFUL || !inTheSnow(p.getLocation())) continue;
-            if (random.nextDouble() >= mcfg("spawn-chance", 0.005)) continue;
-            Block torch = findTorch(p.getLocation(), (int) mcfg("torch-radius", 16));
-            if (torch == null) continue; // he only comes where someone has lit a torch
-            summonMortimer(torch, p);
+            if (random.nextDouble() >= chance) continue;
+            Block spot = getConfig().getBoolean("mortimer.require-torch", false)
+                    ? findTorch(p.getLocation(), (int) mcfg("torch-radius", 16)) : snowSpotAway(p);
+            if (spot == null) continue;
+            p.sendMessage(ChatColor.AQUA + "" + ChatColor.ITALIC + "The wind turns bitter... something is coming through the snow.");
+            summonMortimer(spot, p);
             return;
         }
+    }
+
+    private static boolean roomy(Block b) { Material m = b.getType(); return m.isAir() || !m.isSolid() && !b.isLiquid(); }
+
+    /** Open snowy ground mortimer.spawn-distance-min..max blocks from the player (loaded chunks only), or null. */
+    private Block snowSpotAway(Player p) {
+        double min = mcfg("spawn-distance-min", 20), max = Math.max(min, mcfg("spawn-distance-max", 40));
+        World w = p.getWorld();
+        for (int tries = 0; tries < 12; tries++) {
+            double ang = random.nextDouble() * Math.PI * 2, d = min + random.nextDouble() * (max - min);
+            int x = (int) Math.floor(p.getLocation().getX() + Math.cos(ang) * d), z = (int) Math.floor(p.getLocation().getZ() + Math.sin(ang) * d);
+            if (!w.isChunkLoaded(x >> 4, z >> 4)) continue;
+            Block top = w.getHighestBlockAt(x, z);
+            if (top.isLiquid() || org.bukkit.Tag.LEAVES.isTagged(top.getType()) || top.getType() == Material.ICE && top.getRelative(0, -1, 0).isLiquid()) continue;
+            Block at = top.getRelative(0, 1, 0);
+            if (!roomy(at) || !roomy(at.getRelative(0, 1, 0)) || !roomy(at.getRelative(0, 2, 0))) continue;
+            if (!inTheSnow(at.getLocation())) continue;
+            return at;
+        }
+        return null;
     }
 
     private Block findTorch(Location center, int r) {
@@ -2321,14 +2350,15 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         at.getWorld().spawnParticle(Particle.SNOWFLAKE, at, 80, 0.8, 1.2, 0.8, 0.05);
         at.getWorld().playSound(at, org.bukkit.Sound.BLOCK_FIRE_EXTINGUISH, 1.5f, 0.6f);
         at.getWorld().playSound(at, org.bukkit.Sound.BLOCK_BELL_USE, 2f, 0.7f);
+        boolean snuffed = torch.getType().isAir() && at.getWorld().getNearbyEntities(at, 1, 1, 1, e -> e instanceof org.bukkit.entity.Item).size() > 0;
         mortimer = new Mortimer(at.clone().add(0, 3, 0), near);
         if (!mortimer.hitbox.isValid()) { // e.g. WorldGuard blocks mob spawning here
             mortimer.removeEverything();
             mortimer = null;
             return;
         }
-        Bukkit.broadcastMessage(ChatColor.AQUA + "" + ChatColor.BOLD + "Frostbeard" + ChatColor.WHITE + " has snuffed out a torch near "
-                + near.getName() + "... and the air turns bitter cold!");
+        Bukkit.broadcastMessage(ChatColor.AQUA + "" + ChatColor.BOLD + "Frostbeard" + ChatColor.WHITE
+                + (snuffed ? " has snuffed out a torch near " : " comes out of the snow near ") + near.getName() + "... and the air turns bitter cold!");
         for (Player p : at.getWorld().getPlayers()) {
             if (p.getLocation().distanceSquared(at) > 96 * 96) continue;
             p.showTitle(Title.title(legacy(ChatColor.AQUA + "" + ChatColor.BOLD + "FROSTBEARD"),

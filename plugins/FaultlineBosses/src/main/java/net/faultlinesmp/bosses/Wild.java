@@ -187,6 +187,14 @@ final class Wild implements Listener {
     static final Set<Biome> PEAKS = new HashSet<>(List.of(Biome.FROZEN_PEAKS, Biome.JAGGED_PEAKS, Biome.SNOWY_SLOPES, Biome.GROVE,
             Biome.ICE_SPIKES, Biome.SNOWY_PLAINS, Biome.STONY_PEAKS, Biome.FROZEN_OCEAN, Biome.SNOWY_TAIGA));
 
+    /** A snowy biome: the peaks/slopes/snowy list, or anywhere cold enough to snow (not a frozen ocean). */
+    static boolean snowy(Location l) {
+        Biome b = l.getBlock().getBiome();
+        if (b == Biome.FROZEN_OCEAN || b == Biome.DEEP_FROZEN_OCEAN) return false;
+        if (PEAKS.contains(b)) return true;
+        try { return l.getBlock().getTemperature() < 0.15; } catch (RuntimeException e) { return false; }
+    }
+
     /** Null if it can be summoned here, else why not. */
     String whyNot(String kind, Player p) {
         Location l = p.getLocation();
@@ -513,13 +521,15 @@ final class Wild implements Listener {
             String kind = null;
             if (b == Biome.DEEP_DARK) kind = "lich";
             else if (SANDS.contains(b) && b != Biome.BEACH && l.getBlockY() >= l.getWorld().getHighestBlockYAt(l) - 2 && isDay(p.getWorld())) kind = "sandworm";
-            else if (PEAKS.contains(b) && b != Biome.FROZEN_OCEAN && l.getBlockY() >= l.getWorld().getHighestBlockYAt(l) - 2) kind = "frostwyrm";
+            else if (snowy(l) && !p.isInWater() && l.getBlockY() >= l.getWorld().getHighestBlockYAt(l) - 2) kind = "frostwyrm"; // any snowy biome (1.5.3)
             else if (OCEANS.contains(b) && b.getKey().getKey().startsWith("deep_") && (p.isInWater() || p.isInsideVehicle() || ShipLink.of(p) != null)) kind = "leviathan";
             if (kind == null || live(kind) != null) continue;
             if (System.currentTimeMillis() < cooldownUntil.getOrDefault(kind, 0L)) continue;
-            double def = switch (kind) { case "lich" -> 0.04; case "leviathan" -> 0.02; default -> 0.015; };
-            if (random.nextDouble() >= c(kind + ".natural-chance-per-minute", def)) continue;
-            if (whyNot(kind, p) != null) continue;
+            double def = switch (kind) { case "lich" -> 0.04; case "leviathan" -> 0.02; case "frostwyrm" -> 0.00001; default -> 0.015; };
+            double chance = c(kind + ".natural-chance-per-minute", def);
+            if (kind.equals("frostwyrm") && chance == 0.015) chance = 0.00001; // 0.001% since 1.5.3 (an old config's 0.015 reads as that)
+            if (random.nextDouble() >= chance) continue;
+            if (!kind.equals("frostwyrm") && whyNot(kind, p) != null) continue; // the wyrm: any snowy biome, not just the peaks
             p.sendMessage(COLOR.get(kind) + "" + ChatColor.ITALIC + switch (kind) {
                 case "lich" -> "The sculk falls silent. Something that should be dead has found you...";
                 case "sandworm" -> "The sand under your feet starts to tremble...";

@@ -147,6 +147,12 @@ Notes:
   Hammer Slam icon is HEAVY_CORE (a real MACE icon would be swept). Tested (`MaceTest`).
 - **Items 1.2.16**: the Mythic Goodie Bag's Elytra is 0.001% (`mythic-goodie-bag.elytra-chance` 0.00001, rolled first;
   an old config's 0.001 reads as the new value); Ender Pearls take the 0.1% back (15%).
+- **Bosses 1.5.3 (snow spawns)**: FROSTBEARD spawns in any snowy biome at `mortimer.spawn-chance` 0.0001 (0.01%) per
+  player every 30 s (old 0.005 reads as that), no torch needed: `snowSpotAway` = open snowy ground 20-40 blocks away
+  (`spawn-distance-min/max`; `require-torch: true` = the old way). `inTheSnow` also matches snowy/frozen/ice/grove/jagged
+  biome names. The FROST WYRM's natural spawn is 0.00001 (0.001%) a minute (old 0.015 reads as that) in any snowy biome
+  (`Wild.snowy`: PEAKS or temperature < 0.15, not frozen oceans), flying in ~20 blocks away. Tested (`FrostSpawnTest`;
+  the bosses harness disables Frostbeard's random spawn unless `-Dfrost.spawns=true`).
 - Changing a plugin's default `config.yml` does NOT update the copy already on the server. Tell the owner
   which values to change in `plugins/<Plugin>/config.yml` on the VPS.
 - **Ships** (`FaultlineShips`; `ShipType.java` = the 5 layouts, `Ship.java` = one ship, `FaultlineShips.java` = items,

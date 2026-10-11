@@ -246,7 +246,7 @@ entries:
      drops: ["Rotbeard's Grappling Hook|10%", "Winning the raid: Goodie & Mythic Bags|100%"]}
 
   - {chapter: bosses, id: mortimer_freeze, name: "Frostbeard", icon: mortimer_freeze, detect-tag: faultline_mortimer,
-     where: "In snow biomes, or anywhere snowy on a Snowy Day. He snuffs out a torch near a player and appears from it. 700 health, and very tanky.",
+     where: "Very rarely (0.01% every 30 seconds) in snowy biomes, or anywhere snowy on a Snowy Day: he comes out of the snow 20-40 blocks from a player. 700 health, and very tanky.",
      does: "A frost wizard with three forms. The Wizard summons Icicle Runners, drops his Winter Whale, throws ice orbs (hit the pink orb to send it back into him!), calls a Hailstorm, and sometimes lands to taunt you. The Snow Brute rolls as a giant snowball, ground-pounds ice spikes, sends out a Frost Nova (jump over it), and turns into a fridge that lobs ice cubes. The Blizzard fires rings of ice shards, rains icicles and hail, and sweeps a freezing beam. Maces are deflected, and fire does nothing to him.",
      drops: ["3 Mythic Goodie Bags|100%", "8-14 Diamonds|100%", "16 Blue Ice|100%", "Frost Flare|25%", "500 XP|100%"]}
 
@@ -790,7 +790,7 @@ entries:
      does: "An undead sorcerer-king who floats and blinks around. Soul Bolts (homing skulls), Raise the Fallen (Revenants wearing YOUR faces), Death Ring (jump the soul fire), Blink Strike, Grasp of the Grave (bone hands burst out of the floor and hold you: leave the purple rings). At 60% he hides his life in three Phylacteries (end crystals): he can't be hurt until they're broken. + Darkness and Bone Spears (lines of bone spikes run out at you). From 30%: Life Drain (beams from everyone near him heal him). Music: 13.",
      drops: ["4-6 Mythic Goodie Bags|100%", "3 Goodie Bags|100%", "2-4 Echo Shards|100%", "Totem of Undying|50%", "Staff of the Lich|25%", "2,500 XP|100%"]}
   - {chapter: bosses, id: frost_wyrm, name: "The Frost Wyrm", icon: frost_wyrm, detect-tag: faultline_frost_wyrm,
-     where: "A mini boss of the frozen peaks, snowy slopes, groves and ice spikes. Sound a Frozen Horn up there. 900 health (+25% per extra fighter).",
+     where: "A mini boss of the frozen peaks, snowy slopes, groves and ice spikes. Sound a Frozen Horn up there, or (0.001% a minute) it finds you in any snowy biome. 900 health (+25% per extra fighter).",
      does: "An ice dragon that circles high above (bring a bow). Frost Breath (it hovers and freezes a cone), Icicle Rain, Dive Bomb (a swoop down a red line), Glacial Roar (it lands and ice spikes burst out around it), Ice Shard Volley (fans of ice from its mouth). From 60%: Wyrmguard Archers and Wing Gust (three wingbeats blast you away). From 30%: a blizzard around it all fight. Music: Relic.",
      drops: ["4-6 Mythic Goodie Bags|100%", "3 Goodie Bags|100%", "8-16 Diamonds|100%", "Elytra|10%", "Glacial Fang|25%", "2,500 XP|100%"]}
   - {chapter: bosses, id: stone_golem, name: "The Stone Golem", icon: stone_golem, detect-tag: faultline_stone_golem,

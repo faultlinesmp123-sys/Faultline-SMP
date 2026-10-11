@@ -376,7 +376,17 @@ public final class FaultlineItems extends JavaPlugin {
         divingGear = new DivingGear(this);
         getServer().getPluginManager().registerEvents(divingGear, this);
         getServer().getPluginManager().registerEvents(new AccessoryStacks(this), this); // 1.2.12: accessories don't stack
-        getServer().getPluginManager().registerEvents(new MaceRules(this), this); // 1.2.14: no crafting maces, maces only in your inventory
+        getServer().getPluginManager().registerEvents(new MaceRules(this), this);
+        enchants = new Enchants(this);
+        getServer().getPluginManager().registerEvents(enchants, this); // 1.2.17: boss enchant books
+        getCommand("fenchant").setExecutor(enchants);
+        getCommand("fenchant").setTabCompleter(enchants);
+        race = new Race(this);
+        getServer().getPluginManager().registerEvents(race, this); // 1.2.17: elytra races
+        getCommand("race").setExecutor(race);
+        getCommand("race").setTabCompleter(race);
+        spawnProtection = new SpawnProtection(this);
+        getServer().getPluginManager().registerEvents(spawnProtection, this); // 1.2.17: no spawn killing // 1.2.14: no crafting maces, maces only in your inventory
         getCommand("givediving").setExecutor(new GiveItemCommand(this, "items.givediving",
                 "/givediving <helmet|flipper|gear|depths|abyssal> [amount] [player]", divingGear.catalog(), "gear"));
         jacobGear = new JacobGear(this);
@@ -563,6 +573,8 @@ public final class FaultlineItems extends JavaPlugin {
         if (weather != null) weather.shutdown();
         if (creatures != null) creatures.shutdown();
         if (gear != null) gear.shutdown();
+        if (race != null) try { race.shutdown(); } catch (RuntimeException ignored) { }
+        if (enchants != null) for (Player online : Bukkit.getOnlinePlayers()) try { enchants.vitality(online, 0); } catch (RuntimeException ignored) { }
         if (caravan != null) caravan.shutdown();
         if (accessoryManager != null) {
             accessoryManager.save();
@@ -814,6 +826,9 @@ public final class FaultlineItems extends JavaPlugin {
     Gear getGear() { return gear; }
 
     DivingGear getDivingGear() { return divingGear; }
+    SpawnProtection spawnProtection;
+    Enchants enchants;
+    Race race;
 
     private KrakenGear krakenGear;
     private JacobGear jacobGear;
@@ -4858,8 +4873,19 @@ public final class FaultlineItems extends JavaPlugin {
             return entity != null && entity.getScoreboardTags().contains(TAG);
         }
 
+        /**
+         * 1.2.17 nerf: a server config still holding an old default gets the new one (claws 9 -> 5, health 40 -> 30,
+         * bleed 1.0/s for 4 s -> 0.5/s for 3 s, Blood Moon: 1 per player every 45 s, 12 server-wide; was 2 / 20 s / 25).
+         */
+        private static final Map<String, double[]> NERF = Map.of(
+                "hit-damage", new double[]{9, 5}, "health", new double[]{40, 30}, "bleed-damage", new double[]{1.0, 0.5},
+                "bleed-seconds", new double[]{4, 3}, "blood-moon.per-player", new double[]{2, 1},
+                "blood-moon.spawn-interval-seconds", new double[]{20, 45}, "blood-moon.max-alive", new double[]{25, 12});
+
         private double cfg(String key, double def) {
-            return plugin.getConfig().getDouble("vampire." + key, def);
+            double v = plugin.getConfig().getDouble("vampire." + key, def);
+            double[] old = NERF.get(key);
+            return old != null && v == old[0] ? old[1] : v;
         }
 
         // ---------- spawning ----------
@@ -4879,7 +4905,7 @@ public final class FaultlineItems extends JavaPlugin {
             v.body = bat;
             v.bat = true;
             v.target = target;
-            setupBat(bat, cfg("health", 40));
+            setupBat(bat, cfg("health", 30));
             byBody.put(bat.getUniqueId(), v);
             return v;
         }
@@ -4890,7 +4916,7 @@ public final class FaultlineItems extends JavaPlugin {
             bat.setAwake(true);
             AttributeInstance max = bat.getAttribute(Attribute.MAX_HEALTH);
             if (max != null) {
-                max.setBaseValue(cfg("health", 40)); // same health pool as the vampire form
+                max.setBaseValue(cfg("health", 30)); // same health pool as the vampire form
                 bat.setHealth(Math.max(1, Math.min(health, max.getValue())));
             }
         }
@@ -4903,11 +4929,11 @@ public final class FaultlineItems extends JavaPlugin {
         void bloodMoonTick(int second) {
             if (!plugin.isEventActive("BLOOD_MOON")) return;
             if (!plugin.getConfig().getBoolean("vampire.blood-moon.enabled", true)) return;
-            int interval = Math.max(1, (int) cfg("blood-moon.spawn-interval-seconds", 20));
+            int interval = Math.max(1, (int) cfg("blood-moon.spawn-interval-seconds", 45));
             if (second % interval != 0) return;
 
-            int cap = (int) cfg("blood-moon.max-alive", 25);
-            int perPlayer = (int) cfg("blood-moon.per-player", 2);
+            int cap = (int) cfg("blood-moon.max-alive", 12);
+            int perPlayer = (int) cfg("blood-moon.per-player", 1);
             for (Player player : Bukkit.getOnlinePlayers()) {
                 if (byBody.size() >= cap) return;
                 if (player.getGameMode() != GameMode.SURVIVAL && player.getGameMode() != GameMode.ADVENTURE) continue;
@@ -5088,11 +5114,11 @@ public final class FaultlineItems extends JavaPlugin {
             }
             AttributeInstance max = vamp.getAttribute(Attribute.MAX_HEALTH);
             if (max != null) {
-                max.setBaseValue(cfg("health", 40));
+                max.setBaseValue(cfg("health", 30));
                 vamp.setHealth(Math.max(1, Math.min(health, max.getValue())));
             }
             AttributeInstance damage = vamp.getAttribute(Attribute.ATTACK_DAMAGE);
-            if (damage != null) damage.setBaseValue(cfg("hit-damage", 9)); // claws: brute-level hits, no weapon needed
+            if (damage != null) damage.setBaseValue(cfg("hit-damage", 5)); // claws: brute-level hits, no weapon needed
             AttributeInstance speed = vamp.getAttribute(Attribute.MOVEMENT_SPEED);
             if (speed != null) speed.setBaseValue(cfg("speed", 0.28));
             AttributeInstance follow = vamp.getAttribute(Attribute.FOLLOW_RANGE);
@@ -5186,7 +5212,7 @@ public final class FaultlineItems extends JavaPlugin {
             Vampire v = byBody.get(event.getDamager().getUniqueId());
             if (v == null || v.bat || !(event.getEntity() instanceof LivingEntity victim)) return;
             if (shieldBlocked(event)) return; // blocked with a shield: no bleed
-            bleeding.put(victim.getUniqueId(), (int) cfg("bleed-seconds", 4)); // getting hit again restarts it
+            bleeding.put(victim.getUniqueId(), (int) cfg("bleed-seconds", 3)); // getting hit again restarts it
             justHit.add(victim.getUniqueId());
             Bukkit.getScheduler().runTask(plugin, () -> justHit.remove(victim.getUniqueId()));
         }
@@ -5208,7 +5234,7 @@ public final class FaultlineItems extends JavaPlugin {
 
         /** Runs every second. */
         void bleedTick() {
-            double damage = cfg("bleed-damage", 1.0);
+            double damage = cfg("bleed-damage", 0.5);
             bleeding.entrySet().removeIf(entry -> {
                 Entity entity = Bukkit.getEntity(entry.getKey());
                 if (!(entity instanceof LivingEntity victim) || victim.isDead() || !victim.isValid()) return true;
@@ -7165,6 +7191,13 @@ public final class FaultlineItems extends JavaPlugin {
                         "ship give cannon {amount} {player}", "FaultlineShips"));
                 list.add(external(icon(Material.PAPER, "cannonball", ChatColor.DARK_GRAY + "" + ChatColor.BOLD + "Cannonball", "FaultlineShips"),
                         "ship give cannonball {amount} {player}", "FaultlineShips"));
+                String[][] upgrades = {{"hull", "iron_block", ChatColor.GRAY + "Hull Plating"}, {"sails", "phantom_membrane", ChatColor.WHITE + "Swift Sails"},
+                        {"loaders", "gunpowder", ChatColor.GOLD + "Quick Loaders"}, {"ram", "anvil", ChatColor.DARK_GRAY + "Iron Ram"}};
+                for (String[] u : upgrades) {
+                    ItemStack ic = icon(Material.PAPER, null, u[2] + ChatColor.BOLD + " " + ChatColor.GRAY + "(Ship Upgrade)", "FaultlineShips");
+                    ItemMeta im = ic.getItemMeta(); im.setItemModel(NamespacedKey.minecraft(u[1])); ic.setItemMeta(im);
+                    list.add(external(ic, "ship give upgrade_" + u[0] + " {amount} {player}", "FaultlineShips"));
+                }
                 list.add(external(icon(Material.GOAT_HORN, null, ChatColor.DARK_RED + "" + ChatColor.BOLD + "Cursed Pirate Horn", "FaultlineShips"),
                         "ship pirates horn {amount} {player}", "FaultlineShips"));
                 list.add(external(icon(Material.BELL, null, ChatColor.AQUA + "" + ChatColor.BOLD + "Phantom Bell " + ChatColor.GRAY + "(calls the Ghost Ship)", "FaultlineShips"),
@@ -7200,6 +7233,11 @@ public final class FaultlineItems extends JavaPlugin {
             list.add(external(icon(Material.POLISHED_BLACKSTONE_BRICK_WALL, "museum_pedestal", ChatColor.GOLD + "" + ChatColor.BOLD + "Museum Pedestal", "FaultlineItems"), "fgear museum_pedestal {amount} {player}", "FaultlineItems"));
             for (var d : Gear.DISCS.entrySet())
                 list.add(external(icon(Material.PAPER, "disc/disc_" + d.getKey(), ChatColor.AQUA + "Music Disc " + ChatColor.GRAY + "(" + d.getValue()[0] + ")", "FaultlineItems"), "fgear disc_" + d.getKey() + " {amount} {player}", "FaultlineItems"));
+            // boss enchant books (1.2.17)
+            for (Enchants.Def d : Enchants.DEFS.values()) for (int lv = 1; lv <= d.max(); lv++) {
+                ItemStack b = plugin.enchants != null ? plugin.enchants.book(d.id(), lv) : new ItemStack(Material.ENCHANTED_BOOK);
+                list.add(external(b, "fenchant give " + d.id() + " " + lv + " {amount} {player}", "FaultlineItems"));
+            }
             // weather events: start one where the admin stands
             list.add(external(icon(Material.AMETHYST_SHARD, null, ChatColor.GREEN + "" + ChatColor.BOLD + "Event: Aurora " + ChatColor.GRAY + "(starts it, at night)", "FaultlineItems"), "fweather aurora {player}", "FaultlineItems"));
             list.add(external(icon(Material.SAND, null, ChatColor.GOLD + "" + ChatColor.BOLD + "Event: Sandstorm " + ChatColor.GRAY + "(starts it here)", "FaultlineItems"), "fweather sandstorm {player}", "FaultlineItems"));

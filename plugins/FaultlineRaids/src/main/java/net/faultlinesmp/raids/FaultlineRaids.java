@@ -280,6 +280,17 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
         return getConfig().getDouble(key, def);
     }
 
+    /**
+     * A FaultlineEvents Blood Moon is up (its flag on the main world). 1.1.0: raid waves are 25% bigger, every raid mob has
+     * 30% more health and Strength I, and winning one pays an extra Mythic Goodie Bag each (config blood-moon:).
+     */
+    boolean bloodMoon() {
+        if (!getConfig().getBoolean("blood-moon.enabled", true) || Bukkit.getWorlds().isEmpty()) return false;
+        String e = Bukkit.getWorlds().get(0).getPersistentDataContainer()
+                .get(new org.bukkit.NamespacedKey("faultlineevents", "active_event"), org.bukkit.persistence.PersistentDataType.STRING);
+        return "BLOOD_MOON".equals(e);
+    }
+
     private static boolean isNight(World world) {
         long time = world.getTime();
         return time >= 13000 && time < 23000;
@@ -651,6 +662,13 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
         }
 
         int cap = (int) cfg("raid.max-wave-size", 30);
+        boolean blood = bloodMoon();
+        if (blood && !kinds.isEmpty()) { // a Blood Moon wave: a quarter more of what was coming
+            int extra = (int) Math.round(kinds.size() * cfg("blood-moon.extra-mobs", 0.25));
+            for (int i = 0; i < extra; i++) kinds.add(kinds.get(random.nextInt(kinds.size())));
+            cap = (int) Math.round(cap * (1 + cfg("blood-moon.extra-mobs", 0.25)));
+            if (w == 1) announce(raid, ChatColor.DARK_RED + "" + ChatColor.BOLD + "The Blood Moon feeds the Horde. " + ChatColor.RED + "Every wave is bigger and stronger tonight.");
+        }
         int spawned = 0;
         for (Kind kind : kinds) {
             if (spawned >= cap) break;
@@ -664,6 +682,7 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
             LivingEntity mob = spawnKind(kind, spot);
             if (mob == null) continue;
             tag(mob, RAID_TAG); // (and its horse, for Horsemen)
+            if (blood) bloodBuff(mob);
             if (mob instanceof Mob m) {
                 m.setRemoveWhenFarAway(false); // don't despawn mid-raid
                 LivingEntity t = nearestVillagerOrPlayer(raid.center, 64);
@@ -674,6 +693,19 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
             spawned++;
         }
         raid.waveSize = spawned;
+    }
+
+    /** Blood Moon: more health and Strength I for a raid mob. */
+    void bloodBuff(LivingEntity mob) {
+        AttributeInstance hp = mob.getAttribute(Attribute.MAX_HEALTH);
+        if (hp != null) {
+            hp.setBaseValue(hp.getBaseValue() * (1 + cfg("blood-moon.extra-health", 0.30)));
+            mob.setHealth(hp.getValue());
+        }
+        mob.addPotionEffect(new PotionEffect(PotionEffectType.STRENGTH, PotionEffect.INFINITE_DURATION, 0, false, true));
+        mob.addScoreboardTag("faultline_blood_moon");
+        mob.getWorld().spawnParticle(org.bukkit.Particle.DUST, mob.getLocation().add(0, 1, 0), 12, 0.3, 0.6, 0.3, 0,
+                new org.bukkit.Particle.DustOptions(org.bukkit.Color.fromRGB(150, 0, 0), 1.4f));
     }
 
     /** Standing spot on the surface in a ring around a point (loaded chunks only, no treetops/water). */
@@ -728,6 +760,11 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
 
             give(p, "givegoodiebag " + goodie + " " + p.getName());
             give(p, "givemythicbag " + mythic + " " + p.getName());
+            if (bloodMoon()) {
+                int extra = (int) cfg("blood-moon.bonus-mythic-bags", 1);
+                if (extra > 0) { give(p, "givemythicbag " + extra + " " + p.getName()); mythic += extra; }
+                p.sendMessage(ChatColor.DARK_RED + "Blood Moon bonus: " + ChatColor.RED + "+" + extra + " Mythic Goodie Bag" + (extra == 1 ? "" : "s"));
+            }
             if (ankh) {
                 give(p, "giveaccessory ankh 1 " + p.getName());
                 Bukkit.broadcastMessage(ChatColor.YELLOW + "" + ChatColor.BOLD + p.getName() + " earned an ANKH SHIELD from a " + raid.kindName() + "!");

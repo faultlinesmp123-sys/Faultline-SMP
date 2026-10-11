@@ -35,12 +35,12 @@ All are Maven projects: Java 21, `paper-api 1.21.11-R0.1-SNAPSHOT`. Build with
 | Plugin | Package | What it does | Commands |
 |---|---|---|---|
 | **LimboBlackMarket** | `net.limbosmp.blackmarket` | Head-tier economy, kill/death stats, kill streaks, anti-farm, quests + Quest Book, friendly-fire logging, global reload | `/tier`, `/markethelp`, `/stats`, `/leaderboard`, `/tierleaderboard`, `/faultlinereload` (`/freload`), `/givequestbook` |
-| **FaultlineItems** | `net.faultlinesmp.items` | All custom items + accessories (3-slot `/accessories` GUI), staffs, spawn eggs, diving gear, Kraken & Diamond Jacob gear, Skeleton Wanderer cave trader, **Meteor strikes** (`Meteor.java`), **the Caravan** (`Caravan.java`), **weather events** (`Weather.java`), **Mimics + Skeleton Knights** (`Creatures.java`), **new gear, music discs, museum pedestals** (`Gear.java`), admin `/itemsmenu` | many `/give*` commands, `/itemsmenu` (`/fitems`), `/itemsreload`, `/cavetrader`, `/batform`, `/meteor [now\|here\|target\|at\|check\|stop\|egg]`, `/caravan [now\|here\|stop\|reroll]`, `/queenspider spawn`, `/fweather [list\|<event> [player]\|stop\|status]` (was `/fevent`: renamed, FaultlineEvents owns that name; bare `/fweather` lists the 5 events with click-to-start buttons; also in /itemsmenu), `/fcreature <mimic\|knights>`, `/fgear`, `/giveancientgear`, `/givedisc <id> [player]` |
+| **FaultlineItems** | `net.faultlinesmp.items` | All custom items + accessories (3-slot `/accessories` GUI), staffs, spawn eggs, diving gear, Kraken & Diamond Jacob gear, Skeleton Wanderer cave trader, **Meteor strikes** (`Meteor.java`), **the Caravan** (`Caravan.java`), **weather events** (`Weather.java`), **Mimics + Skeleton Knights** (`Creatures.java`), **new gear, music discs, museum pedestals** (`Gear.java`), admin `/itemsmenu` | many `/give*` commands, `/itemsmenu` (`/fitems`), `/itemsreload`, `/cavetrader`, `/batform`, `/meteor [now\|here\|target\|at\|check\|stop\|egg]`, `/caravan [now\|here\|stop\|reroll]`, `/queenspider spawn`, `/fweather [list\|<event> [player]\|stop\|status]` (was `/fevent`: renamed, FaultlineEvents owns that name; bare `/fweather` lists the 5 events with click-to-start buttons; also in /itemsmenu), `/fcreature <mimic\|knights>`, `/fgear`, `/giveancientgear`, `/givedisc <id> [player]`, `/fenchant [list\|give <id> [lvl] [amount] [player]]`, `/race [join\|leave\|list\|top]` (admin `create\|edit\|cp add [r]\|cp undo\|setstart\|delete\|host <course> [lend]\|start\|stop`) |
 | **FaultlineRaids** | `net.faultlinesmp.raids` | Zombie Raids (Zombie Omens, Captains, Rotbeard), Skeleton Raids, and **Piglin Raids** (`Piglins.java`: War Horn, the Bulwark, the Great Hog) | `/zraid <start\|stop\|captain\|menu\|egg\|omen\|horn>` |
 | **FaultlineBosses** | `net.faultlinesmp.bosses` | Bosses in one ~585 KB file: Demon Eye, Frostbeard, Dune Devourer/Frostmaw, Don Lorenzo, Kraken, **Diamond Jacob**; admin boss form. **Rocco Vendetta** (+ Werner, the Vendetta Fist) lives in its own `Vendetta.java`. **The way down to the Lost Explorer** (Swarm, his staircase, the void world) is `Below.java`; **the Lost Explorer's fight** is `Explorer.java` (+ `ExplorerAnims.java`). **Grimtusk, the Piglin Warlord** (Nether boss) is `Warlord.java`; **the Boss Rush** is `BossRush.java`. **The wild bosses** (Leviathan, Sandworm King, Lich, Frost Wyrm, Stone Golem) are `Wild.java` + one class each | `/demoneye`, `/frostbeard`, `/dune`, `/don`, `/kraken <summon\|sea\|...>`, `/jacob <summon\|kill\|phase\|item>`, `/rocco <summon\|kill\|phase\|tattoos\|werner\|item>`, `/bossmorph <boss\|off\|release>`, `/below <swarm\|void\|leave\|close\|slayer\|info>`, `/explorer <start\|stop\|skip\|phase\|stun\|reset\|arena>`, `/grimtusk <summon\|kill\|phase\|item>`, `/bossrush [start\|top]` (admin `stop\|skip\|setarena\|arenas\|clearcooldown`), `/leviathan`, `/sandworm`, `/lich`, `/frostwyrm`, `/stonegolem` |
-| **FaultlineIndex** | `net.faultlinesmp.index` | The Faultline Index codex + **Achievements** (`Achievements.java`). **Museum** (`Museum.java`: trophies, discs, Hall of Firsts), **Discord bridge** (`Discord.java`), `/serverstats` (`ServerStats.java`). Entries and achievements live in `src/main/resources/index.yml`, font glyphs in `glyphs.yml`, settings in `config.yml` | `/index [achievements\|give\|reset] [player]`, `/index stat <player> <name> [n]` (other plugins), `/index discover <player> <entry>`, `/museum [bosses\|items]`, `/serverstats`, admin `/discord test [msg]` |
+| **FaultlineIndex** | `net.faultlinesmp.index` | The Faultline Index codex + **Achievements** (`Achievements.java`). **Museum** (`Museum.java`: trophies, discs, Hall of Firsts), **Discord bridge** (`Discord.java`), `/serverstats` (`ServerStats.java`). Entries and achievements live in `src/main/resources/index.yml`, font glyphs in `glyphs.yml`, settings in `config.yml` | `/index [achievements\|give\|reset] [player]`, `/index stat <player> <name> [n]` (other plugins), `/index discover <player> <entry>`, `/museum [bosses\|items]`, `/serverstats`, admin `/discord [status\|test [msg]]` (public + logs webhooks) |
 | **FaultlineCosmetics** | `net.faultlinesmp.cosmetics` | Permanent cosmetic unlocks worn in 4 slots (Hat, Neck, Back, Body) over armor, for Java and Bedrock. **Seasons** (`Seasons.java`: Halloween/Winter currency + Seasonal Shop). Cosmetics are defined in its `config.yml`, unlocks saved in `players.yml` | `/cosmetics [shop]`, admin `/cosmetic <unlock\|lock\|list\|reload\|season\|tokens\|shop>` |
-| **FaultlineShips** | `net.faultlinesmp.ships` | Ships: Dinghy, Sloop, Brigantine, Galleon, Pirate Ship. Blueprint → lay out on water → place every block → sail. Health, part damage, sinking, Shipwright's Hammer repair minigame, cannons, banners, names. **Skeleton ships** and the **Pirate Invasion** (`Pirates.java`). Ships saved in `ships.yml` | `/ship [list\|info\|name\|crew\|anchor\|stop\|banner\|scrap]`, admin `/ship <give\|repair\|wreck\|remove\|tp> [name\|#n]`, `/ship spawn <ship> [owner]`, `/ship pirates <ship\|invasion\|horn\|spawn\|egg\|ghost [player]\|bell [n] [player]\|stop>` |
+| **FaultlineShips** | `net.faultlinesmp.ships` | Ships: Dinghy, Sloop, Brigantine, Galleon, Pirate Ship. Blueprint → lay out on water → place every block → sail. Health, part damage, sinking, Shipwright's Hammer repair minigame, cannons, banners, names. **Skeleton ships** and the **Pirate Invasion** (`Pirates.java`). Ships saved in `ships.yml` | `/ship [list\|info\|name\|crew\|anchor\|stop\|banner\|scrap]`, admin `/ship <give\|repair\|wreck\|remove\|tp> [name\|#n]`, `/ship spawn <ship> [owner]`, `/ship give upgrade_<hull\|sails\|loaders\|ram>`, `/ship pirates <ship\|invasion\|horn\|spawn\|egg\|ghost [player]\|bell [n] [player]\|stop>` |
 
 Notes:
 - `FaultlineItems.java` (~350 KB) and `FaultlineBosses.java` (~585 KB) are huge. Search them instead of reading them whole.
@@ -153,6 +153,49 @@ Notes:
   biome names. The FROST WYRM's natural spawn is 0.00001 (0.001%) a minute (old 0.015 reads as that) in any snowy biome
   (`Wild.snowy`: PEAKS or temperature < 0.15, not frozen oceans), flying in ~20 blocks away. Tested (`FrostSpawnTest`;
   the bosses harness disables Frostbeard's random spawn unless `-Dfrost.spawns=true`).
+- **The 1.2.17 batch (Items 1.2.17, Raids 1.1.0, Ships 1.6.0, Index 1.6.9)**:
+  **Spawn protection** (`Items/SpawnProtection.java`, `spawn-protection:`): 30 s after respawning players can't hurt you
+  (melee, projectiles, lingering/splash potions, TNT, pets: `playerBehind`); hitting a player ends it (`ends-on-any-attack`
+  for any mob), `block-mobs` (off) also stops monsters. **Vampires nerfed**: claws 9 -> 5, 40 -> 30 hp, bleed 0.5/s for 3 s,
+  Blood Moon 1 per player every 45 s, max 12 (`VampireManager.NERF` reads old config defaults as the new values).
+  **Blood Moon raids** (`FaultlineRaids.bloodMoon()` = FaultlineEvents' `faultlineevents:active_event` BLOOD_MOON on the
+  main world; `blood-moon:`): +25% mobs a wave, +30% health + Strength I (`bloodBuff`, tag `faultline_blood_moon`), +1 Mythic
+  Bag per defender on a win. **Boss enchant books** (`Items/Enchants.java`, `enchants:`, `/fenchant [list|give <id> [lvl]
+  [amount] [player]]`): ENCHANTED_BOOK + PDC `faultlineitems:fenchant_book` ("id=level"); item left + book right in an anvil
+  (`combine`: two equal books = next level); on the item PDC `faultlineitems:fenchants` ("lifesteal=2;venom=1") + a "✦ Name
+  II" lore line each. Lifesteal, Frostbite, Venom, Thunderstrike (melee: swords/axes/tridents, procs need a charged hit),
+  Vitality (chestplate: a player MAX_HEALTH modifier `faultlineitems:vitality`, refreshed every second, removed on quit /
+  disable), Featherstep (boots). Drops: the Index Museum's `bossDefeated` dispatches `fenchant bossdrop <player> <entry id>`
+  once per defeat, Items rolls `enchants.boss-drops.<entry>` (["id:level:chance"]; code defaults `DEFAULT_DROPS`). In
+  /itemsmenu. **Elytra races** (`Items/Race.java`, `race:`, courses + best times + chestplates to give back in `races.yml`):
+  admins `/race create <name>` (start = where they stand), `/race cp add [radius]` per ring (the last = finish), `/race host
+  <course> [lend]` (clickable [JOIN]), `/race start` (5 s countdown held at the line), `/race stop`; players `/race join|leave|
+  list|top`. Rings are per-racer dust; a ring counts when the path between ticks passes within its radius (`segDist`), in
+  order. Lent elytra/rockets carry PDC `faultlineitems:race_lent`, can't be dropped/stored, are taken back on finish/out/quit
+  and on join (crash). Rewards `race.rewards.first/second/third/finish` (console commands), Index stat `elytra_races`.
+  **Ship upgrades** (`FaultlineShips.UPGRADES`, `upgrades:`; PAPER with vanilla item models, glint, PDC
+  `faultlineships:upgrade_<id>`; crafted): Hull Plating (3x +15% hp), Swift Sails (3x +10% speed: `Ship.maxSpeed()`), Quick
+  Loaders (2x -20% reload), Iron Ram (ramming: half to you, +50% to them). Right-click your own finished ship to fit
+  (`fitUpgrade`, owner/admin only); saved under `ships.<id>.upgrades`; scrapping gives them back. `/ship give upgrade_<id>`.
+  **Land cannons** (`Ships/LandCannons.java`, `land-cannon:`, `cannons.yml`): a Ship Cannon right-clicked on any block that
+  isn't a ship's cannon spot sets a cannon in front of that face: a BARRIER in the cell (solid, clickable) + a non-persistent
+  ItemDisplay (`cannonModel`, tags `faultline_land_cannon` + `faultline_no_bedrock_fx`) spawned with its chunk. Holding a
+  Cannonball within `reach` (3.5) turns the nearest cannon you may use (owner + /ship crew, `owner-only`) to your view
+  (pitch clamped -45..20; pitch is the display's transformation, yaw the entity's) and draws the arc for you; right-click
+  fires through `launchTagged("land:<id>", ...)` (same impact as ship cannonballs), 4 s reload. Sneak + punch (owner/admin)
+  picks it up; it drops when nothing solid holds it any more (break/explosion); pistons can't move it or its support.
+  Bedrock sees a fake dispenser facing the barrel (`bedrockUpkeep`). The BlockPlaceEvent it fires for claim plugins is
+  ignored by `onPlace` (`placing`). **Discord, two webhooks** (`Index/Discord.java`): `discord.webhook-url` = PUBLIC (chat,
+  joins/leaves, deaths + PvP, `forward` broadcasts), `discord.logs-webhook-url` = STAFF LOGS (everything public with
+  `logs.mirror-public`, plus TNT / TNT minecart / end crystal / respawn anchor placers and TNT lighters (`logs.blocks`), PvP
+  kills with coordinates, whispers (`logs.whisper-commands`), commands by ops / `faultlineindex.logged` (or everyone with
+  `logs.all-commands`), console commands; never `logs.ignore-commands` (login passwords)). Every log line ends with
+  `<t:unix:f>` (Discord shows it in each reader's time zone) and the UTC date/time. Each channel batches lines into one
+  message every 2.1 s (under the 30/min webhook limit), honours 429 Retry-After, escapes markdown, never pings
+  (`allowed_mentions` empty), posts "server online/stopping". `/discord status`, `/discord test [msg]` (both channels).
+  THE WEBHOOK URLS ARE SECRETS: only in the server's `plugins/FaultlineIndex/config.yml`, never in this public repo.
+  Tested: `BatchTest` (items: protection, books, races, vampire nerf), `BloodTest` (raids), `CannonUpgradeTest` (ships),
+  `DiscordTest` (index, a local HTTP server as the webhook).
 - Changing a plugin's default `config.yml` does NOT update the copy already on the server. Tell the owner
   which values to change in `plugins/<Plugin>/config.yml` on the VPS.
 - **Ships** (`FaultlineShips`; `ShipType.java` = the 5 layouts, `Ship.java` = one ship, `FaultlineShips.java` = items,

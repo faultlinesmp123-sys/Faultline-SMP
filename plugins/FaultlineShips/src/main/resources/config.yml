@@ -128,3 +128,21 @@ pirates:
     - {command: "zraid omen {1-3} 1 {player}", chance: 0.4, name: "a Bad Omen"}
     - {command: "givecloudpotion 1 {player}", chance: 0.3, name: "a Cloud Potion"}
   accessories: [claws, bezoar, discount, jelly, shield, lavacharm, blackbelt, ranger, scarf, frostflare, spelunker, harpy, divinghelmet, flipper]
+
+# Ship upgrades (1.6.0): crafted items, right-click your own finished ship to fit one. Scrapping gives them back.
+upgrades:
+  hull: {per-level: 0.15}        # Hull Plating (max 3): +15% hull health a level
+  sails: {per-level: 0.10}       # Swift Sails (max 3): +10% top speed a level
+  loaders: {per-level: 0.20}     # Quick Loaders (max 2): cannons reload 20% faster a level
+  ram: {self-multiplier: 0.5, other-multiplier: 1.5}   # Iron Ram: ramming hurts you half, them +50%
+
+# Land cannons (1.6.0): a Ship Cannon right-clicked on any block is set down there and can be aimed.
+land-cannon:
+  enabled: true
+  owner-only: true               # only the owner and their /ship crew fire it
+  reach: 3.5                     # stand this close with a Cannonball to aim it
+  reload-seconds: 4
+  speed: 2.6
+  max-pitch-up: -45
+  max-pitch-down: 20
+  max-per-player: 12             # 0 = no limit

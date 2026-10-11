@@ -113,6 +113,9 @@ final class Museum implements Listener {
             String d = discs.get(random.nextInt(discs.size()));
             Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "givedisc " + d + " " + p.getName());
         }
+        // boss enchant books (FaultlineItems 1.2.17 decides which and how likely: enchants.boss-drops)
+        if (Bukkit.getPluginManager().getPlugin("FaultlineItems") != null && Bukkit.getPluginCommand("fenchant") != null)
+            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "fenchant bossdrop " + p.getName() + " " + e.id);
     }
 
     ItemStack trophy(FaultlineIndex.Entry e, String earnedBy) {

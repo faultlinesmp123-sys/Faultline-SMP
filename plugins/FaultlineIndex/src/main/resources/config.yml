@@ -6,12 +6,31 @@ museum:
   announce-firsts: true          # "X is the first to defeat Y!" (bosses and creatures)
   announce-item-firsts: false    # also for every first item found (chatty)
 
-# The Discord bridge: the server's big moments posted to a channel. Make a webhook in Discord (channel settings >
-# Integrations > Webhooks > New Webhook > Copy URL), paste it below, then /discord test in game.
+# The Discord bridge, two webhooks (Discord: channel settings > Integrations > Webhooks > New Webhook > Copy URL).
+# KEEP THE URLS ONLY IN THE SERVER'S COPY OF THIS FILE: the GitHub repo is public and anyone with a URL can post.
+#  webhook-url       PUBLIC channel: chat, joins/leaves, deaths + player kills, boss defeats, achievements, events...
+#  logs-webhook-url  STAFF LOGS: all of the above + TNT / end crystal / anchor placers and TNT lighters (name, place,
+#                    date and time), whispers, admin and console commands, PvP kills with coordinates.
+# Then /discord test in game (/discord status shows both).
 discord:
   enabled: true
   webhook-url: ""
+  logs-webhook-url: ""
   username: "Faultline SMP"
+  public:
+    chat: true
+    joins: true
+    deaths: true
+  logs:
+    mirror-public: true          # the logs channel also gets everything the public one does
+    tnt: true
+    blocks: [TNT, TNT_MINECART, END_CRYSTAL, RESPAWN_ANCHOR]
+    whispers: true
+    whisper-commands: [msg, tell, w, whisper, r, reply, m, t, pm, dm, emsg, etell, ewhisper, er, ereply, message, teammsg, tm]
+    admin-commands: true         # commands run by ops / faultlineindex.logged
+    all-commands: false          # every player's commands
+    console-commands: true
+    ignore-commands: [login, l, log, register, reg, changepassword, changepass, cp]   # never logged (passwords)
   # announcements matching any of these (Java regexes) are posted
   forward: ["(?i)has been defeated", "(?i)has fallen", "(?i)has been laid to rest", "(?i)meteor", "(?i)caravan", "(?i)achievement",
             "(?i)is the first to", "(?i)aurora", "(?i)sandstorm", "(?i)blizzard", "(?i)eclipse", "(?i)locust", "(?i)ghost ship|wailing mary",

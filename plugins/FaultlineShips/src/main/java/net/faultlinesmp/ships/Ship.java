@@ -108,6 +108,7 @@ final class Ship {
     Pirates.Brain ai;                              // a skeleton ship: steered by the plugin, crewed by skeletons, never saved
     Ship lastBlockShip;                            // ...if that was another ship
     final java.util.Map<Integer, Long> cannonReady = new java.util.HashMap<>();
+    final java.util.Map<String, Integer> upgrades = new java.util.LinkedHashMap<>(); // Upgrades: hull, sails, loaders, ram
     // ---- the deck you can walk on while it sails (player ships) ----
     final java.util.Map<Long, Block> deck = new java.util.HashMap<>(); // barriers that follow the ship, by block position
     final java.util.Map<UUID, double[]> walkers = new java.util.HashMap<>(); // {x, y, z, ship dx, ship dz} last tick
@@ -129,7 +130,16 @@ final class Ship {
     boolean sailing() { return !building && !anchored && anchorStep < 0; }
     double maxHp() {
         if (ai != null) return type.maxHp * pl.getConfig().getDouble("pirates.health-multiplier", 0.5);
-        return type.maxHp * pl.getConfig().getDouble("ships." + type.size + ".health-multiplier", 1.0);
+        return type.maxHp * pl.getConfig().getDouble("ships." + type.size + ".health-multiplier", 1.0)
+                * (1 + upgrade("hull") * pl.getConfig().getDouble("upgrades.hull.per-level", 0.15));
+    }
+
+    int upgrade(String id) { return upgrades.getOrDefault(id, 0); }
+
+    /** Top speed: the layout's, the config's multiplier, and Swift Sails. */
+    double maxSpeed() {
+        double m = type.speed * pl.getConfig().getDouble("ships." + type.size + ".speed-multiplier", 1.0);
+        return ai != null ? m : m * (1 + upgrade("sails") * pl.getConfig().getDouble("upgrades.sails.per-level", 0.10));
     }
 
     static double fx(float yaw) { return -Math.sin(Math.toRadians(yaw)); }
@@ -698,7 +708,7 @@ final class Ship {
         prevJump = j;
         prevForward = f;
         prevBack = b;
-        double max = type.speed * pl.getConfig().getDouble("ships." + type.size + ".speed-multiplier", 1.0);
+        double max = maxSpeed();
         if (jumped && cap != null) {
             if (Math.abs(speed) <= max * 0.3) { dropAnchor(cap); return; }
             anchorQueued = true; // too fast: brake hard, then drop it
@@ -738,7 +748,7 @@ final class Ship {
     /** Brake and drop anchor so whoever asked can step off onto a solid deck (or, if it can't anchor here, over the side). */
     void anchorToLeave() {
         if (wrecked || gettingOff.isEmpty()) { anchorForLeave = false; letOff(true); return; }
-        double max = type.speed * pl.getConfig().getDouble("ships." + type.size + ".speed-multiplier", 1.0);
+        double max = maxSpeed();
         turnRate = 0;
         speed = brake(speed, max);
         if (Math.abs(speed) > max * 0.3) return;
@@ -798,9 +808,11 @@ final class Ship {
             world().playSound(at, Sound.ENTITY_ZOMBIE_BREAK_WOODEN_DOOR, SoundCategory.BLOCKS, 1.4f, 0.6f);
             world().spawnParticle(Particle.BLOCK, at, 40, 2, 1, 2, 0, Material.OAK_PLANKS.createBlockData());
             Location crash = lastBlocked != null ? lastBlocked.getLocation().add(0.5, 0.5, 0.5) : null;
-            damage(pl.getConfig().getDouble("ram-damage", 30) * hit, null, crash);
+            boolean ram = upgrade("ram") > 0; // the Iron Ram: takes half, deals half again
+            damage(pl.getConfig().getDouble("ram-damage", 30) * hit * (ram ? pl.cfg("upgrades.ram.self-multiplier", 0.5) : 1), null, crash);
             if (lastBlockShip != null && lastBlockShip != this && !lastBlockShip.building)
-                lastBlockShip.damage(pl.getConfig().getDouble("ram-damage", 30) * hit * pl.cfg("ram-other-multiplier", 1.6), null, crash);
+                lastBlockShip.damage(pl.getConfig().getDouble("ram-damage", 30) * hit * pl.cfg("ram-other-multiplier", 1.6)
+                        * (ram ? pl.cfg("upgrades.ram.other-multiplier", 1.5) : 1), null, crash);
             for (Player p : riders()) p.sendActionBar(Component.text("The hull scrapes against the shore!", NamedTextColor.RED));
         }
         speed = -speed * 0.2;
@@ -810,7 +822,7 @@ final class Ship {
     //  anchor
     // =====================================================================================================
     void dropAnchor(Player cap) {
-        double max = type.speed * pl.getConfig().getDouble("ships." + type.size + ".speed-multiplier", 1.0);
+        double max = maxSpeed();
         if (Math.abs(speed) > max * 0.3) { if (cap != null) cap.sendActionBar(Component.text("Slow down to drop anchor.", NamedTextColor.YELLOW)); return; }
         float ty = Math.round(yaw / 90f) * 90f;
         double[] spot = snapSpot(ty);

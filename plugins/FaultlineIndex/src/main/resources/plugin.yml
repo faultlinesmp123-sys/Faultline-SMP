@@ -1,5 +1,5 @@
 name: FaultlineIndex
-version: '1.6.8'
+version: '1.6.9'
 main: net.faultlinesmp.index.FaultlineIndex
 api-version: '1.21'
 author: FaultlineSMP
@@ -19,10 +19,13 @@ commands:
     usage: /serverstats
   discord:
     description: "Admin: test the Discord bridge (/discord test [message]); reloads its settings"
-    usage: /discord test [message]
+    usage: /discord [status|test [message]]
     permission: faultlineindex.admin
 
 permissions:
   faultlineindex.admin:
     description: Give Index books and reset players' Index progress
     default: op
+  faultlineindex.logged:
+    description: Commands this player runs are posted to the Discord logs channel (ops always are)
+    default: false

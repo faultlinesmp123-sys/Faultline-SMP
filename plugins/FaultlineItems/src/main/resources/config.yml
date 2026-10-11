@@ -213,11 +213,11 @@ vampire:
   transform-range: 2.5       # bat turns into a vampire this close to you
   flee-range: 12             # vampire turns back into a bat if you get this far away
   bat-speed: 0.5
-  health: 40                 # shared between bat and vampire form
-  hit-damage: 9              # per claw hit (no weapon)
+  health: 30                 # shared between bat and vampire form (1.2.17 nerf: was 40)
+  hit-damage: 5              # per claw hit (no weapon) (was 9)
   speed: 0.28
-  bleed-seconds: 4
-  bleed-damage: 1.0          # per second (1.0 = half a heart)
+  bleed-seconds: 3
+  bleed-damage: 0.5          # per second (1.0 = half a heart) (was 1.0)
   xp: 30
   gunpowder-chance: 0.5      # 3-6 gunpowder
   diamond-chance: 0.05       # 2-6 diamonds
@@ -225,9 +225,9 @@ vampire:
   # During a Blood Moon (FaultlineEvents), Vampires also hunt on the surface.
   blood-moon:
     enabled: true
-    spawn-interval-seconds: 20   # each player can get a new Vampire this often
-    per-player: 2                # at most this many Vampires within 48 blocks of a player
-    max-alive: 25                # server-wide cap during a Blood Moon
+    spawn-interval-seconds: 45   # each player can get a new Vampire this often (was 20)
+    per-player: 1                # at most this many Vampires within 48 blocks of a player (was 2)
+    max-alive: 12                # server-wide cap during a Blood Moon (was 25)
   # Face texture (the hash at the end of a textures.minecraft.net URL, e.g.
   # from minecraft-heads.com). Default: "Dracula".
   head-texture: "14d412d8a6b96cd7aaa8322ef75ff5f44c7888cf32240ad8c923a58cea7407a6"
@@ -496,3 +496,60 @@ mace:
   mode: remove
   no-crafting: true
   inventory-only: true
+
+# ---------------- Spawn protection (1.2.17) ----------------
+# After respawning, players can't hurt you for this long. Attacking a player ends it early.
+spawn-protection:
+  enabled: true
+  seconds: 30
+  block-mobs: false            # true = monsters can't hurt or target you either
+  ends-on-any-attack: false    # true = hitting any creature (not only a player) ends it
+
+# Boss enchant books (1.2.17): bosses drop books of enchantments vanilla doesn't have; item left, book right in an
+# anvil. Two books of the same level make the next. /fenchant list, /fenchant give <id> [level] [amount] [player].
+enchants:
+  boss-drops-enabled: true
+  anvil-levels-per-level: 6
+  lifesteal: {per-level: 0.08, max-per-hit: 3}
+  frostbite: {chance-per-level: 0.15}
+  venom: {chance-per-level: 0.15}
+  thunderstrike: {chance: 0.08, damage: 4, cooldown-seconds: 8}
+  vitality: {health-per-level: 2}
+  featherstep: {fall-reduction: 0.35}
+  # Index boss entry id: ["enchant:level:chance", ...] (each rolled on every defeat, per fighter)
+  boss-drops:
+    the_demon_eye: ["thunderstrike:1:0.25", "featherstep:1:0.2"]
+    queen_spider: ["venom:1:0.3"]
+    the_bulwark: ["vitality:1:0.2"]
+    the_great_hog: ["vitality:1:0.25"]
+    captain_rotbeard: ["lifesteal:1:0.2"]
+    mortimer_freeze: ["frostbite:1:0.3"]
+    the_dune_devourer: ["venom:1:0.3"]
+    the_frostmaw: ["frostbite:2:0.25"]
+    don_lorenzo: ["lifesteal:1:0.3"]
+    the_kraken: ["thunderstrike:1:0.3"]
+    the_kraken_at_sea: ["thunderstrike:1:0.3"]
+    diamond_jacob: ["vitality:2:0.35"]
+    rocco_vendetta: ["lifesteal:2:0.35"]
+    the_lost_explorer: ["lifesteal:2:0.5", "vitality:2:0.5"]
+    the_skeleton_captain: ["thunderstrike:1:0.3"]
+    grimtusk: ["lifesteal:1:0.3", "vitality:1:0.2"]
+    leviathan: ["thunderstrike:1:0.2"]
+    sandworm_king: ["venom:2:0.2"]
+    lich: ["lifesteal:2:0.2"]
+    frost_wyrm: ["frostbite:2:0.25"]
+    stone_golem: ["vitality:1:0.2"]
+    ghost_captain: ["featherstep:1:0.3"]
+
+# Elytra races (1.2.17): admins build a course (/race create, /race cp add) and host it (/race host <course> [lend]).
+race:
+  default-radius: 6
+  countdown-seconds: 5
+  max-minutes: 10
+  lend-by-default: false      # /race host <course> lend gives everyone an elytra + rockets for the race
+  lend-rockets: 16
+  rewards:                    # console commands, {player} = the racer
+    first: ["givemythicbag 2 {player}"]
+    second: ["givemythicbag 1 {player}"]
+    third: ["givegoodiebag 2 {player}"]
+    finish: []

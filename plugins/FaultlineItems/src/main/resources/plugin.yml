@@ -1,5 +1,5 @@
 name: FaultlineItems
-version: 1.2.16
+version: 1.2.17
 main: net.faultlinesmp.items.FaultlineItems
 api-version: '1.21'
 softdepend: [floodgate, Geyser-Spigot]
@@ -126,6 +126,13 @@ commands:
     aliases: [weatherevent]
     description: "Weather events now (admins: start/stop aurora, sandstorm, blizzard, eclipse, locusts)"
     usage: /fweather [list|<aurora|sandstorm|blizzard|eclipse|locusts> [player]|stop [event]|status]
+  fenchant:
+    description: "Admin: boss enchant books (/fenchant give <id> [level] [amount] [player], /fenchant list)"
+    usage: /fenchant [list|give <id> [level] [amount] [player]]
+    permission: items.fenchant
+  race:
+    description: "Elytra races: /race join|leave|list|top; admins create courses and host them"
+    usage: /race [join|leave|list|top|create|cp|host|start|stop]
   fcreature:
     description: "Admin: spawn a Mimic or a Skeleton Knight patrol"
     usage: /fcreature <mimic|knights> [player]
@@ -143,6 +150,12 @@ commands:
     usage: /givedisc <id|random> [player]
     permission: items.fgear
 permissions:
+  items.fenchant:
+    description: Give boss enchant books
+    default: op
+  items.race.admin:
+    description: Create elytra race courses and host races
+    default: op
   faultline.mace.bypass:
     description: Skips the mace rules (crafting, keeping maces in containers/bundles)
     default: false

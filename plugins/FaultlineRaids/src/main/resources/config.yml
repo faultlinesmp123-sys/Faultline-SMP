@@ -10,6 +10,13 @@ village:
   radius: 48
   min-villagers: 3             # this many villagers nearby counts as a village
 
+# During a FaultlineEvents Blood Moon (1.1.0): raid waves are bigger and stronger, and winning pays extra.
+blood-moon:
+  enabled: true
+  extra-mobs: 0.25             # +25% mobs every wave
+  extra-health: 0.30           # +30% health on every raid mob (and Strength I)
+  bonus-mythic-bags: 1         # each winner gets this many more Mythic Goodie Bags
+
 raid:
   seconds-between-waves: 10
   max-wave-size: 30            # lag safety

@@ -667,7 +667,19 @@ entries:
      does: "Ships lose health to axes and other weapons, arrows, cannonballs, explosions and running into the shore. At 0 a ship is wrecked: torn sails, and it can't sail until it's back to full. Right-click a damaged ship with the hammer, then right-click when the white marker is in the green (gold = perfect, it fixes more). Each good hit uses 1 Planks; the green gets smaller and the marker faster as your streak grows."}
   - {chapter: weapons, name: "Ship Cannon", icon: ship_cannon, detect: "faultlineships:ship_cannon",
      how: "Craft it: 3 Iron Ingots on top, Iron and Gunpowder in the middle, a Log in each bottom corner.",
-     does: "Part of every ship: right-click a ship's glowing cannon spot with it (Sloop 2, Brigantine 4, Galleon 8). Fire it with Cannonballs."}
+     does: "Part of every ship: right-click a ship's glowing cannon spot with it (Sloop 2, Brigantine 4, Galleon 8). Fire it with Cannonballs. Right-click any other block and it's set down there as a LAND CANNON (castle walls, docks, cliffs): hold a Cannonball next to it and it turns to where you look, with an orange arc showing where the shot lands; right-click fires (4 second reload). Only you and your /ship crew can fire it, sneak + punch picks it up, and it falls off if the block under it breaks."}
+  - {chapter: armor, name: "Hull Plating", icon: shipwright_hammer, detect: "faultlineships:upgrade_hull",
+     how: "Craft it: Iron Blocks in the corners, Planks on the sides, Obsidian in the middle.",
+     does: "A ship upgrade: right-click your own finished ship with it. +15% hull health a level, up to 3 (+45%). Scrapping the ship gives your upgrades back."}
+  - {chapter: armor, name: "Swift Sails", icon: shipwright_hammer, detect: "faultlineships:upgrade_sails",
+     how: "Craft it: Phantom Membranes in the corners, White Wool on the sides, a Feather in the middle.",
+     does: "A ship upgrade: right-click your own finished ship with it. +10% top speed a level, up to 3 (+30%)."}
+  - {chapter: armor, name: "Quick Loaders", icon: ship_cannon, detect: "faultlineships:upgrade_loaders",
+     how: "Craft it: Gunpowder in the corners, Iron Ingots on the sides, a Blaze Rod in the middle.",
+     does: "A ship upgrade: right-click your own finished ship with it. Its cannons reload 20% faster a level, up to 2 (40%)."}
+  - {chapter: armor, name: "Iron Ram", icon: shipwright_hammer, detect: "faultlineships:upgrade_ram",
+     how: "Craft it: Iron Blocks in the corners, Iron Ingots on the sides, an Anvil in the middle.",
+     does: "A ship upgrade: right-click your own finished ship with it. Ramming another ship (or the shore) hurts yours half as much and the ship you hit 50% more."}
   - {chapter: weapons, name: "Cannonball", icon: cannonball, detect: "faultlineships:cannonball",
      how: "Craft it: an Iron Ingot and Gunpowder make 4.",
      does: "On a ship with cannons, right-click while looking over the side: the nearest loaded cannon on that side fires (aim up to 35 degrees either way, 3 second reload per cannon). It blows up where it lands without breaking blocks, does 45 damage to a ship it hits, and hurts whatever's near."}
@@ -922,3 +934,7 @@ achievements:
      stat: locust_swarms, count: 1, reward: {items: ["EMERALD:12", "BONE_MEAL:32"], xp: 300}}
   - {id: mimic_hunter, name: "It Had Teeth", icon: mimic, desc: "Kill 5 Mimics.",
      stat: mimics, count: 5, reward: {items: ["DIAMOND:6", "GOLD_BLOCK:2"], xp: 500}}
+  # ---------------------------------------------------------------- 1.2.17: boss enchant books
+  - {chapter: consumables, name: "Boss Enchant Book", icon: quest_book, detect: "faultlineitems:fenchant_book",
+     how: "Dropped by bosses (each has its own books, see below). Put the item on the left of an anvil and the book on the right; two books of the same enchantment and level make the next level.",
+     does: "Enchantments vanilla doesn't have. LIFESTEAL I-II (swords, axes, tridents): heal 8% / 16% of the damage you deal, at most 3 health a hit. FROSTBITE I-II: 15% / 30% to slow what you hit. VENOM I-II: 15% / 30% to poison it. THUNDERSTRIKE I: 8% to call lightning for +4 damage (8 s cooldown). VITALITY I-II (chestplates): +2 / +4 max health. FEATHERSTEP I (boots): 35% less fall damage, and you never trample crops. Who drops what: Frostbeard, the Frostmaw and the Frost Wyrm Frostbite; the Dune Devourer, the Queen Spider and the Sandworm King Venom; Don Lorenzo, Rotbeard, Rocco, Grimtusk and the Lich Lifesteal; the Demon Eye, the Kraken, the Leviathan and the Skeleton Captain Thunderstrike; Diamond Jacob, the Bulwark, the Great Hog and the Stone Golem Vitality; the Demon Eye and Captain Hollow Featherstep; the Lost Explorer Lifesteal II and Vitality II."}

@@ -156,11 +156,15 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
         getCommand("discord").setExecutor((sender, cmd, label, args) -> {
             if (!sender.hasPermission("faultlineindex.admin")) { sender.sendMessage(ChatColor.RED + "You don't have permission to do that."); return true; }
             reloadConfig(); discord.reload();
-            if (!discord.on()) { sender.sendMessage(ChatColor.YELLOW + "The Discord bridge is off: set discord.webhook-url in plugins/FaultlineIndex/config.yml, then /discord test."); return true; }
-            discord.post(args.length > 1 ? String.join(" ", Arrays.copyOfRange(args, 1, args.length)) : "Faultline SMP is connected to Discord.");
-            sender.sendMessage(ChatColor.GREEN + "Sent (" + discord.queued() + " in the queue).");
+            if (!discord.on()) { sender.sendMessage(ChatColor.YELLOW + "The Discord bridge is off: set discord.webhook-url (public) and/or discord.logs-webhook-url (staff logs) in plugins/FaultlineIndex/config.yml, then /discord test."); return true; }
+            if (args.length == 0 || args[0].equalsIgnoreCase("status")) { sender.sendMessage(ChatColor.GOLD + "Discord: " + ChatColor.WHITE + discord.status()); return true; }
+            String msg = args.length > 1 ? String.join(" ", Arrays.copyOfRange(args, 1, args.length)) : "Faultline SMP is connected to Discord.";
+            discord.pub.add(msg);
+            discord.logs.add("[logs channel] " + msg + " " + Discord.stamp());
+            sender.sendMessage(ChatColor.GREEN + "Sent to every channel that has a URL: " + discord.status() + ".");
             return true;
         });
+        getServer().getScheduler().runTask(this, () -> discord.serverStarted());
         getServer().getScheduler().runTaskTimer(this, this::scanInventories, 40L, 40L);
         getServer().getScheduler().runTaskTimer(this, () -> { if (dirty) saveProgress(); }, 20L * 60, 20L * 60);
         // creatures that despawn or unload never fire a death event; forget who hit them
@@ -175,6 +179,7 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
     public void onDisable() {
         saveProgress();
         if (museum != null) museum.save();
+        if (discord != null) try { discord.serverStopping(); } catch (RuntimeException ignored) { }
     }
 
     private void loadContent() {

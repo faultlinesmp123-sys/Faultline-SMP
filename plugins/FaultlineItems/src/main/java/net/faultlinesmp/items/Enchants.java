@@ -49,6 +49,8 @@ import java.util.UUID;
  *  - Venom I-II (swords, axes, tridents): 15% / 30% to poison: Poison I/II for 3 s.
  *  - Thunderstrike I (swords, axes, tridents): 8% to call a (harmless to blocks) lightning bolt for +4 damage, 8 s cooldown.
  *  - Vitality I-II (chestplates): +2 / +4 max health while worn.
+ *  - Vein Miner I (pickaxes): sneak + mine an ore = the connected vein of that ore (enchants.veinminer.max-blocks 32),
+ *    each block broken as the player (claims, quests, Fortune/Silk Touch and durability all apply).
  *  - Featherstep I (boots): 35% less fall damage (stacks with Feather Falling) and you never trample farmland.
  * Which boss drops which: enchants.boss-drops (entry id: ["enchant:level:chance", ...]); the Index's Museum asks for a
  * roll on every boss defeat (`fenchant bossdrop <player> <entry>`), so every boss is covered by one hook.
@@ -56,7 +58,7 @@ import java.util.UUID;
  */
 final class Enchants implements Listener, CommandExecutor, TabCompleter {
 
-    enum Kind { MELEE, CHEST, BOOTS }
+    enum Kind { MELEE, CHEST, BOOTS, PICKAXE }
 
     record Def(String id, String name, int max, Kind kind, ChatColor color, String desc) { }
 
@@ -67,6 +69,7 @@ final class Enchants implements Listener, CommandExecutor, TabCompleter {
         add(new Def("venom", "Venom", 2, Kind.MELEE, ChatColor.DARK_GREEN, "A chance to poison."));
         add(new Def("thunderstrike", "Thunderstrike", 1, Kind.MELEE, ChatColor.YELLOW, "A chance to call lightning for extra damage."));
         add(new Def("vitality", "Vitality", 2, Kind.CHEST, ChatColor.LIGHT_PURPLE, "More max health while worn."));
+        add(new Def("veinminer", "Vein Miner", 1, Kind.PICKAXE, ChatColor.GOLD, "Sneak while mining an ore to dig out the whole vein."));
         add(new Def("featherstep", "Featherstep", 1, Kind.BOOTS, ChatColor.WHITE, "Less fall damage; never trample farmland."));
     }
     private static void add(Def d) { DEFS.put(d.id, d); }
@@ -86,14 +89,14 @@ final class Enchants implements Listener, CommandExecutor, TabCompleter {
         DEFAULT_DROPS.put("the_kraken_at_sea", List.of("thunderstrike:1:0.3"));
         DEFAULT_DROPS.put("diamond_jacob", List.of("vitality:2:0.35"));
         DEFAULT_DROPS.put("rocco_vendetta", List.of("lifesteal:2:0.35"));
-        DEFAULT_DROPS.put("the_lost_explorer", List.of("lifesteal:2:0.5", "vitality:2:0.5"));
+        DEFAULT_DROPS.put("the_lost_explorer", List.of("lifesteal:2:0.5", "vitality:2:0.5", "veinminer:1:0.5"));
         DEFAULT_DROPS.put("the_skeleton_captain", List.of("thunderstrike:1:0.3"));
         DEFAULT_DROPS.put("grimtusk", List.of("lifesteal:1:0.3", "vitality:1:0.2"));
         DEFAULT_DROPS.put("leviathan", List.of("thunderstrike:1:0.2"));
         DEFAULT_DROPS.put("sandworm_king", List.of("venom:2:0.2"));
         DEFAULT_DROPS.put("lich", List.of("lifesteal:2:0.2"));
         DEFAULT_DROPS.put("frost_wyrm", List.of("frostbite:2:0.25"));
-        DEFAULT_DROPS.put("stone_golem", List.of("vitality:1:0.2"));
+        DEFAULT_DROPS.put("stone_golem", List.of("vitality:1:0.2", "veinminer:1:0.3"));
         DEFAULT_DROPS.put("ghost_captain", List.of("featherstep:1:0.3"));
     }
 
@@ -125,7 +128,7 @@ final class Enchants implements Listener, CommandExecutor, TabCompleter {
         m.setDisplayName(d.color + "" + ChatColor.BOLD + d.name + " " + roman(level) + ChatColor.GRAY + " (Boss Enchant)");
         List<String> lore = new ArrayList<>();
         lore.add(ChatColor.GRAY + d.desc);
-        lore.add(ChatColor.DARK_GRAY + "For: " + switch (d.kind) { case MELEE -> "swords, axes, tridents"; case CHEST -> "chestplates"; case BOOTS -> "boots"; });
+        lore.add(ChatColor.DARK_GRAY + "For: " + switch (d.kind) { case MELEE -> "swords, axes, tridents"; case CHEST -> "chestplates"; case BOOTS -> "boots"; case PICKAXE -> "pickaxes"; });
         lore.add(ChatColor.DARK_GRAY + "Item on the left of an anvil, this book on the right.");
         if (level < d.max) lore.add(ChatColor.DARK_GRAY + "Two of these make " + d.name + " " + roman(level + 1) + ".");
         m.setLore(lore);
@@ -157,6 +160,7 @@ final class Enchants implements Listener, CommandExecutor, TabCompleter {
             case MELEE -> n.endsWith("_SWORD") || n.endsWith("_AXE") || m == Material.TRIDENT;
             case CHEST -> n.endsWith("_CHESTPLATE");
             case BOOTS -> n.endsWith("_BOOTS");
+            case PICKAXE -> n.endsWith("_PICKAXE");
         };
     }
 
@@ -267,6 +271,52 @@ final class Enchants implements Listener, CommandExecutor, TabCompleter {
     public void onTrample(PlayerInteractEvent e) {
         if (e.getAction() == Action.PHYSICAL && e.getClickedBlock() != null && e.getClickedBlock().getType() == Material.FARMLAND
                 && level(e.getPlayer().getInventory().getBoots(), "featherstep") > 0) e.setCancelled(true);
+    }
+
+    private final java.util.Set<UUID> veining = new java.util.HashSet<>();
+
+    static boolean ore(Material m) { return m.name().endsWith("_ORE") || m == Material.ANCIENT_DEBRIS; }
+
+    /** deepslate_iron_ore and iron_ore are one vein. */
+    static String family(Material m) { return m.name().replace("DEEPSLATE_", ""); }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onMine(org.bukkit.event.block.BlockBreakEvent e) {
+        Player p = e.getPlayer();
+        org.bukkit.block.Block start = e.getBlock();
+        if (!p.isSneaking() || veining.contains(p.getUniqueId()) || !ore(start.getType())) return;
+        if (p.getGameMode() == org.bukkit.GameMode.CREATIVE || p.getGameMode() == org.bukkit.GameMode.SPECTATOR) return;
+        ItemStack tool = p.getInventory().getItemInMainHand();
+        if (level(tool, "veinminer") <= 0) return;
+        if (plugin.getConfig().getStringList("enchants.veinminer.exclude").contains(start.getType().name())) return;
+        String fam = family(start.getType());
+        int max = (int) cfg("veinminer.max-blocks", 32);
+        java.util.List<org.bukkit.block.Block> vein = new ArrayList<>();
+        java.util.Set<org.bukkit.block.Block> seen = new java.util.HashSet<>(List.of(start));
+        java.util.ArrayDeque<org.bukkit.block.Block> queue = new java.util.ArrayDeque<>(List.of(start));
+        while (!queue.isEmpty() && vein.size() < max) {
+            org.bukkit.block.Block b = queue.poll();
+            for (int dx = -1; dx <= 1; dx++) for (int dy = -1; dy <= 1; dy++) for (int dz = -1; dz <= 1; dz++) {
+                if (dx == 0 && dy == 0 && dz == 0) continue;
+                org.bukkit.block.Block n = b.getRelative(dx, dy, dz);
+                if (!seen.add(n) || !ore(n.getType()) || !family(n.getType()).equals(fam)) continue;
+                if (vein.size() < max) { vein.add(n); queue.add(n); }
+            }
+        }
+        if (vein.isEmpty()) return;
+        // the next tick, after this block is gone: each one as if the player broke it (events, drops, durability)
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            if (!p.isOnline()) return;
+            veining.add(p.getUniqueId());
+            try {
+                for (org.bukkit.block.Block b : vein) {
+                    ItemStack hand = p.getInventory().getItemInMainHand();
+                    if (level(hand, "veinminer") <= 0) break; // swapped away or the pickaxe broke
+                    if (!family(b.getType()).equals(fam)) continue;
+                    p.breakBlock(b);
+                }
+            } finally { veining.remove(p.getUniqueId()); }
+        });
     }
 
     @EventHandler public void onQuit(PlayerQuitEvent e) { thunderReady.remove(e.getPlayer().getUniqueId()); vitality(e.getPlayer(), 0); }

@@ -215,13 +215,13 @@ final class Discord implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onJoin(PlayerJoinEvent e) {
-        if (!joins || !on()) return;
+        if (!joins || !on() || vanished(e.getPlayer())) return;
         post("➕ **" + esc(e.getPlayer().getName()) + "** joined (" + Bukkit.getOnlinePlayers().size() + " online)");
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onQuit(PlayerQuitEvent e) {
-        if (!joins || !on()) return;
+        if (!joins || !on() || vanished(e.getPlayer())) return;
         post("➖ **" + esc(e.getPlayer().getName()) + "** left (" + (Bukkit.getOnlinePlayers().size() - 1) + " online)");
     }
 
@@ -291,6 +291,37 @@ final class Discord implements Listener {
         String label = label(line);
         if (label.isEmpty() || ignored.contains(label)) return;
         log("🖥️ CONSOLE ran `/" + code(line) + "`");
+    }
+
+    /** Vanished staff (FaultlineItems /vanish, EssentialsX, SuperVanish all set this metadata). */
+    static boolean vanished(Player p) {
+        for (var v : p.getMetadata("vanished")) if (v.asBoolean()) return true;
+        return false;
+    }
+
+    /**
+     * A player report: its own message straight to the logs channel (not batched), pinging discord.logs.report-role
+     * when set (the only mention this bridge ever allows). Returns false when the logs channel is off.
+     */
+    boolean report(String text) {
+        if (!logs.on()) return false;
+        String role = index.getConfig().getString("discord.logs.report-role", "");
+        boolean ping = role != null && role.matches("\\d{5,25}");
+        String content = (ping ? "<@&" + role + "> " : "") + text + " " + stamp();
+        String allowed = ping ? "{\"roles\":[\"" + role + "\"]}" : "{\"parse\":[]}";
+        String url = logs.url;
+        Bukkit.getScheduler().runTaskAsynchronously(index, () -> sendRaw(url, content.length() > 1900 ? content.substring(0, 1900) : content, allowed));
+        return true;
+    }
+
+    private void sendRaw(String url, String content, String allowedMentions) {
+        String body = "{\"username\":" + json(username) + ",\"content\":" + json(content) + ",\"allowed_mentions\":" + allowedMentions + "}";
+        try {
+            HttpRequest req = HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofSeconds(10))
+                    .header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(body)).build();
+            HttpResponse<String> res = http.send(req, HttpResponse.BodyHandlers.ofString());
+            if (res.statusCode() >= 300) index.getLogger().warning("Discord report answered " + res.statusCode());
+        } catch (Exception ex) { index.getLogger().warning("Discord report failed: " + ex.getMessage()); }
     }
 
     static boolean admin(Player p) { return p.isOp() || p.hasPermission("faultlineindex.logged"); }

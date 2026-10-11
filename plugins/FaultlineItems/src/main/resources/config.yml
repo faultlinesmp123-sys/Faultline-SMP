@@ -516,6 +516,7 @@ enchants:
   thunderstrike: {chance: 0.08, damage: 4, cooldown-seconds: 8}
   vitality: {health-per-level: 2}
   featherstep: {fall-reduction: 0.35}
+  veinminer: {max-blocks: 32, exclude: []}   # Vein Miner (pickaxes): sneak + mine an ore; exclude e.g. [ANCIENT_DEBRIS]
   # Index boss entry id: ["enchant:level:chance", ...] (each rolled on every defeat, per fighter)
   boss-drops:
     the_demon_eye: ["thunderstrike:1:0.25", "featherstep:1:0.2"]
@@ -531,14 +532,14 @@ enchants:
     the_kraken_at_sea: ["thunderstrike:1:0.3"]
     diamond_jacob: ["vitality:2:0.35"]
     rocco_vendetta: ["lifesteal:2:0.35"]
-    the_lost_explorer: ["lifesteal:2:0.5", "vitality:2:0.5"]
+    the_lost_explorer: ["lifesteal:2:0.5", "vitality:2:0.5", "veinminer:1:0.5"]
     the_skeleton_captain: ["thunderstrike:1:0.3"]
     grimtusk: ["lifesteal:1:0.3", "vitality:1:0.2"]
     leviathan: ["thunderstrike:1:0.2"]
     sandworm_king: ["venom:2:0.2"]
     lich: ["lifesteal:2:0.2"]
     frost_wyrm: ["frostbite:2:0.25"]
-    stone_golem: ["vitality:1:0.2"]
+    stone_golem: ["vitality:1:0.2", "veinminer:1:0.3"]
     ghost_captain: ["featherstep:1:0.3"]
 
 # Elytra races (1.2.17): admins build a course (/race create, /race cp add) and host it (/race host <course> [lend]).
@@ -548,8 +549,35 @@ race:
   max-minutes: 10
   lend-by-default: false      # /race host <course> lend gives everyone an elytra + rockets for the race
   lend-rockets: 16
+  boat-type: OAK_BOAT         # boat races: everyone gets one of these
+  horse-speed: 0.3            # horse races: everyone gets the same horse (vanilla horses are 0.1125-0.3375)
+  horse-jump: 0.75
   rewards:                    # console commands, {player} = the racer
     first: ["givemythicbag 2 {player}"]
     second: ["givemythicbag 1 {player}"]
     third: ["givegoodiebag 2 {player}"]
     finish: []
+
+# /sit (1.2.18): right-click a stair or a bottom slab with an empty hand, or /sit where you stand.
+sit:
+  enabled: true
+  click-stairs: true
+
+# Staff vanish (1.2.18): /vanish. Fake leave/join messages for the players who can't see you.
+vanish:
+  fake-messages: true
+  pickup: false               # vanished staff pick up items
+
+# Fishing (1.2.18): every fish has a weight; all-time records per species; tournaments (/fishing start [minutes]).
+fishing:
+  enabled: true
+  minutes: 15
+  auto-every-hours: 0         # 0 = only when an admin starts one
+  auto-min-players: 2
+  monster-chance: 0.01        # a 1.5x fish
+  tag-fish-in-tournament: true   # tournament fish show their weight (they won't stack)
+  announce-first-records: false  # the very first fish of a species is a "record" too: announce it?
+  rewards:
+    first: ["givemythicbag 2 {player}"]
+    second: ["givemythicbag 1 {player}"]
+    third: ["givegoodiebag 2 {player}"]

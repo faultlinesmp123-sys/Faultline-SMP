@@ -101,6 +101,7 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
     boolean dirty;
     Pirates pirates;
     LandCannons landCannons;
+    TreasureMaps treasure;
     /** Ship upgrades: id -> {title, max level, colour, vanilla model, what it does}. */
     static final java.util.LinkedHashMap<String, String[]> UPGRADES = new java.util.LinkedHashMap<>();
     static {
@@ -135,6 +136,8 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(pirates.ghost, this);
         landCannons = new LandCannons(this);
         getServer().getPluginManager().registerEvents(landCannons, this);
+        treasure = new TreasureMaps(this);
+        getServer().getPluginManager().registerEvents(treasure, this);
         for (World w : Bukkit.getWorlds()) for (var ch : w.getLoadedChunks()) { cleanup(ch.getEntities()); cleanDeck(ch); }
         Bukkit.getScheduler().runTaskTimer(this, this::tick, 1L, 1L);
         Bukkit.getScheduler().runTaskTimer(this, () -> { if (dirty) saveNow(); }, 100L, 100L);
@@ -286,6 +289,107 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
     String upgradeOf(ItemStack it) {
         for (var e : upgradeKeys.entrySet()) if (has(it, e.getValue())) return e.getKey();
         return null;
+    }
+
+    // =====================================================================================================
+    //  paint jobs (1.6.1): a dye recolours the sails, sneak + planks re-stains the whole hull in that wood
+    // =====================================================================================================
+    static boolean paintable(Player p, ItemStack hand) {
+        String n = hand.getType().name();
+        return n.endsWith("_DYE") || (p.isSneaking() && n.endsWith("_PLANKS"));
+    }
+
+    void paint(Player p, Ship s, ItemStack hand) {
+        if (s.ai != null) return;
+        if (!mayCaptain(p, s)) { p.sendActionBar(Component.text("Only the owner and their crew can paint this ship.", NamedTextColor.RED)); return; }
+        String n = hand.getType().name();
+        boolean dye = n.endsWith("_DYE");
+        String to = dye ? n.substring(0, n.length() - 4) : n.substring(0, n.length() - 7); // RED / SPRUCE
+        List<Integer> cells = new ArrayList<>();
+        Map<Integer, String> next = new HashMap<>();
+        for (int i = 0; i < s.blocks.length; i++) {
+            String b = s.blocks[i];
+            if (b == null || b.equals(Ship.CANNON_DATA)) continue;
+            ShipType.Need need = s.type.cells.get(i).need();
+            String repl = dye ? (need == ShipType.Need.WOOL ? recolour(b, to) : null) : restain(b, need, to);
+            if (repl != null && !repl.equals(b)) { cells.add(i); next.put(i, repl); }
+        }
+        if (cells.isEmpty()) {
+            p.sendActionBar(Component.text(dye ? (s.type == ShipType.PIRATE ? "The Jolly Roger can't be painted." : "The sails are that colour already.")
+                    : "The hull is that wood already.", NamedTextColor.YELLOW));
+            return;
+        }
+        int cost = dye ? Math.max(1, (int) Math.ceil(cells.size() / cfg("paint.sails-per-dye", 32)))
+                : Math.max(1, (int) Math.ceil(cells.size() / cfg("paint.blocks-per-plank", 24)));
+        boolean free = p.getGameMode() == GameMode.CREATIVE;
+        if (!free && countOf(p, hand.getType()) < cost) {
+            p.sendActionBar(Component.text("That needs " + cost + " " + pretty(hand.getType()) + ".", NamedTextColor.RED));
+            return;
+        }
+        if (!free) p.getInventory().removeItem(new ItemStack(hand.getType(), cost));
+        for (int i : cells) {
+            s.blocks[i] = next.get(i);
+            s.refreshCell(i);
+            if (s.anchored && s.type.cells.get(i).need().shaped()) { // the real block standing there
+                Block b = s.blockOf(i);
+                if (Ship.shipBlock(b.getType())) {
+                    org.bukkit.block.data.BlockData d = s.dataOf(i);
+                    if (d instanceof org.bukkit.block.data.Waterlogged wl && b.getBlockData() instanceof org.bukkit.block.data.Waterlogged old) wl.setWaterlogged(old.isWaterlogged());
+                    b.setBlockData(d, false);
+                }
+            }
+        }
+        dirty = true;
+        p.playSound(p.getLocation(), dye ? Sound.ITEM_DYE_USE : Sound.ITEM_AXE_STRIP, SoundCategory.PLAYERS, 1f, 1f);
+        p.sendMessage(ChatColor.AQUA + "The " + s.title() + (dye ? "'s sails are " + pretty(to).toLowerCase() + " now" : " is " + pretty(to).toLowerCase() + " wood now")
+                + ChatColor.GRAY + " (" + cells.size() + " blocks, " + cost + " " + pretty(hand.getType()) + ").");
+    }
+
+    static String pretty(Material m) { return pretty(m.name()); }
+    static String pretty(String n) {
+        StringBuilder b = new StringBuilder();
+        for (String w : n.toLowerCase().split("_")) { if (b.length() > 0) b.append(' '); b.append(Character.toUpperCase(w.charAt(0))).append(w.substring(1)); }
+        return b.toString();
+    }
+
+    static int countOf(Player p, Material m) {
+        int n = 0;
+        for (ItemStack it : p.getInventory().getStorageContents())
+            if (it != null && it.getType() == m && (!it.hasItemMeta() || (!it.getItemMeta().hasDisplayName() && it.getItemMeta().getPersistentDataContainer().isEmpty()))) n += it.getAmount();
+        return n;
+    }
+
+    /** "minecraft:white_wool" -> "minecraft:red_wool". */
+    static String recolour(String data, String colour) {
+        Material want = Material.matchMaterial(colour + "_WOOL");
+        return want == null ? null : swap(data, want);
+    }
+
+    /** A wooden cell in another wood, keeping its shape (stairs facing, log axis...). */
+    static String restain(String data, ShipType.Need need, String wood) {
+        String suffix = switch (need) {
+            case PLANKS -> "_PLANKS";
+            case FENCE -> "_FENCE";
+            case STAIRS -> "_STAIRS";
+            case TRAPDOOR, HATCH -> "_TRAPDOOR";
+            case LOG -> wood.equals("CRIMSON") || wood.equals("WARPED") ? "_STEM" : wood.equals("BAMBOO") ? "_BLOCK" : "_LOG";
+            default -> null;
+        };
+        if (suffix == null) return null;
+        Material want = Material.matchMaterial(wood + suffix);
+        if (want == null || !need.accepts(want)) return null;
+        return swap(data, want);
+    }
+
+    /** The same block state string with another material ("minecraft:oak_stairs[facing=east]" -> spruce). */
+    static String swap(String data, Material to) {
+        int br = data.indexOf('[');
+        String props = br >= 0 ? data.substring(br) : "";
+        String out = to.getKey().toString() + props;
+        try { return Bukkit.createBlockData(out).getAsString(); }
+        catch (IllegalArgumentException ex) { // props the new block doesn't have (a log axis on bamboo...): just the block
+            try { return Bukkit.createBlockData(to).getAsString(); } catch (IllegalArgumentException ex2) { return null; }
+        }
     }
 
     void fitUpgrade(Player p, Ship s, ItemStack hand, String id) {
@@ -702,6 +806,11 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
             fire(p);
             return;
         }
+        if (onShip != null && a == Action.RIGHT_CLICK_BLOCK && !onShip.building && paintable(p, hand)) {
+            event.setCancelled(true);
+            if (!used(p)) paint(p, onShip, hand);
+            return;
+        }
         String upg = upgradeOf(hand);
         if (upg != null) {
             event.setCancelled(true);
@@ -768,6 +877,7 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
         if (isBall(hand)) { fire(p); return; }
         String upg = upgradeOf(hand);
         if (upg != null) { fitUpgrade(p, s, hand, upg); return; }
+        if (!s.building && paintable(p, hand)) { paint(p, s, hand); return; }
         if (hand.getType().name().endsWith("_BANNER")) { hangBanner(p, s, hand); return; }
         if (p.isSneaking()) { openHold(p, s); return; }
         // in the water beside it: climb up onto the deck (a free seat isn't needed, and a full ship still takes you back)
@@ -1896,7 +2006,7 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
         }
         else if (args.length == 2 && args[0].equalsIgnoreCase("spawn")) { for (ShipType t : ShipType.values()) opts.add(t.name().toLowerCase()); }
         else if (args.length == 3 && args[0].equalsIgnoreCase("spawn")) return null; // player names
-        else if (args.length == 2 && args[0].equalsIgnoreCase("pirates")) opts.addAll(List.of("ship", "invasion", "horn", "spawn", "egg", "stop"));
+        else if (args.length == 2 && args[0].equalsIgnoreCase("pirates")) opts.addAll(List.of("ship", "invasion", "horn", "spawn", "egg", "ghost", "bell", "map", "stop"));
         else if (args.length == 3 && args[0].equalsIgnoreCase("pirates") && (args[1].equalsIgnoreCase("spawn") || args[1].equalsIgnoreCase("egg"))) { for (Pirates.Kind k : Pirates.Kind.values()) opts.add(k.name().toLowerCase()); }
         else if (args.length == 2 && List.of("wreck", "repair", "remove", "tp", "info").contains(args[0].toLowerCase())) {
             for (Ship sh : ships.values()) if (sh.name != null) opts.add(sh.name);

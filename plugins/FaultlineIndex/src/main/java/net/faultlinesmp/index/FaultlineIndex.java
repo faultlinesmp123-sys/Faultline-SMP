@@ -153,6 +153,9 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
         discord = new Discord(this);
         getServer().getPluginManager().registerEvents(discord, this);
         getCommand("serverstats").setExecutor(new ServerStats(this));
+        Reports reports = new Reports(this);
+        getCommand("report").setExecutor(reports);
+        getCommand("reports").setExecutor(reports);
         getCommand("discord").setExecutor((sender, cmd, label, args) -> {
             if (!sender.hasPermission("faultlineindex.admin")) { sender.sendMessage(ChatColor.RED + "You don't have permission to do that."); return true; }
             reloadConfig(); discord.reload();

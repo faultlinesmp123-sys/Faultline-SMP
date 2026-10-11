@@ -122,6 +122,14 @@ pirates:
       - {command: "ship give pirate 1 {player}", chance: 0.25}
   flagship-waits-for: 3         # the flagship hangs back until this few escorts are left
   # the first time a player opens a skeleton ship's hold: these on top of what's in it
+  # Pirate treasure maps (1.6.1): found when plundering a skeleton ship's hold; dig at the X for a chest of loot.
+  treasure:
+    plunder-chance: 0.35
+    min-distance: 250
+    max-distance: 700
+    loot: ["GOLD_INGOT:8-24:1.0", "DIAMOND:3-8:0.8", "EMERALD:6-16:0.6", "NETHERITE_SCRAP:1-2:0.25",
+           "ENCHANTED_GOLDEN_APPLE:1-1:0.05", "GOLDEN_APPLE:1-3:0.4", "EXPERIENCE_BOTTLE:8-16:0.5"]
+    commands: ["givemythicbag 1 {player}|0.5", "ship give cannonball {4-12} {player}|0.6"]   # command|chance
   plunder:
     - {command: "givegoodiebag 1 {player}", chance: 0.6, name: "a Goodie Bag"}
     - {command: "giveaccessory {accessory} 1 {player}", chance: 0.35, name: "an accessory"}
@@ -146,3 +154,9 @@ land-cannon:
   max-pitch-up: -45
   max-pitch-down: 20
   max-per-player: 12             # 0 = no limit
+
+# Paint jobs (1.6.1): right-click your ship with a dye to recolour its sails (1 dye per 32 sail blocks), or sneak +
+# right-click with planks to re-stain the whole hull in that wood (1 plank per 24 blocks). Owner and crew.
+paint:
+  sails-per-dye: 32
+  blocks-per-plank: 24

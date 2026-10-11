@@ -30,8 +30,13 @@ discord:
     admin-commands: true         # commands run by ops / faultlineindex.logged
     all-commands: false          # every player's commands
     console-commands: true
+    report-role: ""              # a Discord role ID to ping on every /report (Server Settings > Roles > right-click > Copy ID); "" = no ping
     ignore-commands: [login, l, log, register, reg, changepassword, changepass, cp]   # never logged (passwords)
   # announcements matching any of these (Java regexes) are posted
   forward: ["(?i)has been defeated", "(?i)has fallen", "(?i)has been laid to rest", "(?i)meteor", "(?i)caravan", "(?i)achievement",
             "(?i)is the first to", "(?i)aurora", "(?i)sandstorm", "(?i)blizzard", "(?i)eclipse", "(?i)locust", "(?i)ghost ship|wailing mary",
             "(?i)invasion", "(?i)boss rush"]
+
+# /report <player> <reason>: to the Discord logs channel, online staff (faultlineindex.reports) and reports.yml.
+reports:
+  cooldown-seconds: 60

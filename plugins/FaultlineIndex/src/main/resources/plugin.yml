@@ -1,5 +1,5 @@
 name: FaultlineIndex
-version: '1.6.9'
+version: '1.6.10'
 main: net.faultlinesmp.index.FaultlineIndex
 api-version: '1.21'
 author: FaultlineSMP
@@ -17,6 +17,13 @@ commands:
   serverstats:
     description: The whole server in numbers
     usage: /serverstats
+  report:
+    description: Report a player (or a problem) to the staff
+    usage: /report <player> <reason>
+  reports:
+    description: "Staff: the latest player reports"
+    usage: /reports [count]
+    permission: faultlineindex.reports
   discord:
     description: "Admin: test the Discord bridge (/discord test [message]); reloads its settings"
     usage: /discord [status|test [message]]
@@ -25,6 +32,9 @@ commands:
 permissions:
   faultlineindex.admin:
     description: Give Index books and reset players' Index progress
+    default: op
+  faultlineindex.reports:
+    description: See player reports in game, /reports, and no report cooldown
     default: op
   faultlineindex.logged:
     description: Commands this player runs are posted to the Discord logs channel (ops always are)

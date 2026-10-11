@@ -379,6 +379,7 @@ final class Pirates implements Listener {
                 run(cmd, p);
                 if (r.get("name") != null) found.add(String.valueOf(r.get("name")));
             }
+            if (pl.treasure != null && pl.treasure.maybeFind(p)) found.add("a Pirate Treasure Map");
             p.sendMessage(ChatColor.GOLD + "" + ChatColor.BOLD + "Plunder! " + ChatColor.YELLOW + (found.isEmpty() ? "The hold is yours." : "You found " + String.join(", ", found) + ", and the hold is yours."));
             p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, SoundCategory.PLAYERS, 1f, 0.8f);
         }
@@ -1447,6 +1448,12 @@ final class Pirates implements Listener {
                 if (at == null) return msg(sender, ChatColor.RED + (p == null ? "/ship pirates ghost <player>" : "Player not found."));
                 String why = ghost.call(at, false);
                 return msg(sender, why != null ? ChatColor.RED + why : ChatColor.AQUA + "The Wailing Mary drifts out of the fog near " + at.getName() + ". (Hold a Lantern of Souls near her to make her solid.)");
+            }
+            case "map" -> { // /ship pirates map [player]: a treasure map leading somewhere near them
+                Player to = args.length > 2 ? Bukkit.getPlayerExact(args[2]) : p;
+                if (to == null) return msg(sender, ChatColor.RED + (p == null ? "/ship pirates map <player>" : "Player not found."));
+                to.getInventory().addItem(pl.treasure.map(to.getLocation())).values().forEach(left -> to.getWorld().dropItemNaturally(to.getLocation(), left));
+                return msg(sender, ChatColor.GREEN + "Gave " + to.getName() + " a Pirate Treasure Map.");
             }
             case "bell" -> { // /ship pirates bell [amount] [player]
                 Player to = p;

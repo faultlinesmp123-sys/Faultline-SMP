@@ -381,6 +381,17 @@ public final class FaultlineItems extends JavaPlugin {
         getServer().getPluginManager().registerEvents(enchants, this); // 1.2.17: boss enchant books
         getCommand("fenchant").setExecutor(enchants);
         getCommand("fenchant").setTabCompleter(enchants);
+        sit = new Sit(this);
+        getServer().getPluginManager().registerEvents(sit, this); // 1.2.18
+        getCommand("sit").setExecutor(sit);
+        getServer().getScheduler().runTaskTimer(this, sit::sweep, 200L, 200L);
+        vanish = new Vanish(this);
+        getServer().getPluginManager().registerEvents(vanish, this);
+        getCommand("vanish").setExecutor(vanish);
+        fishing = new Fishing(this);
+        getServer().getPluginManager().registerEvents(fishing, this);
+        getCommand("fishing").setExecutor(fishing);
+        getCommand("fishing").setTabCompleter(fishing);
         race = new Race(this);
         getServer().getPluginManager().registerEvents(race, this); // 1.2.17: elytra races
         getCommand("race").setExecutor(race);
@@ -574,6 +585,8 @@ public final class FaultlineItems extends JavaPlugin {
         if (creatures != null) creatures.shutdown();
         if (gear != null) gear.shutdown();
         if (race != null) try { race.shutdown(); } catch (RuntimeException ignored) { }
+        if (sit != null) try { sit.shutdown(); } catch (RuntimeException ignored) { }
+        if (fishing != null) try { fishing.shutdown(); } catch (RuntimeException ignored) { }
         if (enchants != null) for (Player online : Bukkit.getOnlinePlayers()) try { enchants.vitality(online, 0); } catch (RuntimeException ignored) { }
         if (caravan != null) caravan.shutdown();
         if (accessoryManager != null) {
@@ -829,6 +842,9 @@ public final class FaultlineItems extends JavaPlugin {
     SpawnProtection spawnProtection;
     Enchants enchants;
     Race race;
+    Sit sit;
+    Vanish vanish;
+    Fishing fishing;
 
     private KrakenGear krakenGear;
     private JacobGear jacobGear;
@@ -7200,6 +7216,9 @@ public final class FaultlineItems extends JavaPlugin {
                 }
                 list.add(external(icon(Material.GOAT_HORN, null, ChatColor.DARK_RED + "" + ChatColor.BOLD + "Cursed Pirate Horn", "FaultlineShips"),
                         "ship pirates horn {amount} {player}", "FaultlineShips"));
+                { ItemStack tm = icon(Material.PAPER, null, ChatColor.GOLD + "" + ChatColor.BOLD + "Pirate Treasure Map " + ChatColor.GRAY + "(leads somewhere near the player)", "FaultlineShips");
+                  ItemMeta tmm = tm.getItemMeta(); tmm.setItemModel(NamespacedKey.minecraft("map")); tm.setItemMeta(tmm);
+                  list.add(external(tm, "ship pirates map {player}", "FaultlineShips")); }
                 list.add(external(icon(Material.BELL, null, ChatColor.AQUA + "" + ChatColor.BOLD + "Phantom Bell " + ChatColor.GRAY + "(calls the Ghost Ship)", "FaultlineShips"),
                         "ship pirates bell {amount} {player}", "FaultlineShips"));
                 list.add(external(icon(Material.SOUL_LANTERN, null, ChatColor.AQUA + "" + ChatColor.BOLD + "The Wailing Mary " + ChatColor.GRAY + "(summons the Ghost Ship near you, at sea)", "FaultlineShips"),

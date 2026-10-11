@@ -1,5 +1,5 @@
 name: FaultlineItems
-version: 1.2.17
+version: 1.2.18
 main: net.faultlinesmp.items.FaultlineItems
 api-version: '1.21'
 softdepend: [floodgate, Geyser-Spigot]
@@ -130,9 +130,19 @@ commands:
     description: "Admin: boss enchant books (/fenchant give <id> [level] [amount] [player], /fenchant list)"
     usage: /fenchant [list|give <id> [level] [amount] [player]]
     permission: items.fenchant
+  sit:
+    description: "Sit down where you stand (or right-click a stair / bottom slab with an empty hand); again to stand up"
+    usage: /sit
+  vanish:
+    description: "Staff: vanish from everyone without faultline.vanish.see (/vanish [player|list])"
+    usage: /vanish [player|list]
+    permission: faultline.vanish
+  fishing:
+    description: "Fishing records and tournaments (/fishing top|records; admins start [minutes] | stop [award])"
+    usage: /fishing [top|records|start [minutes]|stop [award]]
   race:
     description: "Elytra races: /race join|leave|list|top; admins create courses and host them"
-    usage: /race [join|leave|list|top|create|cp|host|start|stop]
+    usage: /race [join|leave|list|top|create <name> [elytra|boat|horse|any]|mode|cp|host|start|stop]
   fcreature:
     description: "Admin: spawn a Mimic or a Skeleton Knight patrol"
     usage: /fcreature <mimic|knights> [player]
@@ -152,6 +162,15 @@ commands:
 permissions:
   items.fenchant:
     description: Give boss enchant books
+    default: op
+  faultline.vanish:
+    description: Use /vanish
+    default: op
+  faultline.vanish.see:
+    description: See vanished staff
+    default: op
+  items.fishing.admin:
+    description: Start and stop fishing tournaments
     default: op
   items.race.admin:
     description: Create elytra race courses and host races

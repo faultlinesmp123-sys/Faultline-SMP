@@ -21,6 +21,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -51,7 +52,9 @@ import java.util.UUID;
 
 /**
  * ELYTRA RACES (Items 1.2.17, config race:, courses + best times in races.yml). Admins build a course and host it:
- *   /race create <name>            start line = where you stand (and the way you face); you're now editing it
+ *   /race create <name> [mode]     start line = where you stand (and the way you face); you're now editing it.
+ *                                  mode: elytra (default), boat (everyone gets a boat), horse (everyone gets the same
+ *                                  horse), any (bring anything: your own ship, horse, boat, feet). /race mode <mode> changes it
  *   /race cp add [radius]          a checkpoint ring where you are (default race.default-radius 6); the LAST one is the finish
  *   /race cp undo | cp list | setstart | edit <name> | delete <name>
  *   /race host <name> [lend]       opens sign-ups (a clickable [JOIN] in chat); "lend" lends everyone an elytra + rockets
@@ -67,6 +70,7 @@ final class Race implements Listener, CommandExecutor, TabCompleter {
 
     static final class Course {
         String name;
+        String mode = "elytra"; // elytra | boat | horse | any
         Location start;
         final List<double[]> cps = new ArrayList<>(); // x, y, z, radius
         final Map<UUID, Long> best = new HashMap<>();
@@ -81,12 +85,15 @@ final class Race implements Listener, CommandExecutor, TabCompleter {
         boolean out;
         ItemStack savedChest;
         boolean lent;
+        UUID mount; // the boat or horse lent for this race
         Racer(UUID id) { this.id = id; }
     }
 
     private final FaultlineItems plugin;
     private final File file;
     final NamespacedKey lentKey;
+    static final List<String> MODES = List.of("elytra", "boat", "horse", "any");
+    static final String MOUNT_TAG = "faultline_race_mount";
     final Map<String, Course> courses = new LinkedHashMap<>();
     private final Map<UUID, String> editing = new HashMap<>();
     private final Map<UUID, ItemStack> pendingRestore = new HashMap<>();
@@ -121,6 +128,7 @@ final class Race implements Listener, CommandExecutor, TabCompleter {
             if (w == null) continue;
             Course co = new Course();
             co.name = key;
+            co.mode = MODES.contains(c.getString("mode", "elytra")) ? c.getString("mode", "elytra") : "elytra";
             co.start = new Location(w, c.getDouble("x"), c.getDouble("y"), c.getDouble("z"), (float) c.getDouble("yaw"), (float) c.getDouble("pitch"));
             for (String s : c.getStringList("checkpoints")) {
                 String[] p = s.split(",");
@@ -147,6 +155,7 @@ final class Race implements Listener, CommandExecutor, TabCompleter {
         for (Course co : courses.values()) {
             String b = "courses." + co.name + ".";
             y.set(b + "world", co.start.getWorld().getName());
+            y.set(b + "mode", co.mode);
             y.set(b + "x", co.start.getX()); y.set(b + "y", co.start.getY()); y.set(b + "z", co.start.getZ());
             y.set(b + "yaw", co.start.getYaw()); y.set(b + "pitch", co.start.getPitch());
             List<String> cps = new ArrayList<>();
@@ -170,9 +179,14 @@ final class Race implements Listener, CommandExecutor, TabCompleter {
         live = co; lend = lendElytra; running = false; racers.clear(); place = 0;
         Component join = Component.text("[JOIN]", NamedTextColor.GREEN, TextDecoration.BOLD)
                 .clickEvent(ClickEvent.runCommand("/race join")).hoverEvent(HoverEvent.showText(Component.text("Join the race")));
-        Bukkit.broadcast(Component.text("✈ An Elytra Race is open: ", NamedTextColor.AQUA)
+        Bukkit.broadcast(Component.text(icon(co) + " " + title(co) + " is open: ", NamedTextColor.AQUA)
                 .append(Component.text(co.name, NamedTextColor.WHITE, TextDecoration.BOLD))
-                .append(Component.text(" (" + co.cps.size() + " rings" + (lendElytra ? ", elytra lent" : ", bring your elytra") + ") ", NamedTextColor.GRAY))
+                .append(Component.text(" (" + co.cps.size() + " rings, " + switch (co.mode) {
+                    case "boat" -> "a boat race: boats provided";
+                    case "horse" -> "a horse race: horses provided";
+                    case "any" -> "anything goes: ships, horses, boats, feet";
+                    default -> lendElytra ? "elytra lent" : "bring your elytra";
+                } + ") ", NamedTextColor.GRAY))
                 .append(join));
         return true;
     }
@@ -194,11 +208,18 @@ final class Race implements Listener, CommandExecutor, TabCompleter {
         for (Racer r : racers.values()) {
             Player p = Bukkit.getPlayer(r.id);
             Location at = spot(i++);
-            p.teleport(at);
+            if (p.isInsideVehicle() && !live.mode.equals("any")) p.leaveVehicle();
+            if (live.mode.equals("any") && p.getVehicle() != null) p.getVehicle().teleport(at); else p.teleport(at);
             r.last = at.clone();
-            if (lend) lendTo(p, r);
-            else if (p.getInventory().getChestplate() == null || p.getInventory().getChestplate().getType() != Material.ELYTRA)
-                p.sendMessage(ChatColor.YELLOW + "Wear an elytra before GO!");
+            switch (live.mode) {
+                case "boat", "horse" -> mountUp(p, r, at);
+                case "any" -> { }
+                default -> {
+                    if (lend) lendTo(p, r);
+                    else if (p.getInventory().getChestplate() == null || p.getInventory().getChestplate().getType() != Material.ELYTRA)
+                        p.sendMessage(ChatColor.YELLOW + "Wear an elytra before GO!");
+                }
+            }
         }
         save();
     }
@@ -208,8 +229,55 @@ final class Race implements Listener, CommandExecutor, TabCompleter {
         Location s = live.start.clone();
         Vector side = s.getDirection().setY(0);
         if (side.lengthSquared() < 1e-6) side = new Vector(1, 0, 0);
-        side = side.normalize().crossProduct(new Vector(0, 1, 0)).multiply(((i % 2 == 0) ? 1 : -1) * ((i + 1) / 2) * 1.5);
+        double gap = live.mode.equals("elytra") ? 1.5 : 2.6; // boats and horses need room
+        side = side.normalize().crossProduct(new Vector(0, 1, 0)).multiply(((i % 2 == 0) ? 1 : -1) * ((i + 1) / 2) * gap);
         return s.add(side);
+    }
+
+    static String icon(Course c) { return switch (c.mode) { case "boat" -> "⛵"; case "horse" -> "🐎"; case "any" -> "🏁"; default -> "✈"; }; }
+    static String title(Course c) { return switch (c.mode) { case "boat" -> "A Boat Race"; case "horse" -> "A Horse Race"; case "any" -> "A Race"; default -> "An Elytra Race"; }; }
+
+    /** Boat / horse races: everyone gets the same mount, so it's the rider who wins. */
+    void mountUp(Player p, Racer r, Location at) {
+        org.bukkit.entity.Entity m;
+        if (live.mode.equals("boat")) {
+            EntityType t;
+            try { t = EntityType.valueOf(plugin.getConfig().getString("race.boat-type", "OAK_BOAT").toUpperCase(Locale.ROOT)); } catch (IllegalArgumentException e) { t = EntityType.OAK_BOAT; }
+            m = at.getWorld().spawnEntity(at, t);
+        } else {
+            m = at.getWorld().spawnEntity(at, EntityType.HORSE);
+            if (m instanceof org.bukkit.entity.Horse h) {
+                h.setTamed(true); h.setOwner(p); h.setAdult(); h.setAgeLock(true);
+                h.getInventory().setSaddle(new ItemStack(Material.SADDLE));
+                h.setColor(org.bukkit.entity.Horse.Color.values()[Math.floorMod(r.id.hashCode(), org.bukkit.entity.Horse.Color.values().length)]);
+                attr(h, org.bukkit.attribute.Attribute.MOVEMENT_SPEED, cfg("horse-speed", 0.3));
+                attr(h, org.bukkit.attribute.Attribute.JUMP_STRENGTH, cfg("horse-jump", 0.75));
+                attr(h, org.bukkit.attribute.Attribute.MAX_HEALTH, 30);
+                h.setHealth(30);
+                h.setInvulnerable(true);
+            }
+        }
+        m.setPersistent(false);
+        m.addScoreboardTag(MOUNT_TAG);
+        m.setInvulnerable(true);
+        m.addPassenger(p);
+        r.mount = m.getUniqueId();
+    }
+
+    private static void attr(org.bukkit.entity.LivingEntity e, org.bukkit.attribute.Attribute a, double v) {
+        var i = e.getAttribute(a);
+        if (i != null) i.setBaseValue(v);
+    }
+
+    private boolean releasing; // our own eject: let it through
+
+    /** Takes the lent boat or horse away. */
+    void dismount(Racer r) {
+        if (r.mount == null) return;
+        org.bukkit.entity.Entity m = Bukkit.getEntity(r.mount);
+        r.mount = null;
+        releasing = true;
+        try { if (m != null) { m.eject(); m.remove(); } } finally { releasing = false; }
     }
 
     void lendTo(Player p, Racer r) {
@@ -253,6 +321,7 @@ final class Race implements Listener, CommandExecutor, TabCompleter {
     void out(Racer r, String why) {
         if (r.out || r.finished >= 0) return;
         r.out = true;
+        dismount(r);
         Player p = Bukkit.getPlayer(r.id);
         if (p != null) {
             p.sendMessage(ChatColor.RED + "Out of the race " + ChatColor.GRAY + "(" + why + ").");
@@ -265,18 +334,19 @@ final class Race implements Listener, CommandExecutor, TabCompleter {
         long ms = System.currentTimeMillis() - goAt;
         r.finished = ms;
         place++;
+        dismount(r);
         Long pb = live.best.get(p.getUniqueId());
         boolean newBest = pb == null || ms < pb;
         if (newBest) { live.best.put(p.getUniqueId(), ms); live.names.put(p.getUniqueId(), p.getName()); }
         String medal = place == 1 ? ChatColor.GOLD + "1st" : place == 2 ? ChatColor.WHITE + "2nd" : place == 3 ? ChatColor.RED + "3rd" : ChatColor.GRAY + "#" + place;
-        Bukkit.broadcastMessage(ChatColor.AQUA + "✈ " + p.getName() + ChatColor.GRAY + " finished " + live.name + " " + medal
+        Bukkit.broadcastMessage(ChatColor.AQUA + icon(live) + " " + p.getName() + ChatColor.GRAY + " finished " + live.name + " " + medal
                 + ChatColor.GRAY + " in " + ChatColor.WHITE + time(ms) + (newBest ? ChatColor.GREEN + " (personal best!)" : ""));
         p.playSound(p.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1f, 1.2f);
         p.getWorld().spawnParticle(Particle.FIREWORK, p.getLocation(), 60, 1, 1, 1, 0.2);
         String key = place == 1 ? "first" : place == 2 ? "second" : place == 3 ? "third" : "finish";
         for (String c : plugin.getConfig().getStringList("race.rewards." + key)) Bukkit.dispatchCommand(Bukkit.getConsoleSender(), c.replace("{player}", p.getName()));
         if (Bukkit.getPluginManager().getPlugin("FaultlineIndex") != null)
-            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "index stat " + p.getName() + " elytra_races 1");
+            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "index stat " + p.getName() + " " + (live.mode.equals("elytra") ? "elytra" : live.mode.equals("any") ? "open" : live.mode) + "_races 1");
         if (r.lent) giveBack(p, r);
         save();
         maybeEnd();
@@ -289,6 +359,7 @@ final class Race implements Listener, CommandExecutor, TabCompleter {
     void end(String why) {
         if (live == null) return;
         for (Racer r : racers.values()) {
+            dismount(r);
             Player p = Bukkit.getPlayer(r.id);
             if (p != null) { if (r.lent) giveBack(p, r); }
             else if (r.savedChest != null) { pendingRestore.put(r.id, r.savedChest); r.savedChest = null; }
@@ -296,7 +367,7 @@ final class Race implements Listener, CommandExecutor, TabCompleter {
         List<Racer> done = new ArrayList<>(racers.values().stream().filter(r -> r.finished >= 0).toList());
         done.sort(Comparator.comparingLong(r -> r.finished));
         if (running) {
-            StringBuilder s = new StringBuilder(ChatColor.AQUA + "✈ The " + live.name + " race is over" + ChatColor.GRAY + " (" + why + ")");
+            StringBuilder s = new StringBuilder(ChatColor.AQUA + icon(live) + " The " + live.name + " race is over" + ChatColor.GRAY + " (" + why + ")");
             for (int i = 0; i < Math.min(3, done.size()); i++) {
                 Player p = Bukkit.getPlayer(done.get(i).id);
                 s.append("\n ").append(ChatColor.GRAY).append(i + 1).append(". ").append(ChatColor.WHITE)
@@ -329,10 +400,12 @@ final class Race implements Listener, CommandExecutor, TabCompleter {
             Player p = Bukkit.getPlayer(r.id);
             if (p == null) { out(r, "left"); continue; }
             if (countdown) { // held at the line
-                if (!p.getWorld().equals(r.last.getWorld()) || p.getLocation().distanceSquared(r.last) > 1.5) {
-                    Location back = r.last.clone(); back.setYaw(p.getLocation().getYaw()); back.setPitch(p.getLocation().getPitch());
-                    p.teleport(back);
+                org.bukkit.entity.Entity held = p.getVehicle() != null ? p.getVehicle() : p;
+                if (!p.getWorld().equals(r.last.getWorld()) || held.getLocation().distanceSquared(r.last) > 1.5) {
+                    Location back = r.last.clone(); back.setYaw(held.getLocation().getYaw()); back.setPitch(held.getLocation().getPitch());
+                    held.teleport(back);
                 }
+                if (held != p) held.setVelocity(new Vector());
                 long left = (goAt - now + 999) / 1000;
                 p.sendActionBar(ChatColor.YELLOW + "" + ChatColor.BOLD + left + "...");
                 if ((goAt - now) % 1000 < 100) p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 1f, 1f);
@@ -419,6 +492,34 @@ final class Race implements Listener, CommandExecutor, TabCompleter {
     }
 
     @EventHandler(ignoreCancelled = true)
+    public void onDismount(org.bukkit.event.entity.EntityDismountEvent e) {
+        if (!(e.getEntity() instanceof Player p) || !e.getDismounted().getScoreboardTags().contains(MOUNT_TAG)) return;
+        Racer r = racers.get(p.getUniqueId());
+        if (!releasing && r != null && running && !r.out && r.finished < 0 && e.getDismounted().getUniqueId().equals(r.mount) && e.isCancellable()) {
+            e.setCancelled(true);
+            p.sendActionBar(ChatColor.YELLOW + "You're racing! /race leave to drop out.");
+        }
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    public void onMountHurt(org.bukkit.event.vehicle.VehicleDamageEvent e) { if (e.getVehicle().getScoreboardTags().contains(MOUNT_TAG)) e.setCancelled(true); }
+
+    @EventHandler(ignoreCancelled = true)
+    public void onMountBreak(org.bukkit.event.vehicle.VehicleDestroyEvent e) { if (e.getVehicle().getScoreboardTags().contains(MOUNT_TAG)) e.setCancelled(true); }
+
+    @EventHandler(ignoreCancelled = true)
+    public void onMountOpen(org.bukkit.event.inventory.InventoryOpenEvent e) {
+        if (e.getInventory().getHolder() instanceof org.bukkit.entity.Entity en && en.getScoreboardTags().contains(MOUNT_TAG)) e.setCancelled(true); // no stealing the saddle
+    }
+
+    /** A lent mount left over (unloaded mid-race, a crash with persistence off is already handled) is removed on sight. */
+    @EventHandler
+    public void onChunk(org.bukkit.event.world.ChunkLoadEvent e) {
+        for (org.bukkit.entity.Entity en : e.getChunk().getEntities())
+            if (en.getScoreboardTags().contains(MOUNT_TAG) && racers.values().stream().noneMatch(r -> en.getUniqueId().equals(r.mount))) en.remove();
+    }
+
+    @EventHandler(ignoreCancelled = true)
     public void onDrop(PlayerDropItemEvent e) { if (lent(e.getItemDrop().getItemStack())) e.setCancelled(true); }
 
     @EventHandler(ignoreCancelled = true)
@@ -452,7 +553,7 @@ final class Race implements Listener, CommandExecutor, TabCompleter {
             }
             case "list" -> {
                 if (courses.isEmpty()) { sender.sendMessage(ChatColor.GRAY + "No race courses yet."); return true; }
-                for (Course c : courses.values()) sender.sendMessage(ChatColor.AQUA + c.name + ChatColor.GRAY + " (" + c.cps.size() + " rings, " + c.start.getWorld().getName() + ")");
+                for (Course c : courses.values()) sender.sendMessage(ChatColor.AQUA + c.name + ChatColor.GRAY + " (" + c.mode + ", " + c.cps.size() + " rings, " + c.start.getWorld().getName() + ")");
             }
             case "top" -> {
                 Course c = args.length > 1 ? courses.get(args[1].toLowerCase(Locale.ROOT)) : live != null ? live : courses.values().stream().findFirst().orElse(null);
@@ -480,13 +581,20 @@ final class Race implements Listener, CommandExecutor, TabCompleter {
                 if (!key.matches("[a-z0-9_-]{1,32}")) { sender.sendMessage(ChatColor.RED + "Use letters, numbers, _ and - only."); return true; }
                 if (courses.containsKey(key)) { sender.sendMessage(ChatColor.RED + "That course exists (/race edit " + key + ")."); return true; }
                 Course c = new Course(); c.name = key; c.start = p.getLocation().clone();
+                if (args.length > 2 && MODES.contains(args[2].toLowerCase(Locale.ROOT))) c.mode = args[2].toLowerCase(Locale.ROOT);
                 courses.put(key, c); editing.put(p.getUniqueId(), key); save();
-                sender.sendMessage(ChatColor.GREEN + "Course " + key + " made, start here. Fly the course and /race cp add [radius] at each ring; the last ring is the finish.");
+                sender.sendMessage(ChatColor.GREEN + "Course " + key + " (" + c.mode + ") made, start here. Go round the course and /race cp add [radius] at each ring; the last ring is the finish.");
             }
             case "edit" -> {
                 if (p == null || args.length < 2 || !courses.containsKey(args[1].toLowerCase(Locale.ROOT))) { sender.sendMessage(ChatColor.RED + "/race edit <course>"); return true; }
                 editing.put(p.getUniqueId(), args[1].toLowerCase(Locale.ROOT));
                 sender.sendMessage(ChatColor.GREEN + "Editing " + args[1] + ".");
+            }
+            case "mode" -> {
+                Course c = edited(sender, p); if (c == null) return true;
+                if (args.length < 2 || !MODES.contains(args[1].toLowerCase(Locale.ROOT))) { sender.sendMessage(ChatColor.RED + "/race mode <elytra|boat|horse|any>"); return true; }
+                c.mode = args[1].toLowerCase(Locale.ROOT); save();
+                sender.sendMessage(ChatColor.GREEN + c.name + " is now a " + c.mode + " course.");
             }
             case "setstart" -> {
                 Course c = edited(sender, p); if (c == null) return true;
@@ -550,7 +658,7 @@ final class Race implements Listener, CommandExecutor, TabCompleter {
 
     private void help(CommandSender s, boolean admin) {
         s.sendMessage(ChatColor.AQUA + "" + ChatColor.BOLD + "✈ Elytra Races" + ChatColor.GRAY + ": /race join | leave | list | top [course]");
-        if (admin) s.sendMessage(ChatColor.GRAY + "Admin: /race create <name> | edit <name> | cp add [radius] | cp undo | cp list | setstart | delete <name> | host <name> [lend] | start | stop");
+        if (admin) s.sendMessage(ChatColor.GRAY + "Admin: /race create <name> [elytra|boat|horse|any] | mode <mode> | edit <name> | cp add [radius] | cp undo | cp list | setstart | delete <name> | host <name> [lend] | start | stop");
     }
 
     @Override
@@ -558,12 +666,14 @@ final class Race implements Listener, CommandExecutor, TabCompleter {
         boolean admin = sender.hasPermission("items.race.admin");
         if (args.length == 1) {
             Set<String> s = new LinkedHashSet<>(List.of("join", "leave", "list", "top"));
-            if (admin) s.addAll(List.of("create", "edit", "cp", "setstart", "delete", "host", "start", "stop"));
+            if (admin) s.addAll(List.of("create", "mode", "edit", "cp", "setstart", "delete", "host", "start", "stop"));
             return new ArrayList<>(s);
         }
         if (args.length == 2 && List.of("edit", "delete", "host", "open", "top").contains(args[0].toLowerCase(Locale.ROOT))) return new ArrayList<>(courses.keySet());
         if (args.length == 2 && args[0].equalsIgnoreCase("cp")) return List.of("add", "undo", "list");
         if (args.length == 3 && args[0].equalsIgnoreCase("host")) return List.of("lend");
+        if (args.length == 3 && args[0].equalsIgnoreCase("create")) return MODES;
+        if (args.length == 2 && args[0].equalsIgnoreCase("mode")) return MODES;
         return List.of();
     }
 }

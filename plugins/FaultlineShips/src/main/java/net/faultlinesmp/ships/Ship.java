@@ -100,6 +100,7 @@ final class Ship {
     boolean anchorForLeave, releasing;
     int leaveTries;
     // ---- damage you can see ----
+    final java.util.Map<Integer, String> origin = new java.util.HashMap<>(); // painted cells: what was really built there (scrap refunds that)
     final Set<Integer> broken = new HashSet<>();  // cells knocked out by crashes, cannonballs, blasts: holes until patched
     double breakAcc;                               // damage not yet turned into a broken block
     double sink;                                   // how far a wreck has gone down

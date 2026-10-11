@@ -223,6 +223,15 @@ Notes:
   within 12 (surface height saved into the map within 48, `treasure_y`); breaking a block at the X (top+1 .. top-5,
   ocean floor height) = a chest of `treasure.loot` + `treasure.commands`, map used up, Index stat `treasure_maps`.
   Tested: `Batch2Test` (items), `PaintTreasureTest` (ships), `ReportTest` (index).
+- **Bug pass (Items 1.2.19, Ships 1.6.2, Index 1.6.11, Raids 1.1.1, Bosses 1.5.4)**: Boss Rush stages no longer roll
+  discs or enchant books (the rush tags its team `faultline_boss_rush` = `BossRush.TAG`, removed at the end and on join;
+  `Museum.bossDefeated` skips the rolls for tagged players). Blood Moon raid extras copy only ordinary kinds (never a
+  second Bulwark / Great Hog / Bone Commander / boss). Ship paint + scrap was a wood/wool converter: painted cells keep
+  what was really built in `Ship.origin` (saved as `ships.<id>.origin`), and scrapping refunds that. A land cannon whose
+  barrier vanished (WorldEdit...) drops as an item (checked every 3 s). Races: "any" mode never teleports or holds a
+  rider's own vehicle (a ship seat would have been pulled off its ship; `Racer.free`); lent mounts are held at the line
+  with `TeleportFlag.EntityState.RETAIN_PASSENGERS`; lent rockets/elytra can't go into bundles (`onBundle`). Discord:
+  RCON commands are logged too (not command blocks), the online count leaves vanished staff out (`Discord.visible`).
 - Changing a plugin's default `config.yml` does NOT update the copy already on the server. Tell the owner
   which values to change in `plugins/<Plugin>/config.yml` on the VPS.
 - **Ships** (`FaultlineShips`; `ShipType.java` = the 5 layouts, `Ship.java` = one ship, `FaultlineShips.java` = items,

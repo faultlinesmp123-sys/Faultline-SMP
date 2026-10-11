@@ -328,6 +328,7 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
         }
         if (!free) p.getInventory().removeItem(new ItemStack(hand.getType(), cost));
         for (int i : cells) {
+            s.origin.putIfAbsent(i, s.blocks[i]); // scrapping gives back what was built, not the paint (no wood/wool conversion)
             s.blocks[i] = next.get(i);
             s.refreshCell(i);
             if (s.anchored && s.type.cells.get(i).need().shaped()) { // the real block standing there
@@ -1643,6 +1644,11 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
             if (s.sink > 0) y.set(k + ".sink", s.sink);
             if (s.banner != null) y.set(k + ".banner", Base64.getEncoder().encodeToString(s.banner.serializeAsBytes()));
             for (var u : s.upgrades.entrySet()) y.set(k + ".upgrades." + u.getKey(), u.getValue());
+            if (!s.origin.isEmpty()) {
+                List<String> or = new ArrayList<>();
+                for (var o : s.origin.entrySet()) { ShipType.Cell oc = s.type.cells.get(o.getKey()); or.add(oc.x() + "," + oc.y() + "," + oc.z() + "|" + o.getValue()); }
+                y.set(k + ".origin", or);
+            }
             y.set(k + ".barriers", new ArrayList<>(s.barriers));
             ItemStack[] cargo = s.cargoNow();
             if (cargo != null) {
@@ -1718,6 +1724,13 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
                 s.recount();
                 if (carried < byPos.size()) getLogger().info("Ship " + id + ": " + (byPos.size() - carried) + " blocks aren't part of the " + t.title + " any more.");
                 s.name = c.getString("name");
+                for (String op : c.getStringList("origin")) {
+                    int bar = op.indexOf('|');
+                    if (bar < 0) continue;
+                    String[] q = op.substring(0, bar).split(",");
+                    int oi = t.cellAt(Integer.parseInt(q[0]), Integer.parseInt(q[1]), Integer.parseInt(q[2]));
+                    if (oi >= 0) s.origin.put(oi, op.substring(bar + 1));
+                }
                 for (String bp : c.getStringList("broken")) {
                     String[] q = bp.split(",");
                     int bi = t.cellAt(Integer.parseInt(q[0]), Integer.parseInt(q[1]), Integer.parseInt(q[2]));
@@ -2034,7 +2047,9 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
             Map<Material, Integer> count = new LinkedHashMap<>();
             if (s.banner != null) out.add(s.banner);
             for (var u : s.upgrades.entrySet()) for (int i = 0; i < u.getValue(); i++) out.add(upgradeItem(u.getKey()));
-            if (!s.prebuilt) for (String b : s.blocks) if (b != null) {
+            if (!s.prebuilt) for (int bi = 0; bi < s.blocks.length; bi++) {
+                String b = s.blocks[bi] == null ? null : s.origin.getOrDefault(bi, s.blocks[bi]);
+                if (b == null) continue;
                 if (b.equals(Ship.CANNON_DATA)) { out.add(cannon()); continue; }
                 try { count.merge(Bukkit.createBlockData(b).getMaterial(), 1, Integer::sum); } catch (IllegalArgumentException ignored) { }
             }

@@ -80,6 +80,8 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
     private final File file;
     private final YamlConfiguration data;
     Run run;
+    /** On every player in a running rush (the Index's Museum gives no discs or enchant books for rush stages). */
+    static final String TAG = "faultline_boss_rush";
     private final Map<UUID, Long> cooldown = new HashMap<>();
 
     final class Run {
@@ -162,7 +164,10 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
     }
 
     @EventHandler
-    public void onJoinRecipe(org.bukkit.event.player.PlayerJoinEvent e) { e.getPlayer().discoverRecipe(new org.bukkit.NamespacedKey(pl, "boss_rush_sigil")); }
+    public void onJoinRecipe(org.bukkit.event.player.PlayerJoinEvent e) {
+        e.getPlayer().discoverRecipe(new org.bukkit.NamespacedKey(pl, "boss_rush_sigil"));
+        if (run == null || !run.team.contains(e.getPlayer().getUniqueId())) e.getPlayer().removeScoreboardTag(TAG); // left over from a crash
+    }
 
     double c(String path, double def) { return pl.getConfig().getDouble("boss-rush." + path, def); }
 
@@ -317,7 +322,7 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
             }
         }
         Run r = new Run(stages());
-        for (Player p : team) { r.team.add(p.getUniqueId()); r.home.put(p.getUniqueId(), p.getLocation()); }
+        for (Player p : team) { r.team.add(p.getUniqueId()); r.home.put(p.getUniqueId(), p.getLocation()); p.addScoreboardTag(TAG); }
         r.startedAt = now;
         run = r;
         Bukkit.broadcastMessage(ChatColor.RED + "" + ChatColor.BOLD + "BOSS RUSH! " + ChatColor.YELLOW + names(team) + ChatColor.YELLOW
@@ -456,6 +461,7 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
     /** Ends the run: everyone still in it goes back to where they started. */
     void finish(Run r, boolean won) {
         if (run == r) run = null; // first: a failing step below must never leave "a Boss Rush is already running" for good
+        for (UUID id : r.team) { Player tp = Bukkit.getPlayer(id); if (tp != null) tp.removeScoreboardTag(TAG); }
         r.bar.removeAll();
         boolean voidUsed = false;
         for (UUID id : r.team) if (pl.below.returns.remove(id) != null) voidUsed = true; // they go home from here, not through the rift

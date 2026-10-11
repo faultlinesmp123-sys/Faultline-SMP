@@ -216,13 +216,13 @@ final class Discord implements Listener {
     @EventHandler(priority = EventPriority.MONITOR)
     public void onJoin(PlayerJoinEvent e) {
         if (!joins || !on() || vanished(e.getPlayer())) return;
-        post("➕ **" + esc(e.getPlayer().getName()) + "** joined (" + Bukkit.getOnlinePlayers().size() + " online)");
+        post("➕ **" + esc(e.getPlayer().getName()) + "** joined (" + visible(null) + " online)");
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onQuit(PlayerQuitEvent e) {
         if (!joins || !on() || vanished(e.getPlayer())) return;
-        post("➖ **" + esc(e.getPlayer().getName()) + "** left (" + (Bukkit.getOnlinePlayers().size() - 1) + " online)");
+        post("➖ **" + esc(e.getPlayer().getName()) + "** left (" + visible(e.getPlayer()) + " online)");
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -286,11 +286,13 @@ final class Discord implements Listener {
     public void onConsole(ServerCommandEvent e) {
         if (!logConsole || !logs.on()) return;
         CommandSender s = e.getSender();
-        if (!(s instanceof ConsoleCommandSender)) return; // command blocks and RCON-like senders would flood it
+        // the console and RCON (a panel, a remote tool); never command blocks / command minecarts (they'd flood it)
+        if (s instanceof org.bukkit.command.BlockCommandSender || s instanceof org.bukkit.entity.minecart.CommandMinecart) return;
+        if (!(s instanceof ConsoleCommandSender) && !(s instanceof org.bukkit.command.RemoteConsoleCommandSender)) return;
         String line = e.getCommand().startsWith("/") ? e.getCommand().substring(1) : e.getCommand();
         String label = label(line);
         if (label.isEmpty() || ignored.contains(label)) return;
-        log("🖥️ CONSOLE ran `/" + code(line) + "`");
+        log("🖥️ " + (s instanceof org.bukkit.command.RemoteConsoleCommandSender ? "RCON" : "CONSOLE") + " ran `/" + code(line) + "`");
     }
 
     /** Vanished staff (FaultlineItems /vanish, EssentialsX, SuperVanish all set this metadata). */
@@ -322,6 +324,13 @@ final class Discord implements Listener {
             HttpResponse<String> res = http.send(req, HttpResponse.BodyHandlers.ofString());
             if (res.statusCode() >= 300) index.getLogger().warning("Discord report answered " + res.statusCode());
         } catch (Exception ex) { index.getLogger().warning("Discord report failed: " + ex.getMessage()); }
+    }
+
+    /** Players online that everyone can see (vanished staff don't count), leaving one out. */
+    static int visible(Player leaving) {
+        int n = 0;
+        for (Player o : Bukkit.getOnlinePlayers()) if (!o.equals(leaving) && !vanished(o)) n++;
+        return n;
     }
 
     static boolean admin(Player p) { return p.isOp() || p.hasPermission("faultlineindex.logged"); }

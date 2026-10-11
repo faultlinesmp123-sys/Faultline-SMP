@@ -1,5 +1,5 @@
 name: FaultlineRaids
-version: '1.1.0'
+version: '1.1.1'
 main: net.faultlinesmp.raids.FaultlineRaids
 api-version: '1.21'
 author: FaultlineSMP

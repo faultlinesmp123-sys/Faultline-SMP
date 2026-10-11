@@ -107,6 +107,7 @@ final class Museum implements Listener {
             p.sendMessage(ChatColor.GOLD + "✦ You earned the " + ChatColor.WHITE + ChatColor.BOLD + e.name + " Trophy" + ChatColor.GOLD + "! " + ChatColor.GRAY + "Put it on a Museum Pedestal.");
             p.playSound(p.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 0.8f, 1.2f);
         }
+        if (p.getScoreboardTags().contains("faultline_boss_rush")) return; // Boss Rush stages: no discs or enchant books (the rush has its own reward)
         List<String> discs = DISCS.get(e.id);
         if (discs != null && random.nextDouble() < index.getConfig().getDouble("museum.disc-chance", 0.2)
                 && Bukkit.getPluginManager().getPlugin("FaultlineItems") != null) {

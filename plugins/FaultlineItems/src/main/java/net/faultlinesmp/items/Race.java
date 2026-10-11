@@ -86,6 +86,7 @@ final class Race implements Listener, CommandExecutor, TabCompleter {
         ItemStack savedChest;
         boolean lent;
         UUID mount; // the boat or horse lent for this race
+        boolean free; // "any" race on their own vehicle: not held at the line
         Racer(UUID id) { this.id = id; }
     }
 
@@ -208,8 +209,15 @@ final class Race implements Listener, CommandExecutor, TabCompleter {
         for (Racer r : racers.values()) {
             Player p = Bukkit.getPlayer(r.id);
             Location at = spot(i++);
-            if (p.isInsideVehicle() && !live.mode.equals("any")) p.leaveVehicle();
-            if (live.mode.equals("any") && p.getVehicle() != null) p.getVehicle().teleport(at); else p.teleport(at);
+            boolean any = live.mode.equals("any");
+            if (p.isInsideVehicle() && !any) p.leaveVehicle();
+            if (any && p.getVehicle() != null) { // their own ship / horse / boat: they line up themselves, nothing is teleported
+                r.last = p.getLocation().clone();
+                r.free = true;
+                p.sendMessage(ChatColor.YELLOW + "Get to the start line: the race starts in " + (int) Math.ceil(cfg("countdown-seconds", 5)) + "s.");
+                continue;
+            }
+            p.teleport(at);
             r.last = at.clone();
             switch (live.mode) {
                 case "boat", "horse" -> mountUp(p, r, at);
@@ -401,11 +409,16 @@ final class Race implements Listener, CommandExecutor, TabCompleter {
             if (p == null) { out(r, "left"); continue; }
             if (countdown) { // held at the line
                 org.bukkit.entity.Entity held = p.getVehicle() != null ? p.getVehicle() : p;
-                if (!p.getWorld().equals(r.last.getWorld()) || held.getLocation().distanceSquared(r.last) > 1.5) {
-                    Location back = r.last.clone(); back.setYaw(held.getLocation().getYaw()); back.setPitch(held.getLocation().getPitch());
-                    held.teleport(back);
+                boolean ours = held == p || held.getUniqueId().equals(r.mount); // never move someone's ship seat or their own horse
+                if (r.free || !ours) r.last = p.getLocation().clone();
+                else {
+                    if (!p.getWorld().equals(r.last.getWorld()) || held.getLocation().distanceSquared(r.last) > 1.5) {
+                        Location back = r.last.clone(); back.setYaw(held.getLocation().getYaw()); back.setPitch(held.getLocation().getPitch());
+                        if (held == p) p.teleport(back);
+                        else held.teleport(back, io.papermc.paper.entity.TeleportFlag.EntityState.RETAIN_PASSENGERS);
+                    }
+                    if (held != p) held.setVelocity(new Vector());
                 }
-                if (held != p) held.setVelocity(new Vector());
                 long left = (goAt - now + 999) / 1000;
                 p.sendActionBar(ChatColor.YELLOW + "" + ChatColor.BOLD + left + "...");
                 if ((goAt - now) % 1000 < 100) p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 1f, 1f);
@@ -527,6 +540,17 @@ final class Race implements Listener, CommandExecutor, TabCompleter {
         if (e.getView().getTopInventory().getType() == InventoryType.CRAFTING) return; // the player's own inventory
         if (lent(e.getCurrentItem()) || lent(e.getCursor())
                 || (e.getHotbarButton() >= 0 && lent(e.getWhoClicked().getInventory().getItem(e.getHotbarButton())))) e.setCancelled(true);
+    }
+
+    /** No hiding lent rockets or the elytra in a bundle (strip() only looks at the inventory itself). */
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onBundle(InventoryClickEvent e) {
+        boolean bundleAction = e.getAction().name().contains("BUNDLE");
+        boolean bundleInvolved = bundle(e.getCurrentItem()) || bundle(e.getCursor());
+        if ((bundleAction || bundleInvolved) && (lent(e.getCurrentItem()) || lent(e.getCursor()))) e.setCancelled(true);
+    }
+
+    static boolean bundle(ItemStack it) { return it != null && it.getType().name().endsWith("BUNDLE");
     }
 
     // ---------------------------------------------------------------- command

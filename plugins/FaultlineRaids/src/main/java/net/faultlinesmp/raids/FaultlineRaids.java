@@ -664,8 +664,11 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
         int cap = (int) cfg("raid.max-wave-size", 30);
         boolean blood = bloodMoon();
         if (blood && !kinds.isEmpty()) { // a Blood Moon wave: a quarter more of what was coming
-            int extra = (int) Math.round(kinds.size() * cfg("blood-moon.extra-mobs", 0.25));
-            for (int i = 0; i < extra; i++) kinds.add(kinds.get(random.nextInt(kinds.size())));
+            // copies of the ordinary mobs only: never a second Bulwark, Great Hog, Commander or boss
+            List<Kind> common = new ArrayList<>(kinds);
+            common.removeIf(k -> k == Kind.BOSS || k == Kind.BONE_COMMANDER || k == Kind.BULWARK || k == Kind.GREAT_HOG);
+            int extra = (int) Math.round(common.size() * cfg("blood-moon.extra-mobs", 0.25));
+            for (int i = 0; i < extra && !common.isEmpty(); i++) kinds.add(common.get(random.nextInt(common.size())));
             cap = (int) Math.round(cap * (1 + cfg("blood-moon.extra-mobs", 0.25)));
             if (w == 1) announce(raid, ChatColor.DARK_RED + "" + ChatColor.BOLD + "The Blood Moon feeds the Horde. " + ChatColor.RED + "Every wave is bigger and stronger tonight.");
         }

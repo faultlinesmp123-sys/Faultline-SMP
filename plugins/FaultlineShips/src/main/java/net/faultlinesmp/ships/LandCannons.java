@@ -335,6 +335,12 @@ final class LandCannons implements Listener {
     }
 
     void bedrockUpkeep() {
+        // a cannon whose barrier is gone (WorldEdit, another plugin): it drops as an item
+        for (Cannon c : new ArrayList<>(byBlock.values())) {
+            World w = Bukkit.getWorld(c.world);
+            if (w == null || !w.isChunkLoaded(c.x >> 4, c.z >> 4)) continue;
+            if (w.getBlockAt(c.x, c.y, c.z).getType() != Material.BARRIER) remove(c, true);
+        }
         for (Player p : Bukkit.getOnlinePlayers()) {
             if (!FaultlineShips.bedrock(p)) continue;
             for (Cannon c : byBlock.values()) {

@@ -108,14 +108,14 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
         boolean creature;
     }
 
-    private final List<Chapter> chapters = new ArrayList<>();
-    private final List<Entry> entries = new ArrayList<>();
+    final List<Chapter> chapters = new ArrayList<>();
+    final List<Entry> entries = new ArrayList<>();
     private final Map<NamespacedKey, List<Entry>> byKey = new HashMap<>();
     private final Map<String, int[]> glyphs = new HashMap<>();
 
     // per-player progress
     private final Map<UUID, Set<String>> found = new HashMap<>();
-    private final Map<UUID, Map<String, Integer>> kills = new HashMap<>();
+    final Map<UUID, Map<String, Integer>> kills = new HashMap<>();
     private final Set<UUID> gotBook = new HashSet<>();
     private final Map<UUID, Set<UUID>> damagers = new HashMap<>(); // creature -> players who hit it
     private File dataFile;
@@ -123,6 +123,7 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
 
     private NamespacedKey bookKey;
     final Achievements achievements = new Achievements(this);
+    final IndexForms forms = new IndexForms(this);
     Museum museum;
     Discord discord;
 
@@ -421,6 +422,7 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
+        Edition.forget(event.getPlayer().getUniqueId());
         if (dirty) saveProgress();
     }
 
@@ -432,7 +434,8 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
         Component msg = Component.text("✦ ", NamedTextColor.GOLD)
                 .append(Component.text(creature ? "New creature in your Index: " : "New item in your Index: ", NamedTextColor.YELLOW))
                 .append(Component.text(e.name, NamedTextColor.WHITE, TextDecoration.BOLD))
-                .append(Component.text("  [open]", NamedTextColor.AQUA)
+                .append(Edition.bedrock(p) ? Component.text("  (/index)", NamedTextColor.AQUA) // Bedrock can't click chat
+                        : Component.text("  [open]", NamedTextColor.AQUA)
                         .clickEvent(ClickEvent.runCommand("/index"))
                         .hoverEvent(HoverEvent.showText(Component.text("Open your Faultline Index"))));
         p.sendMessage(msg);
@@ -478,7 +481,7 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
     static Component pageOf(List<Component> lines) { return page(lines); }
     static String fitText(String text, int maxWidth) { return fit(text, maxWidth, false); }
 
-    private boolean has(UUID player, Entry e) {
+    boolean has(UUID player, Entry e) {
         Set<String> s = found.get(player);
         return s != null && s.contains(e.id);
     }
@@ -558,13 +561,14 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
      * (a Minecraft book holds at most 100 pages, and the Index keeps growing with updates).
      */
     void open(Player p) {
+        if (forms.use(p) && forms.cover(p)) return; // Bedrock: menus (it can't follow the book's links)
         UUID id = p.getUniqueId();
         Map<String, List<Entry>> byChapter = chapterMap();
         p.openBook(Book.book(Component.text("Faultline Index"), Component.text("Faultline SMP"), List.of(cover(id, byChapter))));
         p.playSound(p.getLocation(), Sound.ITEM_BOOK_PAGE_TURN, 0.8f, 1f);
     }
 
-    private Map<String, List<Entry>> chapterMap() {
+    Map<String, List<Entry>> chapterMap() {
         Map<String, List<Entry>> byChapter = new LinkedHashMap<>();
         for (Chapter c : chapters) byChapter.put(c.id(), new ArrayList<>());
         for (Entry e : entries) byChapter.get(e.chapter).add(e);
@@ -578,6 +582,7 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
             open(p);
             return;
         }
+        if (forms.use(p) && forms.chapter(p, c)) return;
         UUID id = p.getUniqueId();
         List<Entry> list = chapterMap().get(c.id());
 

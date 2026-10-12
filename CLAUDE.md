@@ -664,6 +664,19 @@ stand-ins, models or effects. A yes is cached; a no is re-asked after 5 s. What 
   copy of the exhibit, and punching a Mimic broke its stand. Captain Hollow's stand forwards hits (`GhostShip.onStandHit`);
   ship banner stands and the captain's stand are in `bedrockUpkeep`. The Mimic's lid lifts on Bedrock (a stand can't tilt).
   Tested (`BedrockStandTest`, `GhostTest`).
+- **Bedrock forms (Items 1.2.22, Bosses 1.5.7, Index 1.6.12)**: Bedrock can't click chat text or links in a book.
+  `BedrockForms` (a copy in Items, Bosses, Index) sends native Bedrock menus by reflection through Floodgate's
+  `FloodgateApi.sendForm(UUID, Form)` or Geyser's `GeyserApi.api().sendForm(...)` (Cumulus `SimpleForm` = a list of
+  buttons, `ModalForm` = Yes/No); answers come back on the main thread; false = couldn't send, the caller falls back to
+  text. Used by: the INDEX (`IndexForms`: cover -> chapter -> entry, achievements; before, Bedrock players could open the
+  cover but never get into a chapter, since its links ran /index open; `bedrock-forms: true` in the Index config),
+  Don Lorenzo's "Are you sure?", the Lost Explorer's Skip and "Do you want to do it again..?", the race invitation
+  (/race host asks every Bedrock player), and `/fweather` (the event list). A NEW click-button in chat needs a form too.
+  Tested against the real Cumulus (cloned from GitHub, compiled) with a fake FloodgateApi (`FormsTest`, `FormsItemsTest`).
+  Ship upgrades and the Pirate Treasure Map (PAPER with vanilla models) now have Bedrock mappings + icons
+  (`ship_assets.py` `EXTRA_ICONS`; before, Bedrock players saw plain paper). Index: the Boss Enchant Book, Pirate
+  Treasure Map and Trophy Fish entries had been put under `achievements:` in index.yml (missing from the Index, warnings
+  at startup): moved to `entries:` (223 entries).
 - **`/bedrockcheck`** (FaultlineItems, op): checks Geyser/Floodgate, `enable-custom-content` / `force-resource-packs` in
   Geyser's config, every pack in `plugins/Geyser-Spigot/packs/` against `bedrock_packs.yml` (written by `mcpack_version.py`:
   missing / outdated / two copies / unzipped folder / wrong extension / left in the wrong folder), the four

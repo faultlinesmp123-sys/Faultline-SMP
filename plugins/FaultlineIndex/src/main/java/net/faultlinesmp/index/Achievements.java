@@ -198,6 +198,7 @@ final class Achievements {
     int doneCount(UUID u) { return (int) goals.stream().filter(g -> done(u, g)).count(); }
 
     void open(Player p) {
+        if (index.forms.use(p) && index.forms.achievements(p)) return; // Bedrock: a menu
         UUID u = p.getUniqueId();
         int per = 11;
         List<Component> pages = new ArrayList<>();

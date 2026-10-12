@@ -1342,7 +1342,12 @@ final class Explorer implements Listener, CommandExecutor {
 
         /** A clickable [Skip] for everyone in the void (any fighter can skip it for everyone). */
         void offerSkip() {
-            for (Player p : fighterList()) p.spigot().sendMessage(button("  [ Skip ▶ ]", net.md_5.bungee.api.ChatColor.DARK_GRAY, "/lostexplorer skip", "Skip what he has to say"));
+            for (Player p : fighterList()) {
+                // Bedrock can't click chat: a menu with the same choice
+                if (FaultlineBosses.bedrock(p) && BedrockForms.menu(pl, p, "The Lost Explorer", "He has something to say.",
+                        List.of("Listen", "Skip ▶"), i -> { if (i == 1) choose(p, "skip"); }, null)) continue;
+                p.spigot().sendMessage(button("  [ Skip ▶ ]", net.md_5.bungee.api.ChatColor.DARK_GRAY, "/lostexplorer skip", "Skip what he has to say"));
+            }
         }
 
         void ask() {
@@ -1350,6 +1355,11 @@ final class Explorer implements Listener, CommandExecutor {
             say("Do you want to do it again..?");
             world.playSound(pos.toLocation(world), Sound.BLOCK_BELL_RESONATE, SoundCategory.HOSTILE, 1.2f, 0.5f);
             for (Player p : fighterList()) {
+                if (FaultlineBosses.bedrock(p) && BedrockForms.ask(pl, p, "Do you want to do it again..?", "Yes: fight him again, right now (from the tiger).\nNo: leave the void.",
+                        "Yes", "No", y -> choose(p, y ? "yes" : "no"))) {
+                    p.sendTitle(ChatColor.WHITE + "Do you want to do it again..?", ChatColor.GRAY + "Answer Yes or No", 10, (int) (c("again-seconds", 15) * 20), 20);
+                    continue;
+                }
                 p.sendTitle(ChatColor.WHITE + "Do you want to do it again..?", ChatColor.GRAY + "Click Yes or No in chat", 10, (int) (c("again-seconds", 15) * 20), 20);
                 net.md_5.bungee.api.chat.TextComponent line = new net.md_5.bungee.api.chat.TextComponent("  ");
                 line.addExtra(button("[ Yes ]", net.md_5.bungee.api.ChatColor.WHITE, "/lostexplorer yes", "Fight him again, right now (from the tiger)"));

@@ -241,6 +241,108 @@ ICON_PAL = {"#": (16, 16, 20), "I": (96, 98, 110), "i": (66, 68, 78), "j": (44, 
             "w": (220, 220, 230), "W": (130, 92, 54), "k": (70, 48, 28)}
 
 
+# Bedrock icons for the PAPER items that show a VANILLA model on Java (ship upgrades, the treasure map): Geyser maps
+# them by that model name, and they need an icon of their own (before these, Bedrock players just saw paper).
+EXTRA_PAL = {"#": (24, 20, 16), "p": (226, 206, 160), "P": (196, 170, 120), "r": (196, 32, 32), "b": (90, 150, 210),
+             "I": (200, 204, 212), "i": (140, 146, 156), "j": (88, 92, 102), "w": (244, 244, 236), "W": (196, 196, 188),
+             "k": (110, 74, 40), "K": (74, 48, 26), "g": (70, 70, 74), "G": (40, 40, 44), "y": (240, 200, 70), "o": (230, 120, 40)}
+EXTRA_ICONS = {
+    "treasure_map": [
+        "................",
+        ".##############.",
+        ".#pppppPpppppp#.",
+        ".#pPpppppbbbpp#.",
+        ".#ppppbbbbbppp#.",
+        ".#pppbbppppppP#.",
+        ".#ppbbpprpprpp#.",
+        ".#ppbppprrpppp#.",
+        ".#pPbppprrpppp#.",
+        ".#ppbbpprpprpp#.",
+        ".#pppbbppppppp#.",
+        ".#ppppbbbpPppp#.",
+        ".#pPpppppppppp#.",
+        ".#pppppppppPpp#.",
+        ".##############.",
+        "................"],
+    "upgrade_hull": [
+        "................",
+        "..############..",
+        "..#IIIIIIIIII#..",
+        "..#IjIIIIIIjI#..",
+        "..#IIIIIIIIII#..",
+        "..#iiiiiiiiii#..",
+        "..############..",
+        "..#IIIIIIIIII#..",
+        "..#IjIIIIIIjI#..",
+        "..#IIIIIIIIII#..",
+        "..#iiiiiiiiii#..",
+        "..############..",
+        "..#kkkkkkkkkk#..",
+        "..#KKKKKKKKKK#..",
+        "..############..",
+        "................"],
+    "upgrade_sails": [
+        ".......#........",
+        ".......#........",
+        "......#k#.......",
+        "...#####wwww#...",
+        "...#wwwwwwwwW#..",
+        "...#wwwwwwwwW#..",
+        "...#wwwwwwwwwW#.",
+        "...#wwwwwwwwwW#.",
+        "...#wwwwwwwwwW#.",
+        "...#wwwwwwwwW#..",
+        "...#WWWWWWWW#...",
+        "...##########...",
+        ".......k........",
+        ".......k........",
+        "..#############.",
+        "...#kkkkkkkkk#.."],
+    "upgrade_loaders": [
+        "................",
+        ".....######.....",
+        "....#kKkkKk#....",
+        "...#kkkkkkkk#...",
+        "...#jjjjjjjj#...",
+        "...#kkkkkkkk#...",
+        "...#kKkkkKkk#...",
+        "...#kkGGGGkk#...",
+        "...#kkGooGkk#...",
+        "...#kkGGGGkk#...",
+        "...#jjjjjjjj#...",
+        "...#kkkkkkkk#...",
+        "....#kKkkKk#....",
+        ".....######.....",
+        "......#yy#......",
+        ".......##......."],
+    "upgrade_ram": [
+        "................",
+        "................",
+        "................",
+        "#####...........",
+        "#kkk######......",
+        "#kkkIIIIII##....",
+        "#kkkIIIIIIII##..",
+        "#kkkIIIIIIIIII#.",
+        "#kkkiiiiiiiiii#.",
+        "#kkkiiiiiiii##..",
+        "#kkkjjjjjj##....",
+        "#kkk######......",
+        "#####...........",
+        "................",
+        "................",
+        "................"],
+}
+
+
+def extra_icon(key):
+    im = Image.new("RGBA", (16, 16), (0, 0, 0, 0))
+    for y, row in enumerate(EXTRA_ICONS[key]):
+        for x, ch in enumerate(row[:16]):
+            if ch in EXTRA_PAL: im.putpixel((x, y), EXTRA_PAL[ch] + (255,))
+    return im
+
+
 def icon_of(grid):
     im = Image.new("RGBA", (16, 16), (0, 0, 0, 0))
     for y, row in enumerate(grid):
@@ -536,6 +638,15 @@ def bedrock_pack(bout, layouts, icons):
         paper.append({"type": "definition", "model": f"faultline:{key}", "bedrock_identifier": f"faultline:{key}", "display_name": title,
                       "bedrock_options": {"icon": f"faultline.{key}", "allow_offhand": key == "cannonball"},
                       "components": {"minecraft:max_stack_size": 64}})
+    # PAPER items that wear a vanilla model on Java: the 4 ship upgrades (FaultlineShips.UPGRADES) and the treasure map
+    for key, model, title, stack in (("upgrade_hull", "minecraft:iron_block", "Hull Plating", 64), ("upgrade_sails", "minecraft:phantom_membrane", "Swift Sails", 64),
+                                     ("upgrade_loaders", "minecraft:gunpowder", "Quick Loaders", 64), ("upgrade_ram", "minecraft:anvil", "Iron Ram", 64),
+                                     ("treasure_map", "minecraft:map", "Pirate Treasure Map", 1)):
+        extra_icon(key).save(os.path.join(rp, "textures/items/faultline", key + ".png"))
+        item_tex["texture_data"][f"faultline.{key}"] = {"textures": f"textures/items/faultline/{key}"}
+        paper.append({"type": "definition", "model": model, "bedrock_identifier": f"faultline:{key}", "display_name": title,
+                      "bedrock_options": {"icon": f"faultline.{key}", "allow_offhand": True},
+                      "components": {"minecraft:max_stack_size": stack}})
     stick.append({"type": "definition", "model": "minecraft:mace", "bedrock_identifier": "faultline:shipwright_hammer",
                   "display_name": "Shipwright's Hammer", "bedrock_options": {"icon": "faultline.shipwright_hammer", "allow_offhand": False},
                   "components": {"minecraft:max_stack_size": 1}})

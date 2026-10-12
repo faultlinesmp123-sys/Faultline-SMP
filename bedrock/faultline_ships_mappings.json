@@ -315,6 +315,71 @@
     "components": {
      "minecraft:max_stack_size": 64
     }
+   },
+   {
+    "type": "definition",
+    "model": "minecraft:iron_block",
+    "bedrock_identifier": "faultline:upgrade_hull",
+    "display_name": "Hull Plating",
+    "bedrock_options": {
+     "icon": "faultline.upgrade_hull",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   },
+   {
+    "type": "definition",
+    "model": "minecraft:phantom_membrane",
+    "bedrock_identifier": "faultline:upgrade_sails",
+    "display_name": "Swift Sails",
+    "bedrock_options": {
+     "icon": "faultline.upgrade_sails",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   },
+   {
+    "type": "definition",
+    "model": "minecraft:gunpowder",
+    "bedrock_identifier": "faultline:upgrade_loaders",
+    "display_name": "Quick Loaders",
+    "bedrock_options": {
+     "icon": "faultline.upgrade_loaders",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   },
+   {
+    "type": "definition",
+    "model": "minecraft:anvil",
+    "bedrock_identifier": "faultline:upgrade_ram",
+    "display_name": "Iron Ram",
+    "bedrock_options": {
+     "icon": "faultline.upgrade_ram",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   },
+   {
+    "type": "definition",
+    "model": "minecraft:map",
+    "bedrock_identifier": "faultline:treasure_map",
+    "display_name": "Pirate Treasure Map",
+    "bedrock_options": {
+     "icon": "faultline.treasure_map",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    }
    }
   ],
   "minecraft:stick": [

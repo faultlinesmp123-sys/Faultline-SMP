@@ -1,5 +1,8 @@
 # FaultlineIndex settings (the Index's content lives in the jar's index.yml).
 
+# Bedrock players (Geyser) get the Index as menus (Floodgate/Geyser forms): Bedrock can't follow the book's links.
+bedrock-forms: true
+
 # The museum: boss trophies (first defeat), boss music discs (a chance on every defeat), and /museum (the Hall of Firsts).
 museum:
   disc-chance: 0.2

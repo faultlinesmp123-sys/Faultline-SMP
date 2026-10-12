@@ -189,6 +189,13 @@ final class Race implements Listener, CommandExecutor, TabCompleter {
                     default -> lendElytra ? "elytra lent" : "bring your elytra";
                 } + ") ", NamedTextColor.GRAY))
                 .append(join));
+        // Bedrock can't click [JOIN]: they're asked in a menu
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            if (!Edition.bedrock(p)) continue;
+            if (!BedrockForms.ask(plugin, p, title(co), co.name + " is open (" + co.cps.size() + " rings). Join the race?", "Join", "Not now",
+                    y -> { if (y) p.performCommand("race join"); }))
+                p.sendMessage(ChatColor.GRAY + "Type " + ChatColor.WHITE + "/race join" + ChatColor.GRAY + " to race.");
+        }
         return true;
     }
 

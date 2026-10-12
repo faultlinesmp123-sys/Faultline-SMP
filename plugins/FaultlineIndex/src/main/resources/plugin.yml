@@ -1,10 +1,10 @@
 name: FaultlineIndex
-version: '1.6.11'
+version: '1.6.12'
 main: net.faultlinesmp.index.FaultlineIndex
 api-version: '1.21'
 author: FaultlineSMP
 description: The Faultline Index — every item, boss, and enemy on the server
-softdepend: [FaultlineItems, FaultlineBosses, FaultlineRaids, FaultlineShips, FaultlineCosmetics, LimboBlackMarket]
+softdepend: [FaultlineItems, FaultlineBosses, FaultlineRaids, FaultlineShips, FaultlineCosmetics, LimboBlackMarket, floodgate, Geyser-Spigot]
 
 commands:
   index:

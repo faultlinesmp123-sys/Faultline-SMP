@@ -9365,6 +9365,11 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             }
             talker = p.getUniqueId();
             face(p.getLocation().toVector());
+            if (bedrock(p) && BedrockForms.ask(FaultlineBosses.this, p, "Don Lorenzo", "Are you sure you want to fight?", "Yes", "No",
+                    y -> p.performCommand("don answer " + (y ? "yes" : "no") + " " + token))) {   // Bedrock can't click chat
+                p.playSound(p.getLocation(), org.bukkit.Sound.ENTITY_VILLAGER_AMBIENT, 1f, 0.6f);
+                return;
+            }
             p.sendMessage(net.kyori.adventure.text.Component.text("Don Lorenzo: ", net.kyori.adventure.text.format.NamedTextColor.LIGHT_PURPLE)
                     .append(net.kyori.adventure.text.Component.text("Are you sure you want to fight? ", net.kyori.adventure.text.format.NamedTextColor.WHITE))
                     .append(net.kyori.adventure.text.Component.text("[Yes]", net.kyori.adventure.text.format.NamedTextColor.GREEN, net.kyori.adventure.text.format.TextDecoration.BOLD)

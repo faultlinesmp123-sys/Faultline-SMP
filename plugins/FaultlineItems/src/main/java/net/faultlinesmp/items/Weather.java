@@ -832,6 +832,12 @@ final class Weather implements Listener, CommandExecutor, org.bukkit.command.Tab
             if (who == null) { sender.sendMessage(ChatColor.RED + "No player called " + args[1] + " online."); return true; }
             p = who;
         }
+        if ((sub.equals("list") || sub.equals("help")) && sender instanceof Player bp && Edition.bedrock(bp)) {
+            List<String> names = new ArrayList<>();
+            for (String k : KINDS) names.add(k + (active.containsKey(k) ? " §e(now)" : "") + "\n§8" + ABOUT.get(k));
+            if (BedrockForms.menu(plugin, bp, "Weather events", "Start one where you stand.", names,
+                    i -> bp.performCommand("fweather " + KINDS.get(i)), null)) return true;
+        }
         if (sub.equals("list") || sub.equals("help")) {
             sender.sendMessage(ChatColor.GOLD + "" + ChatColor.BOLD + "Weather events " + ChatColor.GRAY + "(click one to start it where you stand)");
             for (String k : KINDS) {

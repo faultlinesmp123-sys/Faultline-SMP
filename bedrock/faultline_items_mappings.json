@@ -930,6 +930,19 @@
    },
    {
     "type": "definition",
+    "model": "faultline:hot_air_balloon",
+    "bedrock_identifier": "faultline:hot_air_balloon",
+    "bedrock_options": {
+     "icon": "faultline.hot_air_balloon",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    },
+    "display_name": "Hot Air Balloon"
+   },
+   {
+    "type": "definition",
     "model": "faultline:lantern_of_souls",
     "bedrock_identifier": "faultline:lantern_of_souls",
     "bedrock_options": {

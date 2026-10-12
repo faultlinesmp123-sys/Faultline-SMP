@@ -281,7 +281,7 @@ final class Discord implements Listener {
         if (label.isEmpty() || ignored.contains(label)) return;
         Player p = e.getPlayer();
         if (whispers.contains(label)) {
-            if (logWhispers) log("💬 **" + esc(p.getName()) + "** whispered: `" + code(line) + "`");
+            if (logWhispers) log(whisper(p.getName(), label, line));
             return;
         }
         if (logAll || (logAdmin && admin(p))) log("🛠️ **" + esc(p.getName()) + "** ran `/" + code(line) + "`");
@@ -298,6 +298,29 @@ final class Discord implements Listener {
         String label = label(line);
         if (label.isEmpty() || ignored.contains(label)) return;
         log("🖥️ " + (s instanceof org.bukkit.command.RemoteConsoleCommandSender ? "RCON" : "CONSOLE") + " ran `/" + code(line) + "`");
+    }
+
+    /** Replies (/r) go to whoever they last whispered with: remembered here so the log can name them. */
+    private final java.util.Map<String, String> lastWhisper = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final Set<String> REPLY = Set.of("r", "reply", "er", "ereply");
+
+    /** "💬 Alice → Bob: hi there" (who to whom, what), from a whisper command line. */
+    String whisper(String from, String label, String line) {
+        String[] a = line.trim().split("\\s+", 3);
+        String to, msg;
+        if (REPLY.contains(label)) {
+            to = lastWhisper.getOrDefault(from.toLowerCase(Locale.ROOT), "(their last whisper)");
+            msg = line.trim().contains(" ") ? line.trim().substring(line.trim().indexOf(' ') + 1) : "";
+        } else if (label.equals("teammsg") || label.equals("tm")) {
+            to = "their team";
+            msg = line.trim().contains(" ") ? line.trim().substring(line.trim().indexOf(' ') + 1) : "";
+        } else {
+            to = a.length > 1 ? a[1] : "?";
+            msg = a.length > 2 ? a[2] : "";
+            lastWhisper.put(from.toLowerCase(Locale.ROOT), to);
+            lastWhisper.put(to.toLowerCase(Locale.ROOT), from);
+        }
+        return "💬 **" + esc(from) + "** → **" + esc(to) + "**: " + esc(msg);
     }
 
     /** Vanished staff (FaultlineItems /vanish, EssentialsX, SuperVanish all set this metadata). */

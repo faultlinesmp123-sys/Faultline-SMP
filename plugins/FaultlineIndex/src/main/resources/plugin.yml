@@ -1,5 +1,5 @@
 name: FaultlineIndex
-version: '1.6.13'
+version: '1.6.14'
 main: net.faultlinesmp.index.FaultlineIndex
 api-version: '1.21'
 author: FaultlineSMP
@@ -24,6 +24,10 @@ commands:
     description: "Staff: the latest player reports"
     usage: /reports [count]
     permission: faultlineindex.reports
+  guide:
+    description: "The server guide: the Index, the Quest Book, the Black Market, bosses, raids, ships and more"
+    usage: /guide [chapter]
+    aliases: [tutorial, help-faultline]
   suggest:
     description: Suggest something for the server (posted in the Discord)
     usage: /suggest <your idea>

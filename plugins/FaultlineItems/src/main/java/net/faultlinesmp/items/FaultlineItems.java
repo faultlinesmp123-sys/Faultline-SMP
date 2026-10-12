@@ -391,6 +391,13 @@ public final class FaultlineItems extends JavaPlugin {
         camera = new Camera(this); // 1.2.23: free camera for recording
         getServer().getPluginManager().registerEvents(camera, this);
         getCommand("camera").setExecutor(camera);
+        balloons = new Balloons(this); // 1.2.24: hot air balloons
+        getServer().getPluginManager().registerEvents(balloons, this);
+        getCommand("giveballoon").setExecutor(new GiveItemCommand(this, "items.giveballoon",
+                "/giveballoon [amount] [player]", ItemCatalog.single(pl -> pl.balloons.item(null, 0))));
+        where = new Where(this); // 1.2.24: /ping, /coords (Bedrock has no F3)
+        getServer().getPluginManager().registerEvents(where, this);
+        for (String c : List.of("ping", "coords")) { getCommand(c).setExecutor(where); getCommand(c).setTabCompleter(where); }
         fishing = new Fishing(this);
         getServer().getPluginManager().registerEvents(fishing, this);
         getCommand("fishing").setExecutor(fishing);
@@ -590,6 +597,8 @@ public final class FaultlineItems extends JavaPlugin {
         if (race != null) try { race.shutdown(); } catch (RuntimeException ignored) { }
         if (sit != null) try { sit.shutdown(); } catch (RuntimeException ignored) { }
         if (camera != null) try { camera.shutdown(); } catch (RuntimeException ignored) { }
+        if (where != null) try { where.shutdown(); } catch (RuntimeException ignored) { }
+        if (balloons != null) try { balloons.shutdown(); } catch (RuntimeException ignored) { }
         if (fishing != null) try { fishing.shutdown(); } catch (RuntimeException ignored) { }
         if (enchants != null) for (Player online : Bukkit.getOnlinePlayers()) try { enchants.vitality(online, 0); } catch (RuntimeException ignored) { }
         if (caravan != null) caravan.shutdown();
@@ -849,6 +858,8 @@ public final class FaultlineItems extends JavaPlugin {
     Sit sit;
     Vanish vanish;
     Camera camera;
+    Where where;
+    Balloons balloons;
     Fishing fishing;
 
     private KrakenGear krakenGear;
@@ -7020,7 +7031,8 @@ public final class FaultlineItems extends JavaPlugin {
                 pl -> pl.getJacobGear().item(JacobGear.Piece.EMBER),
                 pl -> pl.getJacobGear().item(JacobGear.Piece.HEART),
                 // the Lost Explorer's drop
-                pl -> pl.getMirrorGear().item());
+                pl -> pl.getMirrorGear().item(),
+                pl -> pl.balloons.item(null, 0)); // 1.2.24
 
         static Map<String, Function<FaultlineItems, ItemStack>> single(Function<FaultlineItems, ItemStack> factory) {
             return Map.of("", factory);

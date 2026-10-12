@@ -326,7 +326,7 @@ boots:
 item-textures:
   enabled: true
   url: "https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/main/FaultlineSMP.zip"
-  hash: "5d52d1308bf54eaadf76774c634dc4c9ff646a29"
+  hash: "7d3d6f44a344f02c577eec55ab6f1fe74274c89e"
 
 
 # Immunity charms: one accessory per debuff (Guardian Scale, Ginger Root, Blindfold, Salt Ration,
@@ -567,6 +567,18 @@ sit:
 vanish:
   fake-messages: true
   pickup: false               # vanished staff pick up items
+
+# Hot air balloons (1.2.24): craft (5 wool around a campfire, string, barrel, string), set up, fly. Fuel: coal/charcoal 60 s,
+# blaze rod 150 s, coal block 600 s, burned while in the air.
+balloon:
+  speed: 0.35              # blocks a tick (sprint = x1.6)
+  climb-speed: 0.22        # rising / sinking with Jump / Sneak
+  sink-speed: 0.06         # sinking with no fuel
+  max-fuel-seconds: 1800
+
+# /ping and /coords (1.2.24): Bedrock has no F3 screen. true = Bedrock players see the coordinates bar from their first join.
+where:
+  bedrock-coords-on-join: false
 
 # Camera mode (1.2.23): /camera = a free camera for recording (spectator, back where you were with /camera again).
 camera:

@@ -134,6 +134,9 @@ entries:
   - {chapter: weapons, name: "Spider Staff", icon: spider_staff, detect: "faultlineitems:spider_staff",
      how: "10% from the Queen Spider. Very rarely from Spiders (0.01%).",
      does: "Summons 3-5 spiders that fight for you for 30 seconds. 60 second cooldown."}
+  - {chapter: weapons, name: "Hot Air Balloon", icon: hot_air_balloon, detect: "faultlineitems:balloon_item",
+     how: "Craft it: 5 wool across the top and sides, a Campfire in the middle, String, a Barrel, String along the bottom.",
+     does: "A balloon you can fly. Right-click the ground to set it up, step into the basket and right-click to board. Jump rises, Sneak sinks (and gets you out once it's on the ground), W A S D move the way you look, Sprint goes faster. The burner burns fuel while you're in the air: Coal or Charcoal 60 s, a Blaze Rod 150 s, a Coal Block 10 minutes (right-click with it). Out of fuel, it slowly sinks. A dye recolours it. Sneak + punch in the basket to pack it up."}
   - {chapter: weapons, name: "Rotbeard's Grappling Hook", icon: grappling_hook, detect: "faultlineitems:grappling_hook",
      how: "10% from Captain Rotbeard.",
      does: "Cast it at a wall, ceiling, or ledge, then reel in to launch yourself there. No fall damage from the landing. Never breaks."}
@@ -920,6 +923,8 @@ achievements:
      defeat: [the_lost_explorer], need: all, reward: {items: ["NETHERITE_INGOT:2"], xp: 1000}}
   - {id: boss_rush_champion, name: "Boss Rush Champion", icon: champion_cape, desc: "Finish a Boss Rush (right-click a Boss Rush Sigil): every boss, back to back.",
      stat: boss_rush, count: 1, reward: {cosmetic: champion_cape, items: ["NETHERITE_INGOT:2"], xp: 3000}}
+  - {id: hardcore_champion, name: "No Second Chances", icon: champion_cape, desc: "Finish a Hardcore Boss Rush (sneak + right-click the Sigil): every boss, and nobody on the team dies.",
+     stat: boss_rush_hardcore, count: 1, reward: {items: ["NETHERITE_BLOCK:2", "TOTEM_OF_UNDYING:2"], xp: 5000}}
   - {id: stargazer, name: "Stargazer", icon: meteorite, desc: "Claim a meteor: be the first to break its core after it lands.",
      stat: meteors, count: 1, reward: {items: ["EMERALD:8"], xp: 200}}
   - {id: star_collector, name: "Star Collector", icon: meteor_pendant, desc: "Claim 10 meteors.",

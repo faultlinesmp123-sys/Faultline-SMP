@@ -1,0 +1,114 @@
+# The /guide tutorial (Index 1.6.14). Each chapter: id, title, icon (an Index glyph), text.
+# In text: "# Heading" lines are headings, "- " lines are bullets, a blank line starts a new paragraph.
+# "bosses" is filled in by itself from the Index's boss entries (how to find or summon each one), after its text.
+chapters:
+  - id: start
+    title: "Getting Started"
+    icon: faultline_index
+    text: |
+      # Welcome to Faultline SMP!
+      A survival server with custom bosses, items, raids, ships and kingdoms.
+
+      # Kingdoms
+      Everyone is in Kingdom 1, 2 or 3, from your role in our Discord. Link once: /kingdom link <your discord name>, then /kingdom verify <code> (the bot DMs it).
+
+      # Heads are money
+      Kill a player and they drop their head. Heads are the currency: trade them at the Black Market.
+
+      # Handy commands
+      - /index: your codex
+      - /guide: this guide
+      - /coords, /ping
+      - /cosmetics, /accessories
+      - /report, /suggest
+  - id: index
+    title: "The Faultline Index"
+    icon: faultline_index
+    text: |
+      # Your codex
+      Everyone gets a Faultline Index on their first join (lost it? craft one: Leather + Book). Right-click it, or type /index.
+
+      # What it does
+      Every custom item and creature on the server has a page. Find an item or defeat a creature and its page fills in: what it does, how to get it, what it drops. Creatures you haven't beaten show as ???.
+
+      # Achievements
+      The cover's Achievements line opens your goals: beat bosses, collect items, finish chapters. Each one gives rewards, some give cosmetics.
+
+      # Museum
+      /museum shows the Hall of Firsts: who beat every boss first.
+  - id: quests
+    title: "The Quest Book"
+    icon: quest_book
+    text: |
+      # Quests
+      Craft a Quest Book (Book + Iron Ingot, works in your inventory grid) and right-click it.
+
+      # How it works
+      - Pick a quest and ACCEPT it: nothing counts before that
+      - One quest at a time
+      - Its steps go in order: only the current step counts
+      - Finish it for the reward
+      - Abandon any time (progress is lost)
+      - Most quests come back after a cooldown; some are one-time only
+  - id: market
+    title: "The Black Market"
+    icon: goodie_bag
+    text: |
+      # Heads for loot
+      The Black Market building trades player heads for shulker boxes of loot.
+
+      # Tiers
+      Every player has a tier from 1 to 8 (staff set it). A head's value depends on the tier of the player it came from: high-tier heads are worth a lot more.
+
+      # Commands
+      - /stats [player]: kills, deaths, K/D, tier
+      - /leaderboard: top killers
+      - /tierleaderboard
+      - /markethelp
+
+      # Fair play
+      Killing the same player again within 10 minutes doesn't count.
+  - id: bosses
+    title: "Bosses"
+    icon: demon_eye
+    text: |
+      # Bosses
+      Bosses drop the best loot on the server: Mythic Goodie Bags, boss weapons, enchant books, music discs, trophies. Bring friends: most get harder (and give more) with more fighters.
+
+      # Boss Rush
+      Right-click a Boss Rush Sigil to fight every boss back to back. Hardcore Boss Rush: one death and your whole team is out, double rewards.
+
+      # How to find each one
+  - id: world
+    title: "Raids, Events & Ships"
+    icon: meteorite
+    text: |
+      # Raids
+      Zombie, Skeleton and Piglin Raids hit villages. Piglin Brutes sometimes drop a War Horn: blow it near a village to start a Piglin Raid. Blood Moon raids are harder and give more.
+
+      # Events
+      - Meteors crash every few hours: be first to break the core
+      - The Caravan Merchant camps near players every 3 hours
+      - Weather: Aurora, Sandstorm, Blizzard, Eclipse, Locusts
+      - Fishing tournaments, elytra / boat / horse races
+
+      # Ships
+      Craft a ship Blueprint, right-click water, then place every glowing block. Sail with W A S D, Jump drops the anchor. Watch out for skeleton ships and the Pirate Invasion.
+
+      # Hot Air Balloons
+      Craft one and fly anywhere: Jump to rise, sneak to sink, W to go where you look. It burns coal (or blaze rods).
+  - id: gear
+    title: "Items & Cosmetics"
+    icon: golden_ring
+    text: |
+      # Accessories
+      /accessories opens 3 accessory slots: rings, charms and more. One of each.
+
+      # Boss enchant books
+      Bosses drop books with enchantments vanilla doesn't have (Lifesteal, Venom, Vein Miner...). Item on the left of an anvil, book on the right.
+
+      # Cosmetics
+      /cosmetics: hats, capes and more, worn over your armor. Unlocked from achievements, bosses and the Seasonal Shop (Halloween Candy, Winter Presents).
+
+      # Recording?
+      /camera turns you into a free camera, /sit sits down.

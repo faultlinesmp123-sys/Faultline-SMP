@@ -154,10 +154,14 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
         });
         discord = new Discord(this);
         getServer().getPluginManager().registerEvents(discord, this);
+        getServer().getPluginManager().registerEvents(new Grief(this), this); // 1.6.14: grief logs (staff channel)
         getCommand("serverstats").setExecutor(new ServerStats(this));
         Reports reports = new Reports(this);
         getCommand("report").setExecutor(reports);
         getCommand("reports").setExecutor(reports);
+        Guide guide = new Guide(this); // 1.6.14: /guide
+        getCommand("guide").setExecutor(guide);
+        getCommand("guide").setTabCompleter(guide);
         Suggestions suggestions = new Suggestions(this); // 1.6.13
         getCommand("suggest").setExecutor(suggestions);
         getCommand("suggestions").setExecutor(suggestions);
@@ -306,6 +310,8 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
             p.getInventory().addItem(indexBook()).values().forEach(left -> p.getWorld().dropItemNaturally(p.getLocation(), left));
             p.sendMessage(ChatColor.GOLD + "You received the " + ChatColor.BOLD + "Faultline Index" + ChatColor.GOLD
                     + ". Right-click it to see every item, boss, and enemy!");
+            Bukkit.getScheduler().runTaskLater(this, () -> { if (p.isOnline()) p.sendMessage(ChatColor.AQUA + "📖 New here? Type "
+                    + ChatColor.WHITE + "/guide" + ChatColor.AQUA + ": how the Index, quests, the Black Market, bosses and everything else work."); }, 100L);
             dirty = true;
         }
         // achievements added in an update count what players already did
@@ -509,6 +515,8 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
     Component iconComponent(String name, boolean large) { return icon(name, large); }
     static Component pageOf(List<Component> lines) { return page(lines); }
     static String fitText(String text, int maxWidth) { return fit(text, maxWidth, false); }
+    static List<String> wrapText(String text, boolean bold) { return wrap(text, PAGE_WIDTH, bold); }
+    static final int LINES_PER_PAGE = PAGE_LINES;
 
     boolean has(UUID player, Entry e) {
         Set<String> s = found.get(player);

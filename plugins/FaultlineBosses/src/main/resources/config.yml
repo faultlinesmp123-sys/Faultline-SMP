@@ -553,6 +553,10 @@ boss-rush:
     mythic-bags: 32
     xp: 5000
     items: ["NETHERITE_INGOT:4", "DIAMOND_BLOCK:4", "TOTEM_OF_UNDYING:1"]
+  # Hardcore Boss Rush (sneak + right-click the Sigil, or /bossrush start hardcore): one death and the whole team is out
+  hardcore:
+    reward-multiplier: 2         # the rewards above, times this
+    quit-fails: true             # leaving the game counts as dying
 
 # ---------------- THE WILD BOSSES (Wild.java + one file each) ----------------
 # The Leviathan (Abyssal Lure over open ocean, or 0.4% every 2 min sailing the deep ocean at night: fights ships too),

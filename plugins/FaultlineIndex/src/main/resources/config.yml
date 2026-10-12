@@ -34,6 +34,13 @@ discord:
     admin-commands: true         # commands run by ops / faultlineindex.logged
     all-commands: false          # every player's commands
     console-commands: true
+    grief:                       # 1.6.14, all in the logs channel only
+      lava: true                 # lava poured
+      fire: true                 # fires lit (not portals, campfires, candles)
+      wither: true               # a Wither built
+      containers: true           # someone else's chest/barrel/shulker/... broken, or items taken from it (new containers only)
+      ignore-same-kingdom: false # true = taking from a kingdom-mate's chest isn't logged
+      throttle-seconds: 10       # lava/fire: one line per player per this many seconds, with a count
     report-role: ""              # a Discord role ID to ping on every /report (Server Settings > Roles > right-click > Copy ID); "" = no ping
     ignore-commands: [login, l, log, register, reg, changepassword, changepass, cp]   # never logged (passwords)
   # announcements matching any of these (Java regexes) are posted

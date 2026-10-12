@@ -90,7 +90,7 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
         final Map<UUID, Location> home = new HashMap<>();
         final List<Stage> stages;
         int stage = -1, t, state; // 0 = travelling / countdown, 1 = fighting, 2 = break, 3 = finished
-        boolean defeated;
+        boolean defeated, hardcore; // hardcore: one death (or leaving) and the whole team is out
         long startedAt;
         final BossBar bar = Bukkit.createBossBar("", BarColor.RED, BarStyle.SEGMENTED_10);
         Location arena;
@@ -154,7 +154,7 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
         e.setUseInteractedBlock(org.bukkit.event.Event.Result.DENY);
         e.setUseItemInHand(org.bukkit.event.Event.Result.DENY);
         if (run != null) { e.getPlayer().sendMessage(ChatColor.RED + "A Boss Rush is already running."); return; }
-        start(e.getPlayer());
+        start(e.getPlayer(), e.getPlayer().isSneaking()); // sneak + right-click = Hardcore
     }
 
     /** It's a Nether Star underneath: never a crafting ingredient (no beacons out of a Sigil). */
@@ -305,7 +305,9 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
 
     // ===================================================================== the run
 
-    void start(Player leader) {
+    void start(Player leader) { start(leader, false); }
+
+    void start(Player leader, boolean hardcore) {
         if (run != null) { leader.sendMessage(ChatColor.RED + "A Boss Rush is already running."); return; }
         String busy = pl.bossOutName();
         if (busy != null) { leader.sendMessage(ChatColor.RED + busy + " is out somewhere: wait until that fight is over."); return; }
@@ -322,11 +324,12 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
             }
         }
         Run r = new Run(stages());
+        r.hardcore = hardcore;
         for (Player p : team) { r.team.add(p.getUniqueId()); r.home.put(p.getUniqueId(), p.getLocation()); p.addScoreboardTag(TAG); }
         r.startedAt = now;
         run = r;
-        Bukkit.broadcastMessage(ChatColor.RED + "" + ChatColor.BOLD + "BOSS RUSH! " + ChatColor.YELLOW + names(team) + ChatColor.YELLOW
-                + " take on " + r.stages.size() + " bosses, back to back.");
+        Bukkit.broadcastMessage(ChatColor.RED + "" + ChatColor.BOLD + (hardcore ? "HARDCORE BOSS RUSH! " : "BOSS RUSH! ") + ChatColor.YELLOW + names(team) + ChatColor.YELLOW
+                + " take on " + r.stages.size() + " bosses, back to back." + (hardcore ? ChatColor.RED + " One death and they're all out." : ""));
         next(r);
     }
 
@@ -383,7 +386,7 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
         if (alive.isEmpty() && r.state != 3) { fail(r, "the whole team is out"); return; }
         Stage s = r.current();
         long secs = (System.currentTimeMillis() - r.startedAt) / 1000;
-        r.bar.setTitle(ChatColor.RED + "" + ChatColor.BOLD + "Boss Rush " + ChatColor.GRAY + (r.stage + 1) + "/" + r.stages.size()
+        r.bar.setTitle(ChatColor.RED + "" + ChatColor.BOLD + (r.hardcore ? "☠ Hardcore Boss Rush " : "Boss Rush ") + ChatColor.GRAY + (r.stage + 1) + "/" + r.stages.size()
                 + (s != null ? "  " + ChatColor.GOLD + s.name() : "") + ChatColor.GRAY + "  " + time(secs * 1000));
         r.bar.setProgress(Math.max(0, Math.min(1, (r.stage + (r.state == 2 ? 1 : 0)) / (double) r.stages.size())));
         switch (r.state) {
@@ -420,21 +423,25 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
         r.state = 3;
         long ms = System.currentTimeMillis() - r.startedAt;
         List<Player> alive = r.alive();
-        Bukkit.broadcastMessage(ChatColor.RED + "" + ChatColor.BOLD + "BOSS RUSH COMPLETE! " + ChatColor.YELLOW + names(alive) + ChatColor.YELLOW
-                + " beat every boss in " + ChatColor.WHITE + time(ms) + ChatColor.YELLOW + "!");
+        Bukkit.broadcastMessage(ChatColor.RED + "" + ChatColor.BOLD + (r.hardcore ? "HARDCORE BOSS RUSH COMPLETE! " : "BOSS RUSH COMPLETE! ") + ChatColor.YELLOW + names(alive) + ChatColor.YELLOW
+                + " beat every boss in " + ChatColor.WHITE + time(ms) + ChatColor.YELLOW + (r.hardcore ? " without a single death!" : "!"));
         for (Player p : alive) {
-            p.showTitle(Title.title(legacy(ChatColor.RED + "" + ChatColor.BOLD + "BOSS RUSH CHAMPION"), legacy(ChatColor.GRAY + time(ms)),
+            p.showTitle(Title.title(legacy(ChatColor.RED + "" + ChatColor.BOLD + (r.hardcore ? "HARDCORE CHAMPION" : "BOSS RUSH CHAMPION")), legacy(ChatColor.GRAY + time(ms)),
                     Title.Times.times(java.time.Duration.ofMillis(300), java.time.Duration.ofMillis(4000), java.time.Duration.ofMillis(800))));
             p.playSound(p.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1f, 1f);
-            reward(p);
+            reward(p, r.hardcore ? Math.max(1, c("hardcore.reward-multiplier", 2)) : 1);
             pl.console("index stat " + p.getName() + " boss_rush 1", p);
-            record(p, ms, alive.size());
+            if (r.hardcore) pl.console("index stat " + p.getName() + " boss_rush_hardcore 1", p);
+            record(p, ms, alive.size(), r.hardcore);
         }
         finish(r, true);
     }
 
-    void reward(Player p) {
-        pl.console("givemythicbag " + (int) c("rewards.mythic-bags", 32) + " " + p.getName(), p);
+    void reward(Player p) { reward(p, 1); }
+
+    /** The rewards, times mult (Hardcore: hardcore.reward-multiplier, 2). */
+    void reward(Player p, double mult) {
+        pl.console("givemythicbag " + (int) (c("rewards.mythic-bags", 32) * mult) + " " + p.getName(), p);
         List<String> items = pl.getConfig().getStringList("boss-rush.rewards.items");
         if (items.isEmpty()) items = List.of("NETHERITE_INGOT:4", "DIAMOND_BLOCK:4", "TOTEM_OF_UNDYING:1");
         for (String spec : items) {
@@ -443,9 +450,10 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
             if (m == null) continue;
             int n = 1;
             try { n = kv.length > 1 ? Integer.parseInt(kv[1].trim()) : 1; } catch (NumberFormatException ignored) { }
-            pl.give(p, new ItemStack(m, Math.max(1, Math.min(m.getMaxStackSize(), n))));
+            int total = (int) Math.round(Math.max(1, n) * mult);
+            while (total > 0) { int k = Math.min(m.getMaxStackSize(), total); pl.give(p, new ItemStack(m, k)); total -= k; }
         }
-        int xp = (int) c("rewards.xp", 5000);
+        int xp = (int) (c("rewards.xp", 5000) * mult);
         p.giveExp(xp);
     }
 
@@ -489,8 +497,10 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
     }
 
     // ---------- the leaderboard (best time per player) ----------
-    void record(Player p, long ms, int teamSize) {
-        String k = "times." + p.getUniqueId();
+    void record(Player p, long ms, int teamSize) { record(p, ms, teamSize, false); }
+
+    void record(Player p, long ms, int teamSize, boolean hardcore) {
+        String k = (hardcore ? "hardcore." : "times.") + p.getUniqueId();
         long best = data.getLong(k + ".ms", Long.MAX_VALUE);
         if (ms < best) {
             data.set(k + ".ms", ms); data.set(k + ".name", p.getName()); data.set(k + ".team", teamSize);
@@ -500,9 +510,12 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
         save();
     }
 
-    void leaderboard(CommandSender to) {
-        var sec = data.getConfigurationSection("times");
-        to.sendMessage(ChatColor.RED + "" + ChatColor.BOLD + "Boss Rush " + ChatColor.GRAY + "- fastest times");
+    void leaderboard(CommandSender to) { leaderboard(to, false); }
+
+    void leaderboard(CommandSender to, boolean hardcore) {
+        var sec = data.getConfigurationSection(hardcore ? "hardcore" : "times");
+        to.sendMessage(ChatColor.RED + "" + ChatColor.BOLD + (hardcore ? "☠ Hardcore Boss Rush " : "Boss Rush ") + ChatColor.GRAY + "- fastest times"
+                + (hardcore ? "" : ChatColor.DARK_GRAY + " (/bossrush top hardcore)"));
         if (sec == null || sec.getKeys(false).isEmpty()) { to.sendMessage(ChatColor.GRAY + "  Nobody has finished one yet."); return; }
         List<String> ids = new ArrayList<>(sec.getKeys(false));
         ids.sort(Comparator.comparingLong(id -> sec.getLong(id + ".ms")));
@@ -525,6 +538,11 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
         }
         r.out.add(e.getEntity().getUniqueId());
         r.bar.removePlayer(e.getEntity());
+        if (r.hardcore) { // one death and the whole team is out
+            msgTeam(r, ChatColor.DARK_RED + "" + ChatColor.BOLD + "☠ " + e.getEntity().getName() + " died. Hardcore: the whole team is out.");
+            Bukkit.getScheduler().runTask(pl, () -> { if (run == r) fail(r, e.getEntity().getName() + " died, Hardcore"); });
+            return;
+        }
         e.getEntity().sendMessage(ChatColor.RED + "You're out of the Boss Rush." + ChatColor.GRAY + " (You kept your things.)");
         msgTeam(r, ChatColor.GRAY + e.getEntity().getName() + " is out of the Boss Rush.");
     }
@@ -532,7 +550,12 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
     @EventHandler
     public void onQuit(PlayerQuitEvent e) {
         Run r = run;
-        if (r != null && r.team.contains(e.getPlayer().getUniqueId())) { r.out.add(e.getPlayer().getUniqueId()); r.bar.removePlayer(e.getPlayer()); }
+        if (r != null && r.team.contains(e.getPlayer().getUniqueId()) && !r.out.contains(e.getPlayer().getUniqueId())) {
+            r.out.add(e.getPlayer().getUniqueId()); r.bar.removePlayer(e.getPlayer());
+            // Hardcore: leaving counts as dying (or logging out would save a run about to fail)
+            if (r.hardcore && pl.getConfig().getBoolean("boss-rush.hardcore.quit-fails", true))
+                Bukkit.getScheduler().runTask(pl, () -> { if (run == r) fail(r, e.getPlayer().getName() + " left, Hardcore"); });
+        }
     }
 
     // ---------- bosses from other plugins: the raid bosses (FaultlineRaids, "zraid spawnboss") and the Queen Spider
@@ -598,7 +621,7 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
             case "start" -> {
                 if (!(sender instanceof Player p)) return true;
                 if (!admin && !hasSigil(p)) { p.sendMessage(ChatColor.RED + "You need a Boss Rush Sigil " + ChatColor.GRAY + "(8 Netherite Blocks around a Nether Star). Right-click it to start."); return true; }
-                start(p);
+                start(p, args.length > 1 && args[1].equalsIgnoreCase("hardcore"));
             }
             case "sigil" -> { // admin: /bossrush sigil [amount] [player]
                 if (!admin) { sender.sendMessage(ChatColor.RED + "You don't have permission to do that."); return true; }
@@ -611,7 +634,7 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
                 for (int i = 0; i < amount; i++) pl.give(target, sigil());
                 sender.sendMessage(ChatColor.GREEN + "Gave " + target.getName() + " " + amount + " Boss Rush Sigil" + (amount == 1 ? "" : "s") + ".");
             }
-            case "top", "leaderboard" -> leaderboard(sender);
+            case "top", "leaderboard" -> leaderboard(sender, args.length > 1 && args[1].equalsIgnoreCase("hardcore"));
             case "stop" -> {
                 if (!admin) { sender.sendMessage(ChatColor.RED + "You don't have permission to do that."); return true; }
                 if (run == null) sender.sendMessage(ChatColor.GRAY + "No Boss Rush is running.");
@@ -651,6 +674,8 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
                         + " - you and everyone within 10 blocks (in survival)");
                 sender.sendMessage(ChatColor.YELLOW + "/bossrush top " + ChatColor.GRAY + "- the fastest times");
                 sender.sendMessage(ChatColor.GRAY + "Bosses drop no loot in a rush. Die and you're out (you keep your things). Finish it for big rewards.");
+                sender.sendMessage(ChatColor.DARK_RED + "Hardcore: " + ChatColor.GRAY + "sneak + right-click the Sigil (or /bossrush start hardcore). One death and the WHOLE team is out; "
+                        + (int) c("hardcore.reward-multiplier", 2) + "x rewards, its own leaderboard (/bossrush top hardcore).");
                 if (run != null) sender.sendMessage(ChatColor.GOLD + "A rush is running: boss " + (run.stage + 1) + "/" + run.stages.size() + ".");
                 if (admin) sender.sendMessage(ChatColor.DARK_GRAY + "Admin: /bossrush start | stop | skip | setarena <boss> | arenas | clearcooldown | sigil [amount] [player]");
             }
@@ -669,6 +694,7 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
         List<String> o = new ArrayList<>();
         if (args.length == 1) { o.addAll(List.of("start", "top")); if (sender.hasPermission("bosses.admin")) o.addAll(List.of("stop", "skip", "setarena", "arenas", "clearcooldown", "sigil")); }
         else if (args.length == 2 && args[0].equalsIgnoreCase("setarena")) for (Stage s : STAGES) o.add(s.kind());
+        else if (args.length == 2 && (args[0].equalsIgnoreCase("start") || args[0].equalsIgnoreCase("top"))) o.add("hardcore");
         String last = args[args.length - 1].toLowerCase();
         o.removeIf(x -> !x.startsWith(last));
         return o;

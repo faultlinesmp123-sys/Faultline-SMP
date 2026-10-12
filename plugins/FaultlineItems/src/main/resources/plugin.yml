@@ -1,5 +1,5 @@
 name: FaultlineItems
-version: 1.2.23
+version: 1.2.24
 main: net.faultlinesmp.items.FaultlineItems
 api-version: '1.21'
 softdepend: [floodgate, Geyser-Spigot]
@@ -137,6 +137,17 @@ commands:
     description: "Staff: vanish from everyone without faultline.vanish.see (/vanish [player|list])"
     usage: /vanish [player|list]
     permission: faultline.vanish
+  giveballoon:
+    description: "Admin: give a Hot Air Balloon"
+    usage: /giveballoon [amount] [player]
+    permission: items.giveballoon
+  ping:
+    description: "Your ping, someone's, or everyone's (/ping [player|all])"
+    usage: /ping [player|all]
+  coords:
+    description: "Show your coordinates (a bar at the top); /coords share [player|kingdom|all] tells others where you are"
+    usage: /coords [share [player|kingdom|all]]
+    aliases: [coordinates, where]
   camera:
     description: "Free camera for recording: fly around invisible, /camera again to come back (/camera speed 1-10)"
     usage: /camera [speed <1-10>]
@@ -169,6 +180,12 @@ permissions:
     default: op
   faultline.vanish:
     description: Use /vanish
+    default: op
+  items.giveballoon:
+    description: /giveballoon
+    default: op
+  items.balloon.admin:
+    description: Pack up anyone's hot air balloon
     default: op
   faultline.camera:
     description: Use /camera (free camera)

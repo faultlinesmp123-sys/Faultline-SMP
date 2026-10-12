@@ -54,11 +54,12 @@ public final class FaultlineCosmetics extends JavaPlugin implements Listener {
     }
 
     private static FaultlineCosmetics instance;
-    private final LinkedHashMap<String, Cosmetic> cosmetics = new LinkedHashMap<>();
+    final LinkedHashMap<String, Cosmetic> cosmetics = new LinkedHashMap<>();
     private final Map<UUID, Data> data = new HashMap<>();
     private File dataFile;
-    private boolean dirty;
-    private Renderer renderer;
+    boolean dirty;
+    Renderer renderer;
+    final CosmeticForms forms = new CosmeticForms(this);
     Seasons seasons;
 
     @Override
@@ -316,19 +317,47 @@ public final class FaultlineCosmetics extends JavaPlugin implements Listener {
         String id = shop.ids.get(raw);
         Cosmetic c = id == null ? null : cosmetics.get(id);
         if (c == null) return;
+        if (buy(p, shop.season, c) != Bought.CLOSED) openShop(p); else p.closeInventory();
+    }
+
+    enum Bought { OK, OWNED, CLOSED, POOR }
+
+    /** Buys a seasonal cosmetic (the chest shop and the Bedrock menu both come here). */
+    Bought buy(Player p, Seasons.Season season, Cosmetic c) {
         Data d = data(p.getUniqueId());
-        if (d.unlocked.contains(id)) { p.playSound(p, Sound.BLOCK_NOTE_BLOCK_BASS, 0.6f, 1f); return; }
-        if (seasons.current() == null || !seasons.current().id().equals(shop.season.id())) { p.closeInventory(); msg(p, "&7The shop just closed."); return; }
-        if (!seasons.take(p, shop.season, c.price())) {
+        if (d.unlocked.contains(c.id())) { p.playSound(p, Sound.BLOCK_NOTE_BLOCK_BASS, 0.6f, 1f); return Bought.OWNED; }
+        if (seasons.current() == null || !seasons.current().id().equals(season.id())) { msg(p, "&7The shop just closed."); return Bought.CLOSED; }
+        if (!seasons.take(p, season, c.price())) {
             p.playSound(p, Sound.BLOCK_NOTE_BLOCK_BASS, 0.8f, 0.6f);
-            msg(p, "&cYou need " + c.price() + " " + shop.season.tokenName() + " for " + c.name() + "&c.");
-            return;
+            msg(p, "&cYou need " + c.price() + " " + season.tokenName() + " for " + c.name() + "&c.");
+            return Bought.POOR;
         }
-        d.unlocked.add(id);
+        d.unlocked.add(c.id());
         dirty = true;
         msg(p, "&6&lCOSMETIC UNLOCKED! &r" + c.name() + " &7is yours forever. Wear it from &e/cosmetics&7.");
         p.playSound(p, Sound.UI_TOAST_CHALLENGE_COMPLETE, 0.7f, 1.2f);
-        openShop(p);
+        return Bought.OK;
+    }
+
+    /** Puts on (or, if it's already on, takes off) a cosmetic the player owns. */
+    void toggle(Player p, Cosmetic c) {
+        Data d = data(p.getUniqueId());
+        if (!d.unlocked.contains(c.id())) return;
+        if (c.id().equals(d.equipped.get(c.slot()))) d.equipped.remove(c.slot());
+        else d.equipped.put(c.slot(), c.id());
+        dirty = true;
+        renderer.refresh(p);
+        p.playSound(p, Sound.ITEM_ARMOR_EQUIP_GOLD, 0.8f, 1.1f);
+    }
+
+    void takeOff(Player p, Slot s) {
+        Data d = data(p.getUniqueId());
+        boolean any = s == null ? !d.equipped.isEmpty() : d.equipped.containsKey(s);
+        if (!any) return;
+        if (s == null) d.equipped.clear(); else d.equipped.remove(s);
+        dirty = true;
+        renderer.refresh(p);
+        p.playSound(p, Sound.ITEM_ARMOR_EQUIP_LEATHER, 0.8f, 0.8f);
     }
 
     ItemStack icon(Cosmetic c, String... lore) {
@@ -417,7 +446,11 @@ public final class FaultlineCosmetics extends JavaPlugin implements Listener {
         boolean admin = sender.hasPermission("faultlinecosmetics.admin");
         if (cmd.getName().equalsIgnoreCase("cosmetics") || !admin) {
             if (sender instanceof Player p) {
-                try { if (args.length > 0 && args[0].equalsIgnoreCase("shop")) openShop(p); else openMenu(p, 0); }
+                try {
+                    boolean shop = args.length > 0 && args[0].equalsIgnoreCase("shop");
+                    if (forms.use(p) && (shop ? forms.shop(p) : forms.home(p))) return true; // Bedrock: native menus
+                    if (shop) openShop(p); else openMenu(p, 0);
+                }
                 catch (RuntimeException | LinkageError ex) { // never fail silently: tell them, and put the cause in the console
                     getLogger().log(java.util.logging.Level.SEVERE, "Couldn't open the cosmetics menu for " + p.getName(), ex);
                     msg(p, "&cThe cosmetics menu couldn't open (the error is in the server console). Tell an admin.");
@@ -426,7 +459,7 @@ public final class FaultlineCosmetics extends JavaPlugin implements Listener {
             else msg(sender, "&cOnly players can open the cosmetics menu.");
             return true;
         }
-        if (args.length == 0) { if (sender instanceof Player p) { openMenu(p, 0); return true; } usage(sender); return true; }
+        if (args.length == 0) { if (sender instanceof Player p) { if (!(forms.use(p) && forms.home(p))) openMenu(p, 0); return true; } usage(sender); return true; }
         switch (args[0].toLowerCase(Locale.ROOT)) {
             case "shop" -> { if (sender instanceof Player p) openShop(p); }
             case "season" -> { // force a season (testing / an early start), or back to the calendar

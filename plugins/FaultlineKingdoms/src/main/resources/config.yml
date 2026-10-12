@@ -11,7 +11,12 @@ grace:
   show-actionbar: true          # a reminder in the action bar while your grace is on
 
 pvp:
-  friendly-fire: true           # can members of the same kingdom hurt each other?
+  friendly-fire: true           # can members of the same kingdom hurt each other? (the default; each kingdom can vote)
+  # each kingdom votes its own friendly fire: /kingdom ff <on|off|clear>; the majority wins once enough have voted
+  # (a tie, or too few votes = friendly-fire above). Admins can fix it: /kingdoms ff <1|2|3> <on|off|vote>.
+  friendly-fire-vote:
+    enabled: true
+    min-votes: 3
 
 # Show the kingdom in the tab list and above heads ("[Kingdom 1] name")
 display:
@@ -33,5 +38,9 @@ discord:
     2: "1553986213311029338"    # Kingdom 2
     3: "1557134028488843374"    # Kingdom 3
   sync-minutes: 5               # re-check online players' roles this often (and always when they join)
+  slash-commands: true          # /stats <player> in your Discord server (the bot answers with their stats)
   remove-when-role-gone: true   # lost the role / left the Discord = no kingdom
   link-code-minutes: 10
+
+# Bedrock players get /kingdom as a menu (Floodgate/Geyser forms): link, verify, friendly fire, members.
+bedrock-forms: true

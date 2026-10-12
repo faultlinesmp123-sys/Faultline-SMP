@@ -1,5 +1,5 @@
 name: FaultlineIndex
-version: '1.6.12'
+version: '1.6.13'
 main: net.faultlinesmp.index.FaultlineIndex
 api-version: '1.21'
 author: FaultlineSMP
@@ -23,6 +23,13 @@ commands:
   reports:
     description: "Staff: the latest player reports"
     usage: /reports [count]
+    permission: faultlineindex.reports
+  suggest:
+    description: Suggest something for the server (posted in the Discord)
+    usage: /suggest <your idea>
+  suggestions:
+    description: "Staff: the latest suggestions"
+    usage: /suggestions [count]
     permission: faultlineindex.reports
   discord:
     description: "Admin: test the Discord bridge (/discord test [message]); reloads its settings"

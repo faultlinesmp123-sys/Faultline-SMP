@@ -388,6 +388,9 @@ public final class FaultlineItems extends JavaPlugin {
         vanish = new Vanish(this);
         getServer().getPluginManager().registerEvents(vanish, this);
         getCommand("vanish").setExecutor(vanish);
+        camera = new Camera(this); // 1.2.23: free camera for recording
+        getServer().getPluginManager().registerEvents(camera, this);
+        getCommand("camera").setExecutor(camera);
         fishing = new Fishing(this);
         getServer().getPluginManager().registerEvents(fishing, this);
         getCommand("fishing").setExecutor(fishing);
@@ -586,6 +589,7 @@ public final class FaultlineItems extends JavaPlugin {
         if (gear != null) gear.shutdown();
         if (race != null) try { race.shutdown(); } catch (RuntimeException ignored) { }
         if (sit != null) try { sit.shutdown(); } catch (RuntimeException ignored) { }
+        if (camera != null) try { camera.shutdown(); } catch (RuntimeException ignored) { }
         if (fishing != null) try { fishing.shutdown(); } catch (RuntimeException ignored) { }
         if (enchants != null) for (Player online : Bukkit.getOnlinePlayers()) try { enchants.vitality(online, 0); } catch (RuntimeException ignored) { }
         if (caravan != null) caravan.shutdown();
@@ -844,6 +848,7 @@ public final class FaultlineItems extends JavaPlugin {
     Race race;
     Sit sit;
     Vanish vanish;
+    Camera camera;
     Fishing fishing;
 
     private KrakenGear krakenGear;

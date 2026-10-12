@@ -1,5 +1,5 @@
 name: FaultlineItems
-version: 1.2.22
+version: 1.2.23
 main: net.faultlinesmp.items.FaultlineItems
 api-version: '1.21'
 softdepend: [floodgate, Geyser-Spigot]
@@ -137,6 +137,10 @@ commands:
     description: "Staff: vanish from everyone without faultline.vanish.see (/vanish [player|list])"
     usage: /vanish [player|list]
     permission: faultline.vanish
+  camera:
+    description: "Free camera for recording: fly around invisible, /camera again to come back (/camera speed 1-10)"
+    usage: /camera [speed <1-10>]
+    permission: faultline.camera
   fishing:
     description: "Fishing records and tournaments (/fishing top|records; admins start [minutes] | stop [award])"
     usage: /fishing [top|records|start [minutes]|stop [award]]
@@ -165,6 +169,12 @@ permissions:
     default: op
   faultline.vanish:
     description: Use /vanish
+    default: op
+  faultline.camera:
+    description: Use /camera (free camera)
+    default: true
+  faultline.camera.unlimited:
+    description: /camera with no range limit or combat check, and may spectate other players
     default: op
   faultline.vanish.see:
     description: See vanished staff

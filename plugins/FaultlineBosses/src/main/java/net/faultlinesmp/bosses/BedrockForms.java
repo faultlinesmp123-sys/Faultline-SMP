@@ -22,7 +22,7 @@ final class BedrockForms {
     private BedrockForms() {}
 
     private static volatile boolean looked;
-    private static volatile Class<?> simpleC, simpleB, modalC, modalB, simpleR, modalR, formC;
+    private static volatile Class<?> simpleC, simpleB, modalC, modalB, simpleR, modalR, formC, customC, customB, customR;
     private static volatile Object floodgate, geyser;
     private static volatile Method floodgateSend, geyserSend;
 
@@ -62,6 +62,9 @@ final class BedrockForms {
         modalB = cls("org.geysermc.cumulus.form.ModalForm$Builder");
         simpleR = cls("org.geysermc.cumulus.response.SimpleFormResponse");
         modalR = cls("org.geysermc.cumulus.response.ModalFormResponse");
+        customC = cls("org.geysermc.cumulus.form.CustomForm");
+        customB = cls("org.geysermc.cumulus.form.CustomForm$Builder");
+        customR = cls("org.geysermc.cumulus.response.CustomFormResponse");
         try {
             Class<?> c = cls("org.geysermc.floodgate.api.FloodgateApi");
             if (c != null) { floodgate = c.getMethod("getInstance").invoke(null); floodgateSend = findSend(c, floodgate); }
@@ -142,6 +145,28 @@ final class BedrockForms {
             };
             call(modalB, b, "validResultHandler", Consumer.class, ok);
             return deliver(p, modalB.getMethod("build").invoke(b));
+        } catch (Throwable t) {
+            pl.getLogger().warning("Couldn't send a Bedrock form to " + p.getName() + ": " + t);
+            return false;
+        }
+    }
+
+    /** A text box (a Discord name, a code...). onText gets what they typed, trimmed (on the main thread); closing it does nothing. */
+    static boolean input(Plugin pl, Player p, String title, String label, String placeholder, Consumer<String> onText) {
+        if (!available() || customC == null || customB == null || customR == null) return false;
+        try {
+            Object b = customC.getMethod("builder").invoke(null);
+            call(customB, b, "title", String.class, title);
+            customB.getMethod("input", String.class, String.class).invoke(b, label, placeholder == null ? "" : placeholder);
+            Method in = customR.getMethod("asInput", int.class);
+            UUID who = p.getUniqueId();
+            Consumer<Object> ok = r -> {
+                String t;
+                try { Object v = in.invoke(r, 0); t = v == null ? "" : v.toString().trim(); } catch (Throwable ex) { return; }
+                Bukkit.getScheduler().runTask(pl, () -> { if (Bukkit.getPlayer(who) != null) onText.accept(t); });
+            };
+            call(customB, b, "validResultHandler", Consumer.class, ok);
+            return deliver(p, customB.getMethod("build").invoke(b));
         } catch (Throwable t) {
             pl.getLogger().warning("Couldn't send a Bedrock form to " + p.getName() + ": " + t);
             return false;

@@ -126,3 +126,6 @@ show-own: true
 
 # How often (ticks) cosmetics are re-sent to everyone as a safety net. 40 = every 2 seconds.
 resend-ticks: 40
+
+# Bedrock players get /cosmetics as native menus (Floodgate/Geyser forms) instead of the chest menu.
+bedrock-forms: true

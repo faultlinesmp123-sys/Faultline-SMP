@@ -131,6 +131,7 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
 
     @Override
     public void onEnable() {
+        self = this;
         bookKey = new NamespacedKey(this, "index_book");
         loadContent();
         dataFile = new File(getDataFolder(), "progress.yml");
@@ -157,6 +158,9 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
         Reports reports = new Reports(this);
         getCommand("report").setExecutor(reports);
         getCommand("reports").setExecutor(reports);
+        Suggestions suggestions = new Suggestions(this); // 1.6.13
+        getCommand("suggest").setExecutor(suggestions);
+        getCommand("suggestions").setExecutor(suggestions);
         getCommand("discord").setExecutor((sender, cmd, label, args) -> {
             if (!sender.hasPermission("faultlineindex.admin")) { sender.sendMessage(ChatColor.RED + "You don't have permission to do that."); return true; }
             reloadConfig(); discord.reload();
@@ -441,6 +445,31 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
         p.sendMessage(msg);
         p.playSound(p.getLocation(), creature ? Sound.UI_TOAST_CHALLENGE_COMPLETE : Sound.ENTITY_PLAYER_LEVELUP, 0.6f, creature ? 1f : 1.6f);
         achievements.check(p);
+    }
+
+    // ---- for other plugins (FaultlineKingdoms' Discord /stats), called by reflection on the main thread
+    private static FaultlineIndex self;
+
+    /** "Index", "Bosses defeated", "Achievements" for a player (label -> value), in order; empty if the Index isn't loaded. */
+    public static Map<String, String> discordStats(UUID id) {
+        Map<String, String> out = new LinkedHashMap<>();
+        FaultlineIndex ix = self;
+        if (ix == null) return out;
+        int have = 0, bosses = 0, bossAll = 0, bossKills = 0;
+        Map<String, Integer> k = ix.kills.getOrDefault(id, Map.of());
+        for (Entry e : ix.entries) {
+            if (ix.has(id, e)) have++;
+            if ("bosses".equals(e.chapter)) {
+                bossAll++;
+                int n = k.getOrDefault(e.id, 0);
+                if (n > 0 || ix.has(id, e)) bosses++;
+                bossKills += n;
+            }
+        }
+        out.put("Index", have + "/" + ix.entries.size());
+        out.put("Bosses defeated", bosses + "/" + bossAll + (bossKills > bosses ? " (" + bossKills + " kills)" : ""));
+        out.put("Achievements", ix.achievements.doneCount(id) + "/" + ix.achievements.goals.size());
+        return out;
     }
 
     // ---- for Achievements

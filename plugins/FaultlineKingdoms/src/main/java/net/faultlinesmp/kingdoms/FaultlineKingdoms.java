@@ -56,13 +56,18 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
         int kingdom;      // 0 = none
         String discordId; // linked Discord account, or null
         boolean manual;   // set by an admin: role sync leaves it alone
+        Boolean ffVote;   // their friendly-fire vote for their kingdom (null = none)
     }
 
     final Map<UUID, Member> members = new java.util.concurrent.ConcurrentHashMap<>(); // read by the Discord calls off the main thread
     /** "all", "1", "2", "3" -> until (epoch ms), or -1 = until turned off. Missing = off. */
     final Map<String, Long> grace = new LinkedHashMap<>();
+    /** A kingdom's friendly fire set by an admin (overrides the vote): "1".."3" -> on/off. */
+    final Map<String, Boolean> ffForced = new LinkedHashMap<>();
     File dataFile;
     DiscordLink discord;
+    DiscordGateway gateway;
+    final KingdomForms forms = new KingdomForms(this);
     private final Map<UUID, Long> warned = new HashMap<>();
 
     @Override
@@ -73,6 +78,8 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
         load();
         getServer().getPluginManager().registerEvents(this, this);
         discord = new DiscordLink(this);
+        gateway = new DiscordGateway(this, discord);
+        gateway.start();
         getServer().getScheduler().runTaskTimer(this, this::tick, 20L, 20L);
         for (Player p : Bukkit.getOnlinePlayers()) { member(p); refreshName(p); }
         getLogger().info("Faultline Kingdoms enabled: " + members.size() + " players known, Discord sync " + (discord.on() ? "ON" : "OFF (set discord.bot-token / guild-id)") + ".");
@@ -80,13 +87,14 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
 
     @Override
     public void onDisable() {
+        if (gateway != null) gateway.stop();
         save();
     }
 
     // ================================================================= data
 
     void load() {
-        members.clear(); grace.clear();
+        members.clear(); grace.clear(); ffForced.clear();
         if (!dataFile.exists()) return;
         YamlConfiguration y = YamlConfiguration.loadConfiguration(dataFile);
         ConfigurationSection ps = y.getConfigurationSection("players");
@@ -97,11 +105,14 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
                 m.kingdom = ps.getInt(id + ".kingdom", 0);
                 m.discordId = ps.getString(id + ".discord");
                 m.manual = ps.getBoolean(id + ".manual", false);
+                if (ps.isBoolean(id + ".ff-vote")) m.ffVote = ps.getBoolean(id + ".ff-vote");
                 members.put(UUID.fromString(id), m);
             } catch (IllegalArgumentException ignored) { }
         }
         ConfigurationSection g = y.getConfigurationSection("grace");
         if (g != null) for (String k : g.getKeys(false)) grace.put(k, g.getLong(k));
+        ConfigurationSection ff = y.getConfigurationSection("ff-forced");
+        if (ff != null) for (String k : ff.getKeys(false)) ffForced.put(k, ff.getBoolean(k));
     }
 
     synchronized void save() {
@@ -113,8 +124,10 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
             y.set(b + "kingdom", m.kingdom);
             if (m.discordId != null) y.set(b + "discord", m.discordId);
             if (m.manual) y.set(b + "manual", true);
+            if (m.ffVote != null) y.set(b + "ff-vote", m.ffVote);
         }
         for (var e : grace.entrySet()) y.set("grace." + e.getKey(), e.getValue());
+        for (var e : ffForced.entrySet()) y.set("ff-forced." + e.getKey(), e.getValue());
         try { y.save(dataFile); } catch (IOException ex) { getLogger().warning("Couldn't save data.yml: " + ex.getMessage()); }
     }
 
@@ -128,6 +141,12 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
         if (instance == null) return 0;
         Member m = instance.members.get(id);
         return m == null ? 0 : m.kingdom;
+    }
+
+    /** The player's kingdom name ("Kingdom 1"), or null for none (LimboBlackMarket reads this by reflection). */
+    public static String kingdomName(UUID id) {
+        int k = kingdomOf(id);
+        return instance == null || k == 0 ? null : instance.name(k);
     }
 
     String name(int k) { return k < 1 || k > 3 ? "No kingdom" : getConfig().getString("kingdoms." + k + ".name", "Kingdom " + k); }
@@ -144,6 +163,9 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
     void setKingdom(UUID id, int k, boolean manual, String why) {
         Member m = members.computeIfAbsent(id, x -> new Member());
         boolean changed = m.kingdom != k;
+        boolean ffBefore = k > 0 && friendlyFire(k), ffOldBefore = m.kingdom > 0 && friendlyFire(m.kingdom);
+        int old = m.kingdom;
+        if (changed) m.ffVote = null; // a vote is for the kingdom you were in
         m.kingdom = k;
         m.manual = manual;
         Player p = Bukkit.getPlayer(id);
@@ -154,6 +176,8 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
                     : ChatColor.GOLD + "You're in " + label(k) + ChatColor.GOLD + "!" + (why == null ? "" : ChatColor.GRAY + " (" + why + ")"));
         }
         if (changed) getLogger().info((m.name == null ? id.toString() : m.name) + " -> " + name(k) + (why == null ? "" : " (" + why + ")"));
+        if (changed && old > 0) ffChanged(old, ffOldBefore);
+        if (changed && k > 0) ffChanged(k, ffBefore);
         save();
     }
 
@@ -228,6 +252,70 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
         return s + "s";
     }
 
+    // ================================================================= friendly fire (voted per kingdom)
+
+    /** [yes, no] votes of a kingdom's current members. */
+    int[] ffVotes(int k) {
+        int yes = 0, no = 0;
+        for (Member m : members.values()) if (m.kingdom == k && m.ffVote != null) { if (m.ffVote) yes++; else no++; }
+        return new int[]{yes, no};
+    }
+
+    /**
+     * Can members of kingdom k hurt each other? An admin's setting (/kingdoms ff) wins; else, with voting on, the majority
+     * of the kingdom's votes once at least pvp.friendly-fire-vote.min-votes have voted (a tie keeps the default); else
+     * pvp.friendly-fire.
+     */
+    boolean friendlyFire(int k) {
+        Boolean forced = ffForced.get(String.valueOf(k));
+        if (forced != null) return forced;
+        boolean def = getConfig().getBoolean("pvp.friendly-fire", true);
+        if (!getConfig().getBoolean("pvp.friendly-fire-vote.enabled", true)) return def;
+        int[] v = ffVotes(k);
+        if (v[0] + v[1] < Math.max(1, getConfig().getInt("pvp.friendly-fire-vote.min-votes", 3)) || v[0] == v[1]) return def;
+        return v[0] > v[1];
+    }
+
+    String ffWhy(int k) {
+        if (ffForced.containsKey(String.valueOf(k))) return "set by staff";
+        if (!getConfig().getBoolean("pvp.friendly-fire-vote.enabled", true)) return "server setting";
+        int[] v = ffVotes(k);
+        int min = Math.max(1, getConfig().getInt("pvp.friendly-fire-vote.min-votes", 3));
+        if (v[0] + v[1] < min) return v[0] + v[1] + "/" + min + " votes needed, server default";
+        return v[0] + " on, " + v[1] + " off" + (v[0] == v[1] ? ", a tie: server default" : "");
+    }
+
+    /** Tells a kingdom's online members when their friendly fire flips. */
+    void ffChanged(int k, boolean before) {
+        boolean now = friendlyFire(k);
+        if (now == before) return;
+        String line = ChatColor.GOLD + "⚔ " + label(k) + ChatColor.GOLD + ": friendly fire is now "
+                + (now ? ChatColor.RED + "ON" + ChatColor.GOLD + " (you can hurt each other)" : ChatColor.GREEN + "OFF" + ChatColor.GOLD + " (you can't hurt each other)")
+                + ChatColor.GRAY + " (" + ffWhy(k) + ")";
+        for (Player p : Bukkit.getOnlinePlayers()) if (kingdomOf(p.getUniqueId()) == k) p.sendMessage(line);
+    }
+
+    /** /kingdom ff [on|off|clear]: see or cast your vote. */
+    void ffCommand(Player p, String what) {
+        Member m = member(p);
+        int k = m.kingdom;
+        if (k == 0) { msg(p, ChatColor.RED + "You're not in a kingdom."); return; }
+        if (what != null) {
+            if (!getConfig().getBoolean("pvp.friendly-fire-vote.enabled", true)) { msg(p, ChatColor.RED + "Friendly fire voting is turned off."); return; }
+            Boolean v = switch (what) { case "on", "yes", "true" -> Boolean.TRUE; case "off", "no", "false" -> Boolean.FALSE; default -> null; };
+            if (v == null && !what.equals("clear")) { msg(p, ChatColor.RED + "/kingdom ff <on|off|clear>"); return; }
+            boolean before = friendlyFire(k);
+            m.ffVote = v;
+            save();
+            msg(p, v == null ? ChatColor.GRAY + "Your vote is cleared." : ChatColor.GREEN + "You voted friendly fire " + (v ? "ON" : "OFF") + " for " + label(k) + ChatColor.GREEN + ".");
+            ffChanged(k, before);
+        }
+        boolean on = friendlyFire(k);
+        msg(p, ChatColor.GOLD + "Friendly fire in " + label(k) + ChatColor.GOLD + ": " + (on ? ChatColor.RED + "ON" : ChatColor.GREEN + "OFF")
+                + ChatColor.GRAY + " (" + ffWhy(k) + ")" + ChatColor.GRAY + " · your vote: "
+                + (m.ffVote == null ? "none" : m.ffVote ? "on" : "off") + ChatColor.DARK_GRAY + " · /kingdom ff <on|off|clear>");
+    }
+
     // ================================================================= PvP
 
     /** The player really behind a hit: themselves, the shooter of an arrow/trident/potion, a TNT lighter, a pet's owner. */
@@ -248,7 +336,7 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
         if (va > 0 && graceOn(String.valueOf(va))) return victim.getName() + "'s kingdom (" + label(va) + ChatColor.RED + ") is under grace.";
         if (aa > 0 && graceOn(String.valueOf(aa)) && !getConfig().getBoolean("grace.protected-can-attack", false))
             return "Your kingdom is under grace: you can't attack players.";
-        if (aa > 0 && aa == va && !getConfig().getBoolean("pvp.friendly-fire", true)) return victim.getName() + " is in your kingdom.";
+        if (aa > 0 && aa == va && !friendlyFire(aa)) return victim.getName() + " is in your kingdom (friendly fire is off).";
         return null;
     }
 
@@ -295,7 +383,7 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
     }
 
     @EventHandler
-    public void onQuit(PlayerQuitEvent e) { warned.remove(e.getPlayer().getUniqueId()); }
+    public void onQuit(PlayerQuitEvent e) { warned.remove(e.getPlayer().getUniqueId()); Edition.forget(e.getPlayer().getUniqueId()); }
 
     // ================================================================= commands
 
@@ -324,6 +412,10 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
                 if (!m.manual) setKingdom(p.getUniqueId(), 0, false, "Discord unlinked"); else save();
                 msg(sender, ChatColor.YELLOW + "Your Discord is unlinked.");
             }
+            case "ff", "friendlyfire" -> {
+                if (p == null) return msg(sender, "Players only.");
+                ffCommand(p, args.length > 1 ? args[1].toLowerCase(Locale.ROOT) : null);
+            }
             case "list" -> {
                 int k = args.length > 1 ? parseKingdom(args[1]) : -1;
                 if (k < 1) return msg(sender, ChatColor.RED + "/kingdom list <1|2|3>");
@@ -333,6 +425,7 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
                         + (off.isEmpty() ? "" : (on.isEmpty() ? "" : ChatColor.GRAY + ", ") + ChatColor.GRAY + String.join(", ", off)));
             }
             default -> {
+                if (p != null && forms.use(p) && forms.home(p)) return true; // Bedrock: a menu
                 if (p != null) {
                     Member m = member(p);
                     msg(sender, ChatColor.GOLD + "Your kingdom: " + label(m.kingdom) + (m.manual ? ChatColor.GRAY + " (set by staff)" : "")
@@ -355,9 +448,10 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
         StringBuilder counts = new StringBuilder(ChatColor.GRAY + "Kingdoms:");
         for (int k = 1; k <= 3; k++) {
             int n = 0; for (Member m : members.values()) if (m.kingdom == k) n++;
-            counts.append(" ").append(label(k)).append(ChatColor.GRAY).append(" ").append(n);
+            counts.append(" ").append(label(k)).append(ChatColor.GRAY).append(" ").append(n).append(friendlyFire(k) ? "" : " (no friendly fire)");
         }
         s.sendMessage(counts.toString());
+        if (s.hasPermission("kingdoms.admin") && gateway != null) s.sendMessage(ChatColor.DARK_GRAY + "Discord /stats: " + gateway.status);
     }
 
     static int parseKingdom(String s) {
@@ -418,14 +512,31 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
                 } else discord.syncAll();
                 msg(sender, ChatColor.GREEN + "Checking Discord roles...");
             }
+            case "ff" -> { // /kingdoms ff <1|2|3> <on|off|vote>
+                int k = args.length > 2 ? parseKingdom(args[1]) : -1;
+                if (k < 1) return msg(sender, ChatColor.RED + "/kingdoms ff <1|2|3> <on|off|vote>");
+                boolean before = friendlyFire(k);
+                switch (args[2].toLowerCase(Locale.ROOT)) {
+                    case "on" -> ffForced.put(String.valueOf(k), true);
+                    case "off" -> ffForced.put(String.valueOf(k), false);
+                    case "vote", "auto" -> ffForced.remove(String.valueOf(k));
+                    default -> { return msg(sender, ChatColor.RED + "on, off or vote."); }
+                }
+                save();
+                msg(sender, ChatColor.GREEN + name(k) + ": friendly fire " + (friendlyFire(k) ? "ON" : "OFF") + " (" + ffWhy(k) + ").");
+                ffChanged(k, before);
+            }
             case "reload" -> {
                 reloadConfig();
                 for (Player p : Bukkit.getOnlinePlayers()) refreshName(p);
+                if (gateway != null) gateway.stop();
+                gateway = new DiscordGateway(this, discord);
+                gateway.start();
                 msg(sender, ChatColor.GREEN + "Reloaded. Discord sync " + (discord.on() ? "on." : "off (no token / guild id)."));
             }
             default -> {
                 status(sender);
-                msg(sender, ChatColor.DARK_GRAY + "/kingdoms grace <all|1|2|3> <on|off> [time] · set <player> <1|2|3|none|auto> · sync [player] · reload");
+                msg(sender, ChatColor.DARK_GRAY + "/kingdoms grace <all|1|2|3> <on|off> [time] · set <player> <1|2|3|none|auto> · ff <1|2|3> <on|off|vote> · sync [player] · reload");
             }
         }
         return true;
@@ -436,14 +547,17 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (command.getName().equalsIgnoreCase("kingdoms")) {
-            if (args.length == 1) return List.of("grace", "set", "sync", "status", "reload");
+            if (args.length == 1) return List.of("grace", "set", "ff", "sync", "status", "reload");
+            if (args.length == 2 && args[0].equalsIgnoreCase("ff")) return List.of("1", "2", "3");
+            if (args.length == 3 && args[0].equalsIgnoreCase("ff")) return List.of("on", "off", "vote");
             if (args.length == 2 && args[0].equalsIgnoreCase("grace")) return List.of("all", "1", "2", "3");
             if (args.length == 3 && args[0].equalsIgnoreCase("grace")) return List.of("on", "off");
             if (args.length == 4 && args[0].equalsIgnoreCase("grace")) return List.of("30m", "1h", "2h", "1d");
             if (args.length == 3 && args[0].equalsIgnoreCase("set")) return List.of("1", "2", "3", "none", "auto");
             return null;
         }
-        if (args.length == 1) return List.of("link", "verify", "unlink", "list");
+        if (args.length == 1) return List.of("link", "verify", "unlink", "list", "ff");
+        if (args.length == 2 && args[0].equalsIgnoreCase("ff")) return List.of("on", "off", "clear");
         if (args.length == 2 && args[0].equalsIgnoreCase("list")) return List.of("1", "2", "3");
         return List.of();
     }

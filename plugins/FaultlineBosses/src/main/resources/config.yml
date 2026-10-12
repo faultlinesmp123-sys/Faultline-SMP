@@ -643,3 +643,9 @@ wild:
       gear-parts-min: 2
       gear-parts-extra: 3
       items: ["AMETHYST_SHARD:8-16", "EMERALD:4-8", "IRON_BLOCK:1-3"]
+
+# Boss death messages (1.5.8): "<player> was frozen solid by Frostbeard" instead of "was slain by Slime", when a boss
+# hit you within this many seconds of dying (the fall or the lava it knocked you into counts too).
+death-messages:
+  enabled: true
+  seconds: 5

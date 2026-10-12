@@ -568,6 +568,13 @@ vanish:
   fake-messages: true
   pickup: false               # vanished staff pick up items
 
+# Camera mode (1.2.23): /camera = a free camera for recording (spectator, back where you were with /camera again).
+camera:
+  enabled: true               # false = only faultline.camera.unlimited (ops) can use it
+  max-distance: 64            # how far from where you started the camera can fly (0 = no limit)
+  combat-seconds: 10          # can't start it this soon after hitting / being hit
+  combat-includes-mobs: true  # ...by monsters too, not just players
+
 # Fishing (1.2.18): every fish has a weight; all-time records per species; tournaments (/fishing start [minutes]).
 fishing:
   enabled: true

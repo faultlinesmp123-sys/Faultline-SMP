@@ -125,6 +125,7 @@ final class Discord implements Listener {
     private volatile boolean enabled = true, chat = true, joins = true, deaths = true, logMirror = true, logWhispers = true,
             logAdmin = true, logAll = false, logConsole = true, logTnt = true;
     private volatile String username = "Faultline SMP";
+    volatile String suggestUrl = "";
     private volatile long retryAfter = 2000;
     private volatile String lastBody = "";
 
@@ -144,6 +145,7 @@ final class Discord implements Listener {
         enabled = c.getBoolean("discord.enabled", true);
         pub.url = c.getString("discord.webhook-url", "");
         logs.url = c.getString("discord.logs-webhook-url", "");
+        suggestUrl = c.getString("discord.suggestions-webhook-url", "");
         username = c.getString("discord.username", "Faultline SMP");
         chat = c.getBoolean("discord.public.chat", true);
         joins = c.getBoolean("discord.public.joins", true);
@@ -192,7 +194,10 @@ final class Discord implements Listener {
     int queued() { return pub.size(); }
 
     String status() {
-        return "public " + (pub.on() ? "on (" + pub.size() + " queued)" : "off") + ", logs " + (logs.on() ? "on (" + logs.size() + " queued)" : "off");
+        String sg = suggestUrl != null && (suggestUrl.startsWith("https://") || suggestUrl.startsWith("http://127.0.0.1")) ? "own channel"
+                : pub.on() ? "public channel" : "off";
+        return "public " + (pub.on() ? "on (" + pub.size() + " queued)" : "off") + ", logs " + (logs.on() ? "on (" + logs.size() + " queued)" : "off")
+                + ", suggestions " + sg;
     }
 
     // ---------------------------------------------------------------- public
@@ -313,6 +318,35 @@ final class Discord implements Listener {
         String allowed = ping ? "{\"roles\":[\"" + role + "\"]}" : "{\"parse\":[]}";
         String url = logs.url;
         Bukkit.getScheduler().runTaskAsynchronously(index, () -> sendRaw(url, content.length() > 1900 ? content.substring(0, 1900) : content, allowed));
+        return true;
+    }
+
+    /** Where /suggest posts: its own webhook, else the public channel (null = nowhere). */
+    String suggestTarget() {
+        if (!enabled) return null;
+        String u = suggestUrl;
+        if (u != null && (u.startsWith("https://") || u.startsWith("http://127.0.0.1"))) return u;
+        return pub.on() ? pub.url : null;
+    }
+
+    /** A /suggest as its own embed (number, text, who, their head), so people can react to vote on it. */
+    boolean suggest(int n, String player, String text) {
+        String url = suggestTarget();
+        if (url == null) return false;
+        String head = "https://mc-heads.net/avatar/" + player.replaceAll("[^A-Za-z0-9_]", "") + "/64";
+        String body = "{\"username\":" + json(username) + ",\"allowed_mentions\":{\"parse\":[]},\"embeds\":[{"
+                + "\"title\":" + json("💡 Suggestion #" + n) + ",\"description\":" + json(esc(text))
+                + ",\"color\":16761095,\"author\":{\"name\":" + json(player) + ",\"icon_url\":" + json(head) + "}"
+                + ",\"footer\":{\"text\":\"/suggest in game · react to vote\"}"
+                + ",\"timestamp\":" + json(java.time.Instant.now().toString()) + "}]}";
+        Bukkit.getScheduler().runTaskAsynchronously(index, () -> {
+            try {
+                HttpRequest req = HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofSeconds(10))
+                        .header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(body)).build();
+                HttpResponse<String> res = http.send(req, HttpResponse.BodyHandlers.ofString());
+                if (res.statusCode() >= 300) index.getLogger().warning("Discord suggestion answered " + res.statusCode() + ": " + res.body());
+            } catch (Exception ex) { index.getLogger().warning("Discord suggestion failed: " + ex.getMessage()); }
+        });
         return true;
     }
 

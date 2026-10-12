@@ -28,6 +28,18 @@ public class KingdomDataReader {
 
     /** Returns the player's kingdom display name (e.g. "SHINIMODORI"), or null if unavailable/teamless. */
     public String getKingdom(UUID playerId) {
+        // BUG FIX (1.0.2): the current FaultlineKingdoms (Kingdom 1/2/3 from Discord roles) keeps its players in data.yml,
+        // not kingdoms.yml, so /stats never showed a kingdom and friendly-fire kills were never logged. Ask it directly.
+        try {
+            org.bukkit.plugin.Plugin k = org.bukkit.Bukkit.getPluginManager().getPlugin("FaultlineKingdoms");
+            if (k != null && k.isEnabled()) {
+                java.lang.reflect.Method m = k.getClass().getMethod("kingdomName", UUID.class);
+                Object name = m.invoke(null, playerId);
+                return name == null ? null : name.toString();
+            }
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError ignored) {
+            // an older FaultlineKingdoms without kingdomName: fall back to its kingdoms.yml below
+        }
         File file = resolveKingdomsFile();
         if (file == null || !file.exists()) return null;
 

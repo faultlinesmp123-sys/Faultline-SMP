@@ -19,6 +19,7 @@ discord:
   enabled: true
   webhook-url: ""
   logs-webhook-url: ""
+  suggestions-webhook-url: ""    # /suggest posts here (make a #suggestions channel + webhook); "" = the public channel
   username: "Faultline SMP"
   public:
     chat: true
@@ -43,3 +44,8 @@ discord:
 # /report <player> <reason>: to the Discord logs channel, online staff (faultlineindex.reports) and reports.yml.
 reports:
   cooldown-seconds: 60
+
+# /suggest <idea>: a numbered embed in the Discord (discord.suggestions-webhook-url), online staff, suggestions.yml.
+suggestions:
+  cooldown-seconds: 300
+  min-length: 10

@@ -206,6 +206,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
     final Random random = new Random();
     final BedrockFx bedrockFx = new BedrockFx(this); // boss moves drawn in particles for Bedrock players
     private boolean dealing; // true only while the boss deals its own damage
+    DeathMessages deathMessages; // 1.5.8: "was frozen solid by Frostbeard" instead of "was slain by Slime"
     private NamespacedKey summonKey;
     private DemonEye eye;
 
@@ -386,6 +387,8 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         removeLeftovers();
         getServer().getPluginManager().registerEvents(this, this);
         getServer().getPluginManager().registerEvents(bedrockFx, this);
+        deathMessages = new DeathMessages(this);
+        getServer().getPluginManager().registerEvents(deathMessages, this);
         vendetta = new Vendetta(this);
         getServer().getPluginManager().registerEvents(vendetta, this);
         below = new Below(this);
@@ -816,6 +819,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             if (guard == Guard.BLOCKABLE) return;
             amount *= 0.5;
         }
+        if (deathMessages != null) deathMessages.note(p, source);
         dealing = true;
         try {
             p.damage(amount, source);

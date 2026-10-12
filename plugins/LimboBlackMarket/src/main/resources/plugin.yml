@@ -1,9 +1,10 @@
 name: LimboBlackMarket
-version: '1.0.1'
+version: '1.0.2'
 main: net.limbosmp.blackmarket.LimboBlackMarket
 api-version: '1.21'
 author: LimboSMP
 description: Player-head tier economy for the Limbo SMP Black Market
+softdepend: [FaultlineKingdoms]
 
 commands:
   tier:

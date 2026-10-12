@@ -1,0 +1,37 @@
+# FaultlineKingdoms: Kingdom 1, 2 and 3, assigned from Discord roles, and grace periods.
+
+kingdoms:
+  1: {name: "Kingdom 1", color: "RED"}
+  2: {name: "Kingdom 2", color: "BLUE"}
+  3: {name: "Kingdom 3", color: "GREEN"}
+
+# Grace periods: /kingdoms grace <all|1|2|3> <on|off> [time]  (time: 30m, 2h, 1d, 1h30m; nothing = until turned off)
+grace:
+  protected-can-attack: false   # can someone under grace hit other players? false = no (no hitting from safety)
+  show-actionbar: true          # a reminder in the action bar while your grace is on
+
+pvp:
+  friendly-fire: true           # can members of the same kingdom hurt each other?
+
+# Show the kingdom in the tab list and above heads ("[Kingdom 1] name")
+display:
+  tab-prefix: true
+
+# DISCORD: who's in which kingdom comes from their roles in your Discord server.
+# 1. https://discord.com/developers/applications > New Application > Bot > Reset Token > copy it into bot-token below.
+# 2. On the same Bot page turn ON "Server Members Intent".
+# 3. OAuth2 > URL Generator > scope "bot" (no permissions needed) > open the link > add it to your server.
+# 4. Discord settings > Advanced > Developer Mode ON; right-click your server > Copy Server ID (guild-id);
+#    Server Settings > Roles > right-click each kingdom role > Copy Role ID.
+# Players link once: /kingdom link <their discord name>, the bot DMs them a code, /kingdom verify <code>.
+# KEEP THE TOKEN ONLY IN THE SERVER'S COPY OF THIS FILE (never in the GitHub repo: anyone with it controls the bot).
+discord:
+  bot-token: ""
+  guild-id: ""
+  roles:
+    1: ""                       # role ID for Kingdom 1
+    2: ""
+    3: ""
+  sync-minutes: 5               # re-check online players' roles this often (and always when they join)
+  remove-when-role-gone: true   # lost the role / left the Discord = no kingdom
+  link-code-minutes: 10

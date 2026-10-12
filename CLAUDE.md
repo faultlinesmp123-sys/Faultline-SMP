@@ -40,6 +40,7 @@ All are Maven projects: Java 21, `paper-api 1.21.11-R0.1-SNAPSHOT`. Build with
 | **FaultlineBosses** | `net.faultlinesmp.bosses` | Bosses in one ~585 KB file: Demon Eye, Frostbeard, Dune Devourer/Frostmaw, Don Lorenzo, Kraken, **Diamond Jacob**; admin boss form. **Rocco Vendetta** (+ Werner, the Vendetta Fist) lives in its own `Vendetta.java`. **The way down to the Lost Explorer** (Swarm, his staircase, the void world) is `Below.java`; **the Lost Explorer's fight** is `Explorer.java` (+ `ExplorerAnims.java`). **Grimtusk, the Piglin Warlord** (Nether boss) is `Warlord.java`; **the Boss Rush** is `BossRush.java`. **The wild bosses** (Leviathan, Sandworm King, Lich, Frost Wyrm, Stone Golem) are `Wild.java` + one class each | `/demoneye`, `/frostbeard`, `/dune`, `/don`, `/kraken <summon\|sea\|...>`, `/jacob <summon\|kill\|phase\|item>`, `/rocco <summon\|kill\|phase\|tattoos\|werner\|item>`, `/bossmorph <boss\|off\|release>`, `/below <swarm\|void\|leave\|close\|slayer\|info>`, `/explorer <start\|stop\|skip\|phase\|stun\|reset\|arena>`, `/grimtusk <summon\|kill\|phase\|item>`, `/bossrush [start\|top]` (admin `stop\|skip\|setarena\|arenas\|clearcooldown`), `/leviathan`, `/sandworm`, `/lich`, `/frostwyrm`, `/stonegolem` |
 | **FaultlineIndex** | `net.faultlinesmp.index` | The Faultline Index codex + **Achievements** (`Achievements.java`). **Museum** (`Museum.java`: trophies, discs, Hall of Firsts), **Discord bridge** (`Discord.java`), `/serverstats` (`ServerStats.java`). Entries and achievements live in `src/main/resources/index.yml`, font glyphs in `glyphs.yml`, settings in `config.yml` | `/index [achievements\|give\|reset] [player]`, `/index stat <player> <name> [n]` (other plugins), `/index discover <player> <entry>`, `/museum [bosses\|items]`, `/serverstats`, admin `/discord [status\|test [msg]]` (public + logs webhooks), `/report <player> <reason>`, staff `/reports [n]` |
 | **FaultlineCosmetics** | `net.faultlinesmp.cosmetics` | Permanent cosmetic unlocks worn in 4 slots (Hat, Neck, Back, Body) over armor, for Java and Bedrock. **Seasons** (`Seasons.java`: Halloween/Winter currency + Seasonal Shop). Cosmetics are defined in its `config.yml`, unlocks saved in `players.yml` | `/cosmetics [shop]`, admin `/cosmetic <unlock\|lock\|list\|reload\|season\|tokens\|shop>` |
+| **FaultlineKingdoms** | `net.faultlinesmp.kingdoms` | Kingdom 1/2/3 per player, assigned from DISCORD ROLES (players link once: the bot DMs a code), and GRACE PERIODS server-wide or per kingdom (protected kingdom can't be hurt, and can't hurt others unless `grace.protected-can-attack`); `pvp.friendly-fire`; kingdom in the tab list. Data in `data.yml` | `/kingdom [link <discord name>\|verify <code>\|unlink\|list <1\|2\|3>]` (`/k`), admin `/kingdoms grace <all\|1\|2\|3> <on\|off> [30m\|2h\|1d\|1h30m]`, `/kingdoms set <player> <1\|2\|3\|none\|auto>`, `/kingdoms sync [player]`, `/kingdoms reload` |
 | **FaultlineShips** | `net.faultlinesmp.ships` | Ships: Dinghy, Sloop, Brigantine, Galleon, Pirate Ship. Blueprint → lay out on water → place every block → sail. Health, part damage, sinking, Shipwright's Hammer repair minigame, cannons, banners, names. **Skeleton ships** and the **Pirate Invasion** (`Pirates.java`). Ships saved in `ships.yml` | `/ship [list\|info\|name\|crew\|anchor\|stop\|banner\|scrap]`, admin `/ship <give\|repair\|wreck\|remove\|tp> [name\|#n]`, `/ship spawn <ship> [owner]`, `/ship give upgrade_<hull\|sails\|loaders\|ram>`, `/ship pirates <ship\|invasion\|horn\|spawn\|egg\|ghost [player]\|bell [n] [player]\|map [player]\|stop>` |
 
 Notes:
@@ -240,6 +241,17 @@ Notes:
   Rocco's friendly Enforcers likewise (`famAllies`, full scan every 15 s); `Wild.sweep` scans every entity every 5 s only
   while a wild boss is out or for 2 min after, else once a minute. RULE: never scan `World#getEntities()` /
   `getLivingEntities()` / `getEntitiesByClass` on a short timer; keep a set of what you spawned.
+- **FaultlineKingdoms 1.0.0** (`FaultlineKingdoms.java` = data, grace, PvP rules, commands; `DiscordLink.java` = the bot).
+  Discord is pure REST from a bot token (`discord.bot-token`, `guild-id`, `roles.1/2/3`; the bot needs the Server Members
+  Intent): `/kingdom link <name>` searches the guild (`/members/search`, exact username / display name / nick, or the only
+  hit), DMs a 6-digit code (`/users/@me/channels` + `/channels/{id}/messages`), `/kingdom verify <code>` links (one Discord
+  account per player). Roles are read with `GET /guilds/{g}/members/{id}` (404 = left the server) on join, every
+  `sync-minutes` (one call per 250 ms) and `/kingdoms sync`: lowest-numbered kingdom role wins; none =
+  kingdom 0 (`remove-when-role-gone`). `/kingdoms set` pins a player (`manual`, sync skips them; `auto` un-pins). Grace map
+  `all`/`1`/`2`/`3` -> until ms (-1 = until off), checked in `blocked()` for melee, projectiles, TNT, pets
+  (`playerBehind`), splash and lingering potions; timed ones end in `tick()` with a broadcast. Other plugins:
+  `FaultlineKingdoms.kingdomOf(uuid)`, `protectedNow(player)`. THE BOT TOKEN IS A SECRET (server config only).
+  `discord.api-base` (hidden) points the tests at a fake Discord. Tested (`KingdomTest`, scratch harness `ktest`).
 - Changing a plugin's default `config.yml` does NOT update the copy already on the server. Tell the owner
   which values to change in `plugins/<Plugin>/config.yml` on the VPS.
 - **Ships** (`FaultlineShips`; `ShipType.java` = the 5 layouts, `Ship.java` = one ship, `FaultlineShips.java` = items,
@@ -591,7 +603,7 @@ Notes:
 | `FaultlineBossesPack.zip` | Boss models/sounds pack (Demon Eye, Dune, Frostmaw, mf_* models) |
 | `FaultlineBloodMoon.zip` | Blood Moon pack: replaces moon phase textures |
 | `FaultlineBosses.zip` | Very old zip of the FaultlineBosses source (Demon Eye only). Ignore it; the live copy is `plugins/FaultlineBosses/` |
-| `plugins/` | Source code for all seven custom plugins (edit these) |
+| `plugins/` | Source code for all eight custom plugins (edit these) |
 | `bedrock/` | Bedrock (Geyser) packs + custom item mappings: cosmetics (`tools/cosmetics_assets.py`), ships (`tools/ship_assets.py --bedrock`), wild models (`tools/wild_assets.py`) |
 
 Resource packs are served from raw GitHub links on `main`, e.g.

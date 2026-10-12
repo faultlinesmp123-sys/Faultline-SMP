@@ -449,7 +449,9 @@ final class Wild implements Listener {
                 b.leave(null);
             }
         }
-        if (ticks % 100 == 50) sweep(false);
+        // the orphan sweep scans every entity in every world: every 5 s while a wild boss is (or just was) out, else once a minute
+        if (!bosses.isEmpty()) lastBusy = ticks;
+        if (ticks - lastBusy < 2400 ? ticks % 100 == 50 : ticks % 1200 == 50) sweep(false);
         if (ticks % 40 == 0) standUpkeep();
         if (ticks % 1200 == 600) StoneGolem.naturalSpawns(this);
         if (ticks % 2400 == 1200) Leviathan.naturalSpawns(this);
@@ -555,6 +557,8 @@ final class Wild implements Listener {
      * Model pieces, hitboxes and stands that no boss owns any more (a boss that errored out, a crash, a reload) are
      * removed; with no boss of any kind out, its minions and effects go too. Returns how many were removed.
      */
+    long lastBusy = -100000;
+
     int sweep(boolean all) {
         Set<UUID> owned = new HashSet<>();
         for (Boss b : bosses.values()) {

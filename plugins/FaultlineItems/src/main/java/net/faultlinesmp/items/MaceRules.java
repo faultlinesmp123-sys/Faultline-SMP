@@ -69,6 +69,8 @@ final class MaceRules implements Listener {
 
     MaceRules(FaultlineItems plugin) {
         this.plugin = plugin;
+        sweptKey = new org.bukkit.NamespacedKey(plugin, "mace_swept");
+        sweptEntitiesKey = new org.bukkit.NamespacedKey(plugin, "mace_swept_entities");
         if (on("no-crafting")) removeRecipe();
         // the sweep: every online player every 2 seconds; the worlds already loaded once, right after startup
         Bukkit.getScheduler().runTaskTimer(plugin, () -> guard(this::sweepPlayers), 40L, 40L);
@@ -98,6 +100,8 @@ final class MaceRules implements Listener {
     }
 
     static boolean mace(ItemStack it) { return it != null && it.getType() == Material.MACE; }
+
+    static boolean holds(Material m) { String n = m.name(); return n.endsWith("BUNDLE") || n.endsWith("SHULKER_BOX"); }
 
     private boolean bypass(Entity e) {
         if (!(e instanceof Player p)) return false;
@@ -260,7 +264,8 @@ final class MaceRules implements Listener {
 
     /** Maces inside a bundle or a shulker box item (the item itself stays). */
     static int stripInside(ItemStack it) {
-        if (it == null || !it.hasItemMeta()) return 0;
+        // only bundles and shulker boxes can hold items: don't unpack every enchanted/named item (getItemMeta copies it)
+        if (it == null || !holds(it.getType()) || !it.hasItemMeta()) return 0;
         int n = 0;
         var meta = it.getItemMeta();
         if (meta instanceof BundleMeta bm && bm.hasItems()) {
@@ -327,7 +332,7 @@ final class MaceRules implements Listener {
         if (!removing()) return;
         int n = 0;
         for (org.bukkit.World w : Bukkit.getWorlds()) {
-            for (org.bukkit.Chunk c : w.getLoadedChunks()) n += sweepChunk(c, false);
+            for (org.bukkit.Chunk c : w.getLoadedChunks()) if (!swept(c, sweptKey)) { n += sweepChunk(c, false); mark(c, sweptKey); }
             for (Entity e : w.getEntities()) n += sweepEntity(e);
         }
         report("startup", "loaded worlds", n);
@@ -379,14 +384,26 @@ final class MaceRules implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onChunkLoad(org.bukkit.event.world.ChunkLoadEvent e) {
-        if (!removing()) return;
+        if (!removing() || e.isNewChunk()) return; // a freshly generated chunk has no maces
         org.bukkit.Chunk c = e.getChunk();
-        Bukkit.getScheduler().runTask(plugin, () -> guard(() -> { if (c.isLoaded()) sweepChunk(c, true); }));
+        if (swept(c, sweptKey)) return; // every container here was checked once already (nothing can put a mace back)
+        Bukkit.getScheduler().runTask(plugin, () -> guard(() -> { if (c.isLoaded()) { sweepChunk(c, true); mark(c, sweptKey); } }));
+    }
+
+    private org.bukkit.NamespacedKey sweptKey, sweptEntitiesKey;
+
+    static boolean swept(org.bukkit.Chunk c, org.bukkit.NamespacedKey k) {
+        try { return c.getPersistentDataContainer().has(k, org.bukkit.persistence.PersistentDataType.BYTE); } catch (RuntimeException e) { return false; }
+    }
+
+    static void mark(org.bukkit.Chunk c, org.bukkit.NamespacedKey k) {
+        try { c.getPersistentDataContainer().set(k, org.bukkit.persistence.PersistentDataType.BYTE, (byte) 1); } catch (RuntimeException ignored) { }
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onEntitiesLoad(org.bukkit.event.world.EntitiesLoadEvent e) {
-        if (!removing()) return;
+        if (!removing() || e.getEntities().isEmpty() || swept(e.getChunk(), sweptEntitiesKey)) return;
+        mark(e.getChunk(), sweptEntitiesKey);
         List<Entity> list = new ArrayList<>(e.getEntities());
         Bukkit.getScheduler().runTask(plugin, () -> guard(() -> {
             int n = 0;

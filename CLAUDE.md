@@ -232,6 +232,14 @@ Notes:
   rider's own vehicle (a ship seat would have been pulled off its ship; `Racer.free`); lent mounts are held at the line
   with `TeleportFlag.EntityState.RETAIN_PASSENGERS`; lent rockets/elytra can't go into bundles (`onBundle`). Discord:
   RCON commands are logged too (not command blocks), the online count leaves vanished staff out (`Discord.visible`).
+- **Lag pass (Items 1.2.20, Raids 1.1.2, Bosses 1.5.5)**: `MaceRules` only opens bundles and shulker boxes (`holds()`;
+  every enchanted/named item used to be unpacked with getItemMeta every 2 s per player) and sweeps each chunk ONCE (chunk
+  PDC `faultlineitems:mace_swept` / `mace_swept_entities`; new chunks skipped): it used to rescan every container (and
+  every shulker in them) on every chunk load, a spike whenever someone came home to a storage room. Raids' Bone Commander
+  ticks (every 1 s / 15 s) use a cached UUID set refreshed by a full scan every 10 s (`commanders()`, `noteCommander`);
+  Rocco's friendly Enforcers likewise (`famAllies`, full scan every 15 s); `Wild.sweep` scans every entity every 5 s only
+  while a wild boss is out or for 2 min after, else once a minute. RULE: never scan `World#getEntities()` /
+  `getLivingEntities()` / `getEntitiesByClass` on a short timer; keep a set of what you spawned.
 - Changing a plugin's default `config.yml` does NOT update the copy already on the server. Tell the owner
   which values to change in `plugins/<Plugin>/config.yml` on the VPS.
 - **Ships** (`FaultlineShips`; `ShipType.java` = the 5 layouts, `Ship.java` = one ship, `FaultlineShips.java` = items,

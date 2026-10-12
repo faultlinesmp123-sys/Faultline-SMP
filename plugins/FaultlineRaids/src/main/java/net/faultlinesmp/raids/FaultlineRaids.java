@@ -919,7 +919,7 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
                     gear.setChestplateDropChance(0f);
                     gear.setItemInMainHandDropChance(0f);
                 }
-                mob.addScoreboardTag(COMMANDER_TAG);
+                mob.addScoreboardTag(COMMANDER_TAG); noteCommander(mob);
                 mob.setCustomName(ChatColor.WHITE + "" + ChatColor.BOLD + "Bone Commander");
                 mob.setCustomNameVisible(true);
             }
@@ -1863,9 +1863,31 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
     static final String PIERCING_TAG = "faultline_piercing_shot";
     private final Map<UUID, Integer> commanderCooldown = new HashMap<>();
 
+    // Bone Commanders, found by a full scan only every 10 s (scanning every living entity in every world each second lagged)
+    private final java.util.Set<UUID> commanders = new java.util.HashSet<>();
+    private long commandersScannedAt;
+
+    private List<LivingEntity> commanders() {
+        long now = System.currentTimeMillis();
+        if (now - commandersScannedAt > 10000) {
+            commandersScannedAt = now;
+            commanders.clear();
+            for (World w : Bukkit.getWorlds()) for (LivingEntity e : w.getLivingEntities()) if (e.getScoreboardTags().contains(COMMANDER_TAG)) commanders.add(e.getUniqueId());
+        }
+        List<LivingEntity> out = new ArrayList<>();
+        for (java.util.Iterator<UUID> it = commanders.iterator(); it.hasNext(); ) {
+            if (Bukkit.getEntity(it.next()) instanceof LivingEntity le && le.isValid()) out.add(le); else it.remove();
+        }
+        return out;
+    }
+
+    /** A commander that just appeared (a raid wave, an egg) is picked up straight away. */
+    void noteCommander(LivingEntity e) { commanders.add(e.getUniqueId()); }
+
     private void commanderTick() {
-        for (World w : Bukkit.getWorlds()) {
-            for (LivingEntity c : w.getLivingEntities()) {
+        {
+            for (LivingEntity c : commanders()) {
+                World w = c.getWorld();
                 if (!c.getScoreboardTags().contains(COMMANDER_TAG) || c.isDead() || !(c instanceof Mob mob)) continue;
                 if (!(mob.getTarget() instanceof Player target) || !target.getWorld().equals(w) || !survival(target)) continue;
                 int cd = commanderCooldown.getOrDefault(c.getUniqueId(), 3) - 1;
@@ -2017,8 +2039,9 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
 
     /** Every 15s each Bone Commander sounds his war horn: his side gets Speed + Strength for a few seconds. */
     private void warHornTick() {
-        for (World w : Bukkit.getWorlds()) {
-            for (LivingEntity commander : w.getLivingEntities()) {
+        {
+            for (LivingEntity commander : commanders()) {
+                World w = commander.getWorld();
                 if (!commander.getScoreboardTags().contains(COMMANDER_TAG) || commander.isDead()) continue;
                 w.playSound(commander.getLocation(), Sound.EVENT_RAID_HORN, 1.5f, 1.4f);
                 w.spawnParticle(Particle.NOTE, commander.getEyeLocation().add(0, 0.6, 0), 6, 0.4, 0.2, 0.4, 1);

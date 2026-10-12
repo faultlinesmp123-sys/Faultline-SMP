@@ -1259,7 +1259,7 @@ final class Vendetta implements Listener {
             m.setRemoveWhenFarAway(false);
             m.setCanJoinRaid(false);
             m.setPatrolLeader(false);
-            m.addScoreboardTag(owner == null ? FAM_TAG : FAM_ALLY_TAG);
+            m.addScoreboardTag(owner == null ? FAM_TAG : FAM_ALLY_TAG); if (owner != null) famAllies.add(m.getUniqueId());
             m.setCustomName((owner == null ? ChatColor.DARK_PURPLE : ChatColor.LIGHT_PURPLE) + "Vendetta Enforcer");
             m.setCustomNameVisible(owner != null);
             AttributeInstance hp = m.getAttribute(Attribute.MAX_HEALTH);
@@ -1279,8 +1279,18 @@ final class Vendetta implements Listener {
     }
 
     /** Every second: friendly Enforcers pick monsters near their owner, and leave when their time is up. */
+    final java.util.Set<UUID> famAllies = new java.util.HashSet<>();
+    long famScannedAt = -100000;
+
     void famTick() {
-        for (World w : Bukkit.getWorlds()) for (Vindicator v : w.getEntitiesByClass(Vindicator.class)) {
+        // friendly Enforcers, found by a full scan only every 15 s (it used to scan every entity in every world each second)
+        if (now - famScannedAt > 300) {
+            famScannedAt = now;
+            for (World w : Bukkit.getWorlds()) for (Vindicator v : w.getEntitiesByClass(Vindicator.class)) if (v.getScoreboardTags().contains(FAM_ALLY_TAG)) famAllies.add(v.getUniqueId());
+        }
+        for (java.util.Iterator<UUID> it = famAllies.iterator(); it.hasNext(); ) {
+            if (!(Bukkit.getEntity(it.next()) instanceof Vindicator v) || !v.isValid()) { it.remove(); continue; }
+            World w = v.getWorld();
             if (!v.getScoreboardTags().contains(FAM_ALLY_TAG)) continue;
             String data = v.getPersistentDataContainer().get(ownerKey, PersistentDataType.STRING);
             String[] parts = data == null ? new String[0] : data.split(":");

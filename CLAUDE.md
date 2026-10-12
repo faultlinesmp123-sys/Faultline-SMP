@@ -582,6 +582,17 @@ Notes:
   released safely on death/leave); Frost Wyrm SHARDS (ice-shard snowballs, tag `FrostWyrm.SHARD_TAG`, landed in
   `Wild.onBoltHit`) + GUST (phase 2, rears back, three wingbeats push you away). All in boss form and the Index.
   Tested (`WildTest`: every move, the Lich's joints, Grasp, Devour + breaking free).
+- **Wild models v3 (Bosses 1.5.6, Items 1.2.21)**: `tools/wild_assets.py` parts can be `java_only` (an ItemDisplay, no
+  Bedrock stand) or `bedrock_only` (a stand, no display): `WildParts.JAVA_ONLY` / `BEDROCK_ONLY`, read by `Wild.Part`
+  (a stand-only part still follows `pose`). Java: the Leviathan's and the Frost Wyrm's lower jaws are their own parts
+  (`lev_jaw` hinge (0.5,-0.55,0), `wyrm_jaw` hinge (0.4,-0.5,0), posed at `Lich.joint(head, frame, hinge)` with
+  `Lich.rotZ(-open)`), the Sandworm's maw is 4 `worm_petal`s on the rim (`rotX(90*i)` then `rotZ(open)`, hinge (1,1,0)
+  turned): eased, idle breathing/panting, wide on roars / breath / bile / eruptions / Devour, snapping shut on bites, the
+  ram, shard volleys and flinches. Bodies are bevelled (`rounded()`). Bedrock (stands only turn left/right): one head
+  each (`lev_head_b`, `worm_head_b`, `wyrm_head_b`) with the jaw/petals as BONES, and the pack loops animations
+  (`Part.bone`/`anim`/`bone_all`, `bedrock_anim` → `animations/*.animation.json` + the attachable's `scripts.animate`):
+  jaws, petals, fins, crest, fluke, bristles, stinger, wing beats, tail blade, the Lich's nod / sleeves / cape / hover.
+  Previews: `python3 tools/wild_rig_preview.py tools/previews` (jaws and petals + a Bedrock view).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

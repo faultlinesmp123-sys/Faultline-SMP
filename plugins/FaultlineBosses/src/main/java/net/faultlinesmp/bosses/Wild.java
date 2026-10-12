@@ -764,7 +764,9 @@ final class Wild implements Listener {
         void spawn(World w, Location where) {
             Location l = where.clone(); l.setYaw(0); l.setPitch(0);
             at = where.clone();
-            d = w.spawn(l, ItemDisplay.class, e -> {
+            // a part only one edition draws (the Java jaw / petals, the Bedrock head with its jaw as an animated bone)
+            boolean javaOnly = WildParts.JAVA_ONLY.contains(model), bedrockOnly = WildParts.BEDROCK_ONLY.contains(model);
+            if (!bedrockOnly) d = w.spawn(l, ItemDisplay.class, e -> {
                 e.setItemStack(partItem(model));
                 e.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.NONE);
                 e.setPersistent(false);
@@ -775,6 +777,7 @@ final class Wild implements Listener {
                 e.setShadowRadius(0);
                 e.setBrightness(new Display.Brightness(12, 12));
             });
+            if (javaOnly) { pose(where, where.getYaw(), 0, 0, null); return; }
             stand = w.spawn(where, ArmorStand.class, a -> {
                 a.setVisibleByDefault(false);
                 a.setPersistent(false);
@@ -803,10 +806,16 @@ final class Wild implements Listener {
 
         /** Put the part's origin at pos, facing yaw (pitch: nose down +, roll: right side down +), with an extra turn in its own frame. */
         void pose(Location pos, float yaw, float pitch, float roll, Quaternionf local) {
-            if (d == null || !d.isValid()) return;
+            boolean hasD = d != null && d.isValid(), hasS = stand != null && stand.isValid();
+            if (!hasD && !hasS) return;
             // real Paper refuses to teleport to a non-finite spot (an error every tick = the boss removed); skip that frame
             if (!Double.isFinite(pos.getX() + pos.getY() + pos.getZ()) || !Float.isFinite(yaw + pitch + roll)) return;
             at = pos.clone(); at.setYaw(yaw); at.setPitch(pitch);
+            if (!hasD) {
+                Location sl = pos.clone(); sl.setYaw(yaw); sl.setPitch(0);
+                stand.teleport(sl);
+                return;
+            }
             Location l = pos.clone(); l.setYaw(0); l.setPitch(0);
             d.teleport(l);
             Quaternionf D = new Quaternionf().rotationY((float) Math.toRadians(-yaw)).rotateX((float) Math.toRadians(pitch))

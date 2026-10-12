@@ -4,9 +4,9 @@
   "minecraft:paper": [
    {
     "type": "definition",
-    "model": "faultline:wild/lev_head",
-    "bedrock_identifier": "faultline:wild_lev_head",
-    "display_name": "lev_head",
+    "model": "faultline:wild/lev_head_b",
+    "bedrock_identifier": "faultline:wild_lev_head_b",
+    "display_name": "lev_head_b",
     "bedrock_options": {
      "icon": "faultline.leviathan",
      "allow_offhand": false
@@ -52,9 +52,9 @@
    },
    {
     "type": "definition",
-    "model": "faultline:wild/worm_head",
-    "bedrock_identifier": "faultline:wild_worm_head",
-    "display_name": "worm_head",
+    "model": "faultline:wild/worm_head_b",
+    "bedrock_identifier": "faultline:wild_worm_head_b",
+    "display_name": "worm_head_b",
     "bedrock_options": {
      "icon": "faultline.sandworm_king",
      "allow_offhand": false
@@ -132,9 +132,9 @@
    },
    {
     "type": "definition",
-    "model": "faultline:wild/wyrm_head",
-    "bedrock_identifier": "faultline:wild_wyrm_head",
-    "display_name": "wyrm_head",
+    "model": "faultline:wild/wyrm_head_b",
+    "bedrock_identifier": "faultline:wild_wyrm_head_b",
+    "display_name": "wyrm_head_b",
     "bedrock_options": {
      "icon": "faultline.frost_wyrm",
      "allow_offhand": false

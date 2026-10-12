@@ -44,7 +44,9 @@ final class Sandworm extends Wild.Boss {
     final double k, gap;
     final int segs;
     final double[] gaps;
-    final Wild.Part head, tail;
+    final Wild.Part head, tail, headB; // Java: the head + 4 maw petals; Bedrock: one head whose petals the pack moves
+    final List<Wild.Part> petals = new ArrayList<>();
+    double aOpen; // how far the maw's petals are open (degrees), eased
     final List<Wild.Part> body = new ArrayList<>();
     final Wild.Chain chain;
     Location headPos;
@@ -70,6 +72,8 @@ final class Sandworm extends Wild.Boss {
         yaw = yawOf(back.clone().multiply(-1));
         chain = new Wild.Chain(headPos.clone().add(0, -2, 0), segs + 1, gap, back.clone().add(new Vector(0, -0.6, 0)));
         head = rig.add("worm_head", k, headPos);
+        headB = rig.add("worm_head_b", k, headPos);
+        for (int i = 0; i < 4; i++) petals.add(rig.add("worm_petal", k, headPos));
         for (int i = 0; i < segs; i++) body.add(rig.add("worm_body", k * (1 - 0.025 * i), headPos));
         tail = rig.add("worm_tail", k * 0.8, headPos);
         hitbox(headPos, (int) Math.round(3.4 * k), "The Sandworm King");
@@ -178,7 +182,25 @@ final class Sandworm extends Wild.Boss {
         if (attack == SANDBLAST && at > 12) hp = 35;                 // reared up, maw aimed down at you
         if (attack == DEVOUR && at > 30) hp = victim != null ? -75 + (float) Math.sin(ticks * 1.1) * 8 : -80;   // straight up, gulping
         aHeadPitch += (hp - headLift * 12 - fl * 10 - aHeadPitch) * 0.35;
-        head.pose(hpPos, yaw, (float) Math.max(-85, Math.min(80, aHeadPitch)), headRoll, null);
+        float hPitch = (float) Math.max(-85, Math.min(80, aHeadPitch));
+        head.pose(hpPos, yaw, hPitch, headRoll, null);
+        headB.pose(hpPos, yaw, hPitch, headRoll, null);
+        // the maw: four petals breathing open and shut, flung wide to erupt / blast / swallow, clamped on a victim
+        double want = 10 + Math.sin(ticks * 0.12) * 8;
+        if (attack == ERUPT) want = 62;
+        else if (attack == SANDBLAST && at > 12) want = 70;
+        else if (attack == DEVOUR && at > 30) want = victim != null ? 8 + Math.sin(ticks * 1.1) * 6 : 75;
+        else if (attack == BOULDERS || attack == BROOD) want = headLift > 0.5 ? 45 : want;
+        else if (attack == TREMOR) want = 30 + Math.sin(ticks * 0.9) * 15;
+        if (dying) want = 50;
+        want -= fl * 25;
+        aOpen += (Math.max(-5, want) - aOpen) * (want < aOpen - 10 ? 0.55 : 0.2); // snaps shut, opens slowly
+        Quaternionf hq = Lich.frame(yaw, hPitch, headRoll);
+        for (int i = 0; i < petals.size(); i++) {
+            Quaternionf turn = Lich.rotX(90 * i);
+            petals.get(i).pose(Lich.joint(hpPos, new Quaternionf(hq).mul(turn), 1.0, 1.0, 0, k), yaw, hPitch, headRoll,
+                    new Quaternionf(turn).mul(Lich.rotZ(aOpen)));
+        }
         for (int i = 0; i < segs; i++) {
             Vector sf = shown.get(i).toVector().subtract(shown.get(i + 1).toVector());
             Wild.Part b = body.get(i);

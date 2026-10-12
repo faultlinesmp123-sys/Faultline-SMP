@@ -11,16 +11,24 @@ import java.util.Map;
  */
 final class WildParts {
     static final Map<String, double[]> P = new HashMap<>();
+    /** Parts only Java draws (an ItemDisplay, no Bedrock stand) and only Bedrock draws (a stand, no display). */
+    static final java.util.Set<String> JAVA_ONLY = new java.util.HashSet<>(), BEDROCK_ONLY = new java.util.HashSet<>();
     static {
-        P.put("lev_head", new double[]{2.45106, -0.10000, 1.77659, -0.00000});
-        P.put("lev_body", new double[]{1.25957, -0.00000, 0.75936, -0.00000});
+        P.put("lev_head", new double[]{2.45106, -0.10000, 2.72659, -0.00000});
+        P.put("lev_jaw", new double[]{1.00000, 1.27000, -0.00000, -0.00000});
+        P.put("lev_head_b", new double[]{2.45106, -0.10000, 1.56660, -0.00000});
+        P.put("lev_body", new double[]{1.49787, -0.00000, 1.11680, -0.00000});
         P.put("lev_tail", new double[]{2.31489, -2.07500, 0.07234, -0.00000});
-        P.put("worm_head", new double[]{1.56596, 0.80000, 0.72893, -0.00000});
-        P.put("worm_body", new double[]{1.32085, -0.02500, 0.50128, -0.00000});
+        P.put("worm_head", new double[]{1.43660, 0.12500, 0.53489, -0.00000});
+        P.put("worm_petal", new double[]{1.00000, 1.05000, 1.28000, -0.00000});
+        P.put("worm_head_b", new double[]{1.56596, 0.80000, 0.72893, -0.00000});
+        P.put("worm_body", new double[]{1.41277, -0.02500, 0.36915, -0.00000});
         P.put("worm_tail", new double[]{1.73617, -1.35000, 1.48425, -0.00000});
         P.put("wyrm_body", new double[]{1.66809, -0.15000, 0.00213, -0.00000});
         P.put("wyrm_neck", new double[]{1.00000, -0.00000, 0.93000, -0.00000});
-        P.put("wyrm_head", new double[]{1.73617, 0.45000, 1.68426, -0.00000});
+        P.put("wyrm_head", new double[]{1.73617, 0.45000, 1.94425, -0.00000});
+        P.put("wyrm_jaw", new double[]{1.00000, 1.20000, 1.08000, -0.00000});
+        P.put("wyrm_head_b", new double[]{1.73617, 0.45000, 1.68426, -0.00000});
         P.put("wyrm_wing_l", new double[]{2.44085, -1.20000, 3.64128, -3.58500});
         P.put("wyrm_wing_r", new double[]{2.44085, -1.20000, 3.64128, 3.58500});
         P.put("wyrm_tail", new double[]{1.00000, -0.00000, 0.97000, -0.00000});
@@ -40,6 +48,8 @@ final class WildParts {
         P.put("ghost_captain", new double[]{1.00000, 0.21000, 1.10000, -0.00000});
         P.put("aurora", new double[]{8.17021, -0.00000, 12.25532, -0.00000});
         P.put("black_sun", new double[]{9.53191, -0.00000, 14.29787, -0.00000});
+        JAVA_ONLY.addAll(java.util.List.of("lev_head", "lev_jaw", "worm_head", "worm_petal", "wyrm_head", "wyrm_jaw", "aurora", "black_sun"));
+        BEDROCK_ONLY.addAll(java.util.List.of("lev_head_b", "worm_head_b", "wyrm_head_b"));
     }
 
     static double[] of(String part) { return P.getOrDefault(part, new double[]{1, 0, 0, 0}); }

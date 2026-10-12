@@ -50,7 +50,8 @@ final class Leviathan extends Wild.Boss {
 
     final int segs;
     final double k, gap;
-    final Wild.Part head, tail;
+    final Wild.Part head, tail, jaw, headB; // Java: the head + its own jaw; Bedrock: one head whose jaw the pack moves
+    double aJaw; // how far the jaw hangs open (degrees), eased
     final List<Wild.Part> body = new ArrayList<>();
     final Wild.Chain chain;
     final double[] gaps;
@@ -81,6 +82,8 @@ final class Leviathan extends Wild.Boss {
         yaw = yawOf(away.clone().multiply(-1));
         chain = new Wild.Chain(headPos, segs + 1, gap, away); // the body trails back toward where it was called
         head = rig.add("lev_head", k, headPos);
+        jaw = rig.add("lev_jaw", k, headPos);
+        headB = rig.add("lev_head_b", k, headPos);
         for (int i = 0; i < segs; i++) body.add(rig.add("lev_body", k * (1.0 - 0.035 * i), headPos));
         tail = rig.add("lev_tail", k * 0.75, headPos);
         hitbox(headPos, (int) Math.round(4 * k), "The Leviathan");
@@ -227,6 +230,17 @@ final class Leviathan extends Wild.Boss {
         aHeadPitch += (wantPitch - aHeadPitch) * 0.3;
         double headRoll = Math.sin(ticks * 0.09) * 7 + fl * (ticks % 2 == 0 ? 9 : -9) + deathRoll;
         head.pose(headPos, yaw, (float) aHeadPitch, (float) headRoll, null);
+        headB.pose(headPos, yaw, (float) aHeadPitch, (float) headRoll, null);
+        // the jaw: works slowly as it swims, gapes for the roar / bile / the call to the drowned, snaps on the ram
+        double wantJaw = 6 + Math.sin(ticks * 0.07) * 5;
+        if (attack == ROAR || attack == DROWNED && at < 12) wantJaw = 42;
+        else if (attack == BILE && at <= 20) wantJaw = at % 8 < 3 ? 18 : 38;
+        else if (attack == RAM || attack == BREACH) wantJaw = submerged ? 30 : (at % 20 < 4 ? 2 : 34);
+        else if (attack == WHIRL) wantJaw = 24;
+        if (dying) wantJaw = 30;
+        aJaw += (wantJaw - aJaw) * (wantJaw < aJaw - 10 ? 0.6 : 0.25); // shuts fast, opens slow
+        jaw.pose(Lich.joint(headPos, Lich.frame(yaw, (float) aHeadPitch, (float) headRoll), 0.5, -0.55, 0, k),
+                yaw, (float) aHeadPitch, (float) headRoll, Lich.rotZ(-aJaw));
         // The spine breaches: segments near the surface rise in travelling humps (a wave running down the body), so the
         // body shows above the water and not just the head (before 1.4.7 the whole body swam ~1 block under the surface).
         List<Location> shown = new ArrayList<>(chain.pts.size());

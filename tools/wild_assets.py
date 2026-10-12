@@ -161,15 +161,52 @@ class Part:
     def __init__(self, name, ppb=6, size=128, java_only=False, bedrock_only=False):
         self.name, self.ppb, self.size, self.java_only, self.bedrock_only = name, ppb, size, java_only, bedrock_only
         self.boxes = []
+        # Bedrock only: boxes can sit in named bones (a pivot in the part's own frame), and the attachable can loop
+        # animations on them (Bedrock's armor stands can only be turned left/right by the server, so anything that
+        # should move on its own there - jaws, wings, fins, capes - moves in the pack itself).
+        self.bone_of = []          # bone name per box (None = the root)
+        self.pivots = {}           # bone -> (x, y, z) local
+        self.anims = []            # (bone, "rot"|"pos", (ax, ay, az) amplitude in Bedrock axes, seconds, phase 0..1)
+        self.cur_bone = None
+
+    def bone(self, name, pivot=(0, 0, 0)):
+        """Boxes added from now on go in this Bedrock bone (None = back to the root)."""
+        if name is not None: self.pivots[name] = pivot
+        self.cur_bone = name
+        return self
+
+    def anim(self, bone, kind, amp, secs, phase=0.0):
+        self.anims.append((bone, kind, amp, secs, phase))
+        return self
 
     def add(self, x0, y0, z0, x1, y1, z1, paint):
         self.boxes.append(((min(x0, x1), min(y0, y1), min(z0, z1)), (max(x0, x1), max(y0, y1), max(z0, z1)), paint))
+        self.bone_of.append(self.cur_bone)
+        return self
+
+    def take(self, other, dx=0.0, dy=0.0, dz=0.0, bone=None):
+        """Copies another part's boxes in (shifted), into a bone of this one."""
+        keep = self.cur_bone
+        self.cur_bone = bone
+        for (a, b, paint) in other.boxes: self.add(a[0] + dx, a[1] + dy, a[2] + dz, b[0] + dx, b[1] + dy, b[2] + dz, paint)
+        self.cur_bone = keep
         return self
 
     def mirror_z(self, name):
         p = Part(name, self.ppb, self.size, self.java_only, self.bedrock_only)
-        for (a, b, paint) in self.boxes: p.boxes.append(((a[0], a[1], -b[2]), (b[0], b[1], -a[2]), paint))
+        for (a, b, paint), bn in zip(self.boxes, self.bone_of):
+            p.boxes.append(((a[0], a[1], -b[2]), (b[0], b[1], -a[2]), paint)); p.bone_of.append(bn)
+        p.pivots = {k: (v[0], v[1], -v[2]) for k, v in self.pivots.items()}
+        # rotations mirrored across the body's centre plane: the z (and y) turn flips, so both sides move together
+        p.anims = [(bn, kind, (amp[0], -amp[1], -amp[2]) if kind == "rot" else (-amp[0], amp[1], amp[2]), secs, ph)
+                   for (bn, kind, amp, secs, ph) in self.anims]
         return p
+
+    def bone_all(self, name, pivot=(0, 0, 0)):
+        """Puts every box so far into one Bedrock bone (to animate the whole part on Bedrock)."""
+        self.pivots[name] = pivot
+        self.bone_of = [name if b is None else b for b in self.bone_of]
+        return self
 
     def bounds(self):
         lo = [min(b[0][i] for b in self.boxes) for i in range(3)]
@@ -231,8 +268,8 @@ def java_model(part, boxes):
 
 
 def bedrock_geo(part, boxes):
-    cubes = []
-    for (a, b), regs in boxes:
+    cubes = {}
+    for ((a, b), regs), bn in zip(boxes, part.bone_of):
         # local +x (front) -> Bedrock -z, local +z (right) -> Bedrock -x (the ship convention)
         bx0, bx1 = -b[2] * 16, -a[2] * 16
         bz0, bz1 = -b[0] * 16, -a[0] * 16
@@ -240,13 +277,35 @@ def bedrock_geo(part, boxes):
                 "size": [round(bx1 - bx0, 3), round((b[1] - a[1]) * 16, 3), round(bz1 - bz0, 3)], "uv": {}}
         for key, (x, y, w, h) in regs.items():
             cube["uv"][FACES[key][1]] = {"uv": [x, y], "uv_size": [w, h]}
-        cubes.append(cube)
+        cubes.setdefault(bn, []).append(cube)
     lo, hi = part.bounds()
     vb = max(4, math.ceil(max(hi[0] - lo[0], hi[2] - lo[2], hi[1] - lo[1]) * 2 + 2))
     return {"format_version": "1.16.0", "minecraft:geometry": [{
         "description": {"identifier": f"geometry.faultline.wild_{part.name}", "texture_width": part.size, "texture_height": part.size,
                         "visible_bounds_width": vb, "visible_bounds_height": vb, "visible_bounds_offset": [0, (lo[1] + hi[1]) / 2, 0]},
-        "bones": [{"name": "body", "pivot": [0, 24, 0], "cubes": cubes}]}]}
+        "bones": [{"name": "body", "pivot": [0, 24, 0], "cubes": cubes.get(None, [])}]
+                  + [{"name": bn, "parent": "body", "pivot": bed_pt(part.pivots[bn]), "cubes": cs} for bn, cs in cubes.items() if bn is not None]}]}
+
+
+def bed_pt(p):
+    """A point in a part's frame (+x front, +y up, +z right), in Bedrock geometry units (front = -z)."""
+    return [round(-p[2] * 16, 3), round(p[1] * 16, 3), round(-p[0] * 16, 3)]
+
+
+def bedrock_anim(part):
+    """Looping sine animations for the part's bones (rotation in degrees / position in pixels, Bedrock axes)."""
+    anims = {}
+    for i, (bn, kind, amp, secs, ph) in enumerate(part.anims):
+        n = 8
+        keys = {}
+        for j in range(n + 1):
+            t = j / n
+            w = math.sin(2 * math.pi * (t + ph))
+            keys[f"{round(t * secs, 4)}"] = [round(a * w, 3) for a in amp]
+        key = f"animation.faultline.wild_{part.name}.{bn}_{kind}_{i}"
+        anims[key] = {"loop": True, "animation_length": secs,
+                      "bones": {bn: {"rotation" if kind == "rot" else "position": keys}}}
+    return {"format_version": "1.8.0", "animations": anims}
 
 
 # ---------------------------------------------------------------------------------------------- the parts
@@ -255,25 +314,34 @@ TEAL, TEAL_D, BELLY, FIN = (24, 86, 104), (12, 50, 64), (196, 206, 176), (60, 18
 YEL, MOUTH, HORN = (255, 222, 70), (96, 22, 34), (58, 56, 70)
 
 
+def rounded(p, x0, y0, z0, x1, y1, z1, paint, r):
+    """A box with its four long edges bevelled (two crossed boxes): reads round from the front instead of square."""
+    p.add(x0, y0 + r, z0, x1, y1 - r, z1, paint)
+    p.add(x0, y0, z0 + r, x1, y1, z1 - r, paint)
+    return p
+
+
+LEV_HINGE = (0.5, -0.55, 0.0)
+
+
 def leviathan():
-    """A sea serpent-dragon: long fanged jaws, swept horns, a crest fin, gill frills, barbels and glowing spots; finned
-    body segments with a webbed dorsal crest; a crescent tail fluke."""
+    """A sea serpent-dragon: long fanged jaws (the lower one its own part, so it bites and roars), swept horns, a crest
+    fin, gill frills, barbels and glowing spots; rounded finned body segments with a webbed dorsal crest; a crescent
+    tail fluke. Bedrock gets one head with the jaw as a bone, and its fins, crest and fluke move in the pack itself."""
     sc = scales(TEAL, TEAL_D)
     fin = membrane(FIN, (30, 120, 140))
     spot = glow((120, 255, 230))
     h = Part("lev_head", 6, 128)
-    h.add(-1.3, -0.95, -1.15, 1.0, 0.95, 1.15, sc)                 # skull
-    h.add(1.0, -0.25, -0.8, 3.0, 0.65, 0.8, sc)                   # upper jaw
-    h.add(3.0, -0.2, -0.6, 3.5, 0.45, 0.6, sc)
-    h.add(0.6, -1.35, -0.72, 2.9, -0.8, 0.72, sc)                 # lower jaw, dropped open
-    h.add(0.8, -1.42, -0.55, 2.8, -1.3, 0.55, solid(BELLY))
-    h.add(1.0, -0.8, -0.62, 2.85, -0.25, 0.62, solid(MOUTH, 4))   # the gape
+    rounded(h, -1.3, -0.95, -1.15, 1.0, 0.95, 1.15, sc, 0.3)       # skull
+    rounded(h, 1.0, -0.5, -0.8, 3.0, 0.65, 0.8, sc, 0.18)          # upper jaw (snout)
+    h.add(3.0, -0.45, -0.6, 3.5, 0.45, 0.6, sc)
+    h.add(1.05, -0.55, -0.66, 2.95, -0.46, 0.66, solid(MOUTH, 4))  # the roof of the mouth
+    h.add(0.5, -0.9, -0.7, 1.0, -0.5, 0.7, solid(MOUTH, 4))        # the throat, seen when it opens
     for i in range(7):
         x = 1.15 + i * 0.27
         for z in (-0.72, 0.6):
-            h.add(x, -0.6, z, x + 0.13, -0.25, z + 0.12, teeth)   # upper fangs
-            h.add(x + 0.1, -0.8, z, x + 0.22, -0.5, z + 0.12, teeth)  # lower fangs
-    h.add(3.1, -0.55, -0.12, 3.35, -0.2, 0.12, teeth)             # a front tusk
+            h.add(x, -0.82, z, x + 0.13, -0.5, z + 0.12, teeth)   # upper fangs, hanging down
+    h.add(3.1, -0.85, -0.12, 3.35, -0.45, 0.12, teeth)             # a front tusk
     h.add(-1.4, 0.95, -0.08, 1.2, 2.0, 0.08, fin)                 # crest fin
     for x in (-1.1, -0.3, 0.5):
         h.add(x - 0.06, 0.95, -0.1, x + 0.06, 2.15, 0.1, solid(HORN, 6))
@@ -285,82 +353,160 @@ def leviathan():
         h.add(-3.7, 1.15, s * 0.7, -3.0, 1.45, s * 0.84, solid(HORN, 8))
         h.add(-1.2, -0.8, s * 1.15, -0.2, 0.6, s * 1.75, fin)              # gill frills
         h.add(-0.9, -0.5, s * 1.75, -0.4, 0.3, s * 2.05, fin)
-        h.add(2.6, -0.4, s * 0.8, 2.75, -0.25, s * 0.95, solid(TEAL_D))    # barbels
-        h.add(2.5, -1.4, s * 0.86, 2.65, -0.4, s * 0.98, solid((40, 110, 120), 4))
-        h.add(2.45, -1.9, s * 0.88, 2.6, -1.4, s * 1.0, spot)
+        h.add(2.6, -0.4, s * 0.8, 2.75, -0.25, s * 0.95, solid(TEAL_D))    # barbel roots
         for x in (-0.8, 0.0, 1.5, 2.2): h.add(x, 0.0, s * 1.15 if x < 1 else s * 0.8, x + 0.18, 0.15, s * (1.18 if x < 1 else 0.83), spot)
+    # the lower jaw, built in the head's frame and then moved so its hinge is its origin
+    jaw_h = Part("tmp")
+    rounded(jaw_h, 0.55, -1.05, -0.74, 2.9, -0.55, 0.74, sc, 0.14)
+    jaw_h.add(0.75, -1.12, -0.56, 2.8, -1.0, 0.56, solid(BELLY))   # pale underside
+    jaw_h.add(0.9, -0.62, -0.6, 2.85, -0.55, 0.6, solid((150, 40, 56), 4))  # tongue
+    for i in range(7):
+        x = 1.25 + i * 0.27
+        for z in (-0.72, 0.6):
+            jaw_h.add(x, -0.6, z, x + 0.12, -0.32, z + 0.12, teeth)  # lower fangs, pointing up
+    for s in (-1, 1):
+        jaw_h.add(2.5, -1.55, s * 0.86, 2.65, -0.95, s * 0.98, solid((40, 110, 120), 4))   # barbels, hanging
+        jaw_h.add(2.45, -2.05, s * 0.88, 2.6, -1.55, s * 1.0, spot)
+    jaw = Part("lev_jaw", 6, 64, java_only=True)
+    jaw.take(jaw_h, -LEV_HINGE[0], -LEV_HINGE[1], -LEV_HINGE[2])
+    hb = Part("lev_head_b", 6, 128, bedrock_only=True)
+    hb.take(h)
+    hb.bone("jaw", (LEV_HINGE[0], LEV_HINGE[1] - 0.06, 0))
+    hb.take(jaw_h, 0, -0.06, 0, bone="jaw")
+    hb.anim("jaw", "pos", (0, -1.4, 0), 2.6)                      # it works its jaw as it swims
+    h.java_only = True
     seg = Part("lev_body", 6, 128)
-    seg.add(-1.25, -1.05, -1.15, 1.25, 1.05, 1.15, sc)
-    seg.add(-1.2, -1.13, -0.92, 1.2, -0.62, 0.92, stripes_h(BELLY, (160, 170, 140)))
+    rounded(seg, -1.25, -1.05, -1.15, 1.25, 1.05, 1.15, sc, 0.32)
+    seg.add(-1.2, -1.13, -0.8, 1.2, -0.7, 0.8, stripes_h(BELLY, (160, 170, 140)))
+    seg.bone("crest", (0, 1.05, 0))
     seg.add(-1.1, 1.05, -0.08, 1.0, 2.3, 0.08, fin)                 # dorsal crest
     for x in (-0.8, 0.0, 0.8): seg.add(x - 0.06, 1.05, -0.1, x + 0.06, 2.45 - abs(x) * 0.4, 0.1, solid(HORN, 6))
+    seg.bone(None)
     for s in (-1, 1):
-        seg.add(-0.6, -0.55, s * 1.15, 0.5, -0.1, s * 1.85, fin)      # side fins
-        for x in (-0.7, 0.1, 0.8): seg.add(x, 0.1, s * 1.15, x + 0.2, 0.3, s * 1.18, spot)
+        seg.bone("fin_r" if s > 0 else "fin_l", (0, -0.3, s * 1.1))
+        seg.add(-0.6, -0.55, s * 1.1, 0.5, -0.1, s * 1.95, fin)       # side fins
+        seg.add(-0.45, -0.5, s * 1.95, 0.25, -0.15, s * 2.2, fin)
+        seg.bone(None)
+        for x in (-0.7, 0.1, 0.8): seg.add(x, 0.1, s * 1.13, x + 0.2, 0.3, s * 1.16, spot)
+        for x in (-0.9, -0.3, 0.3, 0.9): seg.add(x, -0.75, s * 0.95, x + 0.14, -0.6, s * 1.0, spot)   # a line of glow down the flank
+    seg.anim("crest", "rot", (0, 0, 7), 2.2)
+    seg.anim("fin_l", "rot", (0, 0, 18), 1.7)
+    seg.anim("fin_r", "rot", (0, 0, -18), 1.7)
     tail = Part("lev_tail", 6, 128)
-    tail.add(-1.4, -0.85, -0.95, 0.75, 0.85, 0.95, sc)
-    tail.add(-2.7, -0.6, -0.65, -1.4, 0.6, 0.65, sc)
+    rounded(tail, -1.4, -0.85, -0.95, 0.75, 0.85, 0.95, sc, 0.26)
+    rounded(tail, -2.7, -0.6, -0.65, -1.4, 0.6, 0.65, sc, 0.18)
     tail.add(-3.4, -0.35, -0.4, -2.7, 0.35, 0.4, sc)
     tail.add(-1.2, 0.85, -0.07, 0.4, 1.6, 0.07, fin)
+    tail.bone("fluke", (-3.1, 0, 0))
     for (y0, y1, x0, x1) in ((0.3, 2.6, -4.2, -3.2), (2.0, 3.4, -4.9, -3.8), (-2.6, -0.3, -4.2, -3.2), (-3.4, -2.0, -4.9, -3.8)):
         tail.add(x0, y0, -0.09, x1, y1, 0.09, fin)                  # the crescent fluke (upright)
     tail.add(-3.6, -0.5, -0.12, -3.1, 0.5, 0.12, spot)
-    return [h, seg, tail]
+    tail.bone(None)
+    tail.anim("fluke", "rot", (0, 16, 0), 1.6)
+    return [h, jaw, hb, seg, tail]
 
 
 SAND, SAND_D, MAW, THROAT, BONE = (200, 164, 104), (118, 88, 50), (74, 24, 24), (26, 6, 6), (230, 216, 184)
 
 
+WORM_HINGE = 1.0   # the petals hinge on the rim of the maw, this far out from the head's axis, at x = 1.0
+
+
+def _petal(sc_armor):
+    """One petal of the maw, in its own frame: hinge at the origin, pointing forward (+x), its outside facing +y."""
+    p = Part("worm_petal", 5, 64, java_only=True)
+    p.add(0.0, 0.0, -0.75, 1.5, 0.55, 0.75, sc_armor)
+    p.add(0.0, -0.06, -0.62, 1.45, 0.0, 0.62, solid(MAW, 6))      # its inner face, red
+    p.add(1.5, 0.3, -0.2, 2.1, 0.55, 0.2, teeth)                   # tipped with a fang
+    for xx in (0.35, 0.8, 1.2):
+        for zz in (-0.42, 0.0, 0.42):
+            p.add(xx, -0.22, zz - 0.07, xx + 0.12, -0.06, zz + 0.07, teeth)   # rows of teeth facing the throat
+    return p
+
+
+def _turn_petal(p, k):
+    """The petal's boxes turned to the k-th side of the maw (0 top, 1 right, 2 bottom, 3 left), hinge on the rim."""
+    out = []
+    for (a, b, paint) in p.boxes:
+        cs = [(x, y, z) for x in (a[0], b[0]) for y in (a[1], b[1]) for z in (a[2], b[2])]
+        tr = []
+        for (x, y, z) in cs:
+            y += WORM_HINGE
+            if k == 1: y, z = -z, y
+            elif k == 2: y, z = -y, -z
+            elif k == 3: y, z = z, -y
+            tr.append((x + 1.0, y, z))
+        lo = [min(c[i] for c in tr) for i in range(3)]; hi = [max(c[i] for c in tr) for i in range(3)]
+        out.append((lo, hi, paint))
+    return out
+
+
 def sandworm():
-    """The Sandworm KING: an armoured, plated head with a four-petal maw (each petal fanged), two rings of teeth down a
-    glowing throat and a crown of bone spikes; plated, ridged body rings; a tail ending in a barbed stinger."""
+    """The Sandworm KING: an armoured, plated head with a four-petal maw (each petal its own part, so it opens and
+    snaps shut; fanged, red inside), two rings of teeth down a glowing throat and a crown of bone spikes; rounded,
+    ridged body rings with bristles underneath; a tail ending in a barbed stinger. Bedrock gets one head with the
+    petals as bones, breathing open and shut in the pack."""
     pl = bands(SAND, SAND_D, 5)
     armor = stone((176, 140, 86))
     crown = solid(BONE, 6)
-    h = Part("worm_head", 5, 128)
-    h.add(-1.5, -1.5, -1.5, 0.9, 1.5, 1.5, pl)
+    h = Part("worm_head", 5, 128, java_only=True)
+    rounded(h, -1.5, -1.5, -1.5, 0.9, 1.5, 1.5, pl, 0.42)
     for x in (-1.2, -0.45, 0.3):                                     # overlapping armour rings
-        h.add(x, -1.62, -1.62, x + 0.45, 1.62, 1.62, armor)
+        rounded(h, x, -1.62, -1.62, x + 0.45, 1.62, 1.62, armor, 0.45)
     h.add(0.9, -1.3, -1.3, 1.3, 1.3, 1.3, solid(MAW, 6))
     h.add(1.3, -0.85, -0.85, 1.36, 0.85, 0.85, solid(THROAT, 3))
     h.add(1.2, -0.4, -0.4, 1.38, 0.4, 0.4, glow((255, 120, 40)))   # the glow deep in its throat
-    for ring, r, x in ((0, 1.05, 1.3), (1, 0.62, 1.32)):
+    for ring, r, x in ((0, 0.95, 1.3), (1, 0.6, 1.32)):
         for kk in range(12 if ring == 0 else 8):
             a = kk * math.pi / (6 if ring == 0 else 4) + ring * 0.3
             y, z = math.sin(a) * r, math.cos(a) * r
-            h.add(x, y - 0.1, z - 0.1, x + (0.5 if ring == 0 else 0.3), y + 0.1, z + 0.1, teeth)
-    for (y0, y1, z0, z1, ty0, ty1, tz0, tz1) in ((1.0, 1.55, -0.75, 0.75, 1.3, 1.55, -0.2, 0.2), (-1.55, -1.0, -0.75, 0.75, -1.55, -1.3, -0.2, 0.2),
-                                                 (-0.75, 0.75, 1.0, 1.55, -0.2, 0.2, 1.3, 1.55), (-0.75, 0.75, -1.55, -1.0, -0.2, 0.2, -1.55, -1.3)):
-        h.add(1.0, y0, z0, 2.5, y1, z1, armor)                       # the four petals of the maw, flared open
-        h.add(2.5, ty0, tz0, 3.1, ty1, tz1, teeth)                   # each tipped with a fang
-        for xx in (1.4, 1.9):
-            h.add(xx, (y0 + y1) / 2 - 0.08, (z0 + z1) / 2 - 0.08, xx + 0.12, (y0 + y1) / 2 + 0.08, (z0 + z1) / 2 + 0.08, teeth)
+            h.add(x, y - 0.1, z - 0.1, x + (0.45 if ring == 0 else 0.3), y + 0.1, z + 0.1, teeth)
     for kk in range(8):                                               # the crown of bone spikes
         a = kk * math.pi / 4 + math.pi / 8
         y, z = math.sin(a), math.cos(a)
         h.add(-0.9, y * 1.6 - 0.14, z * 1.6 - 0.14, -0.5, y * 1.6 + 0.14, z * 1.6 + 0.14, crown)
         h.add(-1.4, y * 2.1 - 0.1, z * 2.1 - 0.1, -0.8, y * 2.1 + 0.1, z * 2.1 + 0.1, crown) if y > 0 else None
     h.add(-1.1, 1.62, -0.18, -0.2, 2.6, 0.18, crown)                 # the tallest spike
+    petal = _petal(armor)
+    hb = Part("worm_head_b", 5, 128, bedrock_only=True)
+    hb.take(h)
+    for k, (bn, pv, amp) in enumerate((("p_up", (1.0, WORM_HINGE, 0), (0, 1.3, 0)), ("p_r", (1.0, 0, WORM_HINGE), (-1.3, 0, 0)),
+                                       ("p_down", (1.0, -WORM_HINGE, 0), (0, -1.3, 0)), ("p_l", (1.0, 0, -WORM_HINGE), (1.3, 0, 0)))):
+        hb.bone(bn, pv)
+        for (lo, hi, paint) in _turn_petal(petal, k): hb.add(*lo, *hi, paint)
+        hb.anim(bn, "pos", amp, 2.0)
+    hb.bone(None)
     s2 = Part("worm_body", 5, 128)
-    s2.add(-1.35, -1.35, -1.35, 1.35, 1.35, 1.35, pl)
-    s2.add(-1.4, -1.48, -1.48, -0.9, 1.48, 1.48, armor)
-    s2.add(0.2, -1.42, -1.42, 0.7, 1.42, 1.42, armor)
+    rounded(s2, -1.35, -1.35, -1.35, 1.35, 1.35, 1.35, pl, 0.4)
+    rounded(s2, -1.4, -1.48, -1.48, -0.9, 1.48, 1.48, armor, 0.44)
+    rounded(s2, 0.2, -1.42, -1.42, 0.7, 1.42, 1.42, armor, 0.42)
     for x in (-0.6, 0.6):
         s2.add(x - 0.28, 1.35, -0.2, x + 0.28, 2.0, 0.2, crown)
         s2.add(x - 0.16, 2.0, -0.12, x + 0.16, 2.4, 0.12, crown)
     for sgn in (-1, 1): s2.add(-0.25, 0.2, sgn * 1.35, 0.25, 0.6, sgn * 1.85, crown)
+    s2.bone("bristles", (0, -1.35, 0))
+    for x in (-0.9, -0.3, 0.3, 0.9):                                # bristles underneath it pulls itself along with
+        for z in (-0.7, 0.0, 0.7):
+            s2.add(x - 0.05, -1.75, z - 0.05, x + 0.05, -1.35, z + 0.05, solid((90, 64, 36), 4))
+    s2.bone(None)
+    s2.anim("bristles", "rot", (0, 0, 14), 0.9)
     t = Part("worm_tail", 5, 128)
-    t.add(-0.8, -1.05, -1.05, 1.2, 1.05, 1.05, pl)
-    t.add(-0.2, -1.12, -1.12, 0.3, 1.12, 1.12, armor)
-    t.add(-1.9, -0.75, -0.75, -0.8, 0.75, 0.75, pl)
+    rounded(t, -0.8, -1.05, -1.05, 1.2, 1.05, 1.05, pl, 0.3)
+    rounded(t, -0.2, -1.12, -1.12, 0.3, 1.12, 1.12, armor, 0.32)
+    rounded(t, -1.9, -0.75, -0.75, -0.8, 0.75, 0.75, pl, 0.2)
     t.add(-2.9, -0.42, -0.42, -1.9, 0.42, 0.42, armor)
+    t.bone("sting", (-2.9, 0, 0))
     t.add(-3.9, -0.2, -0.2, -2.9, 0.2, 0.2, crown)                   # the stinger
     for sgn in (-1, 1): t.add(-3.2, -0.08, sgn * 0.2, -2.9, 0.08, sgn * 0.5, crown)
+    t.bone(None)
+    t.anim("sting", "rot", (12, 0, 0), 1.3)
     t.add(-1.4, 0.75, -0.14, -0.9, 1.3, 0.14, crown)
-    return [h, s2, t]
+    return [h, petal, hb, s2, t]
 
 
 ICE, ICE_D, FROST, CYAN, WMEM = (150, 200, 232), (90, 140, 186), (232, 244, 252), (110, 240, 255), (126, 176, 224)
+THROAT_W = (20, 30, 52)
+WYRM_HINGE = (0.4, -0.5, 0.0)   # where the Frost Wyrm's lower jaw hinges, in the head's frame
 
 
 def _stairs(p, x0, z0, x1, z1, y0, y1, w, paint, steps=7):
@@ -389,9 +535,11 @@ def frost_wyrm():
     claw = solid((52, 66, 86), 4)
     bone = ice(FROST)
     b = Part("wyrm_body", 6, 128)
-    b.add(-1.6, -0.85, -1.0, 1.0, 0.85, 1.0, sc)                 # torso
-    b.add(0.4, -1.0, -1.15, 1.85, 0.92, 1.15, sc)                # deep chest
-    b.add(-2.3, -0.75, -0.85, -1.4, 0.65, 0.85, sc)              # hips
+    rounded(b, -1.6, -0.85, -1.0, 1.0, 0.85, 1.0, sc, 0.26)      # torso
+    rounded(b, 0.4, -1.0, -1.15, 1.85, 0.92, 1.15, sc, 0.3)      # deep chest
+    rounded(b, -2.3, -0.75, -0.85, -1.4, 0.65, 0.85, sc, 0.22)   # hips
+    for x in (-1.3, -0.4, 0.5, 1.3):                              # a glowing frost seam down each flank
+        for s in (-1, 1): b.add(x, -0.1, s * 1.0 - (0.04 if s > 0 else 0), x + 0.3, 0.05, s * 1.0 + (0.04 if s < 0 else 0), glow(CYAN))
     b.add(-2.1, -1.1, -0.7, 1.75, -0.84, 0.7, plate)             # belly plates
     for i, x in enumerate((1.4, 0.75, 0.1, -0.55, -1.2, -1.85)):  # spine spikes, biggest over the shoulders
         h = 0.8 - i * 0.09
@@ -409,22 +557,21 @@ def frost_wyrm():
         for dz in (-0.16, 0.0, 0.16):
             b.add(-1.55, -2.5, s * 1.02 + dz - 0.05, -1.25, -2.32, s * 1.02 + dz + 0.05, claw)
     n = Part("wyrm_neck", 6, 64)
-    n.add(-0.62, -0.48, -0.48, 0.62, 0.48, 0.48, sc)
+    rounded(n, -0.62, -0.48, -0.48, 0.62, 0.48, 0.48, sc, 0.14)
     n.add(-0.58, -0.57, -0.34, 0.58, -0.44, 0.34, plate)
     n.add(-0.16, 0.48, -0.08, 0.16, 0.95, 0.08, bone)
     for s in (-1, 1): n.add(-0.15, -0.1, s * 0.48, 0.15, 0.12, s * 0.66, bone)
-    hd = Part("wyrm_head", 7, 128)
-    hd.add(-0.25, -0.5, -0.56, 1.2, 0.56, 0.56, sc)              # skull
-    hd.add(1.2, -0.42, -0.42, 2.6, 0.28, 0.42, sc)               # snout
+    hd = Part("wyrm_head", 7, 128, java_only=True)
+    rounded(hd, -0.25, -0.5, -0.56, 1.2, 0.56, 0.56, sc, 0.16)  # skull
+    rounded(hd, 1.2, -0.42, -0.42, 2.6, 0.28, 0.42, sc, 0.1)    # snout
     hd.add(2.6, -0.36, -0.33, 3.0, 0.16, 0.33, sc)               # nose
-    hd.add(0.45, -0.86, -0.38, 2.75, -0.52, 0.38, sc)            # lower jaw, hanging a little open
-    hd.add(0.55, -0.92, -0.3, 2.65, -0.84, 0.3, plate)
-    hd.add(1.25, -0.52, -0.34, 2.6, -0.44, 0.34, solid(MOUTH, 4)) # the dark of the mouth
+    hd.add(1.25, -0.5, -0.34, 2.6, -0.42, 0.34, solid(MOUTH, 4)) # the roof of the mouth
+    hd.add(0.4, -0.62, -0.36, 1.25, -0.4, 0.36, solid(THROAT_W, 3))   # the throat, with frost glowing deep in it
+    hd.add(0.42, -0.58, -0.14, 0.5, -0.44, 0.14, glow(CYAN))
     for i in range(6):
         x = 1.3 + i * 0.24
         for z in (-0.38, 0.3):
-            hd.add(x, -0.62, z, x + 0.1, -0.42, z + 0.08, teeth)  # upper fangs
-            hd.add(x + 0.12, -0.54, z, x + 0.2, -0.4, z + 0.08, teeth)
+            hd.add(x, -0.66, z, x + 0.1, -0.42, z + 0.08, teeth)  # upper fangs
     hd.add(0.0, 0.56, -0.07, 1.05, 0.86, 0.07, bone)              # crest
     hd.add(1.3, 0.28, -0.05, 2.2, 0.42, 0.05, bone)               # ridge down the snout
     for s in (-1, 1):
@@ -438,7 +585,24 @@ def frost_wyrm():
         hd.add(-0.05, -0.5, s * 0.55, 0.7, -0.08, s * 0.68, bone)                # cheek spikes
         hd.add(-0.6, -0.42, s * 0.6, -0.05, -0.16, s * 0.82, bone)
         hd.add(-0.35, -0.45, s * 0.54, 0.35, 0.45, s * 0.6, membrane(WMEM, ICE_D)) # frill
+    # the lower jaw, built in the head's frame, then moved so its hinge is its origin
+    jw_h = Part("tmp")
+    rounded(jw_h, 0.45, -0.86, -0.38, 2.75, -0.52, 0.38, sc, 0.1)
+    jw_h.add(0.55, -0.92, -0.3, 2.65, -0.84, 0.3, plate)
+    jw_h.add(0.7, -0.54, -0.3, 2.6, -0.5, 0.3, solid((120, 36, 60), 4))   # tongue
+    for i in range(6):
+        x = 1.42 + i * 0.24
+        for z in (-0.38, 0.3): jw_h.add(x, -0.54, z, x + 0.08, -0.38, z + 0.08, teeth)   # lower fangs
+    for s in (-1, 1): jw_h.add(1.0, -0.9, s * 0.38, 1.6, -0.62, s * 0.46, bone)            # jaw spikes
+    jaw = Part("wyrm_jaw", 7, 64, java_only=True)
+    jaw.take(jw_h, -WYRM_HINGE[0], -WYRM_HINGE[1], -WYRM_HINGE[2])
+    hb = Part("wyrm_head_b", 7, 128, bedrock_only=True)
+    hb.take(hd)
+    hb.bone("jaw", WYRM_HINGE)
+    hb.take(jw_h, bone="jaw")
+    hb.anim("jaw", "pos", (0, -1.1, 0), 2.4)
     wl = Part("wyrm_wing_l", 5, 128)
+    wl.bone("wing", (0, 0, 0))
     # the arm along the leading edge
     wl.add(-0.05, 0.0, -2.5, 0.38, 0.34, 0.0, bone)
     wl.add(0.22, 0.03, -5.15, 0.56, 0.3, -2.4, bone)
@@ -454,6 +618,8 @@ def frost_wyrm():
         xl, xt = _lerp_pts(lead, zc), _lerp_pts(trail, zc)
         if xl - xt > 0.15: wl.add(xt, 0.05, z - 0.5, xl, 0.12, z, membrane(WMEM, ICE_D))
         z -= 0.5
+    wl.bone(None)
+    wl.anim("wing", "rot", (0, 0, 20), 1.5)      # a slow beat on Bedrock (its stand can't roll the wing)
     wr = wl.mirror_z("wyrm_wing_r")
     seg = Part("wyrm_tail", 6, 64)
     seg.add(-0.62, -0.45, -0.48, 0.62, 0.45, 0.48, sc)
@@ -462,10 +628,13 @@ def frost_wyrm():
     for s in (-1, 1): seg.add(-0.18, -0.05, s * 0.48, 0.18, 0.13, s * 0.74, bone)
     tip = Part("wyrm_tail_tip", 6, 64)
     tip.add(-0.25, -0.33, -0.34, 0.6, 0.33, 0.34, sc)
+    tip.bone("blade", (-0.2, 0, 0))
     tip.add(-1.7, -0.06, -0.75, -0.2, 0.06, 0.75, bone)          # the ice blade (flat)
     tip.add(-2.1, -0.05, -0.36, -1.7, 0.05, 0.36, bone)
     tip.add(-1.5, -0.62, -0.05, -0.2, 0.62, 0.05, glow((170, 235, 255)))  # and its fin (upright)
-    return [b, n, hd, wl, wr, seg, tip]
+    tip.bone(None)
+    tip.anim("blade", "rot", (0, 14, 0), 1.2)
+    return [b, n, hd, jaw, hb, wl, wr, seg, tip]
 
 
 ROBE, ROBE_D, LBONE, GREEN, GOLD, DMETAL = (62, 30, 84), (40, 18, 56), (222, 216, 198), (90, 255, 130), (214, 168, 60), (52, 46, 62)
@@ -642,6 +811,12 @@ def lich():
         ln = rng.uniform(0.15, 0.55)
         cape.add(-0.06, -1.6 - ln, z - 0.06, 0.0, -1.6, z + 0.06, cloth(L_CLOTH_D))
     cape.add(-0.07, -0.06, -0.44, 0.01, 0.02, 0.44, br)
+    # Bedrock: its stands can only turn left/right, so the pack keeps the rig alive: the head nods, the sleeves
+    # sway, the cape billows and the whole body bobs as it floats
+    head.bone_all("nod").anim("nod", "rot", (4, 0, 2), 3.0)
+    arm.bone_all("sway").anim("sway", "rot", (6, 0, 3), 2.6)
+    cape.bone_all("billow").anim("billow", "rot", (8, 0, 0), 2.2)
+    body.bone_all("hover").anim("hover", "pos", (0, 1.0, 0), 3.0)
     return [body, head, arm, staff, cape]
 
 
@@ -1430,17 +1605,24 @@ def main():
         built.append((part, img, boxes))
         model, S, off = java_model(part, boxes)
         meta[part.name] = (S, off)
-        p = os.path.join(A, "textures/item/wild", part.name + ".png"); os.makedirs(os.path.dirname(p), exist_ok=True); img.save(p)
-        jw(os.path.join(A, "models/item/wild", part.name + ".json"), model)
-        jw(os.path.join(A, "items/wild", part.name + ".json"), {"model": {"type": "minecraft:model", "model": f"{NS}:item/wild/{part.name}"}})
+        if not part.bedrock_only:
+            p = os.path.join(A, "textures/item/wild", part.name + ".png"); os.makedirs(os.path.dirname(p), exist_ok=True); img.save(p)
+            jw(os.path.join(A, "models/item/wild", part.name + ".json"), model)
+            jw(os.path.join(A, "items/wild", part.name + ".json"), {"model": {"type": "minecraft:model", "model": f"{NS}:item/wild/{part.name}"}})
         if part.java_only: continue
         t = os.path.join(rp, "textures/faultline/wild", part.name + ".png"); os.makedirs(os.path.dirname(t), exist_ok=True); img.save(t)
         jw(os.path.join(rp, "models/entity/faultline", f"wild_{part.name}.geo.json"), bedrock_geo(part, boxes))
-        jw(os.path.join(rp, "attachables", f"faultline.wild_{part.name}.json"), {"format_version": "1.10.0", "minecraft:attachable": {"description": {
-            "identifier": f"faultline:wild_{part.name}", "materials": {"default": "armor", "enchanted": "armor_enchanted"},
-            "textures": {"default": f"textures/faultline/wild/{part.name}", "enchanted": "textures/misc/enchanted_actor_glint"},
-            "geometry": {"default": f"geometry.faultline.wild_{part.name}"}, "scripts": {"parent_setup": "v.helmet_layer_visible = 0.0;"},
-            "render_controllers": ["controller.render.armor"]}}})
+        desc = {"identifier": f"faultline:wild_{part.name}", "materials": {"default": "armor", "enchanted": "armor_enchanted"},
+                "textures": {"default": f"textures/faultline/wild/{part.name}", "enchanted": "textures/misc/enchanted_actor_glint"},
+                "geometry": {"default": f"geometry.faultline.wild_{part.name}"}, "scripts": {"parent_setup": "v.helmet_layer_visible = 0.0;"},
+                "render_controllers": ["controller.render.armor"]}
+        if part.anims:
+            an = bedrock_anim(part)
+            jw(os.path.join(rp, "animations", f"faultline.wild_{part.name}.animation.json"), an)
+            short = {f"a{i}": k for i, k in enumerate(an["animations"])}
+            desc["animations"] = short
+            desc["scripts"]["animate"] = list(short)
+        jw(os.path.join(rp, "attachables", f"faultline.wild_{part.name}.json"), {"format_version": "1.10.0", "minecraft:attachable": {"description": desc}})
         ik = icon_for[part.name.split("_")[0]]
         mappings["minecraft:paper"].append({"type": "definition", "model": f"{NS}:wild/{part.name}", "bedrock_identifier": f"faultline:wild_{part.name}",
             "display_name": part.name, "bedrock_options": {"icon": bed_icon(ik, icons[ik]), "allow_offhand": False},
@@ -1514,6 +1696,10 @@ def main():
     lines = []
     for n, (S, off) in meta.items():
         lines.append(f'        P.put("{n}", new double[]{{{S:.5f}, {off[0]:.5f}, {off[1]:.5f}, {off[2]:.5f}}});')
+    jo = ", ".join(f'"{p.name}"' for p in ALL_PARTS if p.java_only)
+    bo = ", ".join(f'"{p.name}"' for p in ALL_PARTS if p.bedrock_only)
+    lines.append(f"        JAVA_ONLY.addAll(java.util.List.of({jo}));")
+    lines.append(f"        BEDROCK_ONLY.addAll(java.util.List.of({bo}));")
     for pkg, plug in (("net.faultlinesmp.bosses", "FaultlineBosses"), ("net.faultlinesmp.items", "FaultlineItems"), ("net.faultlinesmp.ships", "FaultlineShips")):
         path = os.path.join(ROOT, "plugins", plug, "src/main/java", pkg.replace(".", "/"), "WildParts.java")
         with open(path, "w") as f:
@@ -1539,6 +1725,8 @@ import java.util.Map;
  */
 final class WildParts {
     static final Map<String, double[]> P = new HashMap<>();
+    /** Parts only Java draws (an ItemDisplay, no Bedrock stand) and only Bedrock draws (a stand, no display). */
+    static final java.util.Set<String> JAVA_ONLY = new java.util.HashSet<>(), BEDROCK_ONLY = new java.util.HashSet<>();
     static {
 %LINES%
     }

@@ -140,6 +140,7 @@ def wyrm(built, flap_deg, landed=False, breath=False):
         sc.pose("wyrm_neck", k * (1 - 0.06 * i), p, yaw_of(d), pitch_of(d))
     hp = 25 if breath else (-30 if landed else 8)
     sc.pose("wyrm_head", k, head, yaw, hp)
+    jaw_parts(sc, "wyrm_head", k, head, yaw, hp, 40 if breath else 48 if landed else 6)
     fl = flap_deg
     shL, shR = offset(pos, yaw, 0.35 * k, 0.65 * k, -0.95 * k), offset(pos, yaw, 0.35 * k, 0.65 * k, 0.95 * k)
     sc.pose("wyrm_wing_l", k * 1.2, shL, yaw, pitch, 0, Rx(math.radians(fl)))
@@ -156,7 +157,24 @@ def wyrm(built, flap_deg, landed=False, breath=False):
     return sc
 
 
-def serpent(built, head, body, tail, k, gap, segs, rise, tailk):
+def frame(yaw, pitch, roll=0.0):
+    return Ry(math.radians(-yaw)) @ Rx(math.radians(pitch)) @ Rz(math.radians(roll)) @ Q0
+
+
+def jaw_parts(sc, head, k, pos, yaw, pitch, opened):
+    """Mirrors the plugin: the Leviathan's / Frost Wyrm's jaw on its hinge, the Sandworm's four petals on the rim."""
+    F = frame(yaw, pitch)
+    if head == "lev_head":
+        sc.pose("lev_jaw", k, np.asarray(pos) + F @ (np.array([0.5, -0.55, 0]) * k), yaw, pitch, 0, Rz(math.radians(-opened)))
+    elif head == "wyrm_head":
+        sc.pose("wyrm_jaw", k, np.asarray(pos) + F @ (np.array([0.4, -0.5, 0]) * k), yaw, pitch, 0, Rz(math.radians(-opened)))
+    elif head == "worm_head":
+        for i in range(4):
+            T = Rx(math.radians(90 * i))
+            sc.pose("worm_petal", k, np.asarray(pos) + F @ T @ (np.array([1.0, 1.0, 0]) * k), yaw, pitch, 0, T @ Rz(math.radians(opened)))
+
+
+def serpent(built, head, body, tail, k, gap, segs, rise, tailk, opened=10, bedrock=False):
     """A chain body (Leviathan / Sandworm): the head rears up, the body trails back in a gentle S."""
     sc = Scene(built)
     pts = [np.array([0.0, rise * k, 0.0])]
@@ -169,7 +187,10 @@ def serpent(built, head, body, tail, k, gap, segs, rise, tailk):
         nxt[1] = y
         pts.append(nxt)
     d0 = pts[0] - pts[1]
-    sc.pose(head, k, pts[0], yaw_of(d0), pitch_of(d0) - 10)
+    if bedrock: sc.pose(head + "_b", k, pts[0], yaw_of(d0), 0)   # Bedrock: only yaw, the jaw/petals are bones in the pack
+    else:
+        sc.pose(head, k, pts[0], yaw_of(d0), pitch_of(d0) - 10)
+        jaw_parts(sc, head, k, pts[0], yaw_of(d0), pitch_of(d0) - 10, opened)
     for i in range(1, segs + 1):
         d = pts[i - 1] - pts[i]
         sc.pose(body, k * (1 - 0.03 * i), pts[i], yaw_of(d), pitch_of(d))
@@ -224,9 +245,13 @@ def golem(built, aL, aR, sL, sR, lL, lR, bp, drop, hy=0.0, hp=0.0):
 
 SCENES = {
     "leviathan": lambda b: [serpent(b, "lev_head", "lev_body", "lev_tail", 1.0, 2.2, 7, 2.5, 0.75).render(title="the Leviathan"),
-                            serpent(b, "lev_head", "lev_body", "lev_tail", 1.0, 2.2, 7, 2.5, 0.75).render(az=100, el=8, title="side")],
+                            serpent(b, "lev_head", "lev_body", "lev_tail", 1.0, 2.2, 7, 2.5, 0.75, opened=42).render(az=100, el=8, title="side, roaring"),
+                            serpent(b, "lev_head", "lev_body", "lev_tail", 1.0, 2.2, 7, 2.5, 0.75, bedrock=True).render(title="Bedrock")],
     "sandworm": lambda b: [serpent(b, "worm_head", "worm_body", "worm_tail", 1.5, 2.4 * 1.5, 7, 4, 0.8).render(title="the Sandworm King"),
-                           serpent(b, "worm_head", "worm_body", "worm_tail", 1.5, 2.4 * 1.5, 7, 4, 0.8).render(az=-80, el=5, title="maw (front)")],
+                           serpent(b, "worm_head", "worm_body", "worm_tail", 1.5, 2.4 * 1.5, 7, 4, 0.8).render(az=-80, el=5, title="maw shut (front)"),
+                           serpent(b, "worm_head", "worm_body", "worm_tail", 1.5, 2.4 * 1.5, 7, 4, 0.8, opened=65).render(az=-80, el=5, title="maw open (front)"),
+                           serpent(b, "worm_head", "worm_body", "worm_tail", 1.5, 2.4 * 1.5, 7, 4, 0.8, opened=65).render(az=40, el=15, title="erupting"),
+                           serpent(b, "worm_head", "worm_body", "worm_tail", 1.5, 2.4 * 1.5, 7, 4, 0.8, bedrock=True).render(title="Bedrock")],
     "lich": lambda b: [lich(b).render(az=-60, el=12, title="the Lich (front)", span=3.6),
                        lich(b).render(az=150, el=12, title="back", span=3.6),
                        lich(b, lift=0.3, lean=8, lsw=98, lsp=4, hy=-10).render(az=-30, el=12, title="soul bolt: throw", span=3.6),

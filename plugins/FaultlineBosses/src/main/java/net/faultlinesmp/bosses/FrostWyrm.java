@@ -46,7 +46,8 @@ final class FrostWyrm extends Wild.Boss {
     static final String SHARD_TAG = "faultline_wyrm_shard";
 
     final double k;
-    final Wild.Part bodyP, headP, wingL, wingR;
+    final Wild.Part bodyP, headP, wingL, wingR, jawP, headB; // Java: head + its own jaw; Bedrock: one head, the pack moves the jaw
+    double aJaw; // how far the jaw hangs open (degrees), eased
     final List<Wild.Part> tailP = new ArrayList<>();
     final List<Wild.Part> neckP = new ArrayList<>();
     Location headAt;
@@ -73,6 +74,8 @@ final class FrostWyrm extends Wild.Boss {
         bodyP = rig.add("wyrm_body", k, pos);
         for (int i = 0; i < 3; i++) neckP.add(rig.add("wyrm_neck", k * (1 - 0.06 * i), pos));
         headP = rig.add("wyrm_head", k, pos);
+        jawP = rig.add("wyrm_jaw", k, pos);
+        headB = rig.add("wyrm_head_b", k, pos);
         wingL = rig.add("wyrm_wing_l", k * 1.2, pos);
         wingR = rig.add("wyrm_wing_r", k * 1.2, pos);
         int n = (int) Math.max(3, c("tail-segments", 6));
@@ -230,7 +233,19 @@ final class FrostWyrm extends Wild.Boss {
         if (attack == SHARDS) wantHeadPitch = spit > 0 ? -18 : 14; // snaps back as each volley leaves its mouth
         if (spit > 0) spit--;
         aHeadPitch += (wantHeadPitch - aHeadPitch) * 0.2;
-        headP.pose(head, (float) (yaw + aLook * 0.6 + sway * 4), (float) aHeadPitch, (float) (aBank * 0.5), null);
+        float hy = (float) (yaw + aLook * 0.6 + sway * 4), hr = (float) (aBank * 0.5);
+        headP.pose(head, hy, (float) aHeadPitch, hr, null);
+        headB.pose(head, hy, (float) aHeadPitch, hr, null);
+        // the jaw: wide for the breath and the roar, snapping with each shard volley, a pant as it flies
+        double wantJaw = 5 + Math.max(0, Math.sin(flap)) * 6;
+        if (breath) wantJaw = 40 + Math.sin(ticks * 0.8) * 4;
+        else if (roaring) wantJaw = 48;
+        else if (attack == SHARDS) wantJaw = spit > 0 ? 38 : 12;
+        else if (attack == GUST || attack == DIVE) wantJaw = 22;
+        if (deathLimp) wantJaw = 34;
+        wantJaw -= fl0 * 10;
+        aJaw += (Math.max(0, wantJaw) - aJaw) * (wantJaw < aJaw - 10 ? 0.6 : 0.25);
+        jawP.pose(Lich.joint(head, Lich.frame(hy, (float) aHeadPitch, hr), 0.4, -0.5, 0, k), hy, (float) aHeadPitch, hr, Lich.rotZ(-aJaw));
         // wings: full beats in the air, swept back into a dive, folded up on the ground, limp in death
         double wantWing = deathLimp ? 70 + Math.sin(flap) * 6
                 : landed ? 62 + Math.sin(flap) * 4

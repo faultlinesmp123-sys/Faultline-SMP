@@ -29,9 +29,9 @@ discord:
   bot-token: ""
   guild-id: ""
   roles:
-    1: ""                       # role ID for Kingdom 1
-    2: ""
-    3: ""
+    1: "1553886942100328539"    # role ID for Kingdom 1
+    2: "1553986213311029338"    # Kingdom 2
+    3: "1557134028488843374"    # Kingdom 3
   sync-minutes: 5               # re-check online players' roles this often (and always when they join)
   remove-when-role-gone: true   # lost the role / left the Discord = no kingdom
   link-code-minutes: 10

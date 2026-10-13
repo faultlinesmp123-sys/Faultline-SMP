@@ -101,3 +101,11 @@ reports:
 suggestions:
   cooldown-seconds: 300
   min-length: 10
+
+# The daily stats post (1.6.20): every day at this hour (in this time zone) the Discord gets yesterday's top killer, most
+# deaths, longest playtime, mob slayer, rarest Index find, bosses, achievements and server totals. Public webhook, or the
+# logs channel when there's none. /discord daily posts it now.
+daily-stats:
+  enabled: true
+  zone: "America/New_York"
+  hour: 9

@@ -649,3 +649,15 @@ disc_pirates:
 hot_air_balloon:
   large: 59280
   small: 58256
+elite_mob:
+  large: 59281
+  small: 58257
+looter_zombie:
+  large: 59282
+  small: 58258
+blazing_skeleton:
+  large: 59283
+  small: 58259
+splitting_creeper:
+  large: 59284
+  small: 58260

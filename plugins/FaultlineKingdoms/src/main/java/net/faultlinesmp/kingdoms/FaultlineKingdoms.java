@@ -451,7 +451,7 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
             counts.append(" ").append(label(k)).append(ChatColor.GRAY).append(" ").append(n).append(friendlyFire(k) ? "" : " (no friendly fire)");
         }
         s.sendMessage(counts.toString());
-        if (s.hasPermission("kingdoms.admin") && gateway != null) s.sendMessage(ChatColor.DARK_GRAY + "Discord /stats: " + gateway.status);
+        if (s.hasPermission("kingdoms.admin") && gateway != null) s.sendMessage(ChatColor.DARK_GRAY + "Discord /stats: " + gateway.status + ", chat bridge: " + gateway.bridgeStatus);
     }
 
     static int parseKingdom(String s) {

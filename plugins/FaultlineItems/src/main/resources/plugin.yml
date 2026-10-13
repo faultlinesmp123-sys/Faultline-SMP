@@ -1,5 +1,5 @@
 name: FaultlineItems
-version: 1.2.25
+version: 1.2.26
 main: net.faultlinesmp.items.FaultlineItems
 api-version: '1.21'
 softdepend: [floodgate, Geyser-Spigot]
@@ -148,6 +148,14 @@ commands:
     description: "Show your coordinates (a bar at the top); /coords share [player|kingdom|all] tells others where you are"
     usage: /coords [share [player|kingdom|all]]
     aliases: [coordinates, where]
+  crops:
+    description: "Which crops are in season this month (they grow faster and give more)"
+    usage: /crops
+    aliases: [seasons, cropseasons]
+  lastdeath:
+    description: "Where you last died, and how far it is from you"
+    usage: /lastdeath
+    aliases: [deathpos, deathcoords]
   camera:
     description: "Free camera for recording: fly around invisible, /camera again to come back (/camera speed 1-10)"
     usage: /camera [speed <1-10>]

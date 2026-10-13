@@ -41,6 +41,14 @@ discord:
   slash-commands: true          # /stats <player> in your Discord server (the bot answers with their stats)
   remove-when-role-gone: true   # lost the role / left the Discord = no kingdom
   link-code-minutes: 10
+  # 1.2.0: messages typed in this Discord channel show up in game as "[Discord] name: message" (webhook posts and bots
+  # are skipped, so the logs/chat mirror never echoes). Needs the bot's MESSAGE CONTENT INTENT on (developer portal >
+  # your bot > Bot > Privileged Gateway Intents). Channel ID: right-click the channel > Copy Channel ID.
+  chat-bridge:
+    enabled: true
+    channel-id: ""
+    format: "&9[Discord] &f{name}&7: &f{message}"
+    max-length: 256
 
 # Bedrock players get /kingdom as a menu (Floodgate/Geyser forms): link, verify, friendly fire, members.
 bedrock-forms: true

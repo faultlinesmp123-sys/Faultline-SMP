@@ -100,6 +100,7 @@ final class Museum implements Listener {
         // the kill credit and the boss's own "index discover" both land here: one roll per defeat
         Long last = recent.put(p.getUniqueId() + e.id, System.currentTimeMillis());
         if (last != null && System.currentTimeMillis() - last < 10000) return;
+        if (index.daily != null) index.daily.boss(p, e);
         if (e.icon != null && TROPHIES.contains(e.icon) && trophies.computeIfAbsent(p.getUniqueId(), k -> new HashSet<>()).add(e.icon)) {
             dirty = true;
             ItemStack t = trophy(e, p.getName());

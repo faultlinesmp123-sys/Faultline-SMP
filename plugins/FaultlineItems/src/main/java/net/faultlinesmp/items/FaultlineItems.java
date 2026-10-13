@@ -398,6 +398,13 @@ public final class FaultlineItems extends JavaPlugin {
         where = new Where(this); // 1.2.24: /ping, /coords (Bedrock has no F3)
         getServer().getPluginManager().registerEvents(where, this);
         for (String c : List.of("ping", "coords")) { getCommand(c).setExecutor(where); getCommand(c).setTabCompleter(where); }
+        cropSeasons = new CropSeasons(this); // 1.2.26: crops in / out of season
+        getServer().getPluginManager().registerEvents(cropSeasons, this);
+        getCommand("crops").setExecutor(cropSeasons);
+        getServer().getPluginManager().registerEvents(new MountStats(this), this); // 1.2.26: stick on a horse = its stats
+        DeathSpot deathSpot = new DeathSpot(this); // 1.2.26: where you died, only to you
+        getServer().getPluginManager().registerEvents(deathSpot, this);
+        getCommand("lastdeath").setExecutor(deathSpot);
         fishing = new Fishing(this);
         getServer().getPluginManager().registerEvents(fishing, this);
         getCommand("fishing").setExecutor(fishing);
@@ -859,6 +866,7 @@ public final class FaultlineItems extends JavaPlugin {
     Vanish vanish;
     Camera camera;
     Where where;
+    CropSeasons cropSeasons;
     Balloons balloons;
     Fishing fishing;
 
@@ -7585,6 +7593,7 @@ public final class FaultlineItems extends JavaPlugin {
             }
 
             plugin.reloadConfig();
+            if (plugin.cropSeasons != null) plugin.cropSeasons.reload();
             sender.sendMessage(ChatColor.GREEN + "Faultline SMP Items config reloaded.");
             // the resource pack is only sent on join, so a changed url/hash/enabled used to need everyone to rejoin
             for (Player p : Bukkit.getOnlinePlayers()) {

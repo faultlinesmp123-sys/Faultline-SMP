@@ -127,6 +127,7 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
     Museum museum;
     Discord discord;
     Watch watch;
+    Daily daily;
 
     // ===================== LIFECYCLE =====================
 
@@ -157,6 +158,8 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
         discord = new Discord(this);
         getServer().getPluginManager().registerEvents(discord, this);
         getServer().getPluginManager().registerEvents(new Grief(this), this); // 1.6.14: grief logs (staff channel)
+        daily = new Daily(this); // 1.6.20: the daily stats post
+        getServer().getPluginManager().registerEvents(daily, this);
         watch = new Watch(this); // 1.6.15: x-ray, cheats, dupes, grief, alts
         getServer().getPluginManager().registerEvents(watch, this);
         getCommand("watch").setExecutor(watch);
@@ -180,6 +183,11 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
                 sender.sendMessage(ChatColor.YELLOW + "The Discord bridge is off. Why:");
                 for (String why : discord.diagnose()) sender.sendMessage(ChatColor.RED + " - " + why);
                 sender.sendMessage(ChatColor.GRAY + "Put the staff channel's webhook in discord.logs-webhook-url in plugins/FaultlineIndex/config.yml, then /discord.");
+                return true;
+            }
+            if (args.length > 0 && args[0].equalsIgnoreCase("daily")) {
+                boolean ok = daily.post(java.time.LocalDate.now(daily.zone()));
+                sender.sendMessage(ok ? ChatColor.GREEN + "Posted today's stats so far (and started a new day)." : ChatColor.RED + "Nothing to post yet (nobody played) or no webhook.");
                 return true;
             }
             if (args.length == 0 || args[0].equalsIgnoreCase("status")) { sender.sendMessage(ChatColor.GOLD + "Discord: " + ChatColor.WHITE + discord.status()); String w = discord.logsWarning(); if (w != null) sender.sendMessage(ChatColor.RED + w); return true; }
@@ -237,6 +245,7 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
         saveProgress();
         if (museum != null) museum.save();
         if (watch != null) try { watch.shutdown(); } catch (RuntimeException ignored) { }
+        if (daily != null) try { daily.save(); } catch (RuntimeException ignored) { }
         if (discord != null) try { discord.serverStopping(); } catch (RuntimeException ignored) { }
     }
 
@@ -483,10 +492,16 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
     }
 
     /** First discovery: tell the player, with a click-to-open link. */
+    Entry entryById(String id) { for (Entry e : entries) if (e.id.equals(id)) return e; return null; }
+
+    /** How many players (ever) have this Index entry. */
+    int howManyFound(String id) { int n = 0; for (Set<String> s : found.values()) if (s.contains(id)) n++; return n; }
+
     private void unlock(Player p, Entry e, boolean creature) {
         if (!found.computeIfAbsent(p.getUniqueId(), k -> new HashSet<>()).add(e.id)) return;
         dirty = true;
         if (museum != null) museum.found(p, e);
+        if (daily != null) daily.found(p, e);
         Component msg = Component.text("✦ ", NamedTextColor.GOLD)
                 .append(Component.text(creature ? "New creature in your Index: " : "New item in your Index: ", NamedTextColor.YELLOW))
                 .append(Component.text(e.name, NamedTextColor.WHITE, TextDecoration.BOLD))

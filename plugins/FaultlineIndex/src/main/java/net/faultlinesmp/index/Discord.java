@@ -423,6 +423,32 @@ final class Discord implements Listener {
         return true;
     }
 
+    /**
+     * 1.6.20: an embed (the daily stats) to the public channel, or the logs channel when there's none. Fields are
+     * {name, value} pairs. False = nowhere to post.
+     */
+    boolean embed(String title, List<String[]> fields, int color) {
+        String url = pub.on() ? pub.url : logs.on() ? logs.url : null;
+        if (!enabled || url == null) return false;
+        StringBuilder f = new StringBuilder();
+        for (String[] x : fields) {
+            if (f.length() > 0) f.append(',');
+            String v = x[1].length() > 1000 ? x[1].substring(0, 1000) : x[1];
+            f.append("{\"name\":").append(json(x[0])).append(",\"value\":").append(json(v)).append(",\"inline\":false}");
+        }
+        String body = "{\"username\":" + json(username) + ",\"allowed_mentions\":{\"parse\":[]},\"embeds\":[{\"title\":" + json(title)
+                + ",\"color\":" + color + ",\"fields\":[" + f + "],\"timestamp\":" + json(Instant.now().toString()) + "}]}";
+        Bukkit.getScheduler().runTaskAsynchronously(index, () -> {
+            try {
+                HttpRequest req = HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofSeconds(10))
+                        .header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(body)).build();
+                HttpResponse<String> res = http.send(req, HttpResponse.BodyHandlers.ofString());
+                if (res.statusCode() >= 300) index.getLogger().warning("Discord daily stats answered " + res.statusCode() + ": " + res.body());
+            } catch (Exception ex) { index.getLogger().warning("Discord daily stats failed: " + ex.getMessage()); }
+        });
+        return true;
+    }
+
     /** Where /suggest posts: its own webhook, else the public channel (null = nowhere). */
     String suggestTarget() {
         if (!enabled) return null;

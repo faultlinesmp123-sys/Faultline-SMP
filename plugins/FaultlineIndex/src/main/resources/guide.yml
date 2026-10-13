@@ -19,6 +19,8 @@ chapters:
       - /index: your codex
       - /guide: this guide
       - /coords, /ping
+      - /lastdeath: where you died
+      - /crops: what's in season
       - /cosmetics, /accessories
       - /report, /suggest
   - id: index
@@ -94,6 +96,15 @@ chapters:
 
       # Ships
       Craft a ship Blueprint, right-click water, then place every glowing block. Sail with W A S D, Jump drops the anchor. Watch out for skeleton ships and the Pirate Invasion.
+
+      # Elite mobs and mutants
+      Some monsters spawn as a gold-named ELITE (tougher, double drops, bonus loot), a LOOTER ZOMBIE (steals a stack from your backpack: kill it to get it back), a BLAZING SKELETON (fire arrows) or a SPLITTING CREEPER (splits into minis). They turn up in raids too.
+
+      # Farming seasons
+      Every crop has real-world months it's in season: it grows faster and gives bigger harvests then, and slower the rest of the year. /crops shows the calendar.
+
+      # Horses
+      Right-click a horse, donkey, mule, llama or camel with a stick to see its speed, jump and health.
 
       # Hot Air Balloons
       Craft one and fly anywhere: Jump to rise, sneak to sink, W to go where you look. It burns coal (or blaze rods).

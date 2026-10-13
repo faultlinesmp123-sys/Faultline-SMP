@@ -1,5 +1,5 @@
 name: FaultlineRaids
-version: '1.1.2'
+version: '1.2.0'
 main: net.faultlinesmp.raids.FaultlineRaids
 api-version: '1.21'
 author: FaultlineSMP
@@ -9,7 +9,7 @@ softdepend: [FaultlineItems]
 commands:
   zraid:
     description: "Admin: start or stop raids, spawn a Captain, open the raid items menu, or give eggs/Omens/War Horns"
-    usage: /zraid <start|stop|captain|menu|egg|omen|horn|spawnboss> ...
+    usage: /zraid <start|stop|captain|menu|egg|omen|horn|spawnboss|elite <mob>|mutant <looter|blazing|splitter> [elite]> ...
     permission: zraid.admin
 
 permissions:

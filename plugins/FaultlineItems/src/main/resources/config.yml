@@ -326,7 +326,7 @@ boots:
 item-textures:
   enabled: true
   url: "https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/main/FaultlineSMP.zip"
-  hash: "7d3d6f44a344f02c577eec55ab6f1fe74274c89e"
+  hash: "6f7464174a8ba9c43da982dc687f10bab641181e"
 
 
 # Immunity charms: one accessory per debuff (Guardian Scale, Ginger Root, Blindfold, Salt Ration,
@@ -601,3 +601,33 @@ fishing:
     first: ["givemythicbag 2 {player}"]
     second: ["givemythicbag 1 {player}"]
     third: ["givegoodiebag 2 {player}"]
+
+# Crop seasons (1.2.26): real-world months each crop is in season (the server's time zone). In season: grows faster and
+# ripe harvests sometimes give one more; out of season: grows slower. /crops shows the calendar. Nether Wart: no seasons.
+crop-seasons:
+  enabled: true
+  zone: "America/New_York"
+  in-season-boost: 0.35      # chance a growth step gives an extra stage
+  harvest-bonus: 0.25        # chance a ripe in-season harvest drops one more
+  off-season-skip: 0.25      # chance an out-of-season growth step doesn't happen
+  months:                    # 1 = January ... 12 = December
+    wheat: [6, 7, 8, 9]
+    carrots: [3, 4, 5, 9, 10]
+    potatoes: [3, 4, 5, 10, 11]
+    beetroots: [9, 10, 11, 12]
+    pumpkins: [8, 9, 10]
+    melons: [6, 7, 8]
+    berries: [7, 8, 9, 12]
+    sugar_cane: [4, 5, 6, 7]
+    cocoa: [1, 2, 6, 7]
+    cactus: [6, 7, 8]
+    bamboo: [3, 4, 5, 6]
+    flowers: [4, 5, 6]
+
+# Mount stats (1.2.26): right-click a horse / donkey / mule / llama / camel with a plain stick.
+mount-stats:
+  enabled: true
+
+# Death coordinates (1.2.26): on respawn only you are told where you died; /lastdeath any time.
+death-coords:
+  enabled: true

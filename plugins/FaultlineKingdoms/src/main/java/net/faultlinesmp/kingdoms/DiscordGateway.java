@@ -5,6 +5,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.Statistic;
 import org.bukkit.entity.Player;
@@ -57,15 +58,31 @@ final class DiscordGateway {
         this.link = link;
     }
 
-    boolean wanted() { return link.on() && pl.getConfig().getBoolean("discord.slash-commands", true); }
+    boolean slash() { return pl.getConfig().getBoolean("discord.slash-commands", true); }
+
+    /** 1.2.0: messages typed in this Discord channel show up in game. */
+    String bridgeChannel() {
+        if (!pl.getConfig().getBoolean("discord.chat-bridge.enabled", true)) return "";
+        String c = pl.getConfig().getString("discord.chat-bridge.channel-id", "");
+        return c == null ? "" : c.trim();
+    }
+
+    boolean bridge() { return bridgeChannel().matches("\\d{5,25}"); }
+
+    boolean wanted() { return link.on() && (slash() || bridge()); }
+
+    /** Discord refused the Message Content intent (4014): run without it (slash commands keep working). */
+    private volatile boolean noContent;
+    volatile String bridgeStatus = "off";
 
     String gatewayUrl() { return pl.getConfig().getString("discord.gateway-url", "wss://gateway.discord.gg/?v=10&encoding=json"); }
 
     void start() {
         stopped = false;
         if (!wanted()) { status = "off"; return; }
+        bridgeStatus = bridge() ? "connecting" : "off (set discord.chat-bridge.channel-id)";
         timer.execute(() -> {
-            try { register(); } catch (Exception ex) { pl.getLogger().warning("Couldn't register the Discord /stats command: " + ex.getMessage()); }
+            if (slash()) try { register(); } catch (Exception ex) { pl.getLogger().warning("Couldn't register the Discord /stats command: " + ex.getMessage()); }
             connect();
         });
     }
@@ -148,6 +165,15 @@ final class DiscordGateway {
 
         @Override
         public CompletionStage<?> onClose(WebSocket w, int code, String reason) {
+            if (code == 4014 && !noContent) { // the bot isn't allowed the Message Content intent
+                noContent = true;
+                bridgeStatus = "needs the Message Content Intent";
+                pl.getLogger().warning("Discord: the chat bridge needs the MESSAGE CONTENT INTENT. Turn it on at discord.com/developers/applications > your bot > Bot > "
+                        + "Privileged Gateway Intents, then /kingdoms reload. (/stats keeps working without it.)");
+                status = "reconnecting";
+                ended(my, "refused the Message Content intent");
+                return null;
+            }
             if (code == 4004) { // authentication failed: retrying won't help
                 gen.incrementAndGet();
                 status = "bad token";
@@ -162,6 +188,51 @@ final class DiscordGateway {
 
         @Override
         public void onError(WebSocket w, Throwable error) { status = "reconnecting"; ended(my, "error: " + error.getMessage()); }
+    }
+
+    /** GUILD_MESSAGES (1 << 9) + MESSAGE_CONTENT (1 << 15) for the chat bridge, else none. */
+    int intents() { return bridge() && !noContent ? (1 << 9) | (1 << 15) : 0; }
+
+    /**
+     * A message in the bridged channel: "[Discord] name: text" to everyone in game. Webhook posts (our own logs /
+     * chat mirror) and bots are skipped, so nothing echoes back and forth. Mentions and custom emoji are made readable,
+     * colour codes stripped, long messages cut (chat-bridge.max-length).
+     */
+    void message(JsonObject d) {
+        if (d == null || !bridge() || !bridgeChannel().equals(str(d, "channel_id"))) return;
+        if (d.has("webhook_id") && !d.get("webhook_id").isJsonNull()) return;
+        JsonObject author = d.has("author") && d.get("author").isJsonObject() ? d.getAsJsonObject("author") : null;
+        if (author == null || (author.has("bot") && author.get("bot").getAsBoolean())) return;
+        String name = null;
+        if (d.has("member") && d.get("member").isJsonObject()) name = str(d.getAsJsonObject("member"), "nick");
+        if (name == null) name = str(author, "global_name");
+        if (name == null) name = str(author, "username");
+        String text = str(d, "content");
+        if (text == null) text = "";
+        if (d.has("mentions") && d.get("mentions").isJsonArray()) for (var el : d.getAsJsonArray("mentions")) {
+            if (!el.isJsonObject()) continue;
+            JsonObject u = el.getAsJsonObject();
+            String who = str(u, "global_name") != null ? str(u, "global_name") : str(u, "username");
+            String id = str(u, "id");
+            if (id != null && who != null) text = text.replace("<@" + id + ">", "@" + who).replace("<@!" + id + ">", "@" + who);
+        }
+        text = text.replaceAll("<a?:([A-Za-z0-9_]+):\\d+>", ":$1:").replaceAll("<#\\d+>", "#channel").replaceAll("<@&\\d+>", "@role")
+                .replace('§', '&').replace('\n', ' ').trim();
+        if (text.isEmpty() && d.has("attachments") && d.getAsJsonArray("attachments").size() > 0) text = "[sent an image]";
+        if (text.isEmpty()) return;
+        int max = pl.getConfig().getInt("discord.chat-bridge.max-length", 256);
+        if (text.length() > max) text = text.substring(0, max) + "...";
+        String fmt = pl.getConfig().getString("discord.chat-bridge.format", "&9[Discord] &f{name}&7: &f{message}");
+        String line = ChatColor.translateAlternateColorCodes('&', fmt.replace("{name}", name.replace('§', '&').replace("&", "")).replace("{message}", "\u0000"))
+                .replace("\u0000", text);
+        Bukkit.getScheduler().runTask(pl, () -> {
+            for (org.bukkit.entity.Player p : Bukkit.getOnlinePlayers()) p.sendMessage(line);
+            Bukkit.getConsoleSender().sendMessage(ChatColor.stripColor(line));
+        });
+    }
+
+    private static String str(JsonObject o, String k) {
+        return o != null && o.has(k) && !o.get(k).isJsonNull() && o.get(k).isJsonPrimitive() ? o.get(k).getAsString() : null;
     }
 
     private void handle(WebSocket w, JsonObject m, int my) {
@@ -183,7 +254,7 @@ final class DiscordGateway {
                     acked = false;
                     send("{\"op\":1,\"d\":" + (seq == null ? "null" : seq) + "}");
                 }, (long) (every * Math.random()), every, TimeUnit.MILLISECONDS);
-                send("{\"op\":2,\"d\":{\"token\":" + new com.google.gson.JsonPrimitive(link.token()) + ",\"intents\":0,"
+                send("{\"op\":2,\"d\":{\"token\":" + new com.google.gson.JsonPrimitive(link.token()) + ",\"intents\":" + intents() + ","
                         + "\"properties\":{\"os\":\"linux\",\"browser\":\"faultline\",\"device\":\"faultline\"}}}");
             }
             case 11 -> acked = true;
@@ -193,8 +264,13 @@ final class DiscordGateway {
             }
             case 0 -> {
                 String t = m.get("t").getAsString();
-                if (t.equals("READY")) { status = "online"; backoff = 5; pl.getLogger().info("Discord gateway connected: /stats is live."); }
+                if (t.equals("READY")) {
+                    status = "online"; backoff = 5;
+                    if (bridge() && !noContent) bridgeStatus = "on";
+                    pl.getLogger().info("Discord gateway connected" + (slash() ? ": /stats is live" : "") + (bridge() && !noContent ? ", chat bridge on" : "") + ".");
+                }
                 else if (t.equals("INTERACTION_CREATE")) interaction(m.getAsJsonObject("d"));
+                else if (t.equals("MESSAGE_CREATE")) message(m.getAsJsonObject("d"));
             }
             default -> { }
         }

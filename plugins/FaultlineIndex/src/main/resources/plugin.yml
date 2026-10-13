@@ -1,5 +1,5 @@
 name: FaultlineIndex
-version: '1.6.19'
+version: '1.6.20'
 main: net.faultlinesmp.index.FaultlineIndex
 api-version: '1.21'
 author: FaultlineSMP
@@ -41,7 +41,7 @@ commands:
     permission: faultlineindex.watch
   discord:
     description: "Admin: test the Discord bridge (/discord test [message]); reloads its settings"
-    usage: /discord [status|test [message]]
+    usage: /discord [status|test [message]|daily]
     permission: faultlineindex.admin
 
 permissions:

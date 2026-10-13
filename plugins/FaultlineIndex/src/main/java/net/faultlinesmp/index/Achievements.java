@@ -144,6 +144,7 @@ final class Achievements {
     }
 
     private void complete(Player p, Goal g) {
+        if (index.daily != null) index.daily.achievement(p, g.name);
         Component name = Component.text(g.name, NamedTextColor.GOLD, TextDecoration.BOLD)
                 .hoverEvent(HoverEvent.showText(Component.text(g.desc == null ? g.name : g.desc, NamedTextColor.GRAY)));
         Component all = Component.text("✦ ", NamedTextColor.GOLD).append(Component.text(p.getName(), NamedTextColor.WHITE))

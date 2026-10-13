@@ -146,3 +146,19 @@ piglin-raid:
     breath-damage: 3
     stun-seconds: 3            # after charging into a wall (takes 50% more damage)
     xp: 400
+
+# Elite mobs + mutations (1.2.0). Natural hostile spawns only (never spawners / eggs / other plugins' mobs), and raid waves.
+elites:
+  enabled: true
+  chance: 0.01               # a natural spawn is an Elite: 2x health, +50% damage, +15% speed, double drops, 3x XP, bonus loot
+  mutation-chance: 0.02      # Looter Zombie (steals a stack from your backpack), Blazing Skeleton (fire arrows), Splitting Creeper
+  raid-chance: 0.06          # the same in raid waves
+  raid-mutation-chance: 0.05
+  health-multiplier: 2.0
+  damage-multiplier: 1.5
+  speed-multiplier: 1.15
+  goodie-bag-chance: 0.04
+  bonus-loot: ["DIAMOND:1-2:0.10", "EMERALD:1-3:0.25", "GOLDEN_APPLE:1-1:0.15", "EXPERIENCE_BOTTLE:2-5:0.40", "IRON_INGOT:2-6:0.35"]
+  looter:
+    steal-chance: 0.3        # per hit on a player (not while blocking)
+    max-stacks: 3

@@ -777,6 +777,19 @@ entries:
   - {chapter: enemies, name: "Star Sentinel", icon: star_sentinel, detect-tag: faultline_star_sentinel,
      where: "Floats over a fallen meteor. 80 health.", does: "A big glowing blaze that throws fireballs at anyone going for the meteor's core.",
      drops: ["2-4 Blaze Rods|100%", "1-2 Diamonds|40%"]}
+  - {chapter: enemies, name: "Looter Zombie", icon: looter_zombie, detect-tag: faultline_looter,
+     where: "2% of zombies, husks, drowned and zombie villagers that spawn naturally, and some raid zombies.",
+     does: "Its hits can STEAL a stack from your backpack (never your hotbar or armor), up to 3. It keeps what it took, even through restarts, and runs faster for a bit. Kill it and you get everything back.",
+     drops: ["Everything it stole|100%"]}
+  - {chapter: enemies, name: "Blazing Skeleton", icon: blazing_skeleton, detect-tag: faultline_blazing,
+     where: "2% of skeletons, strays and bogged that spawn naturally, and some raid skeletons.", does: "Fire-proof and always burning: its arrows set you on fire.",
+     drops: ["1-2 Blaze Powder|50%"]}
+  - {chapter: enemies, name: "Splitting Creeper", icon: splitting_creeper, detect-tag: faultline_splitter,
+     where: "2% of creepers that spawn naturally.", does: "When it explodes, or when you kill it, it splits into 2-3 Mini Creepers: half size, 6 health, a 1-second fuse and a small blast. Minis don't split again and drop nothing."}
+  - {chapter: enemies, name: "Elite Mob", icon: elite_mob, detect-tag: faultline_elite,
+     where: "1% of hostile mobs that spawn naturally (any kind), and some mobs in raids. Look for the gold ★ Elite name.",
+     does: "Double health, 50% more damage, faster and a little bigger. Kill it for double drops, triple XP and bonus loot.",
+     drops: ["Its normal drops twice|100%", "2-5 Bottles o' Enchanting|40%", "2-6 Iron Ingots|35%", "1-3 Emeralds|25%", "Golden Apple|15%", "1-2 Diamonds|10%", "Goodie Bag|4%"]}
   - {chapter: friends, id: caravan_merchant, name: "Caravan Merchant", icon: caravan_merchant, detect-tag: faultline_caravan,
      where: "Every 3 hours the Caravan sets up camp 40-100 blocks from a random player for one hour (the whole server is told where; /caravan says where he is or when he's back).",
      does: "Sells rare things for diamonds, emeralds and netherite: Totems, Elytra, Mythic Goodie Bags, top enchanted books, smithing templates, a Nether Star, a Bait Worm, sometimes even the Ankh or the Cross. 8 offers each visit, a few of each."}

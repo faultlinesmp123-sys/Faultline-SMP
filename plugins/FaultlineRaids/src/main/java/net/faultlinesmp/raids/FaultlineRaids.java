@@ -143,6 +143,7 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
     static final String SHIELD_TAG = "faultline_shieldbearer";
 
     final Random random = new Random();
+    Elites elites;
     private NamespacedKey omenKey;
     private NamespacedKey skeletonOmenKey;
     private NamespacedKey eggKey;
@@ -263,6 +264,8 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(this, this);
         piglins = new Piglins(this);
         getServer().getPluginManager().registerEvents(piglins, this);
+        elites = new Elites(this); // 1.2.0: elite mobs + mutations, in the world and in raids
+        getServer().getPluginManager().registerEvents(elites, this);
         getServer().getScheduler().runTaskTimer(this, () -> { try { secondTick(); } catch (RuntimeException ex) { logPart("raid timer", ex); } }, 20L, 20L);
         getServer().getScheduler().runTaskTimer(this, () -> { try { specialTick(); } catch (RuntimeException ex) { logPart("special mobs", ex); } }, 2L, 2L);
         getCommand("zraid").setExecutor(new RaidCommand());
@@ -686,6 +689,8 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
             if (mob == null) continue;
             tag(mob, RAID_TAG); // (and its horse, for Horsemen)
             if (blood) bloodBuff(mob);
+            if (elites != null && mob.getScoreboardTags().stream().noneMatch(t -> t.contains("boss") || t.contains("bulwark") || t.contains("hog")
+                    || t.contains("commander") || t.contains("captain"))) elites.raidRoll(mob);
             if (mob instanceof Mob m) {
                 m.setRemoveWhenFarAway(false); // don't despawn mid-raid
                 LivingEntity t = nearestVillagerOrPlayer(raid.center, 64);
@@ -807,6 +812,7 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
             mobRaid.remove(id);
             Entity e = Bukkit.getEntity(id);
             if (e != null && e.isValid()) {
+                if (elites != null) elites.release(e); // a Looter Zombie's stolen things aren't lost with it
                 e.getWorld().spawnParticle(Particle.LARGE_SMOKE, e.getLocation().add(0, 1, 0), 8, 0.3, 0.5, 0.3, 0.01);
                 e.remove();
             }
@@ -2295,6 +2301,18 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
                     for (int i = 0; i < amount; i++) target.getInventory().addItem(piglins.horn(level)).values()
                             .forEach(left -> target.getWorld().dropItemNaturally(target.getLocation(), left));
                     return msg(sender, ChatColor.GREEN + "Gave " + target.getName() + " " + amount + "x Piglin War Horn " + roman(Math.max(3, Math.min(5, level))) + ".");
+                }
+                case "elite", "mutant" -> {
+                    if (!(sender instanceof Player p)) return msg(sender, "Only players can do that.");
+                    boolean mutant = sub.equals("mutant");
+                    String what = args.length > 1 ? args[1].toLowerCase() : (mutant ? "looter" : "zombie");
+                    EntityType type = mutant ? Elites.MUTANT_TYPES.get(what) : null;
+                    if (!mutant) try { type = EntityType.valueOf(what.toUpperCase()); } catch (IllegalArgumentException ex) { type = null; }
+                    if (type == null) return msg(sender, ChatColor.RED + (mutant ? "Usage: /zraid mutant <looter|blazing|splitter> [elite]" : "Usage: /zraid elite <mob type>"));
+                    org.bukkit.block.Block b = p.getTargetBlockExact(30);
+                    Location at = b != null ? b.getLocation().add(0.5, 1, 0.5) : p.getLocation();
+                    LivingEntity m = elites.spawn(at, type, !mutant || (args.length > 2 && args[2].equalsIgnoreCase("elite")), mutant);
+                    return msg(sender, m == null ? ChatColor.RED + "That mob can't be one." : ChatColor.GREEN + "Spawned " + ChatColor.stripColor(m.getCustomName()) + ".");
                 }
                 case "skeletonarmy" -> {
                     if (!(sender instanceof Player p)) return msg(sender, "Only players can do that.");

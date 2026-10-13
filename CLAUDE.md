@@ -688,6 +688,8 @@ Notes:
   illegal; no value-spike line for 10 min after a death (picking your drops back up), and spikes say "after opening a chest
   / ender chest" when one was opened in the last 35 s; `/suggest` falls back to the LOGS channel when there's no public
   webhook (one-channel setups: only `logs-webhook-url` + `mirror-public: true` = chat in the staff channel). Tested (`WatchTest`).
+  1.6.17: `Discord.logsWarning()`: an empty / invalid `logs-webhook-url` while the public one works (TNT, whispers, grief,
+  Watch silently going nowhere) is warned in the console on load, to ops on join and in `/discord status`.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

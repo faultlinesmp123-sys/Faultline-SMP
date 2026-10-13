@@ -164,6 +164,19 @@ final class Discord implements Listener {
             if (m != null) b.add(m); else index.getLogger().warning("Unknown discord.logs.blocks material: " + s);
         }
         blocks = b;
+        String w = logsWarning();
+        if (w != null) index.getLogger().warning(w);
+    }
+
+    /** 1.6.17: why the staff logs (TNT, whispers, grief, x-ray, alerts) aren't being sent, or null when they are. */
+    String logsWarning() {
+        if (!enabled) return null;
+        String u = logs.url == null ? "" : logs.url.trim();
+        if (u.isEmpty() && pub.on())
+            return "Discord: discord.logs-webhook-url is EMPTY, so TNT, whispers, grief, x-ray and Watch alerts go nowhere (only chat/joins/deaths go to discord.webhook-url). "
+                    + "Put your staff channel's webhook in discord.logs-webhook-url (and empty webhook-url if it's the same channel), then /discord.";
+        if (!u.isEmpty() && !logs.on()) return "Discord: discord.logs-webhook-url isn't a valid https:// webhook URL (check for spaces or missing quotes).";
+        return null;
     }
 
     private static Set<String> lower(List<String> l) {
@@ -220,6 +233,8 @@ final class Discord implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onJoin(PlayerJoinEvent e) {
+        String w = e.getPlayer().isOp() ? logsWarning() : null;
+        if (w != null) Bukkit.getScheduler().runTaskLater(index, () -> e.getPlayer().sendMessage(ChatColor.RED + "[Faultline] " + w), 60L);
         if (!joins || !on() || vanished(e.getPlayer())) return;
         post("➕ **" + esc(e.getPlayer().getName()) + "** joined (" + visible(null) + " online)");
     }

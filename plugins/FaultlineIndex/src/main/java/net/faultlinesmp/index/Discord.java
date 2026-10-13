@@ -195,7 +195,7 @@ final class Discord implements Listener {
 
     String status() {
         String sg = suggestUrl != null && (suggestUrl.startsWith("https://") || suggestUrl.startsWith("http://127.0.0.1")) ? "own channel"
-                : pub.on() ? "public channel" : "off";
+                : pub.on() ? "public channel" : logs.on() ? "logs channel" : "off";
         return "public " + (pub.on() ? "on (" + pub.size() + " queued)" : "off") + ", logs " + (logs.on() ? "on (" + logs.size() + " queued)" : "off")
                 + ", suggestions " + sg;
     }
@@ -369,7 +369,8 @@ final class Discord implements Listener {
         if (!enabled) return null;
         String u = suggestUrl;
         if (u != null && (u.startsWith("https://") || u.startsWith("http://127.0.0.1"))) return u;
-        return pub.on() ? pub.url : null;
+        if (pub.on()) return pub.url;
+        return logs.on() ? logs.url : null; // 1.6.16: one-channel setups (only the logs webhook) still get suggestions
     }
 
     /** A /suggest as its own embed (number, text, who, their head), so people can react to vote on it. */

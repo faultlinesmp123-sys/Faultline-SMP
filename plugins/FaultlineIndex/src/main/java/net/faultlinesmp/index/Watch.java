@@ -835,6 +835,10 @@ final class Watch implements Listener, CommandExecutor, TabCompleter {
             } else m.hover = 0;
             // speed
             double limit = cfg().getDouble("speed.blocks-per-second", 16);
+            try { // Hermes/Spectre boots, the Harpy Ring...: movement speed modifiers (base 0.1)
+                AttributeInstance ms = p.getAttribute(Attribute.MOVEMENT_SPEED);
+                if (ms != null && ms.getValue() > 0.1) limit *= ms.getValue() / 0.1;
+            } catch (RuntimeException | LinkageError ignored) { }
             PotionEffect sp = p.getPotionEffect(PotionEffectType.SPEED);
             if (sp != null) limit += 3 * (sp.getAmplifier() + 1);
             if (p.hasPotionEffect(PotionEffectType.DOLPHINS_GRACE) || p.isSwimming()) limit += 8;
@@ -928,8 +932,10 @@ final class Watch implements Listener, CommandExecutor, TabCompleter {
     String illegal(ItemStack it) {
         ItemMeta meta = it.hasItemMeta() ? it.getItemMeta() : null;
         if (meta != null) for (NamespacedKey k : meta.getPersistentDataContainer().getKeys()) {
-            String ns = k.getNamespace();
-            if (ns.startsWith("faultline") || ns.startsWith("limbo") || ns.startsWith("dropheads")) return null;
+            if (ours(k.getNamespace())) return null;
+        }
+        if (meta != null) {
+            try { if (meta.hasItemModel() && ours(meta.getItemModel().getNamespace())) return null; } catch (RuntimeException | LinkageError ignored) { }
         }
         if (illegal.contains(it.getType())) return "can't be had in survival";
         if (it.getAmount() > it.getMaxStackSize()) return "stacked to " + it.getAmount() + " (max " + it.getMaxStackSize() + ")";
@@ -939,9 +945,22 @@ final class Watch implements Listener, CommandExecutor, TabCompleter {
         if (meta instanceof EnchantmentStorageMeta esm) en.putAll(esm.getStoredEnchants());
         for (var e : en.entrySet()) if (e.getValue() > e.getKey().getMaxLevel())
             return e.getKey().getKey().getKey().replace('_', ' ') + " " + e.getValue() + " (max " + e.getKey().getMaxLevel() + ")";
-        if (meta.hasAttributeModifiers() && cfg().getBoolean("illegal.attribute-modifiers", true)) return "custom attribute modifiers";
+        if (meta.hasAttributeModifiers() && cfg().getBoolean("illegal.attribute-modifiers", true)) {
+            var mods = meta.getAttributeModifiers();
+            if (mods != null) for (var m : mods.values()) if (!ours(m.getKey().getNamespace())) return "custom attribute modifiers";
+        }
         return null;
     }
+
+    static boolean ours(String ns) { return ns.startsWith("faultline") || ns.startsWith("limbo") || ns.startsWith("dropheads"); }
+
+    private final Map<UUID, Long> usedStorage = new HashMap<>();
+
+    /** Deaths / respawns: picking your own things back up isn't a "gain". */
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onPlayerDeath(org.bukkit.event.entity.PlayerDeathEvent e) { deathAt.put(e.getEntity().getUniqueId(), System.currentTimeMillis()); }
+
+    private final Map<UUID, Long> deathAt = new HashMap<>();
 
     private void valueCheck(Player p, Map<Material, Integer> counts) {
         double total = 0;
@@ -949,18 +968,23 @@ final class Watch implements Listener, CommandExecutor, TabCompleter {
         Double before = lastValue.put(p.getUniqueId(), total);
         Map<Material, Integer> prevCounts = lastCounts.put(p.getUniqueId(), counts);
         if (before == null || prevCounts == null) return;
+        Long died = deathAt.get(p.getUniqueId());
+        if (died != null && System.currentTimeMillis() - died < 10 * 60000L) return; // collecting their own drops
         double gain = total - before;
         if (gain < cfg().getDouble("value.spike", 300)) return;
         Map<Material, Integer> up = new HashMap<>();
         counts.forEach((m, n) -> { int d = n - prevCounts.getOrDefault(m, 0); if (d > 0) up.put(m, d); });
         record(p, "value", Sev.LOG, "📈 " + b(p.getName()) + " gained about " + Math.round(gain) + " diamonds' worth in 30 s (" + kinds(up) + "), now "
-                + Math.round(total) + " in their inventory, at " + Discord.where(p.getLocation()));
+                + Math.round(total) + " in their inventory" + (System.currentTimeMillis() - usedStorage.getOrDefault(p.getUniqueId(), 0L) < 35000 ? ", after opening a chest / ender chest" : "")
+                + ", at " + Discord.where(p.getLocation()));
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onOpen(InventoryOpenEvent e) {
-        if (!(e.getPlayer() instanceof Player p) || p.getGameMode() == GameMode.CREATIVE || !enabled("illegal")) return;
+        if (!(e.getPlayer() instanceof Player p)) return;
         Inventory top = e.getInventory();
+        if (top.getLocation() != null || top.getType() == org.bukkit.event.inventory.InventoryType.ENDER_CHEST) usedStorage.put(p.getUniqueId(), System.currentTimeMillis());
+        if (p.getGameMode() == GameMode.CREATIVE || !enabled("illegal")) return;
         if (top.getLocation() == null) return;
         List<String> found = new ArrayList<>();
         for (ItemStack it : top.getContents()) {
@@ -1117,6 +1141,7 @@ final class Watch implements Listener, CommandExecutor, TabCompleter {
         movers.remove(u);
         lastValue.remove(u);
         lastCounts.remove(u);
+        usedStorage.remove(u);
         Vl v = vls.get(u);
         if (v != null) v.recent.clear();
     }

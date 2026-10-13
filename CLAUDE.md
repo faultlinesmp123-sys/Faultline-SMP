@@ -683,6 +683,11 @@ Notes:
   `camera.no-clip` (false) cancels moves whose feet/eye end inside an occluding block (spectator x-ray); stuck = lifted out
   the top. Tested: `WatchTest` (index: x-rayer vs cave finds vs branch miner, placed ores, reach, killaura, tagged parts,
   fly, illegal, value spike, grief, /watch, log file, no IP stored), `CameraTest` (items).
+- **Index 1.6.16 (Watch fixes)**: the speed limit scales with the MOVEMENT_SPEED attribute (Hermes/Spectre boots,
+  Harpy Ring); an item whose item model or every attribute modifier key is in our namespaces (`Watch.ours`) is never
+  illegal; no value-spike line for 10 min after a death (picking your drops back up), and spikes say "after opening a chest
+  / ender chest" when one was opened in the last 35 s; `/suggest` falls back to the LOGS channel when there's no public
+  webhook (one-channel setups: only `logs-webhook-url` + `mirror-public: true` = chat in the staff channel). Tested (`WatchTest`).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

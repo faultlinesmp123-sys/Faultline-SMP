@@ -143,8 +143,8 @@ final class Discord implements Listener {
         }
         patterns = p;
         enabled = c.getBoolean("discord.enabled", true);
-        pub.url = c.getString("discord.webhook-url", "");
-        logs.url = c.getString("discord.logs-webhook-url", "");
+        pub.url = cleanUrl(c.getString("discord.webhook-url", ""));
+        logs.url = cleanUrl(c.getString("discord.logs-webhook-url", ""));
         suggestUrl = c.getString("discord.suggestions-webhook-url", "");
         username = c.getString("discord.username", "Faultline SMP");
         chat = c.getBoolean("discord.public.chat", true);
@@ -166,6 +166,41 @@ final class Discord implements Listener {
         blocks = b;
         String w = logsWarning();
         if (w != null) index.getLogger().warning(w);
+        if (!on() && new java.io.File(index.getDataFolder(), "config.yml").exists())
+            for (String why : diagnose()) index.getLogger().warning("Discord bridge off: " + why);
+    }
+
+    /**
+     * 1.6.18: why the bridge is off, in plain words: config.yml has a YAML error (Bukkit then silently uses the defaults,
+     * empty URLs), or a URL is empty / mistyped (shown up to "/webhooks/", never the token).
+     */
+    List<String> diagnose() {
+        List<String> out = new ArrayList<>();
+        java.io.File f = new java.io.File(index.getDataFolder(), "config.yml");
+        try {
+            new org.bukkit.configuration.file.YamlConfiguration().load(f);
+        } catch (org.bukkit.configuration.InvalidConfigurationException e) {
+            String m = String.valueOf(e.getMessage());
+            java.util.regex.Matcher lm = Pattern.compile("line (\\d+), column (\\d+)").matcher(m);
+            String where = lm.find() ? " near line " + lm.group(1) + ", column " + lm.group(2) : "";
+            String first = m.split("\n")[0];
+            out.add("config.yml is BROKEN" + where + " (" + first + "), so the server ignores the whole file. Fix that line (a stray word, a missing quote or colon, tabs instead of spaces), save, then /discord.");
+            return out;
+        } catch (Exception e) {
+            out.add("Couldn't read config.yml: " + e.getMessage());
+            return out;
+        }
+        if (!enabled) out.add("discord.enabled is false.");
+        for (String[] k : new String[][]{{"discord.webhook-url", pub.url}, {"discord.logs-webhook-url", logs.url}}) {
+            String u = k[1] == null ? "" : k[1].trim();
+            if (u.isEmpty()) { out.add(k[0] + " is empty."); continue; }
+            if (!u.startsWith("https://")) {
+                int cut = u.indexOf("/webhooks/");
+                String shown = cut > 0 ? u.substring(0, cut + 10) + "..." : u.substring(0, Math.min(u.length(), 12)) + "...";
+                out.add(k[0] + " doesn't start with https:// (it starts \"" + shown + "\"). Check for typos.");
+            }
+        }
+        return out;
     }
 
     /** 1.6.17: why the staff logs (TNT, whispers, grief, x-ray, alerts) aren't being sent, or null when they are. */
@@ -177,6 +212,15 @@ final class Discord implements Listener {
                     + "Put your staff channel's webhook in discord.logs-webhook-url (and empty webhook-url if it's the same channel), then /discord.";
         if (!u.isEmpty() && !logs.on()) return "Discord: discord.logs-webhook-url isn't a valid https:// webhook URL (check for spaces or missing quotes).";
         return null;
+    }
+
+    /** Spaces, <angle brackets> Discord adds when copying, and an upper-case scheme are forgiven. */
+    static String cleanUrl(String u) {
+        if (u == null) return "";
+        u = u.trim();
+        if (u.startsWith("<") && u.endsWith(">")) u = u.substring(1, u.length() - 1).trim();
+        if (u.regionMatches(true, 0, "https://", 0, 8)) u = "https://" + u.substring(8);
+        return u;
     }
 
     private static Set<String> lower(List<String> l) {

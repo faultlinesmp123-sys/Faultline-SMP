@@ -173,7 +173,12 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
         getCommand("discord").setExecutor((sender, cmd, label, args) -> {
             if (!sender.hasPermission("faultlineindex.admin")) { sender.sendMessage(ChatColor.RED + "You don't have permission to do that."); return true; }
             reloadConfig(); discord.reload(); watch.reload();
-            if (!discord.on()) { sender.sendMessage(ChatColor.YELLOW + "The Discord bridge is off: set discord.webhook-url (public) and/or discord.logs-webhook-url (staff logs) in plugins/FaultlineIndex/config.yml, then /discord test."); return true; }
+            if (!discord.on()) {
+                sender.sendMessage(ChatColor.YELLOW + "The Discord bridge is off. Why:");
+                for (String why : discord.diagnose()) sender.sendMessage(ChatColor.RED + " - " + why);
+                sender.sendMessage(ChatColor.GRAY + "Put the staff channel's webhook in discord.logs-webhook-url in plugins/FaultlineIndex/config.yml, then /discord.");
+                return true;
+            }
             if (args.length == 0 || args[0].equalsIgnoreCase("status")) { sender.sendMessage(ChatColor.GOLD + "Discord: " + ChatColor.WHITE + discord.status()); String w = discord.logsWarning(); if (w != null) sender.sendMessage(ChatColor.RED + w); return true; }
             String msg = args.length > 1 ? String.join(" ", Arrays.copyOfRange(args, 1, args.length)) : "Faultline SMP is connected to Discord.";
             discord.pub.add(msg);

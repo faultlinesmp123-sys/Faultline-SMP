@@ -133,6 +133,7 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
     @Override
     public void onEnable() {
         self = this;
+        repairConfig();
         bookKey = new NamespacedKey(this, "index_book");
         loadContent();
         dataFile = new File(getDataFolder(), "progress.yml");
@@ -172,6 +173,8 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
         getCommand("suggestions").setExecutor(suggestions);
         getCommand("discord").setExecutor((sender, cmd, label, args) -> {
             if (!sender.hasPermission("faultlineindex.admin")) { sender.sendMessage(ChatColor.RED + "You don't have permission to do that."); return true; }
+            String fixed = repairConfig();
+            if (fixed != null) sender.sendMessage(ChatColor.GREEN + "Fixed config.yml: " + fixed);
             reloadConfig(); discord.reload(); watch.reload();
             if (!discord.on()) {
                 sender.sendMessage(ChatColor.YELLOW + "The Discord bridge is off. Why:");
@@ -195,6 +198,38 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
             return e == null || !e.isValid();
         }), 20L * 60, 20L * 60);
         getLogger().info("Faultline Index loaded: " + entries.size() + " entries in " + chapters.size() + " chapters.");
+    }
+
+    /**
+     * 1.6.19: text copied from Discord / a browser / chat often brings invisible characters that YAML can't read:
+     * non-breaking spaces as indentation, tabs, zero-width spaces, a byte-order mark, Windows line ends. Any of them makes
+     * Bukkit ignore the WHOLE config.yml (every webhook "empty"). They're replaced in the file before it's read; returns
+     * what was fixed, or null.
+     */
+    String repairConfig() {
+        File f = new File(getDataFolder(), "config.yml");
+        if (!f.isFile()) return null;
+        try {
+            String raw = java.nio.file.Files.readString(f.toPath(), StandardCharsets.UTF_8);
+            List<String> what = new ArrayList<>();
+            String s = raw;
+            if (s.startsWith("\uFEFF")) { s = s.substring(1); what.add("a byte-order mark"); }
+            if (s.contains("\r")) { s = s.replace("\r\n", "\n").replace("\r", "\n"); what.add("Windows line ends"); }
+            if (s.indexOf('\u00A0') >= 0 || s.indexOf('\u2007') >= 0 || s.indexOf('\u202F') >= 0) {
+                s = s.replace('\u00A0', ' ').replace('\u2007', ' ').replace('\u202F', ' '); what.add("non-breaking spaces");
+            }
+            if (s.matches("(?s).*[\u200B\u200C\u200D\u2060\uFEFF].*")) { s = s.replaceAll("[\u200B\u200C\u200D\u2060\uFEFF]", ""); what.add("invisible zero-width characters"); }
+            if (s.indexOf('\t') >= 0) { s = s.replace("\t", "  "); what.add("tabs"); }
+            if (what.isEmpty()) return null;
+            java.nio.file.Files.copy(f.toPath(), new File(getDataFolder(), "config.yml.broken").toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            java.nio.file.Files.writeString(f.toPath(), s, StandardCharsets.UTF_8);
+            String msg = String.join(", ", what) + " (the old file is kept as config.yml.broken)";
+            getLogger().warning("Fixed config.yml: " + msg);
+            return msg;
+        } catch (IOException | RuntimeException e) {
+            getLogger().warning("Couldn't check config.yml: " + e.getMessage());
+            return null;
+        }
     }
 
     @Override

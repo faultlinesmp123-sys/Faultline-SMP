@@ -693,6 +693,8 @@ Notes:
   1.6.18: `/discord` with the bridge off says WHY (`Discord.diagnose()`: config.yml has a YAML error + its line, since
   Bukkit then ignores the whole file; or each URL empty / not https://, shown only up to "/webhooks/"); also in the
   console on load. `cleanUrl` forgives spaces, `<...>` and an upper-case scheme. Tested (`DiagTest`).
+  1.6.19: `FaultlineIndex.repairConfig()` (on enable and every `/discord`) replaces what copy-pasting from Discord/browsers
+  brings into config.yml (non-breaking spaces, tabs, zero-width chars, BOM, CRLF), keeping the original as `config.yml.broken`.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

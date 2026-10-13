@@ -41,12 +41,57 @@ discord:
       containers: true           # someone else's chest/barrel/shulker/... broken, or items taken from it (new containers only)
       ignore-same-kingdom: false # true = taking from a kingdom-mate's chest isn't logged
       throttle-seconds: 10       # lava/fire: one line per player per this many seconds, with a count
+    alert-role: ""               # 1.6.15: a Discord role ID to ping on Watch ALERTS (x-ray, cheats, illegal items, griefing, ban evasion); at most one ping a minute
     report-role: ""              # a Discord role ID to ping on every /report (Server Settings > Roles > right-click > Copy ID); "" = no ping
     ignore-commands: [login, l, log, register, reg, changepassword, changepass, cp]   # never logged (passwords)
   # announcements matching any of these (Java regexes) are posted
   forward: ["(?i)has been defeated", "(?i)has fallen", "(?i)has been laid to rest", "(?i)meteor", "(?i)caravan", "(?i)achievement",
             "(?i)is the first to", "(?i)aurora", "(?i)sandstorm", "(?i)blizzard", "(?i)eclipse", "(?i)locust", "(?i)ghost ship|wailing mary",
             "(?i)invasion", "(?i)boss rush"]
+
+# Watch (1.6.15): catches x-rayers, cheaters, dupers and griefers. Daily log files in plugins/FaultlineIndex/logs/,
+# /watch in game. LOG lines go to the Discord logs channel, ALERTS also to staff in game (faultlineindex.alerts) and ping
+# discord.logs.alert-role. Every check can be turned off with <check>.enabled: false.
+watch:
+  enabled: true
+  log-file: true
+  ingame-logs: false           # true = staff also see the LOG lines in game, not just alerts
+  alert-cooldown-minutes: 5    # one alert per player per kind in this time (the rest are LOG lines)
+  skip-bedrock: true           # Bedrock players' touch controls aren't judged by the cheat checks
+  xray:
+    window-minutes: 20
+    buried-share: 0.6          # at least this share of their veins were fully buried
+    discord-veins: true        # every diamond / debris vein found goes to the logs channel (buried or exposed, blocks dug since the last)
+    diamond: {min-buried: 4, max-blocks-per-vein: 60}
+    debris: {min-buried: 3, max-blocks-per-vein: 45}
+    emerald: {min-buried: 4, max-blocks-per-vein: 60}
+  reach: {tolerance: 0.75, count: 4, window-seconds: 60}
+  killaura: {max-angle: 75, count: 6, window-seconds: 60}
+  multiaura: {count: 3, window-seconds: 60}
+  fly: {seconds: 3}
+  speed: {blocks-per-second: 16, count: 2, window-seconds: 60}
+  nuker: {blocks-per-second: 22}
+  scaffold: {places-per-second: 12, max-pitch: 45, count: 6, window-seconds: 30}
+  illegal:
+    remove: false              # true = illegal items are taken away (always logged)
+    attribute-modifiers: true  # vanilla items with custom attribute modifiers count as illegal
+    items: [BEDROCK, BARRIER, COMMAND_BLOCK, CHAIN_COMMAND_BLOCK, REPEATING_COMMAND_BLOCK, COMMAND_BLOCK_MINECART, STRUCTURE_BLOCK, STRUCTURE_VOID,
+            JIGSAW, DEBUG_STICK, LIGHT, KNOWLEDGE_BOOK, END_PORTAL_FRAME, SPAWNER, TRIAL_SPAWNER, VAULT, REINFORCED_DEEPSLATE, BUDDING_AMETHYST,
+            PETRIFIED_OAK_SLAB, FARMLAND, DIRT_PATH, FROGSPAWN, TEST_BLOCK, TEST_INSTANCE_BLOCK]
+  value:
+    spike: 300                 # log a player whose valuables jump by this many diamonds' worth in 30 s
+  handoffs:
+    min-worth: 9               # log valuables picked up that someone else dropped, worth at least this many diamonds
+  grief:
+    min-built: 20              # a chunk's main builder needs this many placed blocks there
+    log-blocks: 8              # breaking this many in someone else's build = a LOG line
+    alert-blocks: 64           # ...this many = an ALERT
+    summary-seconds: 20
+    ignore-same-kingdom: false
+    explosion-min-blocks: 6
+    explosion-alert-blocks: 30
+  creative:
+    min-items: 64              # creative inventory takes are summed up every 30 s
 
 # /report <player> <reason>: to the Discord logs channel, online staff (faultlineindex.reports) and reports.yml.
 reports:

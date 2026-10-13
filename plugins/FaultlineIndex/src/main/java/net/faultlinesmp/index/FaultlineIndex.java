@@ -126,6 +126,7 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
     final IndexForms forms = new IndexForms(this);
     Museum museum;
     Discord discord;
+    Watch watch;
 
     // ===================== LIFECYCLE =====================
 
@@ -155,6 +156,10 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
         discord = new Discord(this);
         getServer().getPluginManager().registerEvents(discord, this);
         getServer().getPluginManager().registerEvents(new Grief(this), this); // 1.6.14: grief logs (staff channel)
+        watch = new Watch(this); // 1.6.15: x-ray, cheats, dupes, grief, alts
+        getServer().getPluginManager().registerEvents(watch, this);
+        getCommand("watch").setExecutor(watch);
+        getCommand("watch").setTabCompleter(watch);
         getCommand("serverstats").setExecutor(new ServerStats(this));
         Reports reports = new Reports(this);
         getCommand("report").setExecutor(reports);
@@ -167,7 +172,7 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
         getCommand("suggestions").setExecutor(suggestions);
         getCommand("discord").setExecutor((sender, cmd, label, args) -> {
             if (!sender.hasPermission("faultlineindex.admin")) { sender.sendMessage(ChatColor.RED + "You don't have permission to do that."); return true; }
-            reloadConfig(); discord.reload();
+            reloadConfig(); discord.reload(); watch.reload();
             if (!discord.on()) { sender.sendMessage(ChatColor.YELLOW + "The Discord bridge is off: set discord.webhook-url (public) and/or discord.logs-webhook-url (staff logs) in plugins/FaultlineIndex/config.yml, then /discord test."); return true; }
             if (args.length == 0 || args[0].equalsIgnoreCase("status")) { sender.sendMessage(ChatColor.GOLD + "Discord: " + ChatColor.WHITE + discord.status()); return true; }
             String msg = args.length > 1 ? String.join(" ", Arrays.copyOfRange(args, 1, args.length)) : "Faultline SMP is connected to Discord.";
@@ -191,6 +196,7 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
     public void onDisable() {
         saveProgress();
         if (museum != null) museum.save();
+        if (watch != null) try { watch.shutdown(); } catch (RuntimeException ignored) { }
         if (discord != null) try { discord.serverStopping(); } catch (RuntimeException ignored) { }
     }
 

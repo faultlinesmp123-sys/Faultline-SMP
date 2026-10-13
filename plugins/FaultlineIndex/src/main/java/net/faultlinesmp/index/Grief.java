@@ -103,8 +103,18 @@ final class Grief implements Listener {
 
     // ---------------------------------------------------------------- containers
 
+    /** Blocks that are containers (1.6.15: checked before getState(), which copies a whole block entity, on every block). */
+    static boolean container(Material m) {
+        if (org.bukkit.Tag.SHULKER_BOXES.isTagged(m)) return true;
+        return CONTAINERS.contains(m);
+    }
+
+    static final java.util.Set<Material> CONTAINERS = java.util.Set.of(Material.CHEST, Material.TRAPPED_CHEST, Material.BARREL, Material.HOPPER,
+            Material.DROPPER, Material.DISPENSER, Material.FURNACE, Material.BLAST_FURNACE, Material.SMOKER, Material.BREWING_STAND, Material.CRAFTER);
+
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPlace(BlockPlaceEvent e) {
+        if (!container(e.getBlockPlaced().getType())) return;
         BlockState st = e.getBlockPlaced().getState();
         if (!(st instanceof Container c)) return;
         c.getPersistentDataContainer().set(placer, PersistentDataType.STRING, e.getPlayer().getUniqueId() + ";" + e.getPlayer().getName());
@@ -130,7 +140,7 @@ final class Grief implements Listener {
         return false;
     }
 
-    private static int kingdom(UUID id) {
+    static int kingdom(UUID id) {
         try {
             org.bukkit.plugin.Plugin k = org.bukkit.Bukkit.getPluginManager().getPlugin("FaultlineKingdoms");
             if (k == null || !k.isEnabled()) return 0;
@@ -142,6 +152,7 @@ final class Grief implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBreak(BlockBreakEvent e) {
+        if (!container(e.getBlock().getType())) return;
         BlockState st = e.getBlock().getState();
         String[] o = owner(st);
         if (skip(e.getPlayer(), o) || !on("containers")) return;

@@ -586,6 +586,7 @@ camera:
   max-distance: 64            # how far from where you started the camera can fly (0 = no limit)
   combat-seconds: 10          # can't start it this soon after hitting / being hit
   combat-includes-mobs: true  # ...by monsters too, not just players
+  no-clip: false              # 1.2.25: false = the camera can't fly inside solid blocks (from inside the ground you see every cave and base: x-ray)
 
 # Fishing (1.2.18): every fish has a weight; all-time records per species; tournaments (/fishing start [minutes]).
 fishing:

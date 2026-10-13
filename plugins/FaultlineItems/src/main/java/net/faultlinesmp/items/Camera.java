@@ -172,6 +172,47 @@ final class Camera implements Listener, CommandExecutor {
         if (inCamera(e.getPlayer()) && !e.getPlayer().hasPermission("faultline.camera.unlimited")) e.setCancelled(true);
     }
 
+    /**
+     * 1.2.25: a spectator can open any chest, barrel or shulker and look inside (read-only, but it scouts bases): the
+     * camera can't open inventories at all (faultline.camera.unlimited can).
+     */
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
+    public void onOpen(org.bukkit.event.inventory.InventoryOpenEvent e) {
+        if (!(e.getPlayer() instanceof Player p) || !inCamera(p) || p.hasPermission("faultline.camera.unlimited")) return;
+        e.setCancelled(true);
+        p.sendActionBar(ChatColor.RED + "The camera can't look inside things.");
+    }
+
+    /**
+     * 1.2.25: spectator mode flies THROUGH blocks, and from inside the ground you see every cave, ore and hidden base
+     * around you (an x-ray within the tether). camera.no-clip (false) keeps the camera out of solid blocks: a move
+     * whose eye or feet would end inside an occluding block is cancelled.
+     */
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onMove(org.bukkit.event.player.PlayerMoveEvent e) {
+        Player p = e.getPlayer();
+        if (!inCamera(p) || p.hasPermission("faultline.camera.unlimited") || plugin.getConfig().getBoolean("camera.no-clip", false)) return;
+        Location to = e.getTo();
+        if (to == null || to.getWorld() == null) return;
+        if (solidAt(to) || solidAt(to.clone().add(0, p.getEyeHeight(), 0))) {
+            Location from = e.getFrom();
+            if (solidAt(from) || solidAt(from.clone().add(0, p.getEyeHeight(), 0))) { // already stuck (a block placed on them): out the top
+                Location up = from.clone();
+                for (int i = 0; i < 64 && (solidAt(up) || solidAt(up.clone().add(0, p.getEyeHeight(), 0))); i++) up.add(0, 1, 0);
+                e.setTo(up);
+                return;
+            }
+            e.setCancelled(true);
+            p.sendActionBar(ChatColor.RED + "The camera can't go inside blocks.");
+        }
+    }
+
+    static boolean solidAt(Location l) {
+        if (l.getWorld() == null || !l.getWorld().isChunkLoaded(l.getBlockX() >> 4, l.getBlockZ() >> 4)) return false;
+        org.bukkit.block.Block b = l.getBlock();
+        return b.getType().isOccluding();
+    }
+
     /** Leaving spectator any other way (another plugin, /gamemode) ends camera mode WITHOUT moving them (staff chose it). */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onMode(PlayerGameModeChangeEvent e) {

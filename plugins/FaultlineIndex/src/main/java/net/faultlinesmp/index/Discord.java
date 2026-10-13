@@ -344,6 +344,26 @@ final class Discord implements Listener {
         return true;
     }
 
+    private volatile long lastAlertPing;
+
+    /**
+     * A Watch ALERT (1.6.15: x-ray, reach, killaura, fly, nuker, illegal items, banned alts...): its own message in the
+     * logs channel straight away, pinging discord.logs.alert-role when set, at most one ping a minute (later alerts in
+     * that minute are posted without the ping). Returns false when the logs channel is off.
+     */
+    boolean alert(String text) {
+        if (!logs.on()) return false;
+        String role = index.getConfig().getString("discord.logs.alert-role", "");
+        long now = System.currentTimeMillis();
+        boolean ping = role != null && role.matches("\\d{5,25}") && now - lastAlertPing > 60000;
+        if (ping) lastAlertPing = now;
+        String content = (ping ? "<@&" + role + "> " : "") + text + " " + stamp();
+        String allowed = ping ? "{\"roles\":[\"" + role + "\"]}" : "{\"parse\":[]}";
+        String url = logs.url;
+        Bukkit.getScheduler().runTaskAsynchronously(index, () -> sendRaw(url, content.length() > 1900 ? content.substring(0, 1900) : content, allowed));
+        return true;
+    }
+
     /** Where /suggest posts: its own webhook, else the public channel (null = nowhere). */
     String suggestTarget() {
         if (!enabled) return null;

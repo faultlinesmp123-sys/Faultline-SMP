@@ -1,5 +1,5 @@
 name: FaultlineIndex
-version: '1.6.14'
+version: '1.6.15'
 main: net.faultlinesmp.index.FaultlineIndex
 api-version: '1.21'
 author: FaultlineSMP
@@ -35,6 +35,10 @@ commands:
     description: "Staff: the latest suggestions"
     usage: /suggestions [count]
     permission: faultlineindex.reports
+  watch:
+    description: "Staff: x-ray, cheat, dupe, grief and alt logs"
+    usage: /watch [<player>|log [player] [n]|xray [player]|alts <player>|check <player>|alerts]
+    permission: faultlineindex.watch
   discord:
     description: "Admin: test the Discord bridge (/discord test [message]); reloads its settings"
     usage: /discord [status|test [message]]
@@ -49,4 +53,13 @@ permissions:
     default: op
   faultlineindex.logged:
     description: Commands this player runs are posted to the Discord logs channel (ops always are)
+    default: false
+  faultlineindex.watch:
+    description: /watch (x-ray, cheat, grief and alt logs)
+    default: op
+  faultlineindex.alerts:
+    description: Get Watch alerts in game (x-ray, reach, fly, illegal items, griefing, ban evasion...)
+    default: op
+  faultlineindex.watch.exempt:
+    description: Not judged by Watch's cheat checks (ops are judged unless given this)
     default: false

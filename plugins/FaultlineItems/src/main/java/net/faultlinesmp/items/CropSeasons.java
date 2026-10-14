@@ -120,7 +120,10 @@ final class CropSeasons implements Listener, CommandExecutor {
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onHarvest(BlockDropItemEvent e) {
         if (!on()) return;
-        Crop c = byBlock.get(e.getBlockState().getType());
+        Material broken = e.getBlockState().getType();
+        // 1.2.29: never the pumpkin / melon block itself (a placed pumpkin broken again was a free extra pumpkin)
+        if (broken == Material.PUMPKIN || broken == Material.MELON) return;
+        Crop c = byBlock.get(broken);
         if (c == null || !inSeason(c) || e.getItems().isEmpty()) return;
         if (e.getBlockState().getBlockData() instanceof Ageable a && a.getAge() < a.getMaximumAge()) return;
         if (random.nextDouble() >= plugin.getConfig().getDouble("crop-seasons.harvest-bonus", 0.25)) return;

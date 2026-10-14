@@ -1491,7 +1491,7 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
      */
     int seen(Player p, Repair r) {
         int perfect = r.zone + r.zoneLen / 2;
-        int lag = (int) Math.max(1, Math.min(12, Math.round(p.getPing() / 50.0) + 1));
+        int lag = (int) Math.max(1, Math.min(12, Math.round(Edition.ping(p) / 50.0) + 1)); // 1.6.3: Bedrock players' real ping (Geyser)
         int best = (int) Math.round(r.cursor);
         double bestScore = Double.MAX_VALUE;
         for (int back = lag - 1; back <= lag + 1; back++) {

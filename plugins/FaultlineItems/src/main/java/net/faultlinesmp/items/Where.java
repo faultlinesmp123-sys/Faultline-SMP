@@ -190,21 +190,21 @@ final class Where implements Listener, CommandExecutor, TabCompleter {
         if (args.length > 0 && args[0].equalsIgnoreCase("all")) {
             List<Player> all = new ArrayList<>();
             for (Player o : Bukkit.getOnlinePlayers()) if (self == null || plugin.vanish == null || !plugin.vanish.vanished(o) || Vanish.sees(self)) all.add(o);
-            all.sort(Comparator.comparingInt(Player::getPing));
+            all.sort(Comparator.comparingInt(Edition::ping));
             if (self != null && Edition.bedrock(self)) {
                 StringBuilder s = new StringBuilder();
-                for (Player o : all) s.append(o.getName()).append(": ").append(pingColor(o.getPing()).toString().replace(ChatColor.COLOR_CHAR, '§')).append(o.getPing()).append(" ms§r\n");
+                for (Player o : all) s.append(o.getName()).append(": ").append(pingColor(Edition.ping(o)).toString().replace(ChatColor.COLOR_CHAR, '§')).append(Edition.ping(o)).append(" ms§r\n");
                 if (BedrockForms.menu(plugin, self, "Ping", s.toString().trim(), List.of("OK"), i -> { }, null)) return true;
             }
             sender.sendMessage(ChatColor.GOLD + "Ping (" + all.size() + " online):");
-            for (Player o : all) sender.sendMessage(ChatColor.GRAY + " " + o.getName() + ": " + pingColor(o.getPing()) + o.getPing() + " ms");
+            for (Player o : all) sender.sendMessage(ChatColor.GRAY + " " + o.getName() + ": " + pingColor(Edition.ping(o)) + Edition.ping(o) + " ms" + (Edition.bedrock(o) ? ChatColor.DARK_GRAY + " (Bedrock)" : ""));
             return true;
         }
         Player t = args.length > 0 ? Bukkit.getPlayerExact(args[0]) : self;
         if (t == null || (self != null && t != self && plugin.vanish != null && plugin.vanish.vanished(t) && !Vanish.sees(self))) {
             sender.sendMessage(ChatColor.RED + (args.length > 0 ? args[0] + " isn't online." : "/ping <player>")); return true;
         }
-        sender.sendMessage(ChatColor.GRAY + (t == self ? "Your ping: " : t.getName() + "'s ping: ") + pingColor(t.getPing()) + t.getPing() + " ms"
+        sender.sendMessage(ChatColor.GRAY + (t == self ? "Your ping: " : t.getName() + "'s ping: ") + pingColor(Edition.ping(t)) + Edition.ping(t) + " ms"
                 + (Edition.bedrock(t) ? ChatColor.DARK_GRAY + " (Bedrock)" : ""));
         return true;
     }

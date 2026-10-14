@@ -37,6 +37,29 @@ final class Edition {
         return yes;
     }
 
+    private static volatile Method geyserConnection, connectionPing;
+
+    /**
+     * The player's real ping. Geyser usually runs on the same machine as the server, so a Bedrock player's Java-side ping
+     * is Geyser's ~0 ms hop, not their connection: /ping showed 0 ms and timing checks gave them no allowance. For Bedrock
+     * players Geyser's own measurement (GeyserConnection#ping, by reflection) is used when it has one.
+     */
+    static int ping(Player p) {
+        int base = p.getPing();
+        if (!bedrock(p)) return base;
+        look();
+        try {
+            if (geyser == null) return base;
+            if (geyserConnection == null) {
+                geyserConnection = Class.forName("org.geysermc.geyser.api.GeyserApi").getMethod("connectionByUuid", UUID.class);
+                connectionPing = Class.forName("org.geysermc.geyser.api.connection.GeyserConnection").getMethod("ping");
+            }
+            Object conn = geyserConnection.invoke(geyser, p.getUniqueId());
+            if (conn != null && connectionPing.invoke(conn) instanceof Number n && n.intValue() > 0) return Math.max(base, n.intValue());
+        } catch (Throwable ignored) { }
+        return base;
+    }
+
     /** Forget a player who left (a UUID can come back on the other edition). */
     static void forget(UUID id) { YES.remove(id); NO_UNTIL.remove(id); }
 

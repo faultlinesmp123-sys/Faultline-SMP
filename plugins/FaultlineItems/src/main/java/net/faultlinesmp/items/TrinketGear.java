@@ -194,7 +194,9 @@ final class TrinketGear implements Listener {
             if (wearing(p, Piece.CREST)) {
                 double r = cfg("crest-radius", 10);
                 for (Player o : p.getWorld().getPlayers()) {
-                    if (o != p && o.getGameMode() != GameMode.SPECTATOR && o.getLocation().distanceSquared(p.getLocation()) <= r * r) near++;
+                    // 1.2.29: only players others can really see (spectators, creative and vanished staff gave away a hidden admin)
+                    if (o == p || (o.getGameMode() != GameMode.SURVIVAL && o.getGameMode() != GameMode.ADVENTURE) || vanished(o)) continue;
+                    if (o.getLocation().distanceSquared(p.getLocation()) <= r * r) near++;
                 }
                 near = Math.min(near, (int) cfg("crest-max", 4));
             }
@@ -203,6 +205,12 @@ final class TrinketGear implements Listener {
             if (sense) p.setMetadata("faultline_ore_sense", new FixedMetadataValue(plugin, true));
             else if (p.hasMetadata("faultline_ore_sense")) p.removeMetadata("faultline_ore_sense", plugin);
         }
+    }
+
+    /** Vanished staff (our /vanish, EssentialsX, SuperVanish all set this metadata). */
+    static boolean vanished(Player p) {
+        for (var v : p.getMetadata("vanished")) if (v.asBoolean()) return true;
+        return false;
     }
 
     private void set(Player p, Attribute a, NamespacedKey key, double amount) {
@@ -355,7 +363,7 @@ final class TrinketGear implements Listener {
             if (chest != null && chest.distanceSquared(p.getLocation()) <= bestD) { best = chest; what = "buried treasure"; }
             if (best == null) continue;
             int dist = (int) Math.round(best.distance(p.getLocation()));
-            p.sendActionBar(ChatColor.GOLD + "💰 " + what + ChatColor.GRAY + " · " + ChatColor.WHITE + dist + " blocks " + DeathSpot.away(p, new DeathSpot.Spot(best.getWorld().getName(), best.getBlockX(), best.getBlockY(), best.getBlockZ(), 0)).replaceAll("^\\d+ blocks ", ""));
+            p.sendActionBar(ChatColor.GOLD + "💰 " + what + ChatColor.GRAY + " · " + ChatColor.WHITE + DeathSpot.away(p, new DeathSpot.Spot(best.getWorld().getName(), best.getBlockX(), best.getBlockY(), best.getBlockZ(), 0)));
             if (now - treasurePing.getOrDefault(p.getUniqueId(), 0L) > 6000) {
                 treasurePing.put(p.getUniqueId(), now);
                 p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_CHIME, 0.6f, 0.6f + (float) Math.max(0, (30 - dist) / 30.0));

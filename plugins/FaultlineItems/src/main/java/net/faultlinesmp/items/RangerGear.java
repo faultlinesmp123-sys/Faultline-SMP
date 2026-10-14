@@ -235,12 +235,11 @@ final class RangerGear implements Listener {
         b.setPierceLevel(a.getPierceLevel());
         b.setFireTicks(a.getFireTicks());
         b.setPickupStatus(a.getPickupStatus());
-        for (NamespacedKey k : new NamespacedKey[]{bowEnchKey, fullKey}) {
-            String s = pdc.get(k, PersistentDataType.STRING);
-            if (s != null) b.getPersistentDataContainer().set(k, PersistentDataType.STRING, s);
-            Byte by = pdc.get(k, PersistentDataType.BYTE);
-            if (by != null) b.getPersistentDataContainer().set(k, PersistentDataType.BYTE, by);
-        }
+        // 1.2.29: each key read with its own type (reading the BYTE flag as a STRING threw, after the bounce arrow was
+        // already spawned: an enchanted bow + a Ricochet Charm left two arrows and an error)
+        String ench = pdc.get(bowEnchKey, PersistentDataType.STRING);
+        if (ench != null) b.getPersistentDataContainer().set(bowEnchKey, PersistentDataType.STRING, ench);
+        if (pdc.has(fullKey, PersistentDataType.BYTE)) b.getPersistentDataContainer().set(fullKey, PersistentDataType.BYTE, (byte) 1);
         Safe.vel(b, out);
         a.remove();
         at.getWorld().playSound(at, Sound.ITEM_TRIDENT_HIT_GROUND, 0.7f, 1.8f);

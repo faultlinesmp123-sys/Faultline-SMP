@@ -69,7 +69,9 @@ final class Elites implements Listener {
     static final List<String> DEFAULT_LOOT = List.of("DIAMOND:1-2:0.10", "EMERALD:1-3:0.25", "GOLDEN_APPLE:1-1:0.15",
             "EXPERIENCE_BOTTLE:2-5:0.40", "IRON_INGOT:2-6:0.35");
     static final Set<EntityType> NEVER = Set.of(EntityType.WARDEN, EntityType.WITHER, EntityType.ELDER_GUARDIAN, EntityType.ENDERMITE,
-            EntityType.SILVERFISH, EntityType.VEX, EntityType.GIANT);
+            EntityType.SILVERFISH, EntityType.VEX, EntityType.GIANT,
+            // 1.2.1: the mobs big farms are built on (gold, ender pearl, guardian and witch farms) would turn into loot farms
+            EntityType.ZOMBIFIED_PIGLIN, EntityType.ENDERMAN, EntityType.GUARDIAN, EntityType.WITCH);
 
     private final FaultlineRaids plugin;
     private final NamespacedKey stolenKey, healthKey, damageKey, speedKey, scaleKey;

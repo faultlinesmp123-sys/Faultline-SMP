@@ -765,6 +765,16 @@ Notes:
   LIL/IBI/LIL: BlockDropItemEvent raw iron/gold/copper stacks 20% -> ingots), Featherfall Charm (`featherfall`, FEATHER;
   craft FFF/FSF/FGF: FALL damage cancelled when fall distance <= 5.5). Modifiers removed on quit/disable. Index entries +
   icons (`events_assets.py`), Bedrock `items.tsv`. Tested (`TrinketTest`).
+- **Bug pass (Items 1.2.29, Raids 1.2.1, Ships 1.6.3)**: Ricochet read the BYTE `arrow_full` key as a STRING, so a
+  bounce off an enchanted bow threw after spawning its arrow (two arrows, books lost); the bounce now copies
+  `arrow_fenchants` (STRING) and `arrow_full` (BYTE) correctly and is spawned by type. Gladiator's Crest only counts
+  survival/adventure players who aren't vanished (`TrinketGear.vanished`). Treasure Sense uses `DeathSpot.away` (no "0
+  blocks right here"). **Bedrock ping**: Geyser runs on the same box, so `Player#getPing` reads ~0 ms for Bedrock players;
+  `Edition.ping(p)` (Items, Ships) asks Geyser's `connectionByUuid(uuid).ping()` by reflection and takes the higher one:
+  `/ping` (marks "(Bedrock)") and the Shipwright's Hammer timing use it. Crop seasons' harvest bonus skips the PUMPKIN /
+  MELON blocks (placing and re-breaking one was a free extra). Elites' `NEVER` adds Zombified Piglins, Endermen, Guardians
+  and Witches (mob farms were farming elite loot). The "Faultline SMP" sidebar's ping is a third-party plugin, not here.
+  Tested: `RangerTest`, `TrinketTest`, `FarmTest`, `WhereTest` (items), `EliteTest` (raids), `ShipFixTest`, `PingTest` (fake Geyser).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

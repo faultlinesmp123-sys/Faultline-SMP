@@ -94,9 +94,13 @@ final class Elites implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onSpawn(CreatureSpawnEvent e) {
-        if (!on() || e.getSpawnReason() != CreatureSpawnEvent.SpawnReason.NATURAL) return;
+        CreatureSpawnEvent.SpawnReason why = e.getSpawnReason();
+        if (!on() || (why != CreatureSpawnEvent.SpawnReason.NATURAL && why != CreatureSpawnEvent.SpawnReason.PATROL)) return;
         LivingEntity m = e.getEntity();
-        if (!(m instanceof Monster) || NEVER.contains(m.getType()) || m.getWorld().getName().equals("faultline_void")) return;
+        // 1.3.0: any hostile mob can mutate (phantoms, ghasts, hoglins...; never slimes or magma cubes: slime farms);
+        // only Monsters can turn Elite (the bonus loot)
+        if (!(m instanceof org.bukkit.entity.Enemy) || m instanceof org.bukkit.entity.Slime || NEVER.contains(m.getType())
+                || m.getWorld().getName().equals("faultline_void")) return;
         // other plugins tag their mobs right after spawning them: decide a tick later
         Bukkit.getScheduler().runTask(plugin, () -> {
             if (!m.isValid()) return;
@@ -114,20 +118,20 @@ final class Elites implements Listener {
     private void roll(LivingEntity m, double elite, double mutation) {
         var r = plugin.random;
         if (r.nextDouble() < mutation) mutate(m);
-        if (r.nextDouble() < elite) elite(m);
+        if (m instanceof Monster && r.nextDouble() < elite) elite(m);
     }
 
-    /** The mutation this kind of mob can have, or null. */
-    static String mutationFor(LivingEntity m) {
-        if (m instanceof Zombie && !(m instanceof PigZombie)) return LOOTER;
-        if (m.getType() == EntityType.SKELETON || m.getType() == EntityType.STRAY || m.getType() == EntityType.BOGGED) return BLAZING;
-        if (m instanceof Creeper) return SPLITTER;
-        return null;
-    }
-
+    /** A random mutation this kind of mob can have (1.3.0: 28 in all, Mutants.KINDS). */
     boolean mutate(LivingEntity m) {
-        String kind = mutationFor(m);
-        if (kind == null || m.getScoreboardTags().contains(MINI)) return false;
+        List<Mutants.Kind> can = plugin.mutants.candidates(m);
+        if (can.isEmpty()) return false;
+        return mutate(m, can.get(plugin.random.nextInt(can.size())));
+    }
+
+    boolean mutate(LivingEntity m, Mutants.Kind k) {
+        Set<String> tags = m.getScoreboardTags();
+        if (k == null || !k.fits().test(m) || tags.contains(MINI) || tags.contains(Mutants.MINION) || Mutants.kindOf(m) != null) return false;
+        String kind = k.tag();
         m.addScoreboardTag(kind);
         switch (kind) {
             case LOOTER -> {
@@ -140,13 +144,13 @@ final class Elites implements Listener {
                 m.setVisualFire(true);
             }
             case SPLITTER -> name(m, ChatColor.GREEN + "Splitting Creeper");
-            default -> { }
+            default -> plugin.mutants.apply(m, k);
         }
         return true;
     }
 
     void elite(LivingEntity m) {
-        if (m.getScoreboardTags().contains(ELITE) || m.getScoreboardTags().contains(MINI)) return;
+        if (m.getScoreboardTags().contains(ELITE) || m.getScoreboardTags().contains(MINI) || m.getScoreboardTags().contains(Mutants.MINION)) return;
         m.addScoreboardTag(ELITE);
         String base = m.getCustomName() != null ? ChatColor.stripColor(m.getCustomName()) : nice(m);
         name(m, ChatColor.GOLD + "★ Elite " + ChatColor.YELLOW + base);
@@ -334,13 +338,18 @@ final class Elites implements Listener {
         return !m.hasDisplayName() && !m.hasEnchants() && m.getPersistentDataContainer().getKeys().isEmpty();
     }
 
-    /** Admin: /zraid elite|mutant [type] spawns one where you look. */
-    LivingEntity spawn(Location at, EntityType type, boolean elite, boolean mutant) {
+    /** Admin: /zraid elite <type> spawns an Elite where you look. */
+    LivingEntity spawn(Location at, EntityType type, boolean elite) {
         if (!(at.getWorld().spawnEntity(at, type, false) instanceof LivingEntity m)) return null;
-        if (mutant && !mutate(m)) { m.remove(); return null; }
         if (elite) elite(m);
         return m;
     }
 
-    static Map<String, EntityType> MUTANT_TYPES = Map.of("looter", EntityType.ZOMBIE, "blazing", EntityType.SKELETON, "splitter", EntityType.CREEPER);
+    /** Admin: /zraid mutant <kind> [mob] [elite]. */
+    LivingEntity spawnMutant(Location at, Mutants.Kind k, EntityType type, boolean elite) {
+        if (!(at.getWorld().spawnEntity(at, type == null ? k.sample() : type, false) instanceof LivingEntity m)) return null;
+        if (!mutate(m, k)) { m.remove(); return null; }
+        if (elite) elite(m);
+        return m;
+    }
 }

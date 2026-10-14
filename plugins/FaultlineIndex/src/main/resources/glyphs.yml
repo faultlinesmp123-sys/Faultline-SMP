@@ -712,3 +712,78 @@ smelters_glove:
 featherfall_charm:
   large: 59301
   small: 58277
+plague_zombie:
+  large: 59302
+  small: 58278
+brute_zombie:
+  large: 59303
+  small: 58279
+bloated_zombie:
+  large: 59304
+  small: 58280
+gravecaller:
+  large: 59305
+  small: 58281
+twin_zombie:
+  large: 59306
+  small: 58282
+troll_zombie:
+  large: 59307
+  small: 58283
+dust_devil_husk:
+  large: 59308
+  small: 58284
+abyssal_drowned:
+  large: 59309
+  small: 58285
+sniper_skeleton:
+  large: 59310
+  small: 58286
+volley_skeleton:
+  large: 59311
+  small: 58287
+frost_skeleton:
+  large: 59312
+  small: 58288
+hexbolt_archer:
+  large: 59313
+  small: 58289
+phasing_skeleton:
+  large: 59314
+  small: 58290
+cursed_wither_skeleton:
+  large: 59315
+  small: 58291
+storm_creeper:
+  large: 59316
+  small: 58292
+magnetic_creeper:
+  large: 59317
+  small: 58293
+stealth_creeper:
+  large: 59318
+  small: 58294
+ender_creeper:
+  large: 59319
+  small: 58295
+weaver_spider:
+  large: 59320
+  small: 58296
+leaping_spider:
+  large: 59321
+  small: 58297
+broodmother:
+  large: 59322
+  small: 58298
+inferno_mob:
+  large: 59323
+  small: 58299
+shrieking_phantom:
+  large: 59324
+  small: 58300
+rampaging_hoglin:
+  large: 59325
+  small: 58301
+vampiric_mob:
+  large: 59326
+  small: 58302

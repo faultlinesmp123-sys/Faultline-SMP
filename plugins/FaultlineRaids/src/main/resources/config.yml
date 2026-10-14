@@ -162,3 +162,16 @@ elites:
   looter:
     steal-chance: 0.3        # per hit on a player (not while blocking)
     max-stacks: 3
+  # 1.3.0: 25 more mutants (28 in all; a mutating mob picks one its kind can have). /zraid mutant lists them.
+  # Turn some off by id, e.g. disabled-mutants: ["stealth", "magnetic"]
+  disabled-mutants: []
+  mutants:
+    phasing: {chance: 0.4}           # Phasing Skeleton: blinks 4-8 blocks away when a player hits it (3 s cooldown)
+    brute: {launch: 1.2}             # Brute Zombie: how hard its hits throw you
+    bloater: {radius: 4, damage: 8}  # Bloated Zombie: its death burst (no blocks broken)
+    vampiric: {heal: 0.5}            # heals this share of the damage it deals
+    weaver: {web-ticks: 100}         # Web Weaver: the cobweb at your feet lasts 5 s
+    sniper: {speed: 1.6, damage: 1.5}
+    gravecaller: {every-ticks: 200, max: 4}
+    magnetic: {radius: 7, pull: 0.18}
+    rampager: {charge: 1.4}

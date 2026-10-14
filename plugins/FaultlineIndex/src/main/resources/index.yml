@@ -778,14 +778,89 @@ entries:
      where: "Floats over a fallen meteor. 80 health.", does: "A big glowing blaze that throws fireballs at anyone going for the meteor's core.",
      drops: ["2-4 Blaze Rods|100%", "1-2 Diamonds|40%"]}
   - {chapter: enemies, name: "Looter Zombie", icon: looter_zombie, detect-tag: faultline_looter,
-     where: "2% of zombies, husks, drowned and zombie villagers that spawn naturally, and some raid zombies.",
+     where: "A mutant: 2% of zombies, husks, drowned and zombie villagers that spawn naturally (5% in raid waves) mutate, each into one of the mutations its kind can have. /zraid mutant lists them all.",
      does: "Its hits can STEAL a stack from your backpack (never your hotbar or armor), up to 3. It keeps what it took, even through restarts, and runs faster for a bit. Kill it and you get everything back.",
      drops: ["Everything it stole|100%"]}
   - {chapter: enemies, name: "Blazing Skeleton", icon: blazing_skeleton, detect-tag: faultline_blazing,
-     where: "2% of skeletons, strays and bogged that spawn naturally, and some raid skeletons.", does: "Fire-proof and always burning: its arrows set you on fire.",
+     where: "A mutant: 2% of skeletons, strays and bogged that spawn naturally (5% in raid waves) mutate, each into one of the mutations its kind can have. /zraid mutant lists them all.", does: "Fire-proof and always burning: its arrows set you on fire.",
      drops: ["1-2 Blaze Powder|50%"]}
   - {chapter: enemies, name: "Splitting Creeper", icon: splitting_creeper, detect-tag: faultline_splitter,
-     where: "2% of creepers that spawn naturally.", does: "When it explodes, or when you kill it, it splits into 2-3 Mini Creepers: half size, 6 health, a 1-second fuse and a small blast. Minis don't split again and drop nothing."}
+     where: "A mutant: 2% of creepers that spawn naturally (5% in raid waves) mutate, each into one of the mutations its kind can have. /zraid mutant lists them all.", does: "When it explodes, or when you kill it, it splits into 2-3 Mini Creepers: half size, 6 health, a 1-second fuse and a small blast. Minis don't split again and drop nothing."}
+  - {chapter: enemies, name: "Plague Zombie", icon: plague_zombie, detect-tag: faultline_plague,
+     where: "A mutant: 2% of zombies, husks, drowned and zombie villagers that spawn naturally (5% in raid waves) mutate, each into one of the mutations its kind can have. /zraid mutant lists them all.",
+     does: "Its hits poison you and make you hungry. When it dies it leaves a poison cloud behind: don't stand in it. Mutants drop only their normal loot."}
+  - {chapter: enemies, name: "Brute Zombie", icon: brute_zombie, detect-tag: faultline_brute,
+     where: "A mutant: 2% of zombies, husks, drowned and zombie villagers that spawn naturally (5% in raid waves) mutate, each into one of the mutations its kind can have. /zraid mutant lists them all.",
+     does: "Huge, with 50% more health, and it can't be knocked back. Its punches throw you back and up into the air. Mutants drop only their normal loot."}
+  - {chapter: enemies, name: "Bloated Zombie", icon: bloated_zombie, detect-tag: faultline_bloater,
+     where: "A mutant: 2% of zombies, husks, drowned and zombie villagers that spawn naturally (5% in raid waves) mutate, each into one of the mutations its kind can have. /zraid mutant lists them all.",
+     does: "Slow and swollen. When it dies it BURSTS: up to 9 damage and a shove to everyone within 4 blocks (no blocks broken). Kill it from range. Mutants drop only their normal loot."}
+  - {chapter: enemies, name: "Gravecaller", icon: gravecaller, detect-tag: faultline_gravecaller,
+     where: "A mutant: 2% of zombies, husks, drowned and zombie villagers that spawn naturally (5% in raid waves) mutate, each into one of the mutations its kind can have. /zraid mutant lists them all.",
+     does: "Raises 2 Risen baby zombies every 10 seconds while it's after you, up to 4 at a time. Babies drop nothing. Kill the caller first. Mutants drop only their normal loot."}
+  - {chapter: enemies, name: "Twin Zombie", icon: twin_zombie, detect-tag: faultline_twin_zombie,
+     where: "A mutant: 2% of zombies, husks, drowned and zombie villagers that spawn naturally (5% in raid waves) mutate, each into one of the mutations its kind can have. /zraid mutant lists them all.",
+     does: "The first time it drops below half health it splits in two: the copy has what health it had left. Only the original drops loot. Mutants drop only their normal loot."}
+  - {chapter: enemies, name: "Troll Zombie", icon: troll_zombie, detect-tag: faultline_troll,
+     where: "A mutant: 2% of zombies, husks, drowned and zombie villagers that spawn naturally (5% in raid waves) mutate, each into one of the mutations its kind can have. /zraid mutant lists them all.",
+     does: "50% more health and Regeneration II, forever. Fire stops the healing for 5 seconds: burn it. Mutants drop only their normal loot."}
+  - {chapter: enemies, name: "Dust Devil Husk", icon: dust_devil_husk, detect-tag: faultline_dustdevil,
+     where: "A mutant: 2% of husks that spawn naturally (5% in raid waves) mutate, each into one of the mutations its kind can have. /zraid mutant lists them all.",
+     does: "Its hits throw sand in your eyes: Blindness and Slowness for 3 seconds. Mutants drop only their normal loot."}
+  - {chapter: enemies, name: "Abyssal Drowned", icon: abyssal_drowned, detect-tag: faultline_abyssal,
+     where: "A mutant: 2% of drowned that spawn naturally (5% in raid waves) mutate, each into one of the mutations its kind can have. /zraid mutant lists them all.",
+     does: "Its hits give Mining Fatigue II, and in water they drag you down. Mutants drop only their normal loot."}
+  - {chapter: enemies, name: "Sniper Skeleton", icon: sniper_skeleton, detect-tag: faultline_sniper,
+     where: "A mutant: 2% of skeletons, strays and bogged that spawn naturally (5% in raid waves) mutate, each into one of the mutations its kind can have. /zraid mutant lists them all.",
+     does: "Sees you from 40 blocks. Its arrows fly 60% faster and hit 50% harder. Mutants drop only their normal loot."}
+  - {chapter: enemies, name: "Volley Skeleton", icon: volley_skeleton, detect-tag: faultline_volley,
+     where: "A mutant: 2% of skeletons, strays and bogged that spawn naturally (5% in raid waves) mutate, each into one of the mutations its kind can have. /zraid mutant lists them all.",
+     does: "Shoots three arrows at once in a spread. The extra arrows can't be picked up. Mutants drop only their normal loot."}
+  - {chapter: enemies, name: "Frost Skeleton", icon: frost_skeleton, detect-tag: faultline_frost_archer,
+     where: "A mutant: 2% of skeletons, strays and bogged that spawn naturally (5% in raid waves) mutate, each into one of the mutations its kind can have. /zraid mutant lists them all.",
+     does: "Its arrows freeze you (like powder snow) and slow you for 3 seconds. Mutants drop only their normal loot."}
+  - {chapter: enemies, name: "Hexbolt Archer", icon: hexbolt_archer, detect-tag: faultline_hexbolt,
+     where: "A mutant: 2% of skeletons, strays, bogged and pillagers (patrols too) that spawn naturally (5% in raid waves) mutate, each into one of the mutations its kind can have. /zraid mutant lists them all.",
+     does: "Its arrows and bolts lift you into the air for 2 seconds (watch the fall) and make you glow. Mutants drop only their normal loot."}
+  - {chapter: enemies, name: "Phasing Skeleton", icon: phasing_skeleton, detect-tag: faultline_phasing,
+     where: "A mutant: 2% of skeletons, strays and bogged that spawn naturally (5% in raid waves) mutate, each into one of the mutations its kind can have. /zraid mutant lists them all.",
+     does: "Hit it and it often blinks 4-8 blocks away (not again for 3 seconds). Keep after it. Mutants drop only their normal loot."}
+  - {chapter: enemies, name: "Cursed Wither Skeleton", icon: cursed_wither_skeleton, detect-tag: faultline_cursed,
+     where: "A mutant: 2% of wither skeletons that spawn naturally (5% in raid waves) mutate, each into one of the mutations its kind can have. /zraid mutant lists them all.",
+     does: "Its hits give Wither II for 6 seconds and heal it by the damage it deals. Mutants drop only their normal loot."}
+  - {chapter: enemies, name: "Storm Creeper", icon: storm_creeper, detect-tag: faultline_storm,
+     where: "A mutant: 2% of creepers that spawn naturally (5% in raid waves) mutate, each into one of the mutations its kind can have. /zraid mutant lists them all.",
+     does: "Born CHARGED: a much bigger blast. Lightning flashes where it explodes. Mutants drop only their normal loot."}
+  - {chapter: enemies, name: "Magnetic Creeper", icon: magnetic_creeper, detect-tag: faultline_magnetic,
+     where: "A mutant: 2% of creepers that spawn naturally (5% in raid waves) mutate, each into one of the mutations its kind can have. /zraid mutant lists them all.",
+     does: "Pulls everyone within 7 blocks toward it. Sparks fly off it. Run, don't walk. Mutants drop only their normal loot."}
+  - {chapter: enemies, name: "Stealth Creeper", icon: stealth_creeper, detect-tag: faultline_stealth,
+     where: "A mutant: 2% of creepers that spawn naturally (5% in raid waves) mutate, each into one of the mutations its kind can have. /zraid mutant lists them all.",
+     does: "Invisible, no name tag, until you're within 5 blocks. Listen for the hiss. Mutants drop only their normal loot."}
+  - {chapter: enemies, name: "Ender Creeper", icon: ender_creeper, detect-tag: faultline_ender_creeper,
+     where: "A mutant: 2% of creepers that spawn naturally (5% in raid waves) mutate, each into one of the mutations its kind can have. /zraid mutant lists them all.",
+     does: "When it's after you and 7-24 blocks away, it teleports right next to you (every 4 seconds). Mutants drop only their normal loot."}
+  - {chapter: enemies, name: "Weaver Spider", icon: weaver_spider, detect-tag: faultline_weaver,
+     where: "A mutant: 2% of spiders and cave spiders that spawn naturally (5% in raid waves) mutate, each into one of the mutations its kind can have. /zraid mutant lists them all.",
+     does: "Its bites put a cobweb at your feet for 5 seconds. Mutants drop only their normal loot."}
+  - {chapter: enemies, name: "Leaping Spider", icon: leaping_spider, detect-tag: faultline_leaper,
+     where: "A mutant: 2% of spiders and cave spiders that spawn naturally (5% in raid waves) mutate, each into one of the mutations its kind can have. /zraid mutant lists them all.",
+     does: "Leaps at you from up to 14 blocks away every 3 seconds. Mutants drop only their normal loot."}
+  - {chapter: enemies, name: "Broodmother", icon: broodmother, detect-tag: faultline_broodmother,
+     where: "A mutant: 2% of spiders that spawn naturally (5% in raid waves) mutate, each into one of the mutations its kind can have. /zraid mutant lists them all.",
+     does: "Big, with 50% more health. When it dies, 3-4 Brood Spiders (cave spiders, no drops) burst out of it. Mutants drop only their normal loot."}
+  - {chapter: enemies, name: "Inferno Mob", icon: inferno_mob, detect-tag: faultline_inferno,
+     where: "A mutant: 2% of blazes and ghasts that spawn naturally (5% in raid waves) mutate, each into one of the mutations its kind can have. /zraid mutant lists them all.",
+     does: "Every fireball comes with two more in a spread, and its fireballs set you burning longer. Mutants drop only their normal loot."}
+  - {chapter: enemies, name: "Shrieking Phantom", icon: shrieking_phantom, detect-tag: faultline_shrieker,
+     where: "A mutant: 2% of phantoms that spawn naturally (5% in raid waves) mutate, each into one of the mutations its kind can have. /zraid mutant lists them all.",
+     does: "Glows. Its bites give Darkness and Weakness for 5 seconds. Mutants drop only their normal loot."}
+  - {chapter: enemies, name: "Rampaging Hoglin", icon: rampaging_hoglin, detect-tag: faultline_rampager,
+     where: "A mutant: 2% of hoglins and zoglins that spawn naturally (5% in raid waves) mutate, each into one of the mutations its kind can have. /zraid mutant lists them all.",
+     does: "Fast, hard to knock back, and charges at you from 5-16 blocks away every 5 seconds. Mutants drop only their normal loot."}
+  - {chapter: enemies, name: "Vampiric Mob", icon: vampiric_mob, detect-tag: faultline_vampiric,
+     where: "A mutant: 2% of zombies, spiders, wither skeletons, hoglins, piglins, piglin brutes and vindicators that spawn naturally (5% in raid waves) mutate, each into one of the mutations its kind can have. /zraid mutant lists them all.",
+     does: "Heals half of every bit of damage it deals you. Mutants drop only their normal loot."}
   - {chapter: enemies, name: "Elite Mob", icon: elite_mob, detect-tag: faultline_elite,
      where: "1% of hostile mobs that spawn naturally (any kind), and some mobs in raids. Look for the gold ★ Elite name.",
      does: "Double health, 50% more damage, faster and a little bigger. Kill it for double drops, triple XP and bonus loot.",
@@ -984,6 +1059,10 @@ achievements:
      stat: meteors, count: 1, reward: {items: ["EMERALD:8"], xp: 200}}
   - {id: star_collector, name: "Star Collector", icon: meteor_pendant, desc: "Claim 10 meteors.",
      stat: meteors, count: 10, reward: {cosmetic: meteor_pendant, items: ["DIAMOND:10"], xp: 1000}}
+  - {id: mutant_hunter, name: "Mutant Hunter", icon: twin_zombie, desc: "Kill 25 mutants (Plague Zombies, Storm Creepers, Broodmothers...).",
+     stat: mutants, count: 25, reward: {items: ["DIAMOND:3", "GOLDEN_APPLE:2"], xp: 500}}
+  - {id: mutant_slayer, name: "Mutant Slayer", icon: broodmother, desc: "Kill 250 mutants.",
+     stat: mutants, count: 250, reward: {items: ["NETHERITE_SCRAP:2", "ENCHANTED_GOLDEN_APPLE:1"], xp: 2500}}
   - {id: good_customer, name: "Good Customer", icon: caravan_merchant, desc: "Make 10 trades with the Caravan Merchant.",
      stat: caravan_trades, count: 10, reward: {items: ["EMERALD:16"], xp: 300}}
   - {id: pirate_hunter, name: "Pirate Hunter", icon: skeleton_navigator, desc: "Sink 5 skeleton ships.",

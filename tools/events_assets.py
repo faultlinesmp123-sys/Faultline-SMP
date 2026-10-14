@@ -18,6 +18,7 @@ from PIL import Image
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import cosmetics_new as COS
+import mutant_icons as MUT
 
 PAL = {
     "#": (20, 14, 12), "k": (45, 32, 28),
@@ -672,6 +673,7 @@ def main():
     imgs = {k: draw(v) for k, v in ICONS.items()}
     for k in ("slayer_crown", "champion_cape", "meteor_pendant", "pirate_hat"): imgs[k] = COS.draw(COS.ICONS[k])
     for k in ("season_candy", "season_present"): imgs[k] = COS.draw(COS.TOKENS[k])
+    imgs.update(MUT.icons())   # Raids 1.3.0: the 25 mutants
     for k, im in imgs.items(): im.save(os.path.join(A, "textures/index", k + ".png"))
     # the two items
     for k, parent in (("warlord_challenge", "minecraft:item/generated"), ("warlord_cleaver", "minecraft:item/handheld"),

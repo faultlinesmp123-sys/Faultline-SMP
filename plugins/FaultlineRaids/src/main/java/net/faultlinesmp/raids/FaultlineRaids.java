@@ -144,6 +144,7 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
 
     final Random random = new Random();
     Elites elites;
+    Mutants mutants;
     private NamespacedKey omenKey;
     private NamespacedKey skeletonOmenKey;
     private NamespacedKey eggKey;
@@ -264,6 +265,9 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(this, this);
         piglins = new Piglins(this);
         getServer().getPluginManager().registerEvents(piglins, this);
+        mutants = new Mutants(this); // 1.3.0: 25 more mutations
+        getServer().getPluginManager().registerEvents(mutants, this);
+        getServer().getScheduler().runTaskTimer(this, () -> { try { mutants.tick(); } catch (RuntimeException ex) { logPart("mutants", ex); } }, 10L, 10L);
         elites = new Elites(this); // 1.2.0: elite mobs + mutations, in the world and in raids
         getServer().getPluginManager().registerEvents(elites, this);
         getServer().getScheduler().runTaskTimer(this, () -> { try { secondTick(); } catch (RuntimeException ex) { logPart("raid timer", ex); } }, 20L, 20L);
@@ -274,6 +278,7 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
 
     @Override
     public void onDisable() {
+        if (mutants != null) mutants.shutdown();
         for (ZombieRaid raid : new ArrayList<>(raids)) endRaid(raid, false, null);
         bosses.values().forEach(b -> b.bar.removeAll());
         saveOmens();
@@ -281,6 +286,13 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
 
     private double cfg(String key, double def) {
         return getConfig().getDouble(key, def);
+    }
+
+    /** Where an admin is looking (30 blocks), else where they stand. */
+    static Location aimed(Player p) {
+        org.bukkit.block.Block b;
+        try { b = p.getTargetBlockExact(30); } catch (RuntimeException ex) { b = null; }
+        return b != null ? b.getLocation().add(0.5, 1, 0.5) : p.getLocation();
     }
 
     /**
@@ -2302,17 +2314,31 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
                             .forEach(left -> target.getWorld().dropItemNaturally(target.getLocation(), left));
                     return msg(sender, ChatColor.GREEN + "Gave " + target.getName() + " " + amount + "x Piglin War Horn " + roman(Math.max(3, Math.min(5, level))) + ".");
                 }
-                case "elite", "mutant" -> {
+                case "elite" -> {
                     if (!(sender instanceof Player p)) return msg(sender, "Only players can do that.");
-                    boolean mutant = sub.equals("mutant");
-                    String what = args.length > 1 ? args[1].toLowerCase() : (mutant ? "looter" : "zombie");
-                    EntityType type = mutant ? Elites.MUTANT_TYPES.get(what) : null;
-                    if (!mutant) try { type = EntityType.valueOf(what.toUpperCase()); } catch (IllegalArgumentException ex) { type = null; }
-                    if (type == null) return msg(sender, ChatColor.RED + (mutant ? "Usage: /zraid mutant <looter|blazing|splitter> [elite]" : "Usage: /zraid elite <mob type>"));
-                    org.bukkit.block.Block b = p.getTargetBlockExact(30);
-                    Location at = b != null ? b.getLocation().add(0.5, 1, 0.5) : p.getLocation();
-                    LivingEntity m = elites.spawn(at, type, !mutant || (args.length > 2 && args[2].equalsIgnoreCase("elite")), mutant);
+                    String what = args.length > 1 ? args[1].toLowerCase() : "zombie";
+                    EntityType type;
+                    try { type = EntityType.valueOf(what.toUpperCase()); } catch (IllegalArgumentException ex) { type = null; }
+                    if (type == null) return msg(sender, ChatColor.RED + "Usage: /zraid elite <mob type>");
+                    LivingEntity m = elites.spawn(aimed(p), type, true);
                     return msg(sender, m == null ? ChatColor.RED + "That mob can't be one." : ChatColor.GREEN + "Spawned " + ChatColor.stripColor(m.getCustomName()) + ".");
+                }
+                case "mutant" -> {
+                    String what = args.length > 1 ? args[1].toLowerCase() : "list";
+                    Mutants.Kind k = Mutants.KINDS.get(what);
+                    if (k == null) {
+                        sender.sendMessage(ChatColor.GOLD + "Mutants (" + Mutants.KINDS.size() + "): " + ChatColor.WHITE + String.join(", ", Mutants.KINDS.keySet()));
+                        return msg(sender, ChatColor.GRAY + "Usage: /zraid mutant <kind> [mob type] [elite]");
+                    }
+                    if (!(sender instanceof Player p)) return msg(sender, "Only players can do that.");
+                    EntityType type = null;
+                    boolean elite = false;
+                    for (int i = 2; i < args.length; i++) {
+                        if (args[i].equalsIgnoreCase("elite")) { elite = true; continue; }
+                        try { type = EntityType.valueOf(args[i].toUpperCase()); } catch (IllegalArgumentException ex) { return msg(sender, ChatColor.RED + "No mob type " + args[i] + "."); }
+                    }
+                    LivingEntity m = elites.spawnMutant(aimed(p), k, type, elite);
+                    return msg(sender, m == null ? ChatColor.RED + "A " + (type == null ? "" : type.name().toLowerCase() + " ") + "can't be that mutant." : ChatColor.GREEN + "Spawned " + ChatColor.stripColor(m.getCustomName()) + ".");
                 }
                 case "skeletonarmy" -> {
                     if (!(sender instanceof Player p)) return msg(sender, "Only players can do that.");

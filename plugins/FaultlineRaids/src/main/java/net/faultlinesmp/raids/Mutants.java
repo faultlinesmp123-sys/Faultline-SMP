@@ -129,7 +129,9 @@ final class Mutants implements Listener {
     private boolean launching;
     long ticks;
 
-    Mutants(FaultlineRaids plugin) { this.plugin = plugin; }
+    private final org.bukkit.NamespacedKey webKey;
+
+    Mutants(FaultlineRaids plugin) { this.plugin = plugin; webKey = new org.bukkit.NamespacedKey(plugin, "mutant_webs"); }
 
     private double cfg(String path, double def) { return plugin.getConfig().getDouble("elites.mutants." + path, def); }
 
@@ -299,9 +301,54 @@ final class Mutants implements Listener {
 
     /** A cobweb at the player's feet for a few seconds (only into air; removed again). */
     void web(Block b) {
-        if (b.getType() != Material.AIR) return;
+        if (!b.getType().isAir()) return; // 1.3.1: CAVE_AIR too (underground, where spiders are)
         b.setType(Material.COBWEB, false);
         webs.put(b, ticks + (long) cfg("weaver.web-ticks", 100));
+        mark(b, true);
+    }
+
+    /** The chunk remembers our webs, so a crash can't leave them for good (cleaned when the chunk loads). */
+    private void mark(Block b, boolean on) {
+        try {
+            var pdc = b.getChunk().getPersistentDataContainer();
+            String key = b.getX() + "," + b.getY() + "," + b.getZ();
+            String s = pdc.get(webKey, org.bukkit.persistence.PersistentDataType.STRING);
+            java.util.LinkedHashSet<String> set = new java.util.LinkedHashSet<>();
+            if (s != null && !s.isEmpty()) set.addAll(java.util.Arrays.asList(s.split(";")));
+            if (on) set.add(key); else set.remove(key);
+            if (set.isEmpty()) pdc.remove(webKey); else pdc.set(webKey, org.bukkit.persistence.PersistentDataType.STRING, String.join(";", set));
+        } catch (RuntimeException ignored) { }
+    }
+
+    private void unweb(Block b) {
+        if (b.getType() == Material.COBWEB) b.setType(Material.AIR, false);
+        mark(b, false);
+    }
+
+    @EventHandler
+    public void onChunk(org.bukkit.event.world.ChunkLoadEvent e) {
+        String s = e.getChunk().getPersistentDataContainer().get(webKey, org.bukkit.persistence.PersistentDataType.STRING);
+        if (s == null) return;
+        for (String part : s.split(";")) {
+            String[] xyz = part.split(",");
+            if (xyz.length != 3) continue;
+            try {
+                Block b = e.getWorld().getBlockAt(Integer.parseInt(xyz[0]), Integer.parseInt(xyz[1]), Integer.parseInt(xyz[2]));
+                if (!webs.containsKey(b) && b.getType() == Material.COBWEB) b.setType(Material.AIR, false);
+            } catch (NumberFormatException ignored) { }
+        }
+        int cx = e.getChunk().getX(), cz = e.getChunk().getZ();
+        if (webs.keySet().stream().noneMatch(b -> b.getWorld().equals(e.getWorld()) && b.getX() >> 4 == cx && b.getZ() >> 4 == cz))
+            e.getChunk().getPersistentDataContainer().remove(webKey);
+    }
+
+    /** A Weaver's web gives nothing when broken (it was a free cobweb). */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onBreak(org.bukkit.event.block.BlockBreakEvent e) {
+        if (webs.remove(e.getBlock()) == null) return;
+        e.setDropItems(false);
+        e.setExpToDrop(0);
+        mark(e.getBlock(), false);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -347,8 +394,10 @@ final class Mutants implements Listener {
         Set<String> t = s.getScoreboardTags();
         for (String st : SHOT_TAGS) if (t.contains(st)) a.addScoreboardTag(st);
         if (t.contains("faultline_sniper")) {
-            Safe.vel(a, a.getVelocity().multiply(cfg("sniper.speed", 1.6)));
-            a.setDamage(a.getDamage() * cfg("sniper.damage", 1.5));
+            double speed = Math.max(0.1, cfg("sniper.speed", 1.6));
+            Safe.vel(a, a.getVelocity().multiply(speed));
+            // 1.3.1: an arrow's damage already grows with its speed: x1.6 speed and x1.5 base was x2.4 damage
+            a.setDamage(a.getDamage() * cfg("sniper.damage", 1.5) / speed);
         }
         if (t.contains("faultline_volley")) {
             launching = true;
@@ -463,7 +512,9 @@ final class Mutants implements Listener {
         ticks += 10;
         webs.entrySet().removeIf(w -> {
             if (w.getValue() > ticks) return false;
-            if (w.getKey().getType() == Material.COBWEB) w.getKey().setType(Material.AIR, false);
+            Block b = w.getKey();
+            // an unloaded chunk isn't loaded just for this: its mark cleans the web up when it loads again
+            if (loaded(b)) unweb(b);
             return true;
         });
         for (UUID id : new ArrayList<>(ticking)) {
@@ -497,7 +548,7 @@ final class Mutants implements Listener {
             if (t.contains("faultline_magnetic")) {
                 double r = cfg("magnetic.radius", 7);
                 for (Entity x : m.getNearbyEntities(r, r, r)) {
-                    if (!(x instanceof Player p) || !survival(p) || p.isFlying()) continue;
+                    if (!(x instanceof Player p) || !survival(p) || p.isFlying() || !sees(m, p)) continue; // 1.3.1: not through walls
                     Vector pull = m.getLocation().toVector().subtract(p.getLocation().toVector()).setY(0);
                     if (pull.lengthSquared() < 1) continue;
                     Safe.vel(p, p.getVelocity().add(pull.normalize().multiply(cfg("magnetic.pull", 0.18))));
@@ -511,7 +562,7 @@ final class Mutants implements Listener {
                 else if (!m.hasPotionEffect(PotionEffectType.INVISIBILITY))
                     m.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, PotionEffect.INFINITE_DURATION, 0, false, false));
             }
-            if (t.contains("faultline_ender_creeper") && target != null && dist > 7 && dist < 24 && cooled(id, 80)) {
+            if (t.contains("faultline_ender_creeper") && target != null && dist > 7 && dist < 24 && sees(m, target) && cooled(id, 80)) { // 1.3.1: never into a sealed base
                 Location to = safeNear(target.getLocation(), 1, 3);
                 if (to != null) {
                     m.getWorld().spawnParticle(Particle.PORTAL, m.getLocation().add(0, 1, 0), 30, 0.3, 0.6, 0.3, 0.5);
@@ -519,17 +570,54 @@ final class Mutants implements Listener {
                     m.getWorld().playSound(to, Sound.ENTITY_ENDERMAN_TELEPORT, 1f, 0.8f);
                 }
             }
-            if (t.contains("faultline_leaper") && target != null && dist > 4 && dist < 14 && (m.isOnGround() || m.getLocation().subtract(0, 0.1, 0).getBlock().getType().isSolid()) && cooled(id, 60)) {
+            if (t.contains("faultline_leaper") && target != null && dist > 4 && dist < 14 && sees(m, target) && (m.isOnGround() || m.getLocation().subtract(0, 0.1, 0).getBlock().getType().isSolid()) && cooled(id, 60)) {
                 Vector v = target.getLocation().toVector().subtract(m.getLocation().toVector()).setY(0).normalize().multiply(Math.min(1.3, dist * 0.11));
                 Safe.vel(m, v.setY(0.45));
                 m.getWorld().playSound(m.getLocation(), Sound.ENTITY_SPIDER_AMBIENT, 1f, 1.5f);
             }
-            if (t.contains("faultline_rampager") && target != null && dist > 5 && dist < 16 && cooled(id, 100)) {
+            if (t.contains("faultline_rampager") && target != null && dist > 5 && dist < 16 && sees(m, target) && cooled(id, 100)) {
                 Vector v = target.getLocation().toVector().subtract(m.getLocation().toVector()).setY(0).normalize().multiply(cfg("rampager.charge", 1.4));
                 Safe.vel(m, v.setY(0.2));
                 m.getWorld().playSound(m.getLocation(), Sound.ENTITY_HOGLIN_ANGRY, 1.2f, 0.8f);
             }
         }
+    }
+
+    static boolean loaded(Block b) {
+        try { return b.getWorld().isChunkLoaded(b.getX() >> 4, b.getZ() >> 4); } catch (RuntimeException e) { return true; }
+    }
+
+    static boolean sees(LivingEntity m, Entity p) {
+        try { return m.hasLineOfSight(p); } catch (RuntimeException | LinkageError e) { return true; }
+    }
+
+    /**
+     * 1.3.1: a zombie drowning into a Drowned, a skeleton freezing into a Stray, a zombie villager being cured... is a new
+     * entity, so the mutation (and a Looter's stolen things, and an Elite's buffs) went missing. They carry over when the
+     * new mob can have them; a Looter's loot that can't (cured into a villager) drops where it stood.
+     */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onTransform(org.bukkit.event.entity.EntityTransformEvent e) {
+        if (!(e.getEntity() instanceof LivingEntity from)) return;
+        Kind k = kindOf(from);
+        boolean elite = from.getScoreboardTags().contains(Elites.ELITE);
+        if (k == null && !elite) return;
+        boolean lootMoved = false;
+        for (Entity to : e.getTransformedEntities()) {
+            if (!(to instanceof LivingEntity t)) continue;
+            for (String tag : new ArrayList<>(t.getScoreboardTags())) if (tag.startsWith("faultline_") && (tag.equals(Elites.ELITE) || kindTag(tag))) t.removeScoreboardTag(tag);
+            if (k != null && k.fits().test(t)) {
+                if (k.tag().equals(Elites.LOOTER) && !lootMoved) { plugin.elites.moveLoot(from, t); lootMoved = true; }
+                plugin.elites.mutate(t, k);
+            }
+            if (elite && t instanceof org.bukkit.entity.Monster) plugin.elites.elite(t);
+        }
+        if (k != null && k.tag().equals(Elites.LOOTER) && !lootMoved) plugin.elites.release(from);
+    }
+
+    static boolean kindTag(String tag) {
+        for (Kind k : KINDS.values()) if (k.tag().equals(tag)) return true;
+        return false;
     }
 
     /** A spot min-max blocks from c with a floor and room to stand, or null. */
@@ -556,7 +644,7 @@ final class Mutants implements Listener {
     }
 
     void shutdown() {
-        for (Block b : webs.keySet()) if (b.getType() == Material.COBWEB) b.setType(Material.AIR, false);
+        for (Block b : webs.keySet()) if (loaded(b)) unweb(b);
         webs.clear();
     }
 

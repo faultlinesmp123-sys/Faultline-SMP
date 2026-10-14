@@ -172,7 +172,7 @@ final class Elites implements Listener {
 
     private static void name(LivingEntity m, String n) {
         m.setCustomName(n);
-        m.setCustomNameVisible(true);
+        m.setCustomNameVisible(!m.getScoreboardTags().contains("faultline_stealth")); // 1.3.1: a Stealth Creeper's tag would show through its invisibility
     }
 
     static String nice(Entity e) {
@@ -249,6 +249,17 @@ final class Elites implements Listener {
         return out;
     }
 
+    /** Hands a looter's stolen things to the mob it turned into (1.3.1). */
+    void moveLoot(Entity from, Entity to) {
+        List<String> s = stolen(from);
+        if (s.isEmpty()) return;
+        List<String> mine = stolen(to);
+        mine.addAll(s);
+        save(to, mine);
+        save(from, new ArrayList<>());
+        if (to instanceof Mob mob) try { mob.setRemoveWhenFarAway(false); mob.setPersistent(true); } catch (RuntimeException ignored) { }
+    }
+
     /** Drops what a looter stole where it stands (used when a raid ends and removes its mobs). */
     void release(Entity z) {
         if (!z.getScoreboardTags().contains(LOOTER)) return;
@@ -301,13 +312,24 @@ final class Elites implements Listener {
         LivingEntity m = e.getEntity();
         Set<String> tags = m.getScoreboardTags();
         if (tags.contains(MINI)) { e.getDrops().clear(); e.setDroppedExp(1); return; }
+        // 1.3.1: what it carried (picked up off the ground, or stole) is never doubled: an Elite fed a stack of diamond
+        // blocks dropped two. Only its own loot-table drops count, and the stolen things are added after the count.
+        List<ItemStack> carried = new ArrayList<>();
+        var eq = m.getEquipment();
+        if (eq != null) for (ItemStack it : eq.getArmorContents()) if (it != null && !it.getType().isAir()) carried.add(it);
+        if (eq != null) { carried.add(eq.getItemInMainHand()); carried.add(eq.getItemInOffHand()); }
+        List<ItemStack> twice = new ArrayList<>();
+        for (ItemStack d : e.getDrops()) {
+            if (d == null || d.getType().isAir() || !plain(d)) continue;
+            boolean held = false;
+            for (ItemStack c : carried) if (c != null && !c.getType().isAir() && c.isSimilar(d)) { held = true; break; }
+            if (!held) twice.add(d.clone()); // vanilla drops, not gear/stolen/picked-up/plugin items
+        }
         if (tags.contains(LOOTER)) e.getDrops().addAll(loot(m));
         if (tags.contains(SPLITTER) && !exploded.remove(m.getUniqueId())) split(m.getLocation());
         Player killer = m.getKiller();
         if (tags.contains(BLAZING) && killer != null && plugin.random.nextDouble() < 0.5) e.getDrops().add(new ItemStack(Material.BLAZE_POWDER, 1 + plugin.random.nextInt(2)));
         if (!tags.contains(ELITE) || killer == null) return;
-        List<ItemStack> twice = new ArrayList<>();
-        for (ItemStack d : e.getDrops()) if (d != null && !d.getType().isAir() && plain(d)) twice.add(d.clone()); // vanilla drops, not gear/stolen/plugin items
         e.getDrops().addAll(twice);
         e.setDroppedExp(Math.max(10, e.getDroppedExp() * 3));
         ConfigurationSection c = plugin.getConfig().getConfigurationSection("elites");

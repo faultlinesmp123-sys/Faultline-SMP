@@ -383,7 +383,7 @@ final class TrinketGear implements Listener {
             Location l = res.getLocation();
             int x = l.getBlockX(), z = l.getBlockZ();
             if (Math.hypot(x - at.getX(), z - at.getZ()) > range + 2) return null;
-            int top = w.getHighestBlockYAt(x, z);
+            int top = w.getHighestBlockYAt(x, z, org.bukkit.HeightMap.OCEAN_FLOOR); // 1.2.34: under the sea, not from the water's surface
             for (int y = top + 1; y >= top - 16; y--) {
                 if (w.getBlockAt(x, y, z).getType() == Material.CHEST) return new Location(w, x + 0.5, y, z + 0.5);
             }

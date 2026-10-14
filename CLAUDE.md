@@ -807,6 +807,16 @@ Notes:
   Ankh / Mirror endgame. The three `applyModifier`s and `Gear.modifier` now replace a modifier whose amount changed
   (player attribute modifiers persist in player data: an old +10% would have stuck). `AccessoryStacks.changedOnes`
   (cached 5 s) refreshes every changed accessory's lore. Tested (`BalanceTest`; Trinket/Ranger/Items tests updated).
+- **Bug pass (Raids 1.3.1, Items 1.2.34)**: DUPE: an Elite doubled every plain drop, including what it picked up (zombies
+  hold any item) and a Looter's stolen stacks; `Elites.onDeath` now counts only drops not similar to its equipment, before
+  the stolen loot is added. Sniper arrows: damage already scales with speed, so base damage is `damage / speed` (it was
+  x2.4, not x1.5). Weaver webs: any air (`isAir`: CAVE_AIR underground), chunk PDC `faultlineraids:mutant_webs` cleans
+  crash leftovers on chunk load, a web broken early drops nothing (free cobwebs), unloaded chunks are never loaded to clean
+  one. `Elites.name` keeps a Stealth Creeper's tag hidden when it turns Elite. Magnetic / Ender / Leaping / Rampaging need
+  line of sight (`Mutants.sees`; an Ender Creeper teleported into sealed bases). `Mutants.onTransform`
+  (EntityTransformEvent: drowning, freezing into strays, curing): the mutation and Elite buffs are re-applied to the new
+  mob when it fits, a Looter's loot moves with it (`Elites.moveLoot`) or drops (cured into a villager). Treasure Sense
+  looks for buried chests from the ocean floor (`HeightMap.OCEAN_FLOOR`). Tested (`MutantTest`, `EliteTest`, `TrinketTest`).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

@@ -395,6 +395,8 @@ public final class FaultlineItems extends JavaPlugin {
         camera = new Camera(this); // 1.2.23: free camera for recording
         getServer().getPluginManager().registerEvents(camera, this);
         getCommand("camera").setExecutor(camera);
+        pvpLimits = new PvpLimits(this); // 1.2.37: spear lunge cooldown, cobweb place rate
+        getServer().getPluginManager().registerEvents(pvpLimits, this);
         balloons = new Balloons(this); // 1.2.24: hot air balloons
         if (getCommand("balloon") != null) getCommand("balloon").setExecutor(balloons); // 1.2.36: /balloon list|remove
         getServer().getPluginManager().registerEvents(balloons, this);
@@ -864,6 +866,7 @@ public final class FaultlineItems extends JavaPlugin {
     Creatures creatures;
     Gear gear;
     Gear getGear() { return gear; }
+    PvpLimits pvpLimits;
     LifeJellyListener getLifeJellyListener() { return lifeJellyListener; }
 
     DivingGear getDivingGear() { return divingGear; }

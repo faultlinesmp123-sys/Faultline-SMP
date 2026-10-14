@@ -568,6 +568,11 @@ vanish:
 
 # Hot air balloons (1.2.24): craft (5 wool around a campfire, string, barrel, string), set up, fly. Fuel: coal/charcoal 60 s,
 # blaze rod 150 s, coal block 600 s, burned while in the air.
+# PvP limits (1.2.37). Creative / spectator players are never limited.
+pvp-limits:
+  lunge-cooldown-seconds: 5        # spear Lunge: once every 5 s (on cooldown the jab still hits, without the lunge). 0 = off
+  cobweb-place-cooldown-ms: 250    # one cobweb every 0.25 s per player. 0 = off
+
 balloon:
   speed: 0.35              # blocks a tick (sprint = x1.6)
   climb-speed: 0.22        # rising / sinking with Jump / Sneak

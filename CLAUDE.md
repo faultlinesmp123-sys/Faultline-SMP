@@ -825,6 +825,11 @@ Notes:
   [list|remove [#n|all [player]]]` (`listed()` numbers by id): your own nearby one = `pack` into your inventory; others (admin)
   go back to the owner, now or on their next join (`returns` in balloons.yml, `onJoin`); riders are set down first.
   Tested (`BalloonTest`).
+- **PvP limits (Items 1.2.37, `Items/PvpLimits.java`, `pvp-limits:`)**: spear LUNGE once every `lunge-cooldown-seconds`
+  (5) per player: Paper's `EntityLungeEvent` exists only in the 26.x API, so it's registered by name
+  (`Class.forName` + `PluginManager.registerEvent`, cast to `Cancellable`/`EntityEvent`); on cooldown the lunge is
+  cancelled (the jab still lands) + action bar countdown. COBWEBS: one per `cobweb-place-cooldown-ms` (250) per player
+  (BlockPlaceEvent). Creative/spectator never limited. Tested (`PvpTest`, with a copy of the 26.2 event class in the test sources).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

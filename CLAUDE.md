@@ -744,7 +744,7 @@ Notes:
   Drops only from player kills, never spawner mobs. **Boss books on BOWS**: `Enchants.fits(MELEE)` includes BOW (not
   crossbows); on shoot RangerGear copies the bow's `fenchants` into arrow PDC `faultlineitems:arrow_fenchants` (+
   `arrow_full` when force >= 0.9); hits run `Enchants.applyRanged` (Lifesteal/Frostbite/Venom/Thunderstrike, procs need
-  the full draw). **Ranger Emblem +5%** (`rangerBonus`; old 0.10 reads 0.05; lore refreshed by `AccessoryStacks`).
+  the full draw). **Ranger Emblem +1%** since 1.2.35 (`rangerBonus`; old 0.10 or 0.05 reads 0.01; lore refreshed by `AccessoryStacks`).
   **Unholy Arrows +2.5%** (Bosses `unholyMultiplier`, `unholy-arrow.damage-multiplier` 1.025; old 2.0 reads as it; lore
   refreshed on join, `refreshUnholy`). Index entries + icons (`events_assets.py`, item models too), Bedrock mappings in
   `items.tsv`. Tested: `RangerTest` (items), `UnholyTest` (bosses).
@@ -803,7 +803,7 @@ Notes:
   Moon Stone 5% -> 2% from Phantoms; Windrunner arrows x1.2 -> x1.08 (arrow damage scales with speed); Ranger's Oath +20%
   -> +10% speed; Bloodthirst Fang 3 -> 2 hearts, only `Enemy` mobs and players, `fang-cooldown-seconds` 3; Ancient Core
   +3 armor/+25% KB/+2 hearts -> +2/+15%/none (`ancient-core.*`). Left alone on purpose: values the owner set (Cleft Horn
-  0.5% since 1.2.33, Ranger Emblem 5%, Guardian's Oath 1%, Featherfall 5 blocks), boss counters, immunity charms, the
+  0.5% since 1.2.33, Ranger Emblem 1% since 1.2.35, Guardian's Oath 1%, Featherfall 5 blocks), boss counters, immunity charms, the
   Ankh / Mirror endgame. The three `applyModifier`s and `Gear.modifier` now replace a modifier whose amount changed
   (player attribute modifiers persist in player data: an old +10% would have stuck). `AccessoryStacks.changedOnes`
   (cached 5 s) refreshes every changed accessory's lore. Tested (`BalanceTest`; Trinket/Ranger/Items tests updated).

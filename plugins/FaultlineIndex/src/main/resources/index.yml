@@ -49,7 +49,7 @@ entries:
      does: "You become a vampire. Always: hits heal you. Night: Strength and Regeneration. Day: Weakness, and sunlight burns you (rain stops it). Shift + F: turn into a bat and fly for 20 seconds (2 hearts, 2 minute cooldown)."}
   - {chapter: accessories, name: "Ranger Emblem", icon: ranger_emblem, detect: "faultlineitems:ranger_emblem",
      how: "2% from Pillagers.",
-     does: "+5% bow and crossbow damage. Counts toward the Ranger's Oath Pendant."}
+     does: "+1% bow and crossbow damage. Counts toward the Ranger's Oath Pendant."}
   - {chapter: accessories, name: "Bloody Wolf Scarf", icon: bloody_wolf_scarf, detect: "faultlineitems:bloody_wolf_scarf",
      how: "5% from Piglin Brutes.",
      does: "Take 3% less damage and deal 2.5% more melee damage."}

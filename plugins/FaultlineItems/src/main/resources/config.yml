@@ -143,7 +143,7 @@ moon-stone:
 
 # Ranger Emblem (accessory)
 ranger-emblem:
-  damage-bonus: 0.05         # 1.2.27: was 0.10
+  damage-bonus: 0.01         # 1.2.35: was 0.05 (1.2.27: 0.10); an old 0.10 or 0.05 reads as 0.01
   pillager-drop-chance: 0.02
 
 # Necromancer Staff — needs the Necromancer's Trial quest (LimboBlackMarket) to use.

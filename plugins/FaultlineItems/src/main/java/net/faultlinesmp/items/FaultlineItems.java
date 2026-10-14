@@ -3753,8 +3753,8 @@ public final class FaultlineItems extends JavaPlugin {
 
         /** 1.2.27: +5% (a server config still holding the old 0.10 reads as 0.05). */
         static double rangerBonus(FaultlineItems plugin) {
-            double v = plugin.getConfig().getDouble("ranger-emblem.damage-bonus", 0.05);
-            return v == 0.10 ? 0.05 : v;
+            double v = plugin.getConfig().getDouble("ranger-emblem.damage-bonus", 0.01);
+            return v == 0.10 || v == 0.05 ? 0.01 : v; // old defaults (10%, then 5%) read as 1% (1.2.35)
         }
 
         static String pct(double v) {

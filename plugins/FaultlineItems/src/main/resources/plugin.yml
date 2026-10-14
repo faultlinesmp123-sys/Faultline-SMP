@@ -1,5 +1,5 @@
 name: FaultlineItems
-version: 1.2.35
+version: 1.2.36
 main: net.faultlinesmp.items.FaultlineItems
 api-version: '1.21'
 softdepend: [floodgate, Geyser-Spigot]
@@ -137,6 +137,9 @@ commands:
     description: "Staff: vanish from everyone without faultline.vanish.see (/vanish [player|list])"
     usage: /vanish [player|list]
     permission: faultline.vanish
+  balloon:
+    description: List your hot air balloons or take one down (admins - all of them)
+    usage: /balloon [list|remove [#n|all [player]]]
   giveballoon:
     description: "Admin: give a Hot Air Balloon"
     usage: /giveballoon [amount] [player]

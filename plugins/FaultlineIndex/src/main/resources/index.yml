@@ -136,7 +136,7 @@ entries:
      does: "Summons 3-5 spiders that fight for you for 30 seconds. 60 second cooldown."}
   - {chapter: weapons, name: "Hot Air Balloon", icon: hot_air_balloon, detect: "faultlineitems:balloon_item",
      how: "Craft it: 5 wool across the top and sides, a Campfire in the middle, String, a Barrel, String along the bottom.",
-     does: "A balloon you can fly. Right-click the ground to set it up, step into the basket and right-click to board. Jump rises, Sneak sinks (and gets you out once it's on the ground), W A S D move the way you look, Sprint goes faster. The burner burns fuel while you're in the air: Coal or Charcoal 60 s, a Blaze Rod 150 s, a Coal Block 10 minutes (right-click with it). Out of fuel, it slowly sinks. A dye recolours it. Sneak + punch in the basket to pack it up."}
+     does: "A balloon you can fly. Right-click the ground to set it up, step into the basket and right-click to board. Jump rises, Sneak sinks (and gets you out once it's on the ground), W A S D move the way you look, Sprint goes faster. The burner burns fuel while you're in the air: Coal or Charcoal 60 s, a Blaze Rod 150 s, a Coal Block 10 minutes (right-click with it). Out of fuel, it slowly sinks. A dye recolours it. Sneak + punch in the basket to pack it up, or hit it 4 times (an axe: 2) to knock it down: it drops as an item, fuel and colour kept. Only its owner can. /balloon list shows yours, /balloon remove takes the nearest one down."}
   - {chapter: weapons, name: "Rotbeard's Grappling Hook", icon: grappling_hook, detect: "faultlineitems:grappling_hook",
      how: "10% from Captain Rotbeard.",
      does: "Cast it at a wall, ceiling, or ledge, then reel in to launch yourself there. No fall damage from the landing. Never breaks."}

@@ -573,6 +573,11 @@ balloon:
   climb-speed: 0.22        # rising / sinking with Jump / Sneak
   sink-speed: 0.06         # sinking with no fuel
   max-fuel-seconds: 1800
+  # 1.2.36: hit a landed balloon (any item; an axe counts double) this many times within 3 s of each other to take it down.
+  # It drops as its item (colour and fuel kept). /balloon list, /balloon remove [#n | all [player]].
+  hits-to-break: 4
+  break-reach: 5
+  anyone-can-break: false   # false = only its owner and admins (items.balloon.admin)
 
 # /ping and /coords (1.2.24): Bedrock has no F3 screen. true = Bedrock players see the coordinates bar from their first join.
 where:

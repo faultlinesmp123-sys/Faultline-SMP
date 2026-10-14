@@ -60,7 +60,7 @@ import java.util.function.Function;
  * envelope for Bedrock). Balloons are saved (balloons.yml) and respawned when their chunk loads; one whose rider logs
  * out comes down where it is, the rider set on the ground first.
  */
-final class Balloons implements Listener {
+final class Balloons implements Listener, org.bukkit.command.CommandExecutor {
 
     static final String TAG = "faultline_balloon";
 
@@ -90,6 +90,9 @@ final class Balloons implements Listener {
     final Map<UUID, Balloon> balloons = new HashMap<>();
     Function<Player, org.bukkit.Input> input = Player::getCurrentInput; // swapped out by tests
     private final java.util.Set<UUID> releasing = new java.util.HashSet<>();
+    /** 1.2.36: hits on a balloon (id -> [hits, last hit ms]), and balloons taken down for an offline owner (given on join). */
+    private final Map<UUID, long[]> hits = new HashMap<>();
+    final Map<UUID, List<String>> returns = new HashMap<>();
     private int ticks;
 
     Balloons(FaultlineItems plugin) {
@@ -128,6 +131,7 @@ final class Balloons implements Listener {
                 ChatColor.YELLOW + "Jump" + ChatColor.GRAY + " rise · " + ChatColor.YELLOW + "Sneak" + ChatColor.GRAY + " sink / get out",
                 ChatColor.YELLOW + "W A S D" + ChatColor.GRAY + " move · " + ChatColor.YELLOW + "Sprint" + ChatColor.GRAY + " faster",
                 ChatColor.GRAY + "Burns coal, charcoal, blaze rods, coal blocks.",
+                ChatColor.GRAY + "Hit it a few times (an axe is faster) to take it down.",
                 ChatColor.DARK_GRAY + "Envelope: " + pretty(c) + (fuel > 0 ? " · fuel " + clock(fuel) : "")));
         m.setLore(lore);
         m.setItemModel(new NamespacedKey("faultline", "hot_air_balloon"));
@@ -320,11 +324,202 @@ final class Balloons implements Listener {
     void pack(Balloon b, Player p) {
         despawn(b);
         balloons.remove(b.id);
+        hits.remove(b.id);
         save();
         ItemStack it = item(b.color, b.fuel);
         for (ItemStack left : p.getInventory().addItem(it).values()) p.getWorld().dropItemNaturally(p.getLocation(), left);
         p.playSound(p.getLocation(), Sound.ITEM_ARMOR_EQUIP_LEATHER, 1f, 0.7f);
         p.sendMessage(ChatColor.GRAY + "You packed up your balloon.");
+    }
+
+    // ---------------------------------------------------------------- breaking it (1.2.36)
+
+    /**
+     * Swinging at a landed balloon (any item, or a fist) knocks it down after a few hits, like a boat: an axe counts double.
+     * It drops as its item (colour and fuel kept). The owner and admins can (balloon.anyone-can-break: anyone). The model
+     * is display entities, which can't be hit, so the swing is traced against the basket and the envelope.
+     */
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onSwing(org.bukkit.event.player.PlayerAnimationEvent e) {
+        if (e.getAnimationType() != org.bukkit.event.player.PlayerAnimationType.ARM_SWING) return;
+        Player p = e.getPlayer();
+        if (p.getVehicle() != null || p.getGameMode() == org.bukkit.GameMode.SPECTATOR) return;
+        if (p.isSneaking() && basketAt(p.getLocation()) != null) return; // that's the sneak + punch pack-up
+        Balloon b = aimed(p);
+        if (b == null) return;
+        if (!mayBreak(p, b)) { p.sendActionBar(ChatColor.RED + "It isn't your balloon."); return; }
+        if (b.rider() != null && !b.landed) { p.sendActionBar(ChatColor.RED + "Someone's flying it."); return; }
+        long now = System.currentTimeMillis();
+        long[] h = hits.computeIfAbsent(b.id, k -> new long[2]);
+        if (now - h[1] > 3000) h[0] = 0; // like a boat: the hits have to come close together
+        if (now - h[1] < 200) return;    // one swing, one hit
+        h[1] = now;
+        h[0] += p.getInventory().getItemInMainHand().getType().name().endsWith("_AXE") ? 2 : 1;
+        int need = (int) cfg("hits-to-break", 4);
+        b.at.getWorld().spawnParticle(Particle.BLOCK, b.at.clone().add(0, 1, 0), 12, 0.6, 0.4, 0.6, 0, Material.BARREL.createBlockData());
+        b.at.getWorld().playSound(b.at, Sound.BLOCK_WOOD_HIT, 1f, 0.8f);
+        if (h[0] < need) { p.sendActionBar(ChatColor.GOLD + "🎈 " + "▮".repeat((int) h[0]) + ChatColor.DARK_GRAY + "▮".repeat(Math.max(0, need - (int) h[0]))); return; }
+        hits.remove(b.id);
+        takeDown(b, p, true);
+    }
+
+    boolean mayBreak(Player p, Balloon b) {
+        return p.getUniqueId().equals(b.owner) || p.hasPermission("items.balloon.admin") || plugin.getConfig().getBoolean("balloon.anyone-can-break", false);
+    }
+
+    /** The balloon the player is looking at within reach (basket or envelope), nearer than any block in the way, or null. */
+    Balloon aimed(Player p) {
+        Location eye = p.getEyeLocation();
+        Vector o = eye.toVector(), d = eye.getDirection();
+        double reach = cfg("break-reach", 5);
+        double wall = reach;
+        try {
+            var r = p.rayTraceBlocks(reach);
+            if (r != null) wall = r.getHitPosition().distance(o);
+        } catch (RuntimeException ignored) { }
+        Balloon best = null;
+        double bestT = wall;
+        for (Balloon b : balloons.values()) {
+            if (!b.spawned() || !b.at.getWorld().equals(eye.getWorld()) || b.at.distanceSquared(eye) > 400) continue;
+            Vector c = b.at.toVector();
+            double t = Math.min(hit(o, d, c.clone().add(new Vector(-1.1, 0, -1.1)), c.clone().add(new Vector(1.1, 3.6, 1.1))),
+                    hit(o, d, c.clone().add(new Vector(-2.4, 3.5, -2.4)), c.clone().add(new Vector(2.4, 10.2, 2.4))));
+            if (t <= bestT) { bestT = t; best = b; }
+        }
+        return best;
+    }
+
+    /** Distance along the ray to the box, or infinity. */
+    static double hit(Vector o, Vector d, Vector lo, Vector hi) {
+        double t0 = 0, t1 = Double.MAX_VALUE;
+        double[] os = {o.getX(), o.getY(), o.getZ()}, ds = {d.getX(), d.getY(), d.getZ()}, l = {lo.getX(), lo.getY(), lo.getZ()}, h = {hi.getX(), hi.getY(), hi.getZ()};
+        for (int i = 0; i < 3; i++) {
+            if (Math.abs(ds[i]) < 1e-9) { if (os[i] < l[i] || os[i] > h[i]) return Double.POSITIVE_INFINITY; continue; }
+            double a = (l[i] - os[i]) / ds[i], b = (h[i] - os[i]) / ds[i];
+            if (a > b) { double t = a; a = b; b = t; }
+            t0 = Math.max(t0, a); t1 = Math.min(t1, b);
+            if (t0 > t1) return Double.POSITIVE_INFINITY;
+        }
+        return t0;
+    }
+
+    /** Removes a balloon: anyone in it is set down; its item drops where it stood (knocked down) or goes back to its owner (a command). */
+    void takeDown(Balloon b, Player by, boolean drop) {
+        Player r = b.rider();
+        if (r != null) {
+            Location down = b.landed ? b.at : ground(b.at);
+            releasing.add(r.getUniqueId());
+            try { b.seat.removePassenger(r); } finally { releasing.remove(r.getUniqueId()); }
+            r.teleport(down.clone().add(0, 0.1, 0)); r.setFallDistance(0);
+            if (!b.landed) b.at = down;
+        }
+        Location at = b.at.clone().add(0, 0.5, 0);
+        boolean loaded = b.spawned();
+        despawn(b);
+        balloons.remove(b.id);
+        hits.remove(b.id);
+        ItemStack it = item(b.color, b.fuel);
+        if (drop && loaded && at.getWorld() != null) {
+            at.getWorld().dropItemNaturally(at, it);
+            at.getWorld().playSound(at, Sound.ENTITY_ITEM_FRAME_BREAK, 1f, 0.7f);
+        } else giveBack(b.owner, it);
+        save();
+        if (by != null) by.sendMessage(ChatColor.GRAY + "Balloon taken down" + (by.getUniqueId().equals(b.owner) ? "." : " (" + ownerName(b) + "'s)."));
+    }
+
+    /** The item goes to the owner: now if they're online, else on their next join. */
+    void giveBack(UUID owner, ItemStack it) {
+        Player o = Bukkit.getPlayer(owner);
+        if (o != null) {
+            for (ItemStack left : o.getInventory().addItem(it).values()) o.getWorld().dropItemNaturally(o.getLocation(), left);
+            o.sendMessage(ChatColor.GOLD + "Your hot air balloon was taken down and put back in your inventory.");
+            return;
+        }
+        String[] v = it.getItemMeta().getPersistentDataContainer().getOrDefault(itemKey, PersistentDataType.STRING, "red;0").split(";");
+        returns.computeIfAbsent(owner, k -> new ArrayList<>()).add(v[0] + ";" + (v.length > 1 ? v[1] : "0"));
+    }
+
+    @EventHandler
+    public void onJoin(org.bukkit.event.player.PlayerJoinEvent e) {
+        List<String> back = returns.remove(e.getPlayer().getUniqueId());
+        if (back == null) return;
+        for (String s : back) {
+            String[] v = s.split(";");
+            double fuel = 0; try { fuel = Double.parseDouble(v.length > 1 ? v[1] : "0"); } catch (NumberFormatException ignored) { }
+            giveBack(e.getPlayer().getUniqueId(), item(v[0], fuel));
+        }
+        save();
+    }
+
+    String ownerName(Balloon b) {
+        String n = Bukkit.getOfflinePlayer(b.owner).getName();
+        return n == null ? b.owner.toString().substring(0, 8) : n;
+    }
+
+    /** The balloons in a stable order, for /balloon list numbers. */
+    List<Balloon> listed() {
+        List<Balloon> l = new ArrayList<>(balloons.values());
+        l.sort(java.util.Comparator.comparing((Balloon b) -> b.id.toString()));
+        return l;
+    }
+
+    // /balloon [list | remove [#n | all [player]]]
+    @Override
+    public boolean onCommand(org.bukkit.command.CommandSender sender, org.bukkit.command.Command command, String label, String[] args) {
+        boolean admin = sender.hasPermission("items.balloon.admin");
+        Player p = sender instanceof Player pl ? pl : null;
+        String sub = args.length > 0 ? args[0].toLowerCase(Locale.ROOT) : "list";
+        List<Balloon> all = listed();
+        switch (sub) {
+            case "list" -> {
+                List<Balloon> show = new ArrayList<>();
+                for (Balloon b : all) if (admin || (p != null && b.owner.equals(p.getUniqueId()))) show.add(b);
+                if (show.isEmpty()) { sender.sendMessage(ChatColor.GRAY + (admin ? "There are no hot air balloons set up." : "You have no hot air balloons set up.")); return true; }
+                sender.sendMessage(ChatColor.GOLD + "Hot air balloons (" + show.size() + "):");
+                for (Balloon b : show) sender.sendMessage(ChatColor.YELLOW + "#" + (all.indexOf(b) + 1) + ChatColor.GRAY + " " + ownerName(b) + " · " + b.at.getWorld().getName()
+                        + " " + b.at.getBlockX() + " " + b.at.getBlockY() + " " + b.at.getBlockZ() + (b.rider() != null ? ChatColor.AQUA + " (flying: " + b.rider().getName() + ")" : ""));
+                sender.sendMessage(ChatColor.GRAY + "/balloon remove [#n" + (admin ? " | all [player]" : "") + "] takes one down (no number = the nearest of yours within 16 blocks).");
+                return true;
+            }
+            case "remove", "despawn", "delete" -> {
+                if (args.length > 1 && args[1].equalsIgnoreCase("all")) {
+                    if (!admin) { sender.sendMessage(ChatColor.RED + "Only admins can take down every balloon."); return true; }
+                    UUID only = null;
+                    if (args.length > 2) {
+                        var op = Bukkit.getOfflinePlayer(args[2]);
+                        if (op.getName() == null && !op.hasPlayedBefore()) { sender.sendMessage(ChatColor.RED + "No player " + args[2] + "."); return true; }
+                        only = op.getUniqueId();
+                    }
+                    int n = 0;
+                    for (Balloon b : all) if (only == null || b.owner.equals(only)) { takeDown(b, null, false); n++; }
+                    sender.sendMessage(ChatColor.GREEN + "Took down " + n + " balloon" + (n == 1 ? "" : "s") + ". Each one went back to its owner (on their next join if they're offline).");
+                    return true;
+                }
+                Balloon target = null;
+                if (args.length > 1) {
+                    try { int i = Integer.parseInt(args[1].replace("#", "")) - 1; if (i >= 0 && i < all.size()) target = all.get(i); } catch (NumberFormatException ignored) { }
+                    if (target == null) { sender.sendMessage(ChatColor.RED + "No balloon " + args[1] + ". /balloon list shows the numbers."); return true; }
+                } else if (p != null) {
+                    double best = 16 * 16;
+                    for (Balloon b : all) {
+                        if (!b.at.getWorld().equals(p.getWorld()) || (!admin && !b.owner.equals(p.getUniqueId()))) continue;
+                        double d = b.at.distanceSquared(p.getLocation());
+                        if (d <= best) { best = d; target = b; }
+                    }
+                    if (target == null) { sender.sendMessage(ChatColor.RED + "No balloon of yours within 16 blocks. /balloon list shows them all."); return true; }
+                } else { sender.sendMessage("Usage: /balloon remove <#n|all [player]>"); return true; }
+                if (!admin && (p == null || !target.owner.equals(p.getUniqueId()))) { sender.sendMessage(ChatColor.RED + "It isn't your balloon."); return true; }
+                boolean here = target.spawned() && p != null && target.at.getWorld().equals(p.getWorld()) && target.at.distanceSquared(p.getLocation()) < 64 * 64;
+                if (here && target.owner.equals(p.getUniqueId())) { pack(target, p); return true; } // your own, next to you: straight into your inventory
+                takeDown(target, p, false);
+                return true;
+            }
+            default -> {
+                sender.sendMessage(ChatColor.GOLD + "/balloon list" + ChatColor.GRAY + " · your balloons (admins: all of them)");
+                sender.sendMessage(ChatColor.GOLD + "/balloon remove [#n]" + ChatColor.GRAY + " · take one down" + (admin ? ChatColor.GOLD + "  /balloon remove all [player]" : ""));
+                return true;
+            }
+        }
     }
 
     // ---------------------------------------------------------------- flying
@@ -494,6 +689,8 @@ final class Balloons implements Listener {
     void load() {
         if (!file.exists()) return;
         YamlConfiguration y = YamlConfiguration.loadConfiguration(file);
+        ConfigurationSection rs = y.getConfigurationSection("returns");
+        if (rs != null) for (String k : rs.getKeys(false)) try { returns.put(UUID.fromString(k), new ArrayList<>(rs.getStringList(k))); } catch (IllegalArgumentException ignored) { }
         ConfigurationSection s = y.getConfigurationSection("balloons");
         if (s == null) return;
         for (String k : s.getKeys(false)) {
@@ -518,6 +715,7 @@ final class Balloons implements Listener {
             y.set(k + ".at", b.at);
             y.set(k + ".landed", b.landed);
         }
+        for (var r : returns.entrySet()) y.set("returns." + r.getKey(), r.getValue());
         try { y.save(file); } catch (IOException e) { plugin.getLogger().warning("Couldn't save balloons.yml: " + e.getMessage()); }
     }
 

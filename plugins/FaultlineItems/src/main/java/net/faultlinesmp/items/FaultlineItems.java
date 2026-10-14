@@ -396,6 +396,7 @@ public final class FaultlineItems extends JavaPlugin {
         getServer().getPluginManager().registerEvents(camera, this);
         getCommand("camera").setExecutor(camera);
         balloons = new Balloons(this); // 1.2.24: hot air balloons
+        if (getCommand("balloon") != null) getCommand("balloon").setExecutor(balloons); // 1.2.36: /balloon list|remove
         getServer().getPluginManager().registerEvents(balloons, this);
         getCommand("giveballoon").setExecutor(new GiveItemCommand(this, "items.giveballoon",
                 "/giveballoon [amount] [player]", ItemCatalog.single(pl -> pl.balloons.item(null, 0))));

@@ -62,7 +62,7 @@ import java.util.UUID;
 final class TrinketGear implements Listener {
 
     enum Piece {
-        FANG("bloodthirst_fang", "fang", Material.FLINT, ChatColor.DARK_RED, "Bloodthirst Fang", "Every kill heals you", "3 hearts."),
+        FANG("bloodthirst_fang", "fang", Material.FLINT, ChatColor.DARK_RED, "Bloodthirst Fang", "Killing a monster or player", "heals you 2 hearts (3 s cooldown)."),
         PAULDRON("ironhide_pauldron", "pauldron", Material.IRON_NUGGET, ChatColor.GRAY, "Ironhide Pauldron", "15% less knockback."),
         CREST("gladiators_crest", "crest", Material.GOLD_NUGGET, ChatColor.GOLD, "Gladiator's Crest", "+1 armor for every player", "within 10 blocks (max +4)."),
         GUARDIAN("guardians_oath", "guardian", Material.NAUTILUS_SHELL, ChatColor.BLUE, "Guardian's Oath", "Kingdom-mates near you", "take 1% less damage."),
@@ -91,7 +91,7 @@ final class TrinketGear implements Listener {
     final NamespacedKey pauldronKey, crestKey;
     /** Online wearers' locations, refreshed every second (crop growth and the guardian aura look here). */
     final Map<UUID, Location> thumbs = new HashMap<>(), guardians = new HashMap<>();
-    private final Map<UUID, Long> lanternReady = new HashMap<>();
+    private final Map<UUID, Long> lanternReady = new HashMap<>(), fangReady = new HashMap<>();
     private final Map<UUID, Long> treasurePing = new HashMap<>();
 
     TrinketGear(FaultlineItems plugin) {
@@ -154,10 +154,12 @@ final class TrinketGear implements Listener {
         LivingEntity v = e.getEntity();
         Player k = v.getKiller();
         if (k == null || v instanceof ArmorStand) return;
-        // Bloodthirst Fang: any kill (players too)
-        if (wearing(k, Piece.FANG) && !k.isDead()) {
+        // Bloodthirst Fang: hostile mobs and players only (1.2.31: animal farms healed you forever), 3 s apart
+        if (wearing(k, Piece.FANG) && !k.isDead() && (v instanceof Player || v instanceof org.bukkit.entity.Enemy)
+                && fangReady.getOrDefault(k.getUniqueId(), 0L) <= System.currentTimeMillis()) {
+            fangReady.put(k.getUniqueId(), System.currentTimeMillis() + (long) (cfg("fang-cooldown-seconds", 3) * 1000));
             AttributeInstance max = k.getAttribute(Attribute.MAX_HEALTH);
-            if (max != null) k.setHealth(Math.min(max.getValue(), k.getHealth() + cfg("fang-heal", 6)));
+            if (max != null) k.setHealth(Math.min(max.getValue(), k.getHealth() + Balance.num(plugin, "trinkets.fang-heal", 6, 4)));
             k.getWorld().spawnParticle(Particle.DAMAGE_INDICATOR, k.getLocation().add(0, 1.2, 0), 6, 0.3, 0.3, 0.3, 0.05);
         }
         if (v instanceof Player) return;

@@ -49,7 +49,7 @@ darkness-potion:
 
 # Golden Ring settings
 golden-ring:
-  exp-multiplier: 2.0
+  exp-multiplier: 1.5        # 1.2.31 balance: was 2.0 (a cheap craft doubling all kill XP)
   # Blocks, measured from the ring-carrier, that a natural mob spawn has
   # to happen within to be eligible for the bonus-spawn roll below.
   mob-spawn-radius: 64
@@ -85,21 +85,19 @@ bezoar:
 
 # Discount Card settings — drops from killing a Villager
 discount-card:
-  drop-chance: 0.10
-  discount-percent: 17.5
+  drop-chance: 0.03          # 1.2.31 balance: was 0.10 (villagers can be bred)
+  discount-percent: 10       # 1.2.31 balance: was 17.5
 
 # Life Jelly settings — drops from Glow Squids
 life-jelly:
   drop-chance: 0.05
-  # heal-percent is hardcoded to 2% of max health, applied every 2
-  # seconds, per spec — edit LifeJellyListener.java directly if you want
-  # this configurable instead.
+  heal-percent: 0.01         # of max health every 2 seconds (1.2.31 balance: was a fixed 2%, a free Regeneration I forever)
 
 # Shield of the Ocean — 100% guaranteed drop from Elder Guardians, no
 # config needed for the drop chance.
 shield-of-the-ocean:
   # Land movement speed boost (percentage, e.g. 0.10 = +10%).
-  move-speed-boost: 0.10
+  move-speed-boost: 0.05     # 1.2.31 balance: was 0.10 (more than the Harpy Ring's netherite-block 7.5%)
   # Swim boost via WATER_MOVEMENT_EFFICIENCY (0-1 range, added directly —
   # NOT a percentage/multiplier, since that attribute defaults to 0).
   # 0.3 is roughly one level of Depth Strider. Nerfed down from the
@@ -122,7 +120,7 @@ lava-charm:
 # Black Belt (accessory)
 black-belt:
   damage-reduction: 0.05
-  speed-penalty: 0.025
+  speed-penalty: 0          # 1.2.31 balance: was 0.025 (the Bloody Wolf Scarf beat it in every way)
   # Zombies (incl. Husks, Drowned, Zombie Villagers) and Skeletons (incl. Strays)
   drop-chance: 0.01
 
@@ -134,7 +132,7 @@ moon-stone:
   night-regen-percent: 0.05
   night-regen-interval-seconds: 5
   bat-drop-chance: 0.01
-  phantom-drop-chance: 0.05
+  phantom-drop-chance: 0.02  # 1.2.31 balance: was 0.05 (Strength I + Regeneration every night)
   # Shift + F (or /batform) with the Moon Stone equipped: become a bat and fly.
   bat-form:
     seconds: 20
@@ -166,7 +164,7 @@ necromancer-staff:
 
 # Bloody Wolf Scarf (accessory)
 bloody-wolf-scarf:
-  damage-reduction: 0.05
+  damage-reduction: 0.03     # 1.2.31 balance: was 0.05 (the same as the Black Belt, plus melee damage)
   melee-bonus: 0.025
   drop-chance: 0.05          # Piglin Brutes
 
@@ -180,7 +178,7 @@ frost-flare:
 
 # Spelunker's Amulet (accessory)
 spelunker-amulet:
-  mining-speed-bonus: 0.02
+  mining-speed-bonus: 0.10   # 1.2.31 balance: was 0.02 (you couldn't feel it)
   ore-drop-chance: 0.005     # any natural ore; player-placed ores never count
 
 # Harpy Ring (accessory, crafted)
@@ -637,11 +635,11 @@ ranger-gear:
   quickdraw-drop-chance: 0.01        # Skeletons, Strays, Bogged
   quickdraw-full-at: 0.75            # a draw this full shoots like a full one
   windrunner-drop-chance: 0.03       # Breezes
-  windrunner-speed: 1.2
+  windrunner-speed: 1.08     # 1.2.31 balance: was 1.2 (arrow damage grows with speed: +20% speed was +20% damage)
   phantom-drop-chance: 0.02          # Phantoms (Phantom Fletching)
   oath-drop-chance: 0.03             # Evokers (Ranger's Oath Pendant)
   oath-health: 4                     # +2 hearts
-  oath-speed: 0.2
+  oath-speed: 0.1            # 1.2.31 balance: was 0.2 (a whole Speed I)
   ricochet-elite-skeleton-chance: 0.015   # ELITE skeletons/strays/bogged only (very rare)
   ricochet-commander-chance: 0.01         # Bone Commanders
   ricochet-speed: 0.75
@@ -650,7 +648,8 @@ ranger-gear:
 
 # Trinkets (1.2.28): nine more accessories (see the Index).
 trinkets:
-  fang-heal: 6                       # Bloodthirst Fang: health per kill (6 = 3 hearts)
+  fang-heal: 4                       # Bloodthirst Fang: health per kill of a monster or player (4 = 2 hearts; 1.2.31: was 6, any kill)
+  fang-cooldown-seconds: 3
   fang-ravager-chance: 0.08
   fang-vindicator-chance: 0.01
   pauldron-knockback-resistance: 0.15
@@ -668,3 +667,10 @@ trinkets:
   treasure-range: 30
   smelter-chance: 0.2
   featherfall-blocks: 5
+
+# Ancient Core (accessory, from Stone Golem gear parts). 1.2.31 balance: was +3 armor, +25% knockback resistance and
+# +2 hearts, more than Diamond Jacob's Diamond Heart from a far harder fight.
+ancient-core:
+  armor: 2
+  knockback-resistance: 0.15
+  health: 0

@@ -795,6 +795,18 @@ Notes:
   loot; a player kill = Index stat `mutants` (achievements Mutant Hunter 25, Mutant Slayer 250). `/zraid mutant [kind]
   [mob type] [elite]` (no kind = list). Index: 25 entries (270 total), icons from `tools/mutant_icons.py` (head + mark,
   pulled in by `events_assets.py`). `Mutants.open()` replaces `Block#isPassable` (MockBukkit). Tested (`MutantTest`, `EliteTest`).
+- **Accessory balance pass (Items 1.2.31, Index 1.6.24)**: `Items/Balance.java`: `Balance.num(plugin, path, old, new)`
+  reads a server config value still equal to its OLD default as the new one (an owner-picked value is kept); `pct()` for
+  lore. Golden Ring XP x2 -> x1.5; Discount Card 17.5% -> 10%, drop 10% -> 3%; Life Jelly 2% -> 1% max hp / 2 s
+  (`life-jelly.heal-percent`); Shield of the Ocean +10% -> +5% speed; Black Belt loses its -2.5% speed (the Bloody Wolf
+  Scarf beat it in every way); Scarf 5% -> 3% damage reduction (+2.5% melee kept); Spelunker's Amulet +2% -> +10% mining;
+  Moon Stone 5% -> 2% from Phantoms; Windrunner arrows x1.2 -> x1.08 (arrow damage scales with speed); Ranger's Oath +20%
+  -> +10% speed; Bloodthirst Fang 3 -> 2 hearts, only `Enemy` mobs and players, `fang-cooldown-seconds` 3; Ancient Core
+  +3 armor/+25% KB/+2 hearts -> +2/+15%/none (`ancient-core.*`). Left alone on purpose: values the owner set (Cleft Horn
+  1.5%, Ranger Emblem 5%, Harpy 7.5%, Guardian's Oath 1%, Featherfall 5 blocks), boss counters, immunity charms, the
+  Ankh / Mirror endgame. The three `applyModifier`s and `Gear.modifier` now replace a modifier whose amount changed
+  (player attribute modifiers persist in player data: an old +10% would have stuck). `AccessoryStacks.changedOnes`
+  (cached 5 s) refreshes every changed accessory's lore. Tested (`BalanceTest`; Trinket/Ranger/Items tests updated).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

@@ -863,6 +863,7 @@ public final class FaultlineItems extends JavaPlugin {
     Creatures creatures;
     Gear gear;
     Gear getGear() { return gear; }
+    LifeJellyListener getLifeJellyListener() { return lifeJellyListener; }
 
     DivingGear getDivingGear() { return divingGear; }
     SpawnProtection spawnProtection;
@@ -2539,7 +2540,7 @@ public final class FaultlineItems extends JavaPlugin {
 
             List<String> lore = List.of(
                     ChatColor.GRAY + "Equip via /accessories to activate.",
-                    ChatColor.GREEN + "+100% EXP from mobs and players",
+                    ChatColor.GREEN + "+" + Balance.pct(Balance.num(plugin, "golden-ring.exp-multiplier", 2.0, 1.5) - 1) + "% EXP from mobs and players",
                     ChatColor.RED + "Mobs spawn 1.5x more often near you"
             );
             meta.setLore(lore);
@@ -2598,7 +2599,7 @@ public final class FaultlineItems extends JavaPlugin {
             if (killer == null) return;
             if (!isWearingRing(killer)) return;
 
-            double multiplier = plugin.getConfig().getDouble("golden-ring.exp-multiplier", 2.0);
+            double multiplier = Balance.num(plugin, "golden-ring.exp-multiplier", 2.0, 1.5);
             event.setDroppedExp((int) Math.round(event.getDroppedExp() * multiplier));
         }
 
@@ -2608,7 +2609,7 @@ public final class FaultlineItems extends JavaPlugin {
             if (killer == null) return;
             if (!isWearingRing(killer)) return;
 
-            double multiplier = plugin.getConfig().getDouble("golden-ring.exp-multiplier", 2.0);
+            double multiplier = Balance.num(plugin, "golden-ring.exp-multiplier", 2.0, 1.5);
             event.setDroppedExp((int) Math.round(event.getDroppedExp() * multiplier));
         }
 
@@ -3163,7 +3164,7 @@ public final class FaultlineItems extends JavaPlugin {
             ItemStack item = new ItemStack(Material.PAPER);
             ItemMeta meta = item.getItemMeta();
 
-            double percent = plugin.getConfig().getDouble("discount-card.discount-percent", 17.5);
+            double percent = Balance.num(plugin, "discount-card.discount-percent", 17.5, 10);
 
             meta.setDisplayName(ChatColor.AQUA + "" + ChatColor.BOLD + "Discount Card");
             meta.setLore(List.of(
@@ -3222,7 +3223,7 @@ public final class FaultlineItems extends JavaPlugin {
             // undo each other in the wrong order and leave prices permanently low.
             double percent = 0;
             if (plugin.getAccessoryManager().hasEquipped(player, plugin.getDiscountCardKey())) {
-                percent += plugin.getConfig().getDouble("discount-card.discount-percent", 17.5);
+                percent += Balance.num(plugin, "discount-card.discount-percent", 17.5, 10);
             }
             if (plugin.isEventActive("LANTERN_NIGHT")) {
                 percent += plugin.getConfig().getDouble("lantern-night.villager-discount-percent", 10);
@@ -3290,7 +3291,7 @@ public final class FaultlineItems extends JavaPlugin {
             Player killer = event.getEntity().getKiller();
             if (killer == null) return;
 
-            double chance = plugin.getConfig().getDouble("discount-card.drop-chance", 0.10);
+            double chance = Balance.num(plugin, "discount-card.drop-chance", 0.10, 0.03);
             if (random.nextDouble() < chance * plugin.eventDropMultiplier()) {
                 event.getDrops().add(DiscountCardItem.create(plugin));
             }
@@ -3314,7 +3315,7 @@ public final class FaultlineItems extends JavaPlugin {
             meta.setDisplayName(ChatColor.LIGHT_PURPLE + "" + ChatColor.BOLD + "Life Jelly");
             meta.setLore(List.of(
                     ChatColor.GRAY + "Equip via /accessories.",
-                    ChatColor.GREEN + "Heals 2% max health every 2s"
+                    ChatColor.GREEN + "Heals " + Balance.pct(plugin.getConfig().getDouble("life-jelly.heal-percent", 0.01)) + "% max health every 2s"
             ));
 
             meta.addEnchant(Enchantment.LURE, 1, true);
@@ -3359,7 +3360,7 @@ public final class FaultlineItems extends JavaPlugin {
                 if (maxHealthAttribute == null) continue;
 
                 double maxHealth = maxHealthAttribute.getValue();
-                double healAmount = maxHealth * 0.02;
+                double healAmount = maxHealth * plugin.getConfig().getDouble("life-jelly.heal-percent", 0.01); // 1.2.31: was a fixed 2%
                 player.setHealth(Math.min(maxHealth, player.getHealth() + healAmount));
             }
         }
@@ -3390,7 +3391,7 @@ public final class FaultlineItems extends JavaPlugin {
             meta.setLore(List.of(
                     ChatColor.GRAY + "Equip via /accessories.",
                     ChatColor.GREEN + "Swim faster",
-                    ChatColor.GREEN + "+10% movement speed"
+                    ChatColor.GREEN + "+" + Balance.pct(Balance.num(plugin, "shield-of-the-ocean.move-speed-boost", 0.10, 0.05)) + "% movement speed"
             ));
 
             meta.addEnchant(Enchantment.LURE, 1, true);
@@ -3443,7 +3444,7 @@ public final class FaultlineItems extends JavaPlugin {
                 boolean equipped = plugin.getAccessoryManager().hasEquipped(player, plugin.getShieldOfTheOceanKey());
 
                 applyModifier(player, Attribute.MOVEMENT_SPEED, speedKey,
-                        plugin.getConfig().getDouble("shield-of-the-ocean.move-speed-boost", 0.10),
+                        Balance.num(plugin, "shield-of-the-ocean.move-speed-boost", 0.10, 0.05),
                         AttributeModifier.Operation.MULTIPLY_SCALAR_1, equipped);
 
                 // NERFED from full Dolphin's Grace. WATER_MOVEMENT_EFFICIENCY defaults
@@ -3464,6 +3465,10 @@ public final class FaultlineItems extends JavaPlugin {
                     .filter(m -> m.getKey().equals(key))
                     .findFirst().orElse(null);
 
+            if (shouldHave && existing != null && Math.abs(existing.getAmount() - amount) > 1e-9) { // 1.2.31: a changed value updates
+                attribute.removeModifier(existing);
+                existing = null;
+            }
             if (shouldHave && existing == null) {
                 attribute.addModifier(new AttributeModifier(key, amount, operation, EquipmentSlotGroup.ANY));
             } else if (!shouldHave && existing != null) {
@@ -3653,8 +3658,15 @@ public final class FaultlineItems extends JavaPlugin {
 
         static ItemStack blackBelt(FaultlineItems plugin) {
             return make(plugin, Material.LEATHER, ChatColor.DARK_GRAY + "" + ChatColor.BOLD + "Black Belt", plugin.getBlackBeltKey(),
-                    ChatColor.GREEN + "Take 5% less damage",
-                    ChatColor.RED + "2.5% slower movement");
+                    blackBeltLore(plugin));
+        }
+
+        /** 1.2.31: no speed penalty by default (the Bloody Wolf Scarf did everything it did, better). */
+        static String[] blackBeltLore(FaultlineItems plugin) {
+            double red = plugin.getConfig().getDouble("black-belt.damage-reduction", 0.05);
+            double slow = Balance.num(plugin, "black-belt.speed-penalty", 0.025, 0);
+            return slow > 0 ? new String[]{ChatColor.GREEN + "Take " + Balance.pct(red) + "% less damage", ChatColor.RED + Balance.pct(slow) + "% slower movement"}
+                    : new String[]{ChatColor.GREEN + "Take " + Balance.pct(red) + "% less damage"};
         }
 
         static ItemStack moonStone(FaultlineItems plugin) {
@@ -3670,8 +3682,8 @@ public final class FaultlineItems extends JavaPlugin {
 
         static ItemStack bloodyWolfScarf(FaultlineItems plugin) {
             return make(plugin, Material.RABBIT_HIDE, ChatColor.DARK_RED + "" + ChatColor.BOLD + "Bloody Wolf Scarf", plugin.getBloodyWolfScarfKey(),
-                    ChatColor.GREEN + "Take 5% less damage",
-                    ChatColor.GREEN + "+2.5% melee damage");
+                    ChatColor.GREEN + "Take " + Balance.pct(Balance.num(plugin, "bloody-wolf-scarf.damage-reduction", 0.05, 0.03)) + "% less damage",
+                    ChatColor.GREEN + "+" + Balance.pct(plugin.getConfig().getDouble("bloody-wolf-scarf.melee-bonus", 0.025)) + "% melee damage");
         }
 
         static ItemStack frostFlare(FaultlineItems plugin) {
@@ -3684,7 +3696,7 @@ public final class FaultlineItems extends JavaPlugin {
 
         static ItemStack spelunkerAmulet(FaultlineItems plugin) {
             return make(plugin, Material.AMETHYST_SHARD, ChatColor.GOLD + "" + ChatColor.BOLD + "Spelunker's Amulet", plugin.getSpelunkerAmuletKey(),
-                    ChatColor.GREEN + "+2% mining speed",
+                    ChatColor.GREEN + "+" + Balance.pct(Balance.num(plugin, "spelunker-amulet.mining-speed-bonus", 0.02, 0.10)) + "% mining speed",
                     ChatColor.GREEN + "Immune to falling blocks");
         }
 
@@ -3888,7 +3900,7 @@ public final class FaultlineItems extends JavaPlugin {
             applyModifier(player, Attribute.MOVEMENT_SPEED, harpySpeedKey,
                     plugin.getConfig().getDouble("harpy-ring.speed-bonus", 0.075), AttributeModifier.Operation.MULTIPLY_SCALAR_1, harpy);
             applyModifier(player, Attribute.BLOCK_BREAK_SPEED, spelunkerMiningKey,
-                    plugin.getConfig().getDouble("spelunker-amulet.mining-speed-bonus", 0.02), AttributeModifier.Operation.MULTIPLY_SCALAR_1, spelunker);
+                    Balance.num(plugin, "spelunker-amulet.mining-speed-bonus", 0.02, 0.10), AttributeModifier.Operation.MULTIPLY_SCALAR_1, spelunker);
             applyModifier(player, Attribute.KNOCKBACK_RESISTANCE, ankhKnockbackKey, 1.0, AttributeModifier.Operation.ADD_NUMBER, ankh && AnkhImbue.noKnockback(plugin));
             applyModifier(player, Attribute.MOVEMENT_SPEED, ankhSpeedKey,
                     plugin.getConfig().getDouble("ankh-shield.speed-bonus", 0.15), AttributeModifier.Operation.MULTIPLY_SCALAR_1, ankhFull);
@@ -3922,6 +3934,10 @@ public final class FaultlineItems extends JavaPlugin {
             if (attribute == null) return;
             AttributeModifier existing = attribute.getModifiers().stream()
                     .filter(m -> m.getKey().equals(key)).findFirst().orElse(null);
+            if (shouldHave && existing != null && Math.abs(existing.getAmount() - amount) > 1e-9) { // 1.2.31: a changed value updates
+                attribute.removeModifier(existing);
+                existing = null;
+            }
             if (shouldHave && existing == null) {
                 attribute.addModifier(new AttributeModifier(key, amount, operation, EquipmentSlotGroup.ANY));
             } else if (!shouldHave && existing != null) {
@@ -3971,12 +3987,13 @@ public final class FaultlineItems extends JavaPlugin {
         }
 
         private void applyBeltSlowdown(Player player, boolean shouldHave) {
+            if (Balance.num(plugin, "black-belt.speed-penalty", 0.025, 0) <= 0) shouldHave = false; // 1.2.31: no penalty (old ones are taken off)
             AttributeInstance speed = player.getAttribute(Attribute.MOVEMENT_SPEED);
             if (speed == null) return;
             AttributeModifier existing = speed.getModifiers().stream()
                     .filter(m -> m.getKey().equals(beltSpeedKey)).findFirst().orElse(null);
             if (shouldHave && existing == null) {
-                double penalty = plugin.getConfig().getDouble("black-belt.speed-penalty", 0.025);
+                double penalty = Balance.num(plugin, "black-belt.speed-penalty", 0.025, 0);
                 speed.addModifier(new AttributeModifier(beltSpeedKey, -penalty,
                         AttributeModifier.Operation.MULTIPLY_SCALAR_1, EquipmentSlotGroup.ANY));
             } else if (!shouldHave && existing != null) {
@@ -4026,7 +4043,7 @@ public final class FaultlineItems extends JavaPlugin {
                     roll(event, "moon-stone.bat-drop-chance", 0.01, NewAccessoryItems.moonStone(plugin));
                 }
                 case BLAZE -> roll(event, "lava-charm.blaze-drop-chance", 0.10, NewAccessoryItems.lavaCharm(plugin));
-                case PHANTOM -> roll(event, "moon-stone.phantom-drop-chance", 0.05, NewAccessoryItems.moonStone(plugin));
+                case PHANTOM -> roll(event, Balance.num(plugin, "moon-stone.phantom-drop-chance", 0.05, 0.02), NewAccessoryItems.moonStone(plugin));
                 case PILLAGER -> roll(event, "ranger-emblem.pillager-drop-chance", 0.02, NewAccessoryItems.rangerEmblem(plugin));
                 case ZOMBIE, ZOMBIE_VILLAGER, HUSK, DROWNED, STRAY ->
                         roll(event, "black-belt.drop-chance", 0.01, NewAccessoryItems.blackBelt(plugin));
@@ -4042,6 +4059,10 @@ public final class FaultlineItems extends JavaPlugin {
                 case SPIDER -> roll(event, "spider-staff.spider-drop-chance", 0.0001, SpiderStaffItem.create(plugin));
                 default -> { }
             }
+        }
+
+        private void roll(EntityDeathEvent event, double chance, ItemStack item) {
+            if (random.nextDouble() < chance * plugin.eventDropMultiplier()) event.getDrops().add(item);
         }
 
         private void roll(EntityDeathEvent event, String configKey, double defaultChance, ItemStack item) {
@@ -4192,7 +4213,7 @@ public final class FaultlineItems extends JavaPlugin {
                 return;
             }
             if (wearing(player, plugin.getBloodyWolfScarfKey())) {
-                event.setDamage(event.getDamage() * (1 - plugin.getConfig().getDouble("bloody-wolf-scarf.damage-reduction", 0.05)));
+                event.setDamage(event.getDamage() * (1 - Balance.num(plugin, "bloody-wolf-scarf.damage-reduction", 0.05, 0.03)));
             }
         }
 

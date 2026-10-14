@@ -70,7 +70,7 @@ final class RangerGear implements Listener {
         POUCH("fletchers_pouch", "pouch", Material.RABBIT_HIDE, ChatColor.GREEN, "Fletcher's Pouch",
                 "30% of your shots don't", "use up an arrow."),
         WINDRUNNER("windrunner_band", "windrunner", Material.BREEZE_ROD, ChatColor.AQUA, "Windrunner Band",
-                "Arrows fly 20% faster", "and further."),
+                "Arrows fly 8% faster", "and further."),
         RICOCHET("ricochet_charm", "ricochet", Material.PRISMARINE_SHARD, ChatColor.LIGHT_PURPLE, "Ricochet Charm",
                 "Arrows that hit a wall", "bounce off it once."),
         PHANTOM("phantom_fletching", "phantom", Material.FEATHER, ChatColor.DARK_AQUA, "Phantom Fletching",
@@ -78,7 +78,7 @@ final class RangerGear implements Listener {
         WHISTLE("wolfcaller_whistle", "whistle", Material.FLINT, ChatColor.WHITE, "Wolfcaller Whistle",
                 "Your tamed wolves attack", "whatever you shoot."),
         OATH("rangers_oath", "oath", Material.ECHO_SHARD, ChatColor.DARK_GREEN, "Ranger's Oath Pendant",
-                "With 2 other ranger accessories:", "+2 hearts and +20% speed.");
+                "With 2 other ranger accessories:", "+2 hearts and +10% speed.");
 
         final String id, command, name;
         final Material base;
@@ -196,7 +196,7 @@ final class RangerGear implements Listener {
             force = effective;
             if (effective >= 1) arrow.setCritical(true);
         }
-        if (wearing(p, Piece.WINDRUNNER)) mult *= cfg("windrunner-speed", 1.2);
+        if (wearing(p, Piece.WINDRUNNER)) mult *= Balance.num(plugin, "ranger-gear.windrunner-speed", 1.2, 1.08);
         if (mult != 1) arrow.setVelocity(vel.multiply(mult));
         if (wearing(p, Piece.PHANTOM)) arrow.setPierceLevel(Math.min(127, arrow.getPierceLevel() + 1));
         if (wearing(p, Piece.RICOCHET)) arrow.getPersistentDataContainer().set(ricochetKey, PersistentDataType.BYTE, (byte) 1);
@@ -296,7 +296,7 @@ final class RangerGear implements Listener {
         for (Player p : Bukkit.getOnlinePlayers()) {
             boolean on = wearing(p, Piece.OATH) && rangerCount(p) >= 3;
             set(p, Attribute.MAX_HEALTH, oathHealth, on ? cfg("oath-health", 4) : 0, AttributeModifier.Operation.ADD_NUMBER);
-            set(p, Attribute.MOVEMENT_SPEED, oathSpeed, on ? cfg("oath-speed", 0.2) : 0, AttributeModifier.Operation.MULTIPLY_SCALAR_1);
+            set(p, Attribute.MOVEMENT_SPEED, oathSpeed, on ? Balance.num(plugin, "ranger-gear.oath-speed", 0.2, 0.1) : 0, AttributeModifier.Operation.MULTIPLY_SCALAR_1);
         }
     }
 

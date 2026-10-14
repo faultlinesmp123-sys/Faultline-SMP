@@ -22,7 +22,7 @@ entries:
   # ---------------------------------------------------------------- ACCESSORIES
   - {chapter: accessories, name: "Golden Ring", icon: golden_ring, detect: "faultlineitems:golden_ring",
      how: "Craft it: a Diamond on top, Gold Ingots on the other three sides.",
-     does: "Double XP from kills, but hostile mobs spawn 1.5x more around you."}
+     does: "+50% XP from kills, but hostile mobs spawn 1.5x more around you."}
   - {chapter: accessories, name: "Climbing Claws", icon: climbing_claws, detect: "faultlineitems:climbing_claws",
      how: "Can't be found yet. Only given out by staff.",
      does: "Hold jump against a wall to climb straight up it."}
@@ -30,35 +30,35 @@ entries:
      how: "2% from Bees and Cave Spiders.",
      does: "You're immune to Poison."}
   - {chapter: accessories, name: "Discount Card", icon: discount_card, detect: "faultlineitems:discount_card",
-     how: "10% from Villagers.",
-     does: "Villager trades cost 17.5% less. Stacks with Lantern Night."}
+     how: "3% from Villagers.",
+     does: "Villager trades cost 10% less. Stacks with Lantern Night."}
   - {chapter: accessories, name: "Life Jelly", icon: life_jelly, detect: "faultlineitems:life_jelly",
      how: "5% from Glow Squids.",
-     does: "Heals 2% of your max health every 2 seconds."}
+     does: "Heals 1% of your max health every 2 seconds."}
   - {chapter: accessories, name: "Shield of the Ocean", icon: shield_of_the_ocean, detect: "faultlineitems:shield_of_the_ocean",
      how: "Always dropped by Elder Guardians.",
-     does: "+10% movement speed and faster swimming."}
+     does: "+5% movement speed and faster swimming."}
   - {chapter: accessories, name: "Lava Charm", icon: lava_charm, detect: "faultlineitems:lava_charm",
      how: "5% from Bats, 10% from Blazes.",
      does: "Touching lava or fire makes you immune to it for 7 seconds. 60 second cooldown."}
   - {chapter: accessories, name: "Black Belt", icon: black_belt, detect: "faultlineitems:black_belt",
      how: "1% from Zombies and Skeletons.",
-     does: "Take 5% less damage, but move 2.5% slower."}
+     does: "Take 5% less damage."}
   - {chapter: accessories, name: "Moon Stone", icon: moon_stone, detect: "faultlineitems:moon_stone",
-     how: "1% from Bats, 5% from Phantoms, 2.5% from Vampires.",
+     how: "1% from Bats, 2% from Phantoms, 2.5% from Vampires.",
      does: "You become a vampire. Always: hits heal you. Night: Strength and Regeneration. Day: Weakness, and sunlight burns you (rain stops it). Shift + F: turn into a bat and fly for 20 seconds (2 hearts, 2 minute cooldown)."}
   - {chapter: accessories, name: "Ranger Emblem", icon: ranger_emblem, detect: "faultlineitems:ranger_emblem",
      how: "2% from Pillagers.",
      does: "+5% bow and crossbow damage. Counts toward the Ranger's Oath Pendant."}
   - {chapter: accessories, name: "Bloody Wolf Scarf", icon: bloody_wolf_scarf, detect: "faultlineitems:bloody_wolf_scarf",
      how: "5% from Piglin Brutes.",
-     does: "Take 5% less damage and deal 2.5% more melee damage."}
+     does: "Take 3% less damage and deal 2.5% more melee damage."}
   - {chapter: accessories, name: "Frost Flare", icon: frost_flare, detect: "faultlineitems:frost_flare",
      how: "0.75% from Snow Golems, 2.5% from Frost Wraiths.",
      does: "Your hits slow enemies, you're immune to Slowness, and you move 5% faster. But hostile mobs spawn twice as much and you get hungry faster."}
   - {chapter: accessories, name: "Spelunker's Amulet", icon: spelunker_amulet, detect: "faultlineitems:spelunker_amulet",
      how: "0.5% when mining natural ores. Sometimes dropped by Vampires.",
-     does: "+2% mining speed, and falling sand and gravel can't hurt you."}
+     does: "+10% mining speed, and falling sand and gravel can't hurt you."}
   - {chapter: accessories, name: "Harpy Ring", icon: harpy_ring, detect: "faultlineitems:harpy_ring",
      how: "Craft it: Gold Ingots in the corners, Diamonds on the edges, a Netherite Block in the middle.",
      does: "+7.5% movement speed, and your Elytra lasts 50% longer."}
@@ -979,7 +979,7 @@ entries:
      does: "Ranger gear. 30% of your shots don't use up an arrow."}
   - {chapter: accessories, name: "Windrunner Band", icon: windrunner_band, detect: "faultlineitems:windrunner_band",
      how: "3% from Breezes (Trial Chambers).",
-     does: "Ranger gear. Your arrows fly 20% faster: further, and a little harder."}
+     does: "Ranger gear. Your arrows fly 8% faster: further, and a little harder."}
   - {chapter: accessories, name: "Ricochet Charm", icon: ricochet_charm, detect: "faultlineitems:ricochet_charm",
      how: "Very rare: 1.5% from ELITE Skeletons, Strays and Bogged, 1% from a Bone Commander.",
      does: "Ranger gear. An arrow that hits a block bounces off it once (75% speed) and can still hit something."}
@@ -991,9 +991,9 @@ entries:
      does: "Ranger gear. Your tamed wolves within 32 blocks (not sitting) attack whatever your arrows hit."}
   - {chapter: accessories, name: "Ranger's Oath Pendant", icon: rangers_oath, detect: "faultlineitems:rangers_oath",
      how: "3% from Evokers.",
-     does: "Ranger gear. Wear it with two other ranger accessories (the Ranger Emblem counts) for +2 hearts and +20% speed."}
+     does: "Ranger gear. Wear it with two other ranger accessories (the Ranger Emblem counts) for +2 hearts and +10% speed."}
   - {chapter: accessories, name: "Bloodthirst Fang", icon: bloodthirst_fang, detect: "faultlineitems:bloodthirst_fang",
-     how: "8% from Ravagers, 1% from Vindicators.", does: "Every kill (mob or player) heals you 3 hearts."}
+     how: "8% from Ravagers, 1% from Vindicators.", does: "Killing a monster or a player heals you 2 hearts (3 second cooldown). Animals don't count."}
   - {chapter: accessories, name: "Ironhide Pauldron", icon: ironhide_pauldron, detect: "faultlineitems:ironhide_pauldron",
      how: "Craft it: Iron Block, Netherite Scrap, Iron Block / Iron Block, Leather, Iron Block.", does: "15% less knockback."}
   - {chapter: accessories, name: "Gladiator's Crest", icon: gladiators_crest, detect: "faultlineitems:gladiators_crest",
@@ -1011,7 +1011,7 @@ entries:
   - {chapter: accessories, name: "Featherfall Charm", icon: featherfall_charm, detect: "faultlineitems:featherfall_charm",
      how: "Craft it: Feathers all around, a Slime Ball in the middle, a Gold Ingot at the bottom.", does: "No fall damage from falls of 5 blocks or less."}
   - {chapter: accessories, name: "Ancient Core", icon: ancient_core, detect: "faultlineitems:ancient_core",
-     how: "Craft: 4 Ancient Gear Parts around an amethyst block, with 4 amethyst shards.", does: "+3 armor, +25% knockback resistance, +2 hearts."}
+     how: "Craft: 4 Ancient Gear Parts around an amethyst block, with 4 amethyst shards.", does: "+2 armor and +15% knockback resistance."}
   - {chapter: armor, name: "Mining Helmet", icon: mining_helmet, detect: "faultlineitems:gear=mining_helmet",
      how: "Craft: an iron helmet, glowstone and a redstone torch.", does: "Wear it: night vision, and a headlamp that lights up whatever you look at. +2 armor."}
   - {chapter: armor, name: "Knight's Helm", icon: knight_helm, detect: "faultlineitems:gear=knight_helm",

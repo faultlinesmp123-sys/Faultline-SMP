@@ -42,10 +42,31 @@ final class AccessoryStacks implements Listener {
         return changed;
     }
 
+    private static List<ItemStack> cache;
+    private static long cachedAt;
+
+    /** Accessories whose lore changed (1.2.31: the balance pass). Built at most once every 5 s. */
     private static List<ItemStack> changedOnes(FaultlineItems plugin) {
-        ItemStack suit = null;
-        try { suit = plugin.getDivingGear().item(DivingGear.Piece.SUIT); } catch (RuntimeException ignored) { }
-        return java.util.Arrays.asList(FaultlineItems.NewAccessoryItems.cleftHorn(plugin), suit, FaultlineItems.NewAccessoryItems.rangerEmblem(plugin));
+        long now = System.currentTimeMillis();
+        if (cache != null && now - cachedAt < 5000) return cache;
+        List<ItemStack> out = new java.util.ArrayList<>();
+        out.add(FaultlineItems.NewAccessoryItems.cleftHorn(plugin));
+        out.add(FaultlineItems.NewAccessoryItems.rangerEmblem(plugin));
+        out.add(FaultlineItems.NewAccessoryItems.blackBelt(plugin));
+        out.add(FaultlineItems.NewAccessoryItems.bloodyWolfScarf(plugin));
+        out.add(FaultlineItems.NewAccessoryItems.spelunkerAmulet(plugin));
+        out.add(FaultlineItems.GoldenRingItem.create(plugin));
+        out.add(FaultlineItems.DiscountCardItem.create(plugin));
+        out.add(FaultlineItems.LifeJellyItem.create(plugin));
+        out.add(FaultlineItems.ShieldOfTheOceanItem.create(plugin));
+        try { out.add(plugin.getDivingGear().item(DivingGear.Piece.SUIT)); } catch (RuntimeException ignored) { }
+        try { out.add(plugin.getGear().item("ancient_core")); } catch (RuntimeException ignored) { }
+        try { out.add(plugin.getRangerGear().item(RangerGear.Piece.WINDRUNNER)); out.add(plugin.getRangerGear().item(RangerGear.Piece.OATH)); } catch (RuntimeException ignored) { }
+        try { out.add(plugin.getTrinkets().item(TrinketGear.Piece.FANG)); } catch (RuntimeException ignored) { }
+        out.removeIf(java.util.Objects::isNull);
+        cache = out;
+        cachedAt = now;
+        return out;
     }
 
     /** Splits every stacked accessory in the inventory; extras go to empty slots, then the player, then the ground. */

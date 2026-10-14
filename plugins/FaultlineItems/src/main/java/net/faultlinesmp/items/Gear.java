@@ -163,7 +163,7 @@ final class Gear implements Listener, CommandExecutor {
             }
             case "ancient_core" -> {
                 return FaultlineItems.NewAccessoryItems.make(plugin, Material.PAPER, ChatColor.DARK_GREEN + "" + ChatColor.BOLD + "Ancient Core", coreKey,
-                        ChatColor.GREEN + "+3 armor, +25% knockback resistance,", ChatColor.GREEN + "+2 hearts.",
+                        ChatColor.GREEN + "+" + Balance.num(coreArmor()) + " armor, +" + Balance.pct(coreKnock()) + "% knockback resistance.",
                         ChatColor.DARK_GRAY + "Built from a Stone Golem's gears.");
             }
             case "museum_pedestal" -> {
@@ -292,18 +292,25 @@ final class Gear implements Listener, CommandExecutor {
             light(p, want);
             if (ticks % 4 == 0) {
                 boolean core = plugin.getAccessoryManager().hasEquipped(p, coreKey);
-                modifier(p, Attribute.ARMOR, coreArmor, 3, AttributeModifier.Operation.ADD_NUMBER, core);
-                modifier(p, Attribute.KNOCKBACK_RESISTANCE, coreKb, 0.25, AttributeModifier.Operation.ADD_NUMBER, core);
-                modifier(p, Attribute.MAX_HEALTH, coreHealth, 4, AttributeModifier.Operation.ADD_NUMBER, core);
+                modifier(p, Attribute.ARMOR, coreArmor, coreArmor(), AttributeModifier.Operation.ADD_NUMBER, core);
+                modifier(p, Attribute.KNOCKBACK_RESISTANCE, coreKb, coreKnock(), AttributeModifier.Operation.ADD_NUMBER, core);
+                double hearts = plugin.getConfig().getDouble("ancient-core.health", 0); // 1.2.31: was +4 (2 hearts); 0 takes it off
+                modifier(p, Attribute.MAX_HEALTH, coreHealth, hearts, AttributeModifier.Operation.ADD_NUMBER, core && hearts > 0);
+                if (p.getHealth() > p.getAttribute(Attribute.MAX_HEALTH).getValue()) p.setHealth(p.getAttribute(Attribute.MAX_HEALTH).getValue());
             }
         }
     }
+
+    /** 1.2.31 balance: the Ancient Core is +2 armor, +15% knockback resistance (was +3, +25% and +2 hearts). */
+    double coreArmor() { return plugin.getConfig().getDouble("ancient-core.armor", 2); }
+    double coreKnock() { return plugin.getConfig().getDouble("ancient-core.knockback-resistance", 0.15); }
 
     void modifier(Player p, Attribute a, NamespacedKey key, double amount, AttributeModifier.Operation op, boolean want) {
         AttributeInstance ai = p.getAttribute(a);
         if (ai == null) return;
         AttributeModifier existing = null;
         for (AttributeModifier m : ai.getModifiers()) if (m.getKey().equals(key)) existing = m;
+        if (want && existing != null && Math.abs(existing.getAmount() - amount) > 1e-9) { ai.removeModifier(existing); existing = null; }
         if (want && existing == null) ai.addModifier(new AttributeModifier(key, amount, op, EquipmentSlotGroup.ANY));
         else if (!want && existing != null) ai.removeModifier(existing);
     }

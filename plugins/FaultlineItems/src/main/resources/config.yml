@@ -300,7 +300,7 @@ boss-loot:
 
 # Cleft Horn (accessory) — armor penetration
 cleft-horn:
-  armor-penetration: 0.015   # your hits ignore this much of the target's armor protection (1.5%; an old 0.05 reads as 0.015)
+  armor-penetration: 0.005   # your hits ignore this much of the target's armor protection (0.5%; an old 0.05 or 0.015 reads as 0.005)
   goat-drop-chance: 0.02
 
 # A Weird Clock... (accessory) — immune to Slowness

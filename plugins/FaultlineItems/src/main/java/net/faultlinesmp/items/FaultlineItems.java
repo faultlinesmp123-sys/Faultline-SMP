@@ -3719,8 +3719,8 @@ public final class FaultlineItems extends JavaPlugin {
 
         /** 1.2.12: nerfed to 1.5% (a server config still holding the old 0.05 gets the new number). */
         static double cleftPenetration(FaultlineItems plugin) {
-            double v = plugin.getConfig().getDouble("cleft-horn.armor-penetration", 0.015);
-            return v == 0.05 ? 0.015 : v;
+            double v = plugin.getConfig().getDouble("cleft-horn.armor-penetration", 0.005);
+            return v == 0.05 || v == 0.015 ? 0.005 : v; // old defaults (5%, then 1.5%) read as 0.5% (1.2.33)
         }
 
         static String cleftHornLore(FaultlineItems plugin) {

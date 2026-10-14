@@ -111,8 +111,8 @@ Notes:
   lore is fixed when held. Tested in `AnkhTest`. The **Harpy Ring** is +5% speed, Elytra durability drains 30% slower (Items 1.2.32; was 7.5% / 50%).
 - **Items 1.2.12 (balance)**: the **Abyssal Diving Suit** does nothing in combat (`DivingGear.has()` skips SUIT while
   `inCombat`: 10 s after hitting / being hit by a player or an `Enemy` mob, projectiles count as their shooter;
-  `diving.suit.combat-seconds`, `combat-includes-monsters`). **Cleft Horn** 5% -> 1.5% armor penetration
-  (`NewAccessoryItems.cleftPenetration`: an old config's 0.05 reads as 0.015; lore built from it). **Accessories don't
+  `diving.suit.combat-seconds`, `combat-includes-monsters`). **Cleft Horn** 5% -> 1.5% armor penetration, then 0.5% in 1.2.33
+  (`NewAccessoryItems.cleftPenetration`: an old config's 0.05 or 0.015 reads as 0.005; lore built from it). **Accessories don't
   stack**: max stack 1 (was 16), and the /accessories menu refuses a second copy of one already worn
   (`AccessoryManager.same`: shared PDC tag other than the generic accessory key); a duplicate saved from before goes back
   to the inventory when the menu closes. `AccessoryStacks` splits old stacks (join, opening any container, pickup) and
@@ -803,7 +803,7 @@ Notes:
   Moon Stone 5% -> 2% from Phantoms; Windrunner arrows x1.2 -> x1.08 (arrow damage scales with speed); Ranger's Oath +20%
   -> +10% speed; Bloodthirst Fang 3 -> 2 hearts, only `Enemy` mobs and players, `fang-cooldown-seconds` 3; Ancient Core
   +3 armor/+25% KB/+2 hearts -> +2/+15%/none (`ancient-core.*`). Left alone on purpose: values the owner set (Cleft Horn
-  1.5%, Ranger Emblem 5%, Guardian's Oath 1%, Featherfall 5 blocks), boss counters, immunity charms, the
+  0.5% since 1.2.33, Ranger Emblem 5%, Guardian's Oath 1%, Featherfall 5 blocks), boss counters, immunity charms, the
   Ankh / Mirror endgame. The three `applyModifier`s and `Gear.modifier` now replace a modifier whose amount changed
   (player attribute modifiers persist in player data: an old +10% would have stuck). `AccessoryStacks.changedOnes`
   (cached 5 s) refreshes every changed accessory's lore. Tested (`BalanceTest`; Trinket/Ranger/Items tests updated).

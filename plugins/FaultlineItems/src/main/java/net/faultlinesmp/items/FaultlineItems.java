@@ -3702,9 +3702,9 @@ public final class FaultlineItems extends JavaPlugin {
 
         static ItemStack harpyRing(FaultlineItems plugin) {
             return make(plugin, Material.GOLD_NUGGET, ChatColor.WHITE + "" + ChatColor.BOLD + "Harpy Ring", plugin.getHarpyRingKey(),
-                    ChatColor.GREEN + "+7.5% movement speed",
+                    ChatColor.GREEN + "+" + Balance.pct(Balance.num(plugin, "harpy-ring.speed-bonus", 0.075, 0.05)) + "% movement speed",
                     ChatColor.GREEN + "Elytra flights last longer",
-                    ChatColor.DARK_GRAY + "(Elytra durability drains 50% slower)");
+                    ChatColor.DARK_GRAY + "(Elytra durability drains " + Balance.pct(Balance.num(plugin, "harpy-ring.elytra-durability-save-chance", 0.5, 0.3)) + "% slower)");
         }
 
         static ItemStack weirdClock(FaultlineItems plugin) {
@@ -3898,7 +3898,7 @@ public final class FaultlineItems extends JavaPlugin {
             applyModifier(player, Attribute.MOVEMENT_SPEED, frostSpeedKey,
                     plugin.getConfig().getDouble("frost-flare.speed-bonus", 0.05), AttributeModifier.Operation.MULTIPLY_SCALAR_1, frost);
             applyModifier(player, Attribute.MOVEMENT_SPEED, harpySpeedKey,
-                    plugin.getConfig().getDouble("harpy-ring.speed-bonus", 0.075), AttributeModifier.Operation.MULTIPLY_SCALAR_1, harpy);
+                    Balance.num(plugin, "harpy-ring.speed-bonus", 0.075, 0.05), AttributeModifier.Operation.MULTIPLY_SCALAR_1, harpy);
             applyModifier(player, Attribute.BLOCK_BREAK_SPEED, spelunkerMiningKey,
                     Balance.num(plugin, "spelunker-amulet.mining-speed-bonus", 0.02, 0.10), AttributeModifier.Operation.MULTIPLY_SCALAR_1, spelunker);
             applyModifier(player, Attribute.KNOCKBACK_RESISTANCE, ankhKnockbackKey, 1.0, AttributeModifier.Operation.ADD_NUMBER, ankh && AnkhImbue.noKnockback(plugin));
@@ -4242,12 +4242,12 @@ public final class FaultlineItems extends JavaPlugin {
             event.setDamage(EntityDamageEvent.DamageModifier.ARMOR, event.getDamage(EntityDamageEvent.DamageModifier.ARMOR) * (1 - pen));
         }
 
-        /** Harpy Ring: Elytra durability drains 50% slower, so flights last longer. */
+        /** Harpy Ring: Elytra durability drains 30% slower (50% before 1.2.32), so flights last longer. */
         @EventHandler(ignoreCancelled = true)
         public void onElytraWear(PlayerItemDamageEvent event) {
             if (event.getItem().getType() != Material.ELYTRA) return;
             if (!wearing(event.getPlayer(), plugin.getHarpyRingKey())) return;
-            if (random.nextDouble() < plugin.getConfig().getDouble("harpy-ring.elytra-durability-save-chance", 0.5)) {
+            if (random.nextDouble() < Balance.num(plugin, "harpy-ring.elytra-durability-save-chance", 0.5, 0.3)) {
                 event.setCancelled(true);
             }
         }

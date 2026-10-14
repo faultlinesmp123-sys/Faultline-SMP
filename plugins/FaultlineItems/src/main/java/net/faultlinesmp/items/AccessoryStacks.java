@@ -55,6 +55,7 @@ final class AccessoryStacks implements Listener {
         out.add(FaultlineItems.NewAccessoryItems.blackBelt(plugin));
         out.add(FaultlineItems.NewAccessoryItems.bloodyWolfScarf(plugin));
         out.add(FaultlineItems.NewAccessoryItems.spelunkerAmulet(plugin));
+        out.add(FaultlineItems.NewAccessoryItems.harpyRing(plugin));
         out.add(FaultlineItems.GoldenRingItem.create(plugin));
         out.add(FaultlineItems.DiscountCardItem.create(plugin));
         out.add(FaultlineItems.LifeJellyItem.create(plugin));

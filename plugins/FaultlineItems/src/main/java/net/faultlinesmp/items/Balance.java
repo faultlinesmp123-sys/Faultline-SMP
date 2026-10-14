@@ -10,6 +10,7 @@ package net.faultlinesmp.items;
  *   spelunker-amulet.mining-speed-bonus 0.02 -> 0.10  moon-stone.phantom-drop-chance 0.05 -> 0.02
  *   ranger-gear.windrunner-speed 1.2 -> 1.08          ranger-gear.oath-speed 0.2 -> 0.1
  *   trinkets.fang-heal 6 -> 4 (hostile mobs + players only, 3 s cooldown)
+ *   harpy-ring.speed-bonus 0.075 -> 0.05, elytra-durability-save-chance 0.5 -> 0.3 (1.2.32)
  *   Ancient Core: +3 armor / +25% knockback resistance / +2 hearts -> +2 armor / +15% (ancient-core.*)
  */
 final class Balance {

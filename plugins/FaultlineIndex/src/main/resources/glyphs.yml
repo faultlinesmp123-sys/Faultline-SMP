@@ -661,3 +661,27 @@ blazing_skeleton:
 splitting_creeper:
   large: 59284
   small: 58260
+hawkeye_monocle:
+  large: 59285
+  small: 58261
+quickdraw_glove:
+  large: 59286
+  small: 58262
+fletchers_pouch:
+  large: 59287
+  small: 58263
+windrunner_band:
+  large: 59288
+  small: 58264
+ricochet_charm:
+  large: 59289
+  small: 58265
+phantom_fletching:
+  large: 59290
+  small: 58266
+wolfcaller_whistle:
+  large: 59291
+  small: 58267
+rangers_oath:
+  large: 59292
+  small: 58268

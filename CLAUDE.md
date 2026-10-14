@@ -729,6 +729,25 @@ Notes:
   logs): top killer, most deaths, longest playtime, mob slayer, rarest find (fewest players have that entry,
   `howManyFound`), bosses, achievements, server totals; then resets. Nobody played = nothing posted. `/discord daily` =
   post now. Tested: `EliteTest` (raids), `FarmTest` (items), `GatewayTest` (kingdoms), `DailyTest` (index).
+- **The ranger batch (Items 1.2.27, Bosses 1.5.10, Index 1.6.21)**: `Items/RangerGear.java` (`ranger-gear:`): 8 accessories
+  (`Piece`: id/`/giveaccessory` name/base): Hawkeye Monocle (`monocle`, SPYGLASS; craft G/GYG/E: sneak + drawing a bow or
+  crossbow = Slowness IV 8 ticks (FOV zoom) + action bar target name and distance, ray 160), Quickdraw Glove (`quickdraw`;
+  1% Skeleton/Stray/Bogged: BOW shots under full draw are sped up as if `force / quickdraw-full-at` (0.75), crit at full),
+  Fletcher's Pouch (`pouch`, RABBIT_HIDE; craft LSL/RAR/LLL: 30% `setConsumeItem(false)` + that arrow CREATIVE_ONLY pickup),
+  Windrunner Band (`windrunner`; 3% Breezes: velocity x1.2), Ricochet Charm (`ricochet`; VERY rare: 1.5% ELITE
+  skeleton-types, 1% Bone Commanders: arrow PDC `faultlineitems:ricochet`; ProjectileHitEvent on a block = a new arrow
+  (spawned by type) reflected off the face at 75%, damage/crit/pierce/fire/pickup/bow enchants copied, once), Phantom
+  Fletching (`phantom`, FEATHER; 2% Phantoms: +1 pierce), Wolfcaller Whistle (`whistle`, FLINT; craft B/BHB/G: your
+  non-sitting tamed wolves within 32 target what your arrows hit), Ranger's Oath Pendant (`oath`, ECHO_SHARD; 3% Evokers:
+  with 2 other ranger accessories (Ranger Emblem counts) +4 MAX_HEALTH / +20% MOVEMENT_SPEED modifiers
+  `faultlineitems:ranger_oath_*`, every second, removed on quit/disable). Bases are inert (no bundle, bone or emerald).
+  Drops only from player kills, never spawner mobs. **Boss books on BOWS**: `Enchants.fits(MELEE)` includes BOW (not
+  crossbows); on shoot RangerGear copies the bow's `fenchants` into arrow PDC `faultlineitems:arrow_fenchants` (+
+  `arrow_full` when force >= 0.9); hits run `Enchants.applyRanged` (Lifesteal/Frostbite/Venom/Thunderstrike, procs need
+  the full draw). **Ranger Emblem +5%** (`rangerBonus`; old 0.10 reads 0.05; lore refreshed by `AccessoryStacks`).
+  **Unholy Arrows +2.5%** (Bosses `unholyMultiplier`, `unholy-arrow.damage-multiplier` 1.025; old 2.0 reads as it; lore
+  refreshed on join, `refreshUnholy`). Index entries + icons (`events_assets.py`, item models too), Bedrock mappings in
+  `items.tsv`. Tested: `RangerTest` (items), `UnholyTest` (bosses).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

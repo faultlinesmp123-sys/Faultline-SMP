@@ -44,10 +44,10 @@ import java.util.UUID;
 /**
  * BOSS ENCHANT BOOKS (Items 1.2.17, config enchants:). Bosses drop books of enchantments vanilla doesn't have; put the
  * item on the left of an anvil and the book on the right. Two books of the same enchantment and level make the next level.
- *  - Lifesteal I-II (swords, axes, tridents): heal 8% / 16% of the damage you deal (max 3 hp a hit).
- *  - Frostbite I-II (swords, axes, tridents): 15% / 30% to chill: Slowness I/II for 3/4 s.
- *  - Venom I-II (swords, axes, tridents): 15% / 30% to poison: Poison I/II for 3 s.
- *  - Thunderstrike I (swords, axes, tridents): 8% to call a (harmless to blocks) lightning bolt for +4 damage, 8 s cooldown.
+ *  - Lifesteal I-II (swords, axes, tridents, and bows since 1.2.27: on the arrow, a 90% draw counts as charged): heal 8% / 16% of the damage you deal (max 3 hp a hit).
+ *  - Frostbite I-II (swords, axes, tridents, and bows since 1.2.27: on the arrow, a 90% draw counts as charged): 15% / 30% to chill: Slowness I/II for 3/4 s.
+ *  - Venom I-II (swords, axes, tridents, and bows since 1.2.27: on the arrow, a 90% draw counts as charged): 15% / 30% to poison: Poison I/II for 3 s.
+ *  - Thunderstrike I (swords, axes, tridents, and bows since 1.2.27: on the arrow, a 90% draw counts as charged): 8% to call a (harmless to blocks) lightning bolt for +4 damage, 8 s cooldown.
  *  - Vitality I-II (chestplates): +2 / +4 max health while worn.
  *  - Vein Miner I (pickaxes): sneak + mine an ore = the connected vein of that ore (enchants.veinminer.max-blocks 32),
  *    each block broken as the player (claims, quests, Fortune/Silk Touch and durability all apply).
@@ -128,7 +128,7 @@ final class Enchants implements Listener, CommandExecutor, TabCompleter {
         m.setDisplayName(d.color + "" + ChatColor.BOLD + d.name + " " + roman(level) + ChatColor.GRAY + " (Boss Enchant)");
         List<String> lore = new ArrayList<>();
         lore.add(ChatColor.GRAY + d.desc);
-        lore.add(ChatColor.DARK_GRAY + "For: " + switch (d.kind) { case MELEE -> "swords, axes, tridents"; case CHEST -> "chestplates"; case BOOTS -> "boots"; case PICKAXE -> "pickaxes"; });
+        lore.add(ChatColor.DARK_GRAY + "For: " + switch (d.kind) { case MELEE -> "swords, axes, tridents, bows"; case CHEST -> "chestplates"; case BOOTS -> "boots"; case PICKAXE -> "pickaxes"; });
         lore.add(ChatColor.DARK_GRAY + "Item on the left of an anvil, this book on the right.");
         if (level < d.max) lore.add(ChatColor.DARK_GRAY + "Two of these make " + d.name + " " + roman(level + 1) + ".");
         m.setLore(lore);
@@ -157,7 +157,7 @@ final class Enchants implements Listener, CommandExecutor, TabCompleter {
     static boolean fits(Material m, Kind k) {
         String n = m.name();
         return switch (k) {
-            case MELEE -> n.endsWith("_SWORD") || n.endsWith("_AXE") || m == Material.TRIDENT;
+            case MELEE -> n.endsWith("_SWORD") || n.endsWith("_AXE") || m == Material.TRIDENT || m == Material.BOW; // 1.2.27: bows too (on the arrow)
             case CHEST -> n.endsWith("_CHESTPLATE");
             case BOOTS -> n.endsWith("_BOOTS");
             case PICKAXE -> n.endsWith("_PICKAXE");
@@ -231,6 +231,43 @@ final class Enchants implements Listener, CommandExecutor, TabCompleter {
         Map<String, Integer> ench = read(p.getInventory().getItemInMainHand(), false);
         if (ench.isEmpty()) return;
         boolean full = charged(p); // spam-clicking doesn't proc
+        Integer t = ench.get("thunderstrike");
+        if (t != null && full && random.nextDouble() < cfg("thunderstrike.chance", 0.08)
+                && thunderReady.getOrDefault(p.getUniqueId(), 0L) <= System.currentTimeMillis()) {
+            thunderReady.put(p.getUniqueId(), System.currentTimeMillis() + (long) (cfg("thunderstrike.cooldown-seconds", 8) * 1000));
+            victim.getWorld().strikeLightningEffect(victim.getLocation());
+            e.setDamage(e.getDamage() + cfg("thunderstrike.damage", 4));
+        }
+        Integer f = ench.get("frostbite");
+        if (f != null && full && random.nextDouble() < cfg("frostbite.chance-per-level", 0.15) * f) {
+            victim.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 40 + 20 * f, f - 1));
+            victim.getWorld().spawnParticle(Particle.SNOWFLAKE, victim.getLocation().add(0, 1, 0), 12, 0.3, 0.5, 0.3, 0.02);
+            victim.getWorld().playSound(victim.getLocation(), Sound.BLOCK_GLASS_BREAK, 0.5f, 1.8f);
+        }
+        Integer v = ench.get("venom");
+        if (v != null && full && random.nextDouble() < cfg("venom.chance-per-level", 0.15) * v) {
+            victim.addPotionEffect(new PotionEffect(PotionEffectType.POISON, 60, v - 1));
+            victim.getWorld().spawnParticle(Particle.ITEM_SLIME, victim.getLocation().add(0, 1, 0), 8, 0.3, 0.4, 0.3, 0.02);
+        }
+        Integer l = ench.get("lifesteal");
+        if (l != null && !p.isDead()) {
+            double heal = Math.min(cfg("lifesteal.max-per-hit", 3), e.getFinalDamage() * cfg("lifesteal.per-level", 0.08) * l);
+            AttributeInstance max = p.getAttribute(Attribute.MAX_HEALTH);
+            if (heal > 0 && max != null) p.setHealth(Math.min(max.getValue(), p.getHealth() + heal));
+        }
+    }
+
+    /**
+     * 1.2.27: the same four on a BOW, carried by the arrow (RangerGear copies the bow's enchants onto it when it's shot;
+     * `full` = drawn at least 90%, like a charged swing). Lifesteal heals off the arrow's damage.
+     */
+    void applyRanged(Player p, LivingEntity victim, EntityDamageByEntityEvent e, String data, boolean full) {
+        Map<String, Integer> ench = new LinkedHashMap<>();
+        for (String part : data.split(";")) {
+            String[] kv = part.split("=");
+            if (kv.length != 2 || !DEFS.containsKey(kv[0]) || DEFS.get(kv[0]).kind != Kind.MELEE) continue;
+            try { ench.put(kv[0], Integer.parseInt(kv[1])); } catch (NumberFormatException ignored) { }
+        }
         Integer t = ench.get("thunderstrike");
         if (t != null && full && random.nextDouble() < cfg("thunderstrike.chance", 0.08)
                 && thunderReady.getOrDefault(p.getUniqueId(), 0L) <= System.currentTimeMillis()) {

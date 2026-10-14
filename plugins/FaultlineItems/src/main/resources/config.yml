@@ -145,7 +145,7 @@ moon-stone:
 
 # Ranger Emblem (accessory)
 ranger-emblem:
-  damage-bonus: 0.10
+  damage-bonus: 0.05         # 1.2.27: was 0.10
   pillager-drop-chance: 0.02
 
 # Necromancer Staff — needs the Necromancer's Trial quest (LimboBlackMarket) to use.
@@ -326,7 +326,7 @@ boots:
 item-textures:
   enabled: true
   url: "https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/main/FaultlineSMP.zip"
-  hash: "6f7464174a8ba9c43da982dc687f10bab641181e"
+  hash: "1841c8c86adca208029e15a5c110bec1ea29a2c9"
 
 
 # Immunity charms: one accessory per debuff (Guardian Scale, Ginger Root, Blindfold, Salt Ration,
@@ -631,3 +631,19 @@ mount-stats:
 # Death coordinates (1.2.26): on respawn only you are told where you died; /lastdeath any time.
 death-coords:
   enabled: true
+
+# Ranger gear (1.2.27): 8 bow accessories (see the Index). Drops only from mobs a player killed (no spawners).
+ranger-gear:
+  quickdraw-drop-chance: 0.01        # Skeletons, Strays, Bogged
+  quickdraw-full-at: 0.75            # a draw this full shoots like a full one
+  windrunner-drop-chance: 0.03       # Breezes
+  windrunner-speed: 1.2
+  phantom-drop-chance: 0.02          # Phantoms (Phantom Fletching)
+  oath-drop-chance: 0.03             # Evokers (Ranger's Oath Pendant)
+  oath-health: 4                     # +2 hearts
+  oath-speed: 0.2
+  ricochet-elite-skeleton-chance: 0.015   # ELITE skeletons/strays/bogged only (very rare)
+  ricochet-commander-chance: 0.01         # Bone Commanders
+  ricochet-speed: 0.75
+  pouch-save-chance: 0.3
+  monocle-range: 160

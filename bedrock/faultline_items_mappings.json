@@ -137,6 +137,19 @@
      "minecraft:max_stack_size": 1
     },
     "display_name": "Spider Staff"
+   },
+   {
+    "type": "definition",
+    "model": "faultline:windrunner_band",
+    "bedrock_identifier": "faultline:windrunner_band",
+    "bedrock_options": {
+     "icon": "faultline.windrunner_band",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    },
+    "display_name": "Windrunner Band"
    }
   ],
   "minecraft:brick": [
@@ -281,6 +294,19 @@
      "minecraft:max_stack_size": 16
     },
     "display_name": "Night Lens"
+   },
+   {
+    "type": "definition",
+    "model": "faultline:rangers_oath",
+    "bedrock_identifier": "faultline:rangers_oath",
+    "bedrock_options": {
+     "icon": "faultline.rangers_oath",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    },
+    "display_name": "Ranger's Oath Pendant"
    }
   ],
   "minecraft:ender_chest": [
@@ -338,6 +364,19 @@
      "minecraft:max_stack_size": 16
     },
     "display_name": "Four-Leaf Clover"
+   },
+   {
+    "type": "definition",
+    "model": "faultline:phantom_fletching",
+    "bedrock_identifier": "faultline:phantom_fletching",
+    "bedrock_options": {
+     "icon": "faultline.phantom_fletching",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    },
+    "display_name": "Phantom Fletching"
    },
    {
     "type": "definition",
@@ -407,6 +446,19 @@
     "components": {
      "minecraft:max_stack_size": 64
     }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:wolfcaller_whistle",
+    "bedrock_identifier": "faultline:wolfcaller_whistle",
+    "bedrock_options": {
+     "icon": "faultline.wolfcaller_whistle",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    },
+    "display_name": "Wolfcaller Whistle"
    }
   ],
   "minecraft:glass_pane": [
@@ -602,6 +654,19 @@
      "minecraft:max_stack_size": 16
     },
     "display_name": "Eelskin Wrap"
+   },
+   {
+    "type": "definition",
+    "model": "faultline:quickdraw_glove",
+    "bedrock_identifier": "faultline:quickdraw_glove",
+    "bedrock_options": {
+     "icon": "faultline.quickdraw_glove",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    },
+    "display_name": "Quickdraw Glove"
    },
    {
     "type": "definition",
@@ -1216,6 +1281,19 @@
      "minecraft:max_stack_size": 16
     },
     "display_name": "Guardian Scale"
+   },
+   {
+    "type": "definition",
+    "model": "faultline:ricochet_charm",
+    "bedrock_identifier": "faultline:ricochet_charm",
+    "bedrock_options": {
+     "icon": "faultline.ricochet_charm",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    },
+    "display_name": "Ricochet Charm"
    }
   ],
   "minecraft:quartz": [
@@ -1277,6 +1355,19 @@
    },
    {
     "type": "definition",
+    "model": "faultline:fletchers_pouch",
+    "bedrock_identifier": "faultline:fletchers_pouch",
+    "bedrock_options": {
+     "icon": "faultline.fletchers_pouch",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    },
+    "display_name": "Fletcher's Pouch"
+   },
+   {
+    "type": "definition",
     "model": "faultline:kraken_worm",
     "bedrock_identifier": "faultline:kraken_worm",
     "bedrock_options": {
@@ -1330,6 +1421,21 @@
      "minecraft:max_stack_size": 1
     },
     "display_name": "Darkness Potion"
+   }
+  ],
+  "minecraft:spyglass": [
+   {
+    "type": "definition",
+    "model": "faultline:hawkeye_monocle",
+    "bedrock_identifier": "faultline:hawkeye_monocle",
+    "bedrock_options": {
+     "icon": "faultline.hawkeye_monocle",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    },
+    "display_name": "Hawkeye Monocle"
    }
   ],
   "minecraft:stick": [

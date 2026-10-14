@@ -45,7 +45,7 @@ final class AccessoryStacks implements Listener {
     private static List<ItemStack> changedOnes(FaultlineItems plugin) {
         ItemStack suit = null;
         try { suit = plugin.getDivingGear().item(DivingGear.Piece.SUIT); } catch (RuntimeException ignored) { }
-        return java.util.Arrays.asList(FaultlineItems.NewAccessoryItems.cleftHorn(plugin), suit);
+        return java.util.Arrays.asList(FaultlineItems.NewAccessoryItems.cleftHorn(plugin), suit, FaultlineItems.NewAccessoryItems.rangerEmblem(plugin));
     }
 
     /** Splits every stacked accessory in the inventory; extras go to empty slots, then the player, then the ground. */

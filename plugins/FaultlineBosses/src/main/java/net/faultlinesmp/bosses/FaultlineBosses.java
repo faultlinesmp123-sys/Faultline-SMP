@@ -639,6 +639,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
+        try { refreshUnholy(player); } catch (RuntimeException ignored) { }
         // Delay so this lands after other plugins' join-time packs (BackpackPlus race).
         Bukkit.getScheduler().runTaskLater(this, () -> {
             if (!player.isOnline()) return;
@@ -1923,7 +1924,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         ItemMeta meta = item.getItemMeta();
         meta.setItemModel(new NamespacedKey("faultline", "unholy_arrow"));
         meta.setDisplayName(ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + "Unholy Arrow");
-        meta.setLore(List.of(ChatColor.GREEN + "Deals 2x the damage of a normal arrow", ChatColor.DARK_GRAY + "From the Demon Eye."));
+        meta.setLore(List.of(ChatColor.GREEN + "Deals " + unholyPct() + " more damage than a normal arrow", ChatColor.DARK_GRAY + "From the Demon Eye."));
         meta.getPersistentDataContainer().set(arrowKey, PersistentDataType.BYTE, (byte) 1);
         item.setItemMeta(meta);
         return item;
@@ -2180,14 +2181,40 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         if (dashDealing) dashLanded = true; // it got through protection plugins
     }
 
-    // ---------- Unholy Arrows: 2x damage + a purple trail ----------
+    // ---------- Unholy Arrows: +2.5% damage (1.5.10; was 2x) + a purple trail ----------
+
+    /** 1.5.10: 1.025 (a server config still holding the old 2.0 reads as the new value). */
+    double unholyMultiplier() {
+        double v = cfg("unholy-arrow.damage-multiplier", 1.025);
+        return v == 2.0 ? 1.025 : v;
+    }
+
+    String unholyPct() {
+        double p = (unholyMultiplier() - 1) * 100;
+        return (p == Math.floor(p) ? String.valueOf((int) p) : String.valueOf(Math.round(p * 10) / 10.0)) + "%";
+    }
+
+    /** Unholy Arrows made before 1.5.10 still say "2x": their lore is brought up to date on join. */
+    void refreshUnholy(Player p) {
+        String want = unholyArrows(1).getItemMeta().getLore().get(0);
+        for (ItemStack it : p.getInventory().getContents()) {
+            if (!tagged(it, arrowKey)) continue;
+            ItemMeta m = it.getItemMeta();
+            List<String> lore = m.getLore();
+            if (lore == null || lore.isEmpty() || lore.get(0).equals(want)) continue;
+            List<String> fixed = new ArrayList<>(lore);
+            fixed.set(0, want);
+            m.setLore(fixed);
+            it.setItemMeta(m);
+        }
+    }
 
     private final Set<UUID> unholyInFlight = new HashSet<>();
 
     @EventHandler(ignoreCancelled = true)
     public void onShoot(org.bukkit.event.entity.EntityShootBowEvent event) {
         if (!tagged(event.getConsumable(), arrowKey) || !(event.getProjectile() instanceof org.bukkit.entity.AbstractArrow arrow)) return;
-        arrow.setDamage(arrow.getDamage() * cfg("unholy-arrow.damage-multiplier", 2.0));
+        arrow.setDamage(arrow.getDamage() * unholyMultiplier());
         arrow.setItemStack(unholyArrows(1)); // picking it back up gives an Unholy Arrow
         unholyInFlight.add(arrow.getUniqueId());
     }

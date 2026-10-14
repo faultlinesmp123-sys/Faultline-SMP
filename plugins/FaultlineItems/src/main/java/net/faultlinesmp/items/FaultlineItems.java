@@ -381,6 +381,8 @@ public final class FaultlineItems extends JavaPlugin {
         getServer().getPluginManager().registerEvents(enchants, this); // 1.2.17: boss enchant books
         getCommand("fenchant").setExecutor(enchants);
         getCommand("fenchant").setTabCompleter(enchants);
+        rangerGear = new RangerGear(this); // 1.2.27: ranger accessories + boss books on bows
+        getServer().getPluginManager().registerEvents(rangerGear, this);
         sit = new Sit(this);
         getServer().getPluginManager().registerEvents(sit, this); // 1.2.18
         getCommand("sit").setExecutor(sit);
@@ -568,7 +570,7 @@ public final class FaultlineItems extends JavaPlugin {
         getServer().getPluginManager().registerEvents(shieldOfTheOceanListener, this);
         getServer().getScheduler().runTaskTimer(this, shieldOfTheOceanListener::tick, 20L, 20L);
 
-        getCommand("giveaccessory").setExecutor(new GiveItemCommand(this, "items.giveaccessory", "/giveaccessory <claws|bezoar|discount|jelly|shield|lavacharm|blackbelt|moonstone|ranger|scarf|frostflare|spelunker|harpy|ankh|clefthorn|weirdclock|divinghelmet|flipper|divinggear|depthscharm|abyssalgear|abyssalsuit|corallung|glowgland|eelskin|(any immunity charm)> [amount] [player]", ItemCatalog.ACCESSORY_TYPES, null));
+        getCommand("giveaccessory").setExecutor(new GiveItemCommand(this, "items.giveaccessory", "/giveaccessory <claws|bezoar|discount|jelly|shield|lavacharm|blackbelt|moonstone|ranger|scarf|frostflare|spelunker|harpy|ankh|clefthorn|weirdclock|monocle|quickdraw|pouch|windrunner|ricochet|phantom|whistle|oath|divinghelmet|flipper|divinggear|depthscharm|abyssalgear|abyssalsuit|corallung|glowgland|eelskin|(any immunity charm)> [amount] [player]", ItemCatalog.ACCESSORY_TYPES, null));
 
         // Admin item menu — every Faultline item in one place (closest thing to a creative tab a plugin can make).
         getServer().getPluginManager().registerEvents(new ItemsMenuListener(this), this);
@@ -602,6 +604,7 @@ public final class FaultlineItems extends JavaPlugin {
         if (creatures != null) creatures.shutdown();
         if (gear != null) gear.shutdown();
         if (race != null) try { race.shutdown(); } catch (RuntimeException ignored) { }
+        if (rangerGear != null) try { rangerGear.shutdown(); } catch (RuntimeException ignored) { }
         if (sit != null) try { sit.shutdown(); } catch (RuntimeException ignored) { }
         if (camera != null) try { camera.shutdown(); } catch (RuntimeException ignored) { }
         if (where != null) try { where.shutdown(); } catch (RuntimeException ignored) { }
@@ -861,6 +864,8 @@ public final class FaultlineItems extends JavaPlugin {
     DivingGear getDivingGear() { return divingGear; }
     SpawnProtection spawnProtection;
     Enchants enchants;
+    RangerGear rangerGear;
+    RangerGear getRangerGear() { return rangerGear; }
     Race race;
     Sit sit;
     Vanish vanish;
@@ -3726,7 +3731,18 @@ public final class FaultlineItems extends JavaPlugin {
 
         static ItemStack rangerEmblem(FaultlineItems plugin) {
             return make(plugin, Material.FEATHER, ChatColor.DARK_GREEN + "" + ChatColor.BOLD + "Ranger Emblem", plugin.getRangerEmblemKey(),
-                    ChatColor.GREEN + "+10% bow and crossbow damage");
+                    ChatColor.GREEN + "+" + pct(rangerBonus(plugin)) + " bow and crossbow damage");
+        }
+
+        /** 1.2.27: +5% (a server config still holding the old 0.10 reads as 0.05). */
+        static double rangerBonus(FaultlineItems plugin) {
+            double v = plugin.getConfig().getDouble("ranger-emblem.damage-bonus", 0.05);
+            return v == 0.10 ? 0.05 : v;
+        }
+
+        static String pct(double v) {
+            double p = v * 100;
+            return (p == Math.floor(p) ? String.valueOf((int) p) : String.valueOf(Math.round(p * 10) / 10.0)) + "%";
         }
     }
 
@@ -3790,7 +3806,7 @@ public final class FaultlineItems extends JavaPlugin {
             event.setDamage(event.getDamage() * (1 - reduction));
         }
 
-        // ---- Ranger Emblem: +10% damage, arrows from bows and crossbows only ----
+        // ---- Ranger Emblem: +5% damage (1.2.27; was 10%), arrows from bows and crossbows only ----
         @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
         public void onDamageDealt(EntityDamageByEntityEvent event) {
             // AbstractArrow covers arrows and spectral arrows; Tridents are also
@@ -3798,7 +3814,7 @@ public final class FaultlineItems extends JavaPlugin {
             if (!(event.getDamager() instanceof AbstractArrow arrow) || arrow instanceof Trident) return;
             if (!(arrow.getShooter() instanceof Player attacker)) return;
             if (!wearing(attacker, plugin.getRangerEmblemKey())) return;
-            double bonus = plugin.getConfig().getDouble("ranger-emblem.damage-bonus", 0.10);
+            double bonus = NewAccessoryItems.rangerBonus(plugin);
             event.setDamage(event.getDamage() * (1 + bonus));
         }
 
@@ -6959,6 +6975,7 @@ public final class FaultlineItems extends JavaPlugin {
             ACCESSORY_TYPES.put("eelskin", pl -> pl.getKrakenGear().counter(KrakenGear.Counter.EELSKIN_WRAP));
             for (JacobGear.Piece jp : JacobGear.Piece.values()) ACCESSORY_TYPES.put(jp.id.replace("_", ""), pl -> pl.getJacobGear().item(jp));
             ACCESSORY_TYPES.put("lostmirror", pl -> pl.getMirrorGear().item());
+            for (RangerGear.Piece rp : RangerGear.Piece.values()) ACCESSORY_TYPES.put(rp.command, pl -> pl.getRangerGear().item(rp)); // 1.2.27
 
             DARKNESS_TYPES.put("final", DarknessPotionItem::createFinal);
             DARKNESS_TYPES.put("stage1", DarknessPotionItem::createStage1);
@@ -7040,7 +7057,16 @@ public final class FaultlineItems extends JavaPlugin {
                 pl -> pl.getJacobGear().item(JacobGear.Piece.HEART),
                 // the Lost Explorer's drop
                 pl -> pl.getMirrorGear().item(),
-                pl -> pl.balloons.item(null, 0)); // 1.2.24
+                pl -> pl.balloons.item(null, 0), // 1.2.24
+                // ranger gear (1.2.27)
+                pl -> pl.getRangerGear().item(RangerGear.Piece.MONOCLE),
+                pl -> pl.getRangerGear().item(RangerGear.Piece.QUICKDRAW),
+                pl -> pl.getRangerGear().item(RangerGear.Piece.POUCH),
+                pl -> pl.getRangerGear().item(RangerGear.Piece.WINDRUNNER),
+                pl -> pl.getRangerGear().item(RangerGear.Piece.RICOCHET),
+                pl -> pl.getRangerGear().item(RangerGear.Piece.PHANTOM),
+                pl -> pl.getRangerGear().item(RangerGear.Piece.WHISTLE),
+                pl -> pl.getRangerGear().item(RangerGear.Piece.OATH));
 
         static Map<String, Function<FaultlineItems, ItemStack>> single(Function<FaultlineItems, ItemStack> factory) {
             return Map.of("", factory);

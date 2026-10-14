@@ -830,6 +830,11 @@ Notes:
   (`Class.forName` + `PluginManager.registerEvent`, cast to `Cancellable`/`EntityEvent`); on cooldown the lunge is
   cancelled (the jab still lands) + action bar countdown. COBWEBS: one per `cobweb-place-cooldown-ms` (250) per player
   (BlockPlaceEvent). Creative/spectator never limited. Tested (`PvpTest`, with a copy of the 26.2 event class in the test sources).
+- **Perk swap (Items 1.2.38, Index 1.6.29)**: the two accessories that gave a flat +2 max hearts now give a perk each.
+  **Diamond Heart** (`JacobGear`, `diamond-heart.damage-reduction` 0.08): take 8% less from every damage type
+  (`onHeartDamage`); `sync()` strips the old +4 MAX_HEALTH modifier (`heartMod`) from anyone who still has it.
+  **Ranger's Oath** set bonus (`RangerGear`, `ranger-gear.oath-arrow-bonus` 0.10): +10% arrow damage on hit + keeps
+  +10% speed; `oathTick` always removes the old MAX_HEALTH modifier. Tested (`RangerTest`: Oath arrow bonus, Diamond Heart reduction).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

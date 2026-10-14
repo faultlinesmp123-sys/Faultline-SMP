@@ -581,7 +581,7 @@ entries:
     icon: diamond_heart
     detect: faultlineitems:diamond_heart
     how: Dropped by Diamond Jacob.
-    does: +2 hearts of max health.
+    does: Take 8% less damage from everything.
 
   # ---------------------------------------------------------------- ROCCO VENDETTA
   - chapter: bosses
@@ -991,7 +991,7 @@ entries:
      does: "Ranger gear. Your tamed wolves within 32 blocks (not sitting) attack whatever your arrows hit."}
   - {chapter: accessories, name: "Ranger's Oath Pendant", icon: rangers_oath, detect: "faultlineitems:rangers_oath",
      how: "3% from Evokers.",
-     does: "Ranger gear. Wear it with two other ranger accessories (the Ranger Emblem counts) for +2 hearts and +10% speed."}
+     does: "Ranger gear. Wear it with two other ranger accessories (the Ranger Emblem counts) for +10% arrow damage and +10% speed."}
   - {chapter: accessories, name: "Bloodthirst Fang", icon: bloodthirst_fang, detect: "faultlineitems:bloodthirst_fang",
      how: "8% from Ravagers, 1% from Vindicators.", does: "Killing a monster or a player heals you 2 hearts (3 second cooldown). Animals don't count."}
   - {chapter: accessories, name: "Ironhide Pauldron", icon: ironhide_pauldron, detect: "faultlineitems:ironhide_pauldron",

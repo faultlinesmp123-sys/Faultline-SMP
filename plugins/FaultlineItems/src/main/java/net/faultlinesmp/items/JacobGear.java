@@ -42,7 +42,7 @@ final class JacobGear implements Listener {
         EMBER("ember_ward", Material.BLAZE_POWDER, ChatColor.GOLD, "Ember Ward",
                 ChatColor.GREEN + "You can't be set on fire", ChatColor.GREEN + "25% less fire damage (his flames too)"),
         HEART("diamond_heart", Material.DIAMOND, ChatColor.AQUA, "Diamond Heart",
-                ChatColor.GREEN + "+2 hearts of max health");
+                ChatColor.GREEN + "Take 8% less damage from everything");
 
         final String id, name; final Material material; final ChatColor color; final String[] lore;
         Piece(String id, Material material, ChatColor color, String name, String... lore) {
@@ -83,12 +83,10 @@ final class JacobGear implements Listener {
             for (Piece piece : Piece.values()) if (has(p, piece)) on.add(piece.id);
             p.getPersistentDataContainer().set(countersKey, PersistentDataType.STRING, String.join(",", on));
             if (has(p, Piece.EMBER) && p.getFireTicks() > 0) p.setFireTicks(0); // can't burn
-            // Diamond Heart: +2 hearts while it's on
+            // 1.2.38: the Diamond Heart is damage reduction now, not +2 hearts. Strip the old +4 max-health modifier
+            // from anyone who still carries it (attribute modifiers persist in player data).
             AttributeInstance max = p.getAttribute(Attribute.MAX_HEALTH);
-            if (max == null) continue;
-            boolean wants = has(p, Piece.HEART), got = max.getModifier(heartMod) != null;
-            if (wants && !got) max.addModifier(new AttributeModifier(heartMod, 4, AttributeModifier.Operation.ADD_NUMBER));
-            else if (!wants && got) {
+            if (max != null && max.getModifier(heartMod) != null) {
                 max.removeModifier(heartMod);
                 if (p.getHealth() > max.getValue()) p.setHealth(max.getValue());
             }
@@ -110,6 +108,14 @@ final class JacobGear implements Listener {
     static boolean airborne(Entity e) {
         if (e.isOnGround() || e.isInWater()) return false;
         return e.getLocation().clone().subtract(0, 0.6, 0).getBlock().isPassable();
+    }
+
+    /** Diamond Heart (1.2.38): take a flat fraction less from every kind of damage. */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onHeartDamage(EntityDamageEvent event) {
+        if (!(event.getEntity() instanceof Player p) || !has(p, Piece.HEART)) return;
+        double cut = plugin.getConfig().getDouble("diamond-heart.damage-reduction", 0.08);
+        if (cut > 0) event.setDamage(event.getDamage() * (1 - cut));
     }
 
     /** Ember Ward: no burning, 25% less fire damage. */

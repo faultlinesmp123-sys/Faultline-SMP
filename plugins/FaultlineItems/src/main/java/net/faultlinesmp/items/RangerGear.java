@@ -78,7 +78,7 @@ final class RangerGear implements Listener {
         WHISTLE("wolfcaller_whistle", "whistle", Material.FLINT, ChatColor.WHITE, "Wolfcaller Whistle",
                 "Your tamed wolves attack", "whatever you shoot."),
         OATH("rangers_oath", "oath", Material.ECHO_SHARD, ChatColor.DARK_GREEN, "Ranger's Oath Pendant",
-                "With 2 other ranger accessories:", "+2 hearts and +10% speed.");
+                "With 2 other ranger accessories:", "+10% arrow damage and +10% speed.");
 
         final String id, command, name;
         final Material base;
@@ -252,6 +252,8 @@ final class RangerGear implements Listener {
     public void onArrowHit(EntityDamageByEntityEvent e) {
         if (!(e.getDamager() instanceof AbstractArrow arrow) || arrow instanceof Trident || !(arrow.getShooter() instanceof Player p)) return;
         if (!(e.getEntity() instanceof LivingEntity victim) || victim instanceof org.bukkit.entity.ArmorStand || victim.equals(p)) return;
+        // Ranger's Oath set bonus (1.2.38): +arrow damage with the full set on
+        if (wearing(p, Piece.OATH) && rangerCount(p) >= 3) e.setDamage(e.getDamage() * (1 + cfg("oath-arrow-bonus", 0.10)));
         // Wolfcaller: your wolves join in
         if (wearing(p, Piece.WHISTLE) && !(victim instanceof Tameable t && t.isTamed() && p.equals(t.getOwner()))) {
             for (Entity n : p.getNearbyEntities(32, 16, 32)) {
@@ -295,7 +297,9 @@ final class RangerGear implements Listener {
     void oathTick() {
         for (Player p : Bukkit.getOnlinePlayers()) {
             boolean on = wearing(p, Piece.OATH) && rangerCount(p) >= 3;
-            set(p, Attribute.MAX_HEALTH, oathHealth, on ? cfg("oath-health", 4) : 0, AttributeModifier.Operation.ADD_NUMBER);
+            // 1.2.38: the set bonus is +arrow damage (applied on hit) and +speed now, not +2 hearts. Strip any old
+            // max-health modifier a player still carries.
+            set(p, Attribute.MAX_HEALTH, oathHealth, 0, AttributeModifier.Operation.ADD_NUMBER);
             set(p, Attribute.MOVEMENT_SPEED, oathSpeed, on ? Balance.num(plugin, "ranger-gear.oath-speed", 0.2, 0.1) : 0, AttributeModifier.Operation.MULTIPLY_SCALAR_1);
         }
     }

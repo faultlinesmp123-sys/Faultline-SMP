@@ -917,6 +917,24 @@ entries:
   - {chapter: accessories, name: "Ranger's Oath Pendant", icon: rangers_oath, detect: "faultlineitems:rangers_oath",
      how: "3% from Evokers.",
      does: "Ranger gear. Wear it with two other ranger accessories (the Ranger Emblem counts) for +2 hearts and +20% speed."}
+  - {chapter: accessories, name: "Bloodthirst Fang", icon: bloodthirst_fang, detect: "faultlineitems:bloodthirst_fang",
+     how: "8% from Ravagers, 1% from Vindicators.", does: "Every kill (mob or player) heals you 3 hearts."}
+  - {chapter: accessories, name: "Ironhide Pauldron", icon: ironhide_pauldron, detect: "faultlineitems:ironhide_pauldron",
+     how: "Craft it: Iron Block, Netherite Scrap, Iron Block / Iron Block, Leather, Iron Block.", does: "15% less knockback."}
+  - {chapter: accessories, name: "Gladiator's Crest", icon: gladiators_crest, detect: "faultlineitems:gladiators_crest",
+     how: "Only from Diamond Jacob: 40% for each player who helps beat him.", does: "+1 armor for every other player within 10 blocks, up to +4."}
+  - {chapter: accessories, name: "Guardian's Oath", icon: guardians_oath, detect: "faultlineitems:guardians_oath",
+     how: "Craft it: a Shield in the middle, Gold Ingots on the sides, Iron Ingots in the corners.", does: "Players from your kingdom within 8 blocks of you take 1% less damage (doesn't stack with another Guardian's Oath)."}
+  - {chapter: accessories, name: "Miner's Lantern Charm", icon: miners_lantern, detect: "faultlineitems:miners_lantern",
+     how: "Craft it: Lanterns on the sides, Glowstone Dust in the corners, a Diamond in the middle.", does: "Mining stone makes every ore within 4 blocks glow for 3 seconds (only you see it)."}
+  - {chapter: accessories, name: "Green Thumb Ring", icon: green_thumb, detect: "faultlineitems:green_thumb",
+     how: "Craft it: Wheat in the corners, Bone Blocks on the sides, a Gold Ingot in the middle.", does: "Crops within 8 blocks of you grow 15% faster."}
+  - {chapter: accessories, name: "Treasure Sense", icon: treasure_sense, detect: "faultlineitems:treasure_sense",
+     how: "3% from Drowned.", does: "Buried treasure chests and the X on your Pirate Treasure Maps ping (action bar + sound) when you're within 30 blocks."}
+  - {chapter: accessories, name: "Smelter's Glove", icon: smelters_glove, detect: "faultlineitems:smelters_glove",
+     how: "Craft it: Leather in the corners, Iron Ingots on the sides, a Blast Furnace in the middle.", does: "20% of the raw iron, gold and copper you mine drops already smelted."}
+  - {chapter: accessories, name: "Featherfall Charm", icon: featherfall_charm, detect: "faultlineitems:featherfall_charm",
+     how: "Craft it: Feathers all around, a Slime Ball in the middle, a Gold Ingot at the bottom.", does: "No fall damage from falls of 5 blocks or less."}
   - {chapter: accessories, name: "Ancient Core", icon: ancient_core, detect: "faultlineitems:ancient_core",
      how: "Craft: 4 Ancient Gear Parts around an amethyst block, with 4 amethyst shards.", does: "+3 armor, +25% knockback resistance, +2 hearts."}
   - {chapter: armor, name: "Mining Helmet", icon: mining_helmet, detect: "faultlineitems:gear=mining_helmet",

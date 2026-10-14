@@ -493,7 +493,10 @@ final class Watch implements Listener, CommandExecutor, TabCompleter {
         String path = "players." + p.getUniqueId() + ".vl.xray";
         data.set(path, data.getInt(path) + 1);
         dirty = true;
-        record(p, "xray-" + f.name().toLowerCase(Locale.ROOT), Sev.ALERT, "⛏️ **X-RAY?** " + b(p.getName()) + ": " + buried + " of " + veins + " " + f.label
+        // 1.6.22: a Miner's Lantern Charm (FaultlineItems) really shows ores within 4 blocks: a log line, not an alert
+        boolean lantern = false;
+        for (var m : p.getMetadata("faultline_ore_sense")) if (m.asBoolean()) lantern = true;
+        record(p, "xray-" + f.name().toLowerCase(Locale.ROOT), lantern ? Sev.LOG : Sev.ALERT, (lantern ? "(wears a Miner's Lantern Charm) " : "") + "⛏️ **X-RAY?** " + b(p.getName()) + ": " + buried + " of " + veins + " " + f.label
                 + " veins in " + window + " min were fully BURIED, and they dug only " + dug + " " + (f.nether ? "netherrack/basalt" : "stone") + " for them ("
                 + Math.round(per) + " per vein; legit branch mining takes hundreds). Last veins: " + spots + " in " + p.getWorld().getName());
     }

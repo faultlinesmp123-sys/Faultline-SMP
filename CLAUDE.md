@@ -748,6 +748,23 @@ Notes:
   **Unholy Arrows +2.5%** (Bosses `unholyMultiplier`, `unholy-arrow.damage-multiplier` 1.025; old 2.0 reads as it; lore
   refreshed on join, `refreshUnholy`). Index entries + icons (`events_assets.py`, item models too), Bedrock mappings in
   `items.tsv`. Tested: `RangerTest` (items), `UnholyTest` (bosses).
+- **Trinkets (Items 1.2.28, Index 1.6.22)**: `Items/TrinketGear.java` (`trinkets:`), 9 accessories (`Piece`: id /
+  `/giveaccessory` name / inert base): Bloodthirst Fang (`fang`, FLINT; 8% Ravagers, 1% Vindicators: any kill heals
+  `fang-heal` 6), Ironhide Pauldron (`pauldron`, IRON_NUGGET; craft INI/ILI: KNOCKBACK_RESISTANCE +0.15 modifier),
+  Gladiator's Crest (`crest`, GOLD_NUGGET; ONLY Diamond Jacob: the Index's `fenchant bossdrop <p> diamond_jacob` hook also
+  calls `TrinketGear.bossDrop`, 40% per fighter: ARMOR +1 per other non-spectator player within 10, max 4), Guardian's
+  Oath (`guardian`, NAUTILUS_SHELL; craft IGI/GSG/IGI: a player hurt within 8 blocks of a same-kingdom wearer (Kingdoms
+  `kingdomOf` by reflection) takes 1% less, no stacking), Miner's Lantern Charm (`lantern`, AMETHYST_SHARD; craft
+  GLG/LDL/GLG: mining stone (1.5 s cooldown) = ores within 4 shown 3 s as glowing BlockDisplays only that player sees
+  (`setVisibleByDefault(false)` + `showEntity`, tag `faultline_no_bedrock_fx`), Bedrock: WAX_OFF particles; sets player
+  metadata `faultline_ore_sense` every second, and the Index Watch turns its x-ray ALERT into a LOG line "(wears a Miner's
+  Lantern Charm)"), Green Thumb Ring (`greenthumb`, PRISMARINE_CRYSTALS; craft WBW/BGB/WBW: BlockGrowEvent within 8 of a
+  wearer (`thumbs` cached each second) = 15% an extra age next tick), Treasure Sense (`treasure`, COMPASS; 3% Drowned:
+  every 2 s the X of any `faultlineships:treasure_map` carried, or a `BURIED_TREASURE` (locateNearestStructure radius 1)
+  whose chest is still in the column, within 30 = action bar + chime), Smelter's Glove (`smelter`, LEATHER; craft
+  LIL/IBI/LIL: BlockDropItemEvent raw iron/gold/copper stacks 20% -> ingots), Featherfall Charm (`featherfall`, FEATHER;
+  craft FFF/FSF/FGF: FALL damage cancelled when fall distance <= 5.5). Modifiers removed on quit/disable. Index entries +
+  icons (`events_assets.py`), Bedrock `items.tsv`. Tested (`TrinketTest`).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

@@ -326,7 +326,7 @@ boots:
 item-textures:
   enabled: true
   url: "https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/main/FaultlineSMP.zip"
-  hash: "1841c8c86adca208029e15a5c110bec1ea29a2c9"
+  hash: "525d0f015dfae07a8cf9cfda436b59c5134679e2"
 
 
 # Immunity charms: one accessory per debuff (Guardian Scale, Ginger Root, Blindfold, Salt Ration,
@@ -647,3 +647,24 @@ ranger-gear:
   ricochet-speed: 0.75
   pouch-save-chance: 0.3
   monocle-range: 160
+
+# Trinkets (1.2.28): nine more accessories (see the Index).
+trinkets:
+  fang-heal: 6                       # Bloodthirst Fang: health per kill (6 = 3 hearts)
+  fang-ravager-chance: 0.08
+  fang-vindicator-chance: 0.01
+  pauldron-knockback-resistance: 0.15
+  crest-jacob-chance: 0.4            # Gladiator's Crest: each fighter who beats Diamond Jacob
+  crest-radius: 10
+  crest-max: 4
+  guardian-radius: 8
+  guardian-reduction: 0.01           # Guardian's Oath: kingdom-mates near you take 1% less damage
+  lantern-radius: 4
+  lantern-seconds: 3
+  lantern-cooldown-seconds: 1.5
+  thumb-radius: 8
+  thumb-boost: 0.15
+  treasure-drowned-chance: 0.03
+  treasure-range: 30
+  smelter-chance: 0.2
+  featherfall-blocks: 5

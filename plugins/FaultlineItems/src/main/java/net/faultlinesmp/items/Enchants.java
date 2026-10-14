@@ -416,6 +416,7 @@ final class Enchants implements Listener, CommandExecutor, TabCompleter {
                 if (args.length < 3) { sender.sendMessage(ChatColor.RED + "/fenchant bossdrop <player> <boss entry>"); return true; }
                 Player to = Bukkit.getPlayerExact(args[1]);
                 if (to != null && plugin.getConfig().getBoolean("enchants.boss-drops-enabled", true)) bossDrop(to, args[2].toLowerCase(Locale.ROOT));
+                if (to != null && plugin.trinkets != null) plugin.trinkets.bossDrop(to, args[2].toLowerCase(Locale.ROOT)); // 1.2.28: the Gladiator's Crest
             }
             default -> {
                 sender.sendMessage(ChatColor.LIGHT_PURPLE + "" + ChatColor.BOLD + "Boss enchants " + ChatColor.GRAY + "(/fenchant give <id> [level] [amount] [player])");

@@ -17,6 +17,19 @@
    },
    {
     "type": "definition",
+    "model": "faultline:miners_lantern",
+    "bedrock_identifier": "faultline:miners_lantern",
+    "bedrock_options": {
+     "icon": "faultline.miners_lantern",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    },
+    "display_name": "Miner's Lantern Charm"
+   },
+   {
+    "type": "definition",
     "model": "faultline:spelunker_amulet",
     "bedrock_identifier": "faultline:spelunker_amulet",
     "bedrock_options": {
@@ -225,6 +238,21 @@
     "display_name": "A Weird Clock..."
    }
   ],
+  "minecraft:compass": [
+   {
+    "type": "definition",
+    "model": "faultline:treasure_sense",
+    "bedrock_identifier": "faultline:treasure_sense",
+    "bedrock_options": {
+     "icon": "faultline.treasure_sense",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    },
+    "display_name": "Treasure Sense"
+   }
+  ],
   "minecraft:diamond": [
    {
     "type": "definition",
@@ -354,6 +382,19 @@
   "minecraft:feather": [
    {
     "type": "definition",
+    "model": "faultline:featherfall_charm",
+    "bedrock_identifier": "faultline:featherfall_charm",
+    "bedrock_options": {
+     "icon": "faultline.featherfall_charm",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    },
+    "display_name": "Featherfall Charm"
+   },
+   {
+    "type": "definition",
     "model": "faultline:four_leaf_clover",
     "bedrock_identifier": "faultline:four_leaf_clover",
     "bedrock_options": {
@@ -422,6 +463,19 @@
    }
   ],
   "minecraft:flint": [
+   {
+    "type": "definition",
+    "model": "faultline:bloodthirst_fang",
+    "bedrock_identifier": "faultline:bloodthirst_fang",
+    "bedrock_options": {
+     "icon": "faultline.bloodthirst_fang",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    },
+    "display_name": "Bloodthirst Fang"
+   },
    {
     "type": "definition",
     "model": "faultline:cleft_horn",
@@ -548,6 +602,19 @@
    },
    {
     "type": "definition",
+    "model": "faultline:gladiators_crest",
+    "bedrock_identifier": "faultline:gladiators_crest",
+    "bedrock_options": {
+     "icon": "faultline.gladiators_crest",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    },
+    "display_name": "Gladiator's Crest"
+   },
+   {
+    "type": "definition",
     "model": "faultline:harpy_ring",
     "bedrock_identifier": "faultline:harpy_ring",
     "bedrock_options": {
@@ -616,6 +683,19 @@
   "minecraft:iron_nugget": [
    {
     "type": "definition",
+    "model": "faultline:ironhide_pauldron",
+    "bedrock_identifier": "faultline:ironhide_pauldron",
+    "bedrock_options": {
+     "icon": "faultline.ironhide_pauldron",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    },
+    "display_name": "Ironhide Pauldron"
+   },
+   {
+    "type": "definition",
     "model": "faultline:pest_charm",
     "bedrock_identifier": "faultline:pest_charm",
     "bedrock_options": {
@@ -680,6 +760,19 @@
      "minecraft:max_stack_size": 16
     },
     "display_name": "Slime Ward"
+   },
+   {
+    "type": "definition",
+    "model": "faultline:smelters_glove",
+    "bedrock_identifier": "faultline:smelters_glove",
+    "bedrock_options": {
+     "icon": "faultline.smelters_glove",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    },
+    "display_name": "Smelter's Glove"
    }
   ],
   "minecraft:leather_boots": [
@@ -764,6 +857,19 @@
      "minecraft:max_stack_size": 16
     },
     "display_name": "Diving Helmet"
+   },
+   {
+    "type": "definition",
+    "model": "faultline:guardians_oath",
+    "bedrock_identifier": "faultline:guardians_oath",
+    "bedrock_options": {
+     "icon": "faultline.guardians_oath",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    },
+    "display_name": "Guardian's Oath"
    }
   ],
   "minecraft:netherite_axe": [
@@ -1240,6 +1346,19 @@
      "minecraft:max_stack_size": 16
     },
     "display_name": "Frost Flare"
+   },
+   {
+    "type": "definition",
+    "model": "faultline:green_thumb",
+    "bedrock_identifier": "faultline:green_thumb",
+    "bedrock_options": {
+     "icon": "faultline.green_thumb",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 1
+    },
+    "display_name": "Green Thumb Ring"
    },
    {
     "type": "definition",

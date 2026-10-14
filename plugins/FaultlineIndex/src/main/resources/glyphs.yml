@@ -685,3 +685,30 @@ wolfcaller_whistle:
 rangers_oath:
   large: 59292
   small: 58268
+bloodthirst_fang:
+  large: 59293
+  small: 58269
+ironhide_pauldron:
+  large: 59294
+  small: 58270
+gladiators_crest:
+  large: 59295
+  small: 58271
+guardians_oath:
+  large: 59296
+  small: 58272
+miners_lantern:
+  large: 59297
+  small: 58273
+green_thumb:
+  large: 59298
+  small: 58274
+treasure_sense:
+  large: 59299
+  small: 58275
+smelters_glove:
+  large: 59300
+  small: 58276
+featherfall_charm:
+  large: 59301
+  small: 58277

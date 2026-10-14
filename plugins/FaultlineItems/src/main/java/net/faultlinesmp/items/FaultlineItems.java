@@ -383,6 +383,8 @@ public final class FaultlineItems extends JavaPlugin {
         getCommand("fenchant").setTabCompleter(enchants);
         rangerGear = new RangerGear(this); // 1.2.27: ranger accessories + boss books on bows
         getServer().getPluginManager().registerEvents(rangerGear, this);
+        trinkets = new TrinketGear(this); // 1.2.28: nine more accessories
+        getServer().getPluginManager().registerEvents(trinkets, this);
         sit = new Sit(this);
         getServer().getPluginManager().registerEvents(sit, this); // 1.2.18
         getCommand("sit").setExecutor(sit);
@@ -570,7 +572,7 @@ public final class FaultlineItems extends JavaPlugin {
         getServer().getPluginManager().registerEvents(shieldOfTheOceanListener, this);
         getServer().getScheduler().runTaskTimer(this, shieldOfTheOceanListener::tick, 20L, 20L);
 
-        getCommand("giveaccessory").setExecutor(new GiveItemCommand(this, "items.giveaccessory", "/giveaccessory <claws|bezoar|discount|jelly|shield|lavacharm|blackbelt|moonstone|ranger|scarf|frostflare|spelunker|harpy|ankh|clefthorn|weirdclock|monocle|quickdraw|pouch|windrunner|ricochet|phantom|whistle|oath|divinghelmet|flipper|divinggear|depthscharm|abyssalgear|abyssalsuit|corallung|glowgland|eelskin|(any immunity charm)> [amount] [player]", ItemCatalog.ACCESSORY_TYPES, null));
+        getCommand("giveaccessory").setExecutor(new GiveItemCommand(this, "items.giveaccessory", "/giveaccessory <claws|bezoar|discount|jelly|shield|lavacharm|blackbelt|moonstone|ranger|scarf|frostflare|spelunker|harpy|ankh|clefthorn|weirdclock|monocle|quickdraw|pouch|windrunner|ricochet|phantom|whistle|oath|fang|pauldron|crest|guardian|lantern|greenthumb|treasure|smelter|featherfall|divinghelmet|flipper|divinggear|depthscharm|abyssalgear|abyssalsuit|corallung|glowgland|eelskin|(any immunity charm)> [amount] [player]", ItemCatalog.ACCESSORY_TYPES, null));
 
         // Admin item menu — every Faultline item in one place (closest thing to a creative tab a plugin can make).
         getServer().getPluginManager().registerEvents(new ItemsMenuListener(this), this);
@@ -605,6 +607,7 @@ public final class FaultlineItems extends JavaPlugin {
         if (gear != null) gear.shutdown();
         if (race != null) try { race.shutdown(); } catch (RuntimeException ignored) { }
         if (rangerGear != null) try { rangerGear.shutdown(); } catch (RuntimeException ignored) { }
+        if (trinkets != null) try { trinkets.shutdown(); } catch (RuntimeException ignored) { }
         if (sit != null) try { sit.shutdown(); } catch (RuntimeException ignored) { }
         if (camera != null) try { camera.shutdown(); } catch (RuntimeException ignored) { }
         if (where != null) try { where.shutdown(); } catch (RuntimeException ignored) { }
@@ -866,6 +869,8 @@ public final class FaultlineItems extends JavaPlugin {
     Enchants enchants;
     RangerGear rangerGear;
     RangerGear getRangerGear() { return rangerGear; }
+    TrinketGear trinkets;
+    TrinketGear getTrinkets() { return trinkets; }
     Race race;
     Sit sit;
     Vanish vanish;
@@ -6976,6 +6981,7 @@ public final class FaultlineItems extends JavaPlugin {
             for (JacobGear.Piece jp : JacobGear.Piece.values()) ACCESSORY_TYPES.put(jp.id.replace("_", ""), pl -> pl.getJacobGear().item(jp));
             ACCESSORY_TYPES.put("lostmirror", pl -> pl.getMirrorGear().item());
             for (RangerGear.Piece rp : RangerGear.Piece.values()) ACCESSORY_TYPES.put(rp.command, pl -> pl.getRangerGear().item(rp)); // 1.2.27
+            for (TrinketGear.Piece tp : TrinketGear.Piece.values()) ACCESSORY_TYPES.put(tp.command, pl -> pl.getTrinkets().item(tp)); // 1.2.28
 
             DARKNESS_TYPES.put("final", DarknessPotionItem::createFinal);
             DARKNESS_TYPES.put("stage1", DarknessPotionItem::createStage1);
@@ -7066,7 +7072,17 @@ public final class FaultlineItems extends JavaPlugin {
                 pl -> pl.getRangerGear().item(RangerGear.Piece.RICOCHET),
                 pl -> pl.getRangerGear().item(RangerGear.Piece.PHANTOM),
                 pl -> pl.getRangerGear().item(RangerGear.Piece.WHISTLE),
-                pl -> pl.getRangerGear().item(RangerGear.Piece.OATH));
+                pl -> pl.getRangerGear().item(RangerGear.Piece.OATH),
+                // trinkets (1.2.28)
+                pl -> pl.getTrinkets().item(TrinketGear.Piece.FANG),
+                pl -> pl.getTrinkets().item(TrinketGear.Piece.PAULDRON),
+                pl -> pl.getTrinkets().item(TrinketGear.Piece.CREST),
+                pl -> pl.getTrinkets().item(TrinketGear.Piece.GUARDIAN),
+                pl -> pl.getTrinkets().item(TrinketGear.Piece.LANTERN),
+                pl -> pl.getTrinkets().item(TrinketGear.Piece.THUMB),
+                pl -> pl.getTrinkets().item(TrinketGear.Piece.TREASURE),
+                pl -> pl.getTrinkets().item(TrinketGear.Piece.SMELTER),
+                pl -> pl.getTrinkets().item(TrinketGear.Piece.FEATHERFALL));
 
         static Map<String, Function<FaultlineItems, ItemStack>> single(Function<FaultlineItems, ItemStack> factory) {
             return Map.of("", factory);

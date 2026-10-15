@@ -36,13 +36,13 @@ final class Museum implements Listener {
 
     /** Bosses whose trophy art exists (tools/wild_assets.py TROPHY_BOSSES): by Index icon. */
     static final Set<String> TROPHIES = new HashSet<>(List.of("demon_eye", "mortimer_freeze", "dune_devourer", "frostmaw", "don_lorenzo", "kraken",
-            "diamond_jacob", "rocco_vendetta", "grimtusk", "lost_explorer", "queen_spider", "leviathan", "sandworm_king", "lich", "frost_wyrm",
+            "diamond_jacob", "rocco_vendetta", "grimtusk", "queen_spider", "leviathan", "sandworm_king", "lich", "frost_wyrm",
             "stone_golem", "ghost_captain"));
     /** Boss entry -> its music disc(s) (FaultlineItems Gear.DISCS). */
     static final Map<String, List<String>> DISCS = Map.of(
             "the_demon_eye", List.of("demon_eye"), "the_dune_devourer", List.of("dune"), "don_lorenzo", List.of("don"),
             "the_kraken", List.of("kraken"), "the_kraken_at_sea", List.of("kraken"), "diamond_jacob", List.of("jacob1", "jacob2"),
-            "rocco_vendetta", List.of("rocco"), "the_lost_explorer", List.of("explorer"), "the_skeleton_captain", List.of("pirates"),
+            "rocco_vendetta", List.of("rocco"), "the_skeleton_captain", List.of("pirates"),
             "ghost_captain", List.of("pirates"));
 
     private final FaultlineIndex index;

@@ -391,13 +391,8 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(deathMessages, this);
         vendetta = new Vendetta(this);
         getServer().getPluginManager().registerEvents(vendetta, this);
-        below = new Below(this);
-        getServer().getPluginManager().registerEvents(below, this);
-        getCommand("below").setExecutor(below);
-        explorer = new Explorer(this, below);
-        getServer().getPluginManager().registerEvents(explorer, this);
-        getCommand("explorer").setExecutor(explorer);
-        getCommand("lostexplorer").setExecutor(explorer);
+        // (1.6.0: the Lost Explorer, Swarm's way down and the void world are gone; the Dark Ocean (FaultlineDeep) replaces
+        // the void, and Below the Bedrock will be scripted again later)
         warlord = new Warlord(this);
         getServer().getPluginManager().registerEvents(warlord, this);
         getCommand("grimtusk").setExecutor(this::grimtuskCommand);
@@ -421,8 +416,6 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             safely("Kraken", () -> { if (kraken != null) kraken.tick(); });
             safely("Diamond Jacob", () -> { if (jacob != null) jacob.tick(); });
             safely("Rocco Vendetta", () -> { if (vendetta != null) vendetta.tick(); });
-            safely("The way down", () -> { if (below != null) below.tick(); });
-            safely("The Lost Explorer", () -> { if (explorer != null) explorer.tick(); });
             safely("Grimtusk", () -> { if (warlord != null) warlord.tick(); });
             safely("Wild bosses", () -> { if (wild != null) wild.tick(); });
             safely("Boss Rush", () -> { if (rush != null) rush.tick(); });
@@ -551,8 +544,6 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         safely("shutdown: Kraken", () -> { if (kraken != null) kraken.removeEverything(); });
         safely("shutdown: Diamond Jacob", () -> { if (jacob != null) jacob.removeEverything(); });
         safely("shutdown: Rocco Vendetta", () -> { if (vendetta != null) vendetta.shutdown(); });
-        safely("shutdown: The Lost Explorer", () -> { if (explorer != null) explorer.shutdown(); }); // drops the pillars and walls first
-        safely("shutdown: The way down", () -> { if (below != null) below.shutdown(); }); // puts Swarm's staircase back
         safely("shutdown: Grimtusk", () -> { if (warlord != null) warlord.shutdown(); });
         safely("shutdown: Wild bosses", () -> { if (wild != null) wild.shutdown(); });
         safely("shutdown: Boss Rush", () -> { if (rush != null) rush.shutdown(); });
@@ -584,7 +575,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                         || tags.contains(DON_TAG) || tags.contains(DON_ORB_TAG) || tags.contains(KRAKEN_TAG) || tags.contains(KRAKEN_TENT_TAG)
                         || tags.contains(KRAKEN_PINK_TAG) || tags.contains(KRAKEN_EEL_TAG) || tags.contains(KRAKEN_MINION_TAG)
                         || tags.contains(JACOB_TAG) || tags.contains(JACOB_BIRD_TAG) || tags.contains(JACOB_ORB_TAG) || tags.contains(JACOB_MINION_TAG)
-                        || Vendetta.ours(e) || Below.ours(e) || Explorer.ours(e) || Warlord.ours(e) || Wild.ours(e)) e.remove();
+                        || Vendetta.ours(e) || Warlord.ours(e) || Wild.ours(e)) e.remove();
             }
         }
     }
@@ -5529,6 +5520,12 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 console("givemythicbag " + (int) kcfg("rewards.mythic-bags", 18) + " " + p.getName(), p);
                 dropLocked(at, p, new ItemStack(Material.DIAMOND, (int) kcfg("rewards.diamonds-min", 16) + random.nextInt((int) kcfg("rewards.diamonds-extra", 9))));
                 if (random.nextDouble() < kcfg("rewards.suit-chance", 0.4)) console("givediving suit 1 " + p.getName(), p);
+                // 1.6.0: the Mirror (the way to the Dark Ocean) comes from the Kraken now, every fighter, every time. It
+                // only works for someone who has also beaten Rocco Vendetta and Diamond Jacob (FaultlineDeep checks).
+                if (getConfig().getBoolean("kraken.rewards.mirror", true)) {
+                    console("givelostmirror 1 " + p.getName(), p);
+                    p.sendMessage(ChatColor.AQUA + "The Kraken coughs up a strange Mirror. " + ChatColor.GRAY + "(Right-click it once you've beaten Rocco and Jacob.)");
+                }
                 int xp = (int) kcfg("rewards.xp", 2000);
                 for (int left = xp; left > 0; ) { int amount = Math.min(left, 100); left -= amount; world.spawn(at, org.bukkit.entity.ExperienceOrb.class).setExperience(amount); }
                 p.sendMessage(ChatColor.DARK_AQUA + "The Kraken's hoard is yours. " + ChatColor.GRAY + "(Only you can pick up your loot.)");
@@ -7189,7 +7186,6 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 int xp = (int) jcfg("rewards.xp", 2500);
                 for (int left = xp; left > 0; ) { int n = Math.min(left, 100); left -= n; world.spawn(at, org.bukkit.entity.ExperienceOrb.class).setExperience(n); }
                 console("index discover " + p.getName() + " diamond_jacob", p);
-                if (below != null) below.markSlayer(p); // Swarm only shows the way down to people who beat Jacob
                 p.sendMessage(ChatColor.AQUA + "Diamond Jacob's hammer, his blade, and his five charms are yours.");
             }
         }
@@ -8563,7 +8559,6 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             case "Rocco Vendetta" -> () -> { if (vendetta != null) try { if (vendetta.rocco != null) vendetta.rocco.removeEverything(); } finally { vendetta.rocco = null; } };
             case "Grimtusk" -> () -> { if (warlord != null) try { if (warlord.boss != null) warlord.boss.removeEverything(); } finally { warlord.boss = null; } };
             case "Boss Rush" -> () -> { if (rush != null && rush.run != null) { BossRush.Run r = rush.run; try { rush.fail(r, "an error"); } finally { rush.run = null; } } };
-            case "The Lost Explorer" -> () -> { if (explorer != null) try { if (explorer.fight != null) explorer.fight.end(false); } finally { explorer.fight = null; } };
             default -> null;
         };
         if (reset == null) return;
@@ -10747,8 +10742,6 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             "leviathan", "sandworm", "lich", "frostwyrm", "golem", "off", "release");
     private Morph morph;
     Vendetta vendetta;
-    Below below;
-    Explorer explorer;
     Warlord warlord;
     Wild wild;
     BossRush rush;
@@ -10767,7 +10760,6 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         if (jacob != null) return "Diamond Jacob";
         if (vendetta != null && vendetta.rocco != null) return "Rocco Vendetta";
         if (warlord != null && warlord.boss != null) return "Grimtusk";
-        if (explorer != null && explorer.fight != null) return "The Lost Explorer";
         if (wild != null && wild.any() != null) return wild.any().name();
         return null;
     }
@@ -10777,7 +10769,6 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             case "demoneye" -> eye != null; case "frostbeard" -> mortimer != null; case "dune", "frostmaw" -> dune != null;
             case "don" -> don != null; case "kraken" -> kraken != null; case "jacob" -> jacob != null;
             case "rocco" -> vendetta != null && vendetta.rocco != null; case "grimtusk" -> warlord != null && warlord.boss != null;
-            case "explorer" -> explorer != null && explorer.fight != null;
             case "rotbeard", "bulwark", "great_hog", "queen_spider" -> rush != null && rush.raidBossAlive();
             case "leviathan", "sandworm", "lich", "frostwyrm", "golem" -> wild != null && wild.get(kind) != null;
             default -> false;
@@ -10812,14 +10803,6 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                     if (wild.summon(kind, l, by) == null) return false;
                 }
                 case "rotbeard", "bulwark", "great_hog", "queen_spider" -> { if (!rush.spawnRaidBoss(kind, ahead)) return false; }
-                case "explorer" -> { // the leader walks into his arena; everyone else watches from the path (he fights alone)
-                    if (explorer.fight != null) return false;
-                    World v = below.voidWorld();
-                    if (v == null) return false;
-                    by.teleport(new Location(v, 0.5, Below.PATH_Y + 1, Below.ARENA_Z - 15.5, 0, 0));
-                    below.removeStatue();
-                    explorer.begin(v, by);
-                }
                 default -> { return false; }
             }
         } catch (RuntimeException e) {
@@ -10833,7 +10816,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         String cmd = switch (kind) {
             case "demoneye" -> "demoneye kill"; case "frostbeard" -> "frostbeard kill"; case "dune", "frostmaw" -> "dune kill";
             case "don" -> "don kill"; case "kraken" -> "kraken kill"; case "jacob" -> "jacob kill"; case "rocco" -> "rocco kill";
-            case "grimtusk" -> "grimtusk kill"; case "explorer" -> "explorer stop"; default -> null;
+            case "grimtusk" -> "grimtusk kill"; default -> null;
         };
         if (wild != null && wild.get(kind) != null) { wild.get(kind).leave(null); return; }
         if (BossRush.external(kind)) { if (rush != null) rush.removeRaidBoss(); return; }

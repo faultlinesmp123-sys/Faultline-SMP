@@ -36,17 +36,6 @@ commands:
     description: "Don Lorenzo (admin: summon, kill, phase2, speech, armband, ball)"
     usage: /don <summon|kill|phase2|speech|armband|ball>
 
-  below:
-    description: "Admin: the way down to the Lost Explorer (Swarm, the void world)"
-    usage: /below <swarm|void|leave|close|slayer|unslayer|info> [player]
-    permission: bosses.admin
-  explorer:
-    description: "Admin: the Lost Explorer's fight"
-    usage: /explorer <start|stop|skip|phase <1-4>|stun|reset|arena [player]>
-    permission: bosses.admin
-  lostexplorer:
-    description: "The Lost Explorer's [Skip] / [Yes] / [No] chat buttons"
-    usage: /lostexplorer <skip|yes|no>
   bossmorph:
     description: "Admin: become a boss and control it (your hotbar becomes its moves)"
     usage: /bossmorph <demoneye|frostbeard|dune|frostmaw|kraken|jacob|don|rocco|grimtusk|leviathan|sandworm|lich|frostwyrm|golem|off|release>

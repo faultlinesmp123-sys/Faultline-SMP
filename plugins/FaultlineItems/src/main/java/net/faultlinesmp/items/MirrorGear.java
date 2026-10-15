@@ -24,8 +24,9 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Mirror..?? (dropped by the Lost Explorer): a big hit bounces off you and back at whoever dealt it.
- * Runs at HIGH so it gets there before FaultlineBosses puts a player on their knees in the Explorer's arena.
+ * Mirror..?? (1.2.41: dropped by the Kraken, every fighter; the Lost Explorer is gone): worn, a big hit bounces off you and
+ * back at whoever dealt it. Right-clicked (FaultlineDeep): the way to the abandoned kingdom and the Dark Ocean, once
+ * you've beaten Rocco Vendetta and Diamond Jacob.
  */
 final class MirrorGear implements Listener {
 
@@ -49,7 +50,9 @@ final class MirrorGear implements Listener {
                 ChatColor.GREEN + "at whoever dealt it. You take none of it.",
                 ChatColor.DARK_GRAY + "Then it needs " + cooldown() + " seconds to clear.",
                 ChatColor.DARK_GRAY + "" + ChatColor.ITALIC + "You look into it. Something looks back.",
-                ChatColor.DARK_GRAY + "Dropped by the Lost Explorer.");
+                ChatColor.AQUA + "Right-click: go to the abandoned kingdom",
+                ChatColor.AQUA + "(needs Rocco Vendetta and Diamond Jacob beaten).",
+                ChatColor.DARK_GRAY + "Dropped by the Kraken.");
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)

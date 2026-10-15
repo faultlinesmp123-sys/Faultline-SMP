@@ -65,9 +65,8 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
             new Stage("sandworm", "The Sandworm King", World.Environment.NORMAL, List.of(Biome.DESERT, Biome.BADLANDS)),
             new Stage("leviathan", "The Leviathan", World.Environment.NORMAL, List.of(Biome.DEEP_OCEAN, Biome.DEEP_COLD_OCEAN, Biome.DEEP_LUKEWARM_OCEAN)),
             new Stage("lich", "The Lich", World.Environment.NORMAL, List.of(Biome.DEEP_DARK, Biome.DARK_FOREST)),
-            new Stage("frostwyrm", "The Frost Wyrm", World.Environment.NORMAL, List.of(Biome.FROZEN_PEAKS, Biome.SNOWY_SLOPES, Biome.JAGGED_PEAKS)),
-            // the finale: the Lost Explorer in his arena below the bedrock (solo: the leader fights him, the rest watch from the path)
-            new Stage("explorer", "The Lost Explorer", World.Environment.THE_END, List.of()));
+            new Stage("frostwyrm", "The Frost Wyrm", World.Environment.NORMAL, List.of(Biome.FROZEN_PEAKS, Biome.SNOWY_SLOPES, Biome.JAGGED_PEAKS)));
+    // (1.6.0: the Lost Explorer finale is gone with him; a server config still listing "explorer" just skips it)
 
     /** The list 1.3.0 wrote into server configs: still that list = use the full default (raid bosses + the Explorer). */
     static final List<String> OLD_DEFAULT = List.of("demoneye", "frostbeard", "dune", "frostmaw", "don", "kraken", "jacob", "rocco", "grimtusk");
@@ -221,10 +220,6 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
     Location here;
 
     Location arena(Stage s) {
-        if (s.kind().equals("explorer")) { // on the white path, just short of his arena
-            World v = pl.below.voidWorld();
-            return v == null ? null : new Location(v, 0.5, Below.PATH_Y + 1, Below.ARENA_Z - 24.5, 0, 0);
-        }
         String key = "arenas." + s.kind();
         if (data.isConfigurationSection(key)) {
             World w = Bukkit.getWorld(data.getString(key + ".world", ""));
@@ -348,7 +343,7 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
         List<Player> team = r.alive();
         here = team.isEmpty() ? null : team.get(0).getLocation();
         Location a = arena(s);
-        if (a == null && !s.kind().equals("explorer") && here != null && world(s.env()) != null) {
+        if (a == null && here != null && world(s.env()) != null) {
             // no arena anywhere: fight it right here (in the right dimension: the Overworld spawn area / the Nether spawn)
             World w = world(s.env());
             Location base = here.getWorld().equals(w) ? here : w.getSpawnLocation();
@@ -364,12 +359,10 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
         r.arena = a;
         r.state = 0; r.t = 0;
         int i = 0;
-        boolean below = s.kind().equals("explorer");
         for (Player p : r.alive()) {
             double ang = i++ * Math.PI * 2 / Math.max(1, r.alive().size());
             Location to = a.clone().add(Math.cos(ang) * 2, 0, Math.sin(ang) * 2);
-            Location safe = below ? a.clone().add((i - 1) % 3 - 1, 0, -((i - 1) / 3)) : surface(to, s);
-            if (below && !pl.below.returns.containsKey(p.getUniqueId())) { pl.below.returns.put(p.getUniqueId(), r.home.get(p.getUniqueId())); pl.below.dirty = true; }
+            Location safe = surface(to, s);
             p.teleport(safe != null ? safe : a);
             p.setFallDistance(0);
             p.playSound(p.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1f, 0.8f);
@@ -471,9 +464,6 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
         if (run == r) run = null; // first: a failing step below must never leave "a Boss Rush is already running" for good
         for (UUID id : r.team) { Player tp = Bukkit.getPlayer(id); if (tp != null) tp.removeScoreboardTag(TAG); }
         r.bar.removeAll();
-        boolean voidUsed = false;
-        for (UUID id : r.team) if (pl.below.returns.remove(id) != null) voidUsed = true; // they go home from here, not through the rift
-        if (voidUsed) pl.below.dirty = true;
         long until = System.currentTimeMillis() + (long) (c("cooldown-minutes", 60) * 60000);
         for (UUID id : r.team) cooldown.put(id, until);
         for (UUID id : r.team) {

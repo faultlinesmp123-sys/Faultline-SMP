@@ -444,12 +444,6 @@ entries:
     where: 'Sets up shop in caves: every 2 minutes, anyone underground (no sky above, below y=50) has a 5% chance of him appearing nearby. He stays for 8 minutes.'
     does: 'Trades accessories for emeralds (rarer ones cost diamonds too): immunity charms, rings, the Spelunker Amulet, diving gear, and more. Five wares at a time, changing with every visit. He can''t be
       hurt.'
-  - chapter: friends
-    name: Swarm
-    icon: swarm
-    detect-tag: faultline_swarm
-    where: 'A citizen of the city Below the Bedrock. Explore between y=-1 and y=-50 (in the caves, no sky above): every minute there''s a 2% chance he turns up somewhere behind you. He waits around for 5 minutes.'
-    does: 'Knows the way down to the Lost Explorer, but only shows it to people who have killed Diamond Jacob, and only for the Vendetta Fist (hold it out to him; he keeps it). Then he digs you a staircase to the bedrock, breaks through it with a pickaxe nobody up here has seen, and opens a hole into the void. Jump in. The hole stays open 10 minutes, then he seals it and fills the stairs back in. He can''t be hurt.'
   - chapter: bosses
     name: The Kraken
     icon: kraken
@@ -604,33 +598,13 @@ entries:
     does: 'Aim for the Solar Plexus (a body blow: stunned for a second), Right in the Dome (a headbutt: Weakness II, a shield blocks it), Gut Crush (two punches, then he hits harder for 10 seconds), Vengeance Awaits You All! (a slam: half your health if you have Weakness, more damage for every debuff, then a 3 second stun, Slowness II and Weakness II) and Counter - Seize ya Chance (a guard: hit him and he counters). Every Vendetta Enforcer that dies makes him 15% stronger. Kill him and Rocco hits 15% harder.'
     drops:
     - 'A cosmetic: Golden Chains, Book, or Coat|33%'
-  - chapter: bosses
-    name: The Lost Explorer
-    icon: lost_explorer
-    detect-tag: faultline_explorer
-    where: 'The final boss. Swarm digs you down through the bedrock into the void; walk the white path to its end. He stands on top of a huge black pillar, digging into it, his black tiger sitting below. Walk into his arena and walls close it off. SOLO: only one player can face him at a time; anyone else who walks in is put back on the path.'
-    does: '"Who are you?" "You''re not from this world." He snaps his fingers and his BLACK TIGER attacks first: 2,000 health, swords work on it, and it takes a quarter of your health per hit (swipes, pounces, a roar that throws you back). Kill it and he calls it useless... "You shall die." He drops off his pillar and four pillars rise. HE can''t be hurt, and hitting him with a weapon earns a backhand that leaves you at half a heart. He fights like the Roaring Knight, fast: white slash lines across the floor (get off the line before it turns red and cuts), dashes straight through you, X and + cuts, rings of swords that close in on you, starbursts of blades (stand in the gaps), and sword rain. Every hit takes a quarter of your health. After every 15 moves he CHARGES: be in front of a pillar so he slams into it, then hit that pillar 3 times with a pickaxe while he''s stunned to drop it on him. Four pillars, four phases. Nobody dies here: you fall to your knees and keep everything. If you go down he tells you about the kingdom Below the Bedrock (you can skip it), then asks "Do you want to do it again..?" Yes: straight back to the tiger. No: "Get out of my sight." He kicks you out, the way down closes, and you have to find Swarm again (no second Fist). Comes back 30 minutes after he''s beaten.'
-    drops:
-    - 32 Mythic Goodie Bags|100%
-    - 5 Netherite Blocks|100%
-    - Mirror..??|100%
-    - 3,000 XP|100%
-  - chapter: bosses
-    id: black_tiger
-    name: The Black Tiger
-    icon: black_tiger
-    detect-tag: faultline_explorer_tiger
-    where: 'The Lost Explorer''s tiger. It sits at the foot of his pillar until he snaps his fingers. 2,000 health.'
-    does: 'Fight 1 of the Lost Explorer. Swords, axes and arrows all hurt it. It prowls and circles you, rakes with its paws (twice in a row below half health), crouches and pounces onto a red circle, and roars to throw you back and slow you. Every hit takes a quarter of your health: four and you''re on your knees.'
-    drops:
-    - Nothing (its master is next)|-
   - chapter: accessories
     id: lost_mirror
     name: Mirror..??
     icon: lost_mirror
     detect: faultlineitems:lost_mirror
-    how: Dropped by the Lost Explorer.
-    does: A hit that would take a third of your health or more bounces off you and back at whoever dealt it (up to 15 hearts), and you take none of it. Then it needs 45 seconds to clear. You look into it. Something looks back.
+    how: Dropped by the Kraken (every fighter, every time). It only works once you've beaten Rocco Vendetta and Diamond Jacob.
+    does: Right-click it to be taken to the abandoned kingdom where the Black Market stands. Find Lucki on his little boat there; he rows you out and opens the way down into the Dark Ocean. Right-click it in the Dark Ocean to come back. Worn in /accessories, a hit that would take a third of your health or more bounces off you and back at whoever dealt it (up to 15 hearts). Then it needs 45 seconds to clear. You look into it. Something looks back.
   - chapter: enemies
     name: Vendetta Enforcer
     icon: vendetta_enforcer
@@ -964,8 +938,6 @@ entries:
      how: "20% from Diamond Jacob (one of his two).", does: "Diamond Jacob's second theme. Put it in a jukebox."}
   - {chapter: consumables, name: "Music Disc: Rocco Vendetta", icon: disc_rocco, detect: "faultlineitems:disc=rocco",
      how: "20% from Rocco Vendetta.", does: "Rocco Vendetta's theme. Put it in a jukebox."}
-  - {chapter: consumables, name: "Music Disc: Black Knife", icon: disc_explorer, detect: "faultlineitems:disc=explorer",
-     how: "20% from the Lost Explorer.", does: "The Lost Explorer's theme. Put it in a jukebox."}
   - {chapter: consumables, name: "Music Disc: The Pirate Invasion", icon: disc_pirates, detect: "faultlineitems:disc=pirates",
      how: "20% from the Skeleton Captain, 25% from Captain Hollow.", does: "The Pirate Invasion's theme. Put it in a jukebox."}
   - {chapter: accessories, name: "Hawkeye Monocle", icon: hawkeye_monocle, detect: "faultlineitems:hawkeye_monocle",
@@ -1049,8 +1021,6 @@ achievements:
   - {id: slayer_of_faultline, name: "Slayer of Faultline", icon: slayer_crown, desc: "Defeat every boss: the Demon Eye, Queen Spider, Frostbeard, the Dune Devourer, the Frostmaw, Don Lorenzo, the Kraken, Diamond Jacob, Rocco Vendetta and Grimtusk.",
      defeat: [the_demon_eye, queen_spider, mortimer_freeze, the_dune_devourer, the_frostmaw, don_lorenzo, the_kraken, diamond_jacob, rocco_vendetta, grimtusk],
      need: all, reward: {cosmetic: slayer_crown, items: ["NETHERITE_INGOT:2"], xp: 2000}}
-  - {id: the_lost_king, name: "The Lost King", icon: lost_explorer, desc: "Face the Lost Explorer, below the bedrock.",
-     defeat: [the_lost_explorer], need: all, reward: {items: ["NETHERITE_INGOT:2"], xp: 1000}}
   - {id: boss_rush_champion, name: "Boss Rush Champion", icon: champion_cape, desc: "Finish a Boss Rush (right-click a Boss Rush Sigil): every boss, back to back.",
      stat: boss_rush, count: 1, reward: {cosmetic: champion_cape, items: ["NETHERITE_INGOT:2"], xp: 3000}}
   - {id: hardcore_champion, name: "No Second Chances", icon: champion_cape, desc: "Finish a Hardcore Boss Rush (sneak + right-click the Sigil): every boss, and nobody on the team dies.",

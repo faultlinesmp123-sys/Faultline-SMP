@@ -434,47 +434,6 @@ rocco:
     werner-seconds: 30
 
 
-# The way down to the Lost Explorer: Swarm, his staircase to the bedrock, and the void world with the white path.
-below:
-  enabled: true
-  swarm:
-    chance: 0.02                    # each check, per player exploring underground
-    check-seconds: 60
-    min-y: -50                      # only between these heights, with no sky above
-    max-y: -1
-    stay-seconds: 300               # how long he waits around if nobody talks to him
-    player-cooldown-seconds: 600    # after he turns up for someone, not again for them for this long
-  stairs-open-seconds: 600          # the hole stays open this long, then he seals it and fills the stairs back in
-  void-world: faultline_void
-
-# The Lost Explorer (final boss, on his pillar at the end of the white path in the void world). Walk into his arena to start:
-# cutscene, his tiger (fight 1), cutscene, then him (4 phases).
-explorer:
-  speed: 1.1                        # how fast his moves run (x1.12 / x1.25 / x1.4 in phases 2-4)
-  one-shot-chance: 0.0              # each of his hits: this chance to put you down at once, otherwise...
-  damage:
-    hit: 0.26                       # ...this share of your max health (4 hits)
-  charge-after-moves: 15            # he charges (the pillar trick) after this many moves
-  charge-speed: 1.1                 # blocks per tick
-  stun-seconds: 8                   # how long he's stunned after crashing into a pillar
-  stun-seconds-less-per-phase: 1
-  pickaxe-hits: 3                   # pickaxe hits on the cracked pillar to drop it on him
-  respawn-minutes: 30               # after he's beaten, before he's back on his pillar
-  loss-speech-seconds: 30           # how long he talks when everyone's down
-  again-seconds: 15                 # then "Do you want to do it again..?": how long the Yes / No stays up
-  tiger:
-    health: 2000
-    damage-share: 0.26              # share of your max health per tiger hit (4 hits)
-  rewards:                          # per fighter
-    mythic-bags: 32
-    xp: 3000
-    netherite-blocks: 5
-    mirror: true                    # the Mirror..?? accessory (FaultlineItems /givelostmirror)
-  music:
-    enabled: true
-    volume: 1.0
-    length-seconds: 122             # Black Knife (Deltarune): from the snap through the tiger, then again from "You shall die."
-
 # ============================================================================
 # GRIMTUSK, THE PIGLIN WARLORD (the Nether boss, Warlord.java). Raise a Warlord's Challenge (4 gold blocks, 4 blaze rods,
 # 1 netherite scrap) inside a Bastion Remnant. Phase 1 he rides Ironhide (his war hoglin) and takes 60% less damage;

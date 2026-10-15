@@ -598,6 +598,24 @@ def ship_cubes(cells, wreck, dark=False):
     return cubes
 
 
+def land_cannon_cubes():
+    """A land cannon (FaultlineShips LandCannons) for Bedrock: the same carriage and barrel as a ship's cannon cell, the barrel
+    along local +x (the armor stand's front), standing on the bottom of its block. Worn by a Bedrock-only armor stand
+    (paper with item model faultline:land_cannon), which turns with the cannon."""
+    parts = [((-0.4, 0.0, -0.31), (0.3, 0.36, 0.31), "planks"),       # carriage
+             ((-0.45, 0.28, -0.19), (0.35, 0.66, 0.19), "iron"),      # breech
+             ((0.35, 0.33, -0.14), (1.05, 0.61, 0.14), "iron"),       # chase
+             ((1.0, 0.30, -0.17), (1.2, 0.64, 0.17), "iron_dark")]    # muzzle
+    for wx in (-0.28, 0.2):                                           # wheels
+        for wz in (-0.37, 0.31):
+            parts.append(((wx - 0.13, 0.0, wz), (wx + 0.13, 0.28, wz + 0.06), "dark"))
+    cubes = []
+    for (x0, y0, z0), (x1, y1, z1), t in parts:
+        o, sz = to_bedrock(x0, y0, z0, x1, y1, z1)
+        cubes.append({"origin": o, "size": sz, "uv": {f: face_uv(t, 4, 4) for f in FACE_OF.values()}})
+    return cubes
+
+
 def bedrock_pack(bout, layouts, icons):
     rp = os.path.join(bout, "rp_ships")
     tex = atlas()
@@ -634,6 +652,20 @@ def bedrock_pack(bout, layouts, icons):
                           "display_name": ("Ghost " if dark == "ghost" else "Skeleton " if dark else "") + lay["title"] + (" (wrecked)" if wreck else ""),
                           "bedrock_options": {"icon": "faultline.ship_icon", "allow_offhand": False},
                           "components": {"minecraft:equippable": {"slot": "head"}, "minecraft:max_stack_size": 1}})
+    # the land cannon (1.6.4: Bedrock used to get a fake dispenser)
+    geo = {"format_version": "1.16.0", "minecraft:geometry": [{
+        "description": {"identifier": "geometry.faultline.land_cannon", "texture_width": 64, "texture_height": ATLAS_H,
+                        "visible_bounds_width": 4, "visible_bounds_height": 3, "visible_bounds_offset": [0, 0.5, 0]},
+        "bones": [{"name": "body", "pivot": [0, 0, 0], "cubes": land_cannon_cubes()}]}]}
+    _w(os.path.join(rp, "models/entity/faultline", "land_cannon.geo.json"), geo)
+    _w(os.path.join(rp, "attachables", "faultline.land_cannon.json"), {"format_version": "1.10.0", "minecraft:attachable": {"description": {
+        "identifier": "faultline:land_cannon", "materials": {"default": "armor", "enchanted": "armor_enchanted"},
+        "textures": {"default": "textures/faultline/ship_atlas", "enchanted": "textures/misc/enchanted_actor_glint"},
+        "geometry": {"default": "geometry.faultline.land_cannon"}, "scripts": {"parent_setup": "v.helmet_layer_visible = 0.0;"},
+        "render_controllers": ["controller.render.armor"]}}})
+    paper.append({"type": "definition", "model": "faultline:land_cannon", "bedrock_identifier": "faultline:land_cannon",
+                  "display_name": "Ship Cannon", "bedrock_options": {"icon": "faultline.ship_cannon", "allow_offhand": False},
+                  "components": {"minecraft:equippable": {"slot": "head"}, "minecraft:max_stack_size": 1}})
     for key, title in (("ship_cannon", "Ship Cannon"), ("cannonball", "Cannonball")):
         paper.append({"type": "definition", "model": f"faultline:{key}", "bedrock_identifier": f"faultline:{key}", "display_name": title,
                       "bedrock_options": {"icon": f"faultline.{key}", "allow_offhand": key == "cannonball"},

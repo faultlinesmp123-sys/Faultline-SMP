@@ -841,6 +841,30 @@ Notes:
   Evokers, 75 Breezes, 75 Phantoms, 5 Wardens, 3 Withers, 15 different Tier 4+ players; reward = console
   `giveaccessory oath <player>` (`QuestRegistry.giveRangersOath`; FaultlineItems missing = the player is told to ask staff).
   `QuestMenuHolder.QUEST_SLOTS` row 2 is now 20-24. The 3% Evoker drop stays. Tested (`RangerTest`, `OathQuestTest` in `mtest`).
+- **Meteors heal, ships lag pass, Bedrock cannons (Items 1.2.40, Ships 1.6.4)**:
+  **Meteor terrain** (`meteor.restore-terrain: true`): every block the crater / rock / core changes goes through
+  `Meteor.change()` (first original `BlockData` per position in `Strike.before`, also saved as `scar:` in `meteor.yml`);
+  `end()` puts them back (`heal`: only where the block is still a meteor material or air, so a player's build in the crater
+  stays): 2 min after the claim, when it cools (no obsidian any more; `false` = the old obsidian), on shutdown, and on the
+  next start after a crash (`healLeftovers`). No rim fire any more (it spread into forests): flame particles instead. The
+  interval is still `every-minutes: 240` (logged on start: "[Meteor] one every N minutes"). Tested (`EventsTest`).
+  **Ship lag**: (1) turning = one rotation packet PER BLOCK DISPLAY: now every 2 ticks / 1 degree for players' ships,
+  every 4 ticks / 2 degrees for skeleton ships (their displays' teleport duration 5), every 20 ticks with nobody within 64
+  (was every tick / 0.5 degrees). (2) `updateDeck()` only lays barriers within `deck-radius` (3.5) of someone on/beside
+  the ship (it relaid the WHOLE deck every tick = hundreds of block changes a second); nobody aboard = no barriers; bodies =
+  nearby players + the pirates' crew map (no area scan). (3) `arrows()` checks the projectiles in `flying` (added on
+  `ProjectileLaunchEvent` + `launchTagged`) instead of scanning the area around every ship every 2 ticks (a ship's
+  displays are entities in that area). (4) The **Pirate Invasion comes in waves**: `pirates.invasion.wave-size` 5 escorts at
+  a time (0 = all 15 at once, the old way), the next wave when `next-wave-at` (1) are left (`Pirates.nextWave`, around the
+  fighters, from the flagship's side; `Invasion.toSpawn/wave/escortsLeft()`); the flagship waits for `escortsLeft()`.
+  **Deck clipping**: `carry()` lifts anyone whose feet sank 0.02-0.75 into a deck block back on top
+  (`floorTopUnder`, a teleport, at most every 10 ticks per player); the bottom 0.25 of a body doesn't stop the barrier under
+  it being placed; `climbAboard` teleports first, then lays the deck. **Bedrock land cannons**: no more fake dispenser; a
+  Bedrock-only armor stand (`LandCannons.STAND_TAG`, not a marker: Geyser draws helmets only on real stands) wears paper
+  with item model `faultline:land_cannon` = a 3D cannon attachable in `FaultlineShips.mcpack` (`ship_assets.py`
+  `land_cannon_cubes`), turned with the cannon (yaw only); hitting it = punch (sneak = pick up), right-clicking with a
+  Cannonball fires. Ship cannons were already part of each ship's Bedrock stand-in model. Tested (`DeckTest`, `PirateTest`,
+  `ShipEventTest`, `CannonUpgradeTest`).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

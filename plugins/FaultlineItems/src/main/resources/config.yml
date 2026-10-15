@@ -358,6 +358,7 @@ meteor:
   min-distance: 1000          # how far from a random survival player (old configs saying 250-600 get 1000)
   max-distance: 1000
   generate-land: true         # far land that isn't generated yet is generated in the background for it
+  restore-terrain: true       # 1.2.40: the crater, rock and core are put back the way they were when the meteor is over
   # Random meteors never land within this many blocks of a build, a base (chests, beds, furnaces... near the surface,
   # or a chunk players have spent base-hours in) or anyone's respawn point. Villages are fine. Admins can aim one
   # anywhere: /meteor target (where you look) or /meteor at <x> <z>. /meteor check tells you if a spot is avoided.

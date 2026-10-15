@@ -271,7 +271,7 @@ final class Ship {
             java.util.function.Consumer<Display> setup = d -> {
                 d.setPersistent(false);
                 d.addScoreboardTag(TAG);
-                d.setTeleportDuration(3); // turning is the entity's yaw: this smooths it, the same for every block
+                d.setTeleportDuration(ai != null ? 5 : 3); // turning is the entity's yaw: this smooths it, the same for every block
                 d.setTransformation(transform(idx));
                 if (blocks[idx] == null) { d.setGlowing(true); d.setGlowColorOverride(Color.fromRGB(150, 220, 255)); }
             };
@@ -624,9 +624,12 @@ final class Ship {
         else if (!wrecked && sink > 0) { sink = Math.max(0, sink - 0.03); sinking = true; }
         if (ticks % 20 == 0) viewerNear = viewerWithin(64);
         if (sailing() || anchorStep >= 0 || sinking) {
-            // every block's yaw is its own packet: big ships, skeleton ships and ships nobody's near send fewer
-            int every = !viewerNear ? 15 : ai != null ? 3 : type == ShipType.GALLEON || type == ShipType.PIRATE ? 2 : 1;
-            if ((Math.abs(yaw - sentYaw) >= 0.5f || (sinking && ticks % 10 == 0)) && ticks % every == 0) sendRotation();
+            // every block's yaw is its own packet (a Pirate Ship is 882 of them), so turns are sent in steps the client
+            // smooths over (teleport duration): 1.6.4 = every 2 ticks / 1 degree for players' ships, every 4 ticks / 2
+            // degrees for skeleton ships, every 20 ticks with nobody within 64 blocks (was every tick / 0.5 degrees)
+            int every = !viewerNear ? 20 : ai != null ? 4 : 2;
+            float step = ai != null ? 2f : 1f;
+            if ((Math.abs(yaw - sentYaw) >= step || (sinking && ticks % 10 == 0)) && ticks % every == 0) sendRotation();
             place();
         }
         if (deckOn() && !anchored && (sailing() || anchorStep >= 0)) {
@@ -1314,6 +1317,16 @@ final class Ship {
             if (!on) continue;
             seen.add(p.getUniqueId());
             double[] nw = toWorld(x, z, yaw, lx, lz);
+            // 1.6.4 (clipping): feet sunk into a deck block (lag, a turn) = the client would fall straight through it.
+            // Lift them onto it (a teleport, so only when it really happens, at most every half second).
+            double top = floorTopUnder(lx, l.getY(), lz);
+            if (!Double.isNaN(top) && l.getY() < top - 0.02 && l.getY() > top - 0.75 && ticks >= rescuedAt.getOrDefault(p.getUniqueId(), 0L)) {
+                rescuedAt.put(p.getUniqueId(), ticks + 10L);
+                p.teleport(new Location(w, nw[0], top + 0.01, nw[1], l.getYaw(), l.getPitch()));
+                p.setFallDistance(0);
+                walkers.remove(p.getUniqueId());
+                continue;
+            }
             double sdx = nw[0] - l.getX(), sdz = nw[1] - l.getZ();
             double[] last = walkers.get(p.getUniqueId());
             double rx = 0, rz = 0, vy = 0;
@@ -1332,16 +1345,62 @@ final class Ship {
         walkers.keySet().retainAll(seen);
     }
 
-    /** Move the deck's barriers to where the ship is now: new ones in, the ones it left behind back to air. */
+    final java.util.Map<UUID, Long> rescuedAt = new java.util.HashMap<>();
+
+    /** The top of the deck block (a floor cell: nothing built on it) the feet at local (lx, lz) are in, or NaN. */
+    double floorTopUnder(double lx, double feetY, double lz) {
+        int fx = (int) Math.round(lx), fz = (int) Math.round(lz);
+        int fb = (int) Math.floor(feetY);
+        for (int cy = (int) Math.floor(feetY - y) - 1; cy <= (int) Math.floor(feetY - y) + 1; cy++) {
+            if (cy < 1) continue;
+            int i = type.cellAt(fx, cy, fz);
+            if (i < 0 || blocks[i] == null || broken.contains(i) || type.cellAt(fx, cy + 1, fz) >= 0) continue;
+            int by = (int) Math.floor(y + cy + 0.5);
+            if (by == fb) return by + 1;
+        }
+        return Double.NaN;
+    }
+
+    /**
+     * Move the deck's barriers to where the ship is now: new ones in, the ones it left behind back to air.
+     * 1.6.4 (lag): only within deck-radius (3.5) of someone on or beside the ship. It used to lay the whole ship every
+     * tick (hundreds of block changes a second on a Galleon, each one sent to every player) and the barriers nobody
+     * stands on did nothing. Nobody aboard = no barriers at all.
+     */
     void updateDeck() {
         World w = world();
         if (w == null) return;
+        List<double[]> near = new ArrayList<>();
+        List<org.bukkit.util.BoundingBox> bodies = new ArrayList<>();
+        double r = radius() + 3;
+        for (Player p : w.getPlayers()) {
+            if (p.getGameMode() == org.bukkit.GameMode.SPECTATOR) continue;
+            Location l = p.getLocation();
+            if (Math.abs(l.getX() - x) > r || Math.abs(l.getZ() - z) > r || l.getY() < y - 3 || l.getY() > y + type.height + 4) continue;
+            if (!p.isInsideVehicle()) near.add(new double[]{l.getX(), l.getY(), l.getZ()});
+            bodies.add(p.getBoundingBox());
+        }
+        if (near.isEmpty()) { if (!deck.isEmpty()) clearDeck(); return; }
+        // pirates who boarded (never wall a mob in): their crew list, not a scan of the area (the ship's own hundreds
+        // of block displays are entities too, and every scan walked through all of them)
+        if (pl.pirates != null) for (UUID u : pl.pirates.crew.keySet()) {
+            Entity e = Bukkit.getEntity(u);
+            if (e != null && e.getWorld().equals(w) && Math.abs(e.getLocation().getX() - x) < r && Math.abs(e.getLocation().getZ() - z) < r) bodies.add(e.getBoundingBox());
+        }
+        double R = pl.cfg("deck-radius", 3.5), R2 = R * R;
         java.util.Map<Long, int[]> want = new java.util.HashMap<>();
         for (int i = 0; i < blocks.length; i++) {
             if (blocks[i] == null || broken.contains(i)) continue;
             ShipType.Cell c = type.cells.get(i);
             if (c.y() < 1) continue; // the bottom row sits in the water: nothing to stand on
             int by = (int) Math.floor(y + c.y() + 0.5);
+            double[] mid = toWorld(x, z, yaw, c.x(), c.z());
+            boolean close = false;
+            for (double[] q : near) {
+                double dx = mid[0] - q[0], dz = mid[1] - q[2];
+                if (dx * dx + dz * dz <= R2 && by >= q[1] - 4 && by <= q[1] + 3) { close = true; break; }
+            }
+            if (!close) continue;
             boolean floor = c.y() <= type.deckY && type.cellAt(c.x(), c.y() + 1, c.z()) < 0; // something you stand on
             double h = floor ? 0.45 : 0;
             // the centre, the corners and the edge middles (at an angle the corners alone can all miss the middle block)
@@ -1360,11 +1419,10 @@ final class Ship {
             pl.deckMark(b, false);
             it.remove();
         }
-        // new ones, never inside anybody (they'd be stuck) and only into open air
-        List<org.bukkit.util.BoundingBox> bodies = new ArrayList<>();
-        double r = radius() + 3;
-        for (Entity e : w.getNearbyEntities(new Location(w, x, y + type.height / 2.0, z), r, type.height + 3, r))
-            if (e instanceof org.bukkit.entity.LivingEntity && !(e instanceof ArmorStand)) bodies.add(e.getBoundingBox());
+        // new ones, never inside anybody (they'd be stuck) and only into open air. Feet sunk a little into the block
+        // under them don't count (the bottom 0.25 of a body is left out): that's exactly the block that must be there,
+        // or they fall through (carry() lifts them back on top).
+        for (int i = 0; i < bodies.size(); i++) bodies.set(i, bodies.get(i).clone().expand(0, -0.25, 0, 0, 0, 0));
         for (var e : want.entrySet()) {
             if (deck.containsKey(e.getKey())) continue;
             int[] q = e.getValue();
@@ -1431,9 +1489,9 @@ final class Ship {
             if (d < best) { best = d; spot = wp; }
         }
         if (spot == null) return false;
-        if (!anchored && deckOn()) updateDeck();
         Location to = new Location(w, spot[0], y + type.deckY + 1.02, spot[1], l.getYaw(), l.getPitch());
         p.teleport(to);
+        if (!anchored && deckOn()) updateDeck(); // (after the teleport: the deck is only laid around people on it)
         p.setFallDistance(0);
         w.playSound(to, Sound.BLOCK_LADDER_STEP, SoundCategory.PLAYERS, 1f, 1f);
         w.playSound(to, Sound.ENTITY_PLAYER_SPLASH, SoundCategory.PLAYERS, 0.6f, 1.3f);

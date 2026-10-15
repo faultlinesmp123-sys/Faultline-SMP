@@ -53,6 +53,7 @@ import org.joml.Vector3f;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.function.Supplier;
@@ -64,6 +65,11 @@ import java.util.function.Supplier;
  * meteor rock has some Ancient Debris in it, for anyone. Unclaimed, it cools after 30 minutes.
  *
  * Craters only form on natural ground: a spot near anything player-built is skipped.
+ *
+ * 1.2.40: the ground heals. Every block the crater, the rock and the core change is remembered (also in meteor.yml, so a
+ * crash can't leave a scar) and put back when the meteor is over: two minutes after it's claimed, when it cools, on
+ * shutdown, or on the next start after a crash (meteor.restore-terrain, default true). No fire on the rim any more
+ * (it spread into forests); the rim smokes instead.
  */
 final class Meteor implements Listener, CommandExecutor {
 
@@ -83,6 +89,8 @@ final class Meteor implements Listener, CommandExecutor {
         BlockDisplay rock;
         int ticks, lifeTicks;
         final List<LivingEntity> guards = new ArrayList<>();
+        /** "x,y,z" -> the block data that was there before the meteor touched it (first change only). */
+        final java.util.LinkedHashMap<String, String> before = new java.util.LinkedHashMap<>();
         Strike(World world, int x, int y, int z) { this.world = world; this.x = x; this.y = y; this.z = z; }
     }
 
@@ -90,6 +98,8 @@ final class Meteor implements Listener, CommandExecutor {
         this.plugin = plugin;
         for (World w : Bukkit.getWorlds()) for (Entity e : w.getEntities()) if (e.getScoreboardTags().contains(TAG)) e.remove();
         loadNext();
+        plugin.getLogger().info("[Meteor] one every " + everyMs() / 60000 + " minutes (meteor.every-minutes)");
+        Bukkit.getScheduler().runTask(plugin, () -> guard(this::healLeftovers)); // a crash mid-meteor: put the ground back
         Bukkit.getScheduler().runTaskTimer(plugin, () -> guard(this::tick), 20L, 1L);
     }
 
@@ -463,9 +473,70 @@ final class Meteor implements Listener, CommandExecutor {
         return false;
     }
 
-    private void set(Block b, Material m) {
+    private void set(Strike s, Block b, Material m) {
         if (b.getType() == Material.BEDROCK || !natural(b.getType()) && !b.isLiquid()) return;
+        change(s, b, m);
+    }
+
+    /** Every block a meteor changes goes through here, so it can be put back afterwards. */
+    private void change(Strike s, Block b, Material m) {
+        if (b.getType() == m) return;
+        s.before.putIfAbsent(b.getX() + "," + b.getY() + "," + b.getZ(), b.getBlockData().getAsString());
         b.setType(m, false);
+    }
+
+    // ===================================================================== healing the ground
+
+    private boolean heals() { return plugin.getConfig().getBoolean("meteor.restore-terrain", true); }
+
+    /** What a meteor puts down (a block still like this, or mined out to air, is ours to put back; anything else was built). */
+    private static final Set<Material> OURS = Set.of(Material.AIR, Material.CAVE_AIR, Material.MAGMA_BLOCK, Material.BLACKSTONE,
+            Material.BASALT, Material.COBBLED_DEEPSLATE, Material.COARSE_DIRT, Material.CRYING_OBSIDIAN, Material.ANCIENT_DEBRIS,
+            Material.GILDED_BLACKSTONE, Material.OBSIDIAN, Material.FIRE, Material.WATER, Material.LAVA);
+
+    /** Puts every remembered block back. Returns how many. */
+    int heal(World w, Map<String, String> before) {
+        int n = 0;
+        List<Map.Entry<String, String>> list = new ArrayList<>(before.entrySet());
+        java.util.Collections.reverse(list);
+        for (Map.Entry<String, String> en : list) {
+            try {
+                String[] c = en.getKey().split(",");
+                Block b = w.getBlockAt(Integer.parseInt(c[0]), Integer.parseInt(c[1]), Integer.parseInt(c[2]));
+                if (!OURS.contains(b.getType())) continue; // someone built here since
+                b.setBlockData(Bukkit.createBlockData(en.getValue()), false);
+                n++;
+            } catch (RuntimeException ignored) { }
+        }
+        return n;
+    }
+
+    private void saveScar(Strike s) {
+        try {
+            org.bukkit.configuration.file.YamlConfiguration y = org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(stateFile());
+            if (s == null || s.before.isEmpty()) y.set("scar", null);
+            else {
+                y.set("scar.world", s.world.getName());
+                List<String> l = new ArrayList<>();
+                for (Map.Entry<String, String> en : s.before.entrySet()) l.add(en.getKey() + "|" + en.getValue());
+                y.set("scar.blocks", l);
+            }
+            plugin.getDataFolder().mkdirs();
+            y.save(stateFile());
+        } catch (java.io.IOException | RuntimeException e) { plugin.getLogger().warning("[Meteor] couldn't save meteor.yml: " + e.getMessage()); }
+    }
+
+    /** On start: a meteor that was still out when the server stopped without a proper shutdown. */
+    private void healLeftovers() {
+        org.bukkit.configuration.file.YamlConfiguration y = org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(stateFile());
+        World w = Bukkit.getWorld(y.getString("scar.world", ""));
+        List<String> l = y.getStringList("scar.blocks");
+        if (w == null || l.isEmpty()) return;
+        Map<String, String> before = new java.util.LinkedHashMap<>();
+        for (String line : l) { int i = line.indexOf('|'); if (i > 0) before.put(line.substring(0, i), line.substring(i + 1)); }
+        int n = heal(w, before);
+        plugin.getLogger().info("[Meteor] healed " + n + " blocks of a crater left by a crash");
+        saveScar(null);
     }
 
     private void crater(Strike s) {
@@ -476,20 +547,13 @@ final class Meteor implements Listener, CommandExecutor {
         for (int dx = (int) -R - 1; dx <= R + 1; dx++) for (int dz = (int) -R - 1; dz <= R + 1; dz++) for (int dy = -4; dy <= 6; dy++) {
             double d = Math.sqrt(dx * dx + dz * dz + (dy - 1.5) * (dy - 1.5) * 2.2);
             Block b = w.getBlockAt(cx + dx, cy + dy, cz + dz);
-            if (d < R) set(b, Material.AIR);
+            if (d < R) set(s, b, Material.AIR);
             else if (d < R + 1.1 && dy <= 1 && !b.getType().isAir()) {
                 double r = random.nextDouble();
-                set(b, r < 0.25 ? Material.MAGMA_BLOCK : r < 0.5 ? Material.BLACKSTONE : r < 0.7 ? Material.BASALT : r < 0.85 ? Material.COBBLED_DEEPSLATE : Material.COARSE_DIRT);
+                set(s, b, r < 0.25 ? Material.MAGMA_BLOCK : r < 0.5 ? Material.BLACKSTONE : r < 0.7 ? Material.BASALT : r < 0.85 ? Material.COBBLED_DEEPSLATE : Material.COARSE_DIRT);
             }
         }
-        // fire and smoke on the rim
-        for (int i = 0; i < 14; i++) {
-            double a = random.nextDouble() * Math.PI * 2, r = R * (0.6 + random.nextDouble() * 0.6);
-            int x = (int) Math.round(cx + Math.cos(a) * r), z = (int) Math.round(cz + Math.sin(a) * r);
-            Block top = w.getHighestBlockAt(x, z);
-            Block above = top.getRelative(0, 1, 0);
-            if (above.getType().isAir() && top.getType().isSolid() && top.getType() != Material.MAGMA_BLOCK) above.setType(Material.FIRE, false);
-        }
+        // (1.2.40: no fire on the rim any more: it spread into grass and forests. The rim smokes in landedTick.)
         // the meteor: a rough ball of rock in the bottom of the crater, debris inside, the glowing core on top
         int by = cy - 2;
         List<Block> rock = new ArrayList<>();
@@ -499,17 +563,18 @@ final class Meteor implements Listener, CommandExecutor {
             Block b = w.getBlockAt(cx + dx, by + dy, cz + dz);
             if (b.getType() == Material.BEDROCK) continue;
             double r = random.nextDouble();
-            b.setType(r < 0.45 ? Material.BLACKSTONE : r < 0.7 ? Material.BASALT : r < 0.85 ? Material.MAGMA_BLOCK : Material.CRYING_OBSIDIAN, false);
+            change(s, b, r < 0.45 ? Material.BLACKSTONE : r < 0.7 ? Material.BASALT : r < 0.85 ? Material.MAGMA_BLOCK : Material.CRYING_OBSIDIAN);
             rock.add(b);
         }
         int debris = (int) cfg("ancient-debris", 3);
         java.util.Collections.shuffle(rock, random);
-        for (int i = 0; i < Math.min(debris, rock.size()); i++) rock.get(i).setType(Material.ANCIENT_DEBRIS, false);
+        for (int i = 0; i < Math.min(debris, rock.size()); i++) change(s, rock.get(i), Material.ANCIENT_DEBRIS);
         int top = by;
         while (top < by + 6 && !w.getBlockAt(cx, top + 1, cz).getType().isAir()) top++;
         Block core = w.getBlockAt(cx, top + 1, cz);
-        core.setType(Material.GILDED_BLACKSTONE, false);
+        change(s, core, Material.GILDED_BLACKSTONE);
         s.core = core.getLocation();
+        if (heals()) saveScar(s);
     }
 
     // ===================================================================== the guards
@@ -586,6 +651,8 @@ final class Meteor implements Listener, CommandExecutor {
         if (!s.claimed) {
             if (s.ticks % 5 == 0) {
                 s.world.spawnParticle(Particle.CAMPFIRE_COSY_SMOKE, c.clone().add(0, 0.6, 0), 1, 0.2, 0.1, 0.2, 0.03, null, true);
+                double a = random.nextDouble() * Math.PI * 2, rr = cfg("crater-radius", 5);
+                s.world.spawnParticle(Particle.FLAME, c.clone().add(Math.cos(a) * rr, 1, Math.sin(a) * rr), 2, 0.2, 0.1, 0.2, 0.01, null, true);
                 s.world.spawnParticle(Particle.DUST, c, 4, 0.5, 0.5, 0.5, 0, new Particle.DustOptions(Color.fromRGB(255, 170, 40), 1.4f));
             }
             if (s.ticks % 20 == 0) {
@@ -601,8 +668,11 @@ final class Meteor implements Listener, CommandExecutor {
                 for (LivingEntity g : s.guards) if (g.isValid() && g.getLocation().distanceSquared(c) > 30 * 30) g.teleport(c.clone().add(random.nextInt(5) - 2, 2, random.nextInt(5) - 2));
             }
             if (s.lifeTicks > cfg("lifetime-minutes", 30) * 1200) {
-                s.core.getBlock().setType(Material.OBSIDIAN, false);
-                Bukkit.broadcastMessage(ChatColor.GRAY + "☄ Nobody claimed the meteor. It has cooled into plain obsidian.");
+                if (heals()) Bukkit.broadcastMessage(ChatColor.GRAY + "☄ Nobody claimed the meteor. It has cooled and crumbled away.");
+                else {
+                    s.core.getBlock().setType(Material.OBSIDIAN, false);
+                    Bukkit.broadcastMessage(ChatColor.GRAY + "☄ Nobody claimed the meteor. It has cooled into plain obsidian.");
+                }
                 end(s);
             }
         } else if (s.lifeTicks > 20 * 120) end(s); // two minutes after it's claimed, the guards crumble away
@@ -615,13 +685,20 @@ final class Meteor implements Listener, CommandExecutor {
             g.remove();
         }
         if (s.rock != null) s.rock.remove();
+        if (heals() && !s.before.isEmpty()) {
+            int n = heal(s.world, s.before);
+            s.world.spawnParticle(Particle.CLOUD, new Location(s.world, s.x + 0.5, s.y + 1, s.z + 0.5), 60, 3, 1, 3, 0.02, null, true);
+            plugin.getLogger().info("[Meteor] the ground at " + s.x + ", " + s.z + " healed (" + n + " blocks)");
+            s.before.clear();
+            saveScar(null);
+        }
         s.world.removePluginChunkTicket(s.x >> 4, s.z >> 4, plugin);
         if (strike == s) strike = null;
     }
 
     void shutdown() {
         if (strike == null) return;
-        if (strike.landed && !strike.claimed && strike.core != null) strike.core.getBlock().setType(Material.OBSIDIAN, false);
+        if (!heals() && strike.landed && !strike.claimed && strike.core != null) strike.core.getBlock().setType(Material.OBSIDIAN, false);
         end(strike);
     }
 

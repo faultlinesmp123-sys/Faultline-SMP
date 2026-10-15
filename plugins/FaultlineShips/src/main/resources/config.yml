@@ -17,6 +17,7 @@ spawn-range: 128
 # Walk around on a ship while it sails: the deck stays solid and carries you along. Fall off? Swim to the hull and
 # hold Jump (or right-click the hull) to climb back aboard. false = the old way (everyone sits while it sails).
 walkable-deck: true
+deck-radius: 3.5              # 1.6.4: under sail, the deck barriers are only laid this close to someone standing on it (lag)
 spawn-blocks-per-tick: 120   # ship blocks spawned per tick across all ships (a fleet appears over a second or two instead of freezing clients)
 
 # Per ship: speed-multiplier (1.0 = Sloop 7.2 m/s, Brigantine 6, Galleon 5; Sprint is +25%)
@@ -107,6 +108,8 @@ pirates:
   invasion:
     sight: 400                  # how far invasion ships hunt the fighters (so none of the fleet drifts off)
     ships: 15                   # plus the flagship
+    wave-size: 5                # 1.6.4: the escorts come in waves of this many (0 = all at once, the old way; laggy)
+    next-wave-at: 1             # the next wave sails in when this few of the current one are left
     flagship-distance: 120
     min-distance: 62
     depth: 45

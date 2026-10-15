@@ -170,6 +170,11 @@ final class Pirates implements Listener {
 
         int alive() { int n = 0; for (Ship s : ships) if (pl.ships.containsKey(s.id) && !s.wrecked) n++; return n; }
         int escortsAlive() { int n = 0; for (Ship s : ships) if (s != flagship && pl.ships.containsKey(s.id) && !s.wrecked) n++; return n; }
+        /** Escorts still to come in later waves (1.6.4: the fleet comes in waves, not 16 ships at once). */
+        int toSpawn, wave = 1, waveFails;
+        double y;
+        /** Escorts on the water plus the ones still to come. */
+        int escortsLeft() { return escortsAlive() + toSpawn; }
     }
 
     final FaultlineShips pl;
@@ -574,7 +579,7 @@ final class Pirates implements Listener {
         if (s.anchored) { boarded(b, now); return; }
         if (s.anchorStep >= 0) { in.clear(); return; }
 
-        if (b.flagship && b.inv != null && b.inv.stage == 0 && b.inv.escortsAlive() == 0 && b.inv.heaveTries < 40) {
+        if (b.flagship && b.inv != null && b.inv.stage == 0 && b.inv.escortsLeft() == 0 && b.inv.heaveTries < 40) {
             // the fleet's sunk: the Black Gallows heaves to and drops anchor where she is. Climb her ladders and face her captains.
             in.clear();
             double max = s.type.speed * pl.getConfig().getDouble("ships." + s.type.size + ".speed-multiplier", 1.0);
@@ -596,7 +601,7 @@ final class Pirates implements Listener {
         } else {
             float bearing = bearing(s.x, s.z, t.getLocation().getX(), t.getLocation().getZ());
             boolean swimming = (ts == null || ts.wrecked) && t.isInWater();
-            boolean holdBack = b.flagship && b.inv != null && b.inv.escortsAlive() > cfg("flagship-waits-for", 3) && b.inv.stage == 0;
+            boolean holdBack = b.flagship && b.inv != null && b.inv.escortsLeft() > cfg("flagship-waits-for", 3) && b.inv.stage == 0;
             if (ts != null && ts.wrecked && !b.sentSwimmers && dist < 40) { b.sentSwimmers = true; abandon(b, 3, t); } // over the side after them
             if (ts != null && dist < s.radius() + ts.radius() + 3) { if (now - b.gapAt >= 10) { b.gapAt = now; b.gap = gap(s, ts); } }
             else b.gap = 999;
@@ -1196,36 +1201,72 @@ final class Pirates implements Listener {
         }
         if (inv.flagship == null) return null;
         inv.ships.add(inv.flagship);
-        List<double[]> placed = new ArrayList<>();
-        placed.add(new double[]{inv.flagship.x, inv.flagship.z});
-        for (int tries = 0; tries < 400 && inv.ships.size() <= want; tries++) {
-            // the arc and depth widen when it gets crowded, so the whole fleet always fits
-            double arc = Math.min(170, cfg("invasion.arc-degrees", 70) + tries * 0.4), depth = cfg("invasion.depth", 45) + tries * 0.15;
-            double a = Math.toRadians(a0 + (rnd.nextDouble() * 2 - 1) * arc);
-            double r = cfg("invasion.min-distance", 62) + rnd.nextDouble() * depth;
-            double x = on.x - Math.sin(a) * r, z = on.z + Math.cos(a) * r;
-            boolean crowded = false;
-            for (double[] q : placed) if (Math.hypot(q[0] - x, q[1] - z) < cfg("invasion.spacing", 22)) { crowded = true; break; }
-            if (crowded) continue;
-            ShipType t = rnd.nextDouble() < 0.6 ? ShipType.SLOOP : ShipType.BRIGANTINE;
-            Ship s = spawnShip(t, w, x, on.y, z, Math.round(bearing(x, z, on.x, on.z) / 90f) * 90f, inv, false);
-            if (s == null) continue;
-            inv.ships.add(s);
-            placed.add(new double[]{s.x, s.z});
-        }
-        inv.total = inv.ships.size();
+        inv.y = on.y;
+        // 1.6.4 (lag): the escorts come in waves of invasion.wave-size (5); the next wave sails in once this one is down
+        // to invasion.next-wave-at (1). All 16 ships at once were ~3700 block displays plus their crews.
+        int first = waveSize() <= 0 ? want : Math.min(want, waveSize());
+        int got = spawnEscorts(inv, on.x, on.z, a0, first);
+        inv.toSpawn = Math.max(0, want - first) + (first - got);
+        inv.total = 1 + want;
         invasions.add(inv);
         for (Player q : w.getPlayers()) if (q.getLocation().distanceSquared(inv.center) < 200 * 200) {
             inv.fighters.add(q.getUniqueId());
-            q.sendTitle(ChatColor.DARK_RED + "" + ChatColor.BOLD + "PIRATE INVASION", ChatColor.GRAY + "" + (inv.total - 1) + " skeleton ships and their flagship are coming", 10, 80, 20);
+            q.sendTitle(ChatColor.DARK_RED + "" + ChatColor.BOLD + "PIRATE INVASION", ChatColor.GRAY + "" + want + " skeleton ships (in waves) and their flagship are coming", 10, 80, 20);
             q.playSound(q.getLocation(), Sound.EVENT_RAID_HORN, SoundCategory.HOSTILE, 1f, 0.7f);
         }
         pl.getLogger().info("Pirate Invasion at " + w.getName() + " " + (int) on.x + ", " + (int) on.z + ": " + inv.total + " ships.");
         return inv;
     }
 
+    int waveSize() { return (int) cfg("invasion.wave-size", 5); }
+
+    /** Up to n escorts in an arc around (cx, cz), facing it. Returns how many fit on the water. */
+    int spawnEscorts(Invasion inv, double cx, double cz, double a0, int n) {
+        List<double[]> placed = new ArrayList<>();
+        for (Ship s : inv.ships) if (pl.ships.containsKey(s.id)) placed.add(new double[]{s.x, s.z});
+        int got = 0;
+        for (int tries = 0; tries < 400 && got < n; tries++) {
+            // the arc and depth widen when it gets crowded, so the whole wave always fits
+            double arc = Math.min(170, cfg("invasion.arc-degrees", 70) + tries * 0.4), depth = cfg("invasion.depth", 45) + tries * 0.15;
+            double a = Math.toRadians(a0 + (rnd.nextDouble() * 2 - 1) * arc);
+            double r = cfg("invasion.min-distance", 62) + rnd.nextDouble() * depth;
+            double x = cx - Math.sin(a) * r, z = cz + Math.cos(a) * r;
+            boolean crowded = false;
+            for (double[] q : placed) if (Math.hypot(q[0] - x, q[1] - z) < cfg("invasion.spacing", 22)) { crowded = true; break; }
+            if (crowded) continue;
+            ShipType t = rnd.nextDouble() < 0.6 ? ShipType.SLOOP : ShipType.BRIGANTINE;
+            Ship s = spawnShip(t, inv.world, x, inv.y, z, Math.round(bearing(x, z, cx, cz) / 90f) * 90f, inv, false);
+            if (s == null) continue;
+            inv.ships.add(s);
+            placed.add(new double[]{s.x, s.z});
+            got++;
+        }
+        return got;
+    }
+
+    /** The next wave, when the last one is (nearly) sunk: around the fighters, from the flagship's side. */
+    void nextWave(Invasion inv) {
+        if (inv.toSpawn <= 0 || inv.stage != 0 || inv.escortsAlive() > cfg("invasion.next-wave-at", 1)) return;
+        double cx = 0, cz = 0; int k = 0;
+        for (UUID u : inv.fighters) { Player p = Bukkit.getPlayer(u); if (p != null && p.getWorld().equals(inv.world)) { cx += p.getLocation().getX(); cz += p.getLocation().getZ(); k++; } }
+        if (k == 0) { cx = inv.center.getX(); cz = inv.center.getZ(); } else { cx /= k; cz /= k; }
+        double a0 = inv.flagship != null && pl.ships.containsKey(inv.flagship.id) ? bearing(cx, cz, inv.flagship.x, inv.flagship.z) + 180 : rnd.nextDouble() * 360;
+        int n = waveSize() <= 0 ? inv.toSpawn : Math.min(inv.toSpawn, waveSize());
+        int got = spawnEscorts(inv, cx, cz, a0, n);
+        if (got == 0) { if (++inv.waveFails >= 5) inv.toSpawn = 0; return; } // no open water for them: the rest stay away
+        inv.toSpawn -= got;
+        inv.wave++;
+        for (UUID u : inv.fighters) {
+            Player p = Bukkit.getPlayer(u);
+            if (p == null) continue;
+            p.sendTitle("", ChatColor.DARK_RED + "Wave " + inv.wave + ": " + ChatColor.GRAY + got + " more skeleton ships!", 5, 50, 15);
+            p.playSound(p.getLocation(), Sound.EVENT_RAID_HORN, SoundCategory.HOSTILE, 0.8f, 0.8f);
+        }
+    }
+
     void invasionTick(Invasion inv, long now) {
         if (inv.over) { invasions.remove(inv); return; }
+        if (now % 20 == 7) nextWave(inv);
         // who's fighting: anyone near the fleet
         Location c = inv.center;
         double cx = 0, cz = 0; int n = 0;
@@ -1236,7 +1277,7 @@ final class Pirates implements Listener {
         for (UUID u : inv.fighters) if (!now2.contains(u)) { inv.music.remove(u); Player p = Bukkit.getPlayer(u); if (p != null) { inv.bar.removePlayer(p); inv.bossBar.removePlayer(p); stopMusic(p); } }
         inv.fighters.clear();
         inv.fighters.addAll(now2);
-        int alive = inv.alive();
+        int alive = inv.alive() + inv.toSpawn;
         inv.bar.setTitle(ChatColor.DARK_RED + "" + ChatColor.BOLD + "Pirate Invasion" + ChatColor.GRAY + "  " + alive + "/" + inv.total + " ships");
         inv.bar.setProgress(Math.max(0, Math.min(1, alive / (double) Math.max(1, inv.total))));
         boolean anyAlive = false;

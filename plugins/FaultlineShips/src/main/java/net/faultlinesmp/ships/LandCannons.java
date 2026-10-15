@@ -52,12 +52,16 @@ import java.util.UUID;
  * fires it (same cannonball as the ships: an explosion that doesn't break blocks, ship damage, land-cannon.reload-seconds).
  * Owner + their /ship crew use it (land-cannon.owner-only), sneak + punch (owner/admin) picks it up, and it drops when
  * the block under it is broken or blown up. Saved in cannons.yml; displays are spawned with their chunk.
- * Bedrock players can't see displays: they get a fake dispenser facing the barrel in the barrier's place.
+ * Bedrock players can't see displays: 1.6.4 gives them a real 3D cannon instead of the old fake dispenser: an armor stand
+ * only Bedrock players see (tag faultline_land_cannon_stand), wearing paper with item model faultline:land_cannon, which
+ * the Bedrock pack (tools/ship_assets.py --bedrock) draws as the cannon. It turns with the cannon (left/right; a stand
+ * can't tip). Hitting or right-clicking that stand works like the cannon: sneak + punch picks it up, a Cannonball fires.
  */
 final class LandCannons implements Listener {
 
     static final String TAG = "faultline_land_cannon";
-    static final String SKIP_FX = "faultline_no_bedrock_fx"; // FaultlineBosses' BedrockFx leaves it alone (Bedrock has the dispenser)
+    static final String SKIP_FX = "faultline_no_bedrock_fx"; // FaultlineBosses' BedrockFx leaves it alone (Bedrock has its own model)
+    static final String STAND_TAG = "faultline_land_cannon_stand";
 
     static final class Cannon {
         final UUID id;
@@ -67,6 +71,7 @@ final class LandCannons implements Listener {
         float yaw, pitch;
         long readyAt;
         ItemDisplay display;
+        org.bukkit.entity.ArmorStand stand; // the Bedrock model
         Cannon(UUID id, String world, int x, int y, int z) { this.id = id; this.world = world; this.x = x; this.y = y; this.z = z; }
         Location center() { World w = Bukkit.getWorld(world); return w == null ? null : new Location(w, x + 0.5, y + 0.5, z + 0.5); }
         long key() { return FaultlineShips.blockKey(x, y, z); }
@@ -122,7 +127,7 @@ final class LandCannons implements Listener {
     }
 
     void shutdown() {
-        for (Cannon c : byBlock.values()) if (c.display != null && c.display.isValid()) c.display.remove();
+        for (Cannon c : byBlock.values()) { if (c.display != null && c.display.isValid()) c.display.remove(); removeStand(c); }
         save();
     }
 
@@ -178,6 +183,7 @@ final class LandCannons implements Listener {
         byBlock.remove(c.key());
         aiming.values().removeIf(x -> x == c);
         if (c.display != null && c.display.isValid()) c.display.remove();
+        removeStand(c);
         Location at = c.center();
         if (at != null) {
             Block b = at.getBlock();
@@ -206,6 +212,47 @@ final class LandCannons implements Listener {
             d.setRotation(c.yaw, 0);
             d.setTransformation(transform(c.pitch));
         });
+        spawnStand(c);
+    }
+
+    /** The Bedrock look: a stand only Bedrock players see, wearing the cannon model, at the bottom of the cell. */
+    void spawnStand(Cannon c) {
+        Location at = c.center();
+        if (at == null || c.stand != null && c.stand.isValid()) return;
+        World w = at.getWorld();
+        c.stand = w.spawn(new Location(w, c.x + 0.5, c.y, c.z + 0.5, c.yaw, 0), org.bukkit.entity.ArmorStand.class, a -> {
+            a.setPersistent(false);
+            a.addScoreboardTag(TAG);
+            a.addScoreboardTag(STAND_TAG);
+            a.addScoreboardTag(SKIP_FX);
+            a.setInvisible(true);
+            a.setGravity(false);
+            a.setSilent(true);
+            a.setBasePlate(false);
+            a.setMarker(false); // Geyser draws the helmet only on a real armor stand
+            a.setVisibleByDefault(false);
+            ItemStack model = new ItemStack(Material.PAPER);
+            var m = model.getItemMeta();
+            m.setItemModel(org.bukkit.NamespacedKey.fromString("faultline:land_cannon"));
+            model.setItemMeta(m);
+            a.getEquipment().setHelmet(model);
+        });
+        for (Player p : w.getPlayers()) {
+            if (FaultlineShips.bedrock(p)) p.showEntity(pl, c.stand);
+            else p.hideEntity(pl, c.stand); // in case visible-by-default isn't honoured
+        }
+    }
+
+    void removeStand(Cannon c) {
+        if (c.stand != null && c.stand.isValid()) c.stand.remove();
+        c.stand = null;
+    }
+
+    /** The cannon a Bedrock stand belongs to. */
+    Cannon ofStand(Entity e) {
+        if (!e.getScoreboardTags().contains(STAND_TAG)) return null;
+        for (Cannon c : byBlock.values()) if (c.stand != null && c.stand.equals(e)) return c;
+        return null;
     }
 
     /** The model points at +z; pitch tips it about its trunnions (the model's centre), so the carriage stays on the block. */
@@ -223,6 +270,7 @@ final class LandCannons implements Listener {
             c.display.setInterpolationDelay(0);
             c.display.setTransformation(transform(pitch));
         }
+        if (c.stand != null && c.stand.isValid()) c.stand.setRotation(yaw, 0); // the Bedrock model's barrel points where the stand faces
         dirty = true;
     }
 
@@ -328,11 +376,8 @@ final class LandCannons implements Listener {
 
     // ---------------------------------------------------------------- Bedrock
 
-    BlockData bedrockLook(Cannon c) {
-        Vector d = dirOf(c.yaw, 0);
-        String facing = Math.abs(d.getX()) > Math.abs(d.getZ()) ? (d.getX() > 0 ? "east" : "west") : (d.getZ() > 0 ? "south" : "north");
-        return Bukkit.createBlockData("minecraft:dispenser[facing=" + facing + "]");
-    }
+    /** Bedrock players who were sent the old fake dispenser get the real (invisible) barrier back, once. */
+    private final java.util.Set<String> unfaked = new java.util.HashSet<>();
 
     void bedrockUpkeep() {
         // a cannon whose barrier is gone (WorldEdit, another plugin): it drops as an item
@@ -346,7 +391,9 @@ final class LandCannons implements Listener {
             for (Cannon c : byBlock.values()) {
                 Location at = c.center();
                 if (at == null || !at.getWorld().equals(p.getWorld()) || at.distanceSquared(p.getLocation()) > 64 * 64) continue;
-                p.sendBlockChange(at, bedrockLook(c));
+                if (c.stand == null || !c.stand.isValid()) spawnStand(c);
+                if (c.stand != null && !p.canSee(c.stand)) p.showEntity(pl, c.stand);
+                if (unfaked.add(p.getUniqueId() + ":" + c.id)) p.sendBlockChange(at, at.getBlock().getBlockData());
             }
         }
     }
@@ -365,7 +412,10 @@ final class LandCannons implements Listener {
     public void onChunkUnload(ChunkUnloadEvent e) {
         String w = e.getWorld().getName();
         for (Cannon c : byBlock.values())
-            if (c.world.equals(w) && (c.x >> 4) == e.getChunk().getX() && (c.z >> 4) == e.getChunk().getZ() && c.display != null) { c.display.remove(); c.display = null; }
+            if (c.world.equals(w) && (c.x >> 4) == e.getChunk().getX() && (c.z >> 4) == e.getChunk().getZ()) {
+                if (c.display != null) { c.display.remove(); c.display = null; }
+                removeStand(c);
+            }
     }
 
     /** Sneak + punch: the owner (or an admin) picks it up. Punching it otherwise does nothing (it's a barrier). */
@@ -406,6 +456,37 @@ final class LandCannons implements Listener {
             return;
         }
         supportGone(e.getBlock());
+    }
+
+    // ---- the Bedrock stand acts as the cannon (Bedrock players hit and click it, not the barrier)
+
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onStandHurt(org.bukkit.event.entity.EntityDamageEvent e) {
+        Cannon c = ofStand(e.getEntity());
+        if (c == null && !e.getEntity().getScoreboardTags().contains(STAND_TAG)) return;
+        e.setCancelled(true);
+        if (c != null && e instanceof org.bukkit.event.entity.EntityDamageByEntityEvent by && by.getDamager() instanceof Player p) {
+            Location at = c.center();
+            if (at != null) punch(p, at.getBlock());
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onStandUse(org.bukkit.event.player.PlayerInteractEntityEvent e) {
+        Cannon c = ofStand(e.getRightClicked());
+        if (c == null && !e.getRightClicked().getScoreboardTags().contains(STAND_TAG)) return;
+        e.setCancelled(true);
+        if (c != null && e.getHand() == org.bukkit.inventory.EquipmentSlot.HAND && pl.isBall(e.getPlayer().getInventory().getItemInMainHand())) fire(e.getPlayer());
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onStandUseAt(org.bukkit.event.player.PlayerInteractAtEntityEvent e) {
+        if (e.getRightClicked().getScoreboardTags().contains(STAND_TAG)) e.setCancelled(true);
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onStandRob(org.bukkit.event.player.PlayerArmorStandManipulateEvent e) {
+        if (e.getRightClicked().getScoreboardTags().contains(STAND_TAG)) e.setCancelled(true);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)

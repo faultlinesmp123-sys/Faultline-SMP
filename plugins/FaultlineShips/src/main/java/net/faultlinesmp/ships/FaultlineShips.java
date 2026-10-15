@@ -94,6 +94,9 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
     final Map<UUID, Long> lastSwing = new HashMap<>();
     final Map<UUID, Long> lastUse = new HashMap<>();
     final Set<UUID> arrowsCounted = new HashSet<>();
+    /** 1.6.4 (lag): projectiles in flight, from their launch, checked against the ships. arrows() used to scan the area
+     *  around every ship every 2 ticks, and a ship's hundreds of block displays are entities in that area too. */
+    final Set<org.bukkit.entity.Projectile> flying = new HashSet<>();
     Function<Player, Input> inputSource = Player::getCurrentInput; // swapped out by tests
     NamespacedKey hammerKey, cannonKey, ballKey, ballTag, shipIdKey, builtKey;
     final Map<ShipType, NamespacedKey> blueprintKeys = new HashMap<>();
@@ -993,6 +996,7 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
             Safe.vel(b, vel);
             b.getPersistentDataContainer().set(ballTag, PersistentDataType.STRING, from);
         });
+        flying.add(ball);
         w.playSound(mz, Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.PLAYERS, 1.6f, 1.6f);
         w.playSound(mz, Sound.ENTITY_FIREWORK_ROCKET_LARGE_BLAST, SoundCategory.PLAYERS, 1.2f, 0.6f);
         w.spawnParticle(Particle.LARGE_SMOKE, mz, 14, 0.25, 0.2, 0.25, 0.05);
@@ -1383,33 +1387,48 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
         }
     }
 
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onLaunch(org.bukkit.event.entity.ProjectileLaunchEvent event) {
+        if (!ships.isEmpty()) flying.add(event.getEntity());
+    }
+
     /** Arrows and tridents fly through display blocks: check them against sailing ships ourselves. */
     void arrows() {
-        for (Ship s : ships.values()) {
-            if (!s.spawned() || s.building) continue;
-            double r = s.radius();
-            for (Entity e : s.root.getNearbyEntities(r, s.type.height + 2, r)) {
-                if (isBallEntity(e)) {
-                    if (ballShip(e) == s) continue;
-                    Location l = e.getLocation();
-                    if (s.cellAt(l.getX(), l.getY(), l.getZ()) >= 0) impact(e, l, null);
-                    continue;
-                }
-                if (!(e instanceof Projectile pr) || arrowsCounted.contains(e.getUniqueId())) continue;
-                if (s.anchored || s.wrecked) continue; // anchored: arrows land in the barriers (onProjectileHit)
-                if (e instanceof AbstractArrow ar && ar.isInBlock()) continue;
-                Location l = e.getLocation();
-                if (s.cellAt(l.getX(), l.getY(), l.getZ()) < 0) continue;
-                if (pr.getShooter() instanceof Player shooter && mayCaptain(shooter, s)) continue;
-                if (s.ai != null && pr.getShooter() instanceof Entity se && pirates.isPirate(se)) continue; // their own arrows
-                arrowsCounted.add(e.getUniqueId());
-                double dmg = e instanceof Trident ? 6 : e instanceof AbstractArrow ar ? Math.max(1, ar.getDamage()) * (ar.getFireTicks() > 0 ? 1.5 : 1) : 2;
-                s.damage(dmg * cfg("damage.projectile-multiplier", 1.0), pr.getShooter() instanceof Player sp ? sp : null, l);
-                if (!(e instanceof Trident)) e.remove();
-                else Safe.vel(e, new Vector(0, -0.2, 0));
+        if (flying.isEmpty()) return;
+        flying.removeIf(e -> !e.isValid() || e instanceof AbstractArrow ar && ar.isInBlock() && !isBallEntity(ar));
+        for (Projectile e : new ArrayList<>(flying)) {
+            if (!e.isValid()) continue;
+            Location l = e.getLocation();
+            for (Ship s : ships.values()) {
+                if (!s.spawned() || s.building || !l.getWorld().getName().equals(s.world)) continue;
+                double r = s.radius();
+                if (Math.abs(l.getX() - s.x) > r || Math.abs(l.getZ() - s.z) > r || l.getY() < s.y - 3 || l.getY() > s.y + s.type.height + 3) continue;
+                if (arrowHits(s, e, l)) break;
             }
         }
         if (arrowsCounted.size() > 500) arrowsCounted.clear();
+    }
+
+    /** One projectile against one ship; true when it was used up. */
+    private boolean arrowHits(Ship s, Projectile e, Location l) {
+        if (isBallEntity(e)) {
+            if (ballShip(e) == s) return false;
+            if (s.cellAt(l.getX(), l.getY(), l.getZ()) >= 0) { impact(e, l, null); return true; }
+            return false;
+        }
+        if (arrowsCounted.contains(e.getUniqueId())) return false;
+        if (s.anchored || s.wrecked) return false; // anchored: arrows land in the barriers (onProjectileHit)
+        if (e instanceof AbstractArrow ar && ar.isInBlock()) return false;
+        if (s.cellAt(l.getX(), l.getY(), l.getZ()) < 0) return false;
+        if (e.getShooter() instanceof Player shooter && mayCaptain(shooter, s)) return false;
+        if (s.ai != null && e.getShooter() instanceof Entity se && pirates.isPirate(se)) return false; // their own arrows
+        arrowsCounted.add(e.getUniqueId());
+        double dmg = e instanceof Trident ? 6 : e instanceof AbstractArrow ar ? Math.max(1, ar.getDamage()) * (ar.getFireTicks() > 0 ? 1.5 : 1) : 2;
+        s.damage(dmg * cfg("damage.projectile-multiplier", 1.0), e.getShooter() instanceof Player sp ? sp : null, l);
+        if (!(e instanceof Trident)) e.remove();
+        else Safe.vel(e, new Vector(0, -0.2, 0));
+        flying.remove(e);
+        return true;
     }
 
     /** Holding a blueprint shows where the ship would go: white fits, red is in the way. */

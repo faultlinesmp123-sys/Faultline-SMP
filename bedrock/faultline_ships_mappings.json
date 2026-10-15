@@ -292,6 +292,22 @@
    },
    {
     "type": "definition",
+    "model": "faultline:land_cannon",
+    "bedrock_identifier": "faultline:land_cannon",
+    "display_name": "Ship Cannon",
+    "bedrock_options": {
+     "icon": "faultline.ship_cannon",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
     "model": "faultline:ship_cannon",
     "bedrock_identifier": "faultline:ship_cannon",
     "display_name": "Ship Cannon",

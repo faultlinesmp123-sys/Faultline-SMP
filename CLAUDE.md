@@ -836,7 +836,7 @@ Notes:
   **Ranger's Oath** set bonus (`RangerGear`, `ranger-gear.oath-arrow-bonus` 0.10): +10% arrow damage on hit + keeps
   +10% speed; `oathTick` always removes the old MAX_HEALTH modifier. Tested (`RangerTest`: Oath arrow bonus, Diamond Heart reduction).
 - **Ranger's Oath quest (Items 1.2.39, LimboBlackMarket 1.0.3, Index 1.6.30)**: the Oath set bonus gets +1 heart back
-  (`ranger-gear.oath-health` 2 = +2 MAX_HEALTH, on top of +10% arrow damage and +10% speed). New Quest Book quest
+  (`ranger-gear.oath-health` 2 = +2 MAX_HEALTH, an old config's 4 reads as 2, on top of +10% arrow damage and +10% speed). New Quest Book quest
   `rangers-oath` ("The Ranger's Oath", EXTREME, one-time, the hardest on the server): 1000 Skeletons/Strays/Bogged, 100
   Evokers, 75 Breezes, 75 Phantoms, 5 Wardens, 3 Withers, 15 different Tier 4+ players; reward = console
   `giveaccessory oath <player>` (`QuestRegistry.giveRangersOath`; FaultlineItems missing = the player is told to ask staff).

@@ -298,8 +298,8 @@ final class RangerGear implements Listener {
         for (Player p : Bukkit.getOnlinePlayers()) {
             boolean on = wearing(p, Piece.OATH) && rangerCount(p) >= 3;
             // 1.2.39: the set bonus is +1 heart (+2 MAX_HEALTH), +arrow damage (applied on hit) and +10% speed. An older
-            // +2 hearts (amount 4) is replaced by set() because the amount changed.
-            set(p, Attribute.MAX_HEALTH, oathHealth, on ? cfg("oath-health", 2) : 0, AttributeModifier.Operation.ADD_NUMBER);
+            // +2 hearts (amount 4) is replaced by set() because the amount changed; a server config still saying 4 reads as 2.
+            set(p, Attribute.MAX_HEALTH, oathHealth, on ? Balance.num(plugin, "ranger-gear.oath-health", 4, 2) : 0, AttributeModifier.Operation.ADD_NUMBER);
             set(p, Attribute.MOVEMENT_SPEED, oathSpeed, on ? Balance.num(plugin, "ranger-gear.oath-speed", 0.2, 0.1) : 0, AttributeModifier.Operation.MULTIPLY_SCALAR_1);
         }
     }

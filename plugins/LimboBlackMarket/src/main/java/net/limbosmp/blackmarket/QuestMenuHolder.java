@@ -33,7 +33,7 @@ public class QuestMenuHolder implements InventoryHolder {
     public static final int INFO_SLOT = 4;
     public static final int ABANDON_SLOT = 49;
     /** Quest icons fill these in registry order. Add a slot here when adding a quest. */
-    public static final int[] QUEST_SLOTS = {10, 11, 12, 13, 14, 15, 16, 21, 22, 23};
+    public static final int[] QUEST_SLOTS = {10, 11, 12, 13, 14, 15, 16, 20, 21, 22, 23, 24};
 
     private static final int BAR_LENGTH = 20;
 

@@ -55,8 +55,8 @@ import java.util.Random;
  *    bounces off it once, at 75% speed.
  *  - Phantom Fletching (2% Phantoms): arrows pierce one more target.
  *  - Wolfcaller Whistle (craft: bones, a goat horn, gold): your tamed wolves within 32 blocks attack whatever you shoot.
- *  - Ranger's Oath Pendant (3% Evokers): with two other ranger accessories worn (the Ranger Emblem counts),
- *    +2 hearts and +20% speed.
+ *  - Ranger's Oath Pendant (3% Evokers, or the EXTREME "The Ranger's Oath" Quest Book quest): with two other ranger
+ *    accessories worn (the Ranger Emblem counts), +1 heart, +10% arrow damage (on hit) and +10% speed.
  * Base items are inert ones (no bundle, no bone a wolf would eat, no emerald a villager would take).
  * Drops only from mobs a player killed (no spawner mobs). All in the Index; /giveaccessory names below; /itemsmenu.
  */
@@ -78,7 +78,7 @@ final class RangerGear implements Listener {
         WHISTLE("wolfcaller_whistle", "whistle", Material.FLINT, ChatColor.WHITE, "Wolfcaller Whistle",
                 "Your tamed wolves attack", "whatever you shoot."),
         OATH("rangers_oath", "oath", Material.ECHO_SHARD, ChatColor.DARK_GREEN, "Ranger's Oath Pendant",
-                "With 2 other ranger accessories:", "+10% arrow damage and +10% speed.");
+                "With 2 other ranger accessories:", "+1 heart, +10% arrow damage and +10% speed.");
 
         final String id, command, name;
         final Material base;
@@ -297,9 +297,9 @@ final class RangerGear implements Listener {
     void oathTick() {
         for (Player p : Bukkit.getOnlinePlayers()) {
             boolean on = wearing(p, Piece.OATH) && rangerCount(p) >= 3;
-            // 1.2.38: the set bonus is +arrow damage (applied on hit) and +speed now, not +2 hearts. Strip any old
-            // max-health modifier a player still carries.
-            set(p, Attribute.MAX_HEALTH, oathHealth, 0, AttributeModifier.Operation.ADD_NUMBER);
+            // 1.2.39: the set bonus is +1 heart (+2 MAX_HEALTH), +arrow damage (applied on hit) and +10% speed. An older
+            // +2 hearts (amount 4) is replaced by set() because the amount changed.
+            set(p, Attribute.MAX_HEALTH, oathHealth, on ? cfg("oath-health", 2) : 0, AttributeModifier.Operation.ADD_NUMBER);
             set(p, Attribute.MOVEMENT_SPEED, oathSpeed, on ? Balance.num(plugin, "ranger-gear.oath-speed", 0.2, 0.1) : 0, AttributeModifier.Operation.MULTIPLY_SCALAR_1);
         }
     }

@@ -648,9 +648,9 @@ ranger-gear:
   windrunner-speed: 1.08     # 1.2.31 balance: was 1.2 (arrow damage grows with speed: +20% speed was +20% damage)
   phantom-drop-chance: 0.02          # Phantoms (Phantom Fletching)
   oath-drop-chance: 0.03             # Evokers (Ranger's Oath Pendant)
-  oath-health: 4                     # 1.2.38: unused (the +2 hearts set bonus became +arrow damage)
+  oath-health: 2                     # 1.2.39: Ranger's Oath set bonus, +2 MAX_HEALTH (+1 heart)
   oath-speed: 0.1            # 1.2.31 balance: was 0.2 (a whole Speed I)
-  oath-arrow-bonus: 0.10             # 1.2.38: Ranger's Oath set bonus, +10% arrow damage (replaced the +2 hearts)
+  oath-arrow-bonus: 0.10             # 1.2.38: Ranger's Oath set bonus, +10% arrow damage
   ricochet-elite-skeleton-chance: 0.015   # ELITE skeletons/strays/bogged only (very rare)
   ricochet-commander-chance: 0.01         # Bone Commanders
   ricochet-speed: 0.75

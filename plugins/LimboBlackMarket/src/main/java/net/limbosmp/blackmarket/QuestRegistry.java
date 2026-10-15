@@ -177,6 +177,20 @@ public class QuestRegistry {
                 "1 Elytra",
                 p -> give(p, new ItemStack(Material.ELYTRA, 1)),
                 0, true);
+
+        // The hardest quest on the server: a ranger's whole life of hunting, for the Ranger's Oath Pendant
+        // (otherwise a 3% Evoker drop). One-time, no cooldown — once it's yours, it's yours.
+        q("rangers-oath", "The Ranger's Oath", Material.ECHO_SHARD, Difficulty.EXTREME,
+                List.of(Step.killMobs(1000, "Kill 1000 Skeletons", EntityType.SKELETON, EntityType.STRAY, EntityType.BOGGED),
+                        Step.killMobs(100, "Kill 100 Evokers", EntityType.EVOKER),
+                        Step.killMobs(75, "Kill 75 Breezes", EntityType.BREEZE),
+                        Step.killMobs(75, "Kill 75 Phantoms", EntityType.PHANTOM),
+                        Step.killMobs(5, "Kill 5 Wardens", EntityType.WARDEN),
+                        Step.killMobs(3, "Kill 3 Withers", EntityType.WITHER),
+                        Step.killPlayers(15, 4, true, "Kill 15 different Tier 4+ Players")),
+                "Unlocks the Ranger's Oath Pendant",
+                this::giveRangersOath,
+                0, true);
     }
 
     private Step zombies(int count) {
@@ -237,6 +251,22 @@ public class QuestRegistry {
             plugin.getLogger().warning("Couldn't unlock the Necromancer Staff for " + player.getName()
                     + " (is FaultlineItems installed?) — run /unlocknecromancer " + player.getName() + " manually.");
             player.sendMessage(ChatColor.RED + "Something went wrong unlocking your staff. Ask staff to run /unlocknecromancer "
+                    + player.getName() + ".");
+        }
+    }
+
+    /**
+     * The Ranger's Oath Pendant lives in FaultlineItems; this asks that plugin to hand one over through its
+     * /giveaccessory console command. If FaultlineItems is missing (or the command fails), staff can give it by hand.
+     */
+    private void giveRangersOath(Player player) {
+        Plugin items = Bukkit.getPluginManager().getPlugin("FaultlineItems");
+        boolean given = items != null && items.isEnabled()
+                && Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "giveaccessory oath " + player.getName());
+        if (!given) {
+            plugin.getLogger().warning("Couldn't give " + player.getName()
+                    + " a Ranger's Oath Pendant (is FaultlineItems installed?) — run /giveaccessory oath " + player.getName() + " manually.");
+            player.sendMessage(ChatColor.RED + "Something went wrong giving your Ranger's Oath Pendant. Ask staff to run /giveaccessory oath "
                     + player.getName() + ".");
         }
     }

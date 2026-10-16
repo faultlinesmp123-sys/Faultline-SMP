@@ -41,7 +41,7 @@ All are Maven projects: Java 21, `paper-api 1.21.11-R0.1-SNAPSHOT`. Build with
 | **FaultlineIndex** | `net.faultlinesmp.index` | The Faultline Index codex + **Achievements** (`Achievements.java`). **Museum** (`Museum.java`: trophies, discs, Hall of Firsts), **Discord bridge** (`Discord.java`), `/serverstats` (`ServerStats.java`). Entries and achievements live in `src/main/resources/index.yml`, font glyphs in `glyphs.yml`, settings in `config.yml` | `/index [achievements\|give\|reset] [player]`, `/index stat <player> <name> [n]` (other plugins), `/index discover <player> <entry>`, `/museum [bosses\|items]`, `/serverstats`, admin `/discord [status\|test [msg]\|daily]` (public + logs webhooks, daily stats post), `/report <player> <reason>`, staff `/reports [n]`, `/suggest <idea>`, staff `/suggestions [n]`, `/guide [chapter]`, staff `/watch [<player>\|log\|xray\|alts\|check\|alerts]` (x-ray / cheat / dupe / grief / alt logs, `Watch.java`) |
 | **FaultlineCosmetics** | `net.faultlinesmp.cosmetics` | Permanent cosmetic unlocks worn in 4 slots (Hat, Neck, Back, Body) over armor, for Java and Bedrock. **Seasons** (`Seasons.java`: Halloween/Winter currency + Seasonal Shop). Cosmetics are defined in its `config.yml`, unlocks saved in `players.yml` | `/cosmetics [shop]`, admin `/cosmetic <unlock\|lock\|list\|reload\|season\|tokens\|shop>` |
 | **FaultlineKingdoms** | `net.faultlinesmp.kingdoms` | Kingdom 1/2/3 per player, assigned from DISCORD ROLES (players link once: the bot DMs a code), and GRACE PERIODS server-wide or per kingdom (protected kingdom can't be hurt, and can't hurt others unless `grace.protected-can-attack`); `pvp.friendly-fire`; kingdom in the tab list. Data in `data.yml` | `/kingdom [link <discord name>\|verify <code>\|unlink\|list <1\|2\|3>\|ff <on\|off\|clear>]` (`/k`), admin `/kingdoms grace <all\|1\|2\|3> <on\|off> [30m\|2h\|1d\|1h30m]`, `/kingdoms ff <1\|2\|3> <on\|off\|vote>`, Discord `/stats <player>`, `/kingdoms set <player> <1\|2\|3\|none\|auto>`, `/kingdoms sync [player]`, `/kingdoms reload` |
-| **FaultlineDeep** | `net.faultlinesmp.deep` | **The Dark Ocean**: a water-only world (`DeepGenerator.java`), **the Bubble** town over the build area (`Town.java`), ruins (`Ruins.java`), its 20 creatures (`DeepMobs.java`), the Mirror / Lucki / the whirlpool (`Journey.java`), zone music, events and dying down there (`Ocean.java`) | admin `/deep [info\|set <kingdom\|lucki\|whirlpool>\|tp [player]\|town [player]\|spawn <mob>\|egg <mob> [n] [player]\|event <pressure\|undertow\|stop>\|lucki]` |
+| **FaultlineDeep** | `net.faultlinesmp.deep` | **The Dark Ocean**: a water-only world (`DeepGenerator.java`), **the Bubble** town over the build area (`Town.java`), **the Black Market + the Pit** (`Market.java`, `Elevator.java`), ruins (`Ruins.java`), its 20 creatures (`DeepMobs.java`), the Mirror / Lucki / the whirlpool (`Journey.java`), zone music, events and dying down there (`Ocean.java`) | admin `/deep [info\|set <kingdom\|lucki\|whirlpool>\|tp [player]\|town [player]\|spawn <mob>\|egg <mob> [n] [player]\|event <pressure\|undertow\|stop>\|lucki]` |
 | **FaultlineShips** | `net.faultlinesmp.ships` | Ships: Dinghy, Sloop, Brigantine, Galleon, Pirate Ship. Blueprint → lay out on water → place every block → sail. Health, part damage, sinking, Shipwright's Hammer repair minigame, cannons, banners, names. **Skeleton ships** and the **Pirate Invasion** (`Pirates.java`). Ships saved in `ships.yml` | `/ship [list\|info\|name\|crew\|anchor\|stop\|banner\|scrap]`, admin `/ship <give\|repair\|wreck\|remove\|tp> [name\|#n]`, `/ship spawn <ship> [owner]`, `/ship give upgrade_<hull\|sails\|loaders\|ram>`, `/ship pirates <ship\|invasion\|horn\|spawn\|egg\|ghost [player]\|bell [n] [player]\|map [player]\|stop>` |
 
 Notes:
@@ -980,6 +980,23 @@ Notes:
   leafy top, claws) through the new `Wild.Part.swap(model)` (changes the Java display and the Bedrock stand's helmet). The
   head is ppb 32 (eyes need the pixels). No outlines on `toon`: `rounded()` overlaps two boxes and an outline would cross
   the face. Tested (`DeepBossTest`: the Medusa swap).
+- **The Black Market + the Pit (Deep 1.2.0)**: `Market.java` builds the Black Market on the Bubble's plot (the plot is no
+  longer empty): a gothic hall of blackstone x 663..698, z -995..-962 (front faces the town, south), buttresses, 4 turrets
+  with spires, purple lancets, a steep deepslate roof (ridge north-south), a crimson double door (x 680-681) under a
+  pointed arch, and THE EYE in the front gable (almond, bloodshot white, purple iris, slit pupil, a crying obsidian /
+  shroomlight panel behind it). Forecourt: iron fence with a gate, skull posts, soul-lantern posts, two hooded statues.
+  Inside (dark): timber trusses every 6 z with soul-lantern chandeliers on chains, a checker floor, a red runner; THE QUEUE
+  (x 665..678, z -986..-965) of chain stanchions on red carpet snaking to the service window at x 676-678; THE DESK
+  (z -989, x 665..692, gate at 693) with a bell, candles, heads, a lectern and a stool behind; THE TIER WALL (z -994,
+  x 672..689): 8 columns for tiers 1-8, two EMPTY shulker boxes each (white, light gray, yellow, lime, cyan, blue, purple,
+  black), a candle and banner per tier, a dragon head over it, bookshelves either side; vaults, an ender chest, barrels;
+  the east side: 6 glass cases of heads, a tier bar chart, tables. THE LIFT (`Elevator.java`): car x 695..697, z -980..-978,
+  buttons `Market.UP_BUTTON` (697, -48, -979) / `DOWN_BUTTON` (697, -59, -979); everyone in the car rides (2.5 s, Darkness,
+  chain sounds) to the other floor, same x/z, 11 blocks; an iron cage, rope and pulley above it. THE PIT under the plot:
+  air x 661..693, z -996..-961, y -60..-52 (floor top -61), a fenced pit (x 667..687, z -990..-967) with an emblem, gates on
+  4 sides, two rows of seats round it, a throne (north), cages, podiums, basalt pillars, banners, shroomlights. Already-made
+  chunks: delete `r.1.-2.mca` (+ entities/poi) in `faultline_deep`. Previews `tools/previews/market_*.png`.
+  Tested (`DeepTest`: the lift down, up, a press mid-ride, standing outside; `TownPreview`: no water touches the Pit).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

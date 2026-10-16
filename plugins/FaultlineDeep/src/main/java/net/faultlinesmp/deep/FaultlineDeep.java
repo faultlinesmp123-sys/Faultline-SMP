@@ -47,6 +47,7 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(mobs, this);
         getServer().getPluginManager().registerEvents(journey, this);
         getServer().getPluginManager().registerEvents(ocean, this);
+        getServer().getPluginManager().registerEvents(new Elevator(this), this); // the Black Market's lift down to the Pit
         getServer().getPluginManager().registerEvents(this, this);
         Bukkit.getScheduler().runTask(this, journey::spawnLucki);
     }
@@ -141,7 +142,7 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
                 int[] at = Town.plotSpawn();
                 who.teleport(new org.bukkit.Location(world, at[0] + 0.5, at[1], at[2] + 0.5, 180, 0));
                 sender.sendMessage(ChatColor.GREEN + "Sent " + who.getName() + " to the Bubble. The 50x50 plot is " + Town.PLOT_X0 + ", " + Town.PLOT_Z0
-                        + " to " + Town.PLOT_X1 + ", " + Town.PLOT_Z1 + " (top at y " + Town.FLOOR + ").");
+                        + " to " + Town.PLOT_X1 + ", " + Town.PLOT_Z1 + ": the Black Market (its lift goes down to the Pit).");
             }
             case "spawn" -> {
                 DeepMobs.Kind k = args.length > 1 ? DeepMobs.KINDS.get(args[1].toLowerCase()) : null;

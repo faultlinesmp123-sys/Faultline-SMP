@@ -163,6 +163,7 @@ final class Town {
         ground(p);
         for (Lot l : LOTS) if (p.touches(l.x0 - 3, l.z0 - 3, l.x1 + 3, l.z1 + 3)) building(p, l);
         plaza(p);
+        Market.paint(p); // the Black Market on the plot, the Pit under it
         lamps(p);
         gates(p);
     }

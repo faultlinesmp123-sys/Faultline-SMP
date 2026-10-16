@@ -37,10 +37,11 @@ All are Maven projects: Java 21, `paper-api 1.21.11-R0.1-SNAPSHOT`. Build with
 | **LimboBlackMarket** | `net.limbosmp.blackmarket` | Head-tier economy, kill/death stats, kill streaks, anti-farm, quests + Quest Book, friendly-fire logging, global reload | `/tier`, `/markethelp`, `/stats`, `/leaderboard`, `/tierleaderboard`, `/faultlinereload` (`/freload`), `/givequestbook` |
 | **FaultlineItems** | `net.faultlinesmp.items` | All custom items + accessories (3-slot `/accessories` GUI), staffs, spawn eggs, diving gear, Kraken & Diamond Jacob gear, Skeleton Wanderer cave trader, **Meteor strikes** (`Meteor.java`), **the Caravan** (`Caravan.java`), **weather events** (`Weather.java`), **Mimics + Skeleton Knights** (`Creatures.java`), **new gear, music discs, museum pedestals** (`Gear.java`), admin `/itemsmenu` | many `/give*` commands, `/itemsmenu` (`/fitems`), `/itemsreload`, `/cavetrader`, `/batform`, `/meteor [now\|here\|target\|at\|check\|stop\|egg]`, `/caravan [now\|here\|stop\|reroll]`, `/queenspider spawn`, `/fweather [list\|<event> [player]\|stop\|status]` (was `/fevent`: renamed, FaultlineEvents owns that name; bare `/fweather` lists the 5 events with click-to-start buttons; also in /itemsmenu), `/fcreature <mimic\|knights>`, `/fgear`, `/giveancientgear`, `/givedisc <id> [player]`, `/fenchant [list\|give <id> [lvl] [amount] [player]]`, `/sit`, `/vanish [player\|list]`, `/camera [speed <1-10>]`, `/ping [player\|all]`, `/coords [share [player\|kingdom\|all]]`, `/lastdeath`, `/crops`, `/giveballoon`, `/balloon [list\\|remove [#n\\|all [player]]]`, `/fishing [top\|records]` (admin `start [min]\|stop [award]`), `/race [join\|leave\|list\|top]` (admin `create <name> [elytra\|boat\|horse\|any]\|mode\|edit\|cp add [r]\|cp undo\|setstart\|delete\|host <course> [lend]\|start\|stop`) |
 | **FaultlineRaids** | `net.faultlinesmp.raids` | Zombie Raids (Zombie Omens, Captains, Rotbeard), Skeleton Raids, **Piglin Raids** (`Piglins.java`: War Horn, the Bulwark, the Great Hog), Elites + 28 mutants (`Elites.java`, `Mutants.java`) | `/zraid <start\|stop\|captain\|menu\|egg\|omen\|horn\|elite\|mutant>` |
-| **FaultlineBosses** | `net.faultlinesmp.bosses` | Bosses in one ~585 KB file: Demon Eye, Frostbeard, Dune Devourer/Frostmaw, Don Lorenzo, Kraken, **Diamond Jacob**; admin boss form. **Rocco Vendetta** (+ Werner, the Vendetta Fist) lives in its own `Vendetta.java`. **The way down to the Lost Explorer** (Swarm, his staircase, the void world) is `Below.java`; **the Lost Explorer's fight** is `Explorer.java` (+ `ExplorerAnims.java`). **Grimtusk, the Piglin Warlord** (Nether boss) is `Warlord.java`; **the Boss Rush** is `BossRush.java`. **The wild bosses** (Leviathan, Sandworm King, Lich, Frost Wyrm, Stone Golem) are `Wild.java` + one class each | `/demoneye`, `/frostbeard`, `/dune`, `/don`, `/kraken <summon\|sea\|...>`, `/jacob <summon\|kill\|phase\|item>`, `/rocco <summon\|kill\|phase\|tattoos\|werner\|item>`, `/bossmorph <boss\|off\|release>`, `/below <swarm\|void\|leave\|close\|slayer\|info>`, `/explorer <start\|stop\|skip\|phase\|stun\|reset\|arena>`, `/grimtusk <summon\|kill\|phase\|item>`, `/bossrush [start [hardcore]\|top [hardcore]]` (admin `stop\|skip\|setarena\|arenas\|clearcooldown`), `/leviathan`, `/sandworm`, `/lich`, `/frostwyrm`, `/stonegolem` |
+| **FaultlineBosses** | `net.faultlinesmp.bosses` | Bosses in one ~585 KB file: Demon Eye, Frostbeard, Dune Devourer/Frostmaw, Don Lorenzo, Kraken, **Diamond Jacob**; admin boss form. **Rocco Vendetta** (+ Werner, the Vendetta Fist) lives in its own `Vendetta.java`. (The Lost Explorer, Swarm and the void world were REMOVED in 1.6.0.) **Grimtusk, the Piglin Warlord** (Nether boss) is `Warlord.java`; **the Boss Rush** is `BossRush.java`. **The wild bosses** (Leviathan, Sandworm King, Lich, Frost Wyrm, Stone Golem) are `Wild.java` + one class each; **the Dark Ocean's 6 bosses** are `DeepBosses.java` | `/demoneye`, `/frostbeard`, `/dune`, `/don`, `/kraken <summon\|sea\|...>`, `/jacob <summon\|kill\|phase\|item>`, `/rocco <summon\|kill\|phase\|tattoos\|werner\|item>`, `/bossmorph <boss\|off\|release>`, `/grimtusk <summon\|kill\|phase\|item>`, `/bossrush [start [hardcore]\|top [hardcore]]` (admin `stop\|skip\|setarena\|arenas\|clearcooldown`), `/leviathan`, `/sandworm`, `/lich`, `/frostwyrm`, `/stonegolem`, `/scourge`, `/umbral`, `/coralia`, `/inkjaw`, `/grandmaw`, `/lament` |
 | **FaultlineIndex** | `net.faultlinesmp.index` | The Faultline Index codex + **Achievements** (`Achievements.java`). **Museum** (`Museum.java`: trophies, discs, Hall of Firsts), **Discord bridge** (`Discord.java`), `/serverstats` (`ServerStats.java`). Entries and achievements live in `src/main/resources/index.yml`, font glyphs in `glyphs.yml`, settings in `config.yml` | `/index [achievements\|give\|reset] [player]`, `/index stat <player> <name> [n]` (other plugins), `/index discover <player> <entry>`, `/museum [bosses\|items]`, `/serverstats`, admin `/discord [status\|test [msg]\|daily]` (public + logs webhooks, daily stats post), `/report <player> <reason>`, staff `/reports [n]`, `/suggest <idea>`, staff `/suggestions [n]`, `/guide [chapter]`, staff `/watch [<player>\|log\|xray\|alts\|check\|alerts]` (x-ray / cheat / dupe / grief / alt logs, `Watch.java`) |
 | **FaultlineCosmetics** | `net.faultlinesmp.cosmetics` | Permanent cosmetic unlocks worn in 4 slots (Hat, Neck, Back, Body) over armor, for Java and Bedrock. **Seasons** (`Seasons.java`: Halloween/Winter currency + Seasonal Shop). Cosmetics are defined in its `config.yml`, unlocks saved in `players.yml` | `/cosmetics [shop]`, admin `/cosmetic <unlock\|lock\|list\|reload\|season\|tokens\|shop>` |
 | **FaultlineKingdoms** | `net.faultlinesmp.kingdoms` | Kingdom 1/2/3 per player, assigned from DISCORD ROLES (players link once: the bot DMs a code), and GRACE PERIODS server-wide or per kingdom (protected kingdom can't be hurt, and can't hurt others unless `grace.protected-can-attack`); `pvp.friendly-fire`; kingdom in the tab list. Data in `data.yml` | `/kingdom [link <discord name>\|verify <code>\|unlink\|list <1\|2\|3>\|ff <on\|off\|clear>]` (`/k`), admin `/kingdoms grace <all\|1\|2\|3> <on\|off> [30m\|2h\|1d\|1h30m]`, `/kingdoms ff <1\|2\|3> <on\|off\|vote>`, Discord `/stats <player>`, `/kingdoms set <player> <1\|2\|3\|none\|auto>`, `/kingdoms sync [player]`, `/kingdoms reload` |
+| **FaultlineDeep** | `net.faultlinesmp.deep` | **The Dark Ocean**: a water-only world (`DeepGenerator.java`), its 20 creatures (`DeepMobs.java`), the Mirror / Lucki / the whirlpool (`Journey.java`), zone music, events and dying down there (`Ocean.java`) | admin `/deep [info\|set <kingdom\|lucki\|whirlpool>\|tp [player]\|spawn <mob>\|egg <mob> [n] [player]\|event <pressure\|undertow\|stop>\|lucki]` |
 | **FaultlineShips** | `net.faultlinesmp.ships` | Ships: Dinghy, Sloop, Brigantine, Galleon, Pirate Ship. Blueprint → lay out on water → place every block → sail. Health, part damage, sinking, Shipwright's Hammer repair minigame, cannons, banners, names. **Skeleton ships** and the **Pirate Invasion** (`Pirates.java`). Ships saved in `ships.yml` | `/ship [list\|info\|name\|crew\|anchor\|stop\|banner\|scrap]`, admin `/ship <give\|repair\|wreck\|remove\|tp> [name\|#n]`, `/ship spawn <ship> [owner]`, `/ship give upgrade_<hull\|sails\|loaders\|ram>`, `/ship pirates <ship\|invasion\|horn\|spawn\|egg\|ghost [player]\|bell [n] [player]\|map [player]\|stop>` |
 
 Notes:
@@ -61,7 +62,7 @@ Notes:
   Music: `sounds/rocco/music.ogg` (3:10, `rocco.music.length-seconds: 190`), looped for the whole fight.
   Tuned for 7 players (health scales per fighter). His and Werner's animations are in `VendettaAnims.java`; render them to
   PNGs with `tools/anim/preview.sh <unpacked-pack> <out>` (runs the real Java pose code through `tools/anim/render_anims.py`).
-- **The Lost Explorer** (final boss, spec + build notes: `docs/bosses/lost_explorer.md`). `Explorer.java`: he stands on a
+- **The Lost Explorer** (REMOVED in Bosses 1.6.0, kept here as history; final boss, spec + build notes: `docs/bosses/lost_explorer.md`). `Explorer.java`: he stands on a
   12-tall pillar in his arena digging with a pickaxe, his tiger sitting below; SOLO (one fighter, others are put back on the path); walking in → cutscene 1 ("Who are you?", snap)
   → his BLACK TIGER (2000 hp, swords work, 4 hits to down you) → cutscene 2 ("Useless." "You shall die.", his pillar sinks,
   4 pillars rise) → him, 4 phases: can't be hurt, Roaring Knight moves (slash lines, dashes, cross cuts, sword rings,
@@ -865,7 +866,52 @@ Notes:
   `land_cannon_cubes`), turned with the cannon (yaw only); hitting it = punch (sneak = pick up), right-clicking with a
   Cannonball fires. Ship cannons were already part of each ship's Bedrock stand-in model. Tested (`DeckTest`, `PirateTest`,
   `ShipEventTest`, `CannonUpgradeTest`).
-- Soft dependencies: Bosses → Items, Raids; Raids → Items; Index → all the others.
+- **THE DEEP UPDATE (FaultlineDeep 1.0.0, Bosses 1.6.0, Items 1.2.41, Index 1.6.31)**: the Lost Explorer, Swarm, `Below.java`
+  and the void world are GONE (Below the Bedrock gets scripted later). The **Kraken** drops the **Mirror..??** to every fighter
+  (`kraken.rewards.mirror`). Right-clicking the Mirror (PDC `faultlineitems:lost_mirror`) needs Rocco Vendetta AND Diamond Jacob
+  beaten (`FaultlineIndex.defeated(uuid, entry)` by reflection; `faultlinedeep.bypass`): 3 s channel → the abandoned kingdom
+  (`journey.kingdom`, `/deep set kingdom`). **Lucki** (no-AI fisherman villager in an oak boat, `journey.lucki`) talks, rows you out
+  (fade), points, opens a WHIRLPOOL at `journey.whirlpool` (default 0, sea level, 0); swim into the middle = `send()` to the
+  **Dark Ocean** (`faultline_deep`, 0 100 0). In the Dark Ocean the Mirror (5 s) brings you back up. **The world**
+  (`DeepGenerator`, pure functions of seed/x/y/z): sea to y 100, floor ~ -50 of black sand (hills, dunes, terraced seamounts,
+  canyons, reef rises with coral + kelp, arches, sea stacks, whale falls), the CRUST below it (caves, glow lichen, dripstone,
+  vents, crystal gardens, Dark Loot chests) and the ABYSS under that (ridges, hanging cones, basalt pillars, chimneys, abyss
+  skeletons, sculk); a flat 150x150 area at 681, -50, -951 with 50+ blocks of water above (the owner's village), border radius
+  1050 (`border-radius`). Zones `DeepGenerator.Zone` SUNLIT/CAVES/ABYSS; previews `tools/previews/deep_*.png`, harness in the
+  scratchpad (`dtest`). **Creatures** (`DeepMobs`, 20 `Kind`s, tag `faultline_deep_<id>`, non-persistent, a vanilla body made
+  invisible + an ItemDisplay passenger `faultline:deep/<id>` + a Bedrock-only stand at the body's middle; passive / neutral /
+  aggressive, own abilities; spawner cap 14 near players; vanilla spawns limited to sea life, NO phantoms; guardians and elder
+  guardians in the Abyss). Summon items drop from them (Devilfish → Brine Bait 1%, Rift Warper → Umbral Sonar 1%, Jellywing →
+  Siren's Comb 1.5%, Lampsquid → Inkjaw Bait 2%, Clam → Glistening Pearl 2% + Shield of the Ocean 1%, Hollow Kin → Mournful
+  Shell 1.5%, Fangstalker → Abyssal Lure 1%), Dark Loot Bag 1% (Sunlit 0.4%, Driftback 15%). **Ocean.java**: music on the
+  MUSIC category, `faultline:deep.sunken` above y 35 (Theme of the Sunken Sea, 362 s) / `faultline:deep.abyss` below
+  (Hadopelagic Pressure, 286 s), steps aside while `FaultlineBosses.hearingBossMusic(uuid)`; dying down there = your drops
+  sink and the fish eat them after `death.eaten-after-seconds` (60), respawn at 0 100 0; events every 45-90 min: PRESSURE
+  SURGE (hurts below y 20 unless the Abyssal Diving Suit or Conduit Power) and UNDERTOW (a current in the Sunlit Sea).
+  **The music is its own Java pack** `FaultlineDeepMusic.zip` (`item-textures.music-url/music-hash`, second UUID in
+  `ItemTextureManager.sendMusic`): FaultlineSMP.zip has to stay under 25 MB. Bedrock: `bedrock/FaultlineDeep.mcpack` (models,
+  eggs, music) + `faultline_deep_mappings.json` (`/bedrockcheck` knows them), made by
+  `python3 tools/deep_assets.py <pack> bedrock --preview tools/previews --music <dir with sunken.ogg/abyss.ogg>`.
+  **The bosses** (`DeepBosses.java`, kinds in `Wild.KINDS`, `Swimmer`/`Serpent` = 3D swimming through open water only):
+  BRINE SCOURGE (boss, 2400, Kraken music; Charge, Acid Spit, Tooth Spray, Sulphur Bubbles + NEW Brine Geysers, Corroding
+  Coil), UMBRAL LEVIATHAN (boss, 2600; Shadow Charge, Grab, Vanish, Shriek + NEW Eclipse Coil, Abyssal Echo), CORALIA (mini 900;
+  Thralls, Petrifying Gaze, Eel Lash, Bubbles + NEW Siren Song, Coral Spires), OLD INKJAW (mini 500; Slam, Ink, Grip, Bite + NEW
+  Ink Jet, Tentacle Cage), GRANDMAW CLAM (mini 900, open sea floor only (`DeepBosses.openSea` + `floorNear` 24); Shell Up 85%,
+  Slam, Pearl Ring, Pearl Shot + NEW Riptide Snap, Brine Bubble; Shield of the Ocean 50%), THE LAMENT (mini 900; Lunge, Hunt,
+  Wail, Whispers + NEW Sorrow Tide, Light Eater). Where: Coralia = open sea, Grandmaw = open sea near the floor, Scourge /
+  Umbral / Lament = below y 35, Inkjaw anywhere; the Leviathan also fights in the Dark Ocean. `Wild.deepSpawns()`: every 5 min
+  each survival player in the Dark Ocean rolls `wild.deep-spawns.chance` 0.001 → one that fits comes. Rewards: the wild
+  bags/XP + `darkloot rare <p> <chance>` (bosses 50%, minis 10%) + Dark Loot Bags (3 / 1). Boss form hooks, Index entries,
+  /itemsmenu (summon items + summons), enchant book drops (`Enchants.DEFAULT_DROPS`, the Lost Explorer's moved here). NOT in
+  the Boss Rush. Models in `tools/wild_assets.py` (`deep_bosses()`, `render_icon`, `deep_boss_icons`; `tools/previews/deep_bosses.png`).
+  **Dark Loot** (Items `DarkLoot.java`, `dark-loot:`): chests in `dark-loot.world` roll once on first open (block PDC
+  `dark_loot_done`; ones players place are never rolled: `dark_loot_placed` + `placing`), the Dark Loot Bag (paper, model
+  `faultline:dark_loot_bag`, PDC `dark_loot_bag`) = one roll: accessories (never the Mirror / Ankh / Abyssal gear), netherite,
+  Protection IV and other top books, 12% a boss enchant book, sea treasure; 0.1% a RARE: Abyssal Diving Suit, Elytra, shulker of
+  totems, shulker of invisibility potions, a god set. `/darkloot bag|rare|give|roll`. Index: chapter `deep` (20 creatures),
+  6 bosses, 6 summon items, the bag, achievements Into the Dark / Tides of Ruin / Abyss Walker. Tested: `DeepTest` (scratch
+  `ftest`: world, 20 creatures, Mirror, Lucki's trip, dying, events), `DeepBossTest` (bosses harness), `DarkLootTest` (items).
+- Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.
 - Earlier chats mentioned Kingdom End teleporters, permadeath phases, and per-phase
@@ -886,7 +932,8 @@ Notes:
 | `FaultlineBossesPack.zip` | Boss models/sounds pack (Demon Eye, Dune, Frostmaw, mf_* models) |
 | `FaultlineBloodMoon.zip` | Blood Moon pack: replaces moon phase textures |
 | `FaultlineBosses.zip` | Very old zip of the FaultlineBosses source (Demon Eye only). Ignore it; the live copy is `plugins/FaultlineBosses/` |
-| `plugins/` | Source code for all eight custom plugins (edit these) |
+| `plugins/` | Source code for all nine custom plugins (edit these) |
+| `FaultlineDeepMusic.zip` | Second Java pack: the Dark Ocean's two music tracks (sent beside FaultlineSMP.zip) |
 | `bedrock/` | Bedrock (Geyser) packs + custom item mappings: cosmetics (`tools/cosmetics_assets.py`), ships (`tools/ship_assets.py --bedrock`), wild models (`tools/wild_assets.py`) |
 
 Resource packs are served from raw GitHub links on `main`, e.g.

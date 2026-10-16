@@ -70,6 +70,25 @@ final class DeepBosses {
     /** Sunlit Sea (y >= 35) or deeper. */
     static boolean sunlit(Location l) { return l.getY() >= 35; }
 
+    /** Out in the open sea: nothing solid between here and the surface (not in the Crust's caves or the Abyss). */
+    static boolean openSea(Location l) {
+        World w = l.getWorld();
+        int x = l.getBlockX(), z = l.getBlockZ();
+        for (int y = l.getBlockY() + 1; y < w.getMaxHeight(); y++) {
+            Material m = w.getBlockAt(x, y, z).getType();
+            if (m.isAir()) return true;
+            if (m.isSolid()) return false;
+        }
+        return true;
+    }
+
+    /** The sea floor within `max` blocks under l, or null. */
+    static Location floorNear(Location l, int max) {
+        Location c = l.clone();
+        for (int i = 0; i < max; i++, c.add(0, -1, 0)) if (c.getBlock().getType().isSolid()) return c;
+        return null;
+    }
+
     // =====================================================================================================
     //  the shared swimmer
     // =====================================================================================================

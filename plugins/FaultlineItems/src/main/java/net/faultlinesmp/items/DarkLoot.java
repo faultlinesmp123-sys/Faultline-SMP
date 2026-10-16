@@ -1,5 +1,6 @@
 package net.faultlinesmp.items;
 
+import org.bukkit.Location;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
@@ -35,6 +36,8 @@ import org.bukkit.inventory.meta.PotionMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.potion.PotionType;
 
+import java.util.HashSet;
+import java.util.Set;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -235,8 +238,12 @@ final class DarkLoot implements Listener, CommandExecutor {
     public void onPlace(BlockPlaceEvent e) {
         Block b = e.getBlockPlaced();
         if (!deep(b) || !(b.getType() == Material.CHEST || b.getType() == Material.TRAPPED_CHEST || b.getType() == Material.BARREL)) return;
-        Bukkit.getScheduler().runTask(plugin, () -> mark(b, placedKey));
+        Location at = b.getLocation();
+        placing.add(at); // marked next tick (once the chest's block entity is settled); until then this set says so
+        Bukkit.getScheduler().runTask(plugin, () -> { mark(b, placedKey); placing.remove(at); });
     }
+
+    private final Set<Location> placing = new HashSet<>();
 
     void mark(Block b, NamespacedKey key) {
         BlockState s = b.getState();
@@ -257,7 +264,7 @@ final class DarkLoot implements Listener, CommandExecutor {
         boolean rolled = false;
         for (Chest c : sides) {
             Block b = c.getBlock();
-            if (has(b, placedKey) || has(b, doneKey)) continue;
+            if (placing.contains(b.getLocation()) || has(b, placedKey) || has(b, doneKey)) continue;
             mark(b, doneKey);
             fill(c.getBlock().getState() instanceof Chest fresh ? fresh.getBlockInventory() : c.getBlockInventory());
             rolled = true;

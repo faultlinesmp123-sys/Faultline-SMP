@@ -7392,6 +7392,19 @@ public final class FaultlineItems extends JavaPlugin {
                 list.add(external(icon(Material.DIAMOND_SWORD, "sandworm_fang", ChatColor.GOLD + "" + ChatColor.BOLD + "Sandworm Fang", "FaultlineBosses"), "sandworm item sandworm_fang {amount} {player}", "FaultlineBosses"));
                 list.add(external(icon(Material.STICK, "lich_staff", ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + "Staff of the Lich", "FaultlineBosses"), "lich item lich_staff {amount} {player}", "FaultlineBosses"));
                 list.add(external(icon(Material.DIAMOND_SWORD, "glacial_fang", ChatColor.AQUA + "" + ChatColor.BOLD + "Glacial Fang", "FaultlineBosses"), "frostwyrm item glacial_fang {amount} {player}", "FaultlineBosses"));
+                // the Dark Ocean's bosses (Bosses 1.6.0): their summon items (used down there) + a summon right here
+                String[][] deep = {{"scourge", "brine_bait", "Brine Bait", "the Brine Scourge"}, {"umbral", "umbral_sonar", "Umbral Sonar", "the Umbral Leviathan"},
+                        {"coralia", "sirens_comb", "Siren's Comb", "Coralia"}, {"inkjaw", "inkjaw_bait", "Inkjaw Bait", "Old Inkjaw"},
+                        {"grandmaw", "glistening_pearl", "Glistening Pearl", "the Grandmaw Clam"}, {"lament", "mournful_shell", "Mournful Shell", "the Lament"}};
+                for (String[] d : deep) {
+                    list.add(external(icon(Material.PAPER, d[1], ChatColor.DARK_AQUA + "" + ChatColor.BOLD + d[2] + ChatColor.GRAY + " (" + d[3] + ")", "FaultlineBosses"), d[0] + " item " + d[1] + " {amount} {player}", "FaultlineBosses"));
+                    list.add(external(icon(Material.HEART_OF_THE_SEA, null, ChatColor.DARK_AQUA + "" + ChatColor.BOLD + Character.toUpperCase(d[3].charAt(0)) + d[3].substring(1) + ChatColor.GRAY + " (summons it, in water)", "FaultlineBosses"), d[0] + " summon {world} {x} {y} {z}", "FaultlineBosses"));
+                }
+            }
+            if (enabled("FaultlineDeep")) { // the Dark Ocean's 20 creatures (FaultlineDeep spawn eggs)
+                for (String id : List.of("gawker", "bloatfin", "jellywing", "driftback", "clam", "lumenbell", "gasbloom", "fangstalker", "blastfin", "burrowshark",
+                        "cavecrawler", "glowgrub", "shellsnake", "lampsquid", "volteel", "needlejaw", "devilfish", "riftwarper", "hollowkin", "sharkquid"))
+                    list.add(external(icon(Material.PAPER, "deep/" + id + "_icon", ChatColor.AQUA + "Dark Ocean egg: " + ChatColor.WHITE + id, "FaultlineDeep"), "deep egg " + id + " {amount} {player}", "FaultlineDeep"));
             }
             if (enabled("FaultlineCosmetics")) { // the seasonal currency (Candy at Halloween, Presents in Winter)
                 list.add(external(icon(Material.PAPER, "season_candy", ChatColor.GOLD + "" + ChatColor.BOLD + "Candy " + ChatColor.GRAY + "(Halloween)", "FaultlineCosmetics"),

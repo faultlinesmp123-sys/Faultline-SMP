@@ -17,6 +17,7 @@ chapters:
   - {id: bosses, title: "Bosses", kind: creature, icon: demon_eye}
   - {id: enemies, title: "Enemies", kind: creature, icon: vampire}
   - {id: friends, title: "Friendly Faces", kind: creature, icon: skeleton_wanderer}
+  - {id: deep, title: "The Dark Ocean", kind: creature, icon: deep_lampsquid}
 
 entries:
   # ---------------------------------------------------------------- ACCESSORIES
@@ -999,6 +1000,127 @@ entries:
   - {chapter: consumables, name: "Trophy Fish", icon: goodie_bag, detect: "faultlineitems:fish_weight",
      how: "Catch the biggest fish of its kind the server has ever seen (or any fish during a Fishing Tournament).",
      does: "Every fish has a weight (Cod up to 4.5 kg, Salmon 9, Pufferfish 2.5, Tropical Fish 0.6; 1 in 100 is a monster, half again as big). Beat the server record and everyone hears about it and the fish keeps its weight and your name. Fishing Tournaments: your single best fish counts, in points against that species' biggest. /fishing records, /fishing top."}
+  # ---------------------------------------------------------------- the Dark Ocean (FaultlineDeep 1.0.0, Bosses 1.6.0)
+  - {chapter: deep, id: deep_gawker, name: "Gawker", icon: deep_gawker, detect-tag: faultline_deep_gawker,
+     where: "The Dark Ocean's Sunlit Sea (y 35 up to the surface).",
+     does: "Passive. A round little fish that's mostly eye. It stares, then darts off in a school.",
+     drops: ["Cod|100%", "Dark Loot Bag|1% (0.4% in the Sunlit Sea)"]}
+  - {chapter: deep, id: deep_bloatfin, name: "Bloatfin", icon: deep_bloatfin, detect-tag: faultline_deep_bloatfin,
+     where: "The Dark Ocean's Sunlit Sea (y 35 up to the surface).",
+     does: "Passive. A fish like a bubble with fins. Pop one and its air sac bursts: everyone close gets their air back and breathes easy for 15 seconds.",
+     drops: ["Salmon|100%", "Dark Loot Bag|1% (0.4% in the Sunlit Sea)"]}
+  - {chapter: deep, id: deep_jellywing, name: "Jellywing", icon: deep_jellywing, detect-tag: faultline_deep_jellywing,
+     where: "The Dark Ocean's Sunlit Sea (y 35 up to the surface).",
+     does: "Passive. A glowing ray as clear as jelly, gliding over the reefs.",
+     drops: ["Glow Ink Sacs|100%", "Siren's Comb (summons Coralia)|1.5%", "Dark Loot Bag|1% (0.4% in the Sunlit Sea)"]}
+  - {chapter: deep, id: deep_driftback, name: "Driftback", icon: deep_driftback, detect-tag: faultline_deep_driftback,
+     where: "The Dark Ocean's Sunlit Sea (y 35 up to the surface).",
+     does: "Passive. A gentle giant with a whole reef growing on its back. It hums as it drifts by.",
+     drops: ["Prismarine Crystals, Sea Lanterns, Nautilus Shells|100%", "Dark Loot Bag|15%", "Dark Loot Bag|1% (0.4% in the Sunlit Sea)"]}
+  - {chapter: deep, id: deep_clam, name: "Clam", icon: deep_clam, detect-tag: faultline_deep_clam,
+     where: "The Dark Ocean's Sunlit Sea (y 35 up to the surface).",
+     does: "Neutral. Sits shut on the sea floor. Hit it and it snaps back.",
+     drops: ["Prismarine Shards|100%", "Glistening Pearl (summons the Grandmaw Clam)|2%", "Shield of the Ocean|1%", "Dark Loot Bag|1% (0.4% in the Sunlit Sea)"]}
+  - {chapter: deep, id: deep_lumenbell, name: "Lumen Bell", icon: deep_lumenbell, detect-tag: faultline_deep_lumenbell,
+     where: "The Dark Ocean's Sunlit Sea (y 35 up to the surface).",
+     does: "Neutral. A ghostly bell of a jellyfish. Its trailing threads sting; hurting it sets off a shock.",
+     drops: ["Glow Ink Sac|100%", "Dark Loot Bag|1% (0.4% in the Sunlit Sea)"]}
+  - {chapter: deep, id: deep_gasbloom, name: "Gasbloom", icon: deep_gasbloom, detect-tag: faultline_deep_gasbloom,
+     where: "The Dark Ocean's Sunlit Sea (y 35 up to the surface).",
+     does: "Neutral. A slow, swollen floater. Crowd it or hit it and it lets out pods of poison gas.",
+     drops: ["Slimeballs, Fermented Spider Eye|100%", "Dark Loot Bag|1% (0.4% in the Sunlit Sea)"]}
+  - {chapter: deep, id: deep_fangstalker, name: "Fangstalker", icon: deep_fangstalker, detect-tag: faultline_deep_fangstalker,
+     where: "The Dark Ocean's Sunlit Sea (y 35 up to the surface).",
+     does: "Neutral. A lean shark with hooked teeth. It leaves you alone... unless you hit it, or swim by holding metal it wants.",
+     drops: ["Bones|100%", "Abyssal Lure (summons the Leviathan)|1%", "Dark Loot Bag|1% (0.4% in the Sunlit Sea)"]}
+  - {chapter: deep, id: deep_blastfin, name: "Blastfin", icon: deep_blastfin, detect-tag: faultline_deep_blastfin,
+     where: "The Dark Ocean's Sunlit Sea (y 35 up to the surface).",
+     does: "Aggressive. A spiky little fish full of volatile gas. It swims straight at you and bursts.",
+     drops: ["Gunpowder|100%", "Dark Loot Bag|1% (0.4% in the Sunlit Sea)"]}
+  - {chapter: deep, id: deep_burrowshark, name: "Burrow Shark", icon: deep_burrowshark, detect-tag: faultline_deep_burrowshark,
+     where: "The Dark Ocean's Sunlit Sea (y 35 up to the surface).",
+     does: "Aggressive. Lies buried in the sand with only its fin showing. Swim too close and it erupts.",
+     drops: ["Sand, Bones|100%", "Dark Loot Bag|1% (0.4% in the Sunlit Sea)"]}
+  - {chapter: deep, id: deep_cavecrawler, name: "Cavecrawler", icon: deep_cavecrawler, detect-tag: faultline_deep_cavecrawler,
+     where: "The Crust's caves of the Dark Ocean (under the sea floor).",
+     does: "Aggressive. A spindly crab that scuttles over cave walls and leaps at anything that moves.",
+     drops: ["String|100%", "Dark Loot Bag|1% (0.4% in the Sunlit Sea)"]}
+  - {chapter: deep, id: deep_glowgrub, name: "Glowgrub", icon: deep_glowgrub, detect-tag: faultline_deep_glowgrub,
+     where: "The Crust's caves of the Dark Ocean (under the sea floor).",
+     does: "Passive. A soft grub that glows. Stay near one and its light shows you the way.",
+     drops: ["Glow Berries|100%", "Dark Loot Bag|1% (0.4% in the Sunlit Sea)"]}
+  - {chapter: deep, id: deep_shellsnake, name: "Shellsnake", icon: deep_shellsnake, detect-tag: faultline_deep_shellsnake,
+     where: "The Crust's caves of the Dark Ocean (under the sea floor).",
+     does: "Aggressive. Coils inside cracks in the rock, waiting. Then it strikes, all teeth and armour plates.",
+     drops: ["Turtle Scute|100%", "Nautilus Shell|50%", "Dark Loot Bag|1% (0.4% in the Sunlit Sea)"]}
+  - {chapter: deep, id: deep_lampsquid, name: "Lampsquid", icon: deep_lampsquid, detect-tag: faultline_deep_lampsquid,
+     where: "The Abyss, the deepest part of the Dark Ocean.",
+     does: "Neutral. A squid with lanterns for eyes. Anger it and its pulse kills every light: your night vision, your conduit, everything.",
+     drops: ["Glow Ink Sacs|100%", "Inkjaw Bait (summons Old Inkjaw)|2%", "Dark Loot Bag|1% (0.4% in the Sunlit Sea)"]}
+  - {chapter: deep, id: deep_volteel, name: "Volt Eel", icon: deep_volteel, detect-tag: faultline_deep_volteel,
+     where: "The Abyss, the deepest part of the Dark Ocean.",
+     does: "Aggressive. A long eel crackling with power. Get close and it discharges through the water.",
+     drops: ["Copper Ingots, Redstone|100%", "Dark Loot Bag|1% (0.4% in the Sunlit Sea)"]}
+  - {chapter: deep, id: deep_needlejaw, name: "Needlejaw", icon: deep_needlejaw, detect-tag: faultline_deep_needlejaw,
+     where: "The Abyss, the deepest part of the Dark Ocean.",
+     does: "Aggressive. A black fish with a lure of light and teeth like needles. Fast.",
+     drops: ["Prismarine Shards|100%", "Dark Loot Bag|1% (0.4% in the Sunlit Sea)"]}
+  - {chapter: deep, id: deep_devilfish, name: "Masked Devilfish", icon: deep_devilfish, detect-tag: faultline_deep_devilfish,
+     where: "The Abyss, the deepest part of the Dark Ocean.",
+     does: "Aggressive. Wears a mask of bone that turns most hits aside. Crack the mask first.",
+     drops: ["Bone Block|100%", "Brine Bait (summons the Brine Scourge)|1%", "Dark Loot Bag|1% (0.4% in the Sunlit Sea)"]}
+  - {chapter: deep, id: deep_riftwarper, name: "Rift Warper", icon: deep_riftwarper, detect-tag: faultline_deep_riftwarper,
+     where: "The Abyss, the deepest part of the Dark Ocean.",
+     does: "Aggressive. It blinks through the water, and its bolts throw you somewhere else.",
+     drops: ["Ender Pearls|100%", "Umbral Sonar (summons the Umbral Leviathan)|1%", "Dark Loot Bag|1% (0.4% in the Sunlit Sea)"]}
+  - {chapter: deep, id: deep_hollowkin, name: "Hollow Kin", icon: deep_hollowkin, detect-tag: faultline_deep_hollowkin,
+     where: "The Abyss, the deepest part of the Dark Ocean.",
+     does: "Neutral. Shadows of children, drifting in the dark. They shy away from light. Hurt one and they all come for you.",
+     drops: ["Echo Shard|2%", "Mournful Shell (summons the Lament)|1.5%", "Dark Loot Bag|1% (0.4% in the Sunlit Sea)"]}
+  - {chapter: deep, id: deep_sharkquid, name: "Sharkquid", icon: deep_sharkquid, detect-tag: faultline_deep_sharkquid,
+     where: "The Abyss, the deepest part of the Dark Ocean.",
+     does: "Aggressive. Half shark, half squid, all hunger. It charges, and inks you when it's hurt.",
+     drops: ["Ink Sacs, Bone|100%", "Dark Loot Bag|1% (0.4% in the Sunlit Sea)"]}
+  - {chapter: bosses, id: brine_scourge, name: "The Brine Scourge", icon: brine_scourge, detect-tag: faultline_brine_scourge,
+     where: "A BOSS of the Dark Ocean, below the Sunlit Sea. Use a Brine Bait (Masked Devilfish, 1%), or it finds you on its own (0.1% every 5 minutes for each player down there). 2,400 health (+20% per extra fighter).",
+     does: "A plated sea worm that swims around you in every direction. Charge, Acid Spit, Tooth Spray, Sulphur Bubbles; NEW: Brine Geysers (scalding columns from the floor under you) and Corroding Coil (it circles you, shrinking a ring of acid). Music: the Kraken's theme.",
+     drops: ["4-6 Mythic Goodie Bags|100%", "3 Goodie Bags|100%", "1,500 XP|100%", "3 Dark Loot Bags|100%", "A Dark Loot rare (Diving Suit, Elytra, god set...)|50%"]}
+  - {chapter: bosses, id: umbral_leviathan, name: "The Umbral Leviathan", icon: umbral_leviathan, detect-tag: faultline_umbral_leviathan,
+     where: "A BOSS of the Dark Ocean, below the Sunlit Sea. Use an Umbral Sonar (Rift Warper, 1%), or it finds you on its own (0.1% every 5 minutes). 2,600 health (+20% per extra fighter).",
+     does: "A serpent of shadow with glowing eyes. Shadow Charge, the Grab (it seizes you: hit it hard to break free), Vanish (into the dark, out behind you), Shriek; NEW: Eclipse Coil (a ring of shadow closes: get out before it does) and Abyssal Echo (sonar marks you, lances follow).",
+     drops: ["4-6 Mythic Goodie Bags|100%", "3 Goodie Bags|100%", "1,500 XP|100%", "3 Dark Loot Bags|100%", "A Dark Loot rare|50%"]}
+  - {chapter: bosses, id: coralia, name: "Coralia, Siren of the Shoals", icon: coralia, detect-tag: faultline_coralia,
+     where: "A mini boss of the Dark Ocean's open sea (never in the caves or the Abyss). Use a Siren's Comb (Jellywing, 1.5%), or she finds you (0.1% every 5 minutes). 900 health (+25% per extra fighter).",
+     does: "A giant mermaid. Thralls of the Shoal, Petrifying Gaze (LOOK AWAY when her eyes glow), Eel Lash, Bubble Barrage; NEW: Siren Song (it pulls you to her) and Coral Spires (bursting up from the floor under you).",
+     drops: ["4-6 Mythic Goodie Bags|100%", "3 Goodie Bags|100%", "1,500 XP|100%", "Dark Loot Bag|100%", "A Dark Loot rare|10%"]}
+  - {chapter: bosses, id: old_inkjaw, name: "Old Inkjaw", icon: old_inkjaw, detect-tag: faultline_old_inkjaw,
+     where: "A mini boss anywhere in the Dark Ocean. Use Inkjaw Bait (Lampsquid, 2%), or it finds you (0.1% every 5 minutes). 500 health (+20% per extra fighter).",
+     does: "A giant octopus. Tentacle Slam, Ink Cloud, the Grip, Beak Bite; NEW: Ink Jet (a dash leaving a trail of ink) and Tentacle Cage.",
+     drops: ["4-6 Mythic Goodie Bags|100%", "3 Goodie Bags|100%", "1,500 XP|100%", "16-31 Ink Sacs|100%", "Dark Loot Bag|100%", "A Dark Loot rare|10%"]}
+  - {chapter: bosses, id: grandmaw_clam, name: "The Grandmaw Clam", icon: grandmaw_clam, detect-tag: faultline_grandmaw_clam,
+     where: "A mini boss of the surface area ONLY: the open sea floor of the Dark Ocean, never in the caves or the Abyss. Use a Glistening Pearl near the sand (Clam, 2%), or it finds you (0.1% every 5 minutes). 900 health (+25% per extra fighter).",
+     does: "A clam the size of a house. Shell Up (85% less damage while shut), Slam (it leaps and crashes), Pearl Ring, Pearl Shot; NEW: Riptide Snap (it sucks you in and snaps shut) and Brine Bubble (traps you in a rising bubble).",
+     drops: ["4-6 Mythic Goodie Bags|100%", "3 Goodie Bags|100%", "1,500 XP|100%", "Shield of the Ocean|50%", "8-15 Prismarine Crystals|100%", "Dark Loot Bag|100%", "A Dark Loot rare|10%"]}
+  - {chapter: bosses, id: the_lament, name: "The Lament", icon: the_lament, detect-tag: faultline_the_lament,
+     where: "A mini boss of the Dark Ocean, below the Sunlit Sea. Use a Mournful Shell (Hollow Kin, 1.5%), or it finds you (0.1% every 5 minutes). 900 health (+25% per extra fighter).",
+     does: "A huge fish made of grief and dark water. Lunge, the Hunt (gone into the dark... then from behind), Wail, Whispers (Hollow Kin); NEW: Sorrow Tide (a wave that drives you away) and Light Eater (it snuffs your lights and hunts whoever carries one).",
+     drops: ["4-6 Mythic Goodie Bags|100%", "3 Goodie Bags|100%", "1,500 XP|100%", "Echo Shards|30%", "Dark Loot Bag|100%", "A Dark Loot rare|10%"]}
+  - {chapter: consumables, name: "Brine Bait", icon: brine_bait, detect: "faultlinebosses:wild_item=brine_bait",
+     how: "1% from Masked Devilfish.", does: "Use it in the Dark Ocean, below the Sunlit Sea (under y 35), in the water: the Brine Scourge comes."}
+  - {chapter: consumables, name: "Umbral Sonar", icon: umbral_sonar, detect: "faultlinebosses:wild_item=umbral_sonar",
+     how: "1% from Rift Warpers.", does: "Use it in the Dark Ocean, below the Sunlit Sea: the Umbral Leviathan comes."}
+  - {chapter: consumables, name: "Siren's Comb", icon: sirens_comb, detect: "faultlinebosses:wild_item=sirens_comb",
+     how: "1.5% from Jellywings.", does: "Use it out in the Dark Ocean's open sea (not in the caves or the Abyss): Coralia comes."}
+  - {chapter: consumables, name: "Inkjaw Bait", icon: inkjaw_bait, detect: "faultlinebosses:wild_item=inkjaw_bait",
+     how: "2% from Lampsquids.", does: "Use it anywhere in the Dark Ocean's water: Old Inkjaw comes."}
+  - {chapter: consumables, name: "Glistening Pearl", icon: glistening_pearl, detect: "faultlinebosses:wild_item=glistening_pearl",
+     how: "2% from Clams.", does: "Use it near the open sea floor of the Dark Ocean (within 24 blocks of the sand): the Grandmaw Clam comes."}
+  - {chapter: consumables, name: "Mournful Shell", icon: mournful_shell, detect: "faultlinebosses:wild_item=mournful_shell",
+     how: "1.5% from Hollow Kin.", does: "Use it in the Dark Ocean, below the Sunlit Sea: the Lament comes."}
+  - {chapter: consumables, name: "Dark Loot Bag", icon: dark_loot_bag, detect: "faultlineitems:dark_loot_bag",
+     how: "From the Dark Ocean: its creatures (1%, the Driftback 15%), its bosses (1-3 each) and Dark Loot chests.",
+     does: "Right-click: one roll of Dark Loot (an accessory, netherite, a Protection IV or other top book, a boss enchant book...). 0.1%: a RARE (the Abyssal Diving Suit, an Elytra, a shulker of totems, a shulker of invisibility potions, or buried treasure with a god set)."}
+
 # ============================================================================
 # ACHIEVEMENTS (their own book, from the Index cover). A goal is one of:
 #   defeat: [entry ids] + need: all | any | <total kills across them>
@@ -1006,6 +1128,7 @@ entries:
 #   stat: <name> + count: <n>   (other plugins count things with "/index stat <player> <name> [amount]")
 # reward: items ("MATERIAL:amount"), xp, cosmetic (unlocked through FaultlineCosmetics)
 # ============================================================================
+
 achievements:
   - {id: first_blood, name: "First Blood", icon: demon_eye, desc: "Defeat any boss.",
      defeat: [the_demon_eye, queen_spider, mortimer_freeze, the_dune_devourer, the_frostmaw, don_lorenzo, the_kraken, the_kraken_at_sea, diamond_jacob, rocco_vendetta, grimtusk, captain_rotbeard, the_great_hog, the_skeleton_captain],
@@ -1053,3 +1176,11 @@ achievements:
      stat: locust_swarms, count: 1, reward: {items: ["EMERALD:12", "BONE_MEAL:32"], xp: 300}}
   - {id: mimic_hunter, name: "It Had Teeth", icon: mimic, desc: "Kill 5 Mimics.",
      stat: mimics, count: 5, reward: {items: ["DIAMOND:6", "GOLD_BLOCK:2"], xp: 500}}
+  # ---- the Dark Ocean (1.6.31)
+  - {id: into_the_dark, name: "Into the Dark", icon: deep_lampsquid, desc: "Hunt 25 of the Dark Ocean's creatures.",
+     defeat: [deep_gawker, deep_bloatfin, deep_jellywing, deep_driftback, deep_clam, deep_lumenbell, deep_gasbloom, deep_fangstalker, deep_blastfin, deep_burrowshark, deep_cavecrawler, deep_glowgrub, deep_shellsnake, deep_lampsquid, deep_volteel, deep_needlejaw, deep_devilfish, deep_riftwarper, deep_hollowkin, deep_sharkquid],
+     need: 25, reward: {items: ["DIAMOND:8", "PRISMARINE_CRYSTALS:16"], xp: 500}}
+  - {id: tides_of_ruin, name: "Tides of Ruin", icon: brine_scourge, desc: "Defeat the Brine Scourge and the Umbral Leviathan.",
+     defeat: [brine_scourge, umbral_leviathan], need: all, reward: {items: ["NETHERITE_INGOT:2", "HEART_OF_THE_SEA:1"], xp: 1500}}
+  - {id: abyss_walker, name: "Abyss Walker", icon: the_lament, desc: "Defeat all six of the Dark Ocean's bosses.",
+     defeat: [brine_scourge, umbral_leviathan, coralia, old_inkjaw, grandmaw_clam, the_lament], need: all, reward: {items: ["NETHERITE_INGOT:4", "TOTEM_OF_UNDYING:1"], xp: 3000}}

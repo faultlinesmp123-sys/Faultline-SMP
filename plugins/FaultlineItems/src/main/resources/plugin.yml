@@ -119,7 +119,7 @@ commands:
     usage: /givejacob <falconers_quiver|ender_anchor|banner_of_defiance|ember_ward|diamond_heart> [amount] [player]
     permission: items.givejacob
   givelostmirror:
-    description: Give the Mirror..?? (the Kraken's accessory: the way to the abandoned kingdom)
+    description: "Give the Mirror..?? (the Kraken's accessory, the way to the abandoned kingdom)"
     usage: /givelostmirror [amount] [player]
     permission: items.givelostmirror
   fweather:

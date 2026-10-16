@@ -420,6 +420,294 @@
    },
    {
     "type": "definition",
+    "model": "faultline:wild/scourge_head",
+    "bedrock_identifier": "faultline:wild_scourge_head",
+    "display_name": "scourge_head",
+    "bedrock_options": {
+     "icon": "faultline.brine_scourge",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:wild/scourge_body",
+    "bedrock_identifier": "faultline:wild_scourge_body",
+    "display_name": "scourge_body",
+    "bedrock_options": {
+     "icon": "faultline.brine_scourge",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:wild/scourge_tail",
+    "bedrock_identifier": "faultline:wild_scourge_tail",
+    "display_name": "scourge_tail",
+    "bedrock_options": {
+     "icon": "faultline.brine_scourge",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:wild/umbral_head",
+    "bedrock_identifier": "faultline:wild_umbral_head",
+    "display_name": "umbral_head",
+    "bedrock_options": {
+     "icon": "faultline.umbral_leviathan",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:wild/umbral_body",
+    "bedrock_identifier": "faultline:wild_umbral_body",
+    "display_name": "umbral_body",
+    "bedrock_options": {
+     "icon": "faultline.umbral_leviathan",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:wild/umbral_tail",
+    "bedrock_identifier": "faultline:wild_umbral_tail",
+    "display_name": "umbral_tail",
+    "bedrock_options": {
+     "icon": "faultline.umbral_leviathan",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:wild/coralia_tail",
+    "bedrock_identifier": "faultline:wild_coralia_tail",
+    "display_name": "coralia_tail",
+    "bedrock_options": {
+     "icon": "faultline.coralia",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:wild/coralia_torso",
+    "bedrock_identifier": "faultline:wild_coralia_torso",
+    "display_name": "coralia_torso",
+    "bedrock_options": {
+     "icon": "faultline.coralia",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:wild/coralia_head",
+    "bedrock_identifier": "faultline:wild_coralia_head",
+    "display_name": "coralia_head",
+    "bedrock_options": {
+     "icon": "faultline.coralia",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:wild/coralia_arm",
+    "bedrock_identifier": "faultline:wild_coralia_arm",
+    "display_name": "coralia_arm",
+    "bedrock_options": {
+     "icon": "faultline.coralia",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:wild/inkjaw_body",
+    "bedrock_identifier": "faultline:wild_inkjaw_body",
+    "display_name": "inkjaw_body",
+    "bedrock_options": {
+     "icon": "faultline.old_inkjaw",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:wild/inkjaw_tentacle",
+    "bedrock_identifier": "faultline:wild_inkjaw_tentacle",
+    "display_name": "inkjaw_tentacle",
+    "bedrock_options": {
+     "icon": "faultline.old_inkjaw",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:wild/grandmaw_shell",
+    "bedrock_identifier": "faultline:wild_grandmaw_shell",
+    "display_name": "grandmaw_shell",
+    "bedrock_options": {
+     "icon": "faultline.grandmaw_clam",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:wild/grandmaw_lid",
+    "bedrock_identifier": "faultline:wild_grandmaw_lid",
+    "display_name": "grandmaw_lid",
+    "bedrock_options": {
+     "icon": "faultline.grandmaw_clam",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:wild/grandmaw_pearl",
+    "bedrock_identifier": "faultline:wild_grandmaw_pearl",
+    "display_name": "grandmaw_pearl",
+    "bedrock_options": {
+     "icon": "faultline.grandmaw_clam",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:wild/lament_head",
+    "bedrock_identifier": "faultline:wild_lament_head",
+    "display_name": "lament_head",
+    "bedrock_options": {
+     "icon": "faultline.the_lament",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:wild/lament_body",
+    "bedrock_identifier": "faultline:wild_lament_body",
+    "display_name": "lament_body",
+    "bedrock_options": {
+     "icon": "faultline.the_lament",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:wild/lament_tail",
+    "bedrock_identifier": "faultline:wild_lament_tail",
+    "display_name": "lament_tail",
+    "bedrock_options": {
+     "icon": "faultline.the_lament",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
     "model": "faultline:knight_helm",
     "bedrock_identifier": "faultline:knight_helm",
     "display_name": "Knight's Helm",

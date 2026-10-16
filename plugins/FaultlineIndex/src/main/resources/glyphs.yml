@@ -787,3 +787,102 @@ rampaging_hoglin:
 vampiric_mob:
   large: 59326
   small: 58302
+brine_bait:
+  large: 59327
+  small: 58303
+umbral_sonar:
+  large: 59328
+  small: 58304
+sirens_comb:
+  large: 59329
+  small: 58305
+inkjaw_bait:
+  large: 59330
+  small: 58306
+glistening_pearl:
+  large: 59331
+  small: 58307
+mournful_shell:
+  large: 59332
+  small: 58308
+brine_scourge:
+  large: 59333
+  small: 58309
+umbral_leviathan:
+  large: 59334
+  small: 58310
+the_lament:
+  large: 59335
+  small: 58311
+coralia:
+  large: 59336
+  small: 58312
+old_inkjaw:
+  large: 59337
+  small: 58313
+grandmaw_clam:
+  large: 59338
+  small: 58314
+deep_gawker:
+  large: 59339
+  small: 58315
+deep_bloatfin:
+  large: 59340
+  small: 58316
+deep_jellywing:
+  large: 59341
+  small: 58317
+deep_driftback:
+  large: 59342
+  small: 58318
+deep_clam:
+  large: 59343
+  small: 58319
+deep_lumenbell:
+  large: 59344
+  small: 58320
+deep_gasbloom:
+  large: 59345
+  small: 58321
+deep_fangstalker:
+  large: 59346
+  small: 58322
+deep_blastfin:
+  large: 59347
+  small: 58323
+deep_burrowshark:
+  large: 59348
+  small: 58324
+deep_cavecrawler:
+  large: 59349
+  small: 58325
+deep_glowgrub:
+  large: 59350
+  small: 58326
+deep_shellsnake:
+  large: 59351
+  small: 58327
+deep_lampsquid:
+  large: 59352
+  small: 58328
+deep_volteel:
+  large: 59353
+  small: 58329
+deep_needlejaw:
+  large: 59354
+  small: 58330
+deep_devilfish:
+  large: 59355
+  small: 58331
+deep_riftwarper:
+  large: 59356
+  small: 58332
+deep_hollowkin:
+  large: 59357
+  small: 58333
+deep_sharkquid:
+  large: 59358
+  small: 58334
+dark_loot_bag:
+  large: 59359
+  small: 58335

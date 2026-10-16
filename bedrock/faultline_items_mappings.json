@@ -898,20 +898,6 @@
     }
    }
   ],
-  "minecraft:netherite_pickaxe": [
-   {
-    "type": "definition",
-    "model": "faultline:below_pickaxe",
-    "bedrock_identifier": "faultline:below_pickaxe",
-    "bedrock_options": {
-     "icon": "faultline.below_pickaxe",
-     "allow_offhand": true
-    },
-    "components": {
-     "minecraft:max_stack_size": 1
-    }
-   }
-  ],
   "minecraft:netherite_scrap": [
    {
     "type": "definition",
@@ -1063,6 +1049,19 @@
    },
    {
     "type": "definition",
+    "model": "faultline:brine_bait",
+    "bedrock_identifier": "faultline:brine_bait",
+    "bedrock_options": {
+     "icon": "faultline.brine_bait",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Brine Bait"
+   },
+   {
+    "type": "definition",
     "model": "faultline:captains_armband",
     "bedrock_identifier": "faultline:captains_armband",
     "bedrock_options": {
@@ -1101,6 +1100,19 @@
    },
    {
     "type": "definition",
+    "model": "faultline:glistening_pearl",
+    "bedrock_identifier": "faultline:glistening_pearl",
+    "bedrock_options": {
+     "icon": "faultline.glistening_pearl",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Glistening Pearl"
+   },
+   {
+    "type": "definition",
     "model": "faultline:hot_air_balloon",
     "bedrock_identifier": "faultline:hot_air_balloon",
     "bedrock_options": {
@@ -1111,6 +1123,19 @@
      "minecraft:max_stack_size": 1
     },
     "display_name": "Hot Air Balloon"
+   },
+   {
+    "type": "definition",
+    "model": "faultline:inkjaw_bait",
+    "bedrock_identifier": "faultline:inkjaw_bait",
+    "bedrock_options": {
+     "icon": "faultline.inkjaw_bait",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Inkjaw Bait"
    },
    {
     "type": "definition",
@@ -1136,6 +1161,19 @@
      "minecraft:max_stack_size": 16
     },
     "display_name": "Cursed Phylactery"
+   },
+   {
+    "type": "definition",
+    "model": "faultline:mournful_shell",
+    "bedrock_identifier": "faultline:mournful_shell",
+    "bedrock_options": {
+     "icon": "faultline.mournful_shell",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Mournful Shell"
    },
    {
     "type": "definition",
@@ -1175,6 +1213,32 @@
      "minecraft:max_stack_size": 64
     },
     "display_name": "Present"
+   },
+   {
+    "type": "definition",
+    "model": "faultline:sirens_comb",
+    "bedrock_identifier": "faultline:sirens_comb",
+    "bedrock_options": {
+     "icon": "faultline.sirens_comb",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Siren's Comb"
+   },
+   {
+    "type": "definition",
+    "model": "faultline:umbral_sonar",
+    "bedrock_identifier": "faultline:umbral_sonar",
+    "bedrock_options": {
+     "icon": "faultline.umbral_sonar",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 16
+    },
+    "display_name": "Umbral Sonar"
    },
    {
     "type": "definition",

@@ -964,7 +964,269 @@ def black_sun():
     return [p]
 
 
-ALL_PARTS = leviathan() + sandworm() + frost_wyrm() + lich() + golem() + mimic() + locust() + ghost_captain() + aurora() + black_sun()
+
+# ---------------------------------------------------------------------------------------------- the Dark Ocean's bosses
+# (Bosses 1.6.0, DeepBosses.java). Serpents: the head's origin is the boss's position (front +x); a body segment's
+# origin is the BACK joint and it reaches forward to the next one (gap blocks); the tail's origin is the last joint and
+# it trails back (-x).
+
+def _seg(p, x0, x1, r, paint, belly=None, bev=0.25):
+    rounded(p, x0, -r, -r, x1, r, r, paint, min(bev, r * 0.4))
+    if belly: p.add(x0 + 0.1, -r - 0.06, -r * 0.7, x1 - 0.1, -r * 0.5, r * 0.7, belly)
+
+
+SC_PLATE, SC_DARK, SC_ACID, SC_BONE = (128, 150, 104), (66, 82, 58), (178, 226, 62), (214, 206, 168)
+
+
+def scourge():
+    """The Brine Scourge: a huge plated sea worm (after Calamity's Aquatic Scourge): a blunt armoured head with four
+    hooked mandibles around a glowing acid maw, spined back plates, acid sacs down the flanks, a barbed tail."""
+    pl, dk, acid = scales(SC_PLATE, SC_DARK), solid(SC_DARK, 8), glow(SC_ACID)
+    sp = solid(SC_BONE, 6)
+    h = Part("scourge_head", 6, 128)
+    rounded(h, -1.2, -1.1, -1.15, 1.3, 1.15, 1.15, pl, 0.35)
+    rounded(h, 1.3, -0.85, -0.9, 2.2, 0.95, 0.9, pl, 0.25)          # the brow shield
+    h.add(2.2, -0.5, -0.55, 2.35, 0.5, 0.55, solid((40, 60, 20), 4))   # the maw
+    h.add(2.25, -0.35, -0.4, 2.4, 0.35, 0.4, acid)
+    for s in (-1, 1):
+        for u in (-1, 1):                                            # four mandibles around the maw
+            h.add(2.0, u * 0.45 - 0.15, s * 0.45 - 0.15, 3.0, u * 0.45 + 0.15, s * 0.45 + 0.15, sp)
+            h.add(2.9, u * 0.3 - 0.12, s * 0.3 - 0.12, 3.3, u * 0.3 + 0.12, s * 0.3 + 0.12, sp)
+        h.add(1.4, 0.35, s * 0.9, 1.75, 0.6, s * 0.98, acid)         # eyes
+        h.add(1.0, 0.25, s * 0.92, 1.25, 0.45, s * 0.98, acid)
+        h.add(-0.6, 0.8, s * 0.5, 0.6, 1.0, s * 0.8, dk)             # plate ridges
+    for x in (-0.8, 0.0, 0.8): h.add(x - 0.15, 1.1, -0.12, x + 0.15, 1.75 - abs(x) * 0.25, 0.12, sp)   # head spines
+    seg = Part("scourge_body", 6, 128)
+    _seg(seg, -0.2, 1.95, 1.0, pl, stripes_h((170, 172, 128), (120, 122, 90)))
+    seg.add(0.15, 0.95, -0.85, 1.6, 1.15, 0.85, dk)                   # back plate
+    for x in (0.35, 1.25): seg.add(x - 0.12, 1.15, -0.1, x + 0.12, 1.85, 0.1, sp)
+    for s in (-1, 1):
+        seg.add(0.6, -0.35, s * 1.0, 1.2, 0.25, s * 1.15, acid)       # acid sacs
+        seg.add(0.2, 0.5, s * 0.95, 1.5, 0.7, s * 1.05, dk)
+    seg.bone_all("seg")
+    seg.anim("seg", "rot", (0, 5, 0), 2.4)
+    tail = Part("scourge_tail", 6, 128)
+    _seg(tail, -1.6, 0.2, 0.85, pl)
+    _seg(tail, -2.8, -1.4, 0.55, pl)
+    tail.add(-3.6, -0.3, -0.3, -2.7, 0.3, 0.3, dk)
+    tail.bone("barb", (-3.4, 0, 0))
+    tail.add(-4.6, -0.12, -0.12, -3.5, 0.12, 0.12, sp)                # the barb
+    for s in (-1, 1): tail.add(-4.2, -0.1, s * 0.12, -3.7, 0.1, s * 0.55, sp)
+    tail.add(-3.9, -0.15, -0.15, -3.6, 0.15, 0.15, acid)
+    tail.bone(None)
+    tail.anim("barb", "rot", (0, 15, 0), 1.5)
+    return [h, seg, tail]
+
+
+UM_SKIN, UM_DARK, UM_EYE, UM_FIN = (30, 26, 44), (14, 12, 22), (160, 100, 255), (52, 40, 86)
+
+
+def umbral():
+    """The Umbral Leviathan (after Below Zero's Shadow Leviathan): a black serpent with four long mandibles that open
+    like a flower, a crown of rear horns, glowing violet eyes and stripes, wide fin-wings down the body."""
+    sk, dk, eye = scales(UM_SKIN, UM_DARK), solid(UM_DARK, 6), glow(UM_EYE)
+    fin = membrane(UM_FIN, (96, 64, 170))
+    h = Part("umbral_head", 6, 128)
+    rounded(h, -1.3, -0.95, -1.05, 1.4, 0.95, 1.05, sk, 0.32)
+    rounded(h, 1.4, -0.6, -0.65, 2.3, 0.6, 0.65, sk, 0.2)
+    h.add(2.3, -0.35, -0.35, 2.4, 0.35, 0.35, solid((60, 20, 90), 3))
+    h.bone("mand", (2.0, 0, 0))
+    for s in (-1, 1):
+        for u in (-1, 1):                                            # the four mandibles
+            h.add(1.6, u * 0.5 - 0.18, s * 0.55 - 0.18, 3.4, u * 0.5 + 0.18, s * 0.55 + 0.18, sk)
+            h.add(3.4, u * 0.35 - 0.12, s * 0.38 - 0.12, 4.0, u * 0.35 + 0.12, s * 0.38 + 0.12, dk)
+            h.add(2.2, u * 0.5 - 0.2, s * 0.55 - 0.05, 3.2, u * 0.5 - 0.15, s * 0.55 + 0.05, eye)
+    h.bone(None)
+    h.anim("mand", "pos", (0, 0, -1.2), 2.0)
+    for s in (-1, 1):
+        h.add(0.9, 0.3, s * 1.0, 1.35, 0.55, s * 1.08, eye)           # eyes
+        h.add(0.3, 0.2, s * 1.02, 0.65, 0.4, s * 1.08, eye)
+        h.add(-2.6, 0.6, s * 0.55, -0.9, 0.85, s * 0.8, dk)            # rear horns
+        h.add(-3.5, 0.8, s * 0.6, -2.4, 1.0, s * 0.75, dk)
+        h.add(-2.0, -0.2, s * 0.85, -1.0, 0.0, s * 1.4, dk)
+    h.add(-1.4, 0.95, -0.07, 1.0, 1.7, 0.07, fin)
+    seg = Part("umbral_body", 6, 128)
+    _seg(seg, -0.2, 2.05, 0.95, sk)
+    seg.add(0.0, 0.94, -0.1, 1.85, 1.0, 0.1, eye)                     # the glowing spine stripe
+    for s in (-1, 1):
+        seg.bone("fin_" + ("r" if s > 0 else "l"), (0.9, 0, s * 0.95))
+        seg.add(0.2, -0.08, s * 0.95, 1.7, 0.08, s * 2.6, fin)        # fin-wings
+        seg.add(0.5, -0.06, s * 2.6, 1.4, 0.06, s * 3.1, fin)
+        seg.bone(None)
+        for x in (0.3, 1.0, 1.7): seg.add(x, -0.2, s * 0.93, x + 0.15, 0.4, s * 0.97, eye)
+    seg.anim("fin_l", "rot", (0, 0, 14), 2.0)
+    seg.anim("fin_r", "rot", (0, 0, -14), 2.0)
+    tail = Part("umbral_tail", 6, 128)
+    _seg(tail, -1.8, 0.2, 0.75, sk)
+    _seg(tail, -3.0, -1.6, 0.45, sk)
+    tail.bone("fluke", (-2.9, 0, 0))
+    for s in (-1, 1):
+        tail.add(-4.4, -0.07, s * 0.2, -2.9, 0.07, s * 1.8, fin)      # flat fluke
+    tail.add(-3.2, -0.1, -0.1, -2.8, 0.1, 0.1, eye)
+    tail.bone(None)
+    tail.anim("fluke", "rot", (12, 0, 0), 1.7)
+    return [h, seg, tail]
+
+
+CO_SKIN, CO_SKIN_D, CO_HAIR, CO_TAIL, CO_TAIL_D, CO_GOLD, CO_FIN = (196, 214, 186), (150, 170, 140), (226, 82, 104), (52, 150, 132), (30, 92, 84), (236, 196, 70), (120, 220, 200)
+
+
+def coralia():
+    """Coralia, Siren of the Shoals (after Cuphead's Cala Maria): a giant mermaid. Waist = the origin; the tail hangs
+    down and back to a wide fin; the torso up to the neck (y 1.25), where the head sits; arms hang from the shoulders
+    (0, 1.0, +-0.55)."""
+    skin, tl = solid(CO_SKIN, 5), scales(CO_TAIL, CO_TAIL_D)
+    gold, hair = solid(CO_GOLD, 6), solid(CO_HAIR, 8)
+    fin = membrane(CO_FIN, (60, 160, 150))
+    tail = Part("coralia_tail", 6, 128)
+    rounded(tail, -0.42, -0.9, -0.48, 0.42, 0.1, 0.48, tl, 0.14)
+    rounded(tail, -0.75, -1.8, -0.4, 0.2, -0.85, 0.4, tl, 0.12)
+    rounded(tail, -1.4, -2.5, -0.32, -0.45, -1.7, 0.32, tl, 0.1)
+    tail.add(-2.0, -2.9, -0.24, -1.2, -2.3, 0.24, tl)
+    tail.bone("fin", (-1.9, -2.7, 0))
+    tail.add(-3.1, -3.6, -0.08, -1.8, -2.4, 0.08, fin)                 # the fin (upright)
+    tail.add(-2.9, -2.2, -0.08, -2.0, -1.6, 0.08, fin)
+    tail.bone(None)
+    tail.add(-0.46, -0.15, -0.52, 0.46, 0.1, 0.52, gold)               # the belt of shells
+    for s in (-1, 1): tail.add(-0.3, -1.4, s * 0.38, 0.1, -1.0, s * 0.62, fin)   # side fins
+    tail.anim("fin", "rot", (0, 0, 14), 1.8)
+    torso = Part("coralia_torso", 6, 64)
+    rounded(torso, -0.3, 0.05, -0.45, 0.32, 1.1, 0.45, skin, 0.12)
+    torso.add(-0.32, 1.0, -0.62, 0.3, 1.18, 0.62, solid(CO_SKIN_D, 4))   # shoulders
+    for s in (-1, 1): torso.add(0.25, 0.6, s * 0.08, 0.42, 0.88, s * 0.38, gold)   # shell top
+    torso.add(-0.12, 1.1, -0.15, 0.12, 1.3, 0.15, skin)                 # neck
+    head = Part("coralia_head", 6, 128)
+    rounded(head, -0.32, 0.05, -0.3, 0.34, 0.75, 0.3, skin, 0.1)
+    for s in (-1, 1):
+        head.add(0.34, 0.4, s * 0.08, 0.37, 0.52, s * 0.2, solid((40, 30, 60), 3))   # eyes
+        head.add(0.36, 0.43, s * 0.11, 0.38, 0.49, s * 0.16, glow((255, 120, 200)))
+        head.add(-0.35, 0.1, s * 0.3, 0.1, 0.8, s * 0.45, hair)
+    head.add(0.34, 0.2, -0.08, 0.37, 0.26, 0.08, solid((180, 40, 70), 3))      # lips
+    head.add(-0.5, 0.55, -0.42, 0.25, 1.05, 0.42, hair)                 # hair
+    head.add(-0.95, -0.6, -0.4, -0.3, 0.9, 0.4, hair)                   # it falls down her back
+    head.add(-1.25, -1.0, -0.3, -0.85, 0.2, 0.3, hair)
+    for i, z in enumerate((-0.32, -0.12, 0.08, 0.28)):                  # a coral crown
+        head.add(-0.1, 1.0, z, 0.1, 1.35 + (i % 2) * 0.2, z + 0.08, solid((255, 120, 110), 4))
+    head.add(-0.1, 1.0, -0.4, 0.1, 1.1, 0.4, gold)
+    arm = Part("coralia_arm", 6, 64)
+    rounded(arm, -0.13, -0.6, -0.13, 0.13, 0.05, 0.13, skin, 0.05)
+    rounded(arm, -0.11, -1.15, -0.11, 0.11, -0.55, 0.11, skin, 0.04)
+    arm.add(-0.13, -1.38, -0.13, 0.13, -1.12, 0.13, solid(CO_SKIN_D, 4))
+    arm.add(-0.14, -0.9, -0.14, 0.14, -0.8, 0.14, gold)                 # a bracelet
+    return [tail, torso, head, arm]
+
+
+IJ_SKIN, IJ_DARK, IJ_BELLY, IJ_EYE = (150, 52, 70), (88, 26, 44), (222, 160, 150), (255, 200, 60)
+
+
+def inkjaw():
+    """Old Inkjaw: a giant octopus. The body's origin is the middle; the mantle bulges up and back; arms (8 x 3 parts)
+    leave from under it: each tentacle part starts at its origin and reaches +x 1.25, suckers underneath."""
+    sk = scales(IJ_SKIN, IJ_DARK)
+    body = Part("inkjaw_body", 6, 128)
+    rounded(body, -0.9, -0.7, -0.9, 0.9, 0.6, 0.9, sk, 0.3)
+    rounded(body, -1.8, -0.2, -0.75, 0.3, 1.5, 0.75, sk, 0.3)           # the mantle
+    rounded(body, -2.4, 0.2, -0.55, -1.6, 1.3, 0.55, sk, 0.22)
+    for s in (-1, 1):
+        body.add(0.55, 0.15, s * 0.85, 0.95, 0.6, s * 1.0, solid((240, 230, 200), 3))   # eyes
+        body.add(0.75, 0.25, s * 0.95, 0.92, 0.5, s * 1.02, glow(IJ_EYE))
+        body.add(0.5, 0.6, s * 0.7, 1.0, 0.75, s * 1.0, solid(IJ_DARK))
+        for x in (-1.3, -0.6): body.add(x, 0.9, s * 0.72, x + 0.25, 1.15, s * 0.78, solid(IJ_BELLY))   # warts
+    body.add(0.3, -0.95, -0.2, 0.75, -0.65, 0.2, solid((40, 30, 30), 4))   # the beak
+    body.add(0.6, -1.05, -0.12, 0.9, -0.85, 0.12, solid((230, 200, 120), 4))
+    body.add(-0.85, -0.75, -0.85, 0.85, -0.65, 0.85, solid(IJ_BELLY))
+    body.bone_all("b")
+    body.anim("b", "pos", (0, 0.6, 0), 3.0)
+    t = Part("inkjaw_tentacle", 6, 64)
+    rounded(t, -0.1, -0.24, -0.24, 1.35, 0.24, 0.24, sk, 0.08)
+    for x in (0.15, 0.55, 0.95): t.add(x, -0.3, -0.1, x + 0.2, -0.22, 0.1, solid(IJ_BELLY, 3))   # suckers
+    return [body, t]
+
+
+GM_SHELL, GM_SHELL_D, GM_FLESH, GM_PEARL = (198, 176, 150), (120, 96, 80), (214, 120, 140), (240, 240, 255)
+
+
+def grandmaw():
+    """The Grandmaw Clam (after Calamity's Giant Clam): a ribbed bowl (origin = its middle, on the floor), a lid hinged
+    at the back (its origin is the hinge, (-1, 0.75, 0) in the shell's frame; closed it lies flat over the bowl), and a
+    glowing pearl inside."""
+    def ribbed(c, d):
+        def f(reg, face, rng):
+            _fill(reg, c, rng, 6)
+            h, w = reg.shape[:2]
+            for x in range(w):
+                if x % 4 in (0, 1): reg[:, x, :3] = np.clip(np.array(c) - 22, 0, 255)
+            if h > 2: reg[-1, :, :3] = d
+        return f
+    sh = ribbed(GM_SHELL, GM_SHELL_D)
+    flesh = solid(GM_FLESH, 5)
+    shell = Part("grandmaw_shell", 6, 128)
+    shell.add(-1.0, 0.0, -0.9, 1.0, 0.25, 0.9, sh)
+    shell.add(-1.1, 0.2, -1.1, 1.2, 0.6, 1.1, sh)
+    shell.add(-1.15, 0.55, -1.2, 1.3, 0.75, 1.2, sh)
+    for z in (-0.9, -0.45, 0.0, 0.45, 0.9): shell.add(1.25, 0.6, z - 0.15, 1.38, 0.8, z + 0.15, solid(GM_SHELL_D, 4))   # scalloped lip
+    shell.add(-0.95, 0.6, -1.0, 1.1, 0.72, 1.0, flesh)                  # the soft inside
+    for x in (-0.4, 0.2, 0.7): shell.add(x, 0.7, -0.9, x + 0.25, 0.78, 0.9, solid((170, 80, 100), 4))
+    lid = Part("grandmaw_lid", 6, 128)
+    lid.add(0.0, 0.0, -1.2, 2.3, 0.2, 1.2, sh)
+    lid.add(0.1, 0.18, -1.05, 2.1, 0.45, 1.05, sh)
+    lid.add(0.3, 0.42, -0.8, 1.8, 0.65, 0.8, sh)
+    for z in (-0.9, -0.45, 0.0, 0.45, 0.9): lid.add(2.25, -0.05, z - 0.15, 2.38, 0.15, z + 0.15, solid(GM_SHELL_D, 4))
+    lid.add(0.05, -0.04, -1.0, 2.15, 0.02, 1.0, flesh)
+    for z in (-0.6, 0.0, 0.6): lid.add(0.6, 0.64, z - 0.1, 1.6, 0.75, z + 0.1, solid((150, 200, 190), 4))   # barnacles
+    pearl = Part("grandmaw_pearl", 6, 32)
+    rounded(pearl, -0.32, -0.32, -0.32, 0.32, 0.32, 0.32, glow(GM_PEARL), 0.12)
+    return [shell, lid, pearl]
+
+
+LA_SKIN, LA_DARK, LA_EYE = (22, 22, 30), (8, 8, 12), (240, 240, 240)
+
+
+def lament():
+    """The Lament (after Sea of Solitude's great fish): a huge black fish with pale empty eyes, a gaping mouth and
+    ragged fins, dripping shadow."""
+    sk, dk = solid(LA_SKIN, 6), solid(LA_DARK, 4)
+    fin = cloth((34, 34, 46), trim=None, ragged=True)
+    eye = glow(LA_EYE)
+    h = Part("lament_head", 6, 128)
+    rounded(h, -1.4, -1.2, -1.15, 1.0, 1.3, 1.15, sk, 0.4)
+    rounded(h, 1.0, -0.9, -0.95, 1.9, 1.0, 0.95, sk, 0.3)
+    h.add(1.9, -0.75, -0.75, 2.0, 0.35, 0.75, solid((2, 2, 4), 2))    # the gaping mouth
+    for z in (-0.6, -0.3, 0.0, 0.3, 0.6):
+        h.add(1.85, 0.2, z - 0.05, 1.95, 0.4, z + 0.05, solid((180, 180, 170), 3))   # little teeth
+        h.add(1.85, -0.75, z - 0.05, 1.95, -0.55, z + 0.05, solid((180, 180, 170), 3))
+    for s in (-1, 1):
+        h.add(0.9, 0.5, s * 1.0, 1.45, 1.0, s * 1.08, eye)              # big pale eyes
+        h.add(1.1, 0.65, s * 1.04, 1.3, 0.85, s * 1.1, dk)
+        h.add(1.2, 0.0, s * 1.0, 1.35, 0.45, s * 1.03, solid((180, 180, 200), 3))   # a tear streak
+    h.bone("whisk", (-1.0, 1.3, 0))
+    h.add(-1.2, 1.3, -0.08, 0.6, 2.4, 0.08, fin)                       # dorsal
+    h.bone(None)
+    h.anim("whisk", "rot", (0, 0, 6), 3.2)
+    seg = Part("lament_body", 6, 128)
+    _seg(seg, -0.2, 2.35, 1.1, sk)
+    seg.add(0.0, 1.05, -0.08, 2.0, 2.2, 0.08, fin)
+    for s in (-1, 1):
+        seg.bone("fin_" + ("r" if s > 0 else "l"), (1.2, -0.4, s * 1.1))
+        seg.add(0.6, -0.6, s * 1.1, 1.8, -0.4, s * 2.3, fin)
+        seg.bone(None)
+    seg.anim("fin_l", "rot", (0, 0, 16), 2.6)
+    seg.anim("fin_r", "rot", (0, 0, -16), 2.6)
+    tail = Part("lament_tail", 6, 128)
+    _seg(tail, -1.6, 0.2, 0.8, sk)
+    tail.add(-2.3, -0.4, -0.4, -1.5, 0.4, 0.4, sk)
+    tail.bone("fluke", (-2.2, 0, 0))
+    tail.add(-4.0, -2.0, -0.09, -2.1, 2.0, 0.09, fin)                  # a ragged, upright tail fin
+    tail.bone(None)
+    tail.anim("fluke", "rot", (0, 18, 0), 2.2)
+    return [h, seg, tail]
+
+
+def deep_bosses():
+    return scourge() + umbral() + coralia() + inkjaw() + grandmaw() + lament()
+
+
+ALL_PARTS = leviathan() + sandworm() + frost_wyrm() + lich() + golem() + mimic() + locust() + ghost_captain() + aurora() + black_sun() + deep_bosses()
 
 # =====================================================================================================================
 #  16x16 pixel art (flat items + Index icons)
@@ -983,6 +1245,8 @@ PAL = {
     "K": (180, 184, 196), "c": (110, 114, 126), "P": (200, 30, 36),
     "D": (60, 40, 30), "E": (230, 190, 40), "l": (255, 250, 200),
     "1": (24, 24, 28), "2": (52, 52, 60), "3": (90, 90, 100),
+    "@": (226, 82, 104), "%": (160, 100, 255), "&": (52, 40, 86), "*": (240, 240, 255), "+": (198, 176, 150),
+    "=": (120, 96, 80), "~": (40, 60, 120), "^": (90, 120, 200), "!": (178, 226, 62), ";": (96, 120, 40),
     "4": L_CLOTH, "5": L_CLOTH_D, "6": L_BRONZE, "7": L_SOUL, "8": L_BONE_D, "9": (64, 22, 30),
 }
 
@@ -1439,6 +1703,118 @@ ICONS = {
     ],
 }
 
+DEEP_SUMMONS = {
+    "brine_bait": [
+        "................",
+        ".......xx.......",
+        "......x..x......",
+        "......x..x......",
+        ".......xx.......",
+        "........x.......",
+        "......;;x;;.....",
+        ".....;!!!!!;....",
+        "....;!!l!!!!;...",
+        "....;!!!!!l!;...",
+        "....;!l!!!!!;...",
+        ".....;!!!!!;..x.",
+        "......;;;;;..x..",
+        "........x...x...",
+        ".........xxx....",
+        "................",
+    ],
+    "umbral_sonar": [
+        "................",
+        ".....&&&&&&.....",
+        "....&......&....",
+        "...&..&&&&..&...",
+        "..&..&....&..&..",
+        "..&.&..%%..&.&..",
+        "..&.&.%ll%.&.&..",
+        "..&.&.%ll%.&.&..",
+        "..&.&..%%..&.&..",
+        "..&..&....&..&..",
+        "...&..&&&&..&...",
+        "....&......&....",
+        ".....&&&&&&.....",
+        "......1111......",
+        ".....122221.....",
+        "................",
+    ],
+    "sirens_comb": [
+        "................",
+        "................",
+        "...@@@@@@@@@@...",
+        "..@@*@@@@@@*@@..",
+        "..@@@@@@@@@@@@..",
+        "..@@@@@@@@@@@@..",
+        "..*.*.*.*.*.*...",
+        "..*.*.*.*.*.*...",
+        "..*.*.*.*.*.*...",
+        "..*.*.*.*.*.*...",
+        "..*...*...*.....",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+    ],
+    "inkjaw_bait": [
+        "................",
+        "......9999......",
+        ".....999999.....",
+        "....99999999....",
+        "....9e9999e9....",
+        "....9b9999b9....",
+        "....99999999....",
+        ".....999999.....",
+        "....9.9.9.9.9...",
+        "...9..9.9..9.9..",
+        "...9.9..9.9..9..",
+        "..9..9.9...9....",
+        "......Y.........",
+        ".....YlY........",
+        "......Y.........",
+        "................",
+    ],
+    "glistening_pearl": [
+        "................",
+        "................",
+        "..+++++++++++...",
+        ".+=+=+=+=+=+=+..",
+        ".+++++++++++++..",
+        "..=+++++++++=...",
+        "................",
+        "......****......",
+        ".....**l***.....",
+        ".....*l*****....",
+        ".....*******....",
+        "..+++.****.+++..",
+        ".+=+=+=+=+=+=+..",
+        ".+++++++++++++..",
+        "..===========...",
+        "................",
+    ],
+    "mournful_shell": [
+        "................",
+        ".........^^.....",
+        "........^~~^....",
+        ".......^~^^~^...",
+        "......^~^~~^~^..",
+        ".....^~^~^^~^~..",
+        "....^~^~^l^~^~..",
+        "...^~^~^^^~^~^..",
+        "..^~^~~~~~~^~...",
+        "..^~^^^^^^^~^...",
+        "..^~~~~~~~~^....",
+        "...^^^^^^^^.....",
+        "....~~~~~~......",
+        "................",
+        "................",
+        "................",
+    ],
+}
+ICONS.update(DEEP_SUMMONS)
+
 TROPHY_BOSSES = ["demon_eye", "mortimer_freeze", "dune_devourer", "frostmaw", "don_lorenzo", "kraken", "diamond_jacob",
                  "rocco_vendetta", "grimtusk", "lost_explorer", "queen_spider", "leviathan", "sandworm_king", "lich", "frost_wyrm",
                  "stone_golem", "ghost_captain"]
@@ -1510,6 +1886,93 @@ def worn_items():
 #  iso preview
 # =====================================================================================================================
 
+def render_icon(pieces, size=16, outline=(16, 14, 20)):
+    """A small picture of a 3D model for its icon: pieces = [(part, img, boxes, fn)], fn maps a local point to the
+    picture's frame (+x = right on screen, +y = up, +z = away from the camera). Oblique view from the left, a little
+    above; faces in their average texture colour, drawn far to near, then shrunk with a dark outline."""
+    from PIL import ImageDraw
+    quads = []
+    for part, img, boxes, fn in pieces:
+        tex = np.array(img)
+        for (a, b), regs in boxes:
+            p0, p1 = fn(a), fn(b)
+            lo = [min(p0[i], p1[i]) for i in range(3)]; hi = [max(p0[i], p1[i]) for i in range(3)]
+            cols = {}
+            for key, (rx, ry, rw, rh) in regs.items():
+                avg = tex[ry:ry + rh, rx:rx + rw].reshape(-1, 4)
+                avg = avg[avg[:, 3] > 0]
+                cols[key] = tuple(int(v) for v in avg[:, :3].mean(0)) if len(avg) else None
+            side = cols.get("-z") or cols.get("+z") or (128, 128, 128)
+            top = cols.get("+y") or side
+            front = cols.get("+x") or side
+            quads.append((lo, hi, side, top, front))
+    if not quads: return Image.new("RGBA", (size, size))
+    K = 0.38
+    def P(x, y, z): return (x + K * z, -y - K * z)
+    pts = [P(x, y, z) for lo, hi, *_ in quads for x in (lo[0], hi[0]) for y in (lo[1], hi[1]) for z in (lo[2], hi[2])]
+    minx, maxx = min(p[0] for p in pts), max(p[0] for p in pts)
+    miny, maxy = min(p[1] for p in pts), max(p[1] for p in pts)
+    big = size * 8
+    pad = 1.2 * 8
+    sc = (big - 2 * pad) / max(maxx - minx, maxy - miny, 1e-3)
+    ox = (big - (maxx - minx) * sc) / 2 - minx * sc
+    oy = (big - (maxy - miny) * sc) / 2 - miny * sc
+    im = Image.new("RGBA", (big, big), (0, 0, 0, 0))
+    d = ImageDraw.Draw(im)
+    def S(x, y, z): q = P(x, y, z); return (q[0] * sc + ox, q[1] * sc + oy)
+    def sh(c, k): return tuple(int(max(0, min(255, v * k))) for v in c) + (255,)
+    for lo, hi, side, top, front in sorted(quads, key=lambda q: (-(q[0][2] + q[1][2]), q[0][1])):
+        x0, y0, z0 = lo; x1, y1, z1 = hi
+        d.polygon([S(x0, y1, z0), S(x1, y1, z0), S(x1, y1, z1), S(x0, y1, z1)], fill=sh(top, 1.15))
+        d.polygon([S(x1, y0, z0), S(x1, y1, z0), S(x1, y1, z1), S(x1, y0, z1)], fill=sh(front, 0.85))
+        d.polygon([S(x0, y0, z0), S(x1, y0, z0), S(x1, y1, z0), S(x0, y1, z0)], fill=sh(side, 1.0))
+    small = im.resize((size, size), Image.BOX)
+    a = np.array(small).astype(float)
+    rgb, al = a[..., :3], a[..., 3]
+    mask = al > 90
+    out = np.zeros((size, size, 4), np.uint8)
+    out[mask, :3] = np.clip(rgb[mask] / np.maximum(al[mask, None] / 255, 1e-3), 0, 255)
+    out[mask, 3] = 255
+    ring = np.zeros_like(mask)
+    for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+        ring |= np.roll(np.roll(mask, dy, 0), dx, 1)
+    ring &= ~mask
+    out[ring, :3] = outline; out[ring, 3] = 255
+    return Image.fromarray(out, "RGBA")
+
+
+DEEP_ICON_FOR = {"scourge": "brine_scourge", "umbral": "umbral_leviathan", "coralia": "coralia", "inkjaw": "old_inkjaw",
+                 "grandmaw": "grandmaw_clam", "lament": "the_lament"}
+
+
+def deep_boss_icons(by, size=16):
+    """Index icons for the Dark Ocean's bosses, drawn from their own models."""
+    def at(name, dx=0, dy=0, dz=0, rot=None, s=1.0):
+        part, img, boxes = by[name]
+        def fn(p):
+            x, y, z = p[0] * s, p[1] * s, p[2] * s
+            if rot == "down": x, y = y, -x
+            elif rot == "up": x, y = -y, x
+            return (x + dx, y + dy, z + dz)
+        return (part, img, boxes, fn)
+    def serpent(pre, gap, n):
+        ps = [at(pre + "_head")]
+        for i in range(n): ps.append(at(pre + "_body", -gap * (i + 1), math.sin(i * 1.3) * 0.5, 0, s=1 - 0.05 * i))
+        ps.append(at(pre + "_tail", -gap * (n + 1), math.sin(n * 1.3) * 0.5, 0, s=1 - 0.05 * n))
+        return ps
+    out = {"brine_scourge": render_icon(size=size, pieces=serpent("scourge", 1.95, 3)), "umbral_leviathan": render_icon(size=size, pieces=serpent("umbral", 2.05, 3)),
+           "the_lament": render_icon(size=size, pieces=serpent("lament", 2.3, 2))}
+    out["coralia"] = render_icon(size=size, pieces=[at("coralia_tail"), at("coralia_torso"), at("coralia_head", 0, 1.25, 0),
+                                  at("coralia_arm", 0, 1.0, -0.55), at("coralia_arm", 0, 1.0, 0.55)])
+    ink = [at("inkjaw_body")]
+    for j, (x, z) in enumerate(((-0.5, -0.6), (0.5, -0.6), (-0.5, 0.6), (0.5, 0.6), (0, 0))):
+        for sgi in range(3):
+            ink.append(at("inkjaw_tentacle", x + (sgi * 0.25 if j % 2 else -sgi * 0.25), -0.6 - sgi * 1.15, z, rot="down", s=1 - sgi * 0.22))
+    out["old_inkjaw"] = render_icon(ink, size)
+    out["grandmaw_clam"] = render_icon(size=size, pieces=[at("grandmaw_shell"), at("grandmaw_lid", -1.0, 0.75, 0, rot="up"), at("grandmaw_pearl", 0.1, 0.75, 0)])
+    return out
+
+
 def preview(parts_built, out):
     tiles = []
     for part, img, boxes in parts_built:
@@ -1577,7 +2040,7 @@ def flat_item(A, key, img, parent="minecraft:item/generated", folder=""):
 
 HANDHELD = {"tidebreaker", "sandworm_fang", "lich_staff", "glacial_fang"}
 FLAT = ["lantern_of_souls", "museum_pedestal", "ancient_gear_part", "ancient_core", "tidebreaker", "sandworm_fang",
-        "lich_staff", "glacial_fang", "abyssal_lure", "sandworm_drum", "lich_phylactery", "frozen_horn"]
+        "lich_staff", "glacial_fang", "abyssal_lure", "sandworm_drum", "lich_phylactery", "frozen_horn"] + list(DEEP_SUMMONS)
 
 
 def main():
@@ -1600,8 +2063,11 @@ def main():
     built, meta = [], {}
     icon_for = {"lev": "leviathan", "worm": "sandworm_king", "wyrm": "frost_wyrm", "lich": "lich", "golem": "stone_golem",
                 "mimic": "mimic", "locust": "locust", "ghost": "ghost_captain", "aurora": "ghost_ship"}
+    prebuilt = [build(part, 1000 + i) for i, part in enumerate(ALL_PARTS)]
+    icons.update(deep_boss_icons({part.name: (part, img, boxes) for part, (img, boxes) in zip(ALL_PARTS, prebuilt)}))
+    icon_for.update(DEEP_ICON_FOR)
     for i, part in enumerate(ALL_PARTS):
-        img, boxes = build(part, 1000 + i)
+        img, boxes = prebuilt[i]
         built.append((part, img, boxes))
         model, S, off = java_model(part, boxes)
         meta[part.name] = (S, off)
@@ -1708,6 +2174,13 @@ def main():
     if prev:
         os.makedirs(prev, exist_ok=True)
         preview(built, os.path.join(prev, "wild_models.png"))
+        big = deep_boss_icons({p.name: (p, im, bx) for p, im, bx in built}, 300)
+        sheet = Image.new("RGBA", (3 * 310, 2 * 330), (24, 34, 52, 255))
+        from PIL import ImageDraw
+        dr = ImageDraw.Draw(sheet)
+        for i, (k, im) in enumerate(big.items()):
+            sheet.alpha_composite(im, ((i % 3) * 310 + 5, (i // 3) * 330 + 5)); dr.text(((i % 3) * 310 + 10, (i // 3) * 330 + 310), k, fill=(230, 230, 230))
+        sheet.save(os.path.join(prev, "deep_bosses.png"))
         ic = list(index_icons.items()) + [(k, v) for k, v in icons.items() if k.startswith("trophy_")]
         sheet = Image.new("RGBA", (12 * 68, ((len(ic) + 11) // 12) * 68), (200, 180, 140, 255))
         for i, (k, im) in enumerate(ic): sheet.alpha_composite(im.resize((64, 64), Image.NEAREST), ((i % 12) * 68 + 2, (i // 12) * 68 + 2))

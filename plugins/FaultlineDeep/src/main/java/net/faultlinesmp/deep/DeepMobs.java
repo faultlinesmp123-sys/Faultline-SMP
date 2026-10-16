@@ -229,7 +229,10 @@ final class DeepMobs implements Listener {
         m.sentYaw = yaw; m.sentPitch = pitch;
         double h = m.body.getHeight();
         float s = m.k.modelScale() * (m.fused ? 1.5f : 1f);
-        Quaternionf q = new Quaternionf().rotationY((float) Math.toRadians(-yaw)).rotateX((float) Math.toRadians(pitch)).rotateY((float) Math.PI);
+        // the models are authored like the wild bosses' parts (+x = front): Wild's Q0 (local -> display) and the half
+        // turn item displays draw items with (tools/deep_assets.py)
+        Quaternionf q = new Quaternionf().rotationY((float) Math.toRadians(-yaw)).rotateX((float) Math.toRadians(pitch))
+                .rotateY((float) Math.toRadians(-90)).rotateY((float) Math.PI);
         float down = (float) (-h * 0.5 - (m.buried ? h * 0.7 : 0));
         m.model.setInterpolationDelay(0);
         m.model.setTransformation(new Transformation(new Vector3f(0, down, 0), q, new Vector3f(s, s, s), new Quaternionf()));
@@ -264,7 +267,8 @@ final class DeepMobs implements Listener {
         pose(m, false);
         if (m.stand != null && m.stand.isValid()) {
             Location l = m.body.getLocation();
-            Location sl = l.clone().add(0, m.buried ? -m.body.getHeight() * 0.7 : 0, 0);
+            // the Bedrock model is centred on the stand's feet, so the stand stands in the body's middle
+            Location sl = l.clone().add(0, m.body.getHeight() * 0.5 - (m.buried ? m.body.getHeight() * 0.7 : 0), 0);
             sl.setPitch(0);
             m.stand.teleport(sl);
         }

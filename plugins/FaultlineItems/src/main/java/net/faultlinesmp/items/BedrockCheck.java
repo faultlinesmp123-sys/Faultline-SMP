@@ -31,7 +31,7 @@ import java.util.zip.ZipFile;
  *   Geyser + Floodgate installed, enable-custom-content / force-resource-packs in Geyser's config,
  *   plugins/Geyser-Spigot/packs/: each of our .mcpacks there, up to date (bedrock_packs.yml = what this build expects),
  *     no second copy of the same pack, no unzipped folder (Geyser only reads .mcpack/.zip files), none left elsewhere,
- *   plugins/Geyser-Spigot/custom_mappings/: our four mapping files, valid JSON, format 2,
+ *   plugins/Geyser-Spigot/custom_mappings/: our five mapping files, valid JSON, format 2,
  *   and who online is detected as Bedrock (a linked Floodgate account uses a Java UUID).
  * /bedrockcheck install [branch]: downloads the packs and mappings from the GitHub repo (default branch: main, or
  * bedrock-packs.branch in the config), moves old copies of the same packs to packs/old/, then asks for a restart
@@ -40,7 +40,7 @@ import java.util.zip.ZipFile;
 final class BedrockCheck implements CommandExecutor {
     static final String REPO = "https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/";
     static final List<String> MAPPINGS = List.of("faultline_items_mappings.json", "faultline_wild_mappings.json",
-            "faultline_ships_mappings.json", "faultline_cosmetics_mappings.json");
+            "faultline_ships_mappings.json", "faultline_cosmetics_mappings.json", "faultline_deep_mappings.json");
 
     private final FaultlineItems plugin;
     BedrockCheck(FaultlineItems plugin) { this.plugin = plugin; }

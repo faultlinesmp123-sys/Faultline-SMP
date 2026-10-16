@@ -3546,6 +3546,7 @@ public final class FaultlineItems extends JavaPlugin {
                 byte[] hashBytes = hex.isEmpty() ? new byte[0] : HexFormat.of().parseHex(hex);
                 player.addResourcePack(PACK_ID, url, hashBytes, null, false);
                 plugin.getLogger().info("[Resource pack] sent to " + player.getName() + " (hash " + (hex.isEmpty() ? "none" : hex) + ")");
+                sendMusic(player);
                 return "sent (hash " + (hex.isEmpty() ? "none" : hex) + ")";
             } catch (Exception e) {
                 plugin.getLogger().log(Level.WARNING, "Failed to send item texture pack to " + player.getName(), e);
@@ -3554,6 +3555,25 @@ public final class FaultlineItems extends JavaPlugin {
         }
 
         static UUID packId() { return PACK_ID; }
+
+        /**
+         * The Dark Ocean's music (1.2.41) is its own small pack (FaultlineDeepMusic.zip): the main pack has to stay under
+         * 25 MB for GitHub's web upload. Sent beside the main one; an empty url skips it.
+         */
+        private static final UUID MUSIC_ID = UUID.fromString("4c8e1f2a-7d3b-4a96-b5e0-2f6c9a1d8e37");
+
+        void sendMusic(Player player) {
+            String url = plugin.getConfig().getString("item-textures.music-url", "");
+            String hex = plugin.getConfig().getString("item-textures.music-hash", "");
+            if (url == null || url.isBlank()) return;
+            hex = hex == null ? "" : hex.trim();
+            if (!hex.isEmpty() && !hex.matches("[0-9a-fA-F]{40}")) {
+                plugin.getLogger().warning("[Resource pack] music pack not sent: item-textures.music-hash isn't a SHA-1");
+                return;
+            }
+            try { player.addResourcePack(MUSIC_ID, url, hex.isEmpty() ? new byte[0] : HexFormat.of().parseHex(hex), null, false); }
+            catch (Exception e) { plugin.getLogger().log(Level.WARNING, "Failed to send the music pack to " + player.getName(), e); }
+        }
     }
 
 

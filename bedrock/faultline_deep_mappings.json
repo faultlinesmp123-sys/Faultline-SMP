@@ -1,0 +1,600 @@
+{
+ "format_version": 2,
+ "items": {
+  "minecraft:paper": [
+   {
+    "type": "definition",
+    "model": "faultline:deep/gawker",
+    "bedrock_identifier": "faultline:deep_gawker",
+    "display_name": "gawker",
+    "bedrock_options": {
+     "icon": "faultline.deep_gawker",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:deep/gawker_icon",
+    "bedrock_identifier": "faultline:deep_gawker_egg",
+    "display_name": "gawker egg",
+    "bedrock_options": {
+     "icon": "faultline.deep_gawker",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:deep/bloatfin",
+    "bedrock_identifier": "faultline:deep_bloatfin",
+    "display_name": "bloatfin",
+    "bedrock_options": {
+     "icon": "faultline.deep_bloatfin",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:deep/bloatfin_icon",
+    "bedrock_identifier": "faultline:deep_bloatfin_egg",
+    "display_name": "bloatfin egg",
+    "bedrock_options": {
+     "icon": "faultline.deep_bloatfin",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:deep/jellywing",
+    "bedrock_identifier": "faultline:deep_jellywing",
+    "display_name": "jellywing",
+    "bedrock_options": {
+     "icon": "faultline.deep_jellywing",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:deep/jellywing_icon",
+    "bedrock_identifier": "faultline:deep_jellywing_egg",
+    "display_name": "jellywing egg",
+    "bedrock_options": {
+     "icon": "faultline.deep_jellywing",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:deep/driftback",
+    "bedrock_identifier": "faultline:deep_driftback",
+    "display_name": "driftback",
+    "bedrock_options": {
+     "icon": "faultline.deep_driftback",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:deep/driftback_icon",
+    "bedrock_identifier": "faultline:deep_driftback_egg",
+    "display_name": "driftback egg",
+    "bedrock_options": {
+     "icon": "faultline.deep_driftback",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:deep/clam",
+    "bedrock_identifier": "faultline:deep_clam",
+    "display_name": "clam",
+    "bedrock_options": {
+     "icon": "faultline.deep_clam",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:deep/clam_icon",
+    "bedrock_identifier": "faultline:deep_clam_egg",
+    "display_name": "clam egg",
+    "bedrock_options": {
+     "icon": "faultline.deep_clam",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:deep/lumenbell",
+    "bedrock_identifier": "faultline:deep_lumenbell",
+    "display_name": "lumenbell",
+    "bedrock_options": {
+     "icon": "faultline.deep_lumenbell",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:deep/lumenbell_icon",
+    "bedrock_identifier": "faultline:deep_lumenbell_egg",
+    "display_name": "lumenbell egg",
+    "bedrock_options": {
+     "icon": "faultline.deep_lumenbell",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:deep/gasbloom",
+    "bedrock_identifier": "faultline:deep_gasbloom",
+    "display_name": "gasbloom",
+    "bedrock_options": {
+     "icon": "faultline.deep_gasbloom",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:deep/gasbloom_icon",
+    "bedrock_identifier": "faultline:deep_gasbloom_egg",
+    "display_name": "gasbloom egg",
+    "bedrock_options": {
+     "icon": "faultline.deep_gasbloom",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:deep/fangstalker",
+    "bedrock_identifier": "faultline:deep_fangstalker",
+    "display_name": "fangstalker",
+    "bedrock_options": {
+     "icon": "faultline.deep_fangstalker",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:deep/fangstalker_icon",
+    "bedrock_identifier": "faultline:deep_fangstalker_egg",
+    "display_name": "fangstalker egg",
+    "bedrock_options": {
+     "icon": "faultline.deep_fangstalker",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:deep/blastfin",
+    "bedrock_identifier": "faultline:deep_blastfin",
+    "display_name": "blastfin",
+    "bedrock_options": {
+     "icon": "faultline.deep_blastfin",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:deep/blastfin_icon",
+    "bedrock_identifier": "faultline:deep_blastfin_egg",
+    "display_name": "blastfin egg",
+    "bedrock_options": {
+     "icon": "faultline.deep_blastfin",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:deep/burrowshark",
+    "bedrock_identifier": "faultline:deep_burrowshark",
+    "display_name": "burrowshark",
+    "bedrock_options": {
+     "icon": "faultline.deep_burrowshark",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:deep/burrowshark_icon",
+    "bedrock_identifier": "faultline:deep_burrowshark_egg",
+    "display_name": "burrowshark egg",
+    "bedrock_options": {
+     "icon": "faultline.deep_burrowshark",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:deep/cavecrawler",
+    "bedrock_identifier": "faultline:deep_cavecrawler",
+    "display_name": "cavecrawler",
+    "bedrock_options": {
+     "icon": "faultline.deep_cavecrawler",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:deep/cavecrawler_icon",
+    "bedrock_identifier": "faultline:deep_cavecrawler_egg",
+    "display_name": "cavecrawler egg",
+    "bedrock_options": {
+     "icon": "faultline.deep_cavecrawler",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:deep/glowgrub",
+    "bedrock_identifier": "faultline:deep_glowgrub",
+    "display_name": "glowgrub",
+    "bedrock_options": {
+     "icon": "faultline.deep_glowgrub",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:deep/glowgrub_icon",
+    "bedrock_identifier": "faultline:deep_glowgrub_egg",
+    "display_name": "glowgrub egg",
+    "bedrock_options": {
+     "icon": "faultline.deep_glowgrub",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:deep/shellsnake",
+    "bedrock_identifier": "faultline:deep_shellsnake",
+    "display_name": "shellsnake",
+    "bedrock_options": {
+     "icon": "faultline.deep_shellsnake",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:deep/shellsnake_icon",
+    "bedrock_identifier": "faultline:deep_shellsnake_egg",
+    "display_name": "shellsnake egg",
+    "bedrock_options": {
+     "icon": "faultline.deep_shellsnake",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:deep/lampsquid",
+    "bedrock_identifier": "faultline:deep_lampsquid",
+    "display_name": "lampsquid",
+    "bedrock_options": {
+     "icon": "faultline.deep_lampsquid",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:deep/lampsquid_icon",
+    "bedrock_identifier": "faultline:deep_lampsquid_egg",
+    "display_name": "lampsquid egg",
+    "bedrock_options": {
+     "icon": "faultline.deep_lampsquid",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:deep/volteel",
+    "bedrock_identifier": "faultline:deep_volteel",
+    "display_name": "volteel",
+    "bedrock_options": {
+     "icon": "faultline.deep_volteel",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:deep/volteel_icon",
+    "bedrock_identifier": "faultline:deep_volteel_egg",
+    "display_name": "volteel egg",
+    "bedrock_options": {
+     "icon": "faultline.deep_volteel",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:deep/needlejaw",
+    "bedrock_identifier": "faultline:deep_needlejaw",
+    "display_name": "needlejaw",
+    "bedrock_options": {
+     "icon": "faultline.deep_needlejaw",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:deep/needlejaw_icon",
+    "bedrock_identifier": "faultline:deep_needlejaw_egg",
+    "display_name": "needlejaw egg",
+    "bedrock_options": {
+     "icon": "faultline.deep_needlejaw",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:deep/devilfish",
+    "bedrock_identifier": "faultline:deep_devilfish",
+    "display_name": "devilfish",
+    "bedrock_options": {
+     "icon": "faultline.deep_devilfish",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:deep/devilfish_icon",
+    "bedrock_identifier": "faultline:deep_devilfish_egg",
+    "display_name": "devilfish egg",
+    "bedrock_options": {
+     "icon": "faultline.deep_devilfish",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:deep/riftwarper",
+    "bedrock_identifier": "faultline:deep_riftwarper",
+    "display_name": "riftwarper",
+    "bedrock_options": {
+     "icon": "faultline.deep_riftwarper",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:deep/riftwarper_icon",
+    "bedrock_identifier": "faultline:deep_riftwarper_egg",
+    "display_name": "riftwarper egg",
+    "bedrock_options": {
+     "icon": "faultline.deep_riftwarper",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:deep/hollowkin",
+    "bedrock_identifier": "faultline:deep_hollowkin",
+    "display_name": "hollowkin",
+    "bedrock_options": {
+     "icon": "faultline.deep_hollowkin",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:deep/hollowkin_icon",
+    "bedrock_identifier": "faultline:deep_hollowkin_egg",
+    "display_name": "hollowkin egg",
+    "bedrock_options": {
+     "icon": "faultline.deep_hollowkin",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:deep/sharkquid",
+    "bedrock_identifier": "faultline:deep_sharkquid",
+    "display_name": "sharkquid",
+    "bedrock_options": {
+     "icon": "faultline.deep_sharkquid",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:deep/sharkquid_icon",
+    "bedrock_identifier": "faultline:deep_sharkquid_egg",
+    "display_name": "sharkquid egg",
+    "bedrock_options": {
+     "icon": "faultline.deep_sharkquid",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:dark_loot_bag",
+    "bedrock_identifier": "faultline:dark_loot_bag",
+    "display_name": "Dark Loot Bag",
+    "bedrock_options": {
+     "icon": "faultline.dark_loot_bag",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   }
+  ]
+ }
+}

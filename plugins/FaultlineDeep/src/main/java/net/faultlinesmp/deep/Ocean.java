@@ -148,6 +148,8 @@ final class Ocean implements Listener {
     public void onDeath(PlayerDeathEvent e) {
         Player p = e.getEntity();
         if (!inDeep(p) || e.getKeepInventory()) return;
+        Location died = p.getLocation();
+        if (Town.inside(died.getX(), died.getY(), died.getZ())) return; // in the bubble's dry air: your things just drop
         List<ItemStack> drops = new ArrayList<>(e.getDrops());
         e.getDrops().clear();
         Location at = p.getLocation();
@@ -273,6 +275,8 @@ final class Ocean implements Listener {
             if (p.getGameMode() != GameMode.SURVIVAL && p.getGameMode() != GameMode.ADVENTURE) continue;
             double y = p.getLocation().getY();
             if (y >= below) continue;
+            Location at = p.getLocation();
+            if (Town.inside(at.getX(), at.getY(), at.getZ())) continue; // the bubble holds the deep back
             if (p.hasPotionEffect(PotionEffectType.CONDUIT_POWER) || suit(p)) {
                 if (ticks % 200 == 0) p.sendActionBar(Component.text("Your suit holds against the pressure.", NamedTextColor.DARK_AQUA));
                 continue;

@@ -41,7 +41,7 @@ All are Maven projects: Java 21, `paper-api 1.21.11-R0.1-SNAPSHOT`. Build with
 | **FaultlineIndex** | `net.faultlinesmp.index` | The Faultline Index codex + **Achievements** (`Achievements.java`). **Museum** (`Museum.java`: trophies, discs, Hall of Firsts), **Discord bridge** (`Discord.java`), `/serverstats` (`ServerStats.java`). Entries and achievements live in `src/main/resources/index.yml`, font glyphs in `glyphs.yml`, settings in `config.yml` | `/index [achievements\|give\|reset] [player]`, `/index stat <player> <name> [n]` (other plugins), `/index discover <player> <entry>`, `/museum [bosses\|items]`, `/serverstats`, admin `/discord [status\|test [msg]\|daily]` (public + logs webhooks, daily stats post), `/report <player> <reason>`, staff `/reports [n]`, `/suggest <idea>`, staff `/suggestions [n]`, `/guide [chapter]`, staff `/watch [<player>\|log\|xray\|alts\|check\|alerts]` (x-ray / cheat / dupe / grief / alt logs, `Watch.java`) |
 | **FaultlineCosmetics** | `net.faultlinesmp.cosmetics` | Permanent cosmetic unlocks worn in 4 slots (Hat, Neck, Back, Body) over armor, for Java and Bedrock. **Seasons** (`Seasons.java`: Halloween/Winter currency + Seasonal Shop). Cosmetics are defined in its `config.yml`, unlocks saved in `players.yml` | `/cosmetics [shop]`, admin `/cosmetic <unlock\|lock\|list\|reload\|season\|tokens\|shop>` |
 | **FaultlineKingdoms** | `net.faultlinesmp.kingdoms` | Kingdom 1/2/3 per player, assigned from DISCORD ROLES (players link once: the bot DMs a code), and GRACE PERIODS server-wide or per kingdom (protected kingdom can't be hurt, and can't hurt others unless `grace.protected-can-attack`); `pvp.friendly-fire`; kingdom in the tab list. Data in `data.yml` | `/kingdom [link <discord name>\|verify <code>\|unlink\|list <1\|2\|3>\|ff <on\|off\|clear>]` (`/k`), admin `/kingdoms grace <all\|1\|2\|3> <on\|off> [30m\|2h\|1d\|1h30m]`, `/kingdoms ff <1\|2\|3> <on\|off\|vote>`, Discord `/stats <player>`, `/kingdoms set <player> <1\|2\|3\|none\|auto>`, `/kingdoms sync [player]`, `/kingdoms reload` |
-| **FaultlineDeep** | `net.faultlinesmp.deep` | **The Dark Ocean**: a water-only world (`DeepGenerator.java`), its 20 creatures (`DeepMobs.java`), the Mirror / Lucki / the whirlpool (`Journey.java`), zone music, events and dying down there (`Ocean.java`) | admin `/deep [info\|set <kingdom\|lucki\|whirlpool>\|tp [player]\|spawn <mob>\|egg <mob> [n] [player]\|event <pressure\|undertow\|stop>\|lucki]` |
+| **FaultlineDeep** | `net.faultlinesmp.deep` | **The Dark Ocean**: a water-only world (`DeepGenerator.java`), **the Bubble** town over the build area (`Town.java`), ruins (`Ruins.java`), its 20 creatures (`DeepMobs.java`), the Mirror / Lucki / the whirlpool (`Journey.java`), zone music, events and dying down there (`Ocean.java`) | admin `/deep [info\|set <kingdom\|lucki\|whirlpool>\|tp [player]\|town [player]\|spawn <mob>\|egg <mob> [n] [player]\|event <pressure\|undertow\|stop>\|lucki]` |
 | **FaultlineShips** | `net.faultlinesmp.ships` | Ships: Dinghy, Sloop, Brigantine, Galleon, Pirate Ship. Blueprint → lay out on water → place every block → sail. Health, part damage, sinking, Shipwright's Hammer repair minigame, cannons, banners, names. **Skeleton ships** and the **Pirate Invasion** (`Pirates.java`). Ships saved in `ships.yml` | `/ship [list\|info\|name\|crew\|anchor\|stop\|banner\|scrap]`, admin `/ship <give\|repair\|wreck\|remove\|tp> [name\|#n]`, `/ship spawn <ship> [owner]`, `/ship give upgrade_<hull\|sails\|loaders\|ram>`, `/ship pirates <ship\|invasion\|horn\|spawn\|egg\|ghost [player]\|bell [n] [player]\|map [player]\|stop>` |
 
 Notes:
@@ -952,6 +952,25 @@ Notes:
   phase2-at / phase3-at). `Wild.Boss.tick` runs a copy of `fx` (an effect starting another one threw
   ConcurrentModificationException). Deep boss bolts hit a player at most once every 8 ticks (`Swimmer.boltHit`: a point-blank
   volley landed all at once). Tested (`DeepBossTest`: the new cycle, enrage, poisoning, the final phase).
+- **The Bubble + ruins (Deep 1.1.0)**: `Town.java` puts a glass DOME over the build area (centre 681, -951, ground top y -50;
+  ellipsoid radius 72 across, 54 high; glass + light blue/cyan glass, dark prismarine ribs every 22.5 degrees, sea-lantern
+  bands and crown). Inside there's NO water: a block is air only when all 6 neighbours are inside the ellipsoid, so no air
+  ever touches the sea (`TownPreview` checks 0 leaks). Four gatehouses (`GATES`: E/W on the avenue z -943, N/S on x 681)
+  have 3 dark oak doors in their outer face (water never flows into a door), a lit path outside. Inside: an abandoned town
+  of 61 buildings (`LOTS`, a fixed layout packed along the streets once: houses, townhouses, blacksmiths, bakeries, general
+  stores, taverns, libraries, apothecaries, collapsed ruins; 6 palettes; timber frames, windows (some broken / webbed),
+  shutters, awnings, gable roofs, chimneys, full interiors), a plaza (fountain, market stalls, clock tower with a bell),
+  lamp posts, and THE PLOT: 50 x 50 smooth stone, x 656..705, z -1001..-952, top at y -50, chiseled border, kept empty for
+  the Black Market. `/deep town [player]` goes there. Town chests are Dark Loot chests but only 30% of them (the rest are
+  empty barrels). In the bubble (`Town.inside`) Pressure Surge doesn't hurt and dying drops your things normally.
+  `Ruins.java`: one ruin per 176-block cell of the Sunlit Sea (50%: ruined house, tower, temple colonnade, broken gate) and
+  per 200-block cell of the Abyss (45%: blackstone shrine with soul lanterns, deepslate tower/house), waterlogged, many with
+  a Dark Loot chest; never near the arrival point, the build area or a blue hole. Both are drawn by `Paint` (one structure
+  drawn whole per chunk it touches, clipped; randomness from world position; `Paint.bd` caches block states, turns them
+  with `BlockData.rotate`, and falls back to the plain block if a state is invalid, so a bad name can't break generation).
+  NOTE 26.x: `chain` is `iron_chain`. Already-generated chunks don't change: delete the `faultline_deep` world folder (server
+  stopped) to get the Bubble and the ruins. Previews: `tools/previews/town_*.png`, `ruins_all.png` (scratch harness `dtest`, `TownPreview`).
+  Tested (`DeepTest`: bubble rules, layout vs plot/dome).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

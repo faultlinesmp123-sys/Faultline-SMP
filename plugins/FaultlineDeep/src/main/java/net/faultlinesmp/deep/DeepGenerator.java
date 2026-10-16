@@ -27,8 +27,9 @@ import java.util.Random;
  *    a floor of black sand (black concrete powder, always on solid ground so it never falls) with seagrass and kelp,
  *    hydrothermal vents (magma + bubble columns), sea-pickle and crying-obsidian glows, sculk, basalt pillars from
  *    floor to ceiling, and rock MOUNDS with ocean caves through them (more chests)
- *  - the build area: a flat 150 x 150 floor, its top block at exactly y = -50, centred on 681, -951, with at least 50
- *    blocks of open water above it
+ *  - the build area: a flat 150 x 150 floor, its top block at exactly y = -50, centred on 681, -951. Over it stands THE
+ *    BUBBLE (Town.java): a glass dome with no water inside, an abandoned town and a 50 x 50 plot to build on
+ *  - abandoned RUINS all over the floor, Sunlit Sea and Abyss (Ruins.java)
  *
  * Everything is a pure function of (seed, x, y, z), so features that cross chunk borders (spires, arches, chimneys)
  * line up without a populator. Runs on the world generation threads: nothing here touches the world.
@@ -337,6 +338,9 @@ final class DeepGenerator extends ChunkGenerator {
             column(n, data, rnd, minY, lx, lz, x, z);
         }
         chests(n, data, rnd, chunkX, chunkZ, minY);
+        Paint p = new Paint(data, chunkX, chunkZ);
+        Ruins.paint(this, n, p);  // abandoned ruins over the whole ocean floor
+        Town.paint(this, p);      // the bubble and its drowned town over the build area
     }
 
     private void column(Noise n, ChunkData d, Random rnd, int minY, int lx, int lz, int x, int z) {

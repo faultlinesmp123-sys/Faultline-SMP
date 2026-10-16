@@ -621,7 +621,7 @@ public final class FaultlineItems extends JavaPlugin {
         if (where != null) try { where.shutdown(); } catch (RuntimeException ignored) { }
         if (balloons != null) try { balloons.shutdown(); } catch (RuntimeException ignored) { }
         if (fishing != null) try { fishing.shutdown(); } catch (RuntimeException ignored) { }
-        if (enchants != null) for (Player online : Bukkit.getOnlinePlayers()) try { enchants.vitality(online, 0); } catch (RuntimeException ignored) { }
+        if (enchants != null) for (Player online : Bukkit.getOnlinePlayers()) try { enchants.vitality(online, 0); enchants.swift(online, 0); } catch (RuntimeException ignored) { }
         if (caravan != null) caravan.shutdown();
         if (accessoryManager != null) {
             accessoryManager.save();

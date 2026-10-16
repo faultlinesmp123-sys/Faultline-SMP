@@ -1185,6 +1185,18 @@ Notes:
   segments blinked out whenever their origin left the screen: every `Wild.Part` display gets `setDisplayWidth/Height(max(4, 7k))`.
   Tested: `DeepTest` (66 creatures, the new abilities, the dark, lantern, Dumbo), `DeepBossTest` (tail joint, speed, a broken
   move, back into the sea), `WildTest`, `StuckTest`, `MusicTest`, `OceanTest`, `AchievementTest`, `MuseumTest`, `NerfTest`.
+- **Lifesteal nerf + 9 new boss enchants (Items 1.2.52, Index 1.6.39)**: LIFESTEAL against PLAYERS heals only on every 5th hit
+  you land on players (`Enchants.pvpHits`, `enchants.lifesteal.pvp-every-hits` 5, action bar "Lifesteal n/5"; mobs still heal
+  every hit; bows count too). The procs are one method now (`Enchants.procs`, melee + arrows). New (`DEFS`, Kinds LEGS +
+  HELMET added): EXECUTIONER I-II (weapons + bows: +12%/lvl below 30% health), CLEAVE I-II (melee only, charged: 25%/lvl of
+  the hit to everything within 2.5 of the target; skips you, your pets, armor stands and INVISIBLE entities = boss hitboxes;
+  `cutting` guard so splashes / bleed / thorns never proc), BLEED I-II (weapons + bows: 12%/lvl, 1 a second for 3+lvl s, from
+  the cutter), ARROWGUARD I-II (chestplates: -10%/lvl projectiles), THORNHIDE I-II (leggings: 10%/lvl of melee back),
+  SWIFTSTRIDE I-II (boots: MOVEMENT_SPEED modifier `faultlineitems:swiftstride` +5%/lvl, refreshed every second, removed on
+  quit/disable), TIDECALLER I (boots: Dolphin's Grace in water), AUTOSMELT I (pickaxes: raw iron/gold/copper drops as ingots),
+  CLEARSIGHT I (helmets: cancels Blindness/Darkness, except hidden ambient ones = the Abyss's dark, cutscenes). Their drops are
+  `Enchants.NEW_DROPS`, rolled ON TOP of `boss-drops` (a server config keeps its old lists; override with
+  `enchants.new-boss-drops.<entry>`). Index's Boss Enchant Book entry lists them all. Tested (`EnchantTest`, `BatchTest`).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

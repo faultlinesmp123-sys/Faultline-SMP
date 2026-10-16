@@ -534,13 +534,22 @@ spawn-protection:
 enchants:
   boss-drops-enabled: true
   anvil-levels-per-level: 6
-  lifesteal: {per-level: 0.08, max-per-hit: 3}
+  lifesteal: {per-level: 0.08, max-per-hit: 3, pvp-every-hits: 5}   # 1.2.52: on PLAYERS it heals only every 5th hit (mobs: every hit)
+  # 1.2.52 enchants
+  executioner: {below: 0.3, bonus-per-level: 0.12}       # +12% / +24% damage to anything under 30% health
+  cleave: {share-per-level: 0.25, radius: 2.5}           # charged swings: 25% / 50% of the hit to everything beside the target
+  bleed: {chance-per-level: 0.12, seconds: 3, damage: 1} # 12% / 24%: bleeds 1 a second for 4 / 5 s
+  arrowguard: {reduction-per-level: 0.1}                 # chestplates: -10% / -20% projectile damage
+  thornhide: {reflect-per-level: 0.1}                    # leggings: 10% / 20% of a melee hit back at the attacker
+  swiftstride: {speed-per-level: 0.05}                   # boots: +5% / +10% speed
   frostbite: {chance-per-level: 0.15}
   venom: {chance-per-level: 0.15}
   thunderstrike: {chance: 0.08, damage: 4, cooldown-seconds: 8}
   vitality: {max-regeneration-level: 2}   # Vitality I = Regeneration I, II = Regeneration II (1.2.46)
   featherstep: {fall-reduction: 0.35}
   veinminer: {max-blocks: 32, exclude: []}   # Vein Miner (pickaxes): sneak + mine an ore; exclude e.g. [ANCIENT_DEBRIS]
+  # 1.2.52's books (Executioner, Cleave, Bleed, Arrowguard, Thornhide, Swiftstride, Tidecaller, Autosmelt, Clearsight) are
+  # rolled ON TOP of boss-drops from the code's defaults; to change them add new-boss-drops: {<entry>: ["id:level:chance"]}.
   # Index boss entry id: ["enchant:level:chance", ...] (each rolled on every defeat, per fighter)
   boss-drops:
     the_demon_eye: ["thunderstrike:1:0.25", "featherstep:1:0.2"]

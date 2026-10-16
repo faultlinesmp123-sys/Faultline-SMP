@@ -378,6 +378,7 @@ public final class FaultlineItems extends JavaPlugin {
         getServer().getPluginManager().registerEvents(divingGear, this);
         getServer().getPluginManager().registerEvents(new AccessoryStacks(this), this); // 1.2.12: accessories don't stack
         getServer().getPluginManager().registerEvents(new MaceRules(this), this);
+        getServer().getPluginManager().registerEvents(new MaceEnchants(this), this); // 1.2.55: Unbreaking III, Wind Burst II, Mending only
         enchants = new Enchants(this);
         getServer().getPluginManager().registerEvents(enchants, this); // 1.2.17: boss enchant books
         getCommand("fenchant").setExecutor(enchants);

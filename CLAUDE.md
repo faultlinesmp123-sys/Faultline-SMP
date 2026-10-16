@@ -1241,6 +1241,14 @@ Notes:
   FaultlineDeep.mcpack (`deep_assets.py --music` reads coralia.ogg). Preview: `tools/wild_rig_preview.py <out> coralia`.
   Tested: `DeepTest` (68 kinds, the Den: residents, alarm, kills, restock, Omen III vs IV, two waves, fall),
   `DeepBossTest` (sword only, pink + air bubbles, every new move, wrath swap), `WildTest`, `MusicTest`, `StuckTest`, `OceanTest`.
+- **Maces are back (Items 1.2.55)**: `mace.mode` default `"off"` (quoted: bare `off` is YAML false; `MaceRules.mode()`
+  treats anything but remove/restrict as off): crafted and used freely. A server config still holding 1.2.15's `remove`
+  reads as off unless `mace.really-remove: true`. `Items/MaceEnchants.java` (`mace-enchants:`, `allowed: {unbreaking: 3,
+  wind_burst: 2, mending: 1}`): a MACE keeps only those (others stripped, levels capped): enchanting table
+  (`EnchantItemEvent`: forbidden dropped, capped; nothing left = Unbreaking at the offered level), anvil
+  (`PrepareAnvilEvent`: result capped, no result when nothing is gained), and every player's inventory + cursor every 2 s,
+  on pickup and when held. Enchanted books of Wind Burst are capped to II too (no Wind Burst III anywhere).
+  `faultline.mace.bypass` skips it. Tested (`MaceTest`).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

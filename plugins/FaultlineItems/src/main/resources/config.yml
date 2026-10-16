@@ -522,9 +522,16 @@ gear: {headlamp-reach: 12, light-level: 13}
 # faultline.mace.bypass (default false) skips it for that player.
 mace:
   enabled: true
-  mode: remove
+  mode: "off"                  # 1.2.55: maces are allowed (an old 'remove' reads as off unless really-remove: true)
   no-crafting: true
   inventory-only: true
+
+# ---------------- Mace enchantments (1.2.55) ----------------
+# A mace can only carry these (anything else is stripped; levels are capped): enchanting table, anvil, books, loot,
+# and maces players already have (checked in inventories every 2 s). Enchanted books of Wind Burst are capped too.
+mace-enchants:
+  enabled: true
+  allowed: {unbreaking: 3, wind_burst: 2, mending: 1}
 
 # ---------------- Spawn protection (1.2.17) ----------------
 # After respawning, players can't hurt you for this long. Attacking a player ends it early.

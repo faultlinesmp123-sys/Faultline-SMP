@@ -38,9 +38,9 @@ import java.util.Set;
 
 /**
  * MACE RULES (config mace:). mace.mode:
- *   remove   (default, 1.2.15) maces are gone from the server: every mace anywhere is deleted (see the REMOVE section)
+ *   off      (default since 1.2.55) nothing: maces are crafted and used freely (MaceEnchants caps their enchantments)
+ *   remove   (1.2.15, needs mace.really-remove: true) maces are gone from the server: every mace anywhere is deleted (see the REMOVE section)
  *   restrict (1.2.14) the rules below: no crafting, and a mace only lives in a player's own inventory
- *   off      nothing
  *
  * RESTRICT: maces can't be crafted, and a mace only ever lives in a player's own inventory: it can't go
  * into a chest, barrel, shulker box, ender chest, hopper, dropper, dispenser, crafter, a donkey/llama/mule's chest, a
@@ -86,8 +86,12 @@ final class MaceRules implements Listener {
 
     String mode() {
         if (!plugin.getConfig().getBoolean("mace.enabled", true)) return "off";
-        String m = plugin.getConfig().getString("mace.mode", "remove");
-        return m == null ? "remove" : m.toLowerCase(java.util.Locale.ROOT);
+        String m = plugin.getConfig().getString("mace.mode", "off");
+        m = m == null ? "off" : m.toLowerCase(java.util.Locale.ROOT);
+        // 1.2.55: maces are back (craft and use them freely). A server config still holding 1.2.15's default "remove" reads
+        // as "off"; to delete maces again set mace.really-remove: true (or mode: restrict for the 1.2.14 rules)
+        if (m.equals("remove") && !plugin.getConfig().getBoolean("mace.really-remove", false)) m = "off";
+        return m.equals("remove") || m.equals("restrict") ? m : "off"; // (an unquoted off reads as "false")
     }
 
     boolean removing() { return mode().equals("remove"); }

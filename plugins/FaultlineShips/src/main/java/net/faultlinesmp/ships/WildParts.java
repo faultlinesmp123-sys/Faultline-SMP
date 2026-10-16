@@ -57,10 +57,13 @@ final class WildParts {
         P.put("umbral_head", new double[]{2.85481, 0.55701, 3.43221, -0.00000});
         P.put("umbral_body", new double[]{2.24681, 0.92500, 2.39021, -0.00000});
         P.put("umbral_tail", new double[]{1.99149, -2.67501, 2.26724, -0.00000});
-        P.put("coralia_tail", new double[]{1.53191, -1.52000, -2.10213, -0.00000});
-        P.put("coralia_torso", new double[]{1.00000, 0.06000, 1.55000, -0.00000});
-        P.put("coralia_head", new double[]{1.00000, -0.55500, 0.20000, -0.00000});
-        P.put("coralia_arm", new double[]{1.00000, -0.00000, -0.05000, -0.00000});
+        P.put("coralia_tail", new double[]{1.49787, -1.50500, -2.05319, -0.00000});
+        P.put("coralia_torso", new double[]{1.00000, 0.06500, 1.54000, -0.00000});
+        P.put("coralia_head", new double[]{1.00000, -0.03750, 1.45000, -0.02000});
+        P.put("coralia_arm", new double[]{1.00000, 0.00500, -0.08000, -0.01750});
+        P.put("coralia_torso_medusa", new double[]{1.00000, 0.05500, 1.54000, -0.00000});
+        P.put("coralia_head_medusa", new double[]{1.00000, 0.14000, 1.45000, -0.00000});
+        P.put("coralia_arm_medusa", new double[]{1.00000, 0.00500, -0.18000, -0.01750});
         P.put("inkjaw_body", new double[]{1.29362, -0.85000, 0.86043, -0.05500});
         P.put("inkjaw_tentacle", new double[]{1.00000, 0.65000, 1.22000, -0.00000});
         P.put("grandmaw_shell", new double[]{1.00000, 0.12000, 1.50000, -0.00000});

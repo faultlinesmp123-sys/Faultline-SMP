@@ -812,8 +812,8 @@ final class Wild implements Listener {
     }
 
     final class Part {
-        final String model;
-        final double[] meta;
+        String model;
+        double[] meta;
         double k;
         ItemDisplay d;
         ArmorStand stand;
@@ -856,6 +856,14 @@ final class Wild implements Listener {
             if (sc != null) sc.setBaseValue(Math.max(0.0625, Math.min(16, k)));
             for (Player p : w.getPlayers()) if (bedrock(p)) p.showEntity(pl, stand);
             pose(where, where.getYaw(), 0, 0, null);
+        }
+
+        /** Wear another model (same joints): Coralia's Medusa form. Java display and Bedrock stand both change. */
+        void swap(String m) {
+            if (m.equals(model) || WildParts.of(m) == null) return;
+            model = m; meta = WildParts.of(m);
+            if (d != null && d.isValid()) d.setItemStack(partItem(m));
+            if (stand != null && stand.isValid()) stand.getEquipment().setHelmet(partItem(m));
         }
 
         void resize(double nk) {

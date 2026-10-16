@@ -971,6 +971,15 @@ Notes:
   NOTE 26.x: `chain` is `iron_chain`. Already-generated chunks don't change: delete the `faultline_deep` world folder (server
   stopped) to get the Bubble and the ruins. Previews: `tools/previews/town_*.png`, `ruins_all.png` (scratch harness `dtest`, `TownPreview`).
   Tested (`DeepTest`: bubble rules, layout vs plot/dome).
+- **Coralia = Cala Maria (Bosses 1.6.4, Items 1.2.44 = pack hash, Index 1.6.33, Ships 1.6.6 = WildParts)**: remodelled after
+  Cuphead's Cala Maria (`coralia()` in `tools/wild_assets.py`, painters `toon`, `curl`, `button`, `shell_paint`, `fish_tail`,
+  `snake_paint`, `leaf_paint`): lavender skin, purple bob with a row of octopus-tentacle curls (pink suckers) and two button
+  buns, mint eyes under green eyeshadow, lashes, angry brows, pink lips, blue scallop-shell top, scars, a green tail with her
+  skin in scallops over it. Phase 3 she becomes her MEDUSA form: `onPhase(3)` swaps torso/head/arms to `coralia_*_medusa`
+  (green skin, snake nest with 5 heads + a big rearing one with fangs and a forked tongue, yellow slit eyes, a fanged grin,
+  leafy top, claws) through the new `Wild.Part.swap(model)` (changes the Java display and the Bedrock stand's helmet). The
+  head is ppb 32 (eyes need the pixels). No outlines on `toon`: `rounded()` overlaps two boxes and an outline would cross
+  the face. Tested (`DeepBossTest`: the Medusa swap).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

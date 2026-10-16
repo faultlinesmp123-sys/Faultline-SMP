@@ -1091,7 +1091,7 @@ entries:
      drops: ["4-6 Mythic Goodie Bags|100%", "3 Goodie Bags|100%", "1,500 XP|100%", "3 Dark Loot Bags|100%", "A Dark Loot rare|50%"]}
   - {chapter: bosses, id: coralia, name: "Coralia, Siren of the Shoals", icon: coralia, detect-tag: faultline_coralia,
      where: "A mini boss of the Dark Ocean's open sea (never in the caves or the Abyss). Use a Siren's Comb (Jellywing, 1.5%), or she finds you (0.1% every 5 minutes). 900 health (+25% per extra fighter).",
-     does: "A giant mermaid. Thralls of the Shoal, Petrifying Gaze (LOOK AWAY when her eyes glow), Eel Lash, Bubble Barrage; NEW: Siren Song (it pulls you to her) and Coral Spires (bursting up from the floor under you).",
+     does: "A giant mermaid with purple octopus-curl hair, a shell top and a green tail; at a third of her health she turns into her MEDUSA form (green skin, a nest of snakes, fangs, claws). Thralls of the Shoal, Petrifying Gaze (LOOK AWAY when her eyes glow), Eel Lash, Bubble Barrage; NEW: Siren Song (it pulls you to her) and Coral Spires (bursting up from the floor under you).",
      drops: ["4-6 Mythic Goodie Bags|100%", "3 Goodie Bags|100%", "1,500 XP|100%", "Dark Loot Bag|100%", "A Dark Loot rare|10%"]}
   - {chapter: bosses, id: old_inkjaw, name: "Old Inkjaw", icon: old_inkjaw, detect-tag: faultline_old_inkjaw,
      where: "A mini boss anywhere in the Dark Ocean. Use Inkjaw Bait (Lampsquid, 2%), or it finds you (0.1% every 5 minutes). 500 health (+20% per extra fighter).",

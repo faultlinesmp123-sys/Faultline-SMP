@@ -1079,6 +1079,18 @@ final class DeepBosses {
 
         @Override double defHealth() { return 900; }
         @Override BarColor barColor() { return BarColor.PINK; }
+
+        /** Phase 3: like Cala Maria, she turns into her Medusa form: green skin, a nest of snakes, fangs, claws. */
+        @Override void onPhase(int p) {
+            if (p < 3) return;
+            torso.swap("coralia_torso_medusa"); headP.swap("coralia_head_medusa");
+            armL.swap("coralia_arm_medusa"); armR.swap("coralia_arm_medusa");
+            Location h = Lich.joint(pos, Lich.frame(yaw, 0, 0), 0, 1.6, 0, k);
+            world.spawnParticle(Particle.DUST, h, 60, 0.8 * k, 0.8 * k, 0.8 * k, 0, new Particle.DustOptions(Color.fromRGB(150, 100, 202), 2f));
+            world.spawnParticle(Particle.BUBBLE_POP, h, 40, 0.8 * k, 0.8 * k, 0.8 * k, 0.1);
+            world.playSound(pos, Sound.ENTITY_EVOKER_PREPARE_ATTACK, SoundCategory.HOSTILE, 3f, 0.6f);
+            world.playSound(pos, Sound.ENTITY_CAT_HISS, SoundCategory.HOSTILE, 3f, 0.5f);
+        }
         @Override String music() { return "minecraft:music_disc.mellohi"; }
         @Override double musicLength() { return 96; }
 

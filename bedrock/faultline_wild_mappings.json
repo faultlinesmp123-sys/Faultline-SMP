@@ -580,6 +580,54 @@
    },
    {
     "type": "definition",
+    "model": "faultline:wild/coralia_torso_medusa",
+    "bedrock_identifier": "faultline:wild_coralia_torso_medusa",
+    "display_name": "coralia_torso_medusa",
+    "bedrock_options": {
+     "icon": "faultline.coralia",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:wild/coralia_head_medusa",
+    "bedrock_identifier": "faultline:wild_coralia_head_medusa",
+    "display_name": "coralia_head_medusa",
+    "bedrock_options": {
+     "icon": "faultline.coralia",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:wild/coralia_arm_medusa",
+    "bedrock_identifier": "faultline:wild_coralia_arm_medusa",
+    "display_name": "coralia_arm_medusa",
+    "bedrock_options": {
+     "icon": "faultline.coralia",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
     "model": "faultline:wild/inkjaw_body",
     "bedrock_identifier": "faultline:wild_inkjaw_body",
     "display_name": "inkjaw_body",

@@ -6,3 +6,12 @@ border-radius: 1050          # the world border: -1050..1050 (the build area at 
 # buckets there or open its shulker boxes, barrels..., and nobody can break the Bubble's glass (the sea would pour in).
 market:
   protect: true
+
+# The Sulphur Sea (1.4.0): the acid region round -520, 480 (Sulphur.java). /deep sulphur goes there.
+sulphur:
+  acid-water: true          # swimming in its water poisons you...
+  safe-diving-tier: 3       # ...unless you wear Abyssal Diving Gear (3) or the Abyssal Diving Suit (4)
+
+mobs:
+  sulphur:
+    land-share: 0.4         # how often the spawner tries an island / the air over it instead of the water there

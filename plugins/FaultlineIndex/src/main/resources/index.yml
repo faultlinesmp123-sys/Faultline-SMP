@@ -1081,13 +1081,94 @@ entries:
      where: "The Abyss, the deepest part of the Dark Ocean.",
      does: "Aggressive. Half shark, half squid, all hunger. It charges, and inks you when it's hurt.",
      drops: ["Ink Sacs, Bone|100%", "Dark Loot Bag|1% (0.4% in the Sunlit Sea)"]}
+  # ---- the Sulphur Sea (Deep 1.4.0)
+  - {chapter: deep, id: deep_acideel, name: "Acid Eel", icon: deep_acideel, detect-tag: faultline_deep_acideel,
+     where: "The Sulphur Sea, the Dark Ocean's acid region round -520, 480: in its water.",
+     does: "Aggressive. A slick olive eel with a glowing stripe. Its bite poisons, and it leaves a trail of acid in the water behind it.",
+     drops: ["Slime Balls|100%", "Brine Bait|1%", "Dark Loot Bag|0.8%"]}
+  - {chapter: deep, id: deep_trasher, name: "Trasher", icon: deep_trasher, detect-tag: faultline_deep_trasher,
+     where: "The Sulphur Sea, the Dark Ocean's acid region round -520, 480: in its water, near the islands.",
+     does: "Aggressive. A crocodile of the acid shallows, 60 health. It lunges out of the water at anyone on the shore or in a boat, and its bite slows you.",
+     drops: ["Leather, Bone|100%", "Brine Bait|3%", "Dark Loot Bag|0.8%"]}
+  - {chapter: deep, id: deep_radiator, name: "Radiator", icon: deep_radiator, detect-tag: faultline_deep_radiator,
+     where: "The Sulphur Sea, the Dark Ocean's acid region round -520, 480: in its water.",
+     does: "Passive. A little fish glowing green from the inside. It never attacks, but swimming within a few blocks of one burns.",
+     drops: ["Glowstone Dust|100%", "Dark Loot Bag|0.8%"]}
+  - {chapter: deep, id: deep_flakcrab, name: "Flak Crab", icon: deep_flakcrab, detect-tag: faultline_deep_flakcrab,
+     where: "The Sulphur Sea, the Dark Ocean's acid region round -520, 480: on its islands.",
+     does: "Aggressive. A crab in a rusted shell bristling with tubes. It lobs globs of acid flak from 14 blocks, and its front shell takes 60% less from anything hitting it head-on. Get behind it.",
+     drops: ["Copper Ingots, Gunpowder|100%", "Dark Loot Bag|0.8%"]}
+  - {chapter: deep, id: deep_nucleartoad, name: "Nuclear Toad", icon: deep_nucleartoad, detect-tag: faultline_deep_nucleartoad,
+     where: "The Sulphur Sea, the Dark Ocean's acid region round -520, 480: on its islands.",
+     does: "Neutral. A bloated toad with glowing warts and a pulsing throat. Hurt it and a second later it blows up in a burst of acid (no blocks break). Kill it from range.",
+     drops: ["Slime Ball, Fermented Spider Eye|100%", "Dark Loot Bag|0.8%"]}
+  - {chapter: deep, id: deep_gammaslime, name: "Gamma Slime", icon: deep_gammaslime, detect-tag: faultline_deep_gammaslime,
+     where: "The Sulphur Sea, the Dark Ocean's acid region round -520, 480: on its islands.",
+     does: "Aggressive. A cube of glowing jelly round a dark, irradiated core. It leaves puddles of poison where it bounces, and a big one where it dies. It doesn't split.",
+     drops: ["Slime Balls, Glowstone Dust|100%", "Dark Loot Bag|0.8%"]}
+  - {chapter: deep, id: deep_sulphurskater, name: "Sulphur Skater", icon: deep_sulphurskater, detect-tag: faultline_deep_sulphurskater,
+     where: "The Sulphur Sea, the Dark Ocean's acid region round -520, 480: on the surface of its water.",
+     does: "Neutral. A long-legged strider that skates about on the acid surface. Bother it and it darts in and bites, fast.",
+     drops: ["String, Yellow Dye|100%", "Dark Loot Bag|0.8%"]}
+  - {chapter: deep, id: deep_acidjelly, name: "Acid Jelly", icon: deep_acidjelly, detect-tag: faultline_deep_acidjelly,
+     where: "The Sulphur Sea, the Dark Ocean's acid region round -520, 480: in its water.",
+     does: "Neutral. A green bell trailing stinging threads: touching them poisons you. Hurt it and it bursts a cloud of acid.",
+     drops: ["Slime Ball, Glow Ink Sac|100%", "Dark Loot Bag|0.8%"]}
+  - {chapter: deep, id: deep_orthocera, name: "Orthocera", icon: deep_orthocera, detect-tag: faultline_deep_orthocera,
+     where: "The Sulphur Sea, the Dark Ocean's acid region round -520, 480: in its water.",
+     does: "Neutral. A cephalopod in a long, banded cone shell. Anger it and it jets away, spraying acid ink that blinds and poisons.",
+     drops: ["Ink Sacs|100%", "Nautilus Shell|30%", "Dark Loot Bag|0.8%"]}
+  - {chapter: deep, id: deep_trilobite, name: "Trilobite", icon: deep_trilobite, detect-tag: faultline_deep_trilobite,
+     where: "The Sulphur Sea, the Dark Ocean's acid region round -520, 480: on its sea floor.",
+     does: "Passive. An armoured bug of the sea floor. Strike it and it curls up into a ball that takes 80% less damage for 3 seconds.",
+     drops: ["Bone Meal|100%", "Turtle Scute|20%", "Dark Loot Bag|0.8%"]}
+  - {chapter: deep, id: deep_skyfin, name: "Skyfin", icon: deep_skyfin, detect-tag: faultline_deep_skyfin,
+     where: "The Sulphur Sea, the Dark Ocean's acid region round -520, 480: in the air over it.",
+     does: "Aggressive. A flying fish with wing-fins. It leaps from the sea and dives on anyone standing above the water. Its bite poisons.",
+     drops: ["Phantom Membrane, Cod|100%", "Dark Loot Bag|0.8%"]}
+  - {chapter: deep, id: deep_leech, name: "Sulphur Leech", icon: deep_leech, detect-tag: faultline_deep_leech,
+     where: "The Sulphur Sea, the Dark Ocean's acid region round -520, 480: in its water.",
+     does: "Aggressive. A ringed leech with a mouth of hooks. It latches on and drinks (1 health a second, healing itself) until you hit it off or 4 seconds pass.",
+     drops: ["Redstone|100%", "Dark Loot Bag|0.8%"]}
+  - {chapter: deep, id: deep_boglurker, name: "Bog Lurker", icon: deep_boglurker, detect-tag: faultline_deep_boglurker,
+     where: "The Sulphur Sea, the Dark Ocean's acid region round -520, 480: on its islands, standing still.",
+     does: "Aggressive. It looks like a dead acidwood stump, until you come within a few blocks and the stump opens its eyes. Its grip roots you in place. 50 health.",
+     drops: ["Dark Oak Logs, Moss Block|100%", "Dark Loot Bag|0.8%"]}
+  - {chapter: deep, id: deep_corrosionshark, name: "Corrosion Shark", icon: deep_corrosionshark, detect-tag: faultline_deep_corrosionshark,
+     where: "The Sulphur Sea, the Dark Ocean's acid region round -520, 480: in its deeper water.",
+     does: "Aggressive. A huge shark with bile skin, 70 health. Its teeth eat through armour (every bite wears all your armour down) and weaken you.",
+     drops: ["Bones, Iron Nuggets|100%", "Brine Bait|4%", "Dark Loot Bag|0.8%"]}
+  - {chapter: deep, id: deep_urchin, name: "Sulphur Urchin", icon: deep_urchin, detect-tag: faultline_deep_urchin,
+     where: "The Sulphur Sea, the Dark Ocean's acid region round -520, 480: on its sea floor.",
+     does: "Neutral. A spiny ball on the sea floor. Touch it and it stings; hurt it and it fires its poisoned spines in every direction.",
+     drops: ["Prismarine Shards, Yellow Dye|100%", "Dark Loot Bag|0.8%"]}
+  - {chapter: deep, id: deep_crabling, name: "Crabling", icon: deep_crabling, detect-tag: faultline_deep_crabling,
+     where: "The Sulphur Sea, the Dark Ocean's acid region round -520, 480: on its islands, in swarms.",
+     does: "Aggressive. A crab no bigger than your fist, the colour of rust. They come three to five at a time, and their nips poison.",
+     drops: ["Bone Meal|100%", "Dark Loot Bag|0.8%"]}
+  - {chapter: deep, id: deep_bloatgut, name: "Bloatgut", icon: deep_bloatgut, detect-tag: faultline_deep_bloatgut,
+     where: "The Sulphur Sea, the Dark Ocean's acid region round -520, 480: in its water.",
+     does: "Neutral. A pufferfish swollen with acid gas. Swim close and it puffs up and lets the gas out around you.",
+     drops: ["Pufferfish, Yellow Dye|100%", "Dark Loot Bag|0.8%"]}
+  - {chapter: deep, id: deep_sulphurmoth, name: "Sulphur Moth", icon: deep_sulphurmoth, detect-tag: faultline_deep_sulphurmoth,
+     where: "The Sulphur Sea, the Dark Ocean's acid region round -520, 480: in the air over its islands.",
+     does: "Passive. A fat, furry moth with glowing sulphur wings, drawn to the fumaroles. Harmless.",
+     drops: ["Glowstone Dust|100%", "Dark Loot Bag|0.8%"]}
+  - {chapter: deep, id: deep_hazardturtle, name: "Hazard Turtle", icon: deep_hazardturtle, detect-tag: faultline_deep_hazardturtle,
+     where: "The Sulphur Sea, the Dark Ocean's acid region round -520, 480: on its islands and beaches.",
+     does: "Neutral. A turtle that's grown spikes of glowing sulphur crystal, 60 health. Every melee hit on it hurts you back for 30%; anger it and it rams you.",
+     drops: ["Turtle Scutes, Glowstone Dust|100%", "Dark Loot Bag|0.8%"]}
+  - {chapter: deep, id: deep_sludgesnail, name: "Sludge Snail", icon: deep_sludgesnail, detect-tag: faultline_deep_sludgesnail,
+     where: "The Sulphur Sea, the Dark Ocean's acid region round -520, 480: on its islands.",
+     does: "Passive. A slow snail in a rusted spiral shell. It leaves a trail of acid slime that slows and poisons whoever steps in it, and arrows bounce off its shell.",
+     drops: ["Slime Balls|100%", "Dark Loot Bag|0.8%"]}
   - {chapter: bosses, id: brine_scourge, name: "The Brine Scourge", icon: brine_scourge, detect-tag: faultline_brine_scourge,
-     where: "A BOSS of the Dark Ocean, below the Sunlit Sea. Use a Brine Bait (Masked Devilfish, 1%), or it finds you on its own (0.1% every 5 minutes for each player down there). 2,400 health (+20% per extra fighter).",
-     does: "A great teal sea worm with bone spikes down its body and two crescent mandibles. FIGHT IT UNDER THE WATER: while anyone is above the surface it is ENRAGED (it can't be hurt and hits 50% harder). Its moves poison you: watch the Sulphuric Poisoning bar (full = it hurts every second) and swim into the clean blue bubbles that rise from below to clear it. It runs a fixed cycle: Radiation Pulse (spreads of acid every second and a green pulse), Rubble Charges (5 lunges leaving acid; ramming rock stuns it and sprays rubble), Radioactive Breath (sharp turns spitting acid while rubble falls on green lines), Rubble Charges again, Toxic Bubble Spin. Below 60% it does all of it harder. Below 25% it rises to the surface, a storm builds and the water itself turns acid, faster and faster: now only the air is safe. Final moves: Frenzied Charges, Acid Rain (it lunges up from below, acid falls back down) and the Sulphurous Typhoon. When it dies its body dissolves. Music: the Kraken's theme.",
+     where: "A BOSS of the Dark Ocean's SULPHUR SEA (the acid region round -520, 480), and only there. Use a Brine Bait (Trasher 3%, Corrosion Shark 4%, Acid Eel 1%, Masked Devilfish 1%), or it finds you on its own (0.1% every 5 minutes for each player in the Sulphur Sea). 2,400 health (+20% per extra fighter).",
+     does: "A great teal sea worm with bone spikes down its body and two crescent mandibles. FIGHT IT UNDER THE WATER: while anyone is above the surface it is ENRAGED (it can't be hurt and hits 50% harder). Its moves poison you: watch the Sulphuric Poisoning bar (full = it hurts every second) and swim into the clean blue bubbles that rise from below to clear it. It runs a fixed cycle: Radiation Pulse (spreads of acid every second and a green pulse), Rubble Charges (5 lunges leaving acid; ramming rock stuns it and sprays rubble), Radioactive Breath (sharp turns spitting acid while rubble falls on green lines), Rubble Charges again, Toxic Bubble Spin. Below 60% it does all of it harder. Below 30%: THE MOLT. It tears off its own armoured skin (the husk sinks and dissolves) and fights on in raw, glowing flesh: faster, but it takes 15% more damage, and it no longer cares where you stand. A sulphur storm breaks (acid drops on anyone above the water). Its new cycle: Spine Barrage (its loose spines stick in the rock as acid pylons; pylons near each other are joined by burning beams: don't cross them), Sulphur Breach (it bursts out of the sea and arcs through the air, raining acid, then slams down with a shockwave), Acid Geysers (green rings under everyone: a second later acid blasts up from the floor through the surface and throws you), Corrosive Clouds (toxic clouds roll over the surface and the islands: dive under the water), Sulphur Breach again, Toxic Maelstrom (it spirals inward dragging everyone to an acid heart: swim out). Once, below 10%: the DEATH COIL (it wraps round you: hit it hard enough to break out before it crushes everyone inside). When it dies its body dissolves. Music: the Kraken's theme.",
      drops: ["4-6 Mythic Goodie Bags|100%", "3 Goodie Bags|100%", "1,500 XP|100%", "3 Dark Loot Bags|100%", "A Dark Loot rare (Diving Suit, Elytra, god set...)|50%"]}
   - {chapter: bosses, id: umbral_leviathan, name: "The Umbral Leviathan", icon: umbral_leviathan, detect-tag: faultline_umbral_leviathan,
      where: "A BOSS of the Dark Ocean, below the Sunlit Sea. Use an Umbral Sonar (Rift Warper, 1%), or it finds you on its own (0.1% every 5 minutes). 2,600 health (+20% per extra fighter).",
-     does: "A serpent of shadow with glowing eyes. Shadow Charge, the Grab (it seizes you: hit it hard to break free), Vanish (into the dark, out behind you), Shriek; NEW: Eclipse Coil (a ring of shadow closes: get out before it does) and Abyssal Echo (sonar marks you, lances follow).",
+     does: "A huge shadow leviathan (after Below Zero's Shadow Leviathan): a dark slate body, a great flat wedge of a head rising into a crest, three red eyes down each cheek, huge black hooked claws at its jaw, a glowing cyan comb of rib-teeth under its belly, long black leg-spikes raking down its sides, and red lights down its back to a finned tail. Shadow Charge, the Grab (it seizes you: hit it hard to break free), Vanish (into the dark, out behind you), Shriek; NEW: Eclipse Coil (a ring of shadow closes: get out before it does) and Abyssal Echo (sonar marks you, lances follow).",
      drops: ["4-6 Mythic Goodie Bags|100%", "3 Goodie Bags|100%", "1,500 XP|100%", "3 Dark Loot Bags|100%", "A Dark Loot rare|50%"]}
   - {chapter: bosses, id: coralia, name: "Coralia, Siren of the Shoals", icon: coralia, detect-tag: faultline_coralia,
      where: "A mini boss of the Dark Ocean's open sea (never in the caves or the Abyss). Use a Siren's Comb (Jellywing, 1.5%), or she finds you (0.1% every 5 minutes). 900 health (+25% per extra fighter).",
@@ -1106,7 +1187,7 @@ entries:
      does: "A huge fish made of grief and dark water. Lunge, the Hunt (gone into the dark... then from behind), Wail, Whispers (Hollow Kin); NEW: Sorrow Tide (a wave that drives you away) and Light Eater (it snuffs your lights and hunts whoever carries one).",
      drops: ["4-6 Mythic Goodie Bags|100%", "3 Goodie Bags|100%", "1,500 XP|100%", "Echo Shards|30%", "Dark Loot Bag|100%", "A Dark Loot rare|10%"]}
   - {chapter: consumables, name: "Brine Bait", icon: brine_bait, detect: "faultlinebosses:wild_item=brine_bait",
-     how: "1% from Masked Devilfish.", does: "Use it in the Dark Ocean, below the Sunlit Sea (under y 35), in the water: the Brine Scourge comes."}
+     how: "From the Sulphur Sea's Trashers (3%), Corrosion Sharks (4%) and Acid Eels (1%), and Masked Devilfish (1%).", does: "Use it in the water of the Dark Ocean's Sulphur Sea (the acid region round -520, 480): the Brine Scourge comes."}
   - {chapter: consumables, name: "Umbral Sonar", icon: umbral_sonar, detect: "faultlinebosses:wild_item=umbral_sonar",
      how: "1% from Rift Warpers.", does: "Use it in the Dark Ocean, below the Sunlit Sea: the Umbral Leviathan comes."}
   - {chapter: consumables, name: "Siren's Comb", icon: sirens_comb, detect: "faultlinebosses:wild_item=sirens_comb",
@@ -1178,8 +1259,11 @@ achievements:
      stat: mimics, count: 5, reward: {items: ["DIAMOND:6", "GOLD_BLOCK:2"], xp: 500}}
   # ---- the Dark Ocean (1.6.31)
   - {id: into_the_dark, name: "Into the Dark", icon: deep_lampsquid, desc: "Hunt 25 of the Dark Ocean's creatures.",
-     defeat: [deep_gawker, deep_bloatfin, deep_jellywing, deep_driftback, deep_clam, deep_lumenbell, deep_gasbloom, deep_fangstalker, deep_blastfin, deep_burrowshark, deep_cavecrawler, deep_glowgrub, deep_shellsnake, deep_lampsquid, deep_volteel, deep_needlejaw, deep_devilfish, deep_riftwarper, deep_hollowkin, deep_sharkquid],
+     defeat: [deep_gawker, deep_bloatfin, deep_jellywing, deep_driftback, deep_clam, deep_lumenbell, deep_gasbloom, deep_fangstalker, deep_blastfin, deep_burrowshark, deep_cavecrawler, deep_glowgrub, deep_shellsnake, deep_lampsquid, deep_volteel, deep_needlejaw, deep_devilfish, deep_riftwarper, deep_hollowkin, deep_sharkquid, deep_acideel, deep_trasher, deep_radiator, deep_flakcrab, deep_nucleartoad, deep_gammaslime, deep_sulphurskater, deep_acidjelly, deep_orthocera, deep_trilobite, deep_skyfin, deep_leech, deep_boglurker, deep_corrosionshark, deep_urchin, deep_crabling, deep_bloatgut, deep_sulphurmoth, deep_hazardturtle, deep_sludgesnail],
      need: 25, reward: {items: ["DIAMOND:8", "PRISMARINE_CRYSTALS:16"], xp: 500}}
+  - {id: acid_bath, name: "Acid Bath", icon: deep_gammaslime, desc: "Hunt 15 of the Sulphur Sea's creatures.",
+     defeat: [deep_acideel, deep_trasher, deep_radiator, deep_flakcrab, deep_nucleartoad, deep_gammaslime, deep_sulphurskater, deep_acidjelly, deep_orthocera, deep_trilobite, deep_skyfin, deep_leech, deep_boglurker, deep_corrosionshark, deep_urchin, deep_crabling, deep_bloatgut, deep_sulphurmoth, deep_hazardturtle, deep_sludgesnail],
+     need: 15, reward: {items: ["DIAMOND:6", "SLIME_BLOCK:8"], xp: 600}}
   - {id: tides_of_ruin, name: "Tides of Ruin", icon: brine_scourge, desc: "Defeat the Brine Scourge and the Umbral Leviathan.",
      defeat: [brine_scourge, umbral_leviathan], need: all, reward: {items: ["NETHERITE_INGOT:2", "HEART_OF_THE_SEA:1"], xp: 1500}}
   - {id: abyss_walker, name: "Abyss Walker", icon: the_lament, desc: "Defeat all six of the Dark Ocean's bosses.",

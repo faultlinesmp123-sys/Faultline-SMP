@@ -145,7 +145,7 @@ final class Wild implements Listener {
         ITEMS.put("sandworm_drum", new String[]{"PAPER", "&6&lSandworm Drum", "&7Beat it on the sand of a desert or badlands.|&7The ground answers.|&6Summons the Sandworm King."});
         ITEMS.put("lich_phylactery", new String[]{"PAPER", "&5&lCursed Phylactery", "&7Break it open in the Deep Dark.|&7Something that should be dead comes for it.|&5Summons the Lich."});
         ITEMS.put("frozen_horn", new String[]{"PAPER", "&b&lFrozen Horn", "&7Sound it on a frozen peak or snowy slope.|&7The sky answers with wings.|&bSummons the Frost Wyrm."});
-        ITEMS.put("brine_bait", new String[]{"PAPER", "&a&lBrine Bait", "&7A rotten, glowing lure from a Devilfish.|&7Use it in the Dark Ocean, below the Sunlit Sea.|&aSummons the Brine Scourge."});
+        ITEMS.put("brine_bait", new String[]{"PAPER", "&a&lBrine Bait", "&7A rotten, glowing lure that reeks of sulphur.|&7Use it in the water of the Sulphur Sea.|&aSummons the Brine Scourge."});
         ITEMS.put("umbral_sonar", new String[]{"PAPER", "&8&lUmbral Sonar", "&7It pings back from something huge in the dark.|&7Use it in the Dark Ocean, below the Sunlit Sea.|&8Summons the Umbral Leviathan."});
         ITEMS.put("sirens_comb", new String[]{"PAPER", "&d&lSiren's Comb", "&7Pearl teeth, still humming a song.|&7Use it out in the Dark Ocean's open sea.|&dSummons Coralia, Siren of the Shoals."});
         ITEMS.put("inkjaw_bait", new String[]{"PAPER", "&5&lInkjaw Bait", "&7A Lampsquid's lure. Old Inkjaw is always hungry.|&7Use it anywhere in the Dark Ocean.|&5Summons Old Inkjaw."});
@@ -221,7 +221,8 @@ final class Wild implements Listener {
                 case "coralia" -> DeepBosses.openSea(l) ? null : "Only out in the open sea (not in the caves or the Abyss).";
                 case "grandmaw" -> !DeepBosses.openSea(l) ? "Only out in the open sea (not in the caves or the Abyss)."
                         : DeepBosses.floorNear(l, 24) == null ? "Only near the sea floor (it lives on the sand: swim down until the floor is in reach)." : null;
-                case "scourge", "umbral", "lament" -> DeepBosses.sunlit(l) ? "Only deeper down, below the Sunlit Sea (under y 35)." : null;
+                case "scourge" -> DeepBosses.sulphur(l) ? null : "Only in the Sulphur Sea (the Dark Ocean's acid region round -520, 480).";
+                case "umbral", "lament" -> DeepBosses.sunlit(l) ? "Only deeper down, below the Sunlit Sea (under y 35)." : null;
                 default -> null;
             };
         }

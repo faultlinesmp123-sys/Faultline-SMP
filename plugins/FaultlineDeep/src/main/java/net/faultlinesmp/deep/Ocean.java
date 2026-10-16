@@ -90,8 +90,37 @@ final class Ocean implements Listener {
         if (pl.world == null) return;
         if (ticks % 40 == 0) music();
         if (ticks % 20 == 0) eat();
+        if (ticks % 40 == 0) sulphur();
         holdDrops();
         events();
+    }
+
+    // =========================================================================================== the Sulphur Sea (1.4.0)
+    private final java.util.Set<UUID> inSulphur = new java.util.HashSet<>();
+
+    /**
+     * Every 2 s: the Sulphur Sea's water is acid. Swimming in it poisons you unless you wear Abyssal Diving Gear or the
+     * Suit (FaultlineItems' diving tier 3+, read from the player's data). A title the first time you come in.
+     */
+    void sulphur() {
+        NamespacedKey tierKey = NamespacedKey.fromString("faultlineitems:diving_tier");
+        for (Player p : pl.world.getPlayers()) {
+            Location l = p.getLocation();
+            boolean in = pl.generator.sulphur(pl.world.getSeed(), l.getBlockX(), l.getBlockZ()) > 0.35 && l.getY() > 30;
+            if (in && inSulphur.add(p.getUniqueId())) {
+                p.showTitle(net.kyori.adventure.title.Title.title(Component.text("The Sulphur Sea", NamedTextColor.GREEN),
+                        Component.text("The water burns. Something huge moves under it.", NamedTextColor.GRAY)));
+                p.playSound(l, Sound.AMBIENT_UNDERWATER_ENTER, SoundCategory.AMBIENT, 1f, 0.6f);
+            } else if (!in) inSulphur.remove(p.getUniqueId());
+            boolean wet = p.isInWater() || l.getBlock().getType() == org.bukkit.Material.WATER;
+            if (!in || !wet || p.getGameMode() == GameMode.CREATIVE || p.getGameMode() == GameMode.SPECTATOR) continue;
+            if (!pl.getConfig().getBoolean("sulphur.acid-water", true)) continue;
+            Integer tier = tierKey == null ? null : p.getPersistentDataContainer().get(tierKey, org.bukkit.persistence.PersistentDataType.INTEGER);
+            if (tier != null && tier >= (int) cfg("sulphur.safe-diving-tier", 3)) continue;
+            p.addPotionEffect(new org.bukkit.potion.PotionEffect(org.bukkit.potion.PotionEffectType.POISON, 60, 0, false, true, true));
+            if (ticks % 200 == 0) p.sendActionBar(Component.text("The Sulphur Sea's water burns! ", NamedTextColor.GREEN)
+                    .append(Component.text("(Abyssal Diving Gear keeps it out)", NamedTextColor.GRAY)));
+        }
     }
 
     // =========================================================================================== music

@@ -145,6 +145,13 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
                 sender.sendMessage(ChatColor.GREEN + "Sent " + who.getName() + " to the Bubble. The 50x50 plot is " + Town.PLOT_X0 + ", " + Town.PLOT_Z0
                         + " to " + Town.PLOT_X1 + ", " + Town.PLOT_Z1 + ": the Black Market (its lift goes down to the Pit).");
             }
+            case "sulphur" -> { // the Sulphur Sea: onto the Sulphur Works' deck
+                Player who = args.length > 1 ? Bukkit.getPlayerExact(args[1]) : self;
+                if (who == null || world == null) { sender.sendMessage(ChatColor.RED + "Who? (or the world isn't loaded)"); return true; }
+                who.teleport(new org.bukkit.Location(world, Sulphur.WORKS_X + 0.5, DeepGenerator.SEA + 3, Sulphur.WORKS_Z + 0.5));
+                sender.sendMessage(ChatColor.GREEN + "Sent " + who.getName() + " to the Sulphur Sea (the Sulphur Works, " + Sulphur.WORKS_X + ", " + Sulphur.WORKS_Z
+                        + "). The region is centred on " + Sulphur.SX + ", " + Sulphur.SZ + ". The Brine Scourge is summoned here.");
+            }
             case "spawn" -> {
                 DeepMobs.Kind k = args.length > 1 ? DeepMobs.KINDS.get(args[1].toLowerCase()) : null;
                 if (k == null || self == null) { sender.sendMessage(ChatColor.YELLOW + "/deep spawn <" + String.join("|", DeepMobs.KINDS.keySet()) + ">"); return true; }
@@ -175,9 +182,9 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
                 sender.sendMessage(ChatColor.GRAY + "Kingdom: " + spot(journey.place("kingdom")) + "  Lucki: " + spot(journey.place("lucki")) + "  Whirlpool: " + spot(journey.poolSpot()));
                 sender.sendMessage(ChatColor.GRAY + "Creatures out: " + mobs.live.size() + "   Event: " + (ocean.event == null ? "none" : ocean.event));
                 if (self != null && world != null && self.getWorld().equals(world)) sender.sendMessage(ChatColor.GRAY + "You're in: " + zone(self.getLocation()));
-                sender.sendMessage(ChatColor.YELLOW + "/deep set <kingdom|lucki|whirlpool>, tp [player], town [player], spawn <mob>, egg <mob> [n] [player], event <pressure|undertow|stop>, lucki");
+                sender.sendMessage(ChatColor.YELLOW + "/deep set <kingdom|lucki|whirlpool>, tp [player], town [player], sulphur [player], spawn <mob>, egg <mob> [n] [player], event <pressure|undertow|stop>, lucki");
             }
-            default -> sender.sendMessage(ChatColor.YELLOW + "/deep [info|set|tp|town|spawn|egg|event|lucki]");
+            default -> sender.sendMessage(ChatColor.YELLOW + "/deep [info|set|tp|town|sulphur|spawn|egg|event|lucki]");
         }
         return true;
     }
@@ -187,7 +194,7 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         List<String> out = new ArrayList<>();
-        if (args.length == 1) out.addAll(List.of("info", "set", "tp", "town", "spawn", "egg", "event", "lucki"));
+        if (args.length == 1) out.addAll(List.of("info", "set", "tp", "town", "sulphur", "spawn", "egg", "event", "lucki"));
         else if (args.length == 2 && args[0].equalsIgnoreCase("set")) out.addAll(List.of("kingdom", "lucki", "whirlpool"));
         else if (args.length == 2 && (args[0].equalsIgnoreCase("spawn") || args[0].equalsIgnoreCase("egg"))) out.addAll(DeepMobs.KINDS.keySet());
         else if (args.length == 2 && args[0].equalsIgnoreCase("event")) out.addAll(List.of("pressure", "undertow", "stop"));

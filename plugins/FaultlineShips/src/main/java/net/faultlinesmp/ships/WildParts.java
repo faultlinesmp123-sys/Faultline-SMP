@@ -54,9 +54,13 @@ final class WildParts {
         P.put("scourge_head_b", new double[]{2.27745, 1.10300, 2.71617, -0.00000});
         P.put("scourge_body", new double[]{1.77702, 0.76700, 1.74553, -0.00000});
         P.put("scourge_tail", new double[]{1.88936, -2.52500, 2.13405, -0.00000});
-        P.put("umbral_head", new double[]{2.85481, 0.55701, 3.43221, -0.00000});
-        P.put("umbral_body", new double[]{2.24681, 0.92500, 2.39021, -0.00000});
-        P.put("umbral_tail", new double[]{1.99149, -2.67501, 2.26724, -0.00000});
+        P.put("scourge_head_molt", new double[]{1.26638, 0.41000, 1.19957, -0.00000});
+        P.put("scourge_head_b_molt", new double[]{2.00783, 1.49900, 2.31174, -0.00000});
+        P.put("scourge_body_molt", new double[]{1.18468, 0.88500, 0.85702, -0.00000});
+        P.put("scourge_tail_molt", new double[]{1.88936, -2.52500, 2.13405, -0.00000});
+        P.put("umbral_head", new double[]{1.82785, 1.28464, 0.04068, -0.00000});
+        P.put("umbral_body", new double[]{1.24123, 0.57695, -0.58426, -0.00000});
+        P.put("umbral_tail", new double[]{2.09362, -2.82500, 2.54042, -0.00000});
         P.put("coralia_tail", new double[]{1.49787, -1.50500, -2.05319, -0.00000});
         P.put("coralia_torso", new double[]{1.00000, 0.06500, 1.54000, -0.00000});
         P.put("coralia_head", new double[]{1.00000, -0.03750, 1.45000, -0.02000});
@@ -72,8 +76,8 @@ final class WildParts {
         P.put("lament_head", new double[]{1.83830, 0.30000, -0.04256, -0.00000});
         P.put("lament_body", new double[]{1.70213, 1.05000, -0.14681, -0.00000});
         P.put("lament_tail", new double[]{1.70213, -2.30000, 0.25319, -0.00000});
-        JAVA_ONLY.addAll(java.util.List.of("lev_head", "lev_jaw", "worm_head", "worm_petal", "wyrm_head", "wyrm_jaw", "aurora", "black_sun", "scourge_head", "scourge_mandible", "scourge_mandible_r"));
-        BEDROCK_ONLY.addAll(java.util.List.of("lev_head_b", "worm_head_b", "wyrm_head_b", "scourge_head_b"));
+        JAVA_ONLY.addAll(java.util.List.of("lev_head", "lev_jaw", "worm_head", "worm_petal", "wyrm_head", "wyrm_jaw", "aurora", "black_sun", "scourge_head", "scourge_mandible", "scourge_mandible_r", "scourge_head_molt"));
+        BEDROCK_ONLY.addAll(java.util.List.of("lev_head_b", "worm_head_b", "wyrm_head_b", "scourge_head_b", "scourge_head_b_molt"));
     }
 
     static double[] of(String part) { return P.getOrDefault(part, new double[]{1, 0, 0, 0}); }

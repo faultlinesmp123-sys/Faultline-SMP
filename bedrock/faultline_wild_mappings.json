@@ -468,6 +468,54 @@
    },
    {
     "type": "definition",
+    "model": "faultline:wild/scourge_head_b_molt",
+    "bedrock_identifier": "faultline:wild_scourge_head_b_molt",
+    "display_name": "scourge_head_b_molt",
+    "bedrock_options": {
+     "icon": "faultline.brine_scourge",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:wild/scourge_body_molt",
+    "bedrock_identifier": "faultline:wild_scourge_body_molt",
+    "display_name": "scourge_body_molt",
+    "bedrock_options": {
+     "icon": "faultline.brine_scourge",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:wild/scourge_tail_molt",
+    "bedrock_identifier": "faultline:wild_scourge_tail_molt",
+    "display_name": "scourge_tail_molt",
+    "bedrock_options": {
+     "icon": "faultline.brine_scourge",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
     "model": "faultline:wild/umbral_head",
     "bedrock_identifier": "faultline:wild_umbral_head",
     "display_name": "umbral_head",

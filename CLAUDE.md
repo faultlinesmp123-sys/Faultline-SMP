@@ -41,7 +41,7 @@ All are Maven projects: Java 21, `paper-api 1.21.11-R0.1-SNAPSHOT`. Build with
 | **FaultlineIndex** | `net.faultlinesmp.index` | The Faultline Index codex + **Achievements** (`Achievements.java`). **Museum** (`Museum.java`: trophies, discs, Hall of Firsts), **Discord bridge** (`Discord.java`), `/serverstats` (`ServerStats.java`). Entries and achievements live in `src/main/resources/index.yml`, font glyphs in `glyphs.yml`, settings in `config.yml` | `/index [achievements\|give\|reset] [player]`, `/index stat <player> <name> [n]` (other plugins), `/index discover <player> <entry>`, `/museum [bosses\|items]`, `/serverstats`, admin `/discord [status\|test [msg]\|daily]` (public + logs webhooks, daily stats post), `/report <player> <reason>`, staff `/reports [n]`, `/suggest <idea>`, staff `/suggestions [n]`, `/guide [chapter]`, staff `/watch [<player>\|log\|xray\|alts\|check\|alerts]` (x-ray / cheat / dupe / grief / alt logs, `Watch.java`) |
 | **FaultlineCosmetics** | `net.faultlinesmp.cosmetics` | Permanent cosmetic unlocks worn in 4 slots (Hat, Neck, Back, Body) over armor, for Java and Bedrock. **Seasons** (`Seasons.java`: Halloween/Winter currency + Seasonal Shop). Cosmetics are defined in its `config.yml`, unlocks saved in `players.yml` | `/cosmetics [shop]`, admin `/cosmetic <unlock\|lock\|list\|reload\|season\|tokens\|shop>` |
 | **FaultlineKingdoms** | `net.faultlinesmp.kingdoms` | Kingdom 1/2/3 per player, assigned from DISCORD ROLES (players link once: the bot DMs a code), and GRACE PERIODS server-wide or per kingdom (protected kingdom can't be hurt, and can't hurt others unless `grace.protected-can-attack`); `pvp.friendly-fire`; kingdom in the tab list. Data in `data.yml` | `/kingdom [link <discord name>\|verify <code>\|unlink\|list <1\|2\|3>\|ff <on\|off\|clear>]` (`/k`), admin `/kingdoms grace <all\|1\|2\|3> <on\|off> [30m\|2h\|1d\|1h30m]`, `/kingdoms ff <1\|2\|3> <on\|off\|vote>`, Discord `/stats <player>`, `/kingdoms set <player> <1\|2\|3\|none\|auto>`, `/kingdoms sync [player]`, `/kingdoms reload` |
-| **FaultlineDeep** | `net.faultlinesmp.deep` | **The Dark Ocean**: a water-only world (`DeepGenerator.java`), **the Bubble** town over the build area (`Town.java`), **the Black Market + the Pit** (`Market.java`, `Elevator.java`), ruins (`Ruins.java`), its 20 creatures (`DeepMobs.java`), the Mirror / Lucki / the whirlpool (`Journey.java`), zone music, events and dying down there (`Ocean.java`) | admin `/deep [info\|set <kingdom\|lucki\|whirlpool>\|tp [player]\|town [player]\|spawn <mob>\|egg <mob> [n] [player]\|event <pressure\|undertow\|stop>\|lucki]` |
+| **FaultlineDeep** | `net.faultlinesmp.deep` | **The Dark Ocean**: a water-only world (`DeepGenerator.java`), **the Sulphur Sea** acid region (`Sulphur.java`), **the Bubble** town over the build area (`Town.java`), **the Black Market + the Pit** (`Market.java`, `Elevator.java`), ruins (`Ruins.java`), its 40 creatures (`DeepMobs.java`), the Mirror / Lucki / the whirlpool (`Journey.java`), zone music, events and dying down there (`Ocean.java`) | admin `/deep [info\|set <kingdom\|lucki\|whirlpool>\|tp [player]\|town [player]\|sulphur [player]\|spawn <mob>\|egg <mob> [n] [player]\|event <pressure\|undertow\|stop>\|lucki]` |
 | **FaultlineShips** | `net.faultlinesmp.ships` | Ships: Dinghy, Sloop, Brigantine, Galleon, Pirate Ship. Blueprint → lay out on water → place every block → sail. Health, part damage, sinking, Shipwright's Hammer repair minigame, cannons, banners, names. **Skeleton ships** and the **Pirate Invasion** (`Pirates.java`). Ships saved in `ships.yml` | `/ship [list\|info\|name\|crew\|anchor\|stop\|banner\|scrap]`, admin `/ship <give\|repair\|wreck\|remove\|tp> [name\|#n]`, `/ship spawn <ship> [owner]`, `/ship give upgrade_<hull\|sails\|loaders\|ram>`, `/ship pirates <ship\|invasion\|horn\|spawn\|egg\|ghost [player]\|bell [n] [player]\|map [player]\|stop>` |
 
 Notes:
@@ -1036,6 +1036,54 @@ Notes:
   topped up only when under 1.5 s left so the heal timer runs normally; never cuts a stronger potion; the old MAX_HEALTH
   modifier is always removed). Tested: `WardrobeTest` (items), `WardrobeCosTest` (Items + Cosmetics, scratch `wtest`),
   `NerfTest`, `BatchTest`.
+- **THE SULPHUR SEA (Deep 1.4.0, Bosses 1.6.5, Items 1.2.47, Index 1.6.35, Ships 1.6.7 = WildParts)**: `Deep/Sulphur.java`, an
+  acid region of the Dark Ocean round `SX, SZ` = -520, 480 (radius 230 + a 70-block eased, wobbling edge; `weight()`),
+  after Calamity's Sulphurous Sea. Its noise (`Noise.sulphur`, `sulphurEdge`) is made LAST in the Noise constructor, so
+  every other feature keeps its shape (RULE: append new noise at the end). `upperFloor` blends to `Sulphur.floor`:
+  basins ~66, shelves, and ISLANDS breaking the surface up to ~114 (13% of the region). Columns there: `Zone.SULPHUR`
+  (above the floor), biome SWAMP (murky green water; `DeepBosses.sulphur(l)` reads it), no caves within 14 of the sea
+  (water would spill out of island caves), no chimneys / sea stacks / ruins / arches / whale falls / spires near it.
+  Blocks: olive terracotta, mud, sulphur crusts (yellow terracotta + ochre froglights), dead coral reef, toxic kelp,
+  slime, acid vents (magma + bubble columns), lily pads in the shallows; islands: mud beaches, moss, dead bushes.
+  Structures (`Sulphur.paint`, drawn per chunk like Ruins): SULPHUR COLUMNS (banded spires out of the sea, verdant froglight
+  veins), RUSTED SHIPWRECKS (oxidised copper hull, mast, a Dark Loot chest), GIANT RIBCAGES (bone ribs + a skull with
+  glowing sockets), ACIDWOOD TREES (dead dark oak, mangrove roots, pale hanging moss), FUMAROLES (tuff cones over a
+  signal campfire on hay), ACID POOLS (only where the whole rim stands as high as the water), and THE SULPHUR WORKS at
+  `WORKS_X/Z` (a stilted rotting platform: shack, rusted tank, crane with a chain and anvil, rails). `put()` makes
+  anything at or under y 100 wet and turns "water" above the sea into air (a ribcage skull on an island leaked).
+  Previews: `tools/previews/sulphur_*.png` (scratch `dtest` `SulphurPreview`: 0 spills). `/deep sulphur [player]`.
+  `Ocean.sulphur()`: its water poisons you (every 2 s) unless FaultlineItems' diving tier >= `sulphur.safe-diving-tier` 3
+  (Abyssal Diving Gear / the Suit); a title the first time you enter. Already-generated chunks there don't change.
+  **20 acid creatures** (`DeepMobs`, zone SULPHUR; models in `tools/deep_assets.py` `SULPHUR_MOBS`, all with bones and
+  animations): Acid Eel (acid trail), Trasher (croc, lunges at the shore/boats), Radiator (burn aura), Flak Crab (acid flak
+  snowballs tagged `ACID_TAG`, front shell -60%), Nuclear Toad (hurt = blows up a second later, no blocks), Gamma Slime
+  (SLIME size 2 set before attributes; poison puddles; no split: `onSplit`), Sulphur Skater (frog kept on the surface:
+  `skate()`), Acid Jelly, Orthocera (jets + acid ink), Trilobite (silverfish: `onBlock` stops it hiding in stone; curls up
+  -80%), Skyfin (phantom, `setShouldBurnInDay(false)`), Sulphur Leech (latches on and drinks: `latchTick`), Bog Lurker
+  (a disguised stump: `DISGUISED`, wakes within 4.5), Corrosion Shark (wears armour down), Sulphur Urchin (shulker; stings,
+  fires spine arrows), Crablings (swarms of 3-5), Bloatgut (acid gas), Sulphur Moth (bat), Hazard Turtle (thorns 30%, rams),
+  Sludge Snail (slime trail clouds, arrows bounce). Habitats: `LAND`, `AIR`, `FLOOR` sets; the spawner tries an island spot
+  (`landSpot`, `pickLand`) `mobs.sulphur.land-share` 0.4 of the time in the Sulphur Sea. FIXED: `onVanillaSpawn` cancelled
+  our own phantoms (any plugin phantom): `spawning` flag around our spawn. Brine Bait now drops from Trashers 3%, Corrosion
+  Sharks 4%, Acid Eels 1% (and Devilfish 1%). Index: 20 entries (chapter deep), achievement `acid_bath` (15 of them);
+  `into_the_dark` asked for 25 of a 20-entry list (impossible): it lists all 40 now. /itemsmenu has the 40 eggs.
+  **The Brine Scourge** lives ONLY in the Sulphur Sea now (`whyNot`: biome SWAMP). Phases 1-2 unchanged. NEW PHASE 3 at 30%
+  (`phase3-at` 0.3; the old surface ascent / rising acidity are gone): MOLT (4 s, untouchable: `husk()` leaves dark copies of
+  every part that sink and shrink for 15 s; the rig swaps to `scourge_*_molt`: raw red flesh with lime veins, spikes snapped
+  to stubs) -> faster (x1.25), takes x1.15 (`molt-damage-taken`), never enraged; sulphur storm (`stormTick`: acid drops
+  above the water). Cycle `FINAL`: SPINES (fans of spine bolts; a spine hitting rock = a pylon: `pylon()`, 12 s, burns within
+  2.4, pairs within 12 joined by beams: `pylonTick`, max 8), BREACH (dives under you, then free flight with gravity through
+  the air, glides over islands, lobs acid, slam shockwave 7, back into water: `openWater`), GEYSERS (rings on the floor
+  under everyone + 3 more, then a column to the surface + 6: throws you up), CLOUDS (5 clouds rolling along the surface /
+  island tops toward a player; eyes under water = safe), BREACH, MAELSTROM (tightening spiral, pull in + down, acid heart).
+  Once below 10% (`coil-at`): COIL (rings the group 6 s, squeeze 3/s; `coil-break-share` 6% of max hp in hits frees them,
+  else a 16 crush). Moves `moves.spine/pylon/beam/breach/breach-slam/geyser/cloud/maelstrom/coil-squeeze/coil-crush`.
+  `withY()` helper (Bukkit's `Location.setY` returns void). **The Umbral Leviathan** remodel (`umbral()` in wild_assets,
+  after Below Zero's Shadow Leviathan): stepped wedge head rising to a crest, 3 red eyes a side, hooked black claws
+  (`tube()` = continuous curved limbs of small cubes), a cyan rib-comb under the belly, black leg-spikes raking back on
+  every segment (bones `legs_l/r`), red dots down the back, a flat finned tail with a red tip. Tested: `DeepBossTest`
+  (summon only in SWAMP, the molt swap, more damage, never enraged, coil break, pylon beams), `WildTest`, `MusicTest`,
+  `StuckTest`, `DeepTest` (40 creatures, toad, leech, trilobite, urchin, snail, acid water + diving tier), `TownPreview`.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

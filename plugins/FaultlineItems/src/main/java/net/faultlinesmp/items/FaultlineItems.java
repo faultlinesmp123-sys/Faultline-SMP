@@ -7246,9 +7246,11 @@ public final class FaultlineItems extends JavaPlugin {
                     list.add(external(icon(Material.HEART_OF_THE_SEA, null, ChatColor.DARK_AQUA + "" + ChatColor.BOLD + Character.toUpperCase(d[3].charAt(0)) + d[3].substring(1) + ChatColor.GRAY + " (summons it, in water)", "FaultlineBosses"), d[0] + " summon {world} {x} {y} {z}", "FaultlineBosses"));
                 }
             }
-            if (enabled("FaultlineDeep")) { // the Dark Ocean's 20 creatures (FaultlineDeep spawn eggs)
+            if (enabled("FaultlineDeep")) { // the Dark Ocean's 40 creatures (FaultlineDeep spawn eggs; the last 20 are the Sulphur Sea's)
                 for (String id : List.of("gawker", "bloatfin", "jellywing", "driftback", "clam", "lumenbell", "gasbloom", "fangstalker", "blastfin", "burrowshark",
-                        "cavecrawler", "glowgrub", "shellsnake", "lampsquid", "volteel", "needlejaw", "devilfish", "riftwarper", "hollowkin", "sharkquid"))
+                        "cavecrawler", "glowgrub", "shellsnake", "lampsquid", "volteel", "needlejaw", "devilfish", "riftwarper", "hollowkin", "sharkquid",
+                        "acideel", "trasher", "radiator", "flakcrab", "nucleartoad", "gammaslime", "sulphurskater", "acidjelly", "orthocera", "trilobite",
+                        "skyfin", "leech", "boglurker", "corrosionshark", "urchin", "crabling", "bloatgut", "sulphurmoth", "hazardturtle", "sludgesnail"))
                     list.add(external(icon(Material.PAPER, "deep/" + id + "_icon", ChatColor.AQUA + "Dark Ocean egg: " + ChatColor.WHITE + id, "FaultlineDeep"), "deep egg " + id + " {amount} {player}", "FaultlineDeep"));
             }
             if (enabled("FaultlineCosmetics")) { // the seasonal currency (Candy at Halloween, Presents in Winter)

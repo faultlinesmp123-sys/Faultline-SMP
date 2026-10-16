@@ -1169,34 +1169,42 @@ def _scourge_mandible(side):
 
 
 def scourge():
-    sc = aq_scales(AQ_TEAL, AQ_LIGHT, AQ_GREEN, AQ_NAVY)
-    navy, blue = solid(AQ_NAVY, 5), solid(AQ_BLUE, 6)
-    bone = bone_curve(AQ_BONE, (60, 50, 74))
+    parts = _scourge_set("", aq_scales(AQ_TEAL, AQ_LIGHT, AQ_GREEN, AQ_NAVY), aq_scales(AQ_LIGHT, AQ_GREEN, AQ_GREEN, AQ_NAVY),
+                         solid(AQ_NAVY, 5), solid(AQ_BLUE, 6), bone_curve(AQ_BONE, (60, 50, 74)), aq_scales(AQ_BLUE, AQ_TEAL, AQ_LIGHT, AQ_NAVY), 1.0)
+    # phase 3, THE MOLT: the armour is gone. Raw pink-red flesh with glowing lime veins, the spikes snapped off to stubs.
+    flesh = glow_lines((150, 36, 64), (170, 255, 60), 5, 0.03)
+    molt = _scourge_set("_molt", flesh, glow_lines((170, 52, 80), (190, 255, 80), 4, 0.04), solid((70, 16, 34), 5), solid((110, 28, 52), 6),
+                        bone_curve((214, 196, 160), (120, 60, 70)), glow_lines((120, 30, 56), (170, 255, 60), 4, 0.03), 0.35)
+    return parts + molt
+
+
+def _scourge_set(sfx, sc, crown_sc, navy, blue, bone, tail_sc, spike):
+    """The Scourge's head / Bedrock head / body segment / tail with these paints; spike = how much of its spikes are left."""
     # ---- head (no mandibles: Java poses them separately)
     hd = Part("tmp")
     rounded(hd, -1.4, -0.7, -1.25, 1.35, 0.75, 1.25, sc, 0.35)            # the broad flat skull
     rounded(hd, 1.35, -0.55, -0.95, 2.15, 0.55, 0.95, sc, 0.25)           # the snout
-    hd.add(-1.2, 0.75, -0.85, 1.2, 0.95, 0.85, aq_scales(AQ_LIGHT, AQ_GREEN, AQ_GREEN, AQ_NAVY))   # the crown plate
+    hd.add(-1.2, 0.75, -0.85, 1.2, 0.95, 0.85, crown_sc)   # the crown plate
     hd.add(-1.45, 0.72, -1.05, -1.25, 0.9, 1.05, navy)
     hd.add(2.15, -0.42, -0.72, 2.25, 0.4, 0.72, solid((14, 18, 30), 3))   # the maw
     for z in (-0.55, -0.3, -0.05, 0.2, 0.45):
         hd.add(2.12, 0.18, z, 2.27, 0.38, z + 0.1, solid(AQ_BONE, 3))       # teeth, top
         hd.add(2.12, -0.4, z + 0.05, 2.27, -0.22, z + 0.15, solid(AQ_BONE, 3))
     for s in (-1, 1):
-        hd.add(1.55, 0.25, s * 0.9 - 0.12, 1.9, 0.45, s * 0.9 + 0.12, glow((200, 240, 90)))   # small glowing eyes
+        hd.add(1.55, 0.25, s * 0.9 - 0.12, 1.9, 0.45, s * 0.9 + 0.12, glow((200, 240, 90) if spike >= 1 else (255, 250, 120)))   # small glowing eyes
         hd.add(1.4, 0.45, s * 0.75 - 0.2, 2.0, 0.6, s * 0.75 + 0.2, navy)                         # brow ridge
         hd.add(-1.0, 0.1, s * 1.2, 0.9, 0.5, s * 1.32, navy)                                      # cheek seam
-        arc_boxes(hd, [(-0.6, s * 1.15), (-1.0, s * 1.65), (-1.6, s * 1.95), (-2.2, s * 2.05)], 0.34, 0.14, 0.3, 0.14, bone,
-                  ys=[0.35, 0.45, 0.55, 0.6])                                                      # the head's own spikes
+        hs = [(-0.6, s * 1.15), (-1.0, s * 1.65), (-1.6, s * 1.95), (-2.2, s * 2.05)][:max(2, int(round(4 * spike)))]
+        arc_boxes(hd, hs, 0.34, 0.14, 0.3, 0.14, bone, ys=[0.35, 0.45, 0.55, 0.6][:len(hs)])     # the head's own spikes
     for x in (-0.9, -0.2, 0.5):
         hd.add(x - 0.1, 0.95, -0.12, x + 0.1, 1.25 - abs(x) * 0.15, 0.12, solid(AQ_BONE_D, 4))  # crown nubs
-    h = Part("scourge_head", 10, 256, java_only=True)
+    h = Part("scourge_head" + sfx, 10, 256, java_only=True)
     h.take(hd)
     mand = _scourge_mandible(-1)
     ml = Part("scourge_mandible", 10, 128, java_only=True)
     ml.take(mand, -SC_HINGE[0], 0, SC_HINGE[2])
     mr = ml.mirror_z("scourge_mandible_r")
-    hb = Part("scourge_head_b", 10, 256, bedrock_only=True)
+    hb = Part("scourge_head_b" + sfx, 10, 256, bedrock_only=True)
     hb.take(hd)
     hb.bone("mand_l", (SC_HINGE[0], 0, -SC_HINGE[2])); hb.take(mand, bone="mand_l")
     hb.bone("mand_r", (SC_HINGE[0], 0, SC_HINGE[2])); hb.take(_scourge_mandible(1), bone="mand_r")
@@ -1204,24 +1212,24 @@ def scourge():
     hb.anim("mand_l", "rot", (0, 14, 0), 1.6)
     hb.anim("mand_r", "rot", (0, -14, 0), 1.6)
     # ---- a body segment
-    seg = Part("scourge_body", 10, 256)
+    seg = Part("scourge_body" + sfx, 10, 256)
     rounded(seg, -0.25, -0.82, -1.05, 2.0, 0.85, 1.05, sc, 0.3)
     seg.add(1.72, -0.92, -1.14, 2.02, 0.94, 1.14, navy)                    # the overlapping plate lip
-    seg.add(0.15, 0.84, -0.42, 1.55, 0.98, 0.42, aq_scales(AQ_LIGHT, AQ_GREEN, AQ_GREEN, AQ_NAVY))   # the bright back stripe
+    seg.add(0.15, 0.84, -0.42, 1.55, 0.98, 0.42, crown_sc)   # the bright back stripe
     seg.add(0.0, -0.9, -0.7, 1.7, -0.78, 0.7, grad(_c(AQ_BLUE, 10), AQ_NAVY))                         # the belly
     for s in (-1, 1):
         seg.bone("spike_" + ("r" if s > 0 else "l"), (1.25, 0.3, s * 1.0))
-        arc_boxes(seg, [(1.3, s * 0.95), (1.0, s * 1.55), (0.55, s * 2.05), (0.0, s * 2.4), (-0.45, s * 2.55)], 0.38, 0.12, 0.34, 0.12,
-                  bone, ys=[0.3, 0.42, 0.55, 0.65, 0.7])                    # the great side spike, curving back
+        sp = [(1.3, s * 0.95), (1.0, s * 1.55), (0.55, s * 2.05), (0.0, s * 2.4), (-0.45, s * 2.55)][:max(2, int(round(5 * spike)))]
+        arc_boxes(seg, sp, 0.38, 0.12 if spike >= 1 else 0.3, 0.34, 0.12 if spike >= 1 else 0.28, bone, ys=[0.3, 0.42, 0.55, 0.65, 0.7][:len(sp)])   # the great side spike (a stub, molted)
         seg.bone(None)
         seg.add(0.9, -0.4, s * 1.02, 1.3, -0.15, s * 1.25, solid(AQ_BONE_D, 4))   # a small lower spur
         for x in (0.2, 0.8, 1.4): seg.add(x, 0.05, s * 1.04, x + 0.22, 0.3, s * 1.08, glow((150, 230, 120)))   # glowing pores
     seg.anim("spike_l", "rot", (0, 0, 5), 2.2)
     seg.anim("spike_r", "rot", (0, 0, -5), 2.2)
     # ---- the tail
-    tail = Part("scourge_tail", 10, 256)
+    tail = Part("scourge_tail" + sfx, 10, 256)
     rounded(tail, -1.7, -0.7, -0.85, 0.25, 0.72, 0.85, sc, 0.26)
-    rounded(tail, -2.9, -0.48, -0.58, -1.6, 0.5, 0.58, aq_scales(AQ_BLUE, AQ_TEAL, AQ_LIGHT, AQ_NAVY), 0.18)
+    rounded(tail, -2.9, -0.48, -0.58, -1.6, 0.5, 0.58, tail_sc, 0.18)
     tail.add(-3.9, -0.3, -0.36, -2.8, 0.32, 0.36, blue)
     tail.add(-4.7, -0.16, -0.18, -3.85, 0.18, 0.18, navy)
     tail.add(-5.3, -0.07, -0.07, -4.65, 0.08, 0.07, solid((14, 20, 50), 3))  # the dark point
@@ -1230,78 +1238,123 @@ def scourge():
         arc_boxes(tail, [(-1.9, s * 0.56), (-2.15, s * 0.9), (-2.5, s * 1.08)], 0.2, 0.08, 0.18, 0.08, bone, ys=[0.2, 0.24, 0.28])
     tail.bone_all("tail", (0, 0, 0))
     tail.anim("tail", "rot", (0, 10, 0), 1.8)
-    return [h, ml, mr, hb, seg, tail]
+    return [h, ml, mr, hb, seg, tail] if not sfx else [h, hb, seg, tail]
 
 
-# ---------------------------------------------------------------- THE UMBRAL LEVIATHAN (Below Zero's Shadow Leviathan look)
-UM_SKIN, UM_DARK, UM_EYE, UM_FIN, UM_BLUE = (28, 24, 42), (12, 10, 20), (170, 110, 255), (48, 36, 84), (90, 150, 255)
+# ---------------------------------------------------------------- THE UMBRAL LEVIATHAN (after Below Zero's Shadow Leviathan)
+# A dark slate-navy body; a great flat wedge of a head that rises to a sail-like crest; three pairs of red eyes down its
+# cheek; two huge black hooked claws at the jaw and more curling under the throat; a glowing CYAN comb of rib-teeth along
+# its underside; rows of long black leg-spikes raking down and back along its belly; a line of red dots down its back to
+# a flattened, finned tail with a red tip.
+UM_SKIN, UM_DARK, UM_BELLY, UM_RED, UM_CYAN, UM_CLAW = (34, 44, 64), (16, 20, 30), (54, 70, 96), (230, 46, 50), (90, 220, 255), (22, 22, 26)
 UM_HINGE = (1.8, 0.0, 0.55)
 
 
-def _umbral_mandible(side, up):
-    """One of the four mandibles: a long jointed claw that sweeps forward from the jaw corner."""
-    s, u = side, up
-    m = Part("tmp")
-    sk, dk = glow_lines(UM_SKIN, UM_EYE, 4), solid(UM_DARK, 4)
-    pts = [(1.8, 0.55), (2.6, 0.8), (3.4, 0.85), (4.1, 0.6), (4.5, 0.3)]
-    ys = [u * 0.45, u * 0.62, u * 0.66, u * 0.55, u * 0.38]
-    arc_boxes(m, [(x, z * s) for x, z in pts], 0.42, 0.14, 0.36, 0.14, sk, ys=ys)
-    m.add(4.35, u * 0.3 - 0.08, s * 0.25 - 0.08, 4.75, u * 0.3 + 0.08, s * 0.25 + 0.08, dk)       # the claw tip
-    m.add(2.9, u * 0.62 - 0.05, s * 0.85 - 0.05, 3.2, u * 0.62 + 0.05, s * 0.85 + 0.05, glow(UM_EYE))  # a glowing joint
+def tube(m, pts, r0, r1, paint):
+    """A continuous curved limb through 3D points: small cubes, closer than their own size, tapering from r0 to r1."""
+    total = sum(math.dist(pts[i], pts[i + 1]) for i in range(len(pts) - 1)) or 1
+    run = 0.0
+    for i in range(len(pts) - 1):
+        a, b = pts[i], pts[i + 1]
+        seg = math.dist(a, b)
+        n = max(1, int(seg / (min(r0, r1) * 1.1 + 0.02)) + 1)
+        for j in range(n):
+            t = j / n
+            q = [a[k] + (b[k] - a[k]) * t for k in range(3)]
+            r = r0 + (r1 - r0) * min(1, (run + seg * t) / total)
+            m.add(q[0] - r, q[1] - r, q[2] - r, q[0] + r, q[1] + r, q[2] + r, paint)
+        run += seg
     return m
 
 
+def _um_claw(m, x, y, z, s, length, curl, w0, paint, tip):
+    """A hooked black claw from (x, y, z) on side s: forward, down, then curling back up at the point."""
+    pts = []
+    n = 10
+    for i in range(n + 1):
+        t = i / n
+        pts.append((x + math.sin(t * curl) * length * 0.7, y - (1 - math.cos(t * curl)) * length * 0.55, z + s * 0.1 * t))
+    tube(m, pts, w0 * 0.5, w0 * 0.14, paint)
+    ex, ey, ez = pts[-1]
+    m.add(ex - 0.05, ey - 0.05, ez - 0.05, ex + 0.07, ey + 0.08, ez + 0.05, tip)
+
+
 def umbral():
-    sk = glow_lines(UM_SKIN, UM_EYE, 5, 0.02)
-    dk, eye = solid(UM_DARK, 4), glow(UM_EYE)
-    fin = membrane(UM_FIN, (110, 80, 200))
+    sk = glow_lines(UM_SKIN, (60, 84, 120), 6, 0.0)
+    skin_d, belly = solid(UM_DARK, 4), grad(UM_BELLY, UM_SKIN)
+    claw, claw_hi = bone_curve(UM_CLAW, (60, 60, 70)), solid((70, 72, 80), 3)
+    cyan, red = glow(UM_CYAN), glow(UM_RED)
+    fin = membrane((40, 52, 76), (70, 90, 130))
     hd = Part("tmp")
-    rounded(hd, -1.4, -0.85, -1.05, 1.6, 0.9, 1.05, sk, 0.35)                # the skull
-    rounded(hd, 1.6, -0.55, -0.7, 2.5, 0.6, 0.7, sk, 0.22)                    # the long face
-    hd.add(2.5, -0.38, -0.42, 2.6, 0.38, 0.42, solid((60, 20, 100), 3))       # the throat glow
-    hd.add(2.55, -0.25, -0.28, 2.65, 0.25, 0.28, glow((200, 140, 255)))
+    # ---- the head: a wide flat wedge, rising in steps from the snout to a tall crest at the back
+    rounded(hd, -1.3, -0.75, -0.95, 1.5, 0.55, 0.95, sk, 0.3)                    # the skull
+    for i in range(7):                                                            # the wedge plate, stepping up and back
+        t = i / 6
+        x0, x1 = -1.4 + t * 0.5, 3.4 - t * 2.4
+        hw = 1.25 - t * 0.85
+        y0 = 0.45 + t * 1.55
+        hd.add(x0, y0, -hw, x1, y0 + 0.3, hw, sk if i % 2 else glow_lines(UM_SKIN, (70, 96, 136), 5, 0.0))
+    hd.add(1.3, 0.25, -0.9, 3.5, 0.5, 0.9, sk)                                    # the flat brim jutting forward
+    hd.add(3.3, 0.28, -0.55, 3.75, 0.45, 0.55, skin_d)                           # the snout tip
+    hd.add(1.4, -0.55, -0.7, 2.8, 0.25, 0.7, sk)                                  # the jaw
+    hd.add(2.75, -0.5, -0.55, 2.85, 0.2, 0.55, solid((10, 12, 18), 3))            # the dark maw
     for s in (-1, 1):
-        for i, x in enumerate((0.6, 1.0, 1.4)):                              # a row of three glowing eye slits
-            hd.add(x, 0.3 - i * 0.05, s * 0.99, x + 0.28, 0.42 - i * 0.05, s * 1.07, eye)
-        hd.add(0.3, 0.42, s * 0.75, 1.7, 0.58, s * 1.0, dk)                   # brow armour
-        arc_boxes(hd, [(-0.9, s * 0.7), (-1.8, s * 0.95), (-2.8, s * 1.0), (-3.6, s * 0.85)], 0.36, 0.12, 0.32, 0.12, dk,
-                  ys=[0.75, 0.95, 1.15, 1.3])                                 # crown horns, swept back
-        arc_boxes(hd, [(-0.5, s * 1.0), (-1.1, s * 1.5), (-1.8, s * 1.75)], 0.28, 0.1, 0.24, 0.1, dk, ys=[-0.1, -0.2, -0.3])
-        hd.add(-1.3, -0.7, s * 1.05, -0.1, 0.5, s * 1.55, fin)               # gill frills
-        for x in (-1.0, -0.6): hd.add(x, -0.6, s * 1.06, x + 0.08, 0.45, s * 1.6, solid(UM_EYE, 3))
-    hd.add(-1.3, 0.9, -0.07, 1.2, 1.75, 0.07, fin)                            # the crest
-    h = Part("umbral_head", 10, 256, java_only=False)
+        for i, (x, y, r) in enumerate(((1.95, 0.05, 0.13), (1.4, 0.12, 0.16), (0.8, 0.18, 0.2))):   # three red eyes down the cheek
+            z0, z1 = sorted((s * 0.92, s * 1.0))
+            hd.add(x - r - 0.06, y - r - 0.06, z0 - s * 0.02, x + r + 0.06, y + r + 0.06, z1 - s * 0.02, skin_d)   # the socket
+            hd.add(x - r, y - r, z0, x + r, y + r, z1, eye_paint((40, 10, 12), UM_RED, (10, 6, 8)))
+            a0, a1 = sorted((s * 0.99, s * 1.02))
+            hd.add(x - r * 0.4, y - r * 0.4, a0, x + r * 0.4, y + r * 0.4, a1, red)
+        hd.add(-1.1, -0.5, s * 0.95 - 0.05, 0.6, 0.4, s * 0.95 + 0.05, glow_lines(UM_SKIN, (60, 84, 120), 3, 0.0))   # cheek folds
+    # the glowing cyan comb under the throat
+    for i in range(9):
+        x = -1.2 + i * 0.28
+        hd.add(x, -0.95, -0.55, x + 0.08, -0.72, 0.55, cyan)
+    hd.add(-1.25, -0.78, -0.6, 1.4, -0.72, 0.6, solid((30, 60, 80), 3))
+    h = Part("umbral_head", 10, 256)
     h.take(hd)
+    # the two great jaw claws and the throat claws: one bone, they flex together
+    h.bone("claws", (UM_HINGE[0], -0.3, 0))
+    cm = Part("tmp")
     for s in (-1, 1):
-        for u in (-1, 1): h.take(_umbral_mandible(s, u), bone="mand")
-    h.pivots["mand"] = (UM_HINGE[0], 0, 0)
-    h.anim("mand", "pos", (0, 0, -1.0), 2.0)
+        _um_claw(cm, 2.2, -0.2, s * 0.75, s, 2.4, 2.6, 0.32, claw, claw_hi)       # the big jaw claws
+        _um_claw(cm, 1.3, -0.6, s * 0.55, s, 1.5, 2.4, 0.2, claw, claw_hi)        # throat claws
+        _um_claw(cm, 0.5, -0.7, s * 0.6, s, 1.3, 2.2, 0.18, claw, claw_hi)
+    h.take(cm, bone="claws")
+    h.bone(None)
+    h.anim("claws", "rot", (0, 0, 9), 2.2)
+    # ---- a body segment
     seg = Part("umbral_body", 10, 256)
-    rounded(seg, -0.25, -0.9, -0.98, 2.1, 0.9, 0.98, sk, 0.3)
-    seg.add(1.8, -0.98, -1.06, 2.1, 0.98, 1.06, dk)                           # plate lip
-    seg.add(-0.1, 0.88, -0.12, 1.9, 0.98, 0.12, eye)                         # the glowing spine
-    for x in (0.3, 1.2): seg.add(x - 0.08, 0.98, -0.08, x + 0.08, 1.5, 0.08, dk)   # spine spikes
-    for s in (-1, 1):
-        seg.bone("fin_" + ("r" if s > 0 else "l"), (1.0, 0, s * 0.98))
-        seg.add(0.15, -0.07, s * 0.98, 1.85, 0.07, s * 2.7, fin)            # fin-wings
-        seg.add(0.45, -0.06, s * 2.7, 1.55, 0.06, s * 3.3, fin)
-        for x in (0.4, 1.0, 1.6): seg.add(x - 0.04, -0.09, s * 0.98, x + 0.04, 0.09, s * (2.9 - abs(x - 1) * 0.6), solid(UM_EYE, 3))   # glowing fin rays
+    rounded(seg, -0.25, -0.8, -0.92, 2.1, 0.85, 0.92, sk, 0.32)
+    seg.add(1.8, -0.9, -1.0, 2.1, 0.92, 1.0, skin_d)                              # the plate seam
+    seg.add(-0.2, -0.86, -0.7, 2.0, -0.78, 0.7, belly)
+    for i in range(6):                                                            # the cyan rib-comb glowing under it
+        x = -0.1 + i * 0.36
+        seg.add(x, -1.05, -0.62, x + 0.1, -0.8, 0.62, cyan)
+    for x in (0.2, 0.9, 1.6): seg.add(x, 0.84, -0.09, x + 0.2, 0.92, 0.09, red)  # red dots down the back
+    for x in (0.55, 1.25): seg.add(x - 0.06, 0.85, -0.06, x + 0.06, 1.2, 0.06, skin_d)   # small back ridges
+    for side, s in (("l", -1), ("r", 1)):
+        seg.bone("legs_" + side, (1.0, -0.7, s * 0.8))
+        lm = Part("tmp")
+        for k2, x in enumerate((0.3, 1.2)):                                       # two long black leg-spikes a side, raking back
+            tube(lm, [(x + 0.2, -0.6, s * 0.8), (x, -1.0, s * 1.05), (x - 0.35, -1.5, s * 1.2), (x - 0.8, -2.0, s * 1.25), (x - 1.25, -2.45, s * 1.2)], 0.12, 0.035, claw)
+        seg.take(lm, bone="legs_" + side)
         seg.bone(None)
-        for x in (0.2, 0.7, 1.2, 1.7): seg.add(x, -0.25, s * 0.97, x + 0.14, -0.1, s * 1.0, glow(UM_BLUE))  # blue lateral line
-    seg.anim("fin_l", "rot", (0, 0, 14), 2.0)
-    seg.anim("fin_r", "rot", (0, 0, -14), 2.0)
+        for x in (0.4, 1.4): seg.add(x, -0.15, s * 0.9 - 0.04, x + 0.4, 0.15, s * 0.9 + 0.04, glow_lines(UM_SKIN, (70, 96, 136), 2, 0.0))   # flank folds
+    seg.anim("legs_l", "rot", (14, 0, 6), 1.6).anim("legs_r", "rot", (-14, 0, -6), 1.6, 0.5)
+    # ---- the tail: long and flattened, a fin fold under it, red dots, a red tip
     tail = Part("umbral_tail", 10, 256)
-    rounded(tail, -1.9, -0.72, -0.78, 0.25, 0.72, 0.78, sk, 0.24)
-    rounded(tail, -3.2, -0.45, -0.48, -1.8, 0.45, 0.48, sk, 0.16)
-    tail.add(-3.9, -0.25, -0.28, -3.1, 0.25, 0.28, dk)
-    tail.add(-1.8, 0.7, -0.06, 0.0, 1.2, 0.06, fin)
-    tail.bone("fluke", (-3.8, 0, 0))
-    for s in (-1, 1):
-        tail.add(-5.4, -0.07, s * 0.15, -3.8, 0.07, s * 2.0, fin)           # the split fluke
-        tail.add(-5.6, -0.08, s * 1.7, -4.9, 0.08, s * 2.4, fin)
-        tail.add(-5.3, -0.1, s * 0.6, -4.0, 0.1, s * 0.7, solid(UM_EYE, 3))
+    rounded(tail, -1.9, -0.6, -0.8, 0.25, 0.65, 0.8, sk, 0.24)
+    rounded(tail, -3.4, -0.36, -0.7, -1.8, 0.4, 0.7, sk, 0.14)
+    for x in (-0.6, -1.5, -2.4): tail.add(x, 0.6 if x > -1.8 else 0.36, -0.08, x + 0.2, 0.68 if x > -1.8 else 0.44, 0.08, red)
+    tail.bone("fin", (-2.6, 0, 0))
+    tail.add(-5.0, -0.18, -1.0, -3.3, 0.14, 1.0, fin)                             # the flat tail blade
+    tail.add(-5.6, -0.12, -0.55, -4.9, 0.1, 0.55, fin)
+    tail.add(-5.9, -0.08, -0.12, -5.5, 0.08, 0.12, red)                           # the red tip
+    tail.add(-4.6, -0.6, -0.04, -2.0, -0.3, 0.04, fin)                            # the fin fold beneath
+    for x in (-3.8, -4.4): tail.add(x, 0.14, -0.07, x + 0.18, 0.2, 0.07, red)
     tail.bone(None)
-    tail.anim("fluke", "rot", (12, 0, 0), 1.7)
+    tail.anim("fin", "rot", (0, 12, 0), 1.6)
     return [h, seg, tail]
 
 

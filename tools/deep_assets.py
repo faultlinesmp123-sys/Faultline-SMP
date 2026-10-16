@@ -568,8 +568,480 @@ def sharkquid():
     return p
 
 
+# --------------------------------------------------------------------------------------------- the Sulphur Sea (1.4.0)
+# Acid creatures, after the Calamity mod's Sulphurous Sea / Acid Rain. Olive and bile skins, glowing lime and sulphur.
+OLIVE, OLIVE_D, BILE, LIME, SULF, RUST, BONEW = (86, 98, 44), (44, 52, 24), (130, 140, 60), (170, 255, 80), (240, 212, 60), (150, 84, 40), (226, 220, 196)
+ACIDGLOW = W.glow(LIME)
+SULFGLOW = W.glow(SULF)
+
+
+def acideel():
+    """A slick olive eel with a glowing lime stripe; its bite burns."""
+    p = Part("acideel", 16, 128)
+    sk = W.grad(OLIVE, OLIVE_D, 4, LIME, 0.04)
+    def seg(x0, x1, r):
+        p.add(x0, -r, -r, x1, r, r, sk)
+        p.add(x0, r, -0.012, x1, r + 0.035, 0.012, finp(OLIVE_D, LIME))                  # the dorsal frill
+        pair(p, x0 + 0.02, 0.0, r, x1 - 0.02, 0.025, r + 0.01, ACIDGLOW)                   # the lateral line
+    p.add(0.36, -0.075, -0.075, 0.58, 0.065, 0.075, sk)                                    # the head
+    p.add(0.4, 0.06, -0.05, 0.55, 0.08, 0.05, solid(OLIVE_D, 3))
+    eyes(p, 0.47, 0.52, 0.01, 0.055, 0.075, (230, 255, 120), (20, 20, 10), slit=True, depth=0.02)
+    p.add(0.5, -0.07, -0.06, 0.6, -0.04, 0.06, MOUTH)
+    for i in range(3): p.add(0.52 + i * 0.025, -0.05, -0.05, 0.535 + i * 0.025, -0.02, 0.05, TEETH)
+    p.bone("jaw", (0.48, -0.06, 0))
+    p.add(0.48, -0.1, -0.06, 0.6, -0.06, 0.06, sk)
+    p.bone(None)
+    seg(0.2, 0.37, 0.085)
+    p.bone("s1", (0.2, 0, 0)); seg(0.03, 0.2, 0.08); seg(-0.14, 0.03, 0.075); p.bone(None)
+    p.bone("s2", (-0.14, 0, 0)); seg(-0.31, -0.14, 0.068); seg(-0.48, -0.31, 0.06); p.bone(None)
+    p.bone("s3", (-0.48, 0, 0)); seg(-0.65, -0.48, 0.05); p.add(-0.86, -0.09, -0.012, -0.64, 0.09, 0.012, finp(OLIVE_D, LIME)); p.bone(None)
+    p.half = {"jaw"}
+    p.anim("s1", "rot", (0, 12, 0), 0.8).anim("s2", "rot", (0, 18, 0), 0.8, 0.15).anim("s3", "rot", (0, 26, 0), 0.8, 0.3).anim("jaw", "rot", (12, 0, 0), 1.6)
+    return p
+
+
+def trasher():
+    """A crocodile of the acid shallows: armoured back, a long toothy snout, a heavy tail."""
+    p = Part("trasher", 16, 256)
+    sk = W.grad((70, 84, 46), (36, 44, 22), 5, (110, 130, 60), 0.06)
+    scute = solid((54, 64, 34), 4)
+    rounded(p, -0.3, -0.12, -0.18, 0.2, 0.1, 0.18, sk, 0.06)                              # the body
+    for x in (-0.25, -0.15, -0.05, 0.05, 0.15):
+        for z in (-0.1, 0.0, 0.1): p.add(x, 0.09, z - 0.03, x + 0.07, 0.13, z + 0.03, scute)   # back scutes
+    p.add(-0.32, -0.13, -0.15, 0.22, -0.11, 0.15, solid((170, 170, 110), 4))               # the pale belly
+    p.bone("head", (0.2, 0, 0))
+    p.add(0.2, -0.07, -0.11, 0.36, 0.08, 0.11, sk)
+    p.add(0.36, -0.04, -0.07, 0.62, 0.04, 0.07, sk)                                        # the snout
+    eyes(p, 0.28, 0.33, 0.06, 0.11, 0.1, (240, 200, 40), (10, 10, 10), slit=True, depth=0.02)
+    for s in (-1, 1): p.add(0.27, 0.08, s * 0.08 - 0.03, 0.34, 0.11, s * 0.08 + 0.03, scute)   # brow knobs
+    for i in range(8): p.add(0.38 + i * 0.03, -0.05, -0.075, 0.395 + i * 0.03, -0.02, 0.075, TEETH)
+    p.bone("jaw", (0.32, -0.04, 0))
+    p.add(0.32, -0.09, -0.07, 0.6, -0.04, 0.07, sk)
+    for i in range(7): p.add(0.38 + i * 0.03, -0.04, -0.07, 0.395 + i * 0.03, -0.01, 0.07, TEETH)
+    p.bone("head")
+    p.bone(None)
+    for x, nm in ((0.12, "front"), (-0.22, "back")):
+        side_bone(p, nm, (x, -0.06, 0.18), [((x - 0.04, -0.2, 0.18, x + 0.04, -0.04, 0.24), sk), ((x - 0.02, -0.23, 0.2, x + 0.1, -0.19, 0.28), solid(OLIVE_D, 3))], True)
+    p.bone("tail", (-0.3, 0, 0))
+    p.add(-0.55, -0.09, -0.1, -0.3, 0.07, 0.1, sk)
+    p.add(-0.85, -0.06, -0.06, -0.55, 0.05, 0.06, sk)
+    for x in (-0.8, -0.7, -0.6, -0.5, -0.4): p.add(x, 0.05, -0.012, x + 0.05, 0.11, 0.012, scute)   # tail crest
+    p.bone(None)
+    p.half = {"jaw"}
+    p.anim("tail", "rot", (0, 20, 0), 1.2).anim("jaw", "rot", (22, 0, 0), 2.2).anim("head", "rot", (0, 6, 0), 2.4)
+    p.anim("frontl", "rot", (0, 0, 18), 0.8).anim("frontr", "rot", (0, 0, -18), 0.8, 0.5).anim("backl", "rot", (0, 0, 18), 0.8, 0.5).anim("backr", "rot", (0, 0, -18), 0.8)
+    return p
+
+
+def radiator():
+    """A little fish that glows sickly green from the inside: stay too close and it burns."""
+    p = Part("radiator", 16, 128)
+    sk = fish((90, 120, 50), (180, 220, 120), LIME, 0.06)
+    rounded(p, -0.24, -0.16, -0.12, 0.26, 0.18, 0.12, sk, 0.06)
+    p.add(-0.18, -0.08, -0.125, 0.18, 0.1, 0.125, ACIDGLOW)                                 # the glowing core shows through
+    eyes(p, 0.15, 0.22, 0.04, 0.11, 0.12, (250, 255, 200), (40, 60, 10), depth=0.02)
+    p.add(0.25, -0.05, -0.04, 0.3, 0.02, 0.04, MOUTH)
+    p.bone("lure", (0.2, 0.18, 0))
+    p.add(0.19, 0.18, -0.01, 0.21, 0.36, 0.01, solid(OLIVE_D, 3))
+    p.add(0.24, 0.33, -0.035, 0.31, 0.4, 0.035, ACIDGLOW)
+    p.add(0.2, 0.35, -0.01, 0.26, 0.37, 0.01, solid(OLIVE_D, 3))
+    p.bone(None)
+    side_bone(p, "fin", (0.05, -0.04, 0.12), [((-0.02, -0.08, 0.12, 0.12, 0.0, 0.24), finp(OLIVE, LIME))], True)
+    p.bone("tail", (-0.24, 0, 0))
+    p.add(-0.5, -0.18, -0.015, -0.22, 0.2, 0.015, finp(OLIVE, LIME))
+    p.bone(None)
+    p.pivots["body"] = (0, 0, 0)
+    p.anim("tail", "rot", (0, 26, 0), 0.6).anim("finl", "rot", (0, 0, 24), 0.5).anim("finr", "rot", (0, 0, -24), 0.5)
+    p.anim("lure", "rot", (0, 0, 10), 1.6).anim("body", "pos", (0, 0.5, 0), 2.0)
+    return p
+
+
+def flakcrab():
+    """A crab in a thick rusted shell bristling with flak tubes; it shrugs off hits from the front."""
+    p = Part("flakcrab", 16, 256)
+    sh = W.grad((150, 94, 46), (90, 50, 26), 5, (200, 140, 60), 0.08)
+    rounded(p, -0.3, -0.08, -0.34, 0.3, 0.18, 0.34, sh, 0.09)
+    rounded(p, -0.22, 0.16, -0.26, 0.24, 0.26, 0.26, sh, 0.07)
+    for (x, z) in ((-0.12, -0.14), (-0.12, 0.14), (0.04, 0.0), (-0.2, 0.0)):              # flak tubes on its back
+        p.add(x - 0.04, 0.24, z - 0.04, x + 0.04, 0.38, z + 0.04, solid((70, 74, 66), 3))
+        p.add(x - 0.03, 0.37, z - 0.03, x + 0.03, 0.39, z + 0.03, ACIDGLOW)
+    p.add(0.28, 0.0, -0.22, 0.34, 0.14, 0.22, solid((110, 64, 30), 4))                    # the front plate
+    p.add(0.24, -0.04, -0.1, 0.31, 0.02, 0.1, MOUTH)
+    p.bone("eyes", (0.22, 0.2, 0))
+    for s in (-1, 1):
+        p.add(0.2, 0.2, s * 0.12 - 0.02, 0.24, 0.34, s * 0.12 + 0.02, solid((120, 70, 34), 3))
+        p.add(0.19, 0.33, s * 0.12 - 0.04, 0.26, 0.4, s * 0.12 + 0.04, W.glow((250, 220, 90)))
+    p.bone(None)
+    legs = []
+    for i in range(3):
+        x = -0.18 + i * 0.14
+        legs += [((x - 0.025, -0.02, 0.34, x + 0.025, 0.04, 0.56), solid((130, 76, 36), 3)),
+                 ((x - 0.025, -0.34, 0.53, x + 0.025, -0.0, 0.58), solid((110, 62, 30), 3))]
+    side_bone(p, "leg", (0.0, 0.0, 0.34), legs, True)
+    side_bone(p, "claw", (0.3, 0.04, 0.24), [((0.3, -0.02, 0.22, 0.46, 0.06, 0.3), sh), ((0.44, -0.1, 0.16, 0.68, 0.14, 0.38), sh),
+                                            ((0.64, 0.0, 0.18, 0.78, 0.08, 0.26), solid((60, 40, 20), 3)), ((0.62, -0.1, 0.27, 0.72, -0.04, 0.36), solid((60, 40, 20), 3))], True)
+    p.anim("legl", "rot", (0, 12, 8), 0.45).anim("legr", "rot", (0, -12, -8), 0.45, 0.5).anim("eyes", "rot", (0, 0, 8), 1.4)
+    p.anim("clawl", "rot", (0, 12, 0), 1.1).anim("clawr", "rot", (0, -12, 0), 1.1, 0.5)
+    return p
+
+
+def nucleartoad():
+    """A bloated toad with glowing warts and a throat sac that pulses green. Don't pop it."""
+    p = Part("nucleartoad", 16, 128)
+    sk = W.grad((96, 120, 40), (54, 70, 24), 5, LIME, 0.1)
+    rounded(p, -0.24, -0.14, -0.2, 0.2, 0.12, 0.2, sk, 0.08)
+    rounded(p, 0.1, -0.06, -0.17, 0.32, 0.14, 0.17, sk, 0.06)                              # the head
+    for s in (-1, 1):
+        p.add(0.18, 0.12, s * 0.11 - 0.06, 0.3, 0.22, s * 0.11 + 0.06, sk)                # bulging eyes
+        a, b = sorted((s * 0.17, s * 0.172))
+        p.add(0.2, 0.14, s * 0.11 - 0.05, 0.29, 0.2, s * 0.11 + 0.05, W.eye_paint((250, 220, 60), (240, 180, 20), (10, 10, 10), True))
+    for (x, z) in ((-0.15, 0.1), (-0.05, -0.12), (0.05, 0.08), (-0.18, -0.05), (0.0, 0.0)):
+        p.add(x - 0.03, 0.11, z - 0.03, x + 0.03, 0.15, z + 0.03, ACIDGLOW)                 # glowing warts
+    p.add(0.31, -0.02, -0.12, 0.33, 0.02, 0.12, MOUTH)
+    p.bone("sac", (0.24, -0.1, 0))
+    rounded(p, 0.16, -0.22, -0.11, 0.32, -0.06, 0.11, ACIDGLOW, 0.04)
+    p.bone(None)
+    for s, nm in ((1, "legr"), (-1, "legl")):
+        a, b = sorted((s * 0.18, s * 0.3))
+        p.bone(nm, (-0.12, -0.08, s * 0.2))
+        p.add(-0.24, -0.16, a, 0.0, -0.04, b, sk)
+        p.add(-0.02, -0.18, a, 0.1, -0.14, b, solid(OLIVE_D, 3))
+        p.bone(None)
+    pair(p, 0.12, -0.18, 0.12, 0.2, -0.1, 0.18, sk)
+    p.pivots["body"] = (0, -0.14, 0)
+    p.half = {"sac"}
+    p.anim("sac", "pos", (0, -0.6, 0), 1.2).anim("legl", "rot", (0, 0, 8), 2.4).anim("legr", "rot", (0, 0, -8), 2.4).anim("body", "pos", (0, 0.4, 0), 2.4)
+    return p
+
+
+def gammaslime():
+    """A cube of glowing green jelly with a dark, irradiated core."""
+    p = Part("gammaslime", 16, 128)
+    outer = W.glow((140, 230, 70))
+    p.add(-0.3, -0.3, -0.3, 0.3, 0.3, 0.3, outer)
+    p.add(-0.14, -0.14, -0.14, 0.14, 0.14, 0.14, solid((40, 70, 20), 4))                   # the core
+    p.add(-0.06, -0.06, -0.06, 0.06, 0.06, 0.06, W.glow((250, 255, 150)))
+    eyes(p, 0.29, 0.31, 0.06, 0.14, 0.12, (20, 40, 10), (230, 255, 160), depth=0.02)
+    p.add(0.3, -0.1, -0.08, 0.31, -0.06, 0.08, solid((20, 40, 10), 2))
+    p.bone("drip", (0, -0.3, 0))
+    for (x, z) in ((0.2, 0.1), (-0.15, -0.2), (0.05, -0.18)): p.add(x - 0.03, -0.42, z - 0.03, x + 0.03, -0.3, z + 0.03, outer)
+    p.bone(None)
+    p.pivots["body"] = (0, -0.3, 0)
+    p.anim("body", "pos", (0, 0.9, 0), 0.9).anim("drip", "pos", (0, -0.6, 0), 0.9, 0.25)
+    return p
+
+
+def sulphurskater():
+    """A long-legged water strider that skates the acid surface; it bites fast when crowded."""
+    p = Part("sulphurskater", 16, 128)
+    sk = W.grad((60, 66, 40), (30, 34, 20), 4, SULF, 0.05)
+    rounded(p, -0.28, -0.04, -0.07, 0.2, 0.06, 0.07, sk, 0.03)
+    p.add(0.18, -0.03, -0.05, 0.3, 0.05, 0.05, sk)
+    eyes(p, 0.25, 0.29, 0.0, 0.04, 0.05, SULF, (10, 10, 10), depth=0.02)
+    for s in (-1, 1): p.add(0.29, 0.03, s * 0.025 - 0.008, 0.42, 0.045, s * 0.025 + 0.008, solid(OLIVE_D, 2))   # antennae
+    p.add(-0.2, 0.06, -0.02, 0.1, 0.075, 0.02, SULFGLOW)                                   # a sulphur stripe
+    legs = [((0.06, -0.01, 0.07, 0.09, 0.02, 0.32), solid(OLIVE_D, 2)), ((0.2, -0.04, 0.29, 0.44, -0.01, 0.32), solid(OLIVE_D, 2)),
+            ((-0.05, -0.01, 0.07, -0.02, 0.02, 0.4), solid(OLIVE_D, 2)), ((-0.05, -0.12, 0.38, -0.02, 0.0, 0.41), solid(OLIVE_D, 2)),
+            ((-0.15, -0.01, 0.07, -0.12, 0.02, 0.42), solid(OLIVE_D, 2)), ((-0.5, -0.12, 0.4, -0.14, -0.09, 0.43), solid(OLIVE_D, 2))]
+    side_bone(p, "leg", (0.0, 0.0, 0.07), legs, True)
+    p.pivots["body"] = (0, 0, 0)
+    p.anim("legl", "rot", (0, 14, 4), 0.35).anim("legr", "rot", (0, -14, -4), 0.35, 0.5).anim("body", "pos", (0, 0.3, 0), 0.7)
+    return p
+
+
+def acidjelly():
+    """A green bell of a jellyfish with lime veins, trailing stinging threads."""
+    p = Part("acidjelly", 16, 128)
+    bell = W.glow((120, 200, 80))
+    rounded(p, -0.26, 0.0, -0.26, 0.26, 0.24, 0.26, bell, 0.09)
+    rounded(p, -0.18, 0.22, -0.18, 0.18, 0.32, 0.18, bell, 0.06)
+    p.add(-0.1, 0.05, -0.1, 0.1, 0.2, 0.1, W.glow((230, 255, 120)))                        # the glowing heart
+    p.bone("skirt", (0, 0, 0))
+    for i in range(8):
+        a = i * math.pi / 4
+        p.add(math.cos(a) * 0.22 - 0.04, -0.06, math.sin(a) * 0.22 - 0.04, math.cos(a) * 0.22 + 0.04, 0.02, math.sin(a) * 0.22 + 0.04, bell)
+    p.bone(None)
+    p.bone("threads", (0, -0.02, 0))
+    for i in range(10):
+        a = i * math.pi / 5
+        r = 0.12 + (i % 2) * 0.07
+        x, z = math.cos(a) * r, math.sin(a) * r
+        p.add(x - 0.012, -0.85 + (i % 3) * 0.12, z - 0.012, x + 0.012, -0.02, z + 0.012, solid((150, 230, 90), 2))
+    for i in range(4):
+        a = i * math.pi / 2 + 0.4
+        p.add(math.cos(a) * 0.05 - 0.03, -0.5, math.sin(a) * 0.05 - 0.03, math.cos(a) * 0.05 + 0.03, -0.02, math.sin(a) * 0.05 + 0.03, W.membrane((140, 210, 90), LIME))
+    p.bone(None)
+    p.pivots["body"] = (0, 0, 0)
+    p.anim("skirt", "pos", (0, 0.8, 0), 1.4).anim("threads", "rot", (8, 0, 8), 1.8).anim("body", "pos", (0, 1.2, 0), 1.4, 0.5)
+    return p
+
+
+def orthocera():
+    """A cephalopod in a long, straight, banded cone shell; it jets backward and sprays acid ink."""
+    p = Part("orthocera", 16, 256)
+    shell = W.bands((216, 196, 150), (130, 100, 70), 3)
+    for i in range(7):                                                                       # the cone, narrowing behind
+        r = 0.16 - i * 0.02
+        x0 = -0.15 - i * 0.12
+        p.add(x0 - 0.12, -r, -r, x0, r, r, shell)
+    p.add(-0.99, -0.02, -0.02, -0.96, 0.02, 0.02, solid((120, 90, 60), 3))
+    p.add(-0.16, -0.17, -0.17, 0.06, 0.17, 0.17, solid((180, 150, 110), 4))                # the lip
+    p.add(0.04, -0.12, -0.12, 0.18, 0.12, 0.12, W.grad((110, 120, 60), (60, 70, 30), 4, LIME, 0.05))   # the head
+    for s in (-1, 1):
+        a, b = sorted((s * 0.12, s * 0.135))
+        p.add(0.08, 0.02, a, 0.15, 0.09, b, W.eye_paint((230, 230, 160), (60, 80, 20), (10, 10, 10)))
+    p.bone("arms", (0.18, 0, 0))
+    for i in range(10):
+        a = i * math.pi / 5
+        y, z = math.sin(a) * 0.07, math.cos(a) * 0.07
+        L = 0.42 if i % 2 else 0.3
+        p.add(0.18, y - 0.018, z - 0.018, 0.18 + L, y + 0.018, z + 0.018, solid((120, 130, 60), 3))
+        p.add(0.16 + L, y - 0.025, z - 0.025, 0.2 + L, y + 0.025, z + 0.025, ACIDGLOW)
+    p.bone(None)
+    p.pivots["body"] = (0, 0, 0)
+    p.anim("arms", "rot", (0, 12, 12), 1.3).anim("body", "pos", (0, 0.6, 0), 2.0)
+    return p
+
+
+def trilobite():
+    """An armoured bug of the sea floor; it curls into a ball when struck."""
+    p = Part("trilobite", 16, 128)
+    sh = W.grad((120, 110, 80), (70, 62, 44), 4, (170, 160, 110), 0.06)
+    p.add(0.1, -0.05, -0.18, 0.3, 0.06, 0.18, sh)                                          # the head shield
+    p.add(0.24, -0.05, -0.2, 0.3, 0.03, -0.14, solid((90, 80, 56), 3)); p.add(0.24, -0.05, 0.14, 0.3, 0.03, 0.2, solid((90, 80, 56), 3))
+    eyes(p, 0.16, 0.22, 0.03, 0.08, 0.1, (60, 50, 30), (180, 220, 90), depth=0.03)
+    p.bone("body1", (0.1, 0, 0))
+    for i in range(3):
+        x = 0.1 - (i + 1) * 0.07
+        p.add(x, -0.04, -0.17 + i * 0.01, x + 0.065, 0.05, 0.17 - i * 0.01, sh)
+        p.add(x + 0.01, 0.05, -0.04, x + 0.055, 0.075, 0.04, solid((90, 82, 58), 3))    # the axial ridge
+    p.bone(None)
+    p.bone("body2", (-0.11, 0, 0))
+    for i in range(3):
+        x = -0.11 - (i + 1) * 0.07
+        p.add(x, -0.035, -0.14 + i * 0.02, x + 0.065, 0.045, 0.14 - i * 0.02, sh)
+        p.add(x + 0.01, 0.045, -0.035, x + 0.055, 0.07, 0.035, solid((90, 82, 58), 3))
+    p.add(-0.38, -0.03, -0.06, -0.32, 0.03, 0.06, sh)
+    p.bone(None)
+    side_bone(p, "legs", (0.0, -0.04, 0.12), [((x, -0.08, 0.1, x + 0.02, -0.04, 0.2), solid((150, 130, 90), 2)) for x in (-0.25, -0.15, -0.05, 0.05, 0.15)], True)
+    p.anim("legsl", "rot", (0, 0, 14), 0.4).anim("legsr", "rot", (0, 0, -14), 0.4, 0.5).anim("body1", "rot", (0, 0, 4), 1.6).anim("body2", "rot", (0, 0, 6), 1.6, 0.2)
+    return p
+
+
+def skyfin():
+    """A flying fish with wing-fins; it leaps from the sea and dives on anything above the water."""
+    p = Part("skyfin", 16, 128)
+    sk = fish((70, 96, 60), (200, 220, 170), LIME, 0.03)
+    rounded(p, -0.3, -0.08, -0.08, 0.25, 0.08, 0.08, sk, 0.035)
+    p.add(0.24, -0.05, -0.05, 0.38, 0.05, 0.05, sk)
+    p.add(0.36, -0.02, -0.02, 0.48, 0.0, 0.02, solid((40, 50, 30), 3))                    # the spear of a beak
+    eyes(p, 0.28, 0.33, 0.0, 0.05, 0.05, (250, 230, 120), (20, 10, 10), depth=0.02)
+    for side, s in (("l", -1), ("r", 1)):
+        p.bone("wing" + side, (0.08, 0.02, s * 0.08))
+        a, b = sorted((s * 0.08, s * 0.55))
+        p.add(-0.12, 0.01, a, 0.18, 0.03, b, W.membrane((100, 140, 80), LIME))
+        for x in (-0.06, 0.04, 0.14):
+            a2, b2 = sorted((s * 0.08, s * (0.5 - abs(x) * 0.6)))
+            p.add(x, 0.03, a2, x + 0.015, 0.045, b2, solid(OLIVE_D, 2))
+        p.bone(None)
+    p.bone("tail", (-0.3, 0, 0))
+    p.add(-0.56, 0.0, -0.015, -0.28, 0.2, 0.015, finp(OLIVE, LIME)); p.add(-0.6, -0.16, -0.015, -0.3, 0.0, 0.015, finp(OLIVE, LIME))
+    p.bone(None)
+    p.anim("wingl", "rot", (0, 0, 30), 0.35).anim("wingr", "rot", (0, 0, -30), 0.35).anim("tail", "rot", (0, 18, 0), 0.5)
+    return p
+
+
+def leech():
+    """A ringed, glistening leech with a round mouth of hooks; it latches on and drinks."""
+    p = Part("leech", 16, 128)
+    ring = lambda i: solid((60, 40, 50), 4) if i % 2 else W.grad((90, 70, 70), (50, 34, 40), 3, LIME, 0.05)
+    def seg(x, r, i): rounded(p, x, -r * 0.7, -r, x + 0.1, r * 0.7, r, ring(i), r * 0.3)
+    p.bone("front", (0.12, 0, 0))
+    seg(0.12, 0.08, 1); seg(0.22, 0.07, 2)
+    p.add(0.32, -0.05, -0.06, 0.36, 0.05, 0.06, solid((120, 40, 50), 3))                 # the sucker
+    for i in range(6):
+        a = i * math.pi / 3
+        p.add(0.355, math.sin(a) * 0.035 - 0.008, math.cos(a) * 0.035 - 0.008, 0.38, math.sin(a) * 0.035 + 0.008, math.cos(a) * 0.035 + 0.008, TEETH)
+    p.bone(None)
+    seg(0.02, 0.09, 0)
+    p.bone("back", (0.02, 0, 0))
+    seg(-0.08, 0.085, 1); seg(-0.18, 0.075, 2); seg(-0.28, 0.06, 3)
+    p.add(-0.38, -0.04, -0.06, -0.28, 0.04, 0.06, solid((120, 40, 50), 3))
+    p.bone(None)
+    for x in (-0.2, 0.0, 0.2): pair(p, x, 0.04, 0.05, x + 0.04, 0.065, 0.075, ACIDGLOW)
+    p.anim("front", "rot", (0, 16, 8), 0.9).anim("back", "rot", (0, -16, -8), 0.9)
+    return p
+
+
+def boglurker():
+    """It looks like a dead acidwood stump, until the stump opens its eyes."""
+    p = Part("boglurker", 16, 256)
+    bark = W.grad((50, 40, 32), (28, 22, 18), 5, (90, 110, 40), 0.06)
+    moss = W.grad((90, 110, 40), (60, 76, 26), 4, LIME, 0.04)
+    rounded(p, -0.22, -0.4, -0.22, 0.22, 0.32, 0.22, bark, 0.08)                         # the trunk body
+    p.add(-0.24, 0.24, -0.24, 0.24, 0.32, 0.24, moss)
+    for (x, z) in ((0.18, 0.18), (-0.18, 0.18), (0.18, -0.18), (-0.18, -0.18)): p.add(x - 0.06, -0.44, z - 0.06, x + 0.06, -0.3, z + 0.06, bark)   # roots
+    p.add(0.21, 0.02, -0.16, 0.24, 0.22, 0.16, solid((20, 16, 12), 3))                   # the hollow
+    for s in (-1, 1): p.add(0.215, 0.12, s * 0.08 - 0.035, 0.245, 0.19, s * 0.08 + 0.035, W.glow((250, 210, 60)))   # glowing eyes in it
+    p.bone("jaw", (0.2, 0.0, 0))
+    p.add(0.2, -0.12, -0.15, 0.26, 0.02, 0.15, bark)
+    for z in (-0.12, -0.06, 0.0, 0.06, 0.12): p.add(0.24, 0.02, z - 0.015, 0.27, 0.06, z + 0.015, TEETH)
+    p.bone(None)
+    for side, s in (("l", -1), ("r", 1)):
+        p.bone("arm" + side, (0.0, 0.2, s * 0.22))
+        a, b = sorted((s * 0.22, s * 0.3))
+        p.add(-0.04, -0.16, a, 0.04, 0.22, b, bark)                                        # branch arms
+        a2, b2 = sorted((s * 0.26, s * 0.42))
+        p.add(-0.03, 0.18, a2, 0.03, 0.24, b2, bark); p.add(0.0, -0.22, a, 0.12, -0.16, b, bark)
+        p.add(0.0, 0.22, a2, 0.04, 0.3, b2, moss)
+        p.bone(None)
+    p.half = {"jaw"}
+    p.anim("jaw", "rot", (18, 0, 0), 2.6).anim("arml", "rot", (0, 0, 10), 2.0).anim("armr", "rot", (0, 0, -10), 2.0, 0.5)
+    return p
+
+
+def corrosionshark():
+    """A huge shark with mottled bile skin, a glowing gill line, and teeth that eat through armour."""
+    p = shark("corrosionshark", fish((70, 86, 50), (190, 196, 150), LIME, 0.05), finp((54, 66, 34), LIME), (196, 200, 160), dorsal=0.4)
+    for x in (0.1, 0.13, 0.16, 0.19): pair(p, x, -0.06, 0.168, x + 0.012, 0.06, 0.172, ACIDGLOW)                # glowing gills
+    for x in (-0.3, -0.1, 0.1): p.add(x, 0.15, -0.03, x + 0.06, 0.17, 0.03, solid((40, 50, 24), 3))            # scars
+    return p
+
+
+def urchin():
+    """A spiny sulphur-yellow ball on the sea floor; touch it and you'll know."""
+    p = Part("urchin", 16, 128)
+    rounded(p, -0.2, -0.2, -0.2, 0.2, 0.2, 0.2, W.grad((120, 60, 90), (70, 30, 60), 4, (200, 120, 160), 0.1), 0.08)
+    p.bone("spines", (0, 0, 0))
+    for i in range(22):                                                                    # spines: stacked cubes, close enough to read as one spike
+        u = (i + 0.5) / 22 * 2 - 1
+        a = i * 2.4
+        r = math.sqrt(1 - u * u)
+        dx, dy, dz = math.cos(a) * r, u, math.sin(a) * r
+        for k in range(7):
+            t = 0.17 + k * 0.05
+            w = 0.03 - k * 0.0035
+            cx, cy, cz = dx * t, dy * t, dz * t
+            p.add(cx - w, cy - w, cz - w, cx + w, cy + w, cz + w, SULFGLOW if k >= 5 else solid((210, 180, 70), 2))
+    p.bone(None)
+    p.add(-0.06, 0.18, -0.06, 0.06, 0.22, 0.06, solid((40, 20, 30), 3))
+    p.anim("spines", "rot", (6, 8, 6), 2.6)
+    return p
+
+
+def crabling():
+    """A crab no bigger than your fist, the colour of rust. They never come alone."""
+    p = Part("crabling", 16, 128)
+    sh = W.grad((190, 100, 50), (120, 60, 30), 4, (240, 160, 80), 0.08)
+    rounded(p, -0.22, -0.08, -0.28, 0.22, 0.12, 0.28, sh, 0.08)
+    p.bone("eyes", (0.18, 0.1, 0))
+    for s in (-1, 1):
+        p.add(0.17, 0.1, s * 0.1 - 0.02, 0.21, 0.22, s * 0.1 + 0.02, solid((150, 70, 34), 3))
+        p.add(0.16, 0.21, s * 0.1 - 0.035, 0.23, 0.27, s * 0.1 + 0.035, solid((20, 20, 20), 2))
+    p.bone(None)
+    legs = []
+    for i in range(3):
+        x = -0.14 + i * 0.12
+        legs += [((x - 0.02, -0.03, 0.28, x + 0.02, 0.02, 0.44), solid((170, 84, 40), 3)), ((x - 0.02, -0.24, 0.42, x + 0.02, -0.0, 0.46), solid((150, 70, 34), 3))]
+    side_bone(p, "leg", (0.0, -0.02, 0.28), legs, True)
+    side_bone(p, "claw", (0.22, 0.0, 0.2), [((0.22, -0.03, 0.18, 0.38, 0.05, 0.26), sh), ((0.36, -0.08, 0.14, 0.54, 0.1, 0.32), sh)], True)
+    p.anim("legl", "rot", (0, 14, 10), 0.3).anim("legr", "rot", (0, -14, -10), 0.3, 0.5).anim("clawl", "rot", (0, 14, 0), 0.8).anim("clawr", "rot", (0, -14, 0), 0.8, 0.5)
+    return p
+
+
+def bloatgut():
+    """A pufferfish swollen with acid gas, sulphur spines standing up all over it."""
+    p = Part("bloatgut", 16, 128)
+    sk = fish((140, 150, 60), (230, 230, 150), (100, 110, 40), 0.1)
+    rounded(p, -0.28, -0.28, -0.28, 0.28, 0.28, 0.28, sk, 0.11)
+    p.add(-0.2, -0.29, -0.2, 0.2, -0.27, 0.2, W.glow((200, 250, 100)))                   # the glowing belly
+    p.bone("spines", (0, 0, 0))
+    for (x, y, z) in ((0, 0.3, 0.16), (0, 0.3, -0.16), (0.16, 0.29, 0), (-0.16, 0.29, 0), (0, -0.31, 0.16), (0, -0.31, -0.16),
+                      (-0.16, 0, 0.31), (0.12, 0, 0.31), (-0.16, 0, -0.31), (0.12, 0, -0.31), (0.14, 0.2, 0.24), (-0.14, -0.2, -0.24),
+                      (0.14, -0.2, 0.24), (-0.14, 0.2, -0.24), (-0.3, 0.12, 0.1), (-0.3, -0.12, -0.1)):
+        nx, ny, nz = [0.07 if abs(v) > 0.25 else 0.022 for v in (x, y, z)]
+        p.add(x - nx, y - ny, z - nz, x + nx, y + ny, z + nz, SULFGLOW)
+    p.bone(None)
+    eyes(p, 0.16, 0.27, 0.06, 0.16, 0.28, (250, 250, 210), (30, 50, 10), depth=0.02)
+    p.add(0.28, -0.08, -0.06, 0.33, 0.0, 0.06, solid((120, 60, 40), 3))
+    side_bone(p, "fin", (0.1, 0.0, 0.28), [((0.04, -0.06, 0.28, 0.16, 0.04, 0.38), finp((140, 150, 60), SULF))], True)
+    p.bone("tail", (-0.28, 0, 0)); p.add(-0.48, -0.14, -0.015, -0.26, 0.14, 0.015, finp((140, 150, 60), SULF)); p.bone(None)
+    p.pivots["body"] = (0, 0, 0)
+    p.anim("tail", "rot", (0, 28, 0), 0.5).anim("finl", "rot", (0, 0, 30), 0.35).anim("finr", "rot", (0, 0, -30), 0.35)
+    p.anim("spines", "rot", (5, 5, 5), 1.2).anim("body", "pos", (0, 0.5, 0), 1.6)
+    return p
+
+
+def sulphurmoth():
+    """A fat, furry moth with glowing sulphur wings, drawn to fumaroles."""
+    p = Part("sulphurmoth", 16, 128)
+    fur = W.grad((200, 180, 90), (150, 120, 50), 4, (250, 240, 160), 0.1)
+    rounded(p, -0.22, -0.07, -0.07, 0.12, 0.07, 0.07, fur, 0.03)
+    p.add(0.1, -0.06, -0.06, 0.2, 0.06, 0.06, fur)
+    eyes(p, 0.14, 0.2, -0.01, 0.05, 0.06, (40, 30, 20), (250, 250, 220), depth=0.02)
+    for s in (-1, 1): p.add(0.18, 0.05, s * 0.03 - 0.01, 0.3, 0.07, s * 0.09 + 0.01, solid((140, 110, 50), 2))   # feathery antennae
+    for side, s in (("l", -1), ("r", 1)):
+        p.bone("wing" + side, (0.0, 0.05, s * 0.07))
+        a, b = sorted((s * 0.07, s * 0.46))
+        p.add(-0.1, 0.05, a, 0.18, 0.07, b, W.membrane((230, 200, 70), (255, 250, 170)))
+        a2, b2 = sorted((s * 0.07, s * 0.34))
+        p.add(-0.28, 0.045, a2, -0.06, 0.065, b2, W.membrane((210, 170, 60), (255, 240, 150)))
+        c0, c1 = sorted((s * 0.2, s * 0.28))
+        p.add(0.0, 0.07, c0, 0.08, 0.075, c1, W.glow((255, 255, 200)))                   # eye spots
+        p.bone(None)
+    p.pivots["body"] = (0, 0, 0)
+    p.anim("wingl", "rot", (0, 0, 40), 0.25).anim("wingr", "rot", (0, 0, -40), 0.25).anim("body", "pos", (0, 1.0, 0), 0.6)
+    return p
+
+
+def hazardturtle():
+    """A turtle whose shell has grown spikes of glowing sulphur crystal."""
+    p = Part("hazardturtle", 16, 256)
+    shell = W.grad((70, 80, 50), (40, 46, 28), 5, (110, 120, 70), 0.06)
+    skin = W.grad((120, 130, 80), (80, 90, 50), 4, (150, 160, 100), 0.05)
+    rounded(p, -0.32, -0.06, -0.26, 0.28, 0.2, 0.26, shell, 0.09)
+    p.add(-0.3, -0.1, -0.22, 0.26, -0.05, 0.22, solid((180, 170, 110), 4))               # the plastron
+    for (x, z, h) in ((0.0, 0.0, 0.2), (-0.15, 0.1, 0.14), (-0.15, -0.1, 0.14), (0.14, 0.1, 0.12), (0.14, -0.1, 0.12), (-0.25, 0.0, 0.1)):
+        p.add(x - 0.035, 0.18, z - 0.035, x + 0.035, 0.18 + h, z + 0.035, SULFGLOW)         # crystal spikes
+        p.add(x - 0.02, 0.18 + h, z - 0.02, x + 0.02, 0.22 + h, z + 0.02, W.glow((255, 250, 180)))
+    p.bone("head", (0.28, 0.04, 0))
+    p.add(0.26, -0.02, -0.07, 0.46, 0.1, 0.07, skin)
+    eyes(p, 0.38, 0.43, 0.04, 0.08, 0.07, (20, 20, 10), (220, 200, 60), depth=0.02)
+    p.add(0.44, -0.0, -0.05, 0.47, 0.03, 0.05, solid((60, 60, 40), 3))
+    p.bone(None)
+    for x, nm in ((0.16, "front"), (-0.2, "back")):
+        side_bone(p, nm, (x, -0.04, 0.24), [((x - 0.06, -0.08, 0.22, x + 0.1, -0.02, 0.4), skin)], True)
+    p.add(-0.42, -0.02, -0.03, -0.32, 0.04, 0.03, skin)
+    p.anim("head", "rot", (0, 10, 4), 2.2).anim("frontl", "rot", (0, 18, 0), 1.2).anim("frontr", "rot", (0, -18, 0), 1.2, 0.5)
+    p.anim("backl", "rot", (0, 14, 0), 1.2, 0.5).anim("backr", "rot", (0, -14, 0), 1.2)
+    return p
+
+
+def sludgesnail():
+    """A slow snail with a rusted, spiral shell, leaving a trail of acid slime."""
+    p = Part("sludgesnail", 16, 128)
+    skin = W.grad((130, 150, 70), (80, 96, 40), 4, LIME, 0.06)
+    shell = W.bands((150, 90, 44), (90, 50, 26), 2)
+    p.add(-0.3, -0.18, -0.12, 0.34, -0.06, 0.12, skin)                                    # the foot
+    p.add(-0.32, -0.19, -0.13, 0.36, -0.17, 0.13, W.glow((160, 240, 90)))               # glistening slime underneath
+    for (r, y, x) in ((0.2, 0.06, -0.08), (0.14, 0.2, -0.04), (0.09, 0.3, 0.0), (0.05, 0.37, 0.02)):   # the spiral, stacked
+        rounded(p, x - r, y - r * 0.9, -r * 0.9, x + r, y + r * 0.9, r * 0.9, shell, r * 0.3)
+    p.bone("head", (0.28, -0.06, 0))
+    p.add(0.26, -0.1, -0.07, 0.4, 0.04, 0.07, skin)
+    for s in (-1, 1):
+        p.add(0.33, 0.03, s * 0.04 - 0.012, 0.36, 0.2, s * 0.04 + 0.012, skin)           # eye stalks
+        p.add(0.32, 0.19, s * 0.04 - 0.025, 0.37, 0.24, s * 0.04 + 0.025, W.glow((250, 230, 120)))
+    p.bone(None)
+    p.anim("head", "rot", (0, 8, 6), 2.8)
+    return p
+
+
+SULPHUR_MOBS = [acideel, trasher, radiator, flakcrab, nucleartoad, gammaslime, sulphurskater, acidjelly, orthocera, trilobite,
+                skyfin, leech, boglurker, corrosionshark, urchin, crabling, bloatgut, sulphurmoth, hazardturtle, sludgesnail]
+
+
 MOBS = [gawker, bloatfin, jellywing, driftback, clam, lumenbell, gasbloom, fangstalker, blastfin, burrowshark,
-        cavecrawler, glowgrub, shellsnake, lampsquid, volteel, needlejaw, devilfish, riftwarper, hollowkin, sharkquid]
+        cavecrawler, glowgrub, shellsnake, lampsquid, volteel, needlejaw, devilfish, riftwarper, hollowkin, sharkquid] + SULPHUR_MOBS
 
 
 # =====================================================================================================================
@@ -757,13 +1229,14 @@ def main():
         tiles = []
         for part, img, boxes in built:
             tiles.append((part.name, W.render_icon([(part, img, boxes, lambda q: q)], size=180)))
-        sheet = Image.new("RGBA", (5 * 190, 4 * 210), (18, 30, 50, 255))
+        rows = (len(tiles) + 4) // 5
+        sheet = Image.new("RGBA", (5 * 190, rows * 210), (18, 30, 50, 255))
         d = ImageDraw.Draw(sheet)
         for i, (n, t) in enumerate(tiles):
             sheet.alpha_composite(t, ((i % 5) * 190 + 5, (i // 5) * 210 + 5)); d.text(((i % 5) * 190 + 8, (i // 5) * 210 + 190), n, fill=(230, 230, 230))
         sheet.save(os.path.join(prev, "deep_creatures.png"))
         ic = list(index.items())
-        s2 = Image.new("RGBA", (11 * 68, 2 * 68), (200, 180, 140, 255))
+        s2 = Image.new("RGBA", (11 * 68, ((len(ic) + 10) // 11) * 68), (200, 180, 140, 255))
         for i, (k, im) in enumerate(ic): s2.alpha_composite(im.resize((64, 64), Image.NEAREST), ((i % 11) * 68 + 2, (i // 11) * 68 + 2))
         s2.save(os.path.join(prev, "deep_icons.png"))
 

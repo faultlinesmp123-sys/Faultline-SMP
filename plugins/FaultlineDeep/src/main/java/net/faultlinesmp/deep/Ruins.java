@@ -22,6 +22,7 @@ final class Ruins {
         int z = gz * cell + 32 + (int) (DeepGenerator.unit(DeepGenerator.hash(seed, gx, gz, salt + 2)) * (cell - 64));
         if (Math.abs(x) > 1000 || Math.abs(z) > 1000) return null;                        // inside the world border
         if (Math.hypot(x, z) < 80) return null;                                            // not on the arrival point
+        if (!abyss && Sulphur.near(x, z, 10)) return null;                                 // the Sulphur Sea has its own wrecks
         if (Math.max(Math.abs(x - DeepGenerator.FLAT_X), Math.abs(z - DeepGenerator.FLAT_Z)) < DeepGenerator.FLAT_HALF + DeepGenerator.FLAT_BLEND + 20) return null;
         if (!abyss) { // not in a blue hole's mouth
             int cx = Math.floorDiv(x, 144), cz = Math.floorDiv(z, 144);

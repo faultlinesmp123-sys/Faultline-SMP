@@ -1084,6 +1084,13 @@ Notes:
   every segment (bones `legs_l/r`), red dots down the back, a flat finned tail with a red tip. Tested: `DeepBossTest`
   (summon only in SWAMP, the molt swap, more damage, never enraged, coil break, pylon beams), `WildTest`, `MusicTest`,
   `StuckTest`, `DeepTest` (40 creatures, toad, leech, trilobite, urchin, snail, acid water + diving tier), `TownPreview`.
+- **Acid Rain (Deep 1.4.1, Items 1.2.48 = music hash)**: in the Sulphur Sea (`Ocean.inSulphur`) the music is
+  `faultline:deep.acid` (Calamity's "Corrosion - Theme of the Acid Rain", 105 s, `music.acid-seconds`) instead of the depth
+  tracks; boss music still wins. It's in `FaultlineDeepMusic.zip` (`sounds/deep/acid.ogg`, new `music-hash`) and the Bedrock
+  `FaultlineDeep.mcpack` (`deep_assets.py --music` reads sunken/abyss/acid.ogg). It always rains there
+  (`sulphur.always-raining`): per-player `setPlayerWeather(DOWNFALL)` re-applied every 2 s, reset on leaving / quitting /
+  changing worlds, plus GREEN RAIN particles (lime/yellow concrete-powder falling dust + green dust,
+  `sulphur.green-rain-particles` 40, every 4 ticks, not under a roof). Tested (`DeepTest`).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

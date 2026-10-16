@@ -91,6 +91,7 @@ final class Ocean implements Listener {
         if (ticks % 40 == 0) music();
         if (ticks % 20 == 0) eat();
         if (ticks % 40 == 0) sulphur();
+        if (ticks % 4 == 0) greenRain();
         holdDrops();
         events();
     }
@@ -112,6 +113,11 @@ final class Ocean implements Listener {
                         Component.text("The water burns. Something huge moves under it.", NamedTextColor.GRAY)));
                 p.playSound(l, Sound.AMBIENT_UNDERWATER_ENTER, SoundCategory.AMBIENT, 1f, 0.6f);
             } else if (!in) inSulphur.remove(p.getUniqueId());
+            // it always rains over the Sulphur Sea (only for the players in it: their own weather), and stops when they leave
+            if (in && pl.getConfig().getBoolean("sulphur.always-raining", true)) {
+                if (p.getPlayerWeather() != org.bukkit.WeatherType.DOWNFALL) p.setPlayerWeather(org.bukkit.WeatherType.DOWNFALL);
+                rained.add(p.getUniqueId());
+            } else if (rained.remove(p.getUniqueId())) p.resetPlayerWeather();
             boolean wet = p.isInWater() || l.getBlock().getType() == org.bukkit.Material.WATER;
             if (!in || !wet || p.getGameMode() == GameMode.CREATIVE || p.getGameMode() == GameMode.SPECTATOR) continue;
             if (!pl.getConfig().getBoolean("sulphur.acid-water", true)) continue;
@@ -120,6 +126,32 @@ final class Ocean implements Listener {
             p.addPotionEffect(new org.bukkit.potion.PotionEffect(org.bukkit.potion.PotionEffectType.POISON, 60, 0, false, true, true));
             if (ticks % 200 == 0) p.sendActionBar(Component.text("The Sulphur Sea's water burns! ", NamedTextColor.GREEN)
                     .append(Component.text("(Abyssal Diving Gear keeps it out)", NamedTextColor.GRAY)));
+        }
+    }
+
+    private final java.util.Set<UUID> rained = new java.util.HashSet<>();
+
+    /**
+     * The Sulphur Sea's rain is GREEN: falling drops of lime acid round every player in it who's under open sky (sent to
+     * that player only, every 4 ticks), on top of the real rain. Bedrock sees the same particles.
+     */
+    void greenRain() {
+        if (inSulphur.isEmpty() || !pl.getConfig().getBoolean("sulphur.always-raining", true)) return;
+        int n = (int) cfg("sulphur.green-rain-particles", 40);
+        org.bukkit.block.data.BlockData lime = org.bukkit.Material.LIME_CONCRETE_POWDER.createBlockData();
+        org.bukkit.block.data.BlockData yellow = org.bukkit.Material.YELLOW_CONCRETE_POWDER.createBlockData();
+        for (UUID id : inSulphur) {
+            Player p = Bukkit.getPlayer(id);
+            if (p == null || !p.getWorld().equals(pl.world)) continue;
+            Location l = p.getLocation();
+            if (pl.world.getHighestBlockYAt(l, org.bukkit.HeightMap.MOTION_BLOCKING) > l.getY() + 2) continue; // under a roof
+            for (int i = 0; i < n; i++) {
+                double x = l.getX() + (random.nextDouble() - 0.5) * 22, z = l.getZ() + (random.nextDouble() - 0.5) * 22;
+                double y = l.getY() + 6 + random.nextDouble() * 8;
+                p.spawnParticle(Particle.FALLING_DUST, x, y, z, 1, 0, 0, 0, 0, random.nextInt(4) == 0 ? yellow : lime);
+            }
+            if (random.nextInt(3) == 0)
+                p.spawnParticle(Particle.DUST, l.getX(), l.getY() + 4, l.getZ(), 12, 6, 3, 6, 0, new Particle.DustOptions(org.bukkit.Color.fromRGB(150, 220, 60), 1.2f));
         }
     }
 
@@ -132,10 +164,11 @@ final class Ocean implements Listener {
             double y = p.getLocation().getY(), line = cfg("music.abyss-below-y", 35);
             String cur = track.get(p.getUniqueId());
             String want = "sunken".equals(cur) ? (y < line - 4 ? "abyss" : "sunken") : "abyss".equals(cur) ? (y > line + 4 ? "sunken" : "abyss") : (y >= line ? "sunken" : "abyss");
+            if (inSulphur.contains(p.getUniqueId())) want = "acid"; // the Sulphur Sea: "Corrosion" (Theme of the Acid Rain)
             quietVanilla(p); // vanilla's own underwater / background tracks would play over ours (or over a boss's)
             if (bossMusic(p)) { stopMusic(p); continue; } // a boss's music has the floor: ours stops, and waits
             String have = track.get(p.getUniqueId());
-            double len = cfg("music." + want + "-seconds", want.equals("sunken") ? 362 : 286);
+            double len = cfg("music." + want + "-seconds", want.equals("sunken") ? 362 : want.equals("acid") ? 105 : 286);
             if (want.equals(have) && now - trackAt.getOrDefault(p.getUniqueId(), 0L) < len * 1000) continue;
             if (have != null) p.stopSound("faultline:deep." + have, SoundCategory.MUSIC);
             p.stopSound(SoundCategory.MUSIC); // vanilla's background tune too
@@ -167,10 +200,19 @@ final class Ocean implements Listener {
     }
 
     @EventHandler
-    public void onLeaveWorld(PlayerChangedWorldEvent e) { if (pl.world != null && e.getFrom().equals(pl.world)) stopMusic(e.getPlayer()); }
+    public void onLeaveWorld(PlayerChangedWorldEvent e) {
+        if (pl.world == null || !e.getFrom().equals(pl.world)) return;
+        stopMusic(e.getPlayer());
+        inSulphur.remove(e.getPlayer().getUniqueId());
+        if (rained.remove(e.getPlayer().getUniqueId())) e.getPlayer().resetPlayerWeather(); // the acid rain stays down there
+    }
 
     @EventHandler
-    public void onQuit(PlayerQuitEvent e) { track.remove(e.getPlayer().getUniqueId()); }
+    public void onQuit(PlayerQuitEvent e) {
+        UUID id = e.getPlayer().getUniqueId();
+        track.remove(id); inSulphur.remove(id);
+        if (rained.remove(id)) e.getPlayer().resetPlayerWeather();
+    }
 
     // =========================================================================================== dying down here
     @EventHandler(priority = EventPriority.HIGH)

@@ -1203,7 +1203,7 @@ def main():
     # music for Bedrock (Java gets FaultlineDeepMusic.zip)
     if music:
         sd = {}
-        for nm in ("sunken", "abyss"):
+        for nm in ("sunken", "abyss", "acid"):
             src = os.path.join(music, nm + ".ogg")
             if not os.path.exists(src): continue
             dst = os.path.join(rp, "sounds/faultline/deep", nm + ".ogg"); os.makedirs(os.path.dirname(dst), exist_ok=True); shutil.copy(src, dst)

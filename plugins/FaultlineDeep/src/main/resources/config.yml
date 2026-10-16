@@ -11,6 +11,8 @@ market:
 sulphur:
   acid-water: true          # swimming in its water poisons you...
   safe-diving-tier: 3       # ...unless you wear Abyssal Diving Gear (3) or the Abyssal Diving Suit (4)
+  always-raining: true      # it rains there all the time (for the players in it), with green acid drops falling too
+  green-rain-particles: 40  # green drops round each player every 4 ticks
 
 mobs:
   sulphur:

@@ -1248,7 +1248,8 @@ Notes:
   (`EnchantItemEvent`: forbidden dropped, capped; nothing left = Unbreaking at the offered level), anvil
   (`PrepareAnvilEvent`: result capped, no result when nothing is gained), and every player's inventory + cursor every 2 s,
   on pickup and when held. Enchanted books of Wind Burst are capped to II too (no Wind Burst III anywhere).
-  `faultline.mace.bypass` skips it. Tested (`MaceTest`).
+  `faultline.mace.bypass` skips it. 1.2.56: allowed enchants are matched BY NAME (`id()`), never by Enchantment object (on
+  the live server Wind Burst II was stripped); every change is logged ("[Maces] mace enchant ..."). Tested (`MaceTest`).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

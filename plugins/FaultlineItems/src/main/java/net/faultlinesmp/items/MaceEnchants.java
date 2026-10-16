@@ -38,43 +38,59 @@ final class MaceEnchants implements Listener {
 
     boolean on() { return plugin.getConfig().getBoolean("mace-enchants.enabled", true); }
 
-    /** Allowed enchantment -> its max level. */
-    Map<Enchantment, Integer> allowed() {
-        Map<Enchantment, Integer> out = new HashMap<>();
+    /**
+     * Allowed enchantment id ("wind_burst") -> its max level. Matched BY NAME, never by Enchantment object: on the live
+     * server the objects from the registry and from an item didn't compare equal, so Wind Burst II was stripped (1.2.56).
+     */
+    Map<String, Integer> allowed() {
+        Map<String, Integer> out = new HashMap<>();
         ConfigurationSection s = plugin.getConfig().getConfigurationSection("mace-enchants.allowed");
         Map<String, Object> m = new HashMap<>();
-        if (s != null) m.putAll(s.getValues(false)); else { m.put("unbreaking", 3); m.put("wind_burst", 2); m.put("mending", 1); }
+        if (s != null) m.putAll(s.getValues(false));
+        if (m.isEmpty()) { m.put("unbreaking", 3); m.put("wind_burst", 2); m.put("mending", 1); }
         for (var e : m.entrySet()) {
-            Enchantment en = Registry.ENCHANTMENT.get(NamespacedKey.minecraft(e.getKey().toLowerCase(java.util.Locale.ROOT)));
-            if (en != null && e.getValue() instanceof Number n) out.put(en, n.intValue());
+            int lvl = e.getValue() instanceof Number n ? n.intValue() : parse(String.valueOf(e.getValue()));
+            if (lvl > 0) out.put(id(e.getKey()), lvl);
         }
         return out;
     }
 
-    int windCap() {
-        Enchantment wb = Registry.ENCHANTMENT.get(NamespacedKey.minecraft("wind_burst"));
-        return wb == null ? Integer.MAX_VALUE : allowed().getOrDefault(wb, 0);
+    static int parse(String v) { try { return Integer.parseInt(v.trim()); } catch (NumberFormatException ex) { return 0; } }
+
+    /** "minecraft:wind_burst", "Wind_Burst", "wind burst" -> "wind_burst". */
+    static String id(String raw) {
+        String k = raw.toLowerCase(java.util.Locale.ROOT).trim().replace(' ', '_');
+        int c = k.indexOf(':');
+        return c >= 0 ? k.substring(c + 1) : k;
     }
+
+    static String id(Enchantment e) { return e.getKey().getKey().toLowerCase(java.util.Locale.ROOT); }
+
+    /** The max level allowed for this enchantment on a mace (0 = not allowed). */
+    int max(Enchantment e) { return allowed().getOrDefault(id(e), 0); }
+
+    int windCap() { return allowed().getOrDefault("wind_burst", 0); }
 
     /** Fixes a mace or a Wind Burst book in place. True = it changed. */
     boolean fix(ItemStack it) {
         if (it == null || !on()) return false;
         if (it.getType() == Material.MACE) {
             if (it.getEnchantments().isEmpty()) return false;
-            Map<Enchantment, Integer> ok = allowed();
+            Map<String, Integer> ok = allowed();
             boolean changed = false;
             ItemMeta meta = it.getItemMeta();
             for (var e : new HashMap<>(meta.getEnchants()).entrySet()) {
-                Integer max = ok.get(e.getKey());
-                if (max == null || max <= 0) { meta.removeEnchant(e.getKey()); changed = true; }
-                else if (e.getValue() > max) { meta.removeEnchant(e.getKey()); meta.addEnchant(e.getKey(), max, true); changed = true; }
+                int max = ok.getOrDefault(id(e.getKey()), 0);
+                if (max <= 0) { meta.removeEnchant(e.getKey()); changed = true; note(id(e.getKey()) + " " + e.getValue() + " removed"); }
+                else if (e.getValue() > max) { meta.removeEnchant(e.getKey()); meta.addEnchant(e.getKey(), max, true); changed = true; note(id(e.getKey()) + " " + e.getValue() + " -> " + max); }
             }
             if (changed) it.setItemMeta(meta);
             return changed;
         }
         if (it.getType() == Material.ENCHANTED_BOOK && it.getItemMeta() instanceof EnchantmentStorageMeta bm) {
-            Enchantment wb = Registry.ENCHANTMENT.get(NamespacedKey.minecraft("wind_burst"));
-            if (wb == null || !bm.hasStoredEnchant(wb)) return false;
+            Enchantment wb = null;
+            for (Enchantment e : bm.getStoredEnchants().keySet()) if (id(e).equals("wind_burst")) wb = e;
+            if (wb == null) return false;
             int cap = windCap();
             if (bm.getStoredEnchantLevel(wb) <= cap) return false;
             bm.removeStoredEnchant(wb);
@@ -83,6 +99,14 @@ final class MaceEnchants implements Listener {
             return true;
         }
         return false;
+    }
+
+    private long notedAt;
+    /** The console says what was taken off a mace (at most once every 10 s), so a wrong cap shows up in the log. */
+    void note(String what) {
+        if (System.currentTimeMillis() - notedAt < 10000) return;
+        notedAt = System.currentTimeMillis();
+        plugin.getLogger().info("[Maces] mace enchant " + what + " (allowed: " + allowed() + ")");
     }
 
     boolean bypass(Player p) { return p.hasPermission("faultline.mace.bypass"); }
@@ -102,17 +126,18 @@ final class MaceEnchants implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onTable(EnchantItemEvent e) {
         if (!on() || e.getItem().getType() != Material.MACE || bypass(e.getEnchanter())) return;
-        Map<Enchantment, Integer> ok = allowed(), add = e.getEnchantsToAdd();
+        Map<Enchantment, Integer> add = e.getEnchantsToAdd();
         int best = 1;
         for (var en : new HashMap<>(add).entrySet()) {
             best = Math.max(best, en.getValue());
-            Integer max = ok.get(en.getKey());
-            if (max == null || max <= 0) add.remove(en.getKey());
+            int max = max(en.getKey());
+            if (max <= 0) add.remove(en.getKey());
             else if (en.getValue() > max) add.put(en.getKey(), max);
         }
         if (add.isEmpty()) { // the table offered only forbidden ones: Unbreaking instead (the lapis isn't wasted)
             Enchantment unb = Registry.ENCHANTMENT.get(NamespacedKey.minecraft("unbreaking"));
-            if (unb != null && ok.containsKey(unb)) add.put(unb, Math.min(best, ok.get(unb)));
+            int um = allowed().getOrDefault("unbreaking", 0);
+            if (unb != null && um > 0) add.put(unb, Math.min(best, um));
         }
     }
 

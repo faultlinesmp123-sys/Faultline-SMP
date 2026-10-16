@@ -333,8 +333,12 @@ final class DeepMobs implements Listener {
         int dtT = m.clockAt < 0 ? 2 : Math.max(0, Math.min(20, m.t - m.clockAt));
         m.clockAt = m.t;
         m.clock += dtT / 20.0 * Math.min(1.8, 0.85 + hs * 7);
-        boolean watched = force || m.t - m.lastPose >= 20 || viewerNear(l, 48);
-        if (!watched) return;
+        // 1.5.2 LOD: every bone's pose is a packet to everyone tracking the creature, so how often depends on the nearest
+        // player: under 24 blocks every 2 ticks, under 48 every 4, under 80 every 10, else every 40 (the glide between
+        // poses always lasts exactly the gap, so it still moves smoothly, just less finely far away)
+        double nd = nearestViewer(l);
+        int every = nd < 24 ? 2 : nd < 48 ? 4 : nd < 80 ? 10 : 40;
+        if (!force && m.t - m.lastPose < every) return;
         int gap = m.t - m.lastPose;
         m.lastPose = m.t;
         int interp = gap >= 2 && gap <= 20 ? gap : 2; // glide over exactly the time until the next pose
@@ -398,6 +402,13 @@ final class DeepMobs implements Listener {
         }
     }
 
+    /** How far the nearest player is (blocks; huge if nobody's in the world). */
+    double nearestViewer(Location l) {
+        double best = Double.MAX_VALUE;
+        for (Player p : l.getWorld().getPlayers()) best = Math.min(best, p.getLocation().distanceSquared(l));
+        return Math.sqrt(best);
+    }
+
     /** Anyone close enough to see it move (the animation costs packets: far away it only updates once a second). */
     boolean viewerNear(Location l, double r) {
         double r2 = r * r;
@@ -434,7 +445,7 @@ final class DeepMobs implements Listener {
         m.t += 2;
         if (m.cd > 0) m.cd -= 2;
         pose(m, false);
-        if (m.stand != null && m.stand.isValid()) {
+        if (m.stand != null && m.stand.isValid() && (bedrockHere && m.t % 2 == 0 || m.t % 40 == 0)) { // (only Bedrock players see it: with none here it barely moves)
             Location l = m.body.getLocation();
             // the Bedrock model is centred on the stand's feet, so the stand stands in the body's middle
             Location sl = l.clone().add(0, height(m) * 0.5 - (m.buried && !DISGUISED.contains(m.k.id()) ? height(m) * 0.7 : 0), 0);
@@ -1007,7 +1018,7 @@ final class DeepMobs implements Listener {
     void spawner() {
         World w = pl.world;
         if (w == null || !pl.getConfig().getBoolean("mobs.enabled", true)) return;
-        int cap = (int) cfg("cap", 14);
+        int cap = (int) cfg("cap", 10); // (1.5.2: was 14; each creature is up to 10 entities with its bones)
         if (w.getDifficulty() == Difficulty.PEACEFUL) return; // the server would delete the hostile ones at once, over and over
         guardians.removeIf(id -> { Entity g = Bukkit.getEntity(id); return g == null || !g.isValid(); });
         for (Player p : w.getPlayers()) {
@@ -1125,7 +1136,12 @@ final class DeepMobs implements Listener {
         }
     }
 
+    /** Is any Bedrock player in the Dark Ocean? (worked out every 2 s) */
+    boolean bedrockHere;
+
     void bedrockUpkeep() {
+        bedrockHere = false;
+        if (pl.world != null) for (Player p : pl.world.getPlayers()) if (Edition.bedrock(p)) { bedrockHere = true; break; }
         for (Beast m : live.values()) {
             if (m.stand == null || !m.stand.isValid()) continue;
             for (Player p : m.stand.getWorld().getPlayers()) {

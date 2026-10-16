@@ -332,6 +332,10 @@ item-textures:
   # The Dark Ocean's music, a second pack sent beside the main one (empty url = not sent)
   music-url: "https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/main/FaultlineDeepMusic.zip"
   music-hash: "4eeae32896366b7d39e77462ea3cd3c672e96da2"
+  # 1.2.50: the plugin downloads each pack itself and sends the hash the file REALLY has (a stale hash above made
+  # players' games reject the pack). It re-checks every few minutes (cheap: only downloads again if the file changed).
+  auto-hash: true
+  auto-hash-minutes: 10
 
 
 # Immunity charms: one accessory per debuff (Guardian Scale, Ginger Root, Blindfold, Salt Ration,

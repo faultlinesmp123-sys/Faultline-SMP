@@ -32,5 +32,6 @@ journey:
   whirlpool-seconds: 40
 
 mobs:
+  cap: 10                   # creatures round each player (each is up to 10 entities with its moving bones: keep it low)
   sulphur:
     land-share: 0.4         # how often the spawner tries an island / the air over it instead of the water there

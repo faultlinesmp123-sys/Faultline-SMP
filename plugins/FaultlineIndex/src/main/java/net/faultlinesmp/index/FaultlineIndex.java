@@ -198,7 +198,7 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
             return true;
         });
         getServer().getScheduler().runTask(this, () -> discord.serverStarted());
-        getServer().getScheduler().runTaskTimer(this, this::scanInventories, 40L, 40L);
+        getServer().getScheduler().runTaskTimer(this, this::scanInventories, 100L, 100L); // (pickups and crafting are caught at once: this is the safety net)
         getServer().getScheduler().runTaskTimer(this, () -> { if (dirty) saveProgress(); }, 20L * 60, 20L * 60);
         // creatures that despawn or unload never fire a death event; forget who hit them
         getServer().getScheduler().runTaskTimer(this, () -> damagers.keySet().removeIf(id -> {
@@ -399,24 +399,26 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
 
     /** Returns the entries this item counts for (usually 0 or 1). */
     private List<Entry> itemEntries(ItemStack item) {
-        if (item == null || !item.hasItemMeta()) return List.of();
-        PersistentDataContainer pdc = item.getItemMeta().getPersistentDataContainer();
-        List<Entry> result = new ArrayList<>();
+        if (item == null || item.getType().isAir()) return List.of();
+        // the read-only view: no copy of the whole item meta (this runs for every slot of every player every few seconds)
+        io.papermc.paper.persistence.PersistentDataContainerView pdc = item.getPersistentDataContainer();
+        if (pdc.isEmpty()) return List.of();
+        List<Entry> result = null;
         for (NamespacedKey k : pdc.getKeys()) {
             List<Entry> list = byKey.get(k);
             if (list == null) continue;
             for (Entry e : list) {
                 if (e.keyText != null) {
-                    if (pdc.has(k, PersistentDataType.STRING) && e.keyText.equals(pdc.get(k, PersistentDataType.STRING))) result.add(e);
+                    if (pdc.has(k, PersistentDataType.STRING) && e.keyText.equals(pdc.get(k, PersistentDataType.STRING))) (result == null ? result = new ArrayList<>() : result).add(e);
                 } else if (e.keyValue == null) {
-                    result.add(e);
+                    (result == null ? result = new ArrayList<>() : result).add(e);
                 } else {
-                    Integer v = pdc.get(k, PersistentDataType.INTEGER);
-                    if (e.keyValue.equals(v)) result.add(e);
+                    Integer v = pdc.has(k, PersistentDataType.INTEGER) ? pdc.get(k, PersistentDataType.INTEGER) : null;
+                    if (e.keyValue.equals(v)) (result == null ? result = new ArrayList<>() : result).add(e);
                 }
             }
         }
-        return result;
+        return result == null ? List.of() : result;
     }
 
     private void checkItem(Player p, ItemStack item) {

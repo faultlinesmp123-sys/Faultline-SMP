@@ -333,6 +333,7 @@ public final class FaultlineItems extends JavaPlugin {
         this.combatTracker = new CombatTracker(this);
         this.accessoryManager = new AccessoryManager(this);
         this.itemTextureManager = new ItemTextureManager(this);
+        PackHash.start(this); // works out each pack's real SHA-1 (a stale hash in config.yml made players' games reject the pack)
         this.lifeJellyListener = new LifeJellyListener(this);
         this.shieldOfTheOceanListener = new ShieldOfTheOceanListener(this);
 
@@ -3382,7 +3383,7 @@ public final class FaultlineItems extends JavaPlugin {
             }
 
             try {
-                String hex = hashHex == null ? "" : hashHex.trim();
+                String hex = PackHash.pick(url, hashHex, "hash", plugin.getLogger());
                 if (!hex.isEmpty() && !hex.matches("[0-9a-fA-F]{40}")) {
                     String why = "not sent: item-textures.hash isn't a 40-character SHA-1 (got \"" + hex + "\") in " + cfgFile;
                     plugin.getLogger().warning("[Resource pack] " + player.getName() + ": " + why);
@@ -3400,6 +3401,7 @@ public final class FaultlineItems extends JavaPlugin {
         }
 
         static UUID packId() { return PACK_ID; }
+        static UUID musicId() { return MUSIC_ID; }
 
         /**
          * The Dark Ocean's music (1.2.41) is its own small pack (FaultlineDeepMusic.zip): the main pack has to stay under
@@ -3411,7 +3413,7 @@ public final class FaultlineItems extends JavaPlugin {
             String url = plugin.getConfig().getString("item-textures.music-url", "");
             String hex = plugin.getConfig().getString("item-textures.music-hash", "");
             if (url == null || url.isBlank()) return;
-            hex = hex == null ? "" : hex.trim();
+            hex = PackHash.pick(url, hex, "music-hash", plugin.getLogger());
             if (!hex.isEmpty() && !hex.matches("[0-9a-fA-F]{40}")) {
                 plugin.getLogger().warning("[Resource pack] music pack not sent: item-textures.music-hash isn't a SHA-1");
                 return;
@@ -3441,7 +3443,8 @@ public final class FaultlineItems extends JavaPlugin {
         /** What each player's game did with the pack: DECLINED means their server entry has resource packs turned off. */
         @EventHandler
         public void onPackStatus(org.bukkit.event.player.PlayerResourcePackStatusEvent event) {
-            if (!ItemTextureManager.packId().equals(event.getID())) return;
+            boolean music = ItemTextureManager.musicId().equals(event.getID());
+            if (!ItemTextureManager.packId().equals(event.getID()) && !music) return;
             var st = event.getStatus();
             String hint = switch (st) {
                 case DECLINED -> " (their game has Server Resource Packs set to Disabled: Multiplayer > Edit server > Enabled)";
@@ -3453,7 +3456,7 @@ public final class FaultlineItems extends JavaPlugin {
             java.util.logging.Level lvl = (st == org.bukkit.event.player.PlayerResourcePackStatusEvent.Status.SUCCESSFULLY_LOADED
                     || st == org.bukkit.event.player.PlayerResourcePackStatusEvent.Status.ACCEPTED
                     || st == org.bukkit.event.player.PlayerResourcePackStatusEvent.Status.DOWNLOADED) ? java.util.logging.Level.INFO : java.util.logging.Level.WARNING;
-            plugin.getLogger().log(lvl, "[Resource pack] " + event.getPlayer().getName() + ": " + st + hint);
+            plugin.getLogger().log(lvl, "[Resource pack] " + event.getPlayer().getName() + (music ? " (Dark Ocean music pack)" : "") + ": " + st + hint);
         }
     }
 

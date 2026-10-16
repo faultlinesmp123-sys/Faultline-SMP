@@ -248,6 +248,7 @@ final class Creatures implements Listener, CommandExecutor {
                 h.setPersistent(false);
                 attr(h, Attribute.MOVEMENT_SPEED, 0.28);
             });
+            knights.add(horse.getUniqueId());
             Skeleton k = at.getWorld().spawn(l, Skeleton.class, s -> {
                 s.addScoreboardTag(KNIGHT_TAG);
                 s.setCustomName(captain ? ChatColor.WHITE + "" + ChatColor.BOLD + "Skeleton Knight Captain" : ChatColor.WHITE + "Skeleton Knight");
@@ -271,6 +272,7 @@ final class Creatures implements Listener, CommandExecutor {
             horse.addPassenger(k);
             if (target != null) k.setTarget(target);
             out.add(k);
+            knights.add(k.getUniqueId());
         }
         at.getWorld().playSound(at, Sound.ENTITY_SKELETON_HORSE_AMBIENT, SoundCategory.HOSTILE, 3f, 0.6f);
         if (target != null) target.sendMessage(ChatColor.GRAY + "" + ChatColor.ITALIC + "Hoofbeats in the dark... a patrol of Skeleton Knights rides your way.");
@@ -278,15 +280,17 @@ final class Creatures implements Listener, CommandExecutor {
     }
 
     /** At dawn the patrols ride off. */
+    /** The patrols it spawned (non-persistent, so a restart leaves none): dawn checks these, never a scan of the world. */
+    final Set<java.util.UUID> knights = new java.util.HashSet<>();
+
     void dawn() {
-        for (World w : Bukkit.getWorlds()) {
-            if (!Weather.isDay(w)) continue;
-            for (Entity e : w.getEntities()) {
-                Set<String> t = e.getScoreboardTags();
-                if (!t.contains(KNIGHT_TAG) && !t.contains(KNIGHT_HORSE_TAG)) continue;
-                w.spawnParticle(Particle.CLOUD, e.getLocation().add(0, 1, 0), 10, 0.4, 0.6, 0.4, 0.02);
-                e.remove();
-            }
+        for (java.util.Iterator<java.util.UUID> it = knights.iterator(); it.hasNext(); ) {
+            Entity e = Bukkit.getEntity(it.next());
+            if (e == null || !e.isValid()) { it.remove(); continue; }
+            if (!Weather.isDay(e.getWorld())) continue;
+            e.getWorld().spawnParticle(Particle.CLOUD, e.getLocation().add(0, 1, 0), 10, 0.4, 0.6, 0.4, 0.02);
+            e.remove();
+            it.remove();
         }
     }
 

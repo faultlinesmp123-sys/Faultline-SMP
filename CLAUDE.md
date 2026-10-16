@@ -1145,6 +1145,17 @@ Notes:
   every second: 3 hearts a second). An egg-spawned goblin dying no longer drops the event goblin's boss bar
   (`AcidRain.goblinDied(uuid)`); turning `acid-rain.enabled` off mid-event stops it. Bedrock sees Swarm's name (on its stand).
   The whirlpool resends its fake funnel only when the shape changes, to new viewers, or every 2 s (it was every 5 ticks).
+- **Lag + music pass (Deep 1.5.2, Items 1.2.50, Index 1.6.37)**: **Pack hashes are automatic** (`Items/PackHash.java`,
+  `item-textures.auto-hash` true, `auto-hash-minutes` 10): the plugin downloads each pack url off the main thread at startup,
+  SHA-1s it and re-checks with an ETag request (304 = nothing downloaded); packs are sent with the REAL hash and a config hash
+  that disagrees is ignored with a warning (a stale `music-hash` made games reject the whole music pack = no Dark Ocean
+  music). The music pack's status is logged too ("(Dark Ocean music pack)"). **Dark Ocean creature LOD** (`DeepMobs.pose`):
+  every bone pose is a packet to everyone tracking it, so the update rate depends on the nearest player: < 24 blocks every 2
+  ticks, < 48 every 4, < 80 every 10, else 40 (interpolation = the gap); the Bedrock stand-ins move every 2 ticks only while a
+  Bedrock player is in the Dark Ocean (`bedrockHere`, else every 40). `mobs.cap` default 14 -> 10. **Generator**: no caves in
+  the raised Sulphur plateau above y 70 (Sulphur chunks 45 -> 30 ms). **Items**: Skeleton Knight dawn check walks the knights it
+  spawned (`Creatures.knights`) instead of scanning every entity in every world every 10 s. **Index**: the inventory scan reads
+  items' PDC through Paper's read-only view (`ItemStack#getPersistentDataContainer`, no meta copy), every 5 s (was 2).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

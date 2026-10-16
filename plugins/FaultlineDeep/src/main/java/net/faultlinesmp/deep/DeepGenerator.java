@@ -383,7 +383,9 @@ final class DeepGenerator extends ChunkGenerator {
         int band = (int) (n.dunes.noise(x, z, 0.5, 0.5) * 3);
         for (int y = ceil; y <= up; y++) {
             boolean cave = false;
-            if (y > ceil + 1 && y < up - 3 && !(sw > 0 && y > SEA - 14)) { // (no caves near an island's surface: their water would spill out)
+            // (no caves near an island's surface: their water would spill out; 1.5.2: and none in the raised Sulphur plateau above
+            // the old crust band, which made its chunks cost 3x to generate: 3 noise lookups a block, 250 blocks a column)
+            if (y > ceil + 1 && y < up - 3 && !(sw > 0 && (y > SEA - 14 || y > 70))) {
                 double a = n.c1.noise(x / 44.0, y / 22.0, z / 44.0), b = n.c2.noise(x / 44.0, y / 22.0, z / 44.0);
                 cave = Math.abs(a) < 0.1 && Math.abs(b) < 0.1;                                     // winding tunnels
                 if (!cave) cave = n.c3.noise(x / 60.0, y / 26.0, z / 60.0) > 0.64;                  // caverns

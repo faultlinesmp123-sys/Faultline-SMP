@@ -53,11 +53,11 @@ final class DivingGear implements Listener {
                 ChatColor.GREEN + "Swim much faster", ChatColor.GREEN + "See clearly underwater",
                 ChatColor.GREEN + "Halves Crush Depth damage"),
         SUIT("abyssal_diving_suit", Material.NETHERITE_SCRAP, ChatColor.DARK_PURPLE, "Abyssal Diving Suit",
+                ChatColor.GOLD + "CHESTPLATE (not an accessory): 6 armor",
                 ChatColor.GREEN + "Breathe underwater", ChatColor.GREEN + "Immune to Crush Depth",
                 ChatColor.GREEN + "Everything the Abyssal Diving Gear does",
-                ChatColor.GREEN + "3 plates: each absorbs 15% of a hit underwater",
-                ChatColor.DARK_GRAY + "(a broken plate regrows after 20 seconds)",
-                ChatColor.GREEN + "Wear it in an accessory slot OR as a chestplate",
+                ChatColor.GREEN + "2 plates: each absorbs 10% of a hit underwater",
+                ChatColor.DARK_GRAY + "(a broken plate regrows after 30 seconds)",
                 ChatColor.RED + "Stops working for 10 s after",
                 ChatColor.RED + "a player hits you",
                 ChatColor.DARK_GRAY + "Dropped by the Kraken.");
@@ -93,11 +93,40 @@ final class DivingGear implements Listener {
 
     ItemStack item(Piece p) {
         ItemStack it = FaultlineItems.NewAccessoryItems.make(plugin, p.material, p.color + "" + ChatColor.BOLD + p.name, keys.get(p), p.lore);
-        if (p == Piece.SUIT) wearable(it);
+        if (p == Piece.SUIT) chestplate(it);
         return it;
     }
 
-    /** 1.2.46: the suit can also be worn in the chestplate slot (right-click it on, or put it there in /accessories). */
+    /**
+     * 1.2.53: the suit is a CHESTPLATE only, never an accessory: no accessory tag (the /accessories slots refuse it), no
+     * "Equip via /accessories" line, equippable in the chest slot, 6 armor (an iron chestplate's; a modifier in our own
+     * namespace, so the Index Watch never calls it illegal).
+     */
+    void chestplate(ItemStack it) {
+        org.bukkit.inventory.meta.ItemMeta m = it.getItemMeta();
+        m.getPersistentDataContainer().remove(plugin.getAccessoryKey());
+        java.util.List<String> lore = m.hasLore() ? new java.util.ArrayList<>(m.getLore()) : new java.util.ArrayList<>();
+        lore.removeIf(l -> ChatColor.stripColor(l).startsWith("Equip via /accessories"));
+        m.setLore(lore);
+        NamespacedKey ak = new NamespacedKey(plugin, "suit_armor");
+        if (m.getAttributeModifiers(org.bukkit.attribute.Attribute.ARMOR) == null || m.getAttributeModifiers(org.bukkit.attribute.Attribute.ARMOR).isEmpty())
+            m.addAttributeModifier(org.bukkit.attribute.Attribute.ARMOR, new org.bukkit.attribute.AttributeModifier(ak, cfg("suit.armor", 6),
+                    org.bukkit.attribute.AttributeModifier.Operation.ADD_NUMBER, org.bukkit.inventory.EquipmentSlotGroup.CHEST));
+        it.setItemMeta(m);
+        wearable(it);
+    }
+
+    /** An old suit (an accessory, old lore, no armor) made into today's chestplate. True if it changed. */
+    boolean convert(ItemStack it) {
+        if (!isSuit(it)) return false;
+        ItemStack fresh = item(Piece.SUIT);
+        fresh.setAmount(it.getAmount());
+        if (fresh.isSimilar(it)) return false;
+        it.setItemMeta(fresh.getItemMeta());
+        return true;
+    }
+
+    /** The suit's chest slot (right-click it on, or put it on in the Wardrobe's armour column). */
     static boolean wearable(ItemStack it) {
         if (it == null || !it.hasItemMeta()) return false;
         org.bukkit.inventory.meta.ItemMeta m = it.getItemMeta();
@@ -115,9 +144,42 @@ final class DivingGear implements Listener {
         return tag != null && tag == (byte) 1;
     }
 
-    /** Wearing the suit: in an accessory slot or as the chestplate. */
-    boolean wearsSuit(Player p) {
-        return plugin.getAccessoryManager().hasEquipped(p, keys.get(Piece.SUIT)) || isSuit(p.getInventory().getChestplate());
+    /** Wearing the suit: as the chestplate (1.2.53: it no longer works from an accessory slot). */
+    boolean wearsSuit(Player p) { return isSuit(p.getInventory().getChestplate()); }
+
+    /**
+     * 1.2.53: a suit still in an accessory slot (from before) comes out of it on join, made into a chestplate, into
+     * the inventory (or at your feet); a suit already worn as the chestplate is updated in place.
+     */
+    @EventHandler
+    public void onJoinSuit(org.bukkit.event.player.PlayerJoinEvent event) {
+        Player p = event.getPlayer();
+        Bukkit.getScheduler().runTaskLater(plugin, () -> { if (p.isOnline()) unslot(p); }, 30L);
+    }
+
+    void unslot(Player p) {
+        var am = plugin.getAccessoryManager();
+        // an open Wardrobe saves its slots when it closes: close it FIRST, or it would put the suit back (a dupe)
+        var top = p.getOpenInventory() == null ? null : p.getOpenInventory().getTopInventory();
+        if (top != null && top.getHolder() instanceof FaultlineItems.AccessoryGuiHolder) p.closeInventory();
+        ItemStack[] slots = am.getSlots(p.getUniqueId());
+        boolean moved = false;
+        for (int i = 0; slots != null && i < slots.length; i++) {
+            if (!isSuit(slots[i])) continue;
+            ItemStack suit = slots[i].clone();
+            convert(suit);
+            slots[i] = null;
+            moved = true;
+            if (p.getInventory().getChestplate() == null || p.getInventory().getChestplate().getType().isAir()) p.getInventory().setChestplate(suit);
+            else p.getInventory().addItem(suit).values().forEach(left -> p.getWorld().dropItemNaturally(p.getLocation(), left));
+        }
+        if (moved) {
+            am.setSlots(p.getUniqueId(), slots);
+            p.sendMessage(ChatColor.DARK_PURPLE + "The Abyssal Diving Suit is a chestplate now, not an accessory: "
+                    + ChatColor.GRAY + "it's been taken out of your accessory slot" + (isSuit(p.getInventory().getChestplate()) ? " and put on." : " and put in your inventory."));
+        }
+        ItemStack chest = p.getInventory().getChestplate();
+        if (convert(chest)) p.getInventory().setChestplate(chest);
     }
 
     /** For give commands and the Skeleton Wanderer. */
@@ -228,7 +290,7 @@ final class DivingGear implements Listener {
             if (suit) {
                 int plates = plates(p);
                 int since = regrow.merge(p.getUniqueId(), 1, Integer::sum);
-                if (plates < 3 && since >= 20) { setPlates(p, plates + 1); regrow.put(p.getUniqueId(), 0); }
+                if (plates < maxPlates() && since >= cfg("suit.plate-regrow-seconds", 30)) { setPlates(p, plates + 1); regrow.put(p.getUniqueId(), 0); }
             }
             // Crush Depth: deep underwater and out of breath (the suit is immune)
             if (!suit && plugin.getConfig().getBoolean("diving.crush-depth.enabled", true) && underwater && p.getRemainingAir() <= 0
@@ -253,17 +315,18 @@ final class DivingGear implements Listener {
 
     private final Map<UUID, Integer> regrow = new java.util.HashMap<>();
     private NamespacedKey platesKey() { return new NamespacedKey(plugin, "suit_plates"); }
-    int plates(Player p) { return p.getPersistentDataContainer().getOrDefault(platesKey(), PersistentDataType.INTEGER, 3); }
-    void setPlates(Player p, int n) { p.getPersistentDataContainer().set(platesKey(), PersistentDataType.INTEGER, Math.max(0, Math.min(3, n))); }
+    int maxPlates() { return (int) cfg("suit.plates", 2); }  // 1.2.53: 3 -> 2
+    int plates(Player p) { return Math.min(maxPlates(), p.getPersistentDataContainer().getOrDefault(platesKey(), PersistentDataType.INTEGER, maxPlates())); }
+    void setPlates(Player p, int n) { p.getPersistentDataContainer().set(platesKey(), PersistentDataType.INTEGER, Math.max(0, Math.min(maxPlates(), n))); }
 
-    /** The suit's plates: underwater, each absorbs 15% of one hit, then breaks (and regrows after 20 seconds). */
+    /** The suit's plates (1.2.53: 2 of them): underwater, each absorbs 10% of one hit, then breaks (regrows after 30 seconds). */
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onPlates(EntityDamageEvent event) {
         if (!(event.getEntity() instanceof Player p) || !p.isInWater() || !has(p, Piece.SUIT)) return;
         if (event.getCause() == EntityDamageEvent.DamageCause.DROWNING) return;
         int plates = plates(p);
         if (plates <= 0) return;
-        event.setDamage(event.getDamage() * 0.85);
+        event.setDamage(event.getDamage() * (1 - cfg("suit.plate-absorb", 0.10))); // 1.2.53: 15% -> 10%
         setPlates(p, plates - 1);
         regrow.put(p.getUniqueId(), 0);
         p.playSound(p.getLocation(), Sound.ITEM_SHIELD_BREAK, 0.6f, 1.6f);

@@ -1197,6 +1197,19 @@ Notes:
   CLEARSIGHT I (helmets: cancels Blindness/Darkness, except hidden ambient ones = the Abyss's dark, cutscenes). Their drops are
   `Enchants.NEW_DROPS`, rolled ON TOP of `boss-drops` (a server config keeps its old lists; override with
   `enchants.new-boss-drops.<entry>`). Index's Boss Enchant Book entry lists them all. Tested (`EnchantTest`, `BatchTest`).
+- **Boss enchant nerf + the suit is a chestplate (Items 1.2.53, Index 1.6.40)**: EVERY boss enchant nerfed through
+  `Enchants.nerf(path, old, new)` (= `Balance.num`: a server config still holding the old default reads as the new one):
+  Lifesteal 8% -> 5% a level, max 3 -> 2 a hit (PvP still every 5th hit); Frostbite / Venom 15% -> 10% a level;
+  Thunderstrike 8% -> 5%, +4 -> +3, 8 s -> 12 s; Vitality: Regeneration I at both levels (`max-regeneration-level` 2 -> 1),
+  and Vitality I only below half health (`vitality.level1-below` 0.5); Featherstep 35% -> 25%; Vein Miner 32 -> 16 blocks;
+  Executioner 12% -> 8%; Cleave 25% -> 15%; Bleed 12% -> 8%, 3 -> 2 s base; Arrowguard 10% -> 6%; Thornhide 10% -> 6%;
+  Swiftstride 5% -> 3% a level. **The Abyssal Diving Suit is a CHESTPLATE ONLY**: `DivingGear.chestplate()` takes the
+  `is_accessory` tag and the "Equip via /accessories" line off, adds 6 ARMOR (`faultlineitems:suit_armor`, `diving.suit.armor`;
+  an iron chestplate's) + the chest equippable; `wearsSuit` = the chestplate only; `convert()` rebuilds old suits (called by
+  `AccessoryStacks.refresh`/`fix` before the accessory check, and for the worn chestplate); `unslot()` (30 ticks after join)
+  takes a suit out of the accessory slots (closing an open Wardrobe FIRST, or its close would save it back = a dupe) and puts it
+  on, or in the inventory. Nerfed: 2 plates (`suit.plates`, was 3), 10% each (`plate-absorb`, was 15%), regrow 30 s (was 20).
+  Index: the suit moved to the Armor chapter. Tested (`EnchantTest`, `BatchTest`, `NerfTest`, `WardrobeTest`).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

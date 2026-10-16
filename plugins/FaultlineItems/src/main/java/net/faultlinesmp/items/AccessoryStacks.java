@@ -29,6 +29,7 @@ final class AccessoryStacks implements Listener {
 
     /** Max stack 1, current lore for the changed ones. Returns true if anything changed. */
     static boolean refresh(FaultlineItems plugin, ItemStack item) {
+        if (plugin.getDivingGear() != null && plugin.getDivingGear().isSuit(item)) return plugin.getDivingGear().convert(item); // 1.2.53: a chestplate, not an accessory
         if (!FaultlineItems.AccessoryManager.isAccessory(plugin, item)) return false;
         ItemMeta m = item.getItemMeta();
         boolean changed = false;
@@ -39,7 +40,6 @@ final class AccessoryStacks implements Listener {
             if (lore != null && !lore.equals(m.getLore())) { m.setLore(lore); changed = true; }
         }
         if (changed) item.setItemMeta(m);
-        if (plugin.getDivingGear() != null && plugin.getDivingGear().isSuit(item) && DivingGear.wearable(item)) changed = true; // 1.2.46
         return changed;
     }
 
@@ -61,7 +61,6 @@ final class AccessoryStacks implements Listener {
         out.add(FaultlineItems.DiscountCardItem.create(plugin));
         out.add(FaultlineItems.LifeJellyItem.create(plugin));
         out.add(FaultlineItems.ShieldOfTheOceanItem.create(plugin));
-        try { out.add(plugin.getDivingGear().item(DivingGear.Piece.SUIT)); } catch (RuntimeException ignored) { }
         try { out.add(plugin.getGear().item("ancient_core")); } catch (RuntimeException ignored) { }
         try { out.add(plugin.getRangerGear().item(RangerGear.Piece.WINDRUNNER)); out.add(plugin.getRangerGear().item(RangerGear.Piece.OATH)); } catch (RuntimeException ignored) { }
         try { out.add(plugin.getTrinkets().item(TrinketGear.Piece.FANG)); } catch (RuntimeException ignored) { }
@@ -79,6 +78,7 @@ final class AccessoryStacks implements Listener {
         java.util.List<ItemStack> spill = new java.util.ArrayList<>();
         for (int i = 0; i < contents.length; i++) {
             ItemStack it = contents[i];
+            if (plugin.getDivingGear() != null && plugin.getDivingGear().isSuit(it)) { if (plugin.getDivingGear().convert(it)) contents[i] = it; continue; }
             if (!FaultlineItems.AccessoryManager.isAccessory(plugin, it)) continue;
             boolean changed = refresh(plugin, it);
             if (it.getAmount() > 1) {

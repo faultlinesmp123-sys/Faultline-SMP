@@ -501,12 +501,12 @@ entries:
     detect: faultlineitems:eelskin_wrap
     how: 2% from Drowned.
     does: 'Kraken counter: break free of his grip 3x faster, his whirlpools pull you 50% less, and his eels deal half damage.'
-  - chapter: accessories
+  - chapter: armor
     name: Abyssal Diving Suit
     icon: abyssal_diving_suit
     detect: faultlineitems:abyssal_diving_suit
     how: 40% from the Kraken.
-    does: Breathe underwater, immune to Crush Depth, everything the Abyssal Diving Gear does, and 3 plates that each absorb 15% of a hit underwater (a broken plate regrows after 20 seconds). Wear it in an accessory slot or as your chestplate. It stops working for 10 seconds after a player hits you (monsters don't switch it off).
+    does: "A CHESTPLATE (not an accessory) with 6 armor, an iron chestplate's. Breathe underwater, immune to Crush Depth, everything the Abyssal Diving Gear does, and 2 plates that each absorb 10% of a hit underwater (a broken plate regrows after 30 seconds). It stops working for 10 seconds after a player hits you (monsters don't switch it off)."
   # ---------------------------------------------------------------- DIAMOND JACOB
   - chapter: bosses
     name: Diamond Jacob

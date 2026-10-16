@@ -759,6 +759,21 @@ final class DeepMobs implements Listener {
     @EventHandler(ignoreCancelled = true)
     public void onStandUse(PlayerInteractAtEntityEvent e) { if (ours(e.getRightClicked())) e.setCancelled(true); }
 
+    /** The Clam is a shulker underneath: shulkers hop away when hurt. It stays put on its patch of sand. */
+    @EventHandler(ignoreCancelled = true)
+    public void onHop(org.bukkit.event.entity.EntityTeleportEvent e) {
+        Beast m = live.get(e.getEntity().getUniqueId());
+        if (m != null && m.k.id().equals("clam")) e.setCancelled(true);
+    }
+
+    /** The Gawker and the Bloatfin are a cod and a salmon underneath: no scooping them up (out came an invisible fish). */
+    @EventHandler(ignoreCancelled = true)
+    public void onBucket(org.bukkit.event.player.PlayerBucketEntityEvent e) { if (ours(e.getEntity())) e.setCancelled(true); }
+
+    /** Nor leashing, trading, riding or naming them: they're not what they look like underneath. */
+    @EventHandler(ignoreCancelled = true)
+    public void onUse(org.bukkit.event.player.PlayerInteractEntityEvent e) { if (live.containsKey(e.getRightClicked().getUniqueId())) e.setCancelled(true); }
+
     @EventHandler(ignoreCancelled = true)
     public void onRob(PlayerArmorStandManipulateEvent e) { if (ours(e.getRightClicked())) e.setCancelled(true); }
 

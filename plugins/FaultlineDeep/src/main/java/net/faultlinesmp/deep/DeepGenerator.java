@@ -297,11 +297,24 @@ final class DeepGenerator extends ChunkGenerator {
     // =========================================================================================== blocks
     private static BlockData bd(String s) { return Bukkit.createBlockData(s); }
 
-    private BlockData chest, glowLichenFloor, dripTip, dripFrustum, pickles, bubble, kelpTop, tallGrassLow, tallGrassHigh;
+    private volatile BlockData chest;
+    private BlockData glowLichenFloor, dripTip, dripFrustum, pickles, bubble, kelpTop, tallGrassLow, tallGrassHigh;
 
+    /**
+     * Chunks generate on several threads at once: made once, under a lock, with `chest` (volatile) written LAST, so a
+     * thread that sees it set sees all the others too (before, a second thread could get past the check mid-setup and
+     * hit a null, and that chunk failed to generate).
+     */
     private void blocks() {
         if (chest != null) return;
-        chest = bd("minecraft:chest[waterlogged=true]");
+        synchronized (this) {
+            if (chest != null) return;
+            makeBlocks();
+        }
+    }
+
+    private void makeBlocks() {
+        BlockData c = bd("minecraft:chest[waterlogged=true]");
         glowLichenFloor = bd("minecraft:glow_lichen[down=true,waterlogged=true]");
         dripTip = bd("minecraft:pointed_dripstone[vertical_direction=down,thickness=tip,waterlogged=true]");
         dripFrustum = bd("minecraft:pointed_dripstone[vertical_direction=down,thickness=frustum,waterlogged=true]");
@@ -310,6 +323,7 @@ final class DeepGenerator extends ChunkGenerator {
         kelpTop = bd("minecraft:kelp[age=25]");
         tallGrassLow = bd("minecraft:tall_seagrass[half=lower]");
         tallGrassHigh = bd("minecraft:tall_seagrass[half=upper]");
+        chest = c;
     }
 
     @Override

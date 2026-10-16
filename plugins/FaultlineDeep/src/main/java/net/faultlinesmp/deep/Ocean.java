@@ -90,6 +90,7 @@ final class Ocean implements Listener {
         if (pl.world == null) return;
         if (ticks % 40 == 0) music();
         if (ticks % 20 == 0) eat();
+        holdDrops();
         events();
     }
 
@@ -155,9 +156,20 @@ final class Ocean implements Listener {
             if (it == null || it.getType().isAir()) continue;
             Item item = at.getWorld().dropItemNaturally(at, it);
             item.getPersistentDataContainer().set(drownedKey, PersistentDataType.STRING, p.getUniqueId().toString());
-            eaten.add(new Object[]{item, when, p.getUniqueId()});
+            eaten.add(new Object[]{item, when, p.getUniqueId(), item.getLocation().clone()});
         }
         p.sendMessage(ChatColor.DARK_AQUA + "Your things are sinking where you died. " + ChatColor.RED + "In one minute the fish will have them.");
+    }
+
+    /** Items float up in water: the drops are held where you died (they'd drift off toward the surface in the minute). */
+    void holdDrops() {
+        for (Object[] o : eaten) {
+            Item item = (Item) o[0];
+            if (!item.isValid()) continue;
+            Location spot = (Location) o[3];
+            Edition.vel(item, new Vector());
+            if (item.getLocation().distanceSquared(spot) > 0.09) item.teleport(spot);
+        }
     }
 
     void eat() {

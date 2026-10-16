@@ -926,6 +926,15 @@ Notes:
   player who changed worlds; the Leviathan only deep-spawns for players near the surface (it swims up there); deep spawns
   respect boss cooldowns and only announce a boss that really came; meteors, the Caravan, weather and Skeleton Knight
   patrols never pick the Dark Ocean (`FaultlineItems.surfaceWorld`). Tested: `MusicTest`, `DeepBossTest`, `DeepTest`.
+- **Deep bug pass 2 (Deep 1.0.2, Bosses 1.6.2)**: FaultlineDeep had `load: STARTUP`, but Paper refuses to create a world
+  then ("Cannot create additional worlds on STARTUP"): the Dark Ocean would never have loaded on the real server. It now
+  enables after the worlds (default POSTWORLD) and creates/loads `faultline_deep` itself. RULE: a plugin that creates
+  worlds must not be `load: STARTUP`. The generator's block data was set up lazily with no lock (chunks generate on several
+  threads: a first chunk could hit a null); now made once under a lock, the volatile `chest` written last. Death drops in
+  the Dark Ocean are held where you died (`holdDrops`: items float up in water and drifted off in the minute). No bucketing
+  the Gawker/Bloatfin (cod/salmon underneath: out came an invisible fish), no interacting with any creature, the Clam
+  (a shulker) doesn't hop away when hurt. Deep boss bolts: homing on top of a player no longer makes NaN, a bolt leaving the
+  loaded area is dropped (it would have loaded chunks), every "towards the player" direction goes through `Swimmer.unit`.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

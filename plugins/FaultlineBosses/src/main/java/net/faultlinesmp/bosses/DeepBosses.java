@@ -144,6 +144,9 @@ final class DeepBosses {
 
         int room() { return Math.max(1, (int) Math.round(1.1 * k)); }
 
+        /** A direction, safe when the two points are the same (normalising 0 gives NaN, which real Paper throws on). */
+        static Vector unit(Vector v) { return v.lengthSquared() < 1e-6 ? new Vector(0, 1, 0) : v.normalize(); }
+
         static Vector dir3(float yaw, float pitch) {
             double y = Math.toRadians(yaw), p = Math.toRadians(pitch);
             return new Vector(-Math.sin(y) * Math.cos(p), -Math.sin(p), Math.cos(y) * Math.cos(p));
@@ -238,10 +241,15 @@ final class DeepBosses {
             fx.add(() -> {
                 if (dying || ++t[0] > life) { if (d != null) d.remove(); return true; }
                 if (homeOn != null && homing > 0 && homeOn.isOnline() && homeOn.getWorld().equals(world)) {
-                    Vector want = homeOn.getLocation().add(0, 1, 0).toVector().subtract(p.toVector()).normalize().multiply(v.length());
-                    v.multiply(1 - homing).add(want.multiply(homing));
+                    Vector want = homeOn.getLocation().add(0, 1, 0).toVector().subtract(p.toVector());
+                    if (want.lengthSquared() > 1e-4) { // (right on top of them: normalising 0 = NaN, which Paper throws on)
+                        want.normalize().multiply(v.length());
+                        v.multiply(1 - homing).add(want.multiply(homing));
+                    }
                 }
                 p.add(v);
+                // off into unloaded water, or a broken number: gone (getBlock would load / generate the chunk)
+                if (!Double.isFinite(p.getX() + p.getY() + p.getZ()) || !world.isChunkLoaded(p.getBlockX() >> 4, p.getBlockZ() >> 4)) { if (d != null) d.remove(); return true; }
                 if (p.getBlock().getType().isSolid()) { world.spawnParticle(Particle.BUBBLE_POP, p, 6, 0.2, 0.2, 0.2, 0.02); if (d != null) d.remove(); return true; }
                 if (trail != null) world.spawnParticle(trail, p, 2, 0.05, 0.05, 0.05, 0);
                 if (d != null && d.isValid()) d.teleport(p);
@@ -423,7 +431,7 @@ final class DeepBosses {
                     if (at % 10 == 0 && at <= 30) {
                         world.playSound(pos, Sound.ENTITY_LLAMA_SPIT, SoundCategory.HOSTILE, 3f, 0.4f);
                         for (Player p : a) {
-                            Vector v = p.getLocation().add(0, 1, 0).toVector().subtract(pos.toVector()).normalize().multiply(0.9);
+                            Vector v = unit(p.getLocation().add(0, 1, 0).toVector().subtract(pos.toVector())).multiply(0.9);
                             bolt(pos.clone(), v, 60, 0.5, c("moves.spit", 7), Particle.ITEM_SLIME, new ItemStack(Material.SLIME_BALL), null, 0, pp -> {
                                 pp.addPotionEffect(new PotionEffect(PotionEffectType.POISON, 60, 1));
                                 mist(pp.getLocation());
@@ -435,7 +443,7 @@ final class DeepBosses {
                 case TEETH -> {
                     if (at == 12) {
                         Player t = targetOr(focus);
-                        Vector base = t == null ? dir3(yaw, pitch) : t.getLocation().add(0, 1, 0).toVector().subtract(pos.toVector()).normalize();
+                        Vector base = t == null ? dir3(yaw, pitch) : unit(t.getLocation().add(0, 1, 0).toVector().subtract(pos.toVector()));
                         int n = 7 + 2 * phase;
                         for (int i = 0; i < n; i++) {
                             double ang = Math.toRadians((i - (n - 1) / 2.0) * 7);
@@ -449,7 +457,7 @@ final class DeepBosses {
                 case BUBBLES -> {
                     if (at % 6 == 0 && at <= 36) {
                         Player t = targetOr(null);
-                        Vector v = t == null ? new Vector(0, 0.1, 0) : t.getLocation().add(0, 1, 0).toVector().subtract(pos.toVector()).normalize().multiply(0.22);
+                        Vector v = t == null ? new Vector(0, 0.1, 0) : unit(t.getLocation().add(0, 1, 0).toVector().subtract(pos.toVector())).multiply(0.22);
                         bolt(pos.clone().add(random.nextGaussian(), random.nextGaussian(), random.nextGaussian()), v, 140, 0.8, c("moves.bubble", 8), Particle.BUBBLE,
                                 new ItemStack(Material.LIME_STAINED_GLASS), t, 0.04, pp -> pp.addPotionEffect(new PotionEffect(PotionEffectType.NAUSEA, 100, 0)));
                         world.playSound(pos, Sound.BLOCK_BUBBLE_COLUMN_BUBBLE_POP, SoundCategory.HOSTILE, 2f, 0.5f);
@@ -805,7 +813,7 @@ final class DeepBosses {
             t = targetOr(t); focus = t;
             switch (move) {
                 case GAZE -> { say(ChatColor.LIGHT_PURPLE + "Her eyes begin to glow. " + ChatColor.WHITE + "LOOK AWAY!"); world.playSound(pos, Sound.ENTITY_ELDER_GUARDIAN_CURSE, SoundCategory.HOSTILE, 2f, 1.4f); }
-                case EELS -> { for (Player p : active()) eelDirs.add(p.getLocation().add(0, 1, 0).toVector().subtract(pos.toVector()).normalize()); }
+                case EELS -> { for (Player p : active()) eelDirs.add(unit(p.getLocation().add(0, 1, 0).toVector().subtract(pos.toVector()))); }
                 case SONG -> { say(ChatColor.LIGHT_PURPLE + "Coralia sings... and the song pulls at you."); world.playSound(pos, Sound.ENTITY_ALLAY_AMBIENT_WITH_ITEM, SoundCategory.HOSTILE, 3f, 0.6f); }
                 case SPIRES -> { for (Player p : active()) marks.add(floorUnder(p.getLocation(), 30)); }
                 default -> { }
@@ -836,7 +844,7 @@ final class DeepBosses {
                         world.playSound(pos, Sound.BLOCK_STONE_PLACE, SoundCategory.HOSTILE, 3f, 0.5f);
                         Location eyes = Lich.joint(pos, Lich.frame(yaw, 0, 0), 0.3, 1.6, 0, k);
                         for (Player p : within(pos, 34)) {
-                            Vector look = p.getEyeLocation().getDirection(), toHer = eyes.toVector().subtract(p.getEyeLocation().toVector()).normalize();
+                            Vector look = p.getEyeLocation().getDirection(), toHer = unit(eyes.toVector().subtract(p.getEyeLocation().toVector()));
                             if (look.dot(toHer) < c("gaze-dot", 0.55)) continue; // looked away
                             hit(p, c("moves.gaze", 4), pos.toVector(), Guard.UNBLOCKABLE);
                             p.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, (int) c("petrify-ticks", 50), 6));
@@ -870,7 +878,7 @@ final class DeepBosses {
                 case BUBBLES -> {
                     if (at % 8 == 0 && at <= 40) {
                         Player t = targetOr(null);
-                        if (t != null) bolt(Lich.joint(pos, Lich.frame(yaw, 0, 0), 0.6, 1.2, 0, k), t.getLocation().add(0, 1, 0).toVector().subtract(pos.toVector()).normalize().multiply(0.35),
+                        if (t != null) bolt(Lich.joint(pos, Lich.frame(yaw, 0, 0), 0.6, 1.2, 0, k), unit(t.getLocation().add(0, 1, 0).toVector().subtract(pos.toVector())).multiply(0.35),
                                 90, 0.6, c("moves.bubble", 6), Particle.BUBBLE, new ItemStack(Material.LIGHT_BLUE_STAINED_GLASS), t, 0.06, null);
                         world.playSound(pos, Sound.BLOCK_BUBBLE_COLUMN_BUBBLE_POP, SoundCategory.HOSTILE, 2f, 1.2f);
                     }
@@ -1254,7 +1262,7 @@ final class DeepBosses {
                 }
                 case SHOT -> {
                     if (at % 8 == 0 && at <= 32) for (Player p : a) {
-                        Vector v = p.getLocation().add(0, 1, 0).toVector().subtract(pos.clone().add(0, k, 0).toVector()).normalize().multiply(0.8);
+                        Vector v = unit(p.getLocation().add(0, 1, 0).toVector().subtract(pos.clone().add(0, k, 0).toVector())).multiply(0.8);
                         bolt(pos.clone().add(0, 1 * k, 0), v, 60, 0.45, c("moves.pearl-shot", 7), Particle.END_ROD, new ItemStack(Material.SNOWBALL), null, 0, null);
                     }
                     if (at > 40) { wantOpen = 25; end(); }

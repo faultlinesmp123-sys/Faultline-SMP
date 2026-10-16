@@ -241,7 +241,7 @@ final class DeepBosses {
             double dist = d.length();
             if (progGoal == null || !progGoal.getWorld().equals(world) || progGoal.distanceSquared(to) > 36) { progGoal = to.clone(); progBest = dist; noProgress = 0; path.clear(); } // a new goal: an old path is no good
             else if (dist < progBest - 1) { progBest = dist; noProgress = 0; }
-            else if (dist > 4 && ++noProgress >= 50 && path.isEmpty() && System.currentTimeMillis() - lastPathAt > 1500) {
+            else if (dist > 4 && ++noProgress >= 50 && path.isEmpty() && System.currentTimeMillis() - lastPathAt > 3000) {
                 lastPathAt = System.currentTimeMillis();
                 noProgress = 0;
                 List<Location> found = plan(to, 48);
@@ -253,7 +253,7 @@ final class DeepBosses {
                 else stuckT = Math.max(0, stuckT - 10);
                 lastSpot = pos.clone();
             }
-            if (stuckT >= 40 && System.currentTimeMillis() - lastPathAt > 1500) {
+            if (stuckT >= 40 && System.currentTimeMillis() - lastPathAt > 3000) {
                 lastPathAt = System.currentTimeMillis();
                 List<Location> found = plan(to, 48);
                 if (found != null && found.size() > 1) { path.clear(); path.addAll(found); pathFor = 200; stuckT = 0; detourT = 0; }
@@ -265,16 +265,18 @@ final class DeepBosses {
         Vector bestDir(Vector want, double look) {
             float y0 = yawOf(flat(want)), p0 = pitchOf(want);
             Vector u = unit(want.clone());
-            Vector best = null;
-            double score = -9;
+            List<Vector> cands = new ArrayList<>(60);
+            List<Double> scores = new ArrayList<>(60);
             for (int yo : new int[]{0, 25, -25, 50, -50, 80, -80, 115, -115, 150, -150, 180}) for (int po : new int[]{0, 30, -30, 60, -60}) {
                 Vector v = dir3(y0 + yo, Math.max(-75, Math.min(75, p0 + po)));
-                double sc = v.dot(u) + (detour != null ? v.dot(detour) * 0.6 : 0); // sticks with the side it picked
-                if (sc <= score) continue;
-                if (!clear(pos, pos.clone().add(v.clone().multiply(look)), room())) continue;
-                best = v; score = sc;
+                cands.add(v);
+                scores.add(v.dot(u) + (detour != null ? v.dot(detour) * 0.6 : 0)); // sticks with the side it picked
             }
-            return best;
+            Integer[] order = new Integer[cands.size()];
+            for (int i = 0; i < order.length; i++) order[i] = i;
+            java.util.Arrays.sort(order, (a, b) -> Double.compare(scores.get(b), scores.get(a)));
+            for (int i : order) if (clear(pos, pos.clone().add(cands.get(i).clone().multiply(look)), room())) return cands.get(i); // the best open one: no need to test the rest
+            return null;
         }
 
         /** A* through the water on a 2-block grid from here toward `to` (or as near as it gets); null = no way. */
@@ -283,7 +285,7 @@ final class DeepBosses {
             int r = room();
             int bx = pos.getBlockX(), by = pos.getBlockY(), bz = pos.getBlockZ();
             int gx = Math.floorDiv(to.getBlockX() - bx, cell), gy = Math.floorDiv(to.getBlockY() - by, cell), gz = Math.floorDiv(to.getBlockZ() - bz, cell);
-            int lim = range / cell;
+            int lim = Math.min(range / cell, 200); // (doubled coordinates must fit the key)
             gx = Math.max(-lim, Math.min(lim, gx)); gy = Math.max(-lim, Math.min(lim, gy)); gz = Math.max(-lim, Math.min(lim, gz));
             java.util.Map<Long, long[]> seen = new java.util.HashMap<>(); // key -> {parent key, g}
             java.util.PriorityQueue<long[]> open = new java.util.PriorityQueue<>((x, y) -> Long.compare(x[1], y[1])); // {key, f}
@@ -293,7 +295,8 @@ final class DeepBosses {
             long bestKey = start; double bestH = 1e18;
             int expanded = 0;
             int[][] nb = {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}, {1, 0, 1}, {1, 0, -1}, {-1, 0, 1}, {-1, 0, -1}};
-            while (!open.isEmpty() && expanded++ < 1800) {
+            java.util.Map<Long, Boolean> okCell = new java.util.HashMap<>();
+            while (!open.isEmpty() && expanded++ < 1200) {
                 long[] cur = open.poll();
                 int cx = kx(cur[0]), cy = ky(cur[0]), cz = kz(cur[0]);
                 double h = Math.abs(cx - gx) + Math.abs(cy - gy) + Math.abs(cz - gz);
@@ -307,9 +310,12 @@ final class DeepBosses {
                     long ng = g + (o[0] != 0 && o[2] != 0 ? 14 : 10);
                     long[] was = seen.get(nk);
                     if (was != null && was[1] <= ng) continue;
-                    Location a = new Location(world, bx + cx * cell + 0.5, by + cy * cell + 0.5, bz + cz * cell + 0.5);
-                    Location b = new Location(world, bx + nx * cell + 0.5, by + ny * cell + 0.5, bz + nz * cell + 0.5);
-                    if (!open(b, r) || !clear(a, b, r)) continue;
+                    // each cell, and each half-way point between two cells, is tested once (both ends are open with r
+                    // blocks of room, so the middle is all the edge needs)
+                    final int fx = nx, fy = ny, fz = nz;
+                    if (!okCell.computeIfAbsent(key(fx * 2, fy * 2, fz * 2), k2 -> open(new Location(world, bx + fx * cell + 0.5, by + fy * cell + 0.5, bz + fz * cell + 0.5), r))) continue;
+                    final int mx = cx + nx, my = cy + ny, mz = cz + nz; // doubled half-way point
+                    if (!okCell.computeIfAbsent(key(mx, my, mz), k2 -> open(new Location(world, bx + mx * cell / 2.0 + 0.5, by + my * cell / 2.0 + 0.5, bz + mz * cell / 2.0 + 0.5), r))) continue;
                     seen.put(nk, new long[]{cur[0], ng});
                     open.add(new long[]{nk, ng + 10 * (Math.abs(nx - gx) + Math.abs(ny - gy) + Math.abs(nz - gz))});
                 }
@@ -540,25 +546,24 @@ final class DeepBosses {
                 if (len > total + 4) { while (it.hasNext()) { it.next(); it.remove(); } break; }
             }
             if (len < total) { chain.lead(pos, gaps); return; } // not enough trail yet (just spawned, or jumped): the old rope
-            // lay each point at its distance along the trail
+            // lay each point at its distance along the trail (one walk down it: the trail is a linked list)
             List<Location> pts = chain.pts;
             pts.set(0, pos.clone());
             double want = 0, walked = 0;
-            Location a = trail.get(0);
-            int ti = 1;
+            java.util.Iterator<Location> tr = trail.iterator();
+            Location a = tr.next(), b = tr.hasNext() ? tr.next() : null;
             for (int i = 1; i < pts.size(); i++) {
                 want += gaps[Math.min(gaps.length - 1, i - 1)];
-                while (ti < trail.size()) {
-                    Location b = trail.get(ti);
+                while (b != null) {
                     double seg = a.distance(b);
                     if (walked + seg >= want) {
                         double f = seg < 1e-6 ? 0 : (want - walked) / seg;
                         pts.set(i, a.clone().add(b.toVector().subtract(a.toVector()).multiply(f)));
                         break;
                     }
-                    walked += seg; a = b; ti++;
+                    walked += seg; a = b; b = tr.hasNext() ? tr.next() : null;
                 }
-                if (ti >= trail.size()) pts.set(i, trail.getLast().clone());
+                if (b == null) pts.set(i, a.clone());
             }
         }
 
@@ -750,7 +755,7 @@ final class DeepBosses {
             for (UUID id : storm) { Player p = Bukkit.getPlayer(id); if (p != null) p.resetPlayerWeather(); }
             storm.clear();
             clearPylons();
-            for (Runnable r : bubbleCleanup) r.run();
+            for (Runnable r : new ArrayList<>(bubbleCleanup)) r.run();
             bubbleCleanup.clear(); pinks.clear();
         }
 
@@ -1430,7 +1435,13 @@ final class DeepBosses {
             world.playSound(p0, Sound.BLOCK_BUBBLE_COLUMN_UPWARDS_INSIDE, SoundCategory.HOSTILE, 3f, isPink ? 0.8f : 0.5f);
             int[] age = {0};
             int life = isPink ? 300 : 240;
-            Runnable gone = () -> { if (d.isValid()) d.remove(); if (hb != null && hb.isValid()) hb.remove(); };
+            Runnable[] self = new Runnable[1];
+            Runnable gone = () -> {
+                if (d.isValid()) d.remove();
+                if (hb != null) { if (hb.isValid()) hb.remove(); pinks.remove(hb.getUniqueId()); }
+                bubbleCleanup.remove(self[0]); // (a long fight made hundreds of these)
+            };
+            self[0] = gone;
             bubbleCleanup.add(gone);
             fx.add(() -> {
                 age[0]++;

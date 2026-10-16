@@ -87,11 +87,14 @@ final class Vortex {
         if (closing) { r = Math.max(0, r - maxR / 30); d = Math.max(0, d - maxD / 20); }
         else { r = Math.min(maxR, maxR * t / 60.0); d = Math.min(maxD, maxD * Math.max(0, t - 10) / 70.0); }
         if (Math.abs(or - r) > 0.25 || Math.abs(od - d) > 0.25 || t % 40 == 0) { rebuild(); changed = true; }
-        if (t % 5 == 0 || changed) send();
+        if (changed || t % 5 == 0) send();
         draw();
     }
 
+    private boolean sent;
+
     private void rebuild() {
+        sent = false;
         World w = center.getWorld();
         Map<Position, BlockData> out = new HashMap<>();
         BlockData air = Material.AIR.createBlockData();
@@ -122,13 +125,19 @@ final class Vortex {
         changed = false;
         World w = center.getWorld();
         Set<UUID> still = new HashSet<>();
+        boolean refresh = t % 40 == 0;
         for (Player p : w.getPlayers()) {
             if (p.getLocation().distanceSquared(center) > 96 * 96) continue;
             still.add(p.getUniqueId());
-            Map<Position, BlockData> m = new HashMap<>(pendingRestore);
-            m.putAll(cells);
-            if (!m.isEmpty()) try { p.sendMultiBlockChange(m); } catch (Throwable ignored) { }
+            // only when the shape changed, to someone who just came close, or a refresh every 2 s (a block update
+            // from the server can put real water back on a client)
+            if (!sent || refresh || !viewers.contains(p.getUniqueId())) {
+                Map<Position, BlockData> m = new HashMap<>(pendingRestore);
+                m.putAll(cells);
+                if (!m.isEmpty()) try { p.sendMultiBlockChange(m); } catch (Throwable ignored) { }
+            }
         }
+        sent = true;
         // anyone who walked off gets the real sea back
         for (UUID id : viewers) if (!still.contains(id)) {
             Player p = org.bukkit.Bukkit.getPlayer(id);

@@ -1273,8 +1273,7 @@ final class DeepMobs implements Listener {
             at.getWorld().spawn(at, AreaEffectCloud.class, cl -> {
                 cl.setRadius(2.6f); cl.setDuration(120); cl.setRadiusPerTick(-0.01f);
                 cl.setColor(Color.fromRGB(150, 230, 60));
-                cl.addCustomEffect(new PotionEffect(PotionEffectType.POISON, 80, 1), true);
-                cl.addCustomEffect(new PotionEffect(PotionEffectType.INSTANT_DAMAGE, 1, 0), true);
+                cl.addCustomEffect(new PotionEffect(PotionEffectType.POISON, 80, 1), true); // (no Harming: a cloud reapplies it every second, 3 hearts each)
                 cl.addScoreboardTag(PART);
             });
             return;
@@ -1297,7 +1296,7 @@ final class DeepMobs implements Listener {
             Player kk = e.getEntity().getKiller();
             for (Player p : e.getEntity().getWorld().getPlayers())
                 p.sendMessage(ChatColor.GOLD + "" + ChatColor.BOLD + "Grubnash the Acid Goblin " + ChatColor.YELLOW + "has been slain" + (kk != null ? " by " + kk.getName() : "") + "!");
-            if (pl.acidRain != null) pl.acidRain.goblinDied();
+            if (pl.acidRain != null) pl.acidRain.goblinDied(e.getEntity().getUniqueId());
         }
         Location at = e.getEntity().getLocation();
         if (m.k.id().equals("bloatfin")) { // its air sac bursts

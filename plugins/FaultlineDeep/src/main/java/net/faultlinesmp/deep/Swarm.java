@@ -78,6 +78,8 @@ final class Swarm {
             s.setArms(true);
             s.addScoreboardTag(TAG);
             s.setRotation(yaw, 0);
+            s.setCustomName("\u00a74\u00a7lSwarm"); // Bedrock can't see the TextDisplay
+            s.setCustomNameVisible(true);
             s.getEquipment().setItem(EquipmentSlot.HEAD, new ItemStack(Material.WITHER_SKELETON_SKULL));
             for (EquipmentSlot es : new EquipmentSlot[]{EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET}) {
                 Material mat = es == EquipmentSlot.CHEST ? Material.LEATHER_CHESTPLATE : es == EquipmentSlot.LEGS ? Material.LEATHER_LEGGINGS : Material.LEATHER_BOOTS;

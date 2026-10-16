@@ -1137,6 +1137,14 @@ Notes:
   Tested: `DeepTest` (ftest: 46 kinds, acid zone at the new height, funnel, Swarm, Acid Rain + goblin), `DeepBossTest` (bubbles,
   no phasing through a wall, A* round it, it gets to the far side), `WildTest`, `MusicTest`, `StuckTest`, `AchievementTest`,
   `SulphurPreview` (0 spills), `TownPreview` (0 leaks).
+- **Bug pass (Deep 1.5.1, Bosses 1.6.7)**: the sea bosses' pathing was too costly: A* now tests each 2-block cell and each
+  half-way point ONCE (cached; both ends already have room, so the middle is all an edge needs), 1200 nodes, at most every 3 s;
+  `bestDir` sorts its 60 directions by score and stops at the first open one (it tested all 60 every blocked tick); the serpent
+  trail is walked with an iterator (LinkedList.get(i) made it quadratic every tick). Scourge bubbles no longer leak their
+  cleanup / pink-bubble entries over a long fight. The goblin's acid flask cloud lost its Harming effect (a cloud reapplies it
+  every second: 3 hearts a second). An egg-spawned goblin dying no longer drops the event goblin's boss bar
+  (`AcidRain.goblinDied(uuid)`); turning `acid-rain.enabled` off mid-event stops it. Bedrock sees Swarm's name (on its stand).
+  The whirlpool resends its fake funnel only when the shape changes, to new viewers, or every 2 s (it was every 5 ticks).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

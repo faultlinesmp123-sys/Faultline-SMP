@@ -70,7 +70,7 @@ final class AcidRain {
 
     void tick() {
         secs++;
-        if (!pl.getConfig().getBoolean("acid-rain.enabled", true) || pl.world == null) return;
+        if (!pl.getConfig().getBoolean("acid-rain.enabled", true) || pl.world == null) { if (active) stop(false); return; }
         if (!active) {
             int every = (int) Math.max(1, cfg("check-minutes", 5) * 60);
             if (secs % every == 0) {
@@ -247,7 +247,8 @@ final class AcidRain {
         for (Player p : want) if (!goblinBar.getPlayers().contains(p)) goblinBar.addPlayer(p);
     }
 
-    void goblinDied() {
+    void goblinDied(UUID who) {
+        if (goblin == null || !goblin.equals(who)) return; // (an admin's egg goblin isn't the event's)
         if (goblinBar != null) { goblinBar.removeAll(); goblinBar = null; }
         goblin = null;
     }

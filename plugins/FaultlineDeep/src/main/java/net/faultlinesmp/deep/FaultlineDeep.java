@@ -211,7 +211,8 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
                     case "stop" -> { den.endWar(false); sender.sendMessage(ChatColor.GREEN + "Stopped the Den's war."); }
                     case "reset" -> { den.reset(); sender.sendMessage(ChatColor.GREEN + "All ten mermaids are home again."); }
                     case "rise" -> { den.rise("Called by an admin."); sender.sendMessage(ChatColor.GREEN + "Coralia rises over her throne."); }
-                    default -> sender.sendMessage(ChatColor.LIGHT_PURPLE + den.info() + ChatColor.YELLOW + "\n/deep den [info|tp [player]|raid|stop|reset|rise]");
+                    case "where" -> { for (String line : den.where()) sender.sendMessage(ChatColor.GRAY + line); }
+                    default -> sender.sendMessage(ChatColor.LIGHT_PURPLE + den.info() + ChatColor.YELLOW + "\n/deep den [info|where|tp [player]|raid|stop|reset|rise]");
                 }
             }
             case "lucki" -> { journey.removeLucki(); journey.spawnLucki(); sender.sendMessage(ChatColor.GREEN + "Lucki is back at his spot (if it's set and loaded)."); }
@@ -236,7 +237,7 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
         else if (args.length == 2 && args[0].equalsIgnoreCase("set")) out.addAll(List.of("kingdom", "lucki", "whirlpool"));
         else if (args.length == 2 && (args[0].equalsIgnoreCase("spawn") || args[0].equalsIgnoreCase("egg"))) out.addAll(DeepMobs.KINDS.keySet());
         else if (args.length == 2 && args[0].equalsIgnoreCase("event")) out.addAll(List.of("pressure", "undertow", "stop"));
-        else if (args.length == 2 && args[0].equalsIgnoreCase("den")) out.addAll(List.of("info", "tp", "raid", "stop", "reset", "rise"));
+        else if (args.length == 2 && args[0].equalsIgnoreCase("den")) out.addAll(List.of("info", "where", "tp", "raid", "stop", "reset", "rise"));
         else if (args.length == 2 && args[0].equalsIgnoreCase("acidrain")) out.addAll(List.of("start", "stop", "goblin"));
         String last = args[args.length - 1].toLowerCase();
         out.removeIf(s -> !s.startsWith(last));

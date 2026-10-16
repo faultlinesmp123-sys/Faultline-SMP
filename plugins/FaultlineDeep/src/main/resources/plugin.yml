@@ -1,5 +1,5 @@
 name: FaultlineDeep
-version: '1.7.0'
+version: '1.7.1'
 main: net.faultlinesmp.deep.FaultlineDeep
 api-version: '1.21'
 author: FaultlineSMP
@@ -9,7 +9,7 @@ softdepend: [floodgate, Geyser-Spigot, FaultlineItems, FaultlineBosses, Faultlin
 commands:
   deep:
     description: "Admin: the Dark Ocean (set kingdom/lucki/whirlpool spots, tp, spawn creatures, eggs, events)"
-    usage: /deep [info|set <kingdom|lucki|whirlpool>|tp [player]|town [player]|spawn <mob>|egg <mob> [n] [player]|event <pressure|undertow|stop>|acidrain|den [info|tp|raid|stop|reset|rise]|lucki]
+    usage: /deep [info|set <kingdom|lucki|whirlpool>|tp [player]|town [player]|spawn <mob>|egg <mob> [n] [player]|event <pressure|undertow|stop>|acidrain|den [info|where|tp|raid|stop|reset|rise]|lucki]
     permission: faultlinedeep.admin
 
 permissions:

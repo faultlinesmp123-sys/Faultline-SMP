@@ -92,13 +92,41 @@ final class Den {
 
     /** The lowest spot there with two blocks of water (null: not loaded / no room). */
     static Location waterAt(World w, int x, int z) {
+        // the exact spot first, then outward in rings (a house's middle can be its own wall, a column or a clam): the
+        // nearest column with two blocks of open water above the floor
+        for (int r = 0; r <= 8; r += 2) {
+            for (int dx = -r; dx <= r; dx += 2) for (int dz = -r; dz <= r; dz += 2) {
+                if (r > 0 && Math.abs(dx) != r && Math.abs(dz) != r) continue; // only the ring's edge
+                Location l = column(w, x + dx, z + dz);
+                if (l != null) return l;
+            }
+        }
+        return null;
+    }
+
+    /** Each home's water spot, found once (the search reads a few hundred blocks). */
+    final Location[] spots = new Location[MERMAIDS + GUARDS];
+
+    Location homeSpot(World w, int i, int[] h) {
+        Location c = spots[i];
+        if (c != null && c.getWorld() == w) return c;
+        c = waterAt(w, h[0], h[1]);
+        if (c != null) spots[i] = c;
+        return c;
+    }
+
+    private static Location column(World w, int x, int z) {
         if (!w.isChunkLoaded(x >> 4, z >> 4)) return null;
         for (int y = MermaidDen.FLOOR - 4; y < MermaidDen.FLOOR + 24; y++) {
-            if (w.getBlockAt(x, y, z).getType() == Material.WATER && w.getBlockAt(x, y + 1, z).getType() == Material.WATER
-                    && w.getBlockAt(x, y - 1, z).getType() != Material.WATER)
+            if (swim(w.getBlockAt(x, y, z).getType()) && swim(w.getBlockAt(x, y + 1, z).getType()) && !swim(w.getBlockAt(x, y - 1, z).getType()))
                 return new Location(w, x + 0.5, y, z + 0.5);
         }
         return null;
+    }
+
+    /** Water a mermaid can be in (seagrass and kelp are water too). */
+    static boolean swim(Material m) {
+        return m == Material.WATER || m == Material.SEAGRASS || m == Material.TALL_SEAGRASS || m == Material.KELP || m == Material.KELP_PLANT || m == Material.BUBBLE_COLUMN;
     }
 
     static boolean inside(Location l, double extra) {
@@ -137,7 +165,7 @@ final class Den {
                 boolean someone = false;
                 for (Player p : here) if (Math.hypot(p.getLocation().getX() - h[0], p.getLocation().getZ() - h[1]) < 90) { someone = true; break; }
                 if (!someone) continue;
-                Location at = waterAt(w, h[0], h[1]);
+                Location at = homeSpot(w, i, h);
                 if (at == null) continue;
                 slot[i] = spawn(i < MERMAIDS ? "mermaid" : "merguard", at);
                 continue;
@@ -146,7 +174,7 @@ final class Den {
                 Location l = b.body.getLocation();
                 double d = Math.hypot(l.getX() - h[0], l.getZ() - h[1]);
                 if (d > (i < MERMAIDS ? 10 : 5) && ticks % 3 == 0) {
-                    Location at = waterAt(w, h[0], h[1]);
+                    Location at = homeSpot(w, i, h);
                     if (at != null) try { mob.getPathfinder().moveTo(at, 1.0); } catch (RuntimeException | LinkageError ignored) { }
                 }
             }
@@ -365,5 +393,23 @@ final class Den {
         int alive = 0; for (DeepMobs.Beast b : slot) if (b != null) alive++;
         return "Mermaids left: " + mermaidsLeft() + "/" + MERMAIDS + "   out now: " + alive + "   war: " + (war == null ? "no" : "wave " + war.wave + ", " + everyone().size() + " left")
                 + (restockAt > 0 ? "   restock in " + Math.max(0, (restockAt - System.currentTimeMillis()) / 60_000) + " min" : "");
+    }
+
+    /** One line per resident: where they are now (or their home, and why they're not out). */
+    List<String> where() {
+        List<String> out = new ArrayList<>();
+        long now = System.currentTimeMillis();
+        for (int i = 0; i < slot.length; i++) {
+            int[] h = home(i);
+            String who = (i < MERMAIDS ? "Mermaid " + (i + 1) : "Guard " + (i - MERMAIDS + 1));
+            DeepMobs.Beast b = slot[i];
+            String state;
+            if (b != null) { Location l = b.body.getLocation(); state = "out at " + l.getBlockX() + " " + l.getBlockY() + " " + l.getBlockZ() + (b.angry() ? " (ANGRY)" : ""); }
+            else if (i < MERMAIDS && dead[i]) state = "dead (comes home with the restock)";
+            else if (i >= MERMAIDS && guardBack[i - MERMAIDS] > now) state = "dead (back in " + (guardBack[i - MERMAIDS] - now) / 1000 + " s)";
+            else state = "home " + h[0] + " " + h[1] + " (comes out when someone is within 90 blocks)";
+            out.add(who + ": " + state);
+        }
+        return out;
     }
 }

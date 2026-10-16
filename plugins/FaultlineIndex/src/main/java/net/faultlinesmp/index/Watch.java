@@ -845,6 +845,9 @@ final class Watch implements Listener, CommandExecutor, TabCompleter {
             PotionEffect sp = p.getPotionEffect(PotionEffectType.SPEED);
             if (sp != null) limit += 3 * (sp.getAmplifier() + 1);
             if (p.hasPotionEffect(PotionEffectType.DOLPHINS_GRACE) || p.isSwimming()) limit += 8;
+            // in or by water: swimming speed isn't judged at all (Dolphin's Grace from the Abyssal Diving Suit + Depth Strider,
+            // currents, bubble columns, the Dark Ocean's Undertow and boss pulls were all logged as "speed")
+            if (wet(p, l) || wet(p, prev)) { m.fast = 0; continue; }
             if (m.speed > limit) {
                 if (++m.fast >= 2) violation(p, "speed", String.format(Locale.ROOT, "moved %.1f blocks/second on foot (limit %.1f)", m.speed, limit), cfg().getInt("speed.count", 2));
             } else m.fast = 0;
@@ -953,6 +956,19 @@ final class Watch implements Listener, CommandExecutor, TabCompleter {
             if (mods != null) for (var m : mods.values()) if (!ours(m.getKey().getNamespace())) return "custom attribute modifiers";
         }
         return null;
+    }
+
+    /** In water, or standing in/next to it (feet or the block under them). */
+    static boolean wet(Player p, Location l) {
+        try {
+            if (p.isInWater() || p.isSwimming()) return true;
+            org.bukkit.block.Block b = l.getBlock();
+            for (org.bukkit.block.Block c : new org.bukkit.block.Block[]{b, b.getRelative(0, -1, 0), b.getRelative(0, 1, 0)}) {
+                if (c.getType() == Material.WATER || c.getType() == Material.BUBBLE_COLUMN) return true;
+                if (c.getBlockData() instanceof org.bukkit.block.data.Waterlogged w && w.isWaterlogged()) return true;
+            }
+        } catch (RuntimeException | LinkageError ignored) { }
+        return false;
     }
 
     static boolean ours(String ns) { return ns.startsWith("faultline") || ns.startsWith("limbo") || ns.startsWith("dropheads"); }

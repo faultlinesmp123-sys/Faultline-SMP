@@ -517,6 +517,18 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
     // ---- for other plugins (FaultlineKingdoms' Discord /stats), called by reflection on the main thread
     private static FaultlineIndex self;
 
+    /**
+     * Has this player beaten (or at least discovered) the boss with this Index entry id ("diamond_jacob", "rocco_vendetta")?
+     * FaultlineDeep asks before the Mirror works. False if the Index isn't loaded.
+     */
+    public static boolean defeated(UUID id, String entryId) {
+        FaultlineIndex ix = self;
+        if (ix == null) return false;
+        if (ix.kills.getOrDefault(id, Map.of()).getOrDefault(entryId, 0) > 0) return true;
+        Set<String> f = ix.found.get(id);
+        return f != null && f.contains(entryId);
+    }
+
     /** "Index", "Bosses defeated", "Achievements" for a player (label -> value), in order; empty if the Index isn't loaded. */
     public static Map<String, String> discordStats(UUID id) {
         Map<String, String> out = new LinkedHashMap<>();

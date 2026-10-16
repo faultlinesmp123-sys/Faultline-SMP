@@ -1,0 +1,3 @@
+# FaultlineDeep: the Dark Ocean. Changing this file in the jar does NOT update the copy on the server.
+world: faultline_deep
+border-radius: 1050          # the world border: -1050..1050 (the build area at 681, -951 reaches z -1026)

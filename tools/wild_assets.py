@@ -283,7 +283,7 @@ def bedrock_geo(part, boxes):
     return {"format_version": "1.16.0", "minecraft:geometry": [{
         "description": {"identifier": f"geometry.faultline.wild_{part.name}", "texture_width": part.size, "texture_height": part.size,
                         "visible_bounds_width": vb, "visible_bounds_height": vb, "visible_bounds_offset": [0, (lo[1] + hi[1]) / 2, 0]},
-        "bones": [{"name": "body", "pivot": [0, 24, 0], "cubes": cubes.get(None, [])}]
+        "bones": [{"name": "body", "pivot": bed_pt(part.pivots["body"]) if "body" in part.pivots else [0, 24, 0], "cubes": cubes.get(None, [])}]
                   + [{"name": bn, "parent": "body", "pivot": bed_pt(part.pivots[bn]), "cubes": cs} for bn, cs in cubes.items() if bn is not None]}]}
 
 
@@ -301,6 +301,7 @@ def bedrock_anim(part):
         for j in range(n + 1):
             t = j / n
             w = math.sin(2 * math.pi * (t + ph))
+            if bn in getattr(part, "half", ()): w = (w + 1) / 2   # a jaw / lid: opens and shuts, never swings through
             keys[f"{round(t * secs, 4)}"] = [round(a * w, 3) for a in amp]
         key = f"animation.faultline.wild_{part.name}.{bn}_{kind}_{i}"
         anims[key] = {"loop": True, "animation_length": secs,

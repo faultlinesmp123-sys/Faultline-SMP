@@ -1004,6 +1004,19 @@ Notes:
   hole floods the whole town), and in the plot / Pit / lift nobody breaks, places, empties buckets or uses anything but
   doors, buttons, gates, the bell, the lectern and the ender chest (the tier wall's shulker boxes are safe); explosions
   and pistons skip all of it; `market.protect` (true). Tested (`DeepTest`).
+- **Deep creatures v2 (Deep 1.3.0, Items 1.2.45 = pack hash)**: all 20 creatures remodelled in `tools/deep_assets.py`
+  (painters `fish`, `finp`, `spotted`; helpers `eyes`, `pair`, `side_bone`, `staircase`; `shark()` for the three sharks)
+  and every one has named moving BONES with looping animations: tails, fins, wings, jaws, the clam's lid, arms,
+  tentacles, legs, claws, eye stalks, kelp, a lure, a hem. Bedrock plays them in `FaultlineDeep.mcpack`. Java: each bone
+  is its own model `faultline:deep/<id>__<bone>` (exported with its pivot at the origin; the body is `deep/<id>`), one
+  ItemDisplay per bone riding the body (`Beast.parts`, `bones`), posed every 2 ticks by `DeepMobs.pose` from
+  `DeepParts.java` (WRITTEN by deep_assets.py: bones + pivots + the same anim numbers, Bedrock axes/units; `animate()` maps
+  them: rot (x, y, z) -> rotZ(-x) rotY(y) rotX(-z), pos px -> (-z, y, -x)/16; `half` = jaws/lids that only open and shut,
+  `wild_assets.bedrock_anim` honours `part.half`; "body" = whole-creature motion about `part.pivots["body"]`, which
+  `bedrock_geo` now uses as the root pivot). Tails beat faster while it swims; jaws/lids open wider when angry. FIXED: the
+  model used to follow the body's own pitch (squids report odd rotations): jellies and squids lay on their sides. Heading
+  now comes from the velocity, eased; `UPRIGHT` kinds (bells, floaters, the clam, ghosts, crawlers) never pitch. Updates
+  every 2 ticks only with a player within 48, else once a second. Tested (`DeepTest`: every creature's parts).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

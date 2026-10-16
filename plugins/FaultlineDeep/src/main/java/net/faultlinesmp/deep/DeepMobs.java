@@ -127,7 +127,11 @@ final class DeepMobs implements Listener {
     final class Beast {
         final Kind k;
         final LivingEntity body;
-        ItemDisplay model;
+        ItemDisplay model;                                    // the body
+        final List<ItemDisplay> parts = new ArrayList<>();     // one per moving bone (DeepParts), same order as its bones
+        List<DeepParts.Bone> bones = List.of();
+        float yaw = Float.NaN, pitch;                          // the smoothed heading the model shows
+        int lastPose = -99;
         ArmorStand stand;
         UUID angryAt;
         long angryUntil;
@@ -198,6 +202,22 @@ final class DeepMobs implements Listener {
             d.setShadowRadius(0);
         });
         body.addPassenger(mob.model);
+        mob.bones = DeepParts.BONES.getOrDefault(k.id(), List.of());
+        for (DeepParts.Bone b : mob.bones) {
+            ItemDisplay d = w.spawn(at, ItemDisplay.class, e2 -> {
+                e2.setItemStack(modelItem(k.id() + "__" + b.name()));
+                e2.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.NONE);
+                e2.setPersistent(false);
+                e2.addScoreboardTag(PART);
+                e2.addScoreboardTag("faultline_no_bedrock_fx");
+                e2.setTeleportDuration(2);
+                e2.setInterpolationDuration(3);
+                e2.setViewRange(1.2f);
+                e2.setShadowRadius(0);
+            });
+            body.addPassenger(d);
+            mob.parts.add(d);
+        }
         mob.stand = w.spawn(at, ArmorStand.class, a -> {
             a.setVisibleByDefault(false);
             a.setPersistent(false);
@@ -223,23 +243,92 @@ final class DeepMobs implements Listener {
         if (ai != null) ai.setBaseValue(v);
     }
 
-    /** The model's pose: centred on the body, turned to where it faces (yaw, and pitch as it swims up or down). */
+    /** Creatures that stay level (bells, floaters, crawlers, the clam, the ghosts): never pitched up or down. */
+    static final Set<String> UPRIGHT = Set.of("lumenbell", "gasbloom", "bloatfin", "clam", "hollowkin", "blastfin", "cavecrawler", "glowgrub");
+
+    /**
+     * The model's pose. Heading: where it's really going (its velocity), eased, so a squid's odd body rotation or a
+     * jittery yaw never shows (the old model followed the body's own pitch and lay on its side). Then every bone is posed
+     * from DeepParts: the same looping animations the Bedrock pack plays, faster while it swims.
+     */
     void pose(Beast m, boolean force) {
         if (m.model == null || !m.model.isValid()) return;
         Location l = m.body.getLocation();
-        float yaw = l.getYaw(), pitch = Math.max(-60, Math.min(60, l.getPitch()));
-        if (m.buried) pitch = 0;
-        if (!force && Math.abs(angle(yaw - m.sentYaw)) < 4 && Math.abs(pitch - m.sentPitch) < 8) return;
-        m.sentYaw = yaw; m.sentPitch = pitch;
+        Vector v = m.body.getVelocity();
+        double hs = Math.hypot(v.getX(), v.getZ());
+        float wantYaw = hs > 0.012 ? (float) Math.toDegrees(Math.atan2(-v.getX(), v.getZ())) : l.getYaw();
+        float wantPitch = UPRIGHT.contains(m.k.id()) || m.buried ? 0 : hs + Math.abs(v.getY()) > 0.02
+                ? (float) Math.max(-35, Math.min(35, Math.toDegrees(Math.atan2(-v.getY(), Math.max(hs, 1e-3))))) : 0;
+        if (m.k.id().equals("clam")) wantYaw = Float.isNaN(m.yaw) ? l.getYaw() : m.yaw;
+        if (Float.isNaN(m.yaw)) { m.yaw = wantYaw; m.pitch = wantPitch; }
+        m.yaw += angle(wantYaw - m.yaw) * 0.25f;
+        m.pitch += (wantPitch - m.pitch) * 0.2f;
+        boolean watched = force || m.t - m.lastPose >= 20 || viewerNear(l, 48);
+        if (!watched) return;
+        m.lastPose = m.t;
         double h = m.body.getHeight();
         float s = m.k.modelScale() * (m.fused ? 1.5f : 1f);
-        // the models are authored like the wild bosses' parts (+x = front): Wild's Q0 (local -> display) and the half
-        // turn item displays draw items with (tools/deep_assets.py)
-        Quaternionf q = new Quaternionf().rotationY((float) Math.toRadians(-yaw)).rotateX((float) Math.toRadians(pitch))
-                .rotateY((float) Math.toRadians(-90)).rotateY((float) Math.PI);
         float down = (float) (-h * 0.5 - (m.buried ? h * 0.7 : 0));
-        m.model.setInterpolationDelay(0);
-        m.model.setTransformation(new Transformation(new Vector3f(0, down, 0), q, new Vector3f(s, s, s), new Quaternionf()));
+        double time = ticks / 20.0;
+        float speed = (float) Math.min(2.2, 0.7 + hs * 9);                    // tails beat faster when it swims
+        // the creature's frame (+x front, +y up, +z right) in the world, and the half turn item displays draw with
+        Quaternionf frame = new Quaternionf().rotationY((float) Math.toRadians(-m.yaw)).rotateX((float) Math.toRadians(m.pitch))
+                .rotateY((float) Math.toRadians(-90));
+        Quaternionf flip = new Quaternionf().rotationY((float) Math.PI);
+        List<DeepParts.Anim> anims = DeepParts.ANIMS.getOrDefault(m.k.id(), List.of());
+        Quaternionf bodyRot = new Quaternionf(); Vector3f bodyPos = new Vector3f();
+        animate(anims, "body", time, 1f, bodyRot, bodyPos);
+        float[] bp = DeepParts.BODY_PIVOT.getOrDefault(m.k.id(), new float[]{0, 0, 0});
+        Vector3f pivot = new Vector3f(bp[0], bp[1], bp[2]);
+        // the body: turned about its body pivot
+        Vector3f rootOff = new Vector3f(pivot).negate();
+        bodyRot.transform(rootOff).add(pivot).add(bodyPos);
+        place(m.model, frame, rootOff, new Quaternionf(bodyRot), s, down, flip);
+        for (int i = 0; i < m.parts.size() && i < m.bones.size(); i++) {
+            ItemDisplay d = m.parts.get(i);
+            if (d == null || !d.isValid()) continue;
+            DeepParts.Bone b = m.bones.get(i);
+            Quaternionf r = new Quaternionf(); Vector3f o = new Vector3f();
+            boolean jaw = b.name().equals("jaw") || b.name().equals("lid");
+            float amp = jaw ? (m.angry() || m.fused ? 1.6f : 1f) : speed;
+            animate(anims, b.name(), time, amp, r, o);
+            Vector3f at = new Vector3f(b.x(), b.y(), b.z()).add(o).sub(pivot);
+            bodyRot.transform(at).add(pivot).add(bodyPos);
+            place(d, frame, at, new Quaternionf(bodyRot).mul(r), s, down, flip);
+        }
+    }
+
+    /** Puts a display's model origin at `local` (creature frame, blocks) turned by `rot` (creature frame). */
+    static void place(ItemDisplay d, Quaternionf frame, Vector3f local, Quaternionf rot, float s, float down, Quaternionf flip) {
+        Vector3f t = new Vector3f(local).mul(s);
+        frame.transform(t);
+        t.add(0, down, 0);
+        Quaternionf q = new Quaternionf(frame).mul(rot).mul(flip);
+        if (!Float.isFinite(t.x + t.y + t.z + q.x + q.y + q.z + q.w)) return;
+        d.setInterpolationDelay(0);
+        d.setTransformation(new Transformation(t, q, new Vector3f(s, s, s), new Quaternionf()));
+    }
+
+    /**
+     * Adds up a bone's animations at `time`: Bedrock's axes and units (x = -right, y = up, z = -front; degrees and
+     * pixels) turned into the creature's frame. half = 0..1 (a jaw that opens and shuts).
+     */
+    static void animate(List<DeepParts.Anim> anims, String bone, double time, float amp, Quaternionf rot, Vector3f pos) {
+        for (DeepParts.Anim a : anims) {
+            if (!a.bone().equals(bone)) continue;
+            double w = Math.sin(2 * Math.PI * (time / a.secs() + a.phase()));
+            if (a.half()) w = (w + 1) / 2;
+            float k = (float) w * (a.rot() ? amp : 1f);
+            if (a.rot()) rot.rotateZ((float) Math.toRadians(-a.x() * k)).rotateY((float) Math.toRadians(a.y() * k)).rotateX((float) Math.toRadians(-a.z() * k));
+            else pos.add(-a.z() * k / 16f, a.y() * k / 16f, -a.x() * k / 16f);
+        }
+    }
+
+    /** Anyone close enough to see it move (the animation costs packets: far away it only updates once a second). */
+    boolean viewerNear(Location l, double r) {
+        double r2 = r * r;
+        for (Player p : l.getWorld().getPlayers()) if (p.getLocation().distanceSquared(l) < r2) return true;
+        return false;
     }
 
     static float angle(float d) { return ((d % 360) + 540) % 360 - 180; }
@@ -260,6 +349,8 @@ final class DeepMobs implements Listener {
 
     void cleanup(Beast m) {
         if (m.model != null && m.model.isValid()) m.model.remove();
+        for (ItemDisplay d : m.parts) if (d != null && d.isValid()) d.remove();
+        m.parts.clear();
         if (m.stand != null && m.stand.isValid()) m.stand.remove();
     }
 

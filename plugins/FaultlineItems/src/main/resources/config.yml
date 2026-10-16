@@ -324,7 +324,7 @@ boots:
 item-textures:
   enabled: true
   url: "https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/main/FaultlineSMP.zip"
-  hash: "6375d7e2aeebbdcdb26584aa4fbf87029844f302"
+  hash: "63109f64e1d88da58ab09b30d812f755370be80d"
   # The Dark Ocean's music, a second pack sent beside the main one (empty url = not sent)
   music-url: "https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/main/FaultlineDeepMusic.zip"
   music-hash: "a0d0abb5737b66c50285db01b3824aaa70d47ff3"

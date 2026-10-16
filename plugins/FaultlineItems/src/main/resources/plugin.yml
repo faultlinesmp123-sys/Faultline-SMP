@@ -1,5 +1,5 @@
 name: FaultlineItems
-version: 1.2.40
+version: 1.2.41
 main: net.faultlinesmp.items.FaultlineItems
 api-version: '1.21'
 softdepend: [floodgate, Geyser-Spigot]
@@ -119,7 +119,7 @@ commands:
     usage: /givejacob <falconers_quiver|ender_anchor|banner_of_defiance|ember_ward|diamond_heart> [amount] [player]
     permission: items.givejacob
   givelostmirror:
-    description: Give the Mirror..?? (the Lost Explorer's accessory)
+    description: Give the Mirror..?? (the Kraken's accessory: the way to the abandoned kingdom)
     usage: /givelostmirror [amount] [player]
     permission: items.givelostmirror
   fweather:
@@ -140,6 +140,10 @@ commands:
   balloon:
     description: List your hot air balloons or take one down (admins - all of them)
     usage: /balloon [list|remove [#n|all [player]]]
+  darkloot:
+    description: "Admin / other plugins: Dark Loot (the Dark Ocean's treasure): bags, rare rolls"
+    usage: /darkloot <bag [amount] [player]|rare <player> [chance]|give <suit|elytra|totems|invisibility|godset> [player]|roll [player]>
+    permission: items.darkloot
   giveballoon:
     description: "Admin: give a Hot Air Balloon"
     usage: /giveballoon [amount] [player]
@@ -194,6 +198,9 @@ permissions:
     default: op
   items.giveballoon:
     description: /giveballoon
+    default: op
+  items.darkloot:
+    description: /darkloot
     default: op
   items.balloon.admin:
     description: Pack up anyone's hot air balloon

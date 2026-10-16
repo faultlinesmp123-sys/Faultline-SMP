@@ -463,6 +463,9 @@ public final class FaultlineItems extends JavaPlugin {
         creatures = new Creatures(this);
         getServer().getPluginManager().registerEvents(creatures, this);
         getCommand("fcreature").setExecutor(creatures);
+        darkLoot = new DarkLoot(this); // 1.2.41: the Dark Ocean's treasure (FaultlineDeep)
+        getServer().getPluginManager().registerEvents(darkLoot, this);
+        getCommand("darkloot").setExecutor(darkLoot);
         meteor = new Meteor(this);
         getServer().getPluginManager().registerEvents(meteor, this);
         getCommand("meteor").setExecutor(meteor);
@@ -861,6 +864,7 @@ public final class FaultlineItems extends JavaPlugin {
     private DivingGear divingGear;
     private CaveTrader caveTrader;
     Meteor meteor;
+    DarkLoot darkLoot;
     Caravan caravan;
     Weather weather;
     Creatures creatures;
@@ -7086,8 +7090,9 @@ public final class FaultlineItems extends JavaPlugin {
                 pl -> pl.getJacobGear().item(JacobGear.Piece.BANNER),
                 pl -> pl.getJacobGear().item(JacobGear.Piece.EMBER),
                 pl -> pl.getJacobGear().item(JacobGear.Piece.HEART),
-                // the Lost Explorer's drop
+                // the Kraken's Mirror (the way to the Dark Ocean) and the Dark Ocean's loot bag
                 pl -> pl.getMirrorGear().item(),
+                pl -> pl.darkLoot.bag(), // 1.2.41
                 pl -> pl.balloons.item(null, 0), // 1.2.24
                 // ranger gear (1.2.27)
                 pl -> pl.getRangerGear().item(RangerGear.Piece.MONOCLE),

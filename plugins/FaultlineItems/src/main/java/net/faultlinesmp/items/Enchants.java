@@ -89,7 +89,12 @@ final class Enchants implements Listener, CommandExecutor, TabCompleter {
         DEFAULT_DROPS.put("the_kraken_at_sea", List.of("thunderstrike:1:0.3"));
         DEFAULT_DROPS.put("diamond_jacob", List.of("vitality:2:0.35"));
         DEFAULT_DROPS.put("rocco_vendetta", List.of("lifesteal:2:0.35"));
-        DEFAULT_DROPS.put("the_lost_explorer", List.of("lifesteal:2:0.5", "vitality:2:0.5", "veinminer:1:0.5"));
+        DEFAULT_DROPS.put("brine_scourge", List.of("lifesteal:2:0.35", "venom:2:0.35", "veinminer:1:0.25"));
+        DEFAULT_DROPS.put("umbral_leviathan", List.of("vitality:2:0.35", "thunderstrike:1:0.35", "veinminer:1:0.25"));
+        DEFAULT_DROPS.put("coralia", List.of("featherstep:1:0.2", "frostbite:1:0.2"));
+        DEFAULT_DROPS.put("old_inkjaw", List.of("venom:1:0.2", "lifesteal:1:0.15"));
+        DEFAULT_DROPS.put("grandmaw_clam", List.of("vitality:1:0.2"));
+        DEFAULT_DROPS.put("the_lament", List.of("lifesteal:1:0.2", "frostbite:2:0.1"));
         DEFAULT_DROPS.put("the_skeleton_captain", List.of("thunderstrike:1:0.3"));
         DEFAULT_DROPS.put("grimtusk", List.of("lifesteal:1:0.3", "vitality:1:0.2"));
         DEFAULT_DROPS.put("leviathan", List.of("thunderstrike:1:0.2"));

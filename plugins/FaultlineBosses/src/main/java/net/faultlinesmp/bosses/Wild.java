@@ -84,14 +84,21 @@ final class Wild implements Listener {
 
     static final String PART_TAG = "faultline_wild_part", STAND_TAG = "faultline_wild_stand", HIT_TAG = "faultline_wild_hitbox",
             MOB_TAG = "faultline_wild_mob", FX_TAG = "faultline_wild_fx";
-    static final List<String> KINDS = List.of("leviathan", "sandworm", "lich", "frostwyrm", "golem");
-    static final Map<String, String> NAMES = Map.of("leviathan", "The Leviathan", "sandworm", "The Sandworm King", "lich", "The Lich",
-            "frostwyrm", "The Frost Wyrm", "golem", "The Stone Golem");
+    static final List<String> KINDS = List.of("leviathan", "sandworm", "lich", "frostwyrm", "golem",
+            "scourge", "umbral", "coralia", "inkjaw", "grandmaw", "lament"); // the last six: the Dark Ocean's (DeepBosses)
+    static final Map<String, String> NAMES = Map.ofEntries(Map.entry("leviathan", "The Leviathan"), Map.entry("sandworm", "The Sandworm King"),
+            Map.entry("lich", "The Lich"), Map.entry("frostwyrm", "The Frost Wyrm"), Map.entry("golem", "The Stone Golem"),
+            Map.entry("scourge", "The Brine Scourge"), Map.entry("umbral", "The Umbral Leviathan"), Map.entry("coralia", "Coralia, Siren of the Shoals"),
+            Map.entry("inkjaw", "Old Inkjaw"), Map.entry("grandmaw", "The Grandmaw Clam"), Map.entry("lament", "The Lament"));
     /** Their Faultline Index entries (and the tag on their hitboxes, for the Index's kill detection). */
-    static final Map<String, String> INDEX = Map.of("leviathan", "leviathan", "sandworm", "sandworm_king", "lich", "lich",
-            "frostwyrm", "frost_wyrm", "golem", "stone_golem");
-    static final Map<String, ChatColor> COLOR = Map.of("leviathan", ChatColor.DARK_AQUA, "sandworm", ChatColor.GOLD, "lich", ChatColor.DARK_PURPLE,
-            "frostwyrm", ChatColor.AQUA, "golem", ChatColor.DARK_GREEN);
+    static final Map<String, String> INDEX = Map.ofEntries(Map.entry("leviathan", "leviathan"), Map.entry("sandworm", "sandworm_king"),
+            Map.entry("lich", "lich"), Map.entry("frostwyrm", "frost_wyrm"), Map.entry("golem", "stone_golem"),
+            Map.entry("scourge", "brine_scourge"), Map.entry("umbral", "umbral_leviathan"), Map.entry("coralia", "coralia"),
+            Map.entry("inkjaw", "old_inkjaw"), Map.entry("grandmaw", "grandmaw_clam"), Map.entry("lament", "the_lament"));
+    static final Map<String, ChatColor> COLOR = Map.ofEntries(Map.entry("leviathan", ChatColor.DARK_AQUA), Map.entry("sandworm", ChatColor.GOLD),
+            Map.entry("lich", ChatColor.DARK_PURPLE), Map.entry("frostwyrm", ChatColor.AQUA), Map.entry("golem", ChatColor.DARK_GREEN),
+            Map.entry("scourge", ChatColor.GREEN), Map.entry("umbral", ChatColor.DARK_GRAY), Map.entry("coralia", ChatColor.LIGHT_PURPLE),
+            Map.entry("inkjaw", ChatColor.DARK_PURPLE), Map.entry("grandmaw", ChatColor.AQUA), Map.entry("lament", ChatColor.BLUE));
     /** Local -> display axes (a part's front +x = display +z at yaw 0), and the half turn item displays draw items with. */
     static final Quaternionf Q0 = new Quaternionf().rotationY((float) Math.toRadians(-90));
     static final Quaternionf FLIP = new Quaternionf().rotationY((float) Math.PI);
@@ -138,6 +145,12 @@ final class Wild implements Listener {
         ITEMS.put("sandworm_drum", new String[]{"PAPER", "&6&lSandworm Drum", "&7Beat it on the sand of a desert or badlands.|&7The ground answers.|&6Summons the Sandworm King."});
         ITEMS.put("lich_phylactery", new String[]{"PAPER", "&5&lCursed Phylactery", "&7Break it open in the Deep Dark.|&7Something that should be dead comes for it.|&5Summons the Lich."});
         ITEMS.put("frozen_horn", new String[]{"PAPER", "&b&lFrozen Horn", "&7Sound it on a frozen peak or snowy slope.|&7The sky answers with wings.|&bSummons the Frost Wyrm."});
+        ITEMS.put("brine_bait", new String[]{"PAPER", "&a&lBrine Bait", "&7A rotten, glowing lure from a Devilfish.|&7Use it in the Dark Ocean, below the Sunlit Sea.|&aSummons the Brine Scourge."});
+        ITEMS.put("umbral_sonar", new String[]{"PAPER", "&8&lUmbral Sonar", "&7It pings back from something huge in the dark.|&7Use it in the Dark Ocean, below the Sunlit Sea.|&8Summons the Umbral Leviathan."});
+        ITEMS.put("sirens_comb", new String[]{"PAPER", "&d&lSiren's Comb", "&7Pearl teeth, still humming a song.|&7Use it in the Dark Ocean's Sunlit Sea.|&dSummons Coralia, Siren of the Shoals."});
+        ITEMS.put("inkjaw_bait", new String[]{"PAPER", "&5&lInkjaw Bait", "&7A Lampsquid's lure. Old Inkjaw is always hungry.|&7Use it anywhere in the Dark Ocean.|&5Summons Old Inkjaw."});
+        ITEMS.put("glistening_pearl", new String[]{"PAPER", "&b&lGlistening Pearl", "&7A clam's pearl the size of a fist.|&7Use it in the Dark Ocean's Sunlit Sea.|&bSummons the Grandmaw Clam."});
+        ITEMS.put("mournful_shell", new String[]{"PAPER", "&9&lMournful Shell", "&7Hold it to your ear: someone is crying.|&7Use it in the Dark Ocean, below the Sunlit Sea.|&9Summons the Lament."});
         ITEMS.put("tidebreaker", new String[]{"TRIDENT", "&3&lTidebreaker", "&7The Leviathan's fang, made a trident.|&aWhere it lands, the sea bursts up:|&aenemies nearby are thrown and slowed.|&8Dropped by the Leviathan."});
         ITEMS.put("sandworm_fang", new String[]{"DIAMOND_SWORD", "&6&lSandworm Fang", "&7A tooth from the Sandworm King's maw.|&aRight-click: Burrow Dash &7(lunge through the|&7ground, blinding what you pass; 10 s)|&8Dropped by the Sandworm King."});
         ITEMS.put("lich_staff", new String[]{"STICK", "&5&lStaff of the Lich", "&7It still remembers its master.|&aRight-click: Soul Bolt &7(a withering skull,|&7no explosion; 3 s)|&8Dropped by the Lich."});
@@ -170,7 +183,9 @@ final class Wild implements Listener {
 
     static String summonItemOf(String kind) {
         return switch (kind) { case "leviathan" -> "abyssal_lure"; case "sandworm" -> "sandworm_drum"; case "lich" -> "lich_phylactery";
-            case "frostwyrm" -> "frozen_horn"; default -> null; };
+            case "frostwyrm" -> "frozen_horn"; case "scourge" -> "brine_bait"; case "umbral" -> "umbral_sonar";
+            case "coralia" -> "sirens_comb"; case "inkjaw" -> "inkjaw_bait"; case "grandmaw" -> "glistening_pearl";
+            case "lament" -> "mournful_shell"; default -> null; };
     }
 
     static String kindOfItem(String item) {
@@ -198,6 +213,17 @@ final class Wild implements Listener {
     /** Null if it can be summoned here, else why not. */
     String whyNot(String kind, Player p) {
         Location l = p.getLocation();
+        boolean deep = l.getWorld().getName().equals(DeepBosses.world(pl));
+        if (DeepBosses.KINDS.contains(kind)) {
+            if (!deep) return "Only in the Dark Ocean.";
+            if (!Leviathan.sea(l.getBlock()) && !Leviathan.sea(l.clone().add(0, -1, 0).getBlock())) return "Only in the water.";
+            return switch (kind) {
+                case "coralia", "grandmaw" -> DeepBosses.sunlit(l) ? null : "Only in the Sunlit Sea (above y 35).";
+                case "scourge", "umbral", "lament" -> DeepBosses.sunlit(l) ? "Only deeper down, below the Sunlit Sea (under y 35)." : null;
+                default -> null;
+            };
+        }
+        if (deep && kind.equals("leviathan")) return Leviathan.seaSpot(l, 18) != null ? null : "Only in open water.";
         if (l.getWorld().getEnvironment() != World.Environment.NORMAL) return "Only in the Overworld.";
         Biome b = l.getBlock().getBiome();
         if (!pl.getConfig().getBoolean("wild.require-biome", true)) return null;
@@ -365,6 +391,12 @@ final class Wild implements Listener {
                 case "lich" -> new Lich(this, at, by);
                 case "frostwyrm" -> new FrostWyrm(this, at, by);
                 case "golem" -> new StoneGolem(this, at, by);
+                case "scourge" -> new DeepBosses.Scourge(this, at, by);
+                case "umbral" -> new DeepBosses.Umbral(this, at, by);
+                case "coralia" -> new DeepBosses.Coralia(this, at, by);
+                case "inkjaw" -> new DeepBosses.Inkjaw(this, at, by);
+                case "grandmaw" -> new DeepBosses.Grandmaw(this, at, by);
+                case "lament" -> new DeepBosses.Lament(this, at, by);
                 default -> null;
             };
         } catch (RuntimeException | LinkageError e) { // LinkageError: an API the server's Paper doesn't have
@@ -456,6 +488,28 @@ final class Wild implements Listener {
         if (ticks % 1200 == 600) StoneGolem.naturalSpawns(this);
         if (ticks % 2400 == 1200) Leviathan.naturalSpawns(this);
         if (ticks % 1200 == 300) naturalSpawns();
+        if (ticks % 6000 == 3000) deepSpawns();
+    }
+
+    /**
+     * The Dark Ocean's bosses and mini bosses (+ the Leviathan) turn up on their own: every 5 minutes each survival player
+     * in the Dark Ocean rolls wild.deep-spawns.chance (0.1%), and one that fits where they are comes for them.
+     */
+    void deepSpawns() {
+        if (!pl.getConfig().getBoolean("wild.deep-spawns.enabled", true)) return;
+        World w = Bukkit.getWorld(DeepBosses.world(pl));
+        if (w == null || w.getDifficulty() == Difficulty.PEACEFUL) return;
+        double chance = pl.getConfig().getDouble("wild.deep-spawns.chance", 0.001);
+        for (Player p : new ArrayList<>(w.getPlayers())) {
+            if (!survival(p) || p.isDead() || random.nextDouble() >= chance) continue;
+            List<String> fit = new ArrayList<>();
+            for (String k : DeepBosses.KINDS) if (live(k) == null && whyNot(k, p) == null) fit.add(k);
+            if (live("leviathan") == null && whyNot("leviathan", p) == null) fit.add("leviathan");
+            if (fit.isEmpty()) continue;
+            String kind = fit.get(random.nextInt(fit.size()));
+            p.sendMessage(COLOR.get(kind) + "" + ChatColor.ITALIC + "The water goes cold and still. Something has noticed you...");
+            summon(kind, p.getLocation(), p);
+        }
     }
 
     /**
@@ -502,7 +556,7 @@ final class Wild implements Listener {
         return true;
     }
 
-    static boolean voidWorld(World w) { return w.getName().equals("faultline_void"); }
+    static boolean voidWorld(World w) { return w.getName().equals("faultline_void") || w.getName().equals("faultline_deep"); }
 
     /**
      * Natural spawns for the four wild bosses (once a minute, per eligible survival player, config wild.<kind>.natural-chance-per-minute;

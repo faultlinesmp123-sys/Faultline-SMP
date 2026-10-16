@@ -1,5 +1,5 @@
 name: FaultlineBosses
-version: 1.5.10
+version: 1.6.0
 main: net.faultlinesmp.bosses.FaultlineBosses
 api-version: '1.21'
 author: FaultlineSMP
@@ -63,6 +63,30 @@ commands:
   stonegolem:
     description: "Admin: summon or remove the Stone Golem (a lush-cave mini boss)"
     usage: /stonegolem <summon [world x y z]|kill|phase>
+    permission: bosses.admin
+  scourge:
+    description: "Admin: summon or remove the Brine Scourge (Dark Ocean boss), skip to a phase, or give its summon item"
+    usage: /scourge <summon [world x y z]|kill|phase|item>
+    permission: bosses.admin
+  umbral:
+    description: "Admin: summon or remove the Umbral Leviathan (Dark Ocean boss), skip to a phase, or give its summon item"
+    usage: /umbral <summon [world x y z]|kill|phase|item>
+    permission: bosses.admin
+  coralia:
+    description: "Admin: summon or remove Coralia, Siren of the Shoals (Dark Ocean mini boss), skip to a phase, or give its summon item"
+    usage: /coralia <summon [world x y z]|kill|phase|item>
+    permission: bosses.admin
+  inkjaw:
+    description: "Admin: summon or remove Old Inkjaw (Dark Ocean mini boss), skip to a phase, or give its summon item"
+    usage: /inkjaw <summon [world x y z]|kill|phase|item>
+    permission: bosses.admin
+  grandmaw:
+    description: "Admin: summon or remove the Grandmaw Clam (Dark Ocean mini boss), skip to a phase, or give its summon item"
+    usage: /grandmaw <summon [world x y z]|kill|phase|item>
+    permission: bosses.admin
+  lament:
+    description: "Admin: summon or remove the Lament (Dark Ocean mini boss), skip to a phase, or give its summon item"
+    usage: /lament <summon [world x y z]|kill|phase|item>
     permission: bosses.admin
   bossrush:
     description: "The Boss Rush: every boss, back to back (start, top)"

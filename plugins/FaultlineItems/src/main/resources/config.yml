@@ -350,6 +350,19 @@ ankh-shield:
 # where a minute ahead. It lands in a crater (only on natural ground, never near builds), guarded by Molten Husks,
 # Meteor Crawlers and a Star Sentinel. The first player to break its core (the Gilded Blackstone on top) gets the loot.
 # The rock has Ancient Debris in it. Unclaimed, it cools to obsidian after 30 minutes.  /meteor now | here | stop
+# Dark Loot (1.2.41): the Dark Ocean's treasure (FaultlineDeep). Unplaced chests in that world roll it on first open;
+# the Dark Loot Bag rolls it too. rare-chance = the 0.1% shot at the Abyssal Diving Suit, an Elytra, a shulker of Totems,
+# a shulker of Invisibility potions, or a God Set.
+dark-loot:
+  world: faultline_deep
+  rare-chance: 0.001
+  accessory-chance: 0.35
+  netherite-chance: 0.4
+  netherite-max: 2
+  book-chance: 0.6
+  boss-book-chance: 0.12
+  never-accessories: []        # accessory names (as in /giveaccessory) that never come out of Dark Loot
+
 meteor:
   enabled: true
   every-minutes: 240          # every 4 hours (old configs saying 60 get 240)
@@ -455,7 +468,7 @@ kraken-gear:
     glow-gland-from-glow-squid: 0.04
     eelskin-wrap-from-drowned: 0.02
 
-# Mirror..?? (accessory, dropped by the Lost Explorer): a big hit is thrown back at whoever dealt it
+# Mirror..?? (accessory, dropped by the Kraken): a big hit is thrown back at whoever dealt it
 mirror:
   cooldown-seconds: 45
   min-hit-share: 0.33      # only hits taking at least this share of your max health
@@ -531,7 +544,12 @@ enchants:
     the_kraken_at_sea: ["thunderstrike:1:0.3"]
     diamond_jacob: ["vitality:2:0.35"]
     rocco_vendetta: ["lifesteal:2:0.35"]
-    the_lost_explorer: ["lifesteal:2:0.5", "vitality:2:0.5", "veinminer:1:0.5"]
+    brine_scourge: ["lifesteal:2:0.35", "venom:2:0.35", "veinminer:1:0.25"]
+    umbral_leviathan: ["vitality:2:0.35", "thunderstrike:1:0.35", "veinminer:1:0.25"]
+    coralia: ["featherstep:1:0.2", "frostbite:1:0.2"]
+    old_inkjaw: ["venom:1:0.2", "lifesteal:1:0.15"]
+    grandmaw_clam: ["vitality:1:0.2"]
+    the_lament: ["lifesteal:1:0.2", "frostbite:2:0.1"]
     the_skeleton_captain: ["thunderstrike:1:0.3"]
     grimtusk: ["lifesteal:1:0.3", "vitality:1:0.2"]
     leviathan: ["thunderstrike:1:0.2"]

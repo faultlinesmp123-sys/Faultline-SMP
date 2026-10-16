@@ -846,6 +846,11 @@ final class Wild implements Listener {
                 e.setViewRange(5f);
                 e.setShadowRadius(0);
                 e.setBrightness(new Display.Brightness(12, 12));
+                // 1.6.8: a display is culled by a box round its ORIGIN (0 x 0 by default): a big part (a sea serpent's
+                // segment, 4-5 blocks long) blinked out whenever its origin left the screen, up close most of all
+                float box = (float) Math.max(4, 7 * k);
+                e.setDisplayWidth(box);
+                e.setDisplayHeight(box);
             });
             if (javaOnly) { pose(where, where.getYaw(), 0, 0, null); return; }
             stand = w.spawn(where, ArmorStand.class, a -> {
@@ -935,7 +940,7 @@ final class Wild implements Listener {
         final Location home;
         final Rig rig;
         double hp, maxHp;
-        int phase = 1, ticks, attack = -1, at, cd = 60, lonely, scaledFor = 1, deathT;
+        int phase = 1, ticks, attack = -1, at, cd = 60, lonely, scaledFor = 1, deathT, moveErrors;
         boolean dying, rewarded;
         final Set<UUID> fighters = new HashSet<>();
         final List<LivingEntity> hitboxes = new ArrayList<>();
@@ -1090,9 +1095,19 @@ final class Wild implements Listener {
                 run.removeIf(BooleanSupplier::getAsBoolean); fx.addAll(0, run);
             }
             minions.removeIf(m -> !m.isValid() || m.isDead());
-            bodyTick(a);
-            if (attack >= 0) { at++; moveTick(a); }
-            else if (--cd <= 0) {
+            // 1.6.8: a bug in one move ends that move (logged), it never makes the whole boss vanish mid-fight; only an
+            // error every tick for 5 s in a row is passed on (and then it leaves, as before)
+            boolean moving = attack >= 0;
+            try {
+                bodyTick(a);
+                if (attack >= 0) { at++; moveTick(a); }
+                moveErrors = 0;
+            } catch (RuntimeException e) {
+                if (++moveErrors >= 100) throw e;
+                if (moveErrors == 1) pl.getLogger().log(java.util.logging.Level.WARNING, "[" + name() + "] error in move " + attack + " (the move ends, the fight goes on):", e);
+                if (attack >= 0) end();
+            }
+            if (!moving && attack < 0 && --cd <= 0) {
                 int m = pilot != null ? pl.takeMove(this) : pick(a);
                 if (m >= 0 && (pilot != null || !a.isEmpty())) {
                     attack = m; at = 0;

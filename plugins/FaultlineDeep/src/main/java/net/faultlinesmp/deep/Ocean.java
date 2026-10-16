@@ -70,7 +70,7 @@ final class Ocean implements Listener {
     long eventEnds, nextEvent;
     Vector current;
     BossBar bar;
-    private int ticks;
+    int ticks;
 
     Ocean(FaultlineDeep pl) {
         this.pl = pl;
@@ -92,6 +92,7 @@ final class Ocean implements Listener {
         if (ticks % 20 == 0) eat();
         if (ticks % 40 == 0) sulphur();
         if (ticks % 4 == 0) greenRain();
+        if (ticks % 20 == 0) dark();
         holdDrops();
         events();
     }
@@ -156,6 +157,70 @@ final class Ocean implements Listener {
         }
     }
 
+    // =========================================================================================== the dark (1.6.0)
+    /** Players the Abyss is darkening right now (FaultlineItems reads the "faultline_abyss_dark" metadata: no night vision). */
+    final java.util.Set<UUID> darkened = new java.util.HashSet<>();
+    /** Players a Glowgrub / Dumbo Octopus is lighting up, until which Ocean tick (DeepMobs writes it). */
+    final Map<UUID, Long> glowLit = new HashMap<>();
+    static final String DARK_META = "faultline_abyss_dark";
+
+    /** The zones that are pitch black (`darkness.zones`, default the Abyss and the crust's caves). */
+    boolean darkZone(Location l) {
+        if (Market.dry(l.getX(), l.getY(), l.getZ())) return false; // the Pit and the lift: lit rooms
+        DeepGenerator.Zone z = pl.zone(l);
+        return pl.getConfig().getStringList("darkness.zones").isEmpty() ? z == DeepGenerator.Zone.ABYSS || z == DeepGenerator.Zone.CAVES
+                : pl.getConfig().getStringList("darkness.zones").contains(z.name());
+    }
+
+    /**
+     * Every second: down in the Abyss there is NO light. Darkness (hidden: no icon, no particles), which also cancels the
+     * client's brightness slider, and every Night Vision is taken away (potions, the Abyssal Diving Gear, the Mining Helmet:
+     * FaultlineItems holds off while the metadata is set). The only light: a Lantern of Souls held (it burns the dark
+     * away), a Glowgrub close by, glowing creatures and the blocks that give light.
+     */
+    void dark() {
+        boolean on = pl.getConfig().getBoolean("darkness.enabled", true);
+        long now = ticks;
+        for (Player p : pl.world.getPlayers()) {
+            UUID id = p.getUniqueId();
+            boolean want = on && p.getGameMode() != GameMode.SPECTATOR
+                    && (p.getGameMode() != GameMode.CREATIVE || pl.getConfig().getBoolean("darkness.creative", true))
+                    && darkZone(p.getLocation());
+            if (!want) { if (darkened.remove(id)) undark(p); continue; }
+            if (darkened.add(id)) {
+                p.setMetadata(DARK_META, new org.bukkit.metadata.FixedMetadataValue(pl, true));
+                if (!pl.getConfig().getString("darkness.message", "x").isEmpty())
+                    p.sendActionBar(Component.text(pl.getConfig().getString("darkness.message", "The Abyss swallows every light."), NamedTextColor.DARK_GRAY));
+            }
+            p.removePotionEffect(org.bukkit.potion.PotionEffectType.NIGHT_VISION);
+            boolean lit = lantern(p) || glowLit.getOrDefault(id, 0L) > now;
+            org.bukkit.potion.PotionEffect d = p.getPotionEffect(org.bukkit.potion.PotionEffectType.DARKNESS);
+            if (lit) { if (ours(d)) p.removePotionEffect(org.bukkit.potion.PotionEffectType.DARKNESS); continue; }
+            // topped up long before it runs out: re-adding it makes the client fade it in again
+            if (d == null || ours(d) && d.getDuration() < 200)
+                p.addPotionEffect(new org.bukkit.potion.PotionEffect(org.bukkit.potion.PotionEffectType.DARKNESS, 600, 0, true, false, false));
+        }
+        glowLit.values().removeIf(t -> t < now);
+    }
+
+    /** Our Darkness: ambient, no particles (a Lampsquid's pulse or a Warden's is a normal one, and is left alone). */
+    static boolean ours(org.bukkit.potion.PotionEffect d) { return d != null && d.isAmbient() && !d.hasParticles(); }
+
+    void undark(Player p) {
+        p.removeMetadata(DARK_META, pl);
+        if (ours(p.getPotionEffect(org.bukkit.potion.PotionEffectType.DARKNESS))) p.removePotionEffect(org.bukkit.potion.PotionEffectType.DARKNESS);
+    }
+
+    /** Holding FaultlineItems' Lantern of Souls (PDC faultlineitems:gear = lantern_of_souls). */
+    static boolean lantern(Player p) {
+        NamespacedKey k = NamespacedKey.fromString("faultlineitems:gear");
+        for (ItemStack it : new ItemStack[]{p.getInventory().getItemInMainHand(), p.getInventory().getItemInOffHand()}) {
+            if (it == null || it.getType().isAir() || !it.hasItemMeta()) continue;
+            if ("lantern_of_souls".equals(it.getItemMeta().getPersistentDataContainer().get(k, PersistentDataType.STRING))) return true;
+        }
+        return false;
+    }
+
     // =========================================================================================== music
     void music() {
         if (!pl.getConfig().getBoolean("music.enabled", true)) return;
@@ -206,6 +271,7 @@ final class Ocean implements Listener {
         stopMusic(e.getPlayer());
         inSulphur.remove(e.getPlayer().getUniqueId());
         if (rained.remove(e.getPlayer().getUniqueId())) e.getPlayer().resetPlayerWeather(); // the acid rain stays down there
+        if (darkened.remove(e.getPlayer().getUniqueId())) undark(e.getPlayer());
     }
 
     @EventHandler
@@ -213,6 +279,7 @@ final class Ocean implements Listener {
         UUID id = e.getPlayer().getUniqueId();
         track.remove(id); inSulphur.remove(id);
         if (rained.remove(id)) e.getPlayer().resetPlayerWeather();
+        if (darkened.remove(id)) undark(e.getPlayer());
     }
 
     // =========================================================================================== dying down here
@@ -406,5 +473,7 @@ final class Ocean implements Listener {
         if (bar != null) bar.removeAll();
         eaten.clear(); // (what's still lying there stays: ordinary items now)
         if (pl.world != null) for (Player p : pl.world.getPlayers()) stopMusic(p);
+        for (UUID id : darkened) { Player p = Bukkit.getPlayer(id); if (p != null) undark(p); }
+        darkened.clear();
     }
 }

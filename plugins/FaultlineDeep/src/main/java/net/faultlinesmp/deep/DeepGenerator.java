@@ -512,7 +512,7 @@ final class DeepGenerator extends ChunkGenerator {
         // hanging rock cones
         int hb = hangBottom(n, x, z, ceil);
         if (hb != Integer.MAX_VALUE) for (int y = Math.max(hb, floorTop + 6); y < ceil; y++)
-            d.setBlock(lx, y, lz, y == Math.max(hb, floorTop + 6) && rnd.nextInt(3) == 0 ? Material.SHROOMLIGHT : (y & 1) == 0 ? Material.DEEPSLATE : Material.TUFF);
+            d.setBlock(lx, y, lz, y == Math.max(hb, floorTop + 6) && rnd.nextInt(12) == 0 ? Material.SHROOMLIGHT : (y & 1) == 0 ? Material.DEEPSLATE : Material.TUFF);
         // giant bones of something long dead, half buried in the black sand
         if (whaleAbyss(n, x, floorTop, z)) for (int y = floorTop + 1; y <= floorTop + 9; y++) if (whaleAbyssAt(n, x, y, z, floorTop)) d.setBlock(lx, y, lz, Material.BONE_BLOCK);
         // stalactites from the ceiling (2-5 long), a few of them glowing at the tip

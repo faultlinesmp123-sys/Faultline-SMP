@@ -271,7 +271,8 @@ final class Gear implements Listener, CommandExecutor {
             boolean lantern = "lantern_of_souls".equals(id(p.getInventory().getItemInMainHand())) || "lantern_of_souls".equals(id(p.getInventory().getItemInOffHand()));
             Block want = null;
             if ("mining_helmet".equals(head)) {
-                if (ticks % 4 == 0) p.addPotionEffect(new PotionEffect(PotionEffectType.NIGHT_VISION, 320, 0, true, false, true));
+                if (ticks % 4 == 0 && !p.hasMetadata("faultline_abyss_dark")) // the Abyss (FaultlineDeep): only the headlamp's light
+                    p.addPotionEffect(new PotionEffect(PotionEffectType.NIGHT_VISION, 320, 0, true, false, true));
                 org.bukkit.util.RayTraceResult hit = p.rayTraceBlocks(plugin.getConfig().getDouble("gear.headlamp-reach", 12));
                 if (hit != null && hit.getHitBlock() != null) {
                     Block face = hit.getHitBlock().getRelative(hit.getHitBlockFace() != null ? hit.getHitBlockFace() : org.bukkit.block.BlockFace.UP);

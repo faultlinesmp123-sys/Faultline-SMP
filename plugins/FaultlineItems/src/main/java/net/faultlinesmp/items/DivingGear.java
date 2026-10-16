@@ -214,7 +214,8 @@ final class DivingGear implements Listener {
             if (p.isInWater() && has(p, Piece.FLIPPER, Piece.GEAR, Piece.ABYSSAL, Piece.SUIT))
                 p.addPotionEffect(new PotionEffect(PotionEffectType.DOLPHINS_GRACE, 40, 0, true, false, true));
             // light underwater (Abyssal): night vision while submerged, taken back when you surface
-            if (underwater && has(p, Piece.ABYSSAL, Piece.SUIT)) {
+            // FaultlineDeep's Abyss is pitch black: no night vision while it darkens you (metadata faultline_abyss_dark)
+            if (underwater && !p.hasMetadata("faultline_abyss_dark") && has(p, Piece.ABYSSAL, Piece.SUIT)) {
                 p.addPotionEffect(new PotionEffect(PotionEffectType.NIGHT_VISION, 320, 0, true, false, true));
                 gaveNightVision.add(p.getUniqueId());
             } else if (gaveNightVision.remove(p.getUniqueId())) {

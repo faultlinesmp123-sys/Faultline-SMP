@@ -513,7 +513,8 @@ final class DeepBosses {
 
         void build(String headModel, String segModel, String tailModel, int n, double gap, double taper, int hitEvery, String name) {
             gaps = new double[n + 1];
-            for (int i = 0; i <= n; i++) gaps[i] = gap * k * (1 - taper * i * 0.5);
+            // 1.6.8: the gaps shrink exactly as the segments do (they shrank half as fast, so gaps opened down the body)
+            for (int i = 0; i <= n; i++) gaps[i] = gap * k * (1 - taper * i);
             Vector back = dirOf(yaw).multiply(-1);
             chain = new Wild.Chain(pos, n + 1, gap * k, back);
             head = rig.add(headModel, k, pos);
@@ -579,7 +580,10 @@ final class DeepBosses {
                 float sway = (float) (Math.sin(ticks * 0.15 - i * 0.7) * 8);
                 segs.get(i).pose(b, yawOf(flat(f)) + sway * 0.3f, Math.max(-60, Math.min(60, pitchOf(f))), (float) (roll * Math.min(1, 0.3 + i * 0.08)) + sway, null);
             }
-            Location tb = chain.pts.get(chain.pts.size() - 1), ta = chain.pts.get(chain.pts.size() - 2);
+            // the tail hangs off the last segment's own joint (1.6.8: it sat one whole gap further back, on the chain's
+            // spare last point, with nothing in between: a detached tail)
+            int ti = Math.min(segs.size(), chain.pts.size() - 1);
+            Location tb = chain.pts.get(ti), ta = chain.pts.get(Math.max(0, ti - 1));
             Vector tf = ta.toVector().subtract(tb.toVector());
             tail.pose(tb, yawOf(flat(tf)) + (float) (Math.sin(ticks * 0.2) * 20), Math.max(-60, Math.min(60, pitchOf(tf))), (float) roll, null);
             if (!hitboxes.isEmpty()) hitboxes.get(0).teleport(pos.clone().add(0, -0.9 * k, 0));
@@ -661,7 +665,36 @@ final class DeepBosses {
             };
         }
 
-        double spd() { return (enraged ? 1.5 : 1) * (phase >= 2 ? 1.15 : 1) * (molted ? 1.25 : 1); }
+        /** 1.6.8: faster all round (scourge.speed-mult 1.35 on every move and swim). */
+        double spd() { return c("speed-mult", 1.35) * (enraged ? 1.5 : 1) * (phase >= 2 ? 1.15 : 1) * (molted ? 1.25 : 1); }
+
+        /** The idle swim speed (an old config's 0.45 reads as the new 0.6). */
+        double cruise() { double v = c("speed", 0.6); return Math.abs(v - 0.45) < 1e-9 ? 0.6 : v; }
+
+        /**
+         * Somewhere to swim that's really in the sea: under the surface (by its own size), and if that spot is rock or an
+         * island (players on the shore in phase 3), the nearest open water to it. Before 1.6.8 it pushed against the shore
+         * after such a spot until it gave up and slipped away in a puff of ink, which looked like it vanished.
+         */
+        Location wetTarget(Location c) {
+            Location t = c.clone();
+            double top = surfaceY(world, t) - 1.5 - 0.8 * k;
+            if (t.getY() > top) t.setY(top);
+            if (open(t, 1)) return t;
+            Location w = openWater(t, 0, 12, 1);
+            return w != null ? w : t;
+        }
+
+        /** Out of the water (a breach that came down on an island, a shove): it drops back in and swims, never hangs in the air. */
+        void regainWater() {
+            if (wet(pos.getBlock())) return;
+            Location below = pos.clone().add(0, -0.8, 0);
+            if (!below.getBlock().getType().isSolid()) { pos = below; return; } // falls
+            Location w = openWater(pos, 1, 16, 1);
+            if (w == null) return;
+            Vector d = w.toVector().subtract(pos.toVector());
+            pos = d.length() < 1.2 ? w : pos.clone().add(d.normalize().multiply(1.2)); // slithers off the rock into the sea
+        }
 
         @Override void hit(Player p, double dmg, Vector from, Guard g) { super.hit(p, dmg * (enraged ? 1.5 : 1), from, g); }
 
@@ -690,9 +723,10 @@ final class DeepBosses {
             poisonTick(a);
             if (phase == 3) { stormTick(a); pylonTick(a); }
             giantBubbles(a);
-            if (attack < 0) {
-                Location c = circle(c("orbit-radius", 14), 3, phase == 3 ? 0.03 : 0.02);
-                swimTo(c, c("speed", 0.45) * spd(), 7);
+            if (attack != BREACH || flight == null) regainWater();
+            if (attack < 0) { // between moves it keeps swimming: wide, fast loops round its prey, always under the water
+                Location c = wetTarget(circle(c("orbit-radius", 14), -1, phase == 3 ? 0.045 : 0.032));
+                swimTo(c, cruise() * spd(), 9);
                 wantMand = 12 + Math.sin(ticks * 0.1) * 8;
             }
             aMand += (wantMand - aMand) * 0.3;
@@ -1175,7 +1209,8 @@ final class DeepBosses {
                 }
                 if (pos.getBlock().getType().isSolid() || !pos.getBlock().isLiquid()) { // landed out of the water: back into it
                     Location w = openWater(pos, 2, 14, 1);
-                    if (w != null) pos = w;
+                    if (w == null) w = openWater(withY(pos, surfaceY(world, pos) - 3), 0, 24, 1);
+                    if (w != null) { pos = w; jumped(); }
                 }
                 end();
             }

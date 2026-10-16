@@ -7,6 +7,15 @@ border-radius: 1050          # the world border: -1050..1050 (the build area at 
 market:
   protect: true
 
+# The Abyss (and the crust's caves) are PITCH BLACK (1.6.0): hidden Darkness (it also beats the brightness slider) and no
+# Night Vision of any kind (potions, Abyssal Diving Gear, Mining Helmet). Light down there: a Lantern of Souls held, a
+# Glowgrub close by, glowing creatures, light blocks. zones: any of ABYSS, CAVES, SUNLIT, SULPHUR.
+darkness:
+  enabled: true
+  zones: [ABYSS, CAVES]
+  creative: true
+  message: "The Abyss swallows every light."
+
 # The Sulphur Sea (1.4.0): the acid region round -520, 480 (Sulphur.java). /deep sulphur goes there.
 sulphur:
   acid-water: true          # swimming in its water poisons you...

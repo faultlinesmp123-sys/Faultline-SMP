@@ -41,7 +41,7 @@ All are Maven projects: Java 21, `paper-api 1.21.11-R0.1-SNAPSHOT`. Build with
 | **FaultlineIndex** | `net.faultlinesmp.index` | The Faultline Index codex + **Achievements** (`Achievements.java`). **Museum** (`Museum.java`: trophies, discs, Hall of Firsts), **Discord bridge** (`Discord.java`), `/serverstats` (`ServerStats.java`). Entries and achievements live in `src/main/resources/index.yml`, font glyphs in `glyphs.yml`, settings in `config.yml` | `/index [achievements\|give\|reset] [player]`, `/index stat <player> <name> [n]` (other plugins), `/index discover <player> <entry>`, `/museum [bosses\|items]`, `/serverstats`, admin `/discord [status\|test [msg]\|daily]` (public + logs webhooks, daily stats post), `/report <player> <reason>`, staff `/reports [n]`, `/suggest <idea>`, staff `/suggestions [n]`, `/guide [chapter]`, staff `/watch [<player>\|log\|xray\|alts\|check\|alerts]` (x-ray / cheat / dupe / grief / alt logs, `Watch.java`) |
 | **FaultlineCosmetics** | `net.faultlinesmp.cosmetics` | Permanent cosmetic unlocks worn in 4 slots (Hat, Neck, Back, Body) over armor, for Java and Bedrock. **Seasons** (`Seasons.java`: Halloween/Winter currency + Seasonal Shop). Cosmetics are defined in its `config.yml`, unlocks saved in `players.yml` | `/cosmetics [shop]`, admin `/cosmetic <unlock\|lock\|list\|reload\|season\|tokens\|shop>` |
 | **FaultlineKingdoms** | `net.faultlinesmp.kingdoms` | Kingdom 1/2/3 per player, assigned from DISCORD ROLES (players link once: the bot DMs a code), and GRACE PERIODS server-wide or per kingdom (protected kingdom can't be hurt, and can't hurt others unless `grace.protected-can-attack`); `pvp.friendly-fire`; kingdom in the tab list. Data in `data.yml` | `/kingdom [link <discord name>\|verify <code>\|unlink\|list <1\|2\|3>\|ff <on\|off\|clear>]` (`/k`), admin `/kingdoms grace <all\|1\|2\|3> <on\|off> [30m\|2h\|1d\|1h30m]`, `/kingdoms ff <1\|2\|3> <on\|off\|vote>`, Discord `/stats <player>`, `/kingdoms set <player> <1\|2\|3\|none\|auto>`, `/kingdoms sync [player]`, `/kingdoms reload` |
-| **FaultlineDeep** | `net.faultlinesmp.deep` | **The Dark Ocean**: a water-only world (`DeepGenerator.java`), **the Sulphur Sea** acid region (`Sulphur.java`), **the Bubble** town over the build area (`Town.java`), **the Black Market + the Pit** (`Market.java`, `Elevator.java`), ruins (`Ruins.java`), its 40 creatures (`DeepMobs.java`), the Mirror / Lucki / the whirlpool (`Journey.java`), zone music, events and dying down there (`Ocean.java`) | admin `/deep [info\|set <kingdom\|lucki\|whirlpool>\|tp [player]\|town [player]\|sulphur [player]\|spawn <mob>\|egg <mob> [n] [player]\|event <pressure\|undertow\|stop>\|lucki]` |
+| **FaultlineDeep** | `net.faultlinesmp.deep` | **The Dark Ocean**: a water-only world (`DeepGenerator.java`), **the Sulphur Sea** acid region (`Sulphur.java`), **the Bubble** town over the build area (`Town.java`), **the Black Market + the Pit** (`Market.java`, `Elevator.java`), ruins (`Ruins.java`), its 66 creatures (`DeepMobs.java`), the pitch-black Abyss (`Ocean.dark`), the Mirror / Lucki / the whirlpool (`Journey.java`), zone music, events and dying down there (`Ocean.java`) | admin `/deep [info\|set <kingdom\|lucki\|whirlpool>\|tp [player]\|town [player]\|sulphur [player]\|spawn <mob>\|egg <mob> [n] [player]\|event <pressure\|undertow\|stop>\|lucki]` |
 | **FaultlineShips** | `net.faultlinesmp.ships` | Ships: Dinghy, Sloop, Brigantine, Galleon, Pirate Ship. Blueprint → lay out on water → place every block → sail. Health, part damage, sinking, Shipwright's Hammer repair minigame, cannons, banners, names. **Skeleton ships** and the **Pirate Invasion** (`Pirates.java`). Ships saved in `ships.yml` | `/ship [list\|info\|name\|crew\|anchor\|stop\|banner\|scrap]`, admin `/ship <give\|repair\|wreck\|remove\|tp> [name\|#n]`, `/ship spawn <ship> [owner]`, `/ship give upgrade_<hull\|sails\|loaders\|ram>`, `/ship pirates <ship\|invasion\|horn\|spawn\|egg\|ghost [player]\|bell [n] [player]\|map [player]\|stop>` |
 
 Notes:
@@ -1156,6 +1156,35 @@ Notes:
   the raised Sulphur plateau above y 70 (Sulphur chunks 45 -> 30 ms). **Items**: Skeleton Knight dawn check walks the knights it
   spawned (`Creatures.knights`) instead of scanning every entity in every world every 10 s. **Index**: the inventory scan reads
   items' PDC through Paper's read-only view (`ItemStack#getPersistentDataContainer`, no meta copy), every 5 s (was 2).
+- **The dark + 20 more creatures (Deep 1.6.0, Bosses 1.6.8, Items 1.2.51, Index 1.6.38)**: **THE ABYSS IS PITCH BLACK**
+  (`Ocean.dark()`, every second, `darkness:` in Deep's config, zones ABYSS + CAVES; never the Pit/lift, `Market.dry`): hidden
+  Darkness (ambient, no particles: `Ocean.ours`; it also cancels the client's brightness slider; a Lampsquid's / Warden's own
+  Darkness is left alone), every Night Vision removed, player metadata `faultline_abyss_dark` (Items' Abyssal Diving Gear and
+  Mining Helmet hold off their Night Vision while it's set). Light down there: a Lantern of Souls held (PDC
+  `faultlineitems:gear=lantern_of_souls`), a Glowgrub or Dumbo Octopus within 6-7 blocks (`glowLit`, Ocean ticks), glowing
+  creatures (`DeepMobs.GLOW`: display brightness 15; `DIM` = 4, faint shapes), light blocks (new abyss chunks: shroomlight on
+  1 hanging cone in 12, was 1 in 3). **20 new creatures** (models in `tools/deep_assets.py` `NEW_SUNLIT`/`NEW_ABYSS`, ppb 32, bones
+  + anims): Sunlit: Sailfin Marlin (charges spear first when hit), Manta Glider (passive, its wake = Dolphin's Grace + Water
+  Breathing, max 2), Leafy Seadragon (vanishes in leaves when hit), Pearl Seahorse (0.5% Heart of the Sea), Hammerjaw (ram:
+  slow + nausea), Razorcuda (packs of 3, bites bleed = Wither), Stingray (buried, `FLOOR`; swim over = barb, Poison II), Mirrorfin
+  (hurt = blinding flash), Kelp Strangler (rooted, AI off; pulls you in from 7), Sea Siren (song: nausea + drawn in, hit her to
+  break it; 3% Siren's Comb). Abyss: Gulper Eel, Giant Isopod (rolls up like the trilobite), Ghost Shark (display view range 0.16:
+  only seen within ~10 blocks), Vampire Squid (drains 2/s while angry), Dumbo Octopus, Black Swallower (bite eats one of your
+  foods), Chainlight (stinging chain of bells), Viperfang, Slime Hag (slime: Slowness III + blind), Abyss Watcher (gaze: 5 + slow +
+  fatigue + Darkness, line of sight `DeepMobs.sees` = block walk; the model turns to face you, `Beast.lookAt`). Index: 20 entries,
+  achievements Eye to Eye + Sunless Sea, into_the_dark lists all 65; /itemsmenu eggs. **Acid mobs, detail pass 2**
+  (`_m_<id>` in deep_assets.py over the 1.5.0 pass): snouts, teeth rows, joints, segment rings, ridges, glowing veins.
+  **Brine Scourge fixes**: the TAIL WAS DETACHED on every serpent (Scourge, Umbral, Lament): the chain has one more point than
+  there are segments and the tail sat on that spare point, one whole gap behind the last segment; now it hangs off the last
+  segment's joint (`Serpent.pose`), and gaps taper exactly like the segments (`gap * k * (1 - taper * i)`; they tapered half as
+  fast, so holes opened down the body). Faster (`scourge.speed-mult` 1.35 on every move, idle `speed` 0.6, an old 0.45 reads as
+  0.6), between moves it keeps swimming loops UNDER the surface (`wetTarget`: never aims at an island or the air), and out of the
+  water it drops/slithers back in (`regainWater`; a breach that lands on an island ends in open water). Wild bosses vanishing
+  mid-fight: (1) any error in a move removed the whole boss (`Wild.tick` catch): now `Boss.tick` ends just that move and logs
+  it ("error in move N"), and only 100 errors in a row remove it; (2) a big display is culled by a 0x0 box at its origin, so
+  segments blinked out whenever their origin left the screen: every `Wild.Part` display gets `setDisplayWidth/Height(max(4, 7k))`.
+  Tested: `DeepTest` (66 creatures, the new abilities, the dark, lantern, Dumbo), `DeepBossTest` (tail joint, speed, a broken
+  move, back into the sea), `WildTest`, `StuckTest`, `MusicTest`, `OceanTest`, `AchievementTest`, `MuseumTest`, `NerfTest`.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

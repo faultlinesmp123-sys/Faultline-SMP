@@ -964,3 +964,63 @@ deep_mauler:
 deep_goblin:
   large: 59385
   small: 58361
+deep_sailfin:
+  large: 59386
+  small: 58362
+deep_mantaglider:
+  large: 59387
+  small: 58363
+deep_leafydragon:
+  large: 59388
+  small: 58364
+deep_pearlhorse:
+  large: 59389
+  small: 58365
+deep_hammerjaw:
+  large: 59390
+  small: 58366
+deep_razorcuda:
+  large: 59391
+  small: 58367
+deep_stingray:
+  large: 59392
+  small: 58368
+deep_mirrorfin:
+  large: 59393
+  small: 58369
+deep_kelpstrangler:
+  large: 59394
+  small: 58370
+deep_siren:
+  large: 59395
+  small: 58371
+deep_gulper:
+  large: 59396
+  small: 58372
+deep_isopod:
+  large: 59397
+  small: 58373
+deep_ghostshark:
+  large: 59398
+  small: 58374
+deep_vampsquid:
+  large: 59399
+  small: 58375
+deep_dumbo:
+  large: 59400
+  small: 58376
+deep_swallower:
+  large: 59401
+  small: 58377
+deep_chainlight:
+  large: 59402
+  small: 58378
+deep_viperfang:
+  large: 59403
+  small: 58379
+deep_hagfish:
+  large: 59404
+  small: 58380
+deep_watcher:
+  large: 59405
+  small: 58381

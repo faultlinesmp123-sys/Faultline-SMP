@@ -41,7 +41,7 @@ All are Maven projects: Java 21, `paper-api 1.21.11-R0.1-SNAPSHOT`. Build with
 | **FaultlineIndex** | `net.faultlinesmp.index` | The Faultline Index codex + **Achievements** (`Achievements.java`). **Museum** (`Museum.java`: trophies, discs, Hall of Firsts), **Discord bridge** (`Discord.java`), `/serverstats` (`ServerStats.java`). Entries and achievements live in `src/main/resources/index.yml`, font glyphs in `glyphs.yml`, settings in `config.yml` | `/index [achievements\|give\|reset] [player]`, `/index stat <player> <name> [n]` (other plugins), `/index discover <player> <entry>`, `/museum [bosses\|items]`, `/serverstats`, admin `/discord [status\|test [msg]\|daily]` (public + logs webhooks, daily stats post), `/report <player> <reason>`, staff `/reports [n]`, `/suggest <idea>`, staff `/suggestions [n]`, `/guide [chapter]`, staff `/watch [<player>\|log\|xray\|alts\|check\|alerts]` (x-ray / cheat / dupe / grief / alt logs, `Watch.java`) |
 | **FaultlineCosmetics** | `net.faultlinesmp.cosmetics` | Permanent cosmetic unlocks worn in 4 slots (Hat, Neck, Back, Body) over armor, for Java and Bedrock. **Seasons** (`Seasons.java`: Halloween/Winter currency + Seasonal Shop). Cosmetics are defined in its `config.yml`, unlocks saved in `players.yml` | `/cosmetics [shop]`, admin `/cosmetic <unlock\|lock\|list\|reload\|season\|tokens\|shop>` |
 | **FaultlineKingdoms** | `net.faultlinesmp.kingdoms` | Kingdom 1/2/3 per player, assigned from DISCORD ROLES (players link once: the bot DMs a code), and GRACE PERIODS server-wide or per kingdom (protected kingdom can't be hurt, and can't hurt others unless `grace.protected-can-attack`); `pvp.friendly-fire`; kingdom in the tab list. Data in `data.yml` | `/kingdom [link <discord name>\|verify <code>\|unlink\|list <1\|2\|3>\|ff <on\|off\|clear>]` (`/k`), admin `/kingdoms grace <all\|1\|2\|3> <on\|off> [30m\|2h\|1d\|1h30m]`, `/kingdoms ff <1\|2\|3> <on\|off\|vote>`, Discord `/stats <player>`, `/kingdoms set <player> <1\|2\|3\|none\|auto>`, `/kingdoms sync [player]`, `/kingdoms reload` |
-| **FaultlineDeep** | `net.faultlinesmp.deep` | **The Dark Ocean**: a water-only world (`DeepGenerator.java`), **the Sulphur Sea** acid region (`Sulphur.java`), **the Bubble** town over the build area (`Town.java`), **the Black Market + the Pit** (`Market.java`, `Elevator.java`), ruins (`Ruins.java`), its 66 creatures (`DeepMobs.java`), the pitch-black Abyss (`Ocean.dark`), the Mirror / Lucki / the whirlpool (`Journey.java`), zone music, events and dying down there (`Ocean.java`) | admin `/deep [info\|set <kingdom\|lucki\|whirlpool>\|tp [player]\|town [player]\|sulphur [player]\|spawn <mob>\|egg <mob> [n] [player]\|event <pressure\|undertow\|stop>\|lucki]` |
+| **FaultlineDeep** | `net.faultlinesmp.deep` | **The Dark Ocean**: a water-only world (`DeepGenerator.java`), **the Sulphur Sea** acid region (`Sulphur.java`), **the Bubble** town over the build area (`Town.java`), **the Black Market + the Pit** (`Market.java`, `Elevator.java`), ruins (`Ruins.java`), its 66 creatures (`DeepMobs.java`), the pitch-black Abyss (`Ocean.dark`), the Mirror / Lucki / the whirlpool (`Journey.java`), zone music, events and dying down there (`Ocean.java`) | admin `/deep [info\|set <kingdom\|lucki\|whirlpool>\|tp [player]\|town [player]\|sulphur [player]\|spawn <mob>\|egg <mob> [n] [player]\|event <pressure\|undertow\|stop>\|acidrain\|den [info\|tp\|raid\|stop\|reset\|rise]\|lucki]` |
 | **FaultlineShips** | `net.faultlinesmp.ships` | Ships: Dinghy, Sloop, Brigantine, Galleon, Pirate Ship. Blueprint → lay out on water → place every block → sail. Health, part damage, sinking, Shipwright's Hammer repair minigame, cannons, banners, names. **Skeleton ships** and the **Pirate Invasion** (`Pirates.java`). Ships saved in `ships.yml` | `/ship [list\|info\|name\|crew\|anchor\|stop\|banner\|scrap]`, admin `/ship <give\|repair\|wreck\|remove\|tp> [name\|#n]`, `/ship spawn <ship> [owner]`, `/ship give upgrade_<hull\|sails\|loaders\|ram>`, `/ship pirates <ship\|invasion\|horn\|spawn\|egg\|ghost [player]\|bell [n] [player]\|map [player]\|stop>` |
 
 Notes:
@@ -1210,6 +1210,37 @@ Notes:
   takes a suit out of the accessory slots (closing an open Wardrobe FIRST, or its close would save it back = a dupe) and puts it
   on, or in the inventory. Nerfed: 2 plates (`suit.plates`, was 3), 10% each (`plate-absorb`, was 15%), regrow 30 s (was 20).
   Index: the suit moved to the Armor chapter. Tested (`EnchantTest`, `BatchTest`, `NerfTest`, `WardrobeTest`).
+- **THE MERMAID DEN (Deep 1.7.0, Bosses 1.6.9, Items 1.2.54 = hashes + eggs, Index 1.6.41)**: the Dark Ocean's border is
+  2000 now (`border-radius`; an old 1050 reads as 2000). `Deep/MermaidDen.java` (pure functions, like Sulphur/Town): a reef
+  crater round `MX, MZ` = 1200, 700 (`R` 150 lagoon, `RIM` 172 wall, `BLEND` 55 cliff; lagoon floor `FLOOR` = SEA-42 = 258,
+  wall crest SEA-10), blended in `DeepGenerator.upperFloor` (biome WARM_OCEAN); four gates on the axes; avenues + two ring
+  roads with jelly lamps; the PALACE (plaza at `PLAZA`, mosaic, tiered seats, 16 columns + a floating crown ring, the throne
+  `throne()` under a scallop shell, a great pearl); 32 houses (`HOUSES`: conch spirals, pearl domes, coral towers, 4
+  palettes, chests = Dark Loot), 18 coral trees, giant clams, kelp belt. No chimneys/stacks/ruins/caves/arches near it.
+  Previews: scratch `dtest` `DenPreview` (den_map/palace/houses/gate). Already-generated chunks there don't change (it was
+  outside the old border, so it's normally fresh). `Deep/Den.java` (`den:` config, `den.yml`): 10 MERMAIDS (one per
+  `home(i)` house) + 6 GUARDS (gates + throne; tridents) = DeepMobs kinds `mermaid`/`merguard` (NEUTRAL, weight 0, models in
+  `deep_assets.py` `DEN_MOBS`), spawned while a player is within 90 of their home (DeepMobs' `farAway` still drops them past
+  100). Hurting one (`DeepMobs.onHurt` -> `Den.hurt`) angers every resident within 48. A PLAYER-killed mermaid stays dead
+  (`dead[]`) until `restock-minutes` 30; all ten dead = `rise()` = console `coralia summon <world> <throne>`. An OMEN IV
+  (BAD_OMEN amplifier exactly 3) inside the Den = WAR (`startWar`: omen removed, boss bar, every resident + 2 waves of
+  guards (`raid.wave-1` 6, `wave-2` 8 when <= 2 left) attack the raiders; all dead = Coralia); any other omen level = a
+  message only. `/deep den [info|tp|raid|stop|reset|rise]`. The normal spawner puts nothing aggressive in the Den.
+  **CORALIA REWORK** (`DeepBosses.Coralia`, "Coralia, Queen of the Den"): only the Den calls her (`whyNot` always refuses:
+  the Siren's Comb no longer works and no longer drops; no deep spawns). 2400 hp (old config 900 reads as 2400). ONLY SWORD
+  MELEE hurts her (`Boss.swordOnly()`, `Wild.swordHit`: player damager, ENTITY_ATTACK/SWEEP, `*_SWORD` in hand). The
+  Scourge's giant bubbles moved into `Swimmer` (`giantBubbles`, `giantBubble`, `pinks`, `pinkHit`, `clearBubbles`, hooks
+  `breathed`/`breathLine`/`bubbleHint`; tag `Swimmer.PINK_TAG` = the old `faultline_scourge_pink`; `Wild.onHurt` finds the
+  owning boss): Coralia gets air bubbles every 15 s and pink ones every 20 s (120 damage). New rig (`wild_assets.py`
+  `coralia()`): tail, `coralia_fluke` (own part, turned 40 degrees at joint (-1.75,-2.8,0)), torso, head (coral + pearl
+  crown), `coralia_hair` (from the head joint (-0.22,0.72,0)), 2 arms, `coralia_trident` (in the right hand (0,-1.3,0),
+  shaft +y, `tilt` flips it 180 = a twirl); phase 3 swaps all 8 to `*_wrath`. Pose = eased targets per move (`want()`),
+  a tail->fluke wave, barrel rolls (`barrel`). Moves (gaps 24/18/12 ticks): Tidal Dash, Trident Volley, Pearl Rain, Gaze,
+  Coral Spires, Royal Guard; phase 2 Whirlpool Waltz, Siren's Aria, Riptide Spiral; phase 3 Tempest, Eel Lash. Music
+  `faultline:coralia.music` (Cryogen theme, 285.86 s) in FaultlineDeepMusic.zip (`sounds/coralia/music.ogg`) + the Bedrock
+  FaultlineDeep.mcpack (`deep_assets.py --music` reads coralia.ogg). Preview: `tools/wild_rig_preview.py <out> coralia`.
+  Tested: `DeepTest` (68 kinds, the Den: residents, alarm, kills, restock, Omen III vs IV, two waves, fall),
+  `DeepBossTest` (sword only, pink + air bubbles, every new move, wrath swap), `WildTest`, `MusicTest`, `StuckTest`, `OceanTest`.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

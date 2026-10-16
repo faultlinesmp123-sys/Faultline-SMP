@@ -116,6 +116,147 @@ final class DeepBosses {
 
         @Override Location center() { return pos.clone(); }
 
+        // ---------------------------------------------------------------- giant bubbles (1.6.6)
+        static final String PINK_TAG = "faultline_scourge_pink"; // (any sea boss's pink bubble: the old name kept)
+        final List<Runnable> bubbleCleanup = new ArrayList<>();
+        boolean toldBubbles;
+
+        /**
+         * Every `air-bubble.every-seconds` (20) the Scourge's thrashing stirs GIANT AIR BUBBLES up off the sea floor, one
+         * near each fighter (max 4): swim inside one = your air fills back up and the poison drains, for as long as it
+         * lasts (12 s, rising slowly). Every `pink-bubble.every-seconds` (30) a GIANT PINK BUBBLE rises near someone:
+         * hit it (melee or a shot) = it bursts and deals `pink-bubble.damage` (150) to the Scourge, wherever it is
+         * (even enraged or mid-molt it can't dodge that).
+         */
+        void giantBubbles(List<Player> a) {
+            if (a.isEmpty() || dying) return;
+            int air = (int) (c("air-bubble.every-seconds", 20) * 20), pink = (int) (c("pink-bubble.every-seconds", 30) * 20);
+            if (air > 0 && ticks % air == air / 2) {
+                List<Player> who = new ArrayList<>(a);
+                java.util.Collections.shuffle(who);
+                for (int i = 0; i < Math.min(4, who.size()); i++) giantBubble(who.get(i), false);
+                if (!toldBubbles) { toldBubbles = true; say(bubbleHint()); }
+            }
+            if (pink > 0 && ticks % pink == pink - 1) giantBubble(a.get(random.nextInt(a.size())), true);
+        }
+
+        void giantBubble(Player t, boolean isPink) {
+            Location f = floorUnder(t.getLocation().add(random.nextGaussian() * 3, 0, random.nextGaussian() * 3), 24);
+            Location p = f.clone().add(0, 1.6, 0);
+            if (!open(p, 1)) p = t.getLocation().add(random.nextGaussian() * 2, -1.5, random.nextGaussian() * 2);
+            if (!wet(p.getBlock())) return;
+            float size = (float) (isPink ? c("pink-bubble.size", 2.6) : c("air-bubble.size", 3.4));
+            ItemStack look = new ItemStack(isPink ? Material.PINK_STAINED_GLASS : Material.LIGHT_BLUE_STAINED_GLASS);
+            org.bukkit.inventory.meta.ItemMeta lm = look.getItemMeta();
+            lm.setItemModel(new org.bukkit.NamespacedKey("faultline", isPink ? "wild/pink_bubble" : "wild/air_bubble"));
+            look.setItemMeta(lm);
+            Location p0 = p.clone();
+            ItemDisplay d = world.spawn(p0, ItemDisplay.class, e -> {
+                e.setItemStack(look);
+                e.setPersistent(false);
+                e.addScoreboardTag(Wild.FX_TAG);
+                e.setTeleportDuration(3);
+                e.setInterpolationDuration(3);
+                e.setBrightness(new org.bukkit.entity.Display.Brightness(12, 12));
+                e.setTransformation(new Transformation(new Vector3f(), new Quaternionf(), new Vector3f(0.2f, 0.2f, 0.2f), new Quaternionf()));
+            });
+            org.bukkit.entity.Slime hb = !isPink ? null : Wild.spawnAs(world, p0, EntityType.SLIME, org.bukkit.entity.Slime.class, sl -> {
+                sl.setSize(Math.max(2, Math.round(size / 0.52f / 2)));
+                sl.setAI(false);
+                sl.setGravity(false);
+                sl.setSilent(true);
+                sl.setInvisible(true);
+                sl.setPersistent(false);
+                sl.setCollidable(false);
+                sl.addScoreboardTag(Wild.FX_TAG);
+                sl.addScoreboardTag(PINK_TAG);
+                sl.setCustomName(ChatColor.LIGHT_PURPLE + "Pink Bubble");
+                sl.setCustomNameVisible(false);
+            });
+            world.playSound(p0, Sound.BLOCK_BUBBLE_COLUMN_UPWARDS_INSIDE, SoundCategory.HOSTILE, 3f, isPink ? 0.8f : 0.5f);
+            int[] age = {0};
+            int life = isPink ? 300 : 240;
+            Runnable[] self = new Runnable[1];
+            Runnable gone = () -> {
+                if (d.isValid()) d.remove();
+                if (hb != null) { if (hb.isValid()) hb.remove(); pinks.remove(hb.getUniqueId()); }
+                bubbleCleanup.remove(self[0]); // (a long fight made hundreds of these)
+            };
+            self[0] = gone;
+            bubbleCleanup.add(gone);
+            fx.add(() -> {
+                age[0]++;
+                if (!d.isValid() || (hb != null && !hb.isValid()) || dying) { pop(p0, isPink, false); gone.run(); return true; }
+                if (age[0] > life) { pop(p0, isPink, false); gone.run(); return true; }
+                float grow = Math.min(1f, age[0] / 20f), wob = (float) (1 + Math.sin(age[0] * 0.3) * 0.04);
+                Location up = p0.clone().add(Math.sin(age[0] * 0.07) * 0.03, isPink ? 0.03 : 0.022, Math.cos(age[0] * 0.07) * 0.03);
+                if (!wet(up.getBlock()) || !wet(up.clone().add(0, size * 0.5, 0).getBlock())) up = p0.clone(); // reached the surface or a ledge: it waits there
+                p0.setX(up.getX()); p0.setY(up.getY()); p0.setZ(up.getZ());
+                if (age[0] % 3 == 0) {
+                    d.teleport(p0);
+                    d.setInterpolationDelay(0);
+                    d.setTransformation(new Transformation(new Vector3f(), new Quaternionf().rotateY(age[0] * 0.02f),
+                            new Vector3f(size * grow * wob, size * grow / wob, size * grow * wob), new Quaternionf()));
+                    if (hb != null) hb.teleport(p0.clone().add(0, -size * 0.4, 0));
+                }
+                if (age[0] % 4 == 0) { // a shimmering skin (also what Bedrock sees)
+                    Color col = isPink ? Color.fromRGB(255, 120, 200) : Color.fromRGB(200, 235, 255);
+                    for (int i = 0; i < 8; i++) {
+                        double u = random.nextDouble() * 2 - 1, an = random.nextDouble() * Math.PI * 2, sq = Math.sqrt(1 - u * u), rr = size * grow * 0.5;
+                        world.spawnParticle(Particle.DUST, p0.getX() + sq * Math.cos(an) * rr, p0.getY() + u * rr, p0.getZ() + sq * Math.sin(an) * rr, 1, 0, 0, 0, 0, new Particle.DustOptions(col, 1.3f));
+                    }
+                    world.spawnParticle(Particle.BUBBLE, p0, 3, size * 0.3, size * 0.3, size * 0.3, 0.02);
+                }
+                if (!isPink) for (Player pl2 : active()) { // breathe
+                    if (pl2.getEyeLocation().distanceSquared(p0) > Math.pow(size * grow * 0.55 + 0.4, 2)) continue;
+                    if (pl2.getRemainingAir() < pl2.getMaximumAir()) pl2.setRemainingAir(Math.min(pl2.getMaximumAir(), pl2.getRemainingAir() + 30));
+                    breathed(pl2);
+                    if (age[0] % 20 == 0) {
+                        pl2.sendActionBar(legacy(ChatColor.AQUA + "Air! " + ChatColor.GRAY + breathLine()));
+                        pl2.playSound(pl2.getLocation(), Sound.BLOCK_BUBBLE_COLUMN_BUBBLE_POP, 0.8f, 1.6f);
+                    }
+                }
+                return false;
+            });
+            if (hb != null) pinks.put(hb.getUniqueId(), () -> {
+                if (!hb.isValid()) return;
+                pop(p0, true, true);
+                gone.run();
+            });
+        }
+
+        final Map<UUID, Runnable> pinks = new HashMap<>();
+
+        /** A player hit a pink bubble (Wild.onHurt): it bursts and the boss takes the damage. */
+        void pinkHit(org.bukkit.entity.Entity bubble, Player by) {
+            Runnable r = pinks.remove(bubble.getUniqueId());
+            if (r == null || dying) return;
+            r.run();
+            if (by != null) fighters.add(by.getUniqueId());
+            double dmg = c("pink-bubble.damage", 150);
+            hp -= dmg;
+            flinch = 8;
+            world.playSound(pos, Sound.ENTITY_ELDER_GUARDIAN_HURT, SoundCategory.HOSTILE, 4f, 0.5f);
+            sphereFx(pos, 2.5 * k, Particle.HEART, 30);
+            say(ChatColor.LIGHT_PURPLE + (by != null ? by.getName() : "Someone") + " burst a pink bubble! " + ChatColor.GRAY + Wild.NAMES.get(kind) + " reels (" + (int) dmg + " damage).");
+            if (hp <= 0) { hp = 0; defeat(); }
+        }
+
+        void pop(Location at, boolean isPink, boolean hit) {
+            world.spawnParticle(Particle.BUBBLE_POP, at, 60, 1.2, 1.2, 1.2, 0.1);
+            world.spawnParticle(Particle.DUST, at, 40, 1.2, 1.2, 1.2, 0, new Particle.DustOptions(isPink ? Color.fromRGB(255, 120, 200) : Color.fromRGB(220, 240, 255), 2f));
+            world.playSound(at, Sound.BLOCK_BUBBLE_COLUMN_BUBBLE_POP, SoundCategory.HOSTILE, 3f, hit ? 0.5f : 0.9f);
+        }
+
+        /** Someone is breathing inside an air bubble (every tick). */
+        void breathed(Player p) { }
+        String breathLine() { return "You breathe."; }
+        String bubbleHint() { return ChatColor.AQUA + "Giant air bubbles rise: " + ChatColor.GRAY + "swim inside one to breathe. " + ChatColor.LIGHT_PURPLE + "Burst the pink ones to hurt " + Wild.NAMES.get(kind) + "!"; }
+
+        /** Pops every bubble still out (cleanup). */
+        void clearBubbles() { for (Runnable r : new ArrayList<>(bubbleCleanup)) r.run(); bubbleCleanup.clear(); pinks.clear(); }
+
+
         static boolean wet(Block b) { return Leviathan.sea(b); }
 
         /** Water at l and at r blocks out along each axis. */
@@ -789,8 +930,7 @@ final class DeepBosses {
             for (UUID id : storm) { Player p = Bukkit.getPlayer(id); if (p != null) p.resetPlayerWeather(); }
             storm.clear();
             clearPylons();
-            for (Runnable r : new ArrayList<>(bubbleCleanup)) r.run();
-            bubbleCleanup.clear(); pinks.clear();
+            clearBubbles();
         }
 
         @Override void onPhase(int p) {
@@ -1410,137 +1550,11 @@ final class DeepBosses {
             for (Player p : within(l, 2.4)) poisonAdd(p, 0.02);
         }
 
-        // ---------------------------------------------------------------- giant bubbles (1.6.6)
-        static final String PINK_TAG = "faultline_scourge_pink";
-        final List<Runnable> bubbleCleanup = new ArrayList<>();
-        boolean toldBubbles;
+        static final String PINK_TAG = Swimmer.PINK_TAG;
 
-        /**
-         * Every `air-bubble.every-seconds` (20) the Scourge's thrashing stirs GIANT AIR BUBBLES up off the sea floor, one
-         * near each fighter (max 4): swim inside one = your air fills back up and the poison drains, for as long as it
-         * lasts (12 s, rising slowly). Every `pink-bubble.every-seconds` (30) a GIANT PINK BUBBLE rises near someone:
-         * hit it (melee or a shot) = it bursts and deals `pink-bubble.damage` (150) to the Scourge, wherever it is
-         * (even enraged or mid-molt it can't dodge that).
-         */
-        void giantBubbles(List<Player> a) {
-            if (a.isEmpty() || dying) return;
-            int air = (int) (c("air-bubble.every-seconds", 20) * 20), pink = (int) (c("pink-bubble.every-seconds", 30) * 20);
-            if (air > 0 && ticks % air == air / 2) {
-                List<Player> who = new ArrayList<>(a);
-                java.util.Collections.shuffle(who);
-                for (int i = 0; i < Math.min(4, who.size()); i++) giantBubble(who.get(i), false);
-                if (!toldBubbles) { toldBubbles = true; say(ChatColor.AQUA + "Giant air bubbles rise from the floor: " + ChatColor.GRAY + "swim inside one to breathe and wash out the poison. " + ChatColor.LIGHT_PURPLE + "Burst the pink ones to hurt the Scourge!"); }
-            }
-            if (pink > 0 && ticks % pink == pink - 1) giantBubble(a.get(random.nextInt(a.size())), true);
-        }
-
-        void giantBubble(Player t, boolean isPink) {
-            Location f = floorUnder(t.getLocation().add(random.nextGaussian() * 3, 0, random.nextGaussian() * 3), 24);
-            Location p = f.clone().add(0, 1.6, 0);
-            if (!open(p, 1)) p = t.getLocation().add(random.nextGaussian() * 2, -1.5, random.nextGaussian() * 2);
-            if (!wet(p.getBlock())) return;
-            float size = (float) (isPink ? c("pink-bubble.size", 2.6) : c("air-bubble.size", 3.4));
-            ItemStack look = new ItemStack(isPink ? Material.PINK_STAINED_GLASS : Material.LIGHT_BLUE_STAINED_GLASS);
-            org.bukkit.inventory.meta.ItemMeta lm = look.getItemMeta();
-            lm.setItemModel(new org.bukkit.NamespacedKey("faultline", isPink ? "wild/pink_bubble" : "wild/air_bubble"));
-            look.setItemMeta(lm);
-            Location p0 = p.clone();
-            ItemDisplay d = world.spawn(p0, ItemDisplay.class, e -> {
-                e.setItemStack(look);
-                e.setPersistent(false);
-                e.addScoreboardTag(Wild.FX_TAG);
-                e.setTeleportDuration(3);
-                e.setInterpolationDuration(3);
-                e.setBrightness(new org.bukkit.entity.Display.Brightness(12, 12));
-                e.setTransformation(new Transformation(new Vector3f(), new Quaternionf(), new Vector3f(0.2f, 0.2f, 0.2f), new Quaternionf()));
-            });
-            org.bukkit.entity.Slime hb = !isPink ? null : Wild.spawnAs(world, p0, EntityType.SLIME, org.bukkit.entity.Slime.class, sl -> {
-                sl.setSize(Math.max(2, Math.round(size / 0.52f / 2)));
-                sl.setAI(false);
-                sl.setGravity(false);
-                sl.setSilent(true);
-                sl.setInvisible(true);
-                sl.setPersistent(false);
-                sl.setCollidable(false);
-                sl.addScoreboardTag(Wild.FX_TAG);
-                sl.addScoreboardTag(PINK_TAG);
-                sl.setCustomName(ChatColor.LIGHT_PURPLE + "Pink Bubble");
-                sl.setCustomNameVisible(false);
-            });
-            world.playSound(p0, Sound.BLOCK_BUBBLE_COLUMN_UPWARDS_INSIDE, SoundCategory.HOSTILE, 3f, isPink ? 0.8f : 0.5f);
-            int[] age = {0};
-            int life = isPink ? 300 : 240;
-            Runnable[] self = new Runnable[1];
-            Runnable gone = () -> {
-                if (d.isValid()) d.remove();
-                if (hb != null) { if (hb.isValid()) hb.remove(); pinks.remove(hb.getUniqueId()); }
-                bubbleCleanup.remove(self[0]); // (a long fight made hundreds of these)
-            };
-            self[0] = gone;
-            bubbleCleanup.add(gone);
-            fx.add(() -> {
-                age[0]++;
-                if (!d.isValid() || (hb != null && !hb.isValid()) || dying) { pop(p0, isPink, false); gone.run(); return true; }
-                if (age[0] > life) { pop(p0, isPink, false); gone.run(); return true; }
-                float grow = Math.min(1f, age[0] / 20f), wob = (float) (1 + Math.sin(age[0] * 0.3) * 0.04);
-                Location up = p0.clone().add(Math.sin(age[0] * 0.07) * 0.03, isPink ? 0.03 : 0.022, Math.cos(age[0] * 0.07) * 0.03);
-                if (!wet(up.getBlock()) || !wet(up.clone().add(0, size * 0.5, 0).getBlock())) up = p0.clone(); // reached the surface or a ledge: it waits there
-                p0.setX(up.getX()); p0.setY(up.getY()); p0.setZ(up.getZ());
-                if (age[0] % 3 == 0) {
-                    d.teleport(p0);
-                    d.setInterpolationDelay(0);
-                    d.setTransformation(new Transformation(new Vector3f(), new Quaternionf().rotateY(age[0] * 0.02f),
-                            new Vector3f(size * grow * wob, size * grow / wob, size * grow * wob), new Quaternionf()));
-                    if (hb != null) hb.teleport(p0.clone().add(0, -size * 0.4, 0));
-                }
-                if (age[0] % 4 == 0) { // a shimmering skin (also what Bedrock sees)
-                    Color col = isPink ? Color.fromRGB(255, 120, 200) : Color.fromRGB(200, 235, 255);
-                    for (int i = 0; i < 8; i++) {
-                        double u = random.nextDouble() * 2 - 1, an = random.nextDouble() * Math.PI * 2, sq = Math.sqrt(1 - u * u), rr = size * grow * 0.5;
-                        world.spawnParticle(Particle.DUST, p0.getX() + sq * Math.cos(an) * rr, p0.getY() + u * rr, p0.getZ() + sq * Math.sin(an) * rr, 1, 0, 0, 0, 0, new Particle.DustOptions(col, 1.3f));
-                    }
-                    world.spawnParticle(Particle.BUBBLE, p0, 3, size * 0.3, size * 0.3, size * 0.3, 0.02);
-                }
-                if (!isPink) for (Player pl2 : active()) { // breathe
-                    if (pl2.getEyeLocation().distanceSquared(p0) > Math.pow(size * grow * 0.55 + 0.4, 2)) continue;
-                    if (pl2.getRemainingAir() < pl2.getMaximumAir()) pl2.setRemainingAir(Math.min(pl2.getMaximumAir(), pl2.getRemainingAir() + 30));
-                    poisonAdd(pl2, -c("air-bubble.poison-per-second", 0.25) / 20);
-                    if (age[0] % 20 == 0) {
-                        pl2.sendActionBar(legacy(ChatColor.AQUA + "Air! " + ChatColor.GRAY + "You breathe, and the poison washes out."));
-                        pl2.playSound(pl2.getLocation(), Sound.BLOCK_BUBBLE_COLUMN_BUBBLE_POP, 0.8f, 1.6f);
-                    }
-                }
-                return false;
-            });
-            if (hb != null) pinks.put(hb.getUniqueId(), () -> {
-                if (!hb.isValid()) return;
-                pop(p0, true, true);
-                gone.run();
-            });
-        }
-
-        final Map<UUID, Runnable> pinks = new HashMap<>();
-
-        /** A player hit a pink bubble (Wild.onHurt): it bursts and the Scourge takes the damage. */
-        void pinkHit(org.bukkit.entity.Entity bubble, Player by) {
-            Runnable r = pinks.remove(bubble.getUniqueId());
-            if (r == null || dying) return;
-            r.run();
-            if (by != null) fighters.add(by.getUniqueId());
-            double dmg = c("pink-bubble.damage", 150);
-            hp -= dmg;
-            flinch = 8;
-            world.playSound(pos, Sound.ENTITY_ELDER_GUARDIAN_HURT, SoundCategory.HOSTILE, 4f, 0.5f);
-            sphereFx(pos, 2.5 * k, Particle.HEART, 30);
-            say(ChatColor.LIGHT_PURPLE + (by != null ? by.getName() : "Someone") + " burst a pink bubble! " + ChatColor.GRAY + "The Scourge reels (" + (int) dmg + " damage).");
-            if (hp <= 0) { hp = 0; defeat(); }
-        }
-
-        void pop(Location at, boolean isPink, boolean hit) {
-            world.spawnParticle(Particle.BUBBLE_POP, at, 60, 1.2, 1.2, 1.2, 0.1);
-            world.spawnParticle(Particle.DUST, at, 40, 1.2, 1.2, 1.2, 0, new Particle.DustOptions(isPink ? Color.fromRGB(255, 120, 200) : Color.fromRGB(220, 240, 255), 2f));
-            world.playSound(at, Sound.BLOCK_BUBBLE_COLUMN_BUBBLE_POP, SoundCategory.HOSTILE, 3f, hit ? 0.5f : 0.9f);
-        }
+        @Override void breathed(Player p) { poisonAdd(p, -c("air-bubble.poison-per-second", 0.25) / 20); }
+        @Override String breathLine() { return "You breathe, and the poison washes out."; }
+        @Override String bubbleHint() { return ChatColor.AQUA + "Giant air bubbles rise from the floor: " + ChatColor.GRAY + "swim inside one to breathe and wash out the poison. " + ChatColor.LIGHT_PURPLE + "Burst the pink ones to hurt the Scourge!"; }
 
         /** A bubble of clean water rising from below a player: swim into it to clear some poison. */
         void freshBubble(Player t) {
@@ -1795,98 +1809,223 @@ final class DeepBosses {
     //  CORALIA, SIREN OF THE SHOALS
     // =====================================================================================================
     static final class Coralia extends Swimmer {
-        static final int THRALLS = 1, GAZE = 2, EELS = 3, BUBBLES = 4, SONG = 5, SPIRES = 6;
-        final Wild.Part tailP, torso, headP, armL, armR;
+        static final int DASH = 1, VOLLEY = 2, PEARLS = 3, GAZE = 4, SPIRES = 5, GUARDS = 6, WALTZ = 7, ARIA = 8, RIPTIDE = 9, TEMPEST = 10, EELS = 11;
+        final Wild.Part tailP, fluke, torso, headP, hair, armL, armR, trident;
         final List<Location> marks = new ArrayList<>();
         final List<Vector> eelDirs = new ArrayList<>();
         final List<BlockDisplay> spires = new ArrayList<>();
-        double aArmL, aArmR, aTail;
+        final List<double[]> rings = new ArrayList<>();        // Aria: rings of song (radius) spreading out
+        final List<Object[]> bolts = new ArrayList<>();        // Tempest: {Location, fire tick}
+        // the pose, eased toward what each move wants (all degrees)
+        double lean, roll, spin, aTail, aFluke, aHair = 20, hy, hp, swL = 20, spL = 12, swR = 20, spR = 12, tilt;
+        double wLean, wRoll, wHair, wHy, wHp, wSwL, wSpL, wSwR, wSpR, wTilt, kick = 1;
+        Vector dashDir;
+        Location center, dive;
+        int dashes;
+        boolean wrath;
+        double barrel; // a spin about her own length (barrel rolls), added on top of the eased roll
+        final Set<String> ariaHit = new HashSet<>();
 
         Coralia(Wild w, Location at, Player by) {
             super(w, "coralia", at, by, 2.2);
             tailP = rig.add("coralia_tail", k, pos);
+            fluke = rig.add("coralia_fluke", k, pos);
             torso = rig.add("coralia_torso", k, pos);
             headP = rig.add("coralia_head", k, pos);
+            hair = rig.add("coralia_hair", k, pos);
             armL = rig.add("coralia_arm", k, pos);
             armR = rig.add("coralia_arm", k, pos);
+            trident = rig.add("coralia_trident", k, pos);
             hitbox(pos, Math.max(2, (int) Math.round(2.4 * k)), "Coralia");
             hitbox(pos, Math.max(2, (int) Math.round(2.0 * k)), "Coralia");
             world.playSound(pos, Sound.ENTITY_ALLAY_AMBIENT_WITHOUT_ITEM, SoundCategory.HOSTILE, 3f, 0.5f);
         }
 
-        @Override double defHealth() { return 900; }
+        /** 1.7.0: a full boss now (was a 900 mini boss); a server config still saying 900 gets the new number. */
+        @Override double defHealth() { return 2400; }
+        @Override double baseHealth() { double v = c("health", defHealth()); return v == 900 ? defHealth() : v; }
         @Override BarColor barColor() { return BarColor.PINK; }
+        @Override boolean swordOnly() { return true; }
+        @Override String music() { return "faultline:coralia.music"; }
+        @Override double musicLength() { return c("music.length-seconds", 285.86); }
 
-        /** Phase 3: like Cala Maria, she turns into her Medusa form: green skin, a nest of snakes, fangs, claws. */
+        /** She's FAST: short gaps between moves, quicker still as she gets angrier. */
+        @Override int nextCd() {
+            double base = phase == 3 ? c("move-gap-ticks.phase3", 12) : phase == 2 ? c("move-gap-ticks.phase2", 18) : c("move-gap-ticks.phase1", 24);
+            return (int) (base * (0.8 + random.nextDouble() * 0.4));
+        }
+
+        double fast() { return phase == 3 ? 1.35 : phase == 2 ? 1.15 : 1.0; }
+
+        @Override String bubbleHint() { return ChatColor.AQUA + "Giant air bubbles drift up through the Den: " + ChatColor.GRAY + "swim inside one to breathe. " + ChatColor.LIGHT_PURPLE + "Burst the pink ones to hurt Coralia!"; }
+
+        /** Phase 3: her WRATH. Cold blue skin with glowing veins, eels for hair, a black coral crown, burning eyes. */
         @Override void onPhase(int p) {
             if (p < 3) return;
-            torso.swap("coralia_torso_medusa"); headP.swap("coralia_head_medusa");
-            armL.swap("coralia_arm_medusa"); armR.swap("coralia_arm_medusa");
+            wrath = true;
+            tailP.swap("coralia_tail_wrath"); fluke.swap("coralia_fluke_wrath"); torso.swap("coralia_torso_wrath"); headP.swap("coralia_head_wrath");
+            hair.swap("coralia_hair_wrath"); armL.swap("coralia_arm_wrath"); armR.swap("coralia_arm_wrath"); trident.swap("coralia_trident_wrath");
             Location h = Lich.joint(pos, Lich.frame(yaw, 0, 0), 0, 1.6, 0, k);
-            world.spawnParticle(Particle.DUST, h, 60, 0.8 * k, 0.8 * k, 0.8 * k, 0, new Particle.DustOptions(Color.fromRGB(150, 100, 202), 2f));
-            world.spawnParticle(Particle.BUBBLE_POP, h, 40, 0.8 * k, 0.8 * k, 0.8 * k, 0.1);
-            world.playSound(pos, Sound.ENTITY_EVOKER_PREPARE_ATTACK, SoundCategory.HOSTILE, 3f, 0.6f);
-            world.playSound(pos, Sound.ENTITY_CAT_HISS, SoundCategory.HOSTILE, 3f, 0.5f);
+            world.spawnParticle(Particle.DUST, h, 80, k, k, k, 0, new Particle.DustOptions(Color.fromRGB(255, 80, 200), 2f));
+            world.spawnParticle(Particle.BUBBLE_POP, h, 60, k, k, k, 0.15);
+            world.playSound(pos, Sound.ENTITY_ELDER_GUARDIAN_CURSE, SoundCategory.HOSTILE, 3f, 0.5f);
+            world.playSound(pos, Sound.ENTITY_WARDEN_ROAR, SoundCategory.HOSTILE, 2f, 1.6f);
         }
-        @Override String music() { return "minecraft:music_disc.mellohi"; }
-        @Override double musicLength() { return 96; }
 
         @Override String line(String what) {
             return switch (what) {
-                case "spawn" -> ChatColor.LIGHT_PURPLE + "" + ChatColor.BOLD + "A song drifts through the water... CORALIA, SIREN OF THE SHOALS rises!";
-                case "phase2" -> ChatColor.LIGHT_PURPLE + "Coralia: \"You're still listening? How sweet.\"";
-                case "phase3" -> ChatColor.RED + "Coralia: \"ENOUGH! Turn to stone, all of you!\"";
-                case "death" -> ChatColor.LIGHT_PURPLE + "Coralia's song breaks, and she sinks into the coral.";
-                case "leave" -> ChatColor.LIGHT_PURPLE + "Coralia " + ChatColor.GRAY + "laughs, and swims off into the blue.";
+                case "spawn" -> ChatColor.LIGHT_PURPLE + "" + ChatColor.BOLD + "The water sings... CORALIA, QUEEN OF THE MERMAID DEN, rises from her throne!";
+                case "phase2" -> ChatColor.LIGHT_PURPLE + "Coralia: \"You dance well, for a murderer. Let's dance faster.\"";
+                case "phase3" -> ChatColor.RED + "Coralia: \"MY DAUGHTERS! You will drown for every one of them!\"";
+                case "death" -> ChatColor.LIGHT_PURPLE + "Coralia's song breaks. The crown slips from her hair, and she sinks into the coral.";
+                case "leave" -> ChatColor.LIGHT_PURPLE + "Coralia " + ChatColor.GRAY + "laughs, and is gone in a flash of pearl.";
                 default -> null;
             };
         }
 
+        // ---------------------------------------------------------------- every tick
         @Override
         void bodyTick(List<Player> a) {
-            if (attack < 0 || attack == GAZE || attack == BUBBLES || attack == THRALLS || attack == SPIRES)
-                swimTo(circle(c("orbit-radius", 11), 3, 0.018), c("speed", 0.36), 6);
-            if (attack == SONG && focus != null) { Vector to = focus.getLocation().toVector().subtract(pos.toVector()); yaw = turn(yaw, yawOf(flat(to)), 8); }
+            giantBubbles(a);
+            if (attack < 0 || attack == VOLLEY || attack == GAZE || attack == GUARDS || attack == SPIRES || attack == TEMPEST || attack == EELS) {
+                Location c = circle(c("orbit-radius", 10), 2, (phase == 3 ? 0.07 : 0.05) * fast());
+                Vector before = pos.toVector();
+                swimTo(c, c("speed", 0.6) * fast(), 14);
+                motion(pos.toVector().subtract(before));
+                if (attack < 0) { // between moves: a swift, swimming pose
+                    Player t = targetOr(focus);
+                    if (t != null && pos.distanceSquared(t.getLocation()) > 16) faceTo(t.getLocation().add(0, 1, 0), 10);
+                }
+            }
+            if (attack == ARIA || attack == PEARLS || attack == WALTZ) motion(new Vector());
+            if (ticks % 3 == 0) world.spawnParticle(Particle.BUBBLE, Lich.joint(pos, Lich.frame(yaw, 0, 0), -1.0, -1.6, 0, k), 2, 0.4, 0.4, 0.4, 0.02);
+            if (wrath && ticks % 4 == 0) world.spawnParticle(Particle.DUST, pos.clone().add(0, 1.2 * k, 0), 2, 0.7 * k, 1.2 * k, 0.7 * k, 0, new Particle.DustOptions(Color.fromRGB(255, 80, 200), 1.4f));
             pose(0);
+        }
+
+        double moveSpeed; // blocks a tick this tick (the pose leans into it)
+
+        void motion(Vector d) {
+            moveSpeed = d.length();
+            if (moveSpeed > 0.05) {
+                yaw = turn(yaw, yawOf(flat(d)), 16);
+                double h = Math.hypot(d.getX(), d.getZ());
+                pitch += (float) ((Math.toDegrees(-Math.atan2(d.getY(), Math.max(h, 1e-3))) - pitch) * 0.3);
+            } else pitch *= 0.85f;
+        }
+
+        void faceTo(Location l, float turn) { Vector d = l.toVector().subtract(pos.toVector()); if (d.lengthSquared() > 0.01) yaw = turn(yaw, yawOf(flat(d)), turn); }
+
+        /** What each move wants the body to look like (eased into in pose()). */
+        void want() {
+            boolean swim = moveSpeed > 0.25;
+            wLean = swim ? 72 : 6; wRoll = 0; wHair = swim ? 75 : 25; wHy = 0; wHp = swim ? -50 : 0;
+            wSwL = swim ? -25 : 18; wSpL = swim ? 8 : 14; wSwR = swim ? -25 : 18; wSpR = swim ? 8 : 14; wTilt = 0; kick = swim ? 1.7 : 1;
+            int tt = at;
+            switch (attack) {
+                case DASH -> {
+                    int cyc = tt % 24;
+                    if (cyc < 10) { wLean = 20; wSwR = 175; wSpR = 6; wTilt = 180; wSwL = -40; wSpL = 30; wHp = 10; wHair = 35; kick = 0.6; } // draws back
+                    else { wLean = 90; wSwR = 168; wSpR = 4; wTilt = 180; wSwL = -38; wSpL = 10; wHair = 88; wHp = -70; kick = 2.4; }
+                }
+                case VOLLEY -> {
+                    if (tt < 16 || phase >= 2 && tt >= 22 && tt < 30) { wSwR = 178; wSpR = 8; wTilt = 180; wSwL = 50; wSpL = 55; wHp = 22; wLean = -8; }
+                    else { wSwR = 100; wSpR = 4; wTilt = 180; wSwL = -20; wSpL = 30; wHp = -5; wLean = 18; }
+                }
+                case PEARLS -> { wSwL = 70; wSpL = 100; wSwR = 70; wSpR = 100; wHp = 25; wHair = 45; wLean = -6; wTilt = 0; kick = 1.4; }
+                case GAZE -> { wSwL = 120; wSpL = 40; wSwR = 120; wSpR = 40; wHp = tt < 22 ? -6 : 12; wLean = tt < 22 ? 10 : -4; }
+                case SPIRES -> { wSwL = 160; wSwR = 175; wTilt = 180; wSpL = 20; wSpR = 6; wHp = tt < 16 ? 18 : -30; wLean = tt < 16 ? -12 : 40; }
+                case GUARDS -> { wSwR = 178; wTilt = 180; wSwL = 140; wSpL = 50; wHp = 25; }
+                case WALTZ -> { wLean = 30; wRoll = 65; wSwL = 50; wSpL = 100; wSwR = 50; wSpR = 100; wHair = 80; kick = 2.2; }
+                case ARIA -> { wSwL = 60 + Math.sin(ticks * 0.3) * 25; wSpL = 95; wSwR = 60 - Math.sin(ticks * 0.3) * 25; wSpR = 95; wHp = 28; wHair = 40; wLean = -10; }
+                case RIPTIDE -> {
+                    if (tt < 30) { wLean = 15; wRoll = 0; wSwL = 30; wSpL = 20; wSwR = 175; wTilt = 180; wHair = 60; kick = 2.4; }
+                    else { wLean = 170; wSwR = 175; wSwL = 175; wSpL = 10; wSpR = 10; wTilt = 180; wHair = 95; wHp = -20; kick = 2; }
+                }
+                case TEMPEST -> { wSwR = 180; wTilt = 180; wSwL = 100; wSpL = 80; wHp = 30; wLean = -15; wHair = 50; }
+                case EELS -> { wSwL = 150; wSwR = 150; wSpL = 30; wSpR = 30; wTilt = 0; wHp = 10; }
+                default -> { }
+            }
         }
 
         @Override
         void pose(int deathT) {
-            double sway = Math.sin(ticks * 0.1);
-            aTail = sway * 22 - flinchAmt() * 20;
-            float bodyPitch = (float) Math.max(-35, Math.min(35, pitch * 0.5)), roll = (float) (deathT > 0 ? Math.min(120, deathT * 2.5) : sway * 4);
-            Quaternionf bq = Lich.frame(yaw, bodyPitch, roll);
-            tailP.pose(pos, yaw, bodyPitch, roll, Lich.rotZ(aTail));
-            torso.pose(pos, yaw, bodyPitch, roll, null);
+            if (deathT == 0) want();
+            else { wLean = 10; wRoll = Math.min(150, deathT * 3.0); wSwL = 160; wSpL = 40; wSwR = 160; wSpR = 40; wHair = -10; wHp = 25; kick = 0.3; }
+            double e = 0.28; // eased fast: she snaps between poses
+            lean += (wLean - lean) * e; roll += (wRoll - roll) * e; aHair += (wHair - aHair) * 0.15; hy += (wHy - hy) * e; hp += (wHp - hp) * e;
+            swL += (wSwL - swL) * e; spL += (wSpL - spL) * e; swR += (wSwR - swR) * e; spR += (wSpR - spR) * e;
+            tilt += (wTilt - tilt) * 0.22; // the trident TWIRLS round when it flips (a hand-spin, 180 degrees)
+            // the swim: a wave down the tail into the fluke (the fluke lags behind it), faster while she swims
+            double w = ticks * 0.16 * kick;
+            aTail = Math.sin(w) * 16 * Math.min(1.6, kick) - flinchAmt() * 20;
+            aFluke = Math.sin(w - 1.1) * 26 * Math.min(1.5, kick);
+            double sway = Math.sin(ticks * 0.08);
+            float y = (float) (yaw + spin);
+            float bodyPitch = (float) Math.max(-60, Math.min(175, lean + pitch * 0.6));
+            float rl = (float) (roll + barrel + sway * 4);
+            Quaternionf bq = Lich.frame(y, bodyPitch, rl);
+            Quaternionf tq = Lich.rotZ(aTail);
+            tailP.pose(pos, y, bodyPitch, rl, tq);
+            fluke.pose(Lich.joint(pos, new Quaternionf(bq).mul(tq), -1.75, -2.8, 0, k), y, bodyPitch, rl, new Quaternionf(tq).mul(Lich.rotZ(40 + aFluke)));
+            torso.pose(pos, y, bodyPitch, rl, null);
             Location neck = Lich.joint(pos, bq, 0, 1.25, 0, k);
-            headP.pose(neck, yaw, bodyPitch, roll, null);
-            double wantL = 20 + sway * 10, wantR = 20 - sway * 10;
-            if (attack == GAZE) { wantL = 120; wantR = 120; }
-            if (attack == SONG) { wantL = 80 + Math.sin(ticks * 0.3) * 20; wantR = 80 - Math.sin(ticks * 0.3) * 20; }
-            if (attack == EELS || attack == SPIRES) { wantL = 150; wantR = 150; }
-            aArmL += (wantL - aArmL) * 0.2; aArmR += (wantR - aArmR) * 0.2;
-            armL.pose(Lich.joint(pos, bq, 0, 1.0, -0.55, k), yaw, bodyPitch, roll, Lich.rotX(aArmL * 0.6).mul(Lich.rotZ(aArmL * 0.5)));
-            armR.pose(Lich.joint(pos, bq, 0, 1.0, 0.55, k), yaw, bodyPitch, roll, Lich.rotX(-aArmR * 0.6).mul(Lich.rotZ(aArmR * 0.5)));
-            if (hitboxes.size() > 1) { hitboxes.get(0).teleport(pos.clone().add(0, 0.2 * k, 0)); hitboxes.get(1).teleport(Lich.joint(pos, bq, -1.6, -0.3, 0, k)); }
+            Quaternionf hq = new Quaternionf().rotationY((float) Math.toRadians(-hy)).mul(Lich.rotZ(-hp));
+            headP.pose(neck, y, bodyPitch, rl, hq);
+            Quaternionf hairQ = new Quaternionf(hq).mul(Lich.rotZ(-(aHair + Math.sin(ticks * 0.12) * 6)));
+            hair.pose(Lich.joint(neck, new Quaternionf(bq).mul(hq), -0.22, 0.72, 0, k), y, bodyPitch, rl, hairQ);
+            Quaternionf qL = Lich.rotZ(swL + sway * 6).mul(Lich.rotX(spL)), qR = Lich.rotZ(swR - sway * 6).mul(Lich.rotX(-spR));
+            armL.pose(Lich.joint(pos, bq, 0, 1.0, -0.55, k), y, bodyPitch, rl, qL);
+            Location shR = Lich.joint(pos, bq, 0, 1.0, 0.55, k);
+            armR.pose(shR, y, bodyPitch, rl, qR);
+            trident.pose(Lich.joint(shR, new Quaternionf(bq).mul(qR), 0, -1.3, 0, k), y, bodyPitch, rl, new Quaternionf(qR).mul(Lich.rotZ(tilt)));
+            if (hitboxes.size() > 1) { hitboxes.get(0).teleport(Lich.joint(pos, bq, 0, 0.4, 0, k)); hitboxes.get(1).teleport(Lich.joint(pos, new Quaternionf(bq).mul(tq), -0.8, -1.9, 0, k)); }
         }
 
+        /** The tip of her trident (where volleys and bolts leave from). */
+        Location tip() {
+            Quaternionf bq = Lich.frame((float) (yaw + spin), (float) Math.max(-60, Math.min(175, lean + pitch * 0.6)), (float) (roll + barrel));
+            Quaternionf qR = Lich.rotZ(swR).mul(Lich.rotX(-spR));
+            Location shR = Lich.joint(pos, bq, 0, 1.0, 0.55, k);
+            Location hand = Lich.joint(shR, new Quaternionf(bq).mul(qR), 0, -1.3, 0, k);
+            return Lich.joint(hand, new Quaternionf(bq).mul(qR).mul(Lich.rotZ(tilt)), 0, 2.3, 0, k);
+        }
+
+        // ---------------------------------------------------------------- moves
         @Override
         int pick(List<Player> a) {
-            List<Integer> pool = new ArrayList<>(List.of(THRALLS, GAZE, EELS, BUBBLES, SPIRES));
-            if (minions.size() >= 4) pool.remove(Integer.valueOf(THRALLS));
-            if (phase >= 2) { pool.add(SONG); pool.add(GAZE); }
-            return pool.get(random.nextInt(pool.size()));
+            List<Integer> pool = new ArrayList<>(List.of(DASH, DASH, VOLLEY, PEARLS, GAZE, SPIRES, GUARDS));
+            if (minions.size() >= 4) pool.remove(Integer.valueOf(GUARDS));
+            if (phase >= 2) pool.addAll(List.of(WALTZ, ARIA, RIPTIDE, DASH));
+            if (phase >= 3) pool.addAll(List.of(TEMPEST, TEMPEST, EELS, RIPTIDE));
+            int m = pool.get(random.nextInt(pool.size()));
+            return m == attackBefore && pool.size() > 2 ? pool.get(random.nextInt(pool.size())) : m;
         }
+
+        int attackBefore = -1;
 
         @Override
         void startMove(int move, Player t) {
-            hitOnce.clear(); marks.clear(); eelDirs.clear();
+            attackBefore = move;
+            hitOnce.clear(); marks.clear(); eelDirs.clear(); rings.clear(); bolts.clear();
             t = targetOr(t); focus = t;
+            spin = 0; barrel = 0; ariaHit.clear();
             switch (move) {
+                case DASH -> { dashes = phase + 1; say(ChatColor.LIGHT_PURPLE + "Coralia levels her trident..."); }
+                case VOLLEY -> world.playSound(pos, Sound.ITEM_TRIDENT_RIPTIDE_1, SoundCategory.HOSTILE, 3f, 0.7f);
+                case PEARLS -> { say(ChatColor.LIGHT_PURPLE + "She twirls, and pearls rain down through the water!"); world.playSound(pos, Sound.BLOCK_AMETHYST_BLOCK_RESONATE, SoundCategory.HOSTILE, 3f, 1.4f); }
                 case GAZE -> { say(ChatColor.LIGHT_PURPLE + "Her eyes begin to glow. " + ChatColor.WHITE + "LOOK AWAY!"); world.playSound(pos, Sound.ENTITY_ELDER_GUARDIAN_CURSE, SoundCategory.HOSTILE, 2f, 1.4f); }
-                case EELS -> { for (Player p : active()) eelDirs.add(unit(p.getLocation().add(0, 1, 0).toVector().subtract(pos.toVector()))); }
-                case SONG -> { say(ChatColor.LIGHT_PURPLE + "Coralia sings... and the song pulls at you."); world.playSound(pos, Sound.ENTITY_ALLAY_AMBIENT_WITH_ITEM, SoundCategory.HOSTILE, 3f, 0.6f); }
                 case SPIRES -> { for (Player p : active()) marks.add(floorUnder(p.getLocation(), 30)); }
+                case GUARDS -> say(ChatColor.LIGHT_PURPLE + "Coralia: \"Guards!\"");
+                case WALTZ -> {
+                    center = t != null ? t.getLocation().add(0, 1, 0) : pos.clone();
+                    say(ChatColor.LIGHT_PURPLE + "Coralia: \"Dance with me!\" " + ChatColor.GRAY + "The water starts to turn...");
+                    world.playSound(pos, Sound.ENTITY_PLAYER_SPLASH_HIGH_SPEED, SoundCategory.HOSTILE, 3f, 0.6f);
+                }
+                case ARIA -> { say(ChatColor.LIGHT_PURPLE + "Coralia sings, and the song pulls at you. " + ChatColor.GRAY + "Slip between the rings!"); world.playSound(pos, Sound.ENTITY_ALLAY_AMBIENT_WITH_ITEM, SoundCategory.HOSTILE, 3f, 0.6f); }
+                case RIPTIDE -> { say(ChatColor.LIGHT_PURPLE + "She spirals up above " + (t != null ? t.getName() : "you") + "..."); dive = null; }
+                case TEMPEST -> { say(ChatColor.RED + "Coralia raises her trident to the storm!"); world.playSound(pos, Sound.ITEM_TRIDENT_THUNDER, SoundCategory.HOSTILE, 3f, 1.2f); }
+                case EELS -> { for (Player p : active()) eelDirs.add(unit(p.getLocation().add(0, 1, 0).toVector().subtract(pos.toVector()))); }
                 default -> { }
             }
         }
@@ -1894,42 +2033,218 @@ final class DeepBosses {
         @Override
         void moveTick(List<Player> a) {
             switch (attack) {
-                case THRALLS -> {
-                    if (at == 10) for (int i = 0; i < 2 + phase; i++) {
+                case DASH -> {
+                    int cyc = at % 24, n = at / 24;
+                    if (n >= dashes) { end(); return; }
+                    if (cyc == 0) {
+                        Player t = targetOr(n == 0 ? focus : null);
+                        if (t == null) { end(); return; }
+                        focus = t; hitOnce.clear();
+                        Vector d = t.getLocation().add(0, 1, 0).toVector().subtract(pos.toVector());
+                        dashDir = unit(d);
+                        world.playSound(pos, Sound.ITEM_TRIDENT_RIPTIDE_2, SoundCategory.HOSTILE, 3f, 1.2f);
+                    }
+                    if (cyc < 10) {
+                        if (focus != null && focus.getWorld().equals(world)) dashDir = unit(focus.getLocation().add(0, 1, 0).toVector().subtract(pos.toVector()));
+                        motion(dashDir.clone().multiply(0.06)); moveSpeed = 0;
+                        if (cyc % 2 == 0) warn3d(pos, dashDir, 26, Color.fromRGB(255, 120, 200));
+                        return;
+                    }
+                    double sp = c("dash-speed", 1.25) * fast();
+                    Location n2 = pos.clone().add(dashDir.clone().multiply(sp));
+                    if (!step(n2)) { // ran into rock: a burst of bubbles, on to the next dash
+                        world.spawnParticle(Particle.BUBBLE_POP, pos, 40, k, k, k, 0.15);
+                        world.playSound(pos, Sound.BLOCK_CORAL_BLOCK_BREAK, SoundCategory.HOSTILE, 3f, 0.6f);
+                        at = (n + 1) * 24 - 1;
+                        return;
+                    }
+                    motion(dashDir.clone().multiply(sp));
+                    barrel = (cyc - 10) * 28.0; // a barrel roll down the line
+                    world.spawnParticle(Particle.BUBBLE, pos, 8, 0.6 * k, 0.6 * k, 0.6 * k, 0.05);
+                    world.spawnParticle(Particle.DUST, pos, 3, 0.4 * k, 0.4 * k, 0.4 * k, 0, new Particle.DustOptions(wrath ? Color.fromRGB(255, 80, 200) : Color.fromRGB(255, 190, 230), 1.6f));
+                    strike(pos.clone().add(0, 0.8 * k, 0), 2.0 * k, c("moves.dash", 9), Guard.BLOCKABLE, dashDir.clone().multiply(0.9).setY(0.3));
+                    if (cyc == 23) barrel = 0;
+                }
+                case VOLLEY -> {
+                    if (at < 16 && at % 3 == 0) world.spawnParticle(Particle.END_ROD, tip(), 3, 0.2, 0.2, 0.2, 0.02);
+                    if (at == 16 || phase >= 2 && at == 30) {
+                        world.playSound(pos, Sound.ITEM_TRIDENT_THROW, SoundCategory.HOSTILE, 3f, 0.8f);
+                        int fan = phase >= 2 ? 5 : 3;
+                        Location from = tip();
+                        for (Player p : active()) {
+                            Vector d = unit(p.getLocation().add(0, 1, 0).toVector().subtract(from.toVector()));
+                            for (int i = 0; i < fan; i++) {
+                                double off = (i - (fan - 1) / 2.0) * 0.16;
+                                Vector side = new Vector(-d.getZ(), 0, d.getX());
+                                if (side.lengthSquared() < 1e-6) side = new Vector(1, 0, 0);
+                                Vector v = unit(d.clone().add(side.normalize().multiply(off))).multiply(c("trident-speed", 0.95));
+                                bolt(from, v, 50, 0.5, c("moves.trident", 7), Particle.BUBBLE, new ItemStack(Material.TRIDENT), i == fan / 2 ? p : null, 0.03, null);
+                            }
+                        }
+                    }
+                    if (at > (phase >= 2 ? 40 : 26)) end();
+                }
+                case PEARLS -> {
+                    spin += 24; // she pirouettes
+                    if (at >= 8 && at <= 48 && at % 4 == 0) for (Player p : active()) {
+                        Location above = p.getLocation().add(random.nextGaussian() * 2.2, 8 + random.nextDouble() * 2, random.nextGaussian() * 2.2);
+                        if (!wet(above.getBlock())) above = p.getLocation().add(random.nextGaussian(), 3, random.nextGaussian());
+                        bolt(above, new Vector(0, -c("pearl-speed", 0.45), 0), 40, 0.4, c("moves.pearl", 5), Particle.END_ROD,
+                                new ItemStack(Material.WHITE_STAINED_GLASS), null, 0, pp -> world.spawnParticle(Particle.DUST, pp.getLocation().add(0, 1, 0), 15, 0.5, 0.5, 0.5, 0,
+                                        new Particle.DustOptions(Color.fromRGB(250, 240, 255), 1.6f)));
+                    }
+                    if (at % 8 == 0) world.playSound(pos, Sound.BLOCK_AMETHYST_BLOCK_CHIME, SoundCategory.HOSTILE, 2f, 1.2f + random.nextFloat() * 0.6f);
+                    if (at > 56) { spin = 0; end(); }
+                }
+                case GAZE -> {
+                    Location eyes = Lich.joint(pos, Lich.frame(yaw, 0, 0), 0.3, 1.6, 0, k);
+                    if (at < 22) { if (at % 3 == 0) world.spawnParticle(Particle.END_ROD, eyes, 4, 0.2, 0.1, 0.2, 0.01); return; }
+                    if (at == 22) {
+                        world.playSound(pos, Sound.BLOCK_STONE_PLACE, SoundCategory.HOSTILE, 3f, 0.5f);
+                        for (Player p : within(pos, 34)) {
+                            Vector look = p.getEyeLocation().getDirection(), toHer = unit(eyes.toVector().subtract(p.getEyeLocation().toVector()));
+                            if (look.dot(toHer) < c("gaze-dot", 0.55)) continue; // looked away
+                            hit(p, c("moves.gaze", 4), pos.toVector(), Guard.UNBLOCKABLE);
+                            p.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, (int) c("petrify-ticks", 40), 6));
+                            p.addPotionEffect(new PotionEffect(PotionEffectType.MINING_FATIGUE, (int) c("petrify-ticks", 40), 4));
+                            p.addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS, (int) c("petrify-ticks", 40), 2));
+                            world.spawnParticle(Particle.BLOCK, p.getLocation().add(0, 1, 0), 40, 0.4, 0.8, 0.4, 0, Material.STONE.createBlockData());
+                            p.sendActionBar(legacy(ChatColor.GRAY + "You met her eyes... and turned to stone!"));
+                        }
+                    }
+                    if (at > 30) end();
+                }
+                case SPIRES -> {
+                    if (at < 16) { if (at % 3 == 0) for (Location m : marks) warnRing(m, 1.8, Color.fromRGB(255, 120, 160)); return; }
+                    if (at == 16) raiseSpires(marks);
+                    if (at == 24 && phase >= 2) { // a ring of four more round each spot
+                        List<Location> more = new ArrayList<>();
+                        for (Location m : marks) for (int i = 0; i < 4; i++) { double an = i * Math.PI / 2 + 0.6; more.add(floorUnder(m.clone().add(Math.cos(an) * 3, 2, Math.sin(an) * 3), 8)); }
+                        raiseSpires(more);
+                    }
+                    if (at == 60) { for (BlockDisplay d : spires) if (d.isValid()) d.remove(); spires.clear(); }
+                    if (at > 60) end();
+                }
+                case GUARDS -> {
+                    if (at == 8) for (int i = 0; i < 1 + phase; i++) {
                         Location l = openWater(pos, 2, 5, 1);
                         if (l == null) continue;
                         Player t = a.isEmpty() ? null : a.get(random.nextInt(a.size()));
-                        Drowned d = minion(l, EntityType.DROWNED, Drowned.class, ChatColor.LIGHT_PURPLE + "Thrall of the Shoal", 24, m -> {
+                        Drowned d = minion(l, EntityType.DROWNED, Drowned.class, ChatColor.DARK_AQUA + "Royal Guard", 30, m -> {
                             m.getEquipment().setItemInMainHand(new ItemStack(Material.TRIDENT)); m.getEquipment().setItemInMainHandDropChance(0);
-                            m.getEquipment().setHelmet(new ItemStack(Material.BRAIN_CORAL_BLOCK)); m.getEquipment().setHelmetDropChance(0);
+                            m.getEquipment().setHelmet(new ItemStack(Material.PRISMARINE_BRICKS)); m.getEquipment().setHelmetDropChance(0);
                             m.setShouldBurnInDay(false);
                         });
                         if (t != null) d.setTarget(t);
                         world.spawnParticle(Particle.BUBBLE_POP, l, 20, 0.4, 0.8, 0.4, 0.05);
                     }
-                    if (at > 20) end();
+                    if (at > 16) end();
                 }
-                case GAZE -> {
-                    if (at < 34) { if (at % 4 == 0) world.spawnParticle(Particle.END_ROD, Lich.joint(pos, Lich.frame(yaw, 0, 0), 0.3, 1.6, 0, k), 4, 0.2, 0.1, 0.2, 0.01); return; }
-                    if (at == 34) {
-                        world.playSound(pos, Sound.BLOCK_STONE_PLACE, SoundCategory.HOSTILE, 3f, 0.5f);
-                        Location eyes = Lich.joint(pos, Lich.frame(yaw, 0, 0), 0.3, 1.6, 0, k);
-                        for (Player p : within(pos, 34)) {
-                            Vector look = p.getEyeLocation().getDirection(), toHer = unit(eyes.toVector().subtract(p.getEyeLocation().toVector()));
-                            if (look.dot(toHer) < c("gaze-dot", 0.55)) continue; // looked away
-                            hit(p, c("moves.gaze", 4), pos.toVector(), Guard.UNBLOCKABLE);
-                            p.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, (int) c("petrify-ticks", 50), 6));
-                            p.addPotionEffect(new PotionEffect(PotionEffectType.MINING_FATIGUE, (int) c("petrify-ticks", 50), 4));
-                            p.addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS, (int) c("petrify-ticks", 50), 2));
-                            world.spawnParticle(Particle.BLOCK, p.getLocation().add(0, 1, 0), 40, 0.4, 0.8, 0.4, 0, Material.STONE.createBlockData());
-                            p.sendActionBar(legacy(ChatColor.GRAY + "You met her eyes... and turned to stone!"));
+                case WALTZ -> {
+                    if (center == null) { end(); return; }
+                    double ang = at * 0.15 * fast(), r = c("waltz-radius", 9);
+                    Location want = center.clone().add(Math.cos(ang) * r, Math.sin(at * 0.1) * 1.5, Math.sin(ang) * r);
+                    Vector before = pos.toVector();
+                    Vector d = want.toVector().subtract(pos.toVector());
+                    if (d.length() > 1.6) d.normalize().multiply(1.6);
+                    step(pos.clone().add(d));
+                    Vector moved = pos.toVector().subtract(before);
+                    if (moved.lengthSquared() > 1e-4) yaw = turn(yaw, yawOf(flat(moved)), 25);
+                    if (at % 2 == 0) for (double rr = 3; rr < 15; rr += 4) for (int i = 0; i < 3; i++) {
+                        double an = ang * 1.3 + i * 2.1 + rr;
+                        world.spawnParticle(Particle.BUBBLE, center.getX() + Math.cos(an) * rr, center.getY() - 1 + i * 0.6, center.getZ() + Math.sin(an) * rr, 1, 0, 0, 0, 0);
+                    }
+                    for (Player p : within(center, c("waltz-pull-radius", 16))) { // the whirlpool: round and in
+                        Vector in = center.toVector().subtract(p.getLocation().toVector()); in.setY(0);
+                        if (in.lengthSquared() < 0.25) continue;
+                        Vector tan = new Vector(-in.getZ(), 0, in.getX()).normalize();
+                        Safe.vel(p, p.getVelocity().multiply(0.6).add(in.normalize().multiply(c("waltz-pull", 0.06))).add(tan.multiply(c("waltz-spin", 0.09))));
+                    }
+                    if (at % 12 == 6) { Player t = targetOr(null); if (t != null) bolt(tip(), unit(t.getLocation().add(0, 1, 0).toVector().subtract(pos.toVector())).multiply(0.7), 40, 0.5,
+                            c("moves.bubble", 6), Particle.BUBBLE, new ItemStack(Material.LIGHT_BLUE_STAINED_GLASS), t, 0.05, null); }
+                    if (at == 70) { // the finale: the whirlpool bursts outward
+                        world.spawnParticle(Particle.BUBBLE_POP, center, 120, 3, 2, 3, 0.3);
+                        world.playSound(center, Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.HOSTILE, 2f, 1.6f);
+                        for (Player p : within(center, 4.5)) { hit(p, c("moves.waltz", 8), center.toVector(), Guard.BLOCKABLE); Safe.vel(p, unit(p.getLocation().toVector().subtract(center.toVector())).multiply(1.2).setY(0.5)); }
+                    }
+                    if (at > 74) end();
+                }
+                case ARIA -> {
+                    if (at % 12 == 0 && at <= 60) rings.add(new double[]{2, at});
+                    for (double[] ring : rings) {
+                        ring[0] += 0.45 * fast();
+                        if (at % 2 == 0) ring3(pos.clone().add(0, 1.2 * k, 0), ring[0], Particle.NOTE);
+                        for (Player p : active()) {
+                            Location l = p.getLocation();
+                            double dd = Math.hypot(l.getX() - pos.getX(), l.getZ() - pos.getZ());
+                            if (Math.abs(dd - ring[0]) < 0.7 && Math.abs(l.getY() + 0.9 - pos.getY() - 1.2 * k) < 3 && ariaHit.add(p.getUniqueId() + ":" + (int) ring[1])) {
+                                hit(p, c("moves.aria", 4), pos.toVector(), Guard.UNBLOCKABLE);
+                                p.addPotionEffect(new PotionEffect(PotionEffectType.NAUSEA, 80, 0));
+                            }
                         }
                     }
-                    if (at > 44) end();
+                    rings.removeIf(r -> r[0] > 22);
+                    for (Player p : within(pos, c("song-radius", 20))) {
+                        Vector in = pos.toVector().subtract(p.getLocation().toVector());
+                        if (in.length() > 3) Safe.vel(p, p.getVelocity().multiply(0.75).add(in.normalize().multiply(c("song-pull", 0.1))));
+                    }
+                    if (at > 72) end();
+                }
+                case RIPTIDE -> {
+                    Player t = focus;
+                    if (t == null || !t.getWorld().equals(world)) { end(); return; }
+                    if (at < 30) { // a corkscrew up round them
+                        double ang = at * 0.42, r = 6 - at * 0.08;
+                        Location want = t.getLocation().add(Math.cos(ang) * r, 2 + at * 0.33, Math.sin(ang) * r);
+                        Vector before = pos.toVector();
+                        Vector d = want.toVector().subtract(pos.toVector());
+                        if (d.length() > 1.5) d.normalize().multiply(1.5);
+                        step(pos.clone().add(d));
+                        motion(pos.toVector().subtract(before));
+                        barrel = at * 24.0;
+                        world.spawnParticle(Particle.BUBBLE, pos, 6, 0.5, 0.5, 0.5, 0.05);
+                        if (at % 3 == 0) warnRing(floorUnder(t.getLocation(), 12), 4.5, Color.fromRGB(255, 120, 200));
+                        return;
+                    }
+                    if (at == 30) { dive = t.getLocation(); barrel = 0; world.playSound(pos, Sound.ITEM_TRIDENT_RIPTIDE_3, SoundCategory.HOSTILE, 3f, 0.8f); }
+                    Vector d = dive.toVector().subtract(pos.toVector());
+                    double sp = c("dive-speed", 1.6) * fast();
+                    boolean landed = d.length() < sp + 1 || !step(pos.clone().add(unit(d).multiply(sp)));
+                    motion(unit(d).multiply(sp));
+                    if (landed || at > 46) {
+                        world.spawnParticle(Particle.BUBBLE_POP, dive, 120, 2.5, 1, 2.5, 0.3);
+                        world.spawnParticle(Particle.DUST, dive, 60, 2.5, 0.5, 2.5, 0, new Particle.DustOptions(wrath ? Color.fromRGB(255, 80, 200) : Color.fromRGB(255, 200, 240), 2f));
+                        world.playSound(dive, Sound.ITEM_TRIDENT_HIT_GROUND, SoundCategory.HOSTILE, 3f, 0.6f);
+                        world.playSound(dive, Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.HOSTILE, 1.5f, 1.4f);
+                        for (Player p : within(dive, c("riptide-radius", 4.5))) { hit(p, c("moves.riptide", 12), dive.toVector(), Guard.BLOCKABLE); Safe.vel(p, new Vector(0, 1.0, 0)); }
+                        end();
+                    }
+                }
+                case TEMPEST -> {
+                    if (at <= 56 && at % 8 == 0) for (Player p : active()) {
+                        Location m = floorUnder(p.getLocation().add(random.nextGaussian() * 1.5, 0, random.nextGaussian() * 1.5), 16);
+                        bolts.add(new Object[]{m, at + 10});
+                    }
+                    for (var it = bolts.iterator(); it.hasNext(); ) {
+                        Object[] b = it.next();
+                        Location m = (Location) b[0];
+                        int fire = (int) b[1];
+                        if (at < fire) { if (at % 2 == 0) warnRing(m, 1.8, Color.fromRGB(255, 80, 200)); continue; }
+                        it.remove();
+                        for (double yy = 0; yy < 14; yy += 0.7) world.spawnParticle(Particle.ELECTRIC_SPARK, m.clone().add(0, yy, 0), 3, 0.2, 0.1, 0.2, 0.05);
+                        world.spawnParticle(Particle.END_ROD, m, 20, 0.6, 0.3, 0.6, 0.1);
+                        world.playSound(m, Sound.ENTITY_LIGHTNING_BOLT_IMPACT, SoundCategory.HOSTILE, 1.5f, 1.6f);
+                        for (Player p : active()) {
+                            Location l = p.getLocation();
+                            if (Math.hypot(l.getX() - m.getX(), l.getZ() - m.getZ()) < 1.8 && l.getY() >= m.getY() - 1 && l.getY() < m.getY() + 14)
+                                hit(p, c("moves.tempest", 8), m.toVector(), Guard.UNBLOCKABLE);
+                        }
+                    }
+                    if (at > 70) end();
                 }
                 case EELS -> {
-                    if (at < 26) { if (at % 3 == 0) for (Vector d : eelDirs) warn3d(pos, d, 26, Color.YELLOW); return; }
-                    if (at == 26) {
+                    if (at < 18) { if (at % 3 == 0) for (Vector d : eelDirs) warn3d(pos, d, 26, Color.YELLOW); return; }
+                    if (at == 18) {
                         world.playSound(pos, Sound.ENTITY_LIGHTNING_BOLT_IMPACT, SoundCategory.HOSTILE, 2f, 1.6f);
                         for (Vector d : eelDirs) {
                             for (double t2 = 0; t2 < 26; t2 += 1.0) world.spawnParticle(Particle.ELECTRIC_SPARK, pos.clone().add(d.clone().multiply(t2)), 3, 0.2, 0.2, 0.2, 0.05);
@@ -1944,69 +2259,48 @@ final class DeepBosses {
                             }
                         }
                     }
-                    if (at > 34) end();
-                }
-                case BUBBLES -> {
-                    if (at % 8 == 0 && at <= 40) {
-                        Player t = targetOr(null);
-                        if (t != null) bolt(Lich.joint(pos, Lich.frame(yaw, 0, 0), 0.6, 1.2, 0, k), unit(t.getLocation().add(0, 1, 0).toVector().subtract(pos.toVector())).multiply(0.35),
-                                90, 0.6, c("moves.bubble", 6), Particle.BUBBLE, new ItemStack(Material.LIGHT_BLUE_STAINED_GLASS), t, 0.06, null);
-                        world.playSound(pos, Sound.BLOCK_BUBBLE_COLUMN_BUBBLE_POP, SoundCategory.HOSTILE, 2f, 1.2f);
-                    }
-                    if (at > 50) end();
-                }
-                case SONG -> {
-                    if (at % 6 == 0) for (double r = 2; r < 18; r += 4) ring3(pos, r + (at % 24) / 6.0, Particle.NOTE);
-                    for (Player p : within(pos, c("song-radius", 20))) {
-                        Vector in = pos.toVector().subtract(p.getLocation().toVector());
-                        double d = in.length();
-                        if (d > 0.5) Safe.vel(p, p.getVelocity().multiply(0.7).add(in.normalize().multiply(c("song-pull", 0.12))));
-                        if (at % 30 == 0) p.addPotionEffect(new PotionEffect(PotionEffectType.NAUSEA, 60, 0));
-                        if (d < 3 * k && at % 20 == 0) hit(p, c("moves.song", 3), pos.toVector(), Guard.UNBLOCKABLE);
-                    }
-                    if (at > 80) end();
-                }
-                case SPIRES -> {
-                    if (at < 28) { if (at % 3 == 0) for (Location m : marks) warnRing(m, 1.8, Color.fromRGB(255, 120, 160)); return; }
-                    if (at == 28) {
-                        world.playSound(pos, Sound.BLOCK_CORAL_BLOCK_BREAK, SoundCategory.HOSTILE, 3f, 0.6f);
-                        Material[] coral = {Material.BRAIN_CORAL_BLOCK, Material.FIRE_CORAL_BLOCK, Material.HORN_CORAL_BLOCK, Material.TUBE_CORAL_BLOCK};
-                        for (Location m : marks) {
-                            BlockData bd = coral[random.nextInt(coral.length)].createBlockData();
-                            BlockDisplay sp = world.spawn(m.clone().add(-0.6, 0, -0.6), BlockDisplay.class, d -> {
-                                d.setBlock(bd); d.setPersistent(false); d.addScoreboardTag(Wild.FX_TAG);
-                                d.setTransformation(new Transformation(new Vector3f(), new Quaternionf(), new Vector3f(1.2f, 0.1f, 1.2f), new Quaternionf()));
-                                d.setInterpolationDuration(4);
-                            });
-                            sp.setInterpolationDelay(0);
-                            sp.setTransformation(new Transformation(new Vector3f(), new Quaternionf(), new Vector3f(1.2f, 5f, 1.2f), new Quaternionf()));
-                            spires.add(sp);
-                            for (Player p : active()) {
-                                Location l = p.getLocation();
-                                if (Math.hypot(l.getX() - m.getX(), l.getZ() - m.getZ()) < 1.7 && l.getY() >= m.getY() - 1 && l.getY() < m.getY() + 5) {
-                                    hit(p, c("moves.spire", 10), m.toVector(), Guard.BLOCKABLE);
-                                    Safe.vel(p, new Vector(0, 1.1, 0));
-                                }
-                            }
-                        }
-                    }
-                    if (at == 70) { for (BlockDisplay d : spires) if (d.isValid()) d.remove(); spires.clear(); }
-                    if (at > 70) end();
+                    if (at > 26) end();
                 }
                 default -> end();
             }
         }
 
-        @Override void cleanup() { for (BlockDisplay d : spires) if (d.isValid()) d.remove(); spires.clear(); }
+        void raiseSpires(List<Location> where) {
+            world.playSound(pos, Sound.BLOCK_CORAL_BLOCK_BREAK, SoundCategory.HOSTILE, 3f, 0.6f);
+            Material[] coral = {Material.BRAIN_CORAL_BLOCK, Material.FIRE_CORAL_BLOCK, Material.HORN_CORAL_BLOCK, Material.TUBE_CORAL_BLOCK, Material.BUBBLE_CORAL_BLOCK};
+            for (Location m : where) {
+                BlockData bd = coral[random.nextInt(coral.length)].createBlockData();
+                BlockDisplay sp = world.spawn(m.clone().add(-0.6, 0, -0.6), BlockDisplay.class, d -> {
+                    d.setBlock(bd); d.setPersistent(false); d.addScoreboardTag(Wild.FX_TAG);
+                    d.setTransformation(new Transformation(new Vector3f(), new Quaternionf(), new Vector3f(1.2f, 0.1f, 1.2f), new Quaternionf()));
+                    d.setInterpolationDuration(3);
+                });
+                sp.setInterpolationDelay(0);
+                sp.setTransformation(new Transformation(new Vector3f(), new Quaternionf(), new Vector3f(1.2f, 5f, 1.2f), new Quaternionf()));
+                spires.add(sp);
+                for (Player p : active()) {
+                    Location l = p.getLocation();
+                    if (Math.hypot(l.getX() - m.getX(), l.getZ() - m.getZ()) < 1.7 && l.getY() >= m.getY() - 1 && l.getY() < m.getY() + 5) {
+                        hit(p, c("moves.spire", 10), m.toVector(), Guard.BLOCKABLE);
+                        Safe.vel(p, new Vector(0, 1.1, 0));
+                    }
+                }
+            }
+        }
 
-        @Override void drops(Player p, Location at) { darkLoot(p, 0.1, 1); }
+        @Override void end() { barrel = 0; spin = 0; super.end(); }
+
+        @Override void cleanup() { for (BlockDisplay d : spires) if (d.isValid()) d.remove(); spires.clear(); clearBubbles(); }
+
+        @Override void drops(Player p, Location at) { darkLoot(p, 0.5, 3); }
 
         @Override
         List<MoveSlot> morphMoves() {
-            List<MoveSlot> m = new ArrayList<>(List.of(new MoveSlot(THRALLS, "Thralls of the Shoal", Material.DROWNED_SPAWN_EGG), new MoveSlot(GAZE, "Petrifying Gaze", Material.ENDER_EYE),
-                    new MoveSlot(EELS, "Eel Lash", Material.LIGHTNING_ROD), new MoveSlot(BUBBLES, "Bubble Barrage", Material.LIGHT_BLUE_STAINED_GLASS),
-                    new MoveSlot(SPIRES, "Coral Spires", Material.BRAIN_CORAL_BLOCK)));
-            if (phase >= 2) m.add(new MoveSlot(SONG, "Siren Song", Material.NOTE_BLOCK));
+            List<MoveSlot> m = new ArrayList<>(List.of(new MoveSlot(DASH, "Tidal Dash", Material.TRIDENT), new MoveSlot(VOLLEY, "Trident Volley", Material.PRISMARINE_SHARD),
+                    new MoveSlot(PEARLS, "Pearl Rain", Material.WHITE_STAINED_GLASS), new MoveSlot(GAZE, "Mesmerising Gaze", Material.ENDER_EYE),
+                    new MoveSlot(SPIRES, "Coral Spires", Material.BRAIN_CORAL_BLOCK), new MoveSlot(GUARDS, "Royal Guard", Material.DROWNED_SPAWN_EGG)));
+            if (phase >= 2) { m.add(new MoveSlot(WALTZ, "Whirlpool Waltz", Material.HEART_OF_THE_SEA)); m.add(new MoveSlot(ARIA, "Siren's Aria", Material.NOTE_BLOCK)); m.add(new MoveSlot(RIPTIDE, "Riptide Spiral", Material.NAUTILUS_SHELL)); }
+            if (phase >= 3) { m.add(new MoveSlot(TEMPEST, "Tempest", Material.LIGHTNING_ROD)); m.add(new MoveSlot(EELS, "Eel Lash", Material.COPPER_BULB)); }
             return m;
         }
     }

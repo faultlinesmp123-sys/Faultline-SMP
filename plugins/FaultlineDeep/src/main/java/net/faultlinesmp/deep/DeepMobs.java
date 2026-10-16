@@ -172,6 +172,13 @@ final class DeepMobs implements Listener {
         k("watcher", "Abyss Watcher", ChatColor.RED, G, A, EntityType.SQUID, 1.5, 60, 0, 0, 3, 2.6f, "A great eye drifting in the dark on a crown of tendrils. When it looks at you, you feel it.");
     }
 
+    /** 1.7.0: the Mermaid Den's people (Den.java keeps them; the normal spawner never does: weight 0). */
+    static {
+        var S = DeepGenerator.Zone.SUNLIT; var N = Temper.NEUTRAL;
+        k("mermaid", "Mermaid", ChatColor.LIGHT_PURPLE, N, S, EntityType.DROWNED, 1.0, 40, 5, 0.27, 0, 1.7f, "One of the ten mermaids of the Mermaid Den. She sings to herself and leaves you be. Hurt one and the whole Den turns on you; kill all ten and Coralia rises to avenge them.");
+        k("merguard", "Mermaid Guard", ChatColor.DARK_AQUA, N, S, EntityType.DROWNED, 1.15, 70, 8, 0.28, 0, 1.9f, "A merman in prismarine armour who keeps the Den's gates and its palace. He throws his trident, and his net slows you. Leave the mermaids alone and so will he.");
+    }
+
     /** The Acid Rain's own creatures (AcidRain.java spawns them; the normal spawner never does). */
     static final Set<String> RAIN = Set.of("shambler", "rustbones", "acidmite", "stormwraith", "mauler", "goblin");
 
@@ -350,7 +357,7 @@ final class DeepMobs implements Listener {
     static final Set<String> UPRIGHT = Set.of("lumenbell", "gasbloom", "bloatfin", "clam", "hollowkin", "blastfin", "cavecrawler", "glowgrub",
             "acidjelly", "gammaslime", "nucleartoad", "flakcrab", "crabling", "urchin", "bloatgut", "hazardturtle", "sludgesnail", "boglurker", "sulphurskater", "trilobite",
             "shambler", "rustbones", "acidmite", "stormwraith", "goblin",
-            "pearlhorse", "kelpstrangler", "siren", "dumbo", "watcher", "stingray", "isopod");
+            "pearlhorse", "kelpstrangler", "siren", "dumbo", "watcher", "stingray", "isopod", "mermaid", "merguard");
 
     /** Ones whose "buried" means standing disguised on the ground, not sunk into the sand. */
     static final Set<String> DISGUISED = Set.of("boglurker");
@@ -813,6 +820,21 @@ final class DeepMobs implements Listener {
                 if (m.t % 30 == 0) w.spawnParticle(Particle.END_ROD, c, 1, 0.3, 0.1, 0.3, 0);
                 if (target != null && m.cd <= 0 && target.getLocation().distanceSquared(c) < 10 * 10) { m.cd = 50; dash(m, target, 1.05); }
             }
+            case "mermaid" -> { // calm: she sings; angry: a bubble song that slows you and mends the guards
+                if (!m.angry()) { if (m.t % 60 == 0 && viewerNear(c, 16)) w.spawnParticle(Particle.NOTE, c.clone().add(0, height(m) * 0.6, 0), 1, 0.2, 0.1, 0.2, random.nextDouble()); }
+                else if (target != null && m.cd <= 0 && target.getLocation().distanceSquared(c) < 9 * 9) {
+                    m.cd = 70;
+                    w.spawnParticle(Particle.BUBBLE_POP, c, 50, 2.5, 1.5, 2.5, 0.08);
+                    w.playSound(c, Sound.ENTITY_ALLAY_AMBIENT_WITH_ITEM, SoundCategory.HOSTILE, 1.5f, 0.6f);
+                    for (Player p : near(c, cfg("mermaid.song-range", 7))) if (fair(p)) {
+                        p.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 50, 0));
+                        p.addPotionEffect(new PotionEffect(PotionEffectType.NAUSEA, 60, 0));
+                    }
+                    for (Beast o : live.values()) if (o.k.id().equals("merguard") && o.body.getWorld().equals(w) && o.body.getLocation().distanceSquared(c) < 12 * 12)
+                        o.body.setHealth(Math.min(o.k.health(), o.body.getHealth() + cfg("mermaid.heal-guards", 4)));
+                }
+            }
+            case "merguard" -> { if (m.angry() && m.t % 40 == 0) w.spawnParticle(Particle.DUST, c.clone().add(0, height(m) * 0.5, 0), 2, 0.2, 0.2, 0.2, 0, new Particle.DustOptions(Color.fromRGB(80, 200, 220), 1f)); }
             case "watcher" -> { // the gaze
                 m.lookAt = target != null && target.getLocation().distanceSquared(c) < 24 * 24 ? target : null;
                 if (m.t % 20 == 0) w.spawnParticle(Particle.DUST, c, 3, 0.4, 0.4, 0.4, 0, new Particle.DustOptions(Color.fromRGB(220, 40, 60), 1.1f));
@@ -1287,6 +1309,7 @@ final class DeepMobs implements Listener {
                 continue;
             }
             Kind k = pick(z, at);
+            if (k != null && k.temper() == Temper.AGGRESSIVE && MermaidDen.weight(at.getBlockX(), at.getBlockZ()) > 0.3) continue; // the Den is guarded
             if (k != null && k.id().equals("sulphurskater")) at.setY(DeepGenerator.SEA + 0.2); // it lives on the surface
             if (k != null) spawn(k, at);
             if (k != null && k.id().equals("razorcuda")) for (int i = 0; i < 2; i++) { // they hunt in threes
@@ -1503,6 +1526,7 @@ final class DeepMobs implements Listener {
             if (m.buried) erupt(m, by);
             if (m.k.temper() == Temper.NEUTRAL) {
                 anger(m, by, 400);
+                if (pl.den != null) pl.den.hurt(m, by); // the whole Den turns on you
                 if (m.k.id().equals("hollowkin")) for (Beast o : live.values()) // hurt one and they all come
                     if (o.k == m.k && o.body.getLocation().distanceSquared(ent.getLocation()) < 18 * 18) anger(o, by, 400);
             }
@@ -1524,6 +1548,7 @@ final class DeepMobs implements Listener {
             case "boglurker" -> p.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 60, 3)); // rooted
             case "leech" -> { if (m.latched <= 0) { m.latched = (int) cfg("leech.hold-ticks", 80); m.latchedTo = p.getUniqueId(); } }
             case "razorcuda" -> p.addPotionEffect(new PotionEffect(PotionEffectType.WITHER, 40, 0)); // it bleeds
+            case "merguard" -> { p.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 40, 1)); p.sendActionBar(ChatColor.DARK_AQUA + "The guard's net drags at you!"); }
             case "viperfang" -> p.addPotionEffect(new PotionEffect(PotionEffectType.WITHER, 60, 0));
             case "ghostshark" -> { p.addPotionEffect(new PotionEffect(PotionEffectType.POISON, 60, 0)); p.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 40, 1)); }
             case "gulper" -> { p.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 40, 2)); p.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 25, 0)); p.sendActionBar(ChatColor.DARK_PURPLE + "The Gulper Eel's mouth closes round you!"); }
@@ -1610,6 +1635,7 @@ final class DeepMobs implements Listener {
         }
         if (m.k.id().equals("gammaslime")) acidCloud(m, at, 2.6f, 140);
         Player killer = e.getEntity().getKiller();
+        if (pl.den != null) pl.den.died(m, killer);
         drops(m.k, e.getDrops(), killer);
     }
 
@@ -1618,7 +1644,7 @@ final class DeepMobs implements Listener {
         switch (k.id()) {
             case "gawker" -> drops.add(new ItemStack(Material.COD, 1 + random.nextInt(2)));
             case "bloatfin" -> drops.add(new ItemStack(Material.SALMON, 1));
-            case "jellywing" -> { drops.add(new ItemStack(Material.GLOW_INK_SAC, 1 + random.nextInt(2))); rare(killer, "jellywing.sirens-comb", 0.015, "coralia item sirens_comb 1 %p"); }
+            case "jellywing" -> { drops.add(new ItemStack(Material.GLOW_INK_SAC, 1 + random.nextInt(2))); }
             case "driftback" -> { drops.add(new ItemStack(Material.PRISMARINE_CRYSTALS, 6 + random.nextInt(8))); drops.add(new ItemStack(Material.SEA_LANTERN, 2 + random.nextInt(3))); drops.add(new ItemStack(Material.NAUTILUS_SHELL, 1 + random.nextInt(2))); rare(killer, "driftback.bag", 0.15, "darkloot bag 1 %p"); }
             case "clam" -> {
                 drops.add(new ItemStack(Material.PRISMARINE_SHARD, 1 + random.nextInt(3)));
@@ -1675,7 +1701,9 @@ final class DeepMobs implements Listener {
             case "stingray" -> { drops.add(new ItemStack(Material.LEATHER, 1 + random.nextInt(2))); drops.add(new ItemStack(Material.SPIDER_EYE, 1)); }
             case "mirrorfin" -> { drops.add(new ItemStack(Material.QUARTZ, 1 + random.nextInt(2))); drops.add(new ItemStack(Material.SALMON, 1)); }
             case "kelpstrangler" -> { drops.add(new ItemStack(Material.KELP, 4 + random.nextInt(5))); drops.add(new ItemStack(Material.SLIME_BALL, 1)); }
-            case "siren" -> { drops.add(new ItemStack(Material.PRISMARINE_CRYSTALS, 2 + random.nextInt(3))); if (random.nextDouble() < 0.3) drops.add(new ItemStack(Material.NAUTILUS_SHELL, 1)); rare(killer, "siren.sirens-comb", 0.03, "coralia item sirens_comb 1 %p"); }
+            case "mermaid" -> { drops.add(new ItemStack(Material.PRISMARINE_CRYSTALS, 2 + random.nextInt(3))); if (random.nextDouble() < 0.25) drops.add(new ItemStack(Material.NAUTILUS_SHELL, 1)); drops.add(new ItemStack(Material.SEA_PICKLE, 1 + random.nextInt(2))); }
+            case "merguard" -> { drops.add(new ItemStack(Material.PRISMARINE_SHARD, 2 + random.nextInt(3))); if (random.nextDouble() < cfg("merguard.trident-chance", 0.05)) drops.add(new ItemStack(Material.TRIDENT, 1)); rare(killer, "merguard.bag", 0.01, "darkloot bag 1 %p"); }
+            case "siren" -> { drops.add(new ItemStack(Material.PRISMARINE_CRYSTALS, 2 + random.nextInt(3))); if (random.nextDouble() < 0.3) drops.add(new ItemStack(Material.NAUTILUS_SHELL, 1)); }
             case "gulper" -> { drops.add(new ItemStack(Material.INK_SAC, 1 + random.nextInt(2))); drops.add(new ItemStack(Material.BONE, 1)); rare(killer, "gulper.inkjaw-bait", 0.015, "inkjaw item inkjaw_bait 1 %p"); }
             case "isopod" -> { drops.add(new ItemStack(Material.BONE_MEAL, 2 + random.nextInt(2))); drops.add(new ItemStack(Material.IRON_NUGGET, 1 + random.nextInt(3))); if (random.nextDouble() < 0.3) drops.add(new ItemStack(Material.TURTLE_SCUTE, 1)); }
             case "ghostshark" -> { drops.add(new ItemStack(Material.BONE, 1 + random.nextInt(2))); if (random.nextDouble() < 0.1) drops.add(new ItemStack(Material.GHAST_TEAR, 1)); }

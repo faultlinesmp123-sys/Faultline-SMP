@@ -122,6 +122,8 @@ final class DeepGenerator extends ChunkGenerator {
         h = Math.max(30, Math.min(86, h));
         double sw = Sulphur.weight(n, x, z);                    // the Sulphur Sea: shelves and islands out of the water
         if (sw > 0) h = h * (1 - sw) + Sulphur.floor(n, x, z) * sw;
+        double mw = MermaidDen.weight(x, z);                    // the Mermaid Den: a reef crater rising almost to the surface
+        if (mw > 0) h = h * (1 - mw) + MermaidDen.floor(n, x, z) * mw;
         return (int) Math.round(h);
     }
 
@@ -163,7 +165,7 @@ final class DeepGenerator extends ChunkGenerator {
         long h = hash(seed, cx, cz, 11);
         if (unit(h) > 0.66) return null;
         int x = cx * 144 + 24 + (int) (unit(hash(seed, cx, cz, 12)) * 96), z = cz * 144 + 24 + (int) (unit(hash(seed, cx, cz, 13)) * 96);
-        if (flatWeight(x, z) > 0 || Sulphur.near(x, z, 30)) return null;
+        if (flatWeight(x, z) > 0 || Sulphur.near(x, z, 30) || MermaidDen.near(x, z, 30)) return null;
         return new int[]{x, z};
     }
 
@@ -241,6 +243,7 @@ final class DeepGenerator extends ChunkGenerator {
             long h = hash(n.seed, gx + i, gz + j, 41);
             if (unit(h) > 0.3) continue;
             if (Sulphur.near((gx + i) * 48 + 24, (gz + j) * 48 + 24, 0)) continue; // the Sulphur Sea has its own columns
+            if (MermaidDen.near((gx + i) * 48 + 24, (gz + j) * 48 + 24, 0)) continue; // and the Den is the mermaids' (1.7.0)
             int sx = (gx + i) * 48 + 8 + (int) (unit(hash(n.seed, gx + i, gz + j, 42)) * 32);
             int sz = (gz + j) * 48 + 8 + (int) (unit(hash(n.seed, gx + i, gz + j, 43)) * 32);
             double r = 2.5 + unit(hash(n.seed, gx + i, gz + j, 44)) * 3.5;
@@ -351,15 +354,16 @@ final class DeepGenerator extends ChunkGenerator {
         Ruins.paint(this, n, p);  // abandoned ruins over the whole ocean floor
         Sulphur.paint(this, n, p); // the Sulphur Sea's columns, wrecks, ribcages, trees, fumaroles, pools and the Works
         Town.paint(this, p);      // the bubble and its drowned town over the build area
+        MermaidDen.paint(this, n, p); // the Mermaid Den: the palace, the houses, coral trees, lamps, clams, the gates (1.7.0)
     }
 
     private void column(Noise n, ChunkData d, Random rnd, int minY, int lx, int lz, int x, int z) {
         int up = upperFloor(n, x, z), ceil = abyssCeiling(n, x, z), floor = abyssFloor(n, x, z), mound = moundTop(n, x, z);
         if (up - ceil < 14) ceil = up - 14;
         int floorTop = Math.max(floor, mound == Integer.MIN_VALUE ? floor : mound);
-        double reg = region(n, x, z), reef = reef(x, z), sw = Sulphur.weight(n, x, z);
-        boolean sulphur = sw > 0.35;
-        boolean sunken = reg > 0.15 && !sulphur, warm = reef > 0.15 && !sulphur;
+        double reg = region(n, x, z), reef = reef(x, z), sw = Sulphur.weight(n, x, z), mw = MermaidDen.weight(x, z);
+        boolean sulphur = sw > 0.35, den = mw > 0.35;
+        boolean sunken = reg > 0.15 && !sulphur && !den, warm = reef > 0.15 && !sulphur && !den;
         // bedrock
         for (int y = minY; y <= minY + 2; y++) d.setBlock(lx, y, lz, y == minY || rnd.nextInt(3) > 0 ? Material.BEDROCK : Material.DEEPSLATE);
         // ---- the abyss floor + mounds
@@ -385,7 +389,7 @@ final class DeepGenerator extends ChunkGenerator {
             boolean cave = false;
             // (no caves near an island's surface: their water would spill out; 1.5.2: and none in the raised Sulphur plateau above
             // the old crust band, which made its chunks cost 3x to generate: 3 noise lookups a block, 250 blocks a column)
-            if (y > ceil + 1 && y < up - 3 && !(sw > 0 && (y > SEA - 14 || y > 70))) {
+            if (y > ceil + 1 && y < up - 3 && !((sw > 0 || mw > 0) && (y > SEA - 14 || y > 70))) {
                 double a = n.c1.noise(x / 44.0, y / 22.0, z / 44.0), b = n.c2.noise(x / 44.0, y / 22.0, z / 44.0);
                 cave = Math.abs(a) < 0.1 && Math.abs(b) < 0.1;                                     // winding tunnels
                 if (!cave) cave = n.c3.noise(x / 60.0, y / 26.0, z / 60.0) > 0.64;                  // caverns
@@ -396,8 +400,9 @@ final class DeepGenerator extends ChunkGenerator {
             if (cd < cr) cave = true;
             if (cave) { d.setBlock(lx, y, lz, Material.WATER); continue; }
             Material m;
-            if (y > up - 1) m = sulphur ? Sulphur.top(n, rnd, x, z, up) : surface(n, rnd, x, z, sunken, warm, up);
+            if (y > up - 1) m = sulphur ? Sulphur.top(n, rnd, x, z, up) : den ? MermaidDen.top(n, rnd, x, z, up) : surface(n, rnd, x, z, sunken, warm, up);
             else if (sulphur && y > up - 8) m = Sulphur.under(rnd, y, up);
+            else if (den && y > up - 8) m = MermaidDen.under(rnd, y, up);
             else if (y > up - 4) m = sunken ? Material.CYAN_TERRACOTTA : warm ? Material.SAND : Material.SANDSTONE;
             else if (cd < cr + 1.5) m = Material.DEEPSLATE_TILES;                                   // a chimney's walls
             else m = (Math.floorMod(y + band, 9) < 3) ? Material.DEEPSLATE : Material.TUFF;
@@ -415,12 +420,13 @@ final class DeepGenerator extends ChunkGenerator {
             if (d.getType(lx, y, lz) != Material.WATER) continue;
             int sp = sunken ? spire(n, x, y, z, up) : 0;
             if (sp > 0) { d.setBlock(lx, y, lz, sp == 2 ? Material.SEA_LANTERN : (y + x + z) % 3 == 0 ? Material.DARK_PRISMARINE : Material.PRISMARINE); continue; }
-            if (sulphur) continue;
+            if (sulphur || mw > 0) continue;
             if (y <= up + 26 && arch(n, x, y, z, up)) { d.setBlock(lx, y, lz, y % 3 == 0 ? Material.MOSSY_STONE_BRICKS : Material.STONE); continue; }
             if (y <= up + 8 && whale(n, x, y, z, up)) d.setBlock(lx, y, lz, Material.BONE_BLOCK);
         }
         if (sulphur) Sulphur.decorate(this, n, d, rnd, lx, lz, x, z, up);
-        else decorateUpper(n, d, rnd, lx, lz, x, z, up, sunken, warm);
+        else if (den) MermaidDen.decorate(this, n, d, rnd, lx, lz, x, z, up);
+        else if (mw <= 0) decorateUpper(n, d, rnd, lx, lz, x, z, up, sunken, warm);
         decorateCrust(n, d, rnd, lx, lz, ceil, up);
         decorateAbyss(n, d, rnd, lx, lz, x, z, floorTop, ceil);
     }
@@ -633,6 +639,7 @@ final class DeepGenerator extends ChunkGenerator {
             Noise n = g.noise(info);
             if (y < g.abyssCeiling(n, x, z)) return Biome.DEEP_COLD_OCEAN;
             if (Sulphur.weight(n, x, z) > 0.35) return Biome.SWAMP; // murky green water: the Sulphur Sea
+            if (MermaidDen.weight(x, z) > 0.35) return Biome.WARM_OCEAN; // clear tropical water: the Mermaid Den
             if (reef(x, z) > 0.15) return Biome.WARM_OCEAN;
             return g.region(n, x, z) > 0.15 ? Biome.DEEP_LUKEWARM_OCEAN : Biome.DEEP_OCEAN;
         }

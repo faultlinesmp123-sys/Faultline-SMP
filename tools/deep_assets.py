@@ -2444,6 +2444,91 @@ def watcher():
     return p
 
 
+# ---- the Mermaid Den (1.7.0): its people
+def mermaid():
+    """A mermaid of the Den: coral-pink tail with a gold sheen, a pearl necklace, a scallop top, long rose-gold hair with a
+    sea-star clip. Neutral: she sings when she's calm and fights when she isn't."""
+    p = Part("mermaid", 32, 256)
+    skn = W.skin((236, 200, 186), (226, 160, 160))
+    hr = W.hair((214, 120, 110), (255, 196, 160))
+    tl = W.scales((236, 110, 140), (150, 50, 100))
+    gold = W.grad((255, 220, 120), (210, 160, 60), 3, (255, 255, 230), 0.2)
+    pearl = W.grad((250, 248, 255), (210, 210, 235), 3, (255, 255, 255), 0.3)
+    p.add(-0.065, 0.0, -0.1, 0.065, 0.24, 0.1, skn)                                               # the torso
+    for s in (-1, 1): p.add(0.06, 0.13, s * 0.05 - 0.04, 0.078, 0.2, s * 0.05 + 0.04, W.grad((255, 170, 200), (220, 110, 170), 3, (255, 240, 250), 0.25))   # scallop top
+    for z in (-0.06, -0.03, 0.0, 0.03, 0.06): p.add(0.06, 0.2, z - 0.011, 0.08, 0.222, z + 0.011, pearl)   # pearl necklace
+    p.add(-0.075, 0.24, -0.075, 0.075, 0.41, 0.075, skn)                                         # the head
+    face_eyes(p, 0.075, 0.31, 0.35, 0.033, 0.033, (250, 252, 255), (60, 170, 200))
+    p.add(0.075, 0.275, -0.018, 0.08, 0.288, 0.018, solid((220, 90, 120), 2))                     # lips
+    p.bone("hair", (-0.02, 0.41, 0))
+    p.add(-0.09, 0.35, -0.09, 0.06, 0.43, 0.09, hr)
+    p.add(-0.11, -0.04, -0.085, -0.06, 0.42, 0.085, hr)                                          # hair to the waist
+    for s in (-1, 1): p.add(-0.07, 0.08, s * 0.08 - 0.02, 0.03, 0.4, s * 0.08 + 0.02, hr)
+    p.add(-0.02, 0.41, 0.05, 0.03, 0.45, 0.1, solid((255, 150, 60), 3))                            # a sea-star clip
+    for s in (-1, 1): p.add(-0.02, 0.36, s * 0.075, 0.02, 0.42, s * 0.105, W.membrane((255, 170, 190), (255, 230, 240)))   # fin ears
+    p.bone(None)
+    for side, s in (("l", -1), ("r", 1)):
+        p.bone("arm" + side, (0.0, 0.22, s * 0.1))
+        a, b = sorted((s * 0.1, s * 0.145))
+        p.add(-0.022, -0.02, a, 0.022, 0.22, b, skn)
+        p.add(-0.022, 0.0, a, 0.024, 0.03, b, gold)                                               # a gold bangle
+        p.add(-0.018, -0.06, a, 0.035, -0.02, b, skn)
+        p.bone(None)
+    p.bone("tail", (0.0, 0.0, 0))
+    p.add(-0.07, -0.04, -0.1, 0.07, 0.02, 0.1, gold)                                              # a gold girdle
+    pts = [(0.0, 0.0, 0.0), (-0.01, -0.16, 0.0), (-0.06, -0.32, 0.0), (-0.16, -0.43, 0.0), (-0.29, -0.47, 0.0)]
+    W.tube(p, pts, 0.1, 0.035, tl)
+    p.add(-0.5, -0.56, -0.13, -0.3, -0.4, 0.13, finp((255, 140, 180), (255, 225, 235)))          # the fluke
+    for (x, y) in ((-0.02, -0.1), (-0.07, -0.25)): p.add(x - 0.03, y, -0.11, x + 0.03, y + 0.03, 0.11, W.membrane((255, 150, 190), (255, 235, 245)))
+    p.bone(None)
+    p.pivots["body"] = (0, 0, 0)
+    p.anim("tail", "rot", (14, 0, 0), 1.4).anim("hair", "rot", (7, 0, 5), 2.4).anim("arml", "rot", (20, 0, 12), 1.8).anim("armr", "rot", (20, 0, -12), 1.8, 0.5)
+    p.anim("body", "pos", (0, 0.9, 0), 2.2)
+    return p
+
+
+def merguard():
+    """A guard of the Den: a merman in prismarine armour, a fin-crested helm, shell pauldrons, a deep blue tail. He
+    carries a real trident (the drowned underneath holds it)."""
+    p = Part("merguard", 32, 256)
+    skn = W.skin((170, 200, 196), (140, 180, 180))
+    arm = W.grad((90, 170, 160), (40, 100, 110), 4, (170, 240, 220), 0.12)
+    dark = W.grad((40, 70, 90), (20, 40, 60), 3, (90, 140, 160), 0.08)
+    tl = W.scales((40, 90, 160), (18, 40, 90))
+    gold = W.grad((255, 215, 110), (200, 150, 50), 3, (255, 255, 220), 0.2)
+    p.add(-0.08, 0.0, -0.12, 0.08, 0.26, 0.12, arm)                                               # breastplate
+    p.add(0.078, 0.06, -0.03, 0.086, 0.2, 0.03, gold)                                              # the Den's crest
+    p.add(-0.08, 0.26, -0.08, 0.08, 0.44, 0.08, skn)                                              # head
+    face_eyes(p, 0.08, 0.33, 0.37, 0.035, 0.03, (240, 250, 255), (230, 190, 60), slit=True)
+    p.add(-0.09, 0.38, -0.09, 0.09, 0.48, 0.09, arm)                                              # helm
+    p.add(0.07, 0.36, -0.09, 0.095, 0.39, 0.09, dark)                                              # brow guard
+    p.bone("crest", (-0.02, 0.48, 0))
+    p.add(-0.14, 0.48, -0.012, 0.06, 0.6, 0.012, W.membrane((60, 150, 200), (160, 230, 255)))     # the fin crest
+    p.bone(None)
+    for side, s in (("l", -1), ("r", 1)):
+        a, b = sorted((s * 0.11, s * 0.19))
+        p.add(-0.07, 0.2, a, 0.07, 0.28, b, W.grad((230, 200, 220), (180, 140, 170), 3, (255, 240, 250), 0.2))   # shell pauldrons
+        p.bone("arm" + side, (0.0, 0.22, s * 0.13))
+        a, b = sorted((s * 0.12, s * 0.17))
+        p.add(-0.026, -0.04, a, 0.026, 0.2, b, skn)
+        p.add(-0.03, -0.04, a, 0.03, 0.06, b, dark)                                               # bracers
+        p.bone(None)
+    p.bone("tail", (0.0, 0.0, 0))
+    p.add(-0.08, -0.06, -0.12, 0.08, 0.02, 0.12, dark)                                             # a scale skirt
+    pts = [(0.0, 0.0, 0.0), (-0.02, -0.17, 0.0), (-0.08, -0.34, 0.0), (-0.19, -0.45, 0.0), (-0.33, -0.48, 0.0)]
+    W.tube(p, pts, 0.115, 0.04, tl)
+    p.add(-0.52, -0.58, -0.14, -0.33, -0.4, 0.14, finp((50, 120, 200), (160, 220, 255)))          # the fluke
+    p.add(-0.04, -0.2, -0.13, 0.02, -0.17, 0.13, W.membrane((50, 120, 200), (160, 220, 255)))
+    p.bone(None)
+    p.pivots["body"] = (0, 0, 0)
+    p.anim("tail", "rot", (12, 0, 0), 1.3).anim("crest", "rot", (0, 0, 8), 1.8).anim("arml", "rot", (10, 0, 6), 2.2).anim("armr", "rot", (10, 0, -6), 2.2, 0.5)
+    p.anim("body", "pos", (0, 0.6, 0), 2.0)
+    return p
+
+
+DEN_MOBS = [mermaid, merguard]
+
+
 NEW_SUNLIT = [sailfin, mantaglider, leafydragon, pearlhorse, hammerjaw, razorcuda, stingray, mirrorfin, kelpstrangler, siren]
 NEW_ABYSS = [gulper, isopod, ghostshark, vampsquid, dumbo, swallower, chainlight, viperfang, hagfish, watcher]
 
@@ -2453,7 +2538,7 @@ SULPHUR_MOBS = [acideel, trasher, radiator, flakcrab, nucleartoad, gammaslime, s
 
 
 MOBS = [gawker, bloatfin, jellywing, driftback, clam, lumenbell, gasbloom, fangstalker, blastfin, burrowshark,
-        cavecrawler, glowgrub, shellsnake, lampsquid, volteel, needlejaw, devilfish, riftwarper, hollowkin, sharkquid] + SULPHUR_MOBS + RAIN_MOBS + NEW_SUNLIT + NEW_ABYSS
+        cavecrawler, glowgrub, shellsnake, lampsquid, volteel, needlejaw, devilfish, riftwarper, hollowkin, sharkquid] + SULPHUR_MOBS + RAIN_MOBS + NEW_SUNLIT + NEW_ABYSS + DEN_MOBS
 
 
 # =====================================================================================================================
@@ -2629,6 +2714,10 @@ def main():
             if not os.path.exists(src): continue
             dst = os.path.join(rp, "sounds/faultline/deep", nm + ".ogg"); os.makedirs(os.path.dirname(dst), exist_ok=True); shutil.copy(src, dst)
             sd[f"faultline:deep.{nm}"] = {"category": "music", "sounds": [{"name": f"sounds/faultline/deep/{nm}", "stream": True}]}
+        src = os.path.join(music, "coralia.ogg")   # Coralia's fight (FaultlineBosses plays faultline:coralia.music)
+        if os.path.exists(src):
+            dst = os.path.join(rp, "sounds/faultline/coralia/music.ogg"); os.makedirs(os.path.dirname(dst), exist_ok=True); shutil.copy(src, dst)
+            sd["faultline:coralia.music"] = {"category": "record", "sounds": [{"name": "sounds/faultline/coralia/music", "stream": True}]}
         W.jw(os.path.join(rp, "sounds/sound_definitions.json"), {"format_version": "1.14.0", "sound_definitions": sd})
     W.jw(os.path.join(rp, "textures/item_texture.json"), {"resource_pack_name": "faultline_deep", "texture_name": "atlas.items", "texture_data": item_tex})
     W.jw(os.path.join(rp, "manifest.json"), {"format_version": 2, "header": {

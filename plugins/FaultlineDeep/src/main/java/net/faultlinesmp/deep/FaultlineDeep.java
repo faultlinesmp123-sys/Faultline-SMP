@@ -37,6 +37,7 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
     Journey journey;
     Ocean ocean;
     AcidRain acidRain;
+    Den den;
 
     @Override
     public void onEnable() {
@@ -46,6 +47,7 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
         journey = new Journey(this);
         ocean = new Ocean(this);
         acidRain = new AcidRain(this);
+        den = new Den(this);
         getServer().getPluginManager().registerEvents(mobs, this);
         getServer().getPluginManager().registerEvents(journey, this);
         getServer().getPluginManager().registerEvents(ocean, this);
@@ -61,6 +63,7 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
         if (journey != null) journey.shutdown();
         if (ocean != null) ocean.shutdown();
         if (acidRain != null) acidRain.shutdown();
+        if (den != null) den.shutdown();
     }
 
     String worldName() { return getConfig().getString("world", DEFAULT_WORLD); }
@@ -86,7 +89,8 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
             w.setGameRule(GameRule.KEEP_INVENTORY, false);
         } catch (RuntimeException ignored) { } // (a rule a newer server renamed)
         w.setStorm(false);
-        double r = getConfig().getDouble("border-radius", 1050);
+        double r = getConfig().getDouble("border-radius", 2000);
+        if (Math.abs(r - 1050) < 1e-9) r = 2000; // 1.7.0: the border is 2000 (an old config's 1050 reads as that): room for the Mermaid Den
         w.getWorldBorder().setCenter(0, 0);
         w.getWorldBorder().setSize(r * 2);
         w.setSpawnLocation(0, DeepGenerator.SEA, 0);
@@ -191,15 +195,34 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
                     default -> sender.sendMessage(acidRain.start() ? ChatColor.GREEN + "The Acid Rain begins over the Sulphur Sea." : ChatColor.RED + "It's already raining (or the world isn't loaded).");
                 }
             }
+            case "den" -> { // the Mermaid Den
+                String what = args.length > 1 ? args[1].toLowerCase() : "info";
+                switch (what) {
+                    case "tp" -> {
+                        Player who = args.length > 2 ? Bukkit.getPlayerExact(args[2]) : self;
+                        if (who == null || world == null) { sender.sendMessage(ChatColor.RED + "Who? (or the world isn't loaded)"); return true; }
+                        who.teleport(new org.bukkit.Location(world, MermaidDen.MX + 0.5, MermaidDen.PLAZA + 4, MermaidDen.MZ + 40.5, 180, 10));
+                        sender.sendMessage(ChatColor.GREEN + "Sent " + who.getName() + " to the Mermaid Den (" + MermaidDen.MX + ", " + MermaidDen.MZ + ").");
+                    }
+                    case "raid" -> {
+                        if (self == null) { sender.sendMessage("Players only."); return true; }
+                        sender.sendMessage(den.startWar(self) ? ChatColor.GREEN + "The Den goes to war." : ChatColor.RED + "It's already at war (or the world isn't loaded).");
+                    }
+                    case "stop" -> { den.endWar(false); sender.sendMessage(ChatColor.GREEN + "Stopped the Den's war."); }
+                    case "reset" -> { den.reset(); sender.sendMessage(ChatColor.GREEN + "All ten mermaids are home again."); }
+                    case "rise" -> { den.rise("Called by an admin."); sender.sendMessage(ChatColor.GREEN + "Coralia rises over her throne."); }
+                    default -> sender.sendMessage(ChatColor.LIGHT_PURPLE + den.info() + ChatColor.YELLOW + "\n/deep den [info|tp [player]|raid|stop|reset|rise]");
+                }
+            }
             case "lucki" -> { journey.removeLucki(); journey.spawnLucki(); sender.sendMessage(ChatColor.GREEN + "Lucki is back at his spot (if it's set and loaded)."); }
             case "info", "" -> {
                 sender.sendMessage(ChatColor.DARK_AQUA + "" + ChatColor.BOLD + "The Dark Ocean " + ChatColor.GRAY + "(" + worldName() + (world == null ? ", NOT LOADED" : "") + ")");
                 sender.sendMessage(ChatColor.GRAY + "Kingdom: " + spot(journey.place("kingdom")) + "  Lucki: " + spot(journey.place("lucki")) + "  Whirlpool: " + spot(journey.poolSpot()));
                 sender.sendMessage(ChatColor.GRAY + "Creatures out: " + mobs.live.size() + "   Event: " + (ocean.event == null ? "none" : ocean.event) + "   Acid Rain: " + (acidRain.active ? "falling" : "no"));
                 if (self != null && world != null && self.getWorld().equals(world)) sender.sendMessage(ChatColor.GRAY + "You're in: " + zone(self.getLocation()));
-                sender.sendMessage(ChatColor.YELLOW + "/deep set <kingdom|lucki|whirlpool>, tp [player], town [player], sulphur [player], spawn <mob>, egg <mob> [n] [player], event <pressure|undertow|stop>, acidrain [start|stop|goblin], lucki");
+                sender.sendMessage(ChatColor.YELLOW + "/deep set <kingdom|lucki|whirlpool>, tp [player], town [player], sulphur [player], spawn <mob>, egg <mob> [n] [player], event <pressure|undertow|stop>, acidrain [start|stop|goblin], den [info|tp|raid|stop|reset|rise], lucki");
             }
-            default -> sender.sendMessage(ChatColor.YELLOW + "/deep [info|set|tp|town|sulphur|spawn|egg|event|acidrain|lucki]");
+            default -> sender.sendMessage(ChatColor.YELLOW + "/deep [info|set|tp|town|sulphur|spawn|egg|event|acidrain|den|lucki]");
         }
         return true;
     }
@@ -209,10 +232,11 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         List<String> out = new ArrayList<>();
-        if (args.length == 1) out.addAll(List.of("info", "set", "tp", "town", "sulphur", "spawn", "egg", "event", "acidrain", "lucki"));
+        if (args.length == 1) out.addAll(List.of("info", "set", "tp", "town", "sulphur", "spawn", "egg", "event", "acidrain", "den", "lucki"));
         else if (args.length == 2 && args[0].equalsIgnoreCase("set")) out.addAll(List.of("kingdom", "lucki", "whirlpool"));
         else if (args.length == 2 && (args[0].equalsIgnoreCase("spawn") || args[0].equalsIgnoreCase("egg"))) out.addAll(DeepMobs.KINDS.keySet());
         else if (args.length == 2 && args[0].equalsIgnoreCase("event")) out.addAll(List.of("pressure", "undertow", "stop"));
+        else if (args.length == 2 && args[0].equalsIgnoreCase("den")) out.addAll(List.of("info", "tp", "raid", "stop", "reset", "rise"));
         else if (args.length == 2 && args[0].equalsIgnoreCase("acidrain")) out.addAll(List.of("start", "stop", "goblin"));
         String last = args[args.length - 1].toLowerCase();
         out.removeIf(s -> !s.startsWith(last));

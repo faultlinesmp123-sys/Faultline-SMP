@@ -243,7 +243,41 @@ def golem(built, aL, aR, sL, sR, lL, lR, bp, drop, hy=0.0, hp=0.0):
     return sc
 
 
+
+def coralia(built, bp=0.0, roll=0.0, tail=0.0, fluke=0.0, hair=20.0, hy=0.0, hp=0.0, swL=20, spL=12, swR=20, spR=12, tilt=0.0, wrath=False):
+    """Mirrors DeepBosses.Coralia.pose(): tail + fluke from the waist, torso, head on the neck, hair off the back of the
+    head, arms on the shoulders, the trident in the right hand."""
+    sc = Scene(built)
+    k, yaw = 2.2, 0.0
+    sfx = "_wrath" if wrath else ""
+    pos = np.array([0, 3.2 * k, 0.0])
+    F = frame(yaw, bp, roll)
+    def J(o, M, p): return np.asarray(o, float) + M @ (np.array(p, float) * k)
+    T = Rz(math.radians(tail))
+    sc.pose("coralia_tail" + sfx, k, pos, yaw, bp, roll, T)
+    sc.pose("coralia_fluke" + sfx, k, J(pos, F @ T, (-1.75, -2.8, 0)), yaw, bp, roll, T @ Rz(math.radians(40 + fluke)))
+    sc.pose("coralia_torso" + sfx, k, pos, yaw, bp, roll)
+    neck = J(pos, F, (0, 1.25, 0))
+    H = Ry(math.radians(-hy)) @ Rz(math.radians(-hp))
+    sc.pose("coralia_head" + sfx, k, neck, yaw, bp, roll, H)
+    sc.pose("coralia_hair" + sfx, k, J(neck, F @ H, (-0.22, 0.72, 0)), yaw, bp, roll, H @ Rz(math.radians(-hair)))
+    qL = Rz(math.radians(swL)) @ Rx(math.radians(spL))
+    qR = Rz(math.radians(swR)) @ Rx(math.radians(-spR))
+    shL, shR = J(pos, F, (0, 1.0, -0.55)), J(pos, F, (0, 1.0, 0.55))
+    sc.pose("coralia_arm" + sfx, k, shL, yaw, bp, roll, qL)
+    sc.pose("coralia_arm" + sfx, k, shR, yaw, bp, roll, qR)
+    sc.pose("coralia_trident" + sfx, k, J(shR, F @ qR, (0, -1.3, 0)), yaw, bp, roll, qR @ Rz(math.radians(tilt)))
+    return sc
+
+
 SCENES = {
+    "coralia": lambda b: [coralia(b).render(az=-60, el=10, title="Coralia (front)", span=14),
+                          coralia(b).render(az=120, el=10, title="back", span=14),
+                          coralia(b, bp=72, tail=-18, fluke=-25, hair=70, hp=-50, swL=-25, spL=8, swR=-25, spR=8).render(az=-90, el=15, title="swimming", span=14),
+                          coralia(b, bp=88, roll=30, tail=-10, fluke=20, hair=85, hp=-70, swL=-35, spL=10, swR=165, spR=4, tilt=180).render(az=-60, el=15, title="tidal dash (lance)", span=14),
+                          coralia(b, bp=-10, tail=15, fluke=30, hair=30, hp=15, swL=40, spL=60, swR=175, spR=6, tilt=180).render(az=-60, el=10, title="trident raised", span=14),
+                          coralia(b, bp=5, tail=-25, fluke=-30, hair=40, swL=60, spL=95, swR=60, spR=95, tilt=0).render(az=-60, el=10, title="waltz / aria", span=14),
+                          coralia(b, wrath=True, hair=35, swL=30, spL=40, swR=150, spR=10, tilt=180).render(az=-60, el=10, title="WRATH (phase 3)", span=14)],
     "leviathan": lambda b: [serpent(b, "lev_head", "lev_body", "lev_tail", 1.0, 2.2, 7, 2.5, 0.75).render(title="the Leviathan"),
                             serpent(b, "lev_head", "lev_body", "lev_tail", 1.0, 2.2, 7, 2.5, 0.75, opened=42).render(az=100, el=8, title="side, roaring"),
                             serpent(b, "lev_head", "lev_body", "lev_tail", 1.0, 2.2, 7, 2.5, 0.75, bedrock=True).render(title="Bedrock")],

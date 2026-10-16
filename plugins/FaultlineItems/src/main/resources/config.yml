@@ -328,10 +328,10 @@ wardrobe:
 item-textures:
   enabled: true
   url: "https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/main/FaultlineSMP.zip"
-  hash: "36cbc77044fc3251c11bae5a83437e04d06ac6cb"
+  hash: "7be642497f2a9e3f156d88f63aac1b29f835771a"
   # The Dark Ocean's music, a second pack sent beside the main one (empty url = not sent)
   music-url: "https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/main/FaultlineDeepMusic.zip"
-  music-hash: "4eeae32896366b7d39e77462ea3cd3c672e96da2"
+  music-hash: "e9e6ed1623ab28d2d2af74286259157caf2dc299"
   # 1.2.50: the plugin downloads each pack itself and sends the hash the file REALLY has (a stale hash above made
   # players' games reject the pack). It re-checks every few minutes (cheap: only downloads again if the file changed).
   auto-hash: true

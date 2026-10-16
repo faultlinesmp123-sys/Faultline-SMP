@@ -1,6 +1,6 @@
 # FaultlineDeep: the Dark Ocean. Changing this file in the jar does NOT update the copy on the server.
 world: faultline_deep
-border-radius: 1050          # the world border: -1050..1050 (the build area at 681, -951 reaches z -1026)
+border-radius: 2000          # the world border: -2000..2000 (1.7.0: was 1050; the Mermaid Den is at 1200, 700)
 
 # The Black Market (the Bubble's plot) and the Pit: players without faultlinedeep.market can't break / build / empty
 # buckets there or open its shulker boxes, barrels..., and nobody can break the Bubble's glass (the sea would pour in).
@@ -24,6 +24,18 @@ sulphur:
   green-rain-particles: 40  # green drops round each player every 4 ticks
 
 # The Acid Rain (1.5.0): an event over the Sulphur Sea. /deep acidrain [start|stop|goblin]
+# THE MERMAID DEN (1.7.0, round 1200, 700): ten mermaids + six guards (Den.java). Kill all ten, or drink an Omen IV
+# (Bad Omen IV exactly) inside it for a raid, and Coralia rises over her throne. The dead come home after restock-minutes.
+den:
+  enabled: true
+  restock-minutes: 30
+  guard-respawn-seconds: 120
+  raid:
+    wave-1: 6
+    wave-2: 8
+    next-wave-at: 2
+    give-up-seconds: 60
+
 acid-rain:
   enabled: true
   check-minutes: 5          # every 5 minutes, if anyone is in or near the Sulphur Sea...

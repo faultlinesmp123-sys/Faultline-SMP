@@ -1506,148 +1506,275 @@ def _cm_face(head, sk, line, iris, shadow, brow, skin_c=None):
     head.add(0.32, 0.22, -0.025, 0.37, 0.27, 0.025, solid(_c(skin_c or CM_SKIN, -25), 2))   # the little nose
 
 
-def coralia():
-    """Waist = origin; the tail hangs down and back to a fan fin; the torso up to the neck (y 1.25); arms hang from
-    the shoulders (0, 1.0, +-0.55). Phase 3 parts (*_medusa) share these joints."""
-    sk, line = toon(CM_SKIN, CM_LINE), CM_LINE
-    tl = fish_tail(CM_TAIL, CM_TAIL_M)
-    tail = Part("coralia_tail", 12, 256)
-    rounded(tail, -0.46, -0.95, -0.52, 0.46, 0.1, 0.52, fish_tail(CM_TAIL, CM_TAIL_M, CM_SKIN, 2.5), 0.18)   # round hips, her skin in scallops on top
-    rounded(tail, -0.72, -1.85, -0.44, 0.26, -0.85, 0.44, tl, 0.16)
-    rounded(tail, -1.3, -2.55, -0.34, -0.4, -1.75, 0.34, tl, 0.13)
-    rounded(tail, -1.85, -3.0, -0.25, -1.15, -2.4, 0.25, tl, 0.1)
-    for s in (-1, 1):                                                         # skin scallops hanging over the green
-        for k in range(-3, 4):
-            z0, z1 = sorted((k * 0.13 - 0.05, k * 0.13 + 0.05))
-            tail.add(0.46, -0.12 - (0.04 if k % 2 else 0), z0, 0.49, 0.06, z1, toon(CM_SKIN, CM_LINE, 4))
-            a0, a1 = sorted((s * 0.52, s * 0.55))
-            tail.add(k * 0.12 - 0.05, -0.12 - (0.04 if k % 2 else 0), a0, k * 0.12 + 0.05, 0.06, a1, toon(CM_SKIN, CM_LINE, 4))
-    tail.bone("fin", (-1.9, -2.8, 0))
-    fin = toon(_c(CM_TAIL, 25), CM_TAIL_M)
-    for (x0, y0, x1, y1) in ((-3.1, -3.8, -1.8, -2.6), (-2.9, -2.6, -1.9, -1.8), (-3.5, -4.3, -2.8, -3.5), (-3.4, -1.9, -2.7, -1.2)):
-        tail.add(x0, y0, -0.07, x1, y1, 0.07, fin)
-    for i in range(4):
-        tail.add(-3.3 + i * 0.25, -4.0 + i * 0.6, -0.09, -1.9, -3.85 + i * 0.6, 0.09, solid(CM_TAIL_M, 3))
-    tail.bone(None)
-    tail.anim("fin", "rot", (0, 0, 14), 1.8)
+def nacre(base):
+    """Mother-of-pearl: pastel colours shifting across the face, fine sheen ridges."""
+    def f(reg, face, rng):
+        h, w = reg.shape[:2]
+        reg[:, :, 3] = 255
+        for y in range(h):
+            for x in range(w):
+                t = math.sin(x * 0.7 + y * 0.45) * 0.5 + 0.5
+                u = math.sin(x * 0.31 - y * 0.6 + 1.7) * 0.5 + 0.5
+                col = (base[0] - 22 + 40 * t, base[1] - 26 + 36 * u, base[2] - 10 + 26 * (1 - t))
+                if (y + x // 3) % 6 == 0: col = _c(tuple(int(v) for v in col), 22)
+                reg[y, x, :3] = np.clip(col, 0, 255)
+    return f
 
-    def torso_part(name, skin_c, top_paint, leafy):
-        t = Part(name, 20, 256)
-        skp = toon(skin_c, CM_LINE)
-        rounded(t, -0.26, 0.04, -0.34, 0.26, 0.55, 0.34, skp, 0.12)          # a slim waist
-        rounded(t, -0.3, 0.5, -0.42, 0.3, 1.02, 0.42, skp, 0.13)             # chest
-        t.add(-0.3, 0.96, -0.56, 0.26, 1.12, 0.56, skp)                       # shoulders
-        t.add(-0.11, 1.08, -0.13, 0.11, 1.3, 0.13, skp)                       # neck
-        t.add(0.255, 0.26, -0.02, 0.275, 0.3, 0.02, solid(_c(skin_c, -70), 1))   # navel
-        for s in (-1, 1):
-            z0, z1 = sorted((s * 0.03, s * 0.33))
-            if leafy:
-                t.add(0.27, 0.6, z0, 0.42, 0.86, z1, top_paint)               # leaves
-                for k in range(3):
-                    q0, q1 = sorted((s * (0.06 + k * 0.1), s * (0.11 + k * 0.1)))
-                    t.add(0.3, 0.86, q0, 0.38, 0.95 - 0.03 * (k % 2), q1, top_paint)   # ragged leaf tips
-            else:
-                t.add(0.27, 0.6, z0, 0.44, 0.86, z1, top_paint)               # a scallop shell
-                q0, q1 = sorted((s * 0.08, s * 0.28))
-                t.add(0.3, 0.86, q0, 0.41, 0.9, q1, top_paint)                # its rounded top
-        t.add(-0.31, 0.7, -0.43, 0.27, 0.76, 0.43, top_paint)                 # the band round her back
-        for k in range(3):                                                    # old scars on her side
-            t.add(0.0 + k * 0.06, 0.62 + k * 0.07, 0.42, 0.06 + k * 0.06, 0.65 + k * 0.07, 0.43, solid((206, 120, 164), 2))
+
+def queen_scales(c, hi, shade=-34):
+    """Iridescent scales: offset rows of little arcs, a sheen on each, darker toward the bottom of the face."""
+    def f(reg, face, rng):
+        h, w = reg.shape[:2]
+        reg[:, :, 3] = 255
+        for y in range(h):
+            for x in range(w):
+                col = _mix(c, _c(c, shade), y / max(1, h - 1)) if face not in ("up", "down") else c
+                row = y // 3
+                ox = (x + (row % 2) * 2) % 4
+                if y % 3 == 2 and ox in (1, 2): col = _c(col, -38)
+                elif y % 3 == 0 and ox in (1, 2): col = _mix(col, hi, 0.55)
+                reg[y, x, :3] = col
+    return f
+
+
+def strands(top, bottom, sheen):
+    """Long hair: a colour fading from top to bottom, strand lines, a sheen band."""
+    def f(reg, face, rng):
+        h, w = reg.shape[:2]
+        reg[:, :, 3] = 255
+        for y in range(h):
+            for x in range(w):
+                t = y / max(1, h - 1)
+                col = _mix(top, bottom, t) if face not in ("up", "down") else top
+                if x % 3 == 0: col = _c(col, -26)
+                elif x % 5 == 2 and int(t * 10) in (2, 3): col = _mix(col, sheen, 0.6)
+                reg[y, x, :3] = col
+    return f
+
+
+def lace(c, vein, rim):
+    """A fin like lace: a pale membrane, fine ribs fanning, a darker rim."""
+    def f(reg, face, rng):
+        h, w = reg.shape[:2]
+        reg[:, :, 3] = 255
+        for y in range(h):
+            for x in range(w):
+                col = _mix(c, _c(c, 30), x / max(1, w - 1))
+                if (x * 2 + y) % 5 == 0: col = vein
+                if y == 0 or y == h - 1 or x == 0 or x == w - 1: col = rim
+                reg[y, x, :3] = col
+    return f
+
+
+# CORALIA (1.7.0 remodel), Queen of the Mermaid Den: porcelain skin, long hair fading from aqua to violet to rose,
+# a crown of living coral and pearls, a mother-of-pearl bodice strung with pearls, a gold collar with a glowing pearl, a
+# tail fading from teal to sapphire to orchid, a lace fan fluke, gold armlets and a coral-and-gold trident.
+# Phase 3 = her WRATH: cold sea-blue skin with glowing veins, hair turned to writhing eels, a black coral crown,
+# burning magenta eyes, a dark tail with glowing stripes. The *_wrath parts are swapped in at phase 3.
+QC_SKIN, QC_BLUSH, QC_LINE = (252, 226, 216), (244, 168, 176), (70, 40, 70)
+QC_HAIR = ((70, 210, 214), (150, 110, 226), (246, 140, 206))
+QC_TAIL = ((44, 196, 196), (60, 120, 220), (150, 90, 222), (226, 110, 200))
+QC_GOLD, QC_PEARL, QC_CORAL, QC_IRIS = (246, 206, 96), (250, 246, 255), (246, 96, 122), (64, 222, 230)
+QW_SKIN, QW_VEIN, QW_EYE, QW_HAIR = (122, 150, 204), (255, 80, 200), (255, 70, 150), ((40, 30, 70), (90, 40, 120))
+QW_TAIL = ((30, 40, 80), (40, 30, 90), (60, 24, 90), (90, 20, 100))
+
+
+def coralia():
+    """Waist = origin. Joints (Java DeepBosses.Coralia uses the same numbers): neck (0, 1.25, 0); shoulders (0, 1.0, +-0.55);
+    the hair hangs from the back of the head (-0.22, 0.72, 0 in the head's frame); the fluke from the tail's end
+    (-1.85, -2.8, 0); the trident's grip is in the right hand (0, -1.3, 0 in the arm's frame), its shaft along +y."""
+    gold = grad(QC_GOLD, _c(QC_GOLD, -50), 3, (255, 250, 220), 0.25)
+    pearl = glow(QC_PEARL)
+    out = []
+
+    def tail_part(name, cols, wrath):
+        t = Part(name, 14, 256)
+        hi = (255, 120, 220) if wrath else (220, 255, 250)
+        segs = ((-0.44, -0.95, -0.5, 0.44, 0.08, 0.5, 0.18), (-0.7, -1.85, -0.42, 0.24, -0.85, 0.42, 0.16),
+                (-1.28, -2.55, -0.33, -0.4, -1.75, 0.33, 0.13), (-1.86, -3.0, -0.24, -1.15, -2.4, 0.24, 0.1))
+        for i, (x0, y0, z0, x1, y1, z1, r) in enumerate(segs):
+            rounded(t, x0, y0, z0, x1, y1, z1, queen_scales(cols[i], hi), r)
+        t.add(-0.45, -0.06, -0.51, 0.45, 0.06, 0.51, solid(QW_VEIN, 2) if wrath else gold)     # the girdle
+        for k in range(-3, 4):                                                                # pearls (shells) hanging from it
+            z = k * 0.13
+            t.add(0.44, -0.16 - (0.05 if k % 2 else 0), z - 0.04, 0.5, -0.06, z + 0.04, glow(QW_VEIN) if wrath else pearl)
+        if wrath:                                                                             # glowing stripes down the tail
+            for (x0, y0, x1, y1, z) in ((0.2, -1.7, 0.25, -0.9, 0.0), (-0.45, -2.45, -0.4, -1.8, 0.0), (-1.2, -2.9, -1.15, -2.45, 0.0)):
+                t.add(x0, y0, -0.05, x1 + 0.02, y1, 0.05, glow(QW_VEIN))
+        fin = lace(_c(cols[1], 40), _c(cols[1], -20), gold if False else _c(QC_GOLD, -30)) if not wrath else lace((70, 30, 100), QW_VEIN, (20, 10, 40))
+        for s in (-1, 1):                                                                     # side frills
+            z0, z1 = sorted((s * 0.42, s * 0.62))
+            t.add(-0.4, -1.75, z0, 0.0, -1.05, z1, fin)
+            z0, z1 = sorted((s * 0.33, s * 0.5))
+            t.add(-1.0, -2.45, z0, -0.65, -1.95, z1, fin)
         return t
 
-    torso = torso_part("coralia_torso", CM_SKIN, shell_paint(CM_BRA, (110, 172, 226)), False)
-    torso_md = torso_part("coralia_torso_medusa", MD_SKIN, leaf_paint(MD_LEAF, (40, 110, 56)), True)
+    def fluke_part(name, c, vein, rim, tips):
+        """A fan fluke in its own frame: the tail goes on along -x (DeepBosses turns it 40 degrees to meet the tail's end),
+        two broad lobes sweep out up-back and down-back as one crescent, ribbed, tipped with pearls."""
+        f = Part(name, 16, 256)
+        lc = lace(c, vein, rim)
+        f.add(-0.45, -0.24, -0.08, 0.2, 0.24, 0.08, lc)                       # the stem
+        for s_ in (-1, 1):
+            for (x0, x1, y0, y1) in ((-0.85, -0.15, 0.05, 0.55), (-1.15, -0.45, 0.35, 0.9), (-1.45, -0.75, 0.7, 1.2),
+                                     (-1.75, -1.1, 1.0, 1.45), (-2.0, -1.5, 1.25, 1.6)):
+                ya, yb = sorted((s_ * y0, s_ * y1))
+                f.add(x0, ya, -0.06, x1, yb, 0.06, lc)
+            for (x0, x1, y) in ((-1.0, -0.2, 0.3), (-1.6, -0.7, 0.85), (-1.95, -1.3, 1.3)):   # ribs
+                ya, yb = sorted((s_ * (y - 0.03), s_ * (y + 0.03)))
+                f.add(x0, ya, -0.075, x1, yb, 0.075, solid(vein, 2))
+            ya, yb = sorted((s_ * 1.52, s_ * 1.68))
+            f.add(-2.1, ya, -0.085, -1.94, yb, 0.085, tips)                   # pearl tips
+        f.add(-1.0, -0.3, -0.06, -0.4, 0.3, 0.06, lc)                         # the middle, cut back in a notch
+        return f
 
-    # ---- the mermaid's head
-    head = Part("coralia_head", 32, 512)
-    _cm_face(head, sk, line, CM_IRIS, CM_SHADOW, (96, 50, 126))
-    head.add(0.32, 0.12, -0.075, 0.39, 0.21, 0.075, toon(CM_LIP, (170, 70, 120), 4))   # pouty pink lips
-    head.add(0.385, 0.158, -0.05, 0.395, 0.17, 0.05, solid((170, 70, 120), 1))
-    hp = toon(CM_HAIR, CM_LINE, 10)
-    head.add(0.14, 0.64, -0.31, 0.34, 0.8, 0.31, hp)                          # the fringe swept across
-    rounded(head, -0.38, 0.5, -0.37, 0.18, 0.88, 0.37, hp, 0.14)              # the crown
-    head.add(-0.42, 0.05, -0.36, -0.24, 0.8, 0.36, hp)                        # the back of the bob
-    for s in (-1, 1):
-        z0, z1 = sorted((s * 0.29, s * 0.39))
-        head.add(-0.36, 0.06, z0, 0.2, 0.74, z1, hp)                          # the sides of the bob, to the jaw
-        f0, f1 = sorted((s * 0.36, s * 0.46))
-        head.add(-0.3, -0.02, f0, 0.16, 0.1, f1, hp)                          # flicking out at the ends
-    cp = curl(CM_CURL, CM_LINE, CM_SPOT)
-    for k, z in enumerate((-0.3, -0.1, 0.1, 0.3)):                            # a row of octopus-tentacle curls on top
-        y0 = 0.8 + (0.04 if k % 2 else 0)
-        head.add(-0.28, y0, z - 0.11, 0.28, y0 + 0.24, z + 0.11, cp)         # a roll seen end-on from the front
-        for (dx, dy) in ((0.05, 0.24), (-0.12, 0.25), (0.2, 0.2)):            # pink suckers standing off them
-            head.add(dx - 0.025, y0 + dy - 0.01, z - 0.025, dx + 0.025, y0 + dy + 0.04, z + 0.025, solid(CM_SPOT, 2))
-    head.add(-0.26, 0.82, -0.47, 0.18, 0.98, -0.37, cp)                       # one more curl dropping down at the side
-    bp = button(CM_HAIR, CM_LINE)
-    def bun(x0, y0, z0, x1, y1, z1):
-        """A round bun: a core box with thinner layers on each side (no crossed boxes: the X must stay whole on its face)."""
-        head.add(x0, y0, z0, x1, y1, z1, bp)
-        e = 0.05
-        head.add(x0 + e, y0 + e, z0 - e, x1 - e, y1 - e, z0, hp); head.add(x0 + e, y0 + e, z1, x1 - e, y1 - e, z1 + e, hp)
-        head.add(x0 + e, y1, z0 + e, x1 - e, y1 + e, z1 - e, hp); head.add(x0 - e, y0 + e, z0 + e, x0, y1 - e, z1 - e, hp)
-        head.add(x1, y0 + 0.06, z0 + 0.06, x1 + 0.02, y1 - 0.06, z1 - 0.06, bp)   # the button face, standing proud
-    bun(-0.34, 0.96, -0.46, 0.02, 1.32, -0.1)                                 # the big bun with its button X
-    bun(-0.42, 0.92, 0.14, -0.12, 1.2, 0.42)                                  # the smaller one
-
-    # ---- the Medusa's head
-    hm = Part("coralia_head_medusa", 32, 512)
-    msk = toon(MD_SKIN, CM_LINE)
-    _cm_face(hm, msk, line, MD_EYE, (90, 170, 110), (40, 60, 40), MD_SKIN)
-    hm.add(0.315, 0.08, -0.17, 0.35, 0.23, 0.17, solid((60, 18, 40), 2))      # a wide grin
-    for k in range(7):                                                        # fangs, top and bottom
-        z = -0.15 + k * 0.05
-        hm.add(0.34, 0.18, z - 0.018, 0.37, 0.23, z + 0.018, solid((250, 250, 245), 2))
-        hm.add(0.34, 0.08, z - 0.018 + 0.025, 0.37, 0.125, z + 0.018 + 0.025, solid((250, 250, 245), 2))
-    hm.add(0.34, 0.06, -0.03, 0.4, 0.09, 0.03, solid((110, 200, 90), 2))      # a drip of green drool
-    sp = snake_paint(MD_SNAKE, MD_BELLY, CM_LINE)
-    rounded(hm, -0.4, 0.48, -0.4, 0.22, 0.9, 0.4, sp, 0.14)                   # the nest of coils
-    for s in (-1, 1):
-        z0, z1 = sorted((s * 0.3, s * 0.42))
-        hm.add(-0.36, 0.1, z0, 0.12, 0.7, z1, sp)
-    hm.add(-0.44, 0.1, -0.36, -0.26, 0.82, 0.36, sp)
-    for k, z in enumerate((-0.28, 0.0, 0.28)):                                # coils looping over the top
-        hm.add(-0.3, 0.86, z - 0.12, 0.2, 1.08 + 0.04 * (k % 2), z + 0.12, sp)
-
-    def snake_head(part, x, y, z, dx=1.0, dz=0.0, big=1.0):
-        """A snake's head pointing (dx, dz) in the y plane: yellow eyes on top."""
-        L, W, H = 0.22 * big, 0.15 * big, 0.12 * big
-        hx, hz = L / 2 * dx + W / 2 * abs(dz), L / 2 * abs(dz) + W / 2 * abs(dx)
-        part.add(x - hx, y, z - hz, x + hx, y + H, z + hz, sp)
+    def torso_part(name, sk, wrath):
+        t = Part(name, 22, 256)
+        rounded(t, -0.24, 0.04, -0.32, 0.24, 0.55, 0.32, sk, 0.12)          # slim waist
+        rounded(t, -0.28, 0.5, -0.4, 0.28, 1.0, 0.4, sk, 0.13)              # chest
+        t.add(-0.28, 0.95, -0.54, 0.24, 1.1, 0.54, sk)                      # shoulders
+        t.add(-0.1, 1.08, -0.12, 0.1, 1.3, 0.12, sk)                        # neck
+        t.add(0.235, 0.26, -0.02, 0.255, 0.3, 0.02, solid(_c(QC_SKIN if not wrath else QW_SKIN, -70), 1))   # navel
+        cup = nacre((236, 220, 246)) if not wrath else grad((40, 20, 60), (20, 10, 30), 3, QW_VEIN, 0.06)
+        trim = gold if not wrath else glow(QW_VEIN)
         for s in (-1, 1):
-            ex, ez = x + dx * L * 0.22 - dz * s * W * 0.32, z + dz * L * 0.22 + dx * s * W * 0.32
-            part.add(ex - 0.025 * big, y + H - 0.01, ez - 0.025 * big, ex + 0.025 * big, y + H + 0.04 * big, ez + 0.025 * big, glow(MD_EYE))
+            z0, z1 = sorted((s * 0.03, s * 0.32))
+            t.add(0.26, 0.6, z0, 0.42, 0.86, z1, cup)                       # shell cups
+            q0, q1 = sorted((s * 0.07, s * 0.28))
+            t.add(0.29, 0.86, q0, 0.4, 0.9, q1, cup)
+            t.add(0.41, 0.6, z0, 0.43, 0.63, z1, trim)                      # their gold rims
+            for i in range(6):                                              # pearl strands draped from the shoulders
+                zz = s * (0.48 - i * 0.075)
+                yy = 1.02 - i * 0.055 - (0.02 if i % 2 else 0)
+                t.add(0.24 + i * 0.005, yy - 0.03, zz - 0.03, 0.3 + i * 0.005, yy + 0.03, zz + 0.03, pearl if not wrath else glow(QW_VEIN))
+        t.add(-0.29, 0.7, -0.41, 0.27, 0.76, 0.41, trim)                    # the band round her back
+        t.add(-0.14, 1.04, -0.18, 0.16, 1.12, 0.18, trim)                   # the collar
+        t.add(0.16, 0.98, -0.05, 0.22, 1.08, 0.05, glow((200, 255, 250)) if not wrath else glow(QW_VEIN))   # its glowing pearl
+        for k in range(-2, 3):                                              # a belt of little scallops
+            z = k * 0.13
+            t.add(0.22, 0.04, z - 0.055, 0.27, 0.15, z + 0.055, shell_paint((250, 190, 210), (210, 120, 160)) if not wrath else solid((40, 20, 60), 3))
+        if wrath:                                                           # glowing veins
+            for (y0, y1, z) in ((0.1, 0.5, -0.2), (0.2, 0.55, 0.22), (0.55, 0.95, 0.35), (0.6, 0.9, -0.36)):
+                t.add(0.24, y0, z - 0.012, 0.29, y1, z + 0.012, glow(QW_VEIN))
+        return t
 
-    snake_head(hm, 0.24, 1.0, -0.3); snake_head(hm, 0.26, 1.06, 0.02); snake_head(hm, 0.22, 0.98, 0.32)
-    snake_head(hm, 0.0, 0.62, -0.5, 0.0, -1.0); snake_head(hm, 0.0, 0.58, 0.5, 0.0, 1.0)
-    # the big one rearing up on the left, jaws wide, tongue out
-    for i, (x, y) in enumerate(((-0.22, 1.0), (-0.2, 1.16), (-0.12, 1.32), (0.0, 1.46), (0.14, 1.56))):
-        hm.add(x - 0.08, y, -0.4, x + 0.08, y + 0.18, -0.24, sp)
-    hm.add(0.18, 1.62, -0.42, 0.5, 1.76, -0.22, sp)                           # upper jaw
-    hm.add(0.18, 1.46, -0.4, 0.46, 1.54, -0.24, sp)                           # lower jaw
-    hm.add(0.2, 1.54, -0.4, 0.44, 1.62, -0.24, solid((150, 30, 70), 3))       # inside the mouth
-    for s in (-1, 1):
-        hm.add(0.4, 1.56, -0.32 + s * 0.06 - 0.015, 0.44, 1.62, -0.32 + s * 0.06 + 0.015, solid((255, 255, 250), 1))   # fangs
-        hm.add(0.3, 1.76, -0.32 + s * 0.06 - 0.03, 0.36, 1.81, -0.32 + s * 0.06 + 0.03, glow(MD_EYE))                  # eyes
-    hm.add(0.44, 1.55, -0.335, 0.66, 1.57, -0.305, solid((240, 110, 150), 2)) # the forked tongue
-    hm.add(0.64, 1.55, -0.36, 0.72, 1.57, -0.34, solid((240, 110, 150), 2))
-    hm.add(0.64, 1.55, -0.3, 0.72, 1.57, -0.28, solid((240, 110, 150), 2))
+    def head_part(name, sk, wrath):
+        h = Part(name, 32, 512)
+        rounded(h, -0.28, 0.0, -0.28, 0.3, 0.68, 0.28, sk, 0.11)
+        h.add(-0.1, -0.05, -0.15, 0.25, 0.08, 0.15, sk)                     # the chin
+        iris = QW_EYE if wrath else QC_IRIS
+        for s in (-1, 1):
+            z0, z1 = sorted((s * 0.05, s * 0.2))
+            h.add(0.29, 0.29, z0, 0.32, 0.45, z1, eye_paint((20, 10, 30) if wrath else (252, 252, 255), iris, (18, 16, 26) if not wrath else iris, slit=wrath))
+            a0, a1 = sorted((s * 0.19, s * 0.25))
+            h.add(0.3, 0.42, a0, 0.35, 0.46, a1, solid(QC_LINE, 1))         # lashes sweeping out
+            b0, b1 = sorted((s * 0.06, s * 0.21))
+            h.add(0.3, 0.5, b0, 0.34, 0.525, b1, solid((120, 70, 120) if not wrath else (20, 10, 30), 1))   # arched brows
+            c0, c1 = sorted((s * 0.13, s * 0.22))
+            if not wrath: h.add(0.29, 0.22, c0, 0.305, 0.28, c1, solid(QC_BLUSH, 2))   # blush
+        h.add(0.3, 0.2, -0.022, 0.34, 0.27, 0.022, solid(_c(QC_SKIN if not wrath else QW_SKIN, -24), 2))   # nose
+        if wrath:
+            h.add(0.29, 0.08, -0.12, 0.32, 0.16, 0.12, solid((40, 10, 30), 2))    # a snarl
+            for k in range(5):
+                z = -0.09 + k * 0.045
+                h.add(0.31, 0.12, z - 0.012, 0.34, 0.165, z + 0.012, solid((250, 245, 255), 1))   # fangs
+            for (y0, y1, z) in ((0.25, 0.5, 0.25), (0.15, 0.35, -0.24)):
+                h.add(0.2, y0, z - 0.012, 0.3, y1, z + 0.012, glow(QW_VEIN))
+        else:
+            h.add(0.29, 0.1, -0.065, 0.335, 0.16, 0.065, toon((236, 100, 130), (170, 50, 90), 4))   # coral lips
+        hp = strands(QW_HAIR[0], QW_HAIR[1], QW_VEIN) if wrath else strands(QC_HAIR[0], QC_HAIR[1], (255, 255, 255))
+        rounded(h, -0.32, 0.5, -0.32, 0.2, 0.84, 0.32, hp, 0.12)            # the hair on top
+        h.add(0.12, 0.56, -0.3, 0.32, 0.74, 0.02, hp)                       # bangs swept to one side
+        for s in (-1, 1):
+            z0, z1 = sorted((s * 0.27, s * 0.35))
+            h.add(-0.3, 0.05, z0, 0.22, 0.72, z1, hp)                       # framing locks
+            e0, e1 = sorted((s * 0.3, s * 0.5))
+            h.add(-0.2, 0.3, e0, 0.05, 0.6, e1, lace((255, 190, 220), (230, 120, 180), (200, 90, 150)) if not wrath else lace((60, 30, 90), QW_VEIN, (20, 10, 40)))   # fin ears
+        # the crown: a gold band, branches of coral, pearls (wrath: black coral)
+        band = gold if not wrath else solid((30, 20, 40), 3)
+        h.add(-0.3, 0.8, -0.3, 0.26, 0.88, 0.3, band)
+        cor = solid(QC_CORAL, 3) if not wrath else solid((24, 16, 30), 3)
+        for (x, z, ht) in ((0.22, 0.0, 0.42), (0.18, -0.16, 0.3), (0.18, 0.16, 0.3), (0.05, -0.25, 0.24), (0.05, 0.25, 0.24),
+                           (-0.12, -0.22, 0.2), (-0.12, 0.22, 0.2), (-0.25, 0.0, 0.22)):
+            h.add(x - 0.03, 0.86, z - 0.03, x + 0.03, 0.86 + ht, z + 0.03, cor)
+            h.add(x - 0.03, 0.86 + ht * 0.6, z - 0.08 if z <= 0 else z, x + 0.03, 0.86 + ht * 0.6 + 0.05, z if z <= 0 else z + 0.08, cor)   # a side branch
+            h.add(x - 0.035, 0.86 + ht, z - 0.035, x + 0.035, 0.86 + ht + 0.06, z + 0.035, pearl if not wrath else glow(QW_VEIN))
+        h.add(0.24, 0.82, -0.06, 0.32, 0.94, 0.06, glow((200, 255, 250)) if not wrath else glow(QW_EYE))   # the crown's great pearl
+        return h
 
-    def arm_part(name, skin_c, claws):
+    def hair_part(name, wrath):
+        """Flowing hair from the back of her head, down past her waist; the ends curl out (a bone, so Bedrock waves them)."""
+        hr = Part(name, 16, 256)
+        if not wrath:
+            top, mid, end = QC_HAIR
+            hr.add(-0.34, -1.0, -0.33, 0.0, 0.1, 0.33, strands(top, mid, (255, 255, 255)))
+            for s in (-1, 1):
+                z0, z1 = sorted((s * 0.2, s * 0.4))
+                hr.add(-0.3, -1.3, z0, -0.02, -0.2, z1, strands(top, mid, (255, 255, 255)))
+            for i in range(5):                                              # pearls woven in
+                hr.add(-0.02, -0.15 - i * 0.2, -0.03 + (i % 2) * 0.06 - 0.03, 0.02, -0.09 - i * 0.2, 0.03 + (i % 2) * 0.06, pearl)
+            hr.bone("ends", (-0.2, -1.0, 0))
+            hr.add(-0.44, -1.9, -0.36, -0.06, -0.95, 0.36, strands(mid, end, (255, 230, 250)))
+            for s in (-1, 1):                                               # curling tips
+                z0, z1 = sorted((s * 0.2, s * 0.5))
+                hr.add(-0.56, -2.15, z0, -0.2, -1.8, z1, strands(end, _c(end, -30), (255, 255, 255)))
+            hr.bone(None)
+            hr.anim("ends", "rot", (0, 0, 12), 2.2)
+        else:
+            sp = snake_paint((70, 40, 110), (150, 110, 200), (20, 10, 30))
+            hr.add(-0.34, -0.8, -0.33, 0.0, 0.1, 0.33, sp)
+            hr.bone("eels", (-0.2, -0.6, 0))
+            for i, (z, ln) in enumerate(((-0.3, 1.6), (-0.1, 1.9), (0.1, 1.75), (0.3, 1.5))):   # eels for hair, glowing heads
+                hr.add(-0.3 - i * 0.03, -0.6 - ln, z - 0.07, -0.16 - i * 0.03, -0.6, z + 0.07, sp)
+                hr.add(-0.34, -0.72 - ln, z - 0.09, -0.12, -0.6 - ln, z + 0.09, sp)
+                hr.add(-0.13, -0.68 - ln, z - 0.05, -0.1, -0.64 - ln, z + 0.05, glow(QW_VEIN))
+            hr.bone(None)
+            hr.anim("eels", "rot", (0, 10, 16), 1.4)
+        return hr
+
+    def arm_part(name, sk, wrath):
         a = Part(name, 16, 128)
-        skp = toon(skin_c, CM_LINE, 8)
-        rounded(a, -0.11, -0.6, -0.11, 0.11, 0.05, 0.11, skp, 0.04)
-        rounded(a, -0.09, -1.12, -0.09, 0.09, -0.55, 0.09, skp, 0.03)
-        a.add(-0.1, -1.3, -0.11, 0.12, -1.1, 0.11, skp)                        # hand
-        for z in (-0.08, -0.027, 0.027, 0.08):                                 # long fingers (claws at phase 3)
-            a.add(-0.01, -1.58, z - 0.022, 0.05, -1.28, z + 0.022, skp)
-            if claws: a.add(0.0, -1.68, z - 0.018, 0.045, -1.58, z + 0.018, solid((40, 80, 50), 2))
-        a.add(0.02, -1.42, -0.15, 0.07, -1.2, -0.105, skp)                     # thumb
-        for k in range(3):                                                     # scars across the upper arm
-            a.add(-0.04 + k * 0.02, -0.28 - k * 0.08, 0.105, 0.08 + k * 0.02, -0.25 - k * 0.08, 0.115, solid((206, 120, 164), 2))
+        rounded(a, -0.1, -0.6, -0.1, 0.1, 0.05, 0.1, sk, 0.04)
+        rounded(a, -0.085, -1.12, -0.085, 0.085, -0.55, 0.085, sk, 0.03)
+        a.add(-0.09, -1.3, -0.1, 0.11, -1.1, 0.1, sk)                       # hand
+        for z in (-0.07, -0.023, 0.023, 0.07):
+            a.add(-0.01, -1.5, z - 0.02, 0.05, -1.28, z + 0.02, sk)
+            if wrath: a.add(0.0, -1.62, z - 0.016, 0.045, -1.5, z + 0.016, solid((30, 10, 50), 2))   # claws
+        a.add(0.02, -1.4, -0.14, 0.07, -1.2, -0.095, sk)                    # thumb
+        a.add(-0.115, -0.2, -0.115, 0.115, -0.12, 0.115, gold if not wrath else glow(QW_VEIN))   # armlet
+        for i in range(4):                                                  # pearls at the wrist
+            a.add(-0.11 + i * 0.07, -1.12, -0.11, -0.06 + i * 0.07, -1.07, 0.11, pearl if not wrath else glow(QW_VEIN))
+        a.add(-0.24, -1.05, -0.02, -0.08, -0.6, 0.02, lace((255, 190, 220), (230, 120, 180), _c(QC_GOLD, -30)) if not wrath else lace((60, 30, 90), QW_VEIN, (20, 10, 40)))   # a forearm fin
+        if wrath:
+            a.add(0.09, -0.55, -0.012, 0.11, -0.1, 0.012, glow(QW_VEIN))
         return a
 
-    return [tail, torso, head, arm_part("coralia_arm", CM_SKIN, False), torso_md, hm, arm_part("coralia_arm_medusa", MD_SKIN, True)]
+    def trident_part(name, wrath):
+        """The Den's trident: grip at the origin, shaft along +y, three barbed prongs at the top, a pearl at their root."""
+        tr = Part(name, 16, 256)
+        shaft = gold if not wrath else solid((30, 20, 40), 3)
+        tr.add(-0.04, -0.9, -0.04, 0.04, 1.7, 0.04, shaft)
+        tr.add(-0.07, -0.95, -0.07, 0.07, -0.8, 0.07, solid(QC_CORAL, 3) if not wrath else glow(QW_VEIN))   # the butt cap
+        for y in (-0.3, 0.3, 0.9):                                          # coral bands
+            tr.add(-0.055, y, -0.055, 0.055, y + 0.06, 0.055, solid(QC_CORAL, 3) if not wrath else glow(QW_VEIN))
+        tr.add(-0.08, 1.7, -0.32, 0.08, 1.8, 0.32, shaft)                   # the crosspiece
+        tr.add(-0.09, 1.66, -0.09, 0.09, 1.84, 0.09, glow((200, 255, 250)) if not wrath else glow(QW_EYE))   # the pearl
+        prong = gold if not wrath else glow(QW_VEIN)
+        for z, ht in ((-0.28, 0.55), (0.0, 0.75), (0.28, 0.55)):
+            tr.add(-0.035, 1.8, z - 0.035, 0.035, 1.8 + ht, z + 0.035, prong)
+            tr.add(-0.03, 1.8 + ht - 0.08, z - 0.03, 0.03, 1.8 + ht + 0.14, z + 0.03, prong)       # the point
+            zb0, zb1 = sorted((z, z + (0.08 if z >= 0 else -0.08)))
+            tr.add(-0.03, 1.8 + ht - 0.2, zb0, 0.03, 1.8 + ht - 0.12, zb1, prong)                   # a barb
+        tr.add(-0.02, 1.2, 0.04, 0.02, 1.62, 0.1, solid((246, 140, 180), 3) if not wrath else solid((60, 20, 80), 3))   # a tassel
+        return tr
+
+    out += [tail_part("coralia_tail", QC_TAIL, False), fluke_part("coralia_fluke", (190, 150, 240), (150, 90, 210), _c(QC_GOLD, -30), pearl),
+            torso_part("coralia_torso", toon(QC_SKIN, QC_LINE), False), head_part("coralia_head", toon(QC_SKIN, QC_LINE), False),
+            hair_part("coralia_hair", False), arm_part("coralia_arm", toon(QC_SKIN, QC_LINE, 8), False), trident_part("coralia_trident", False)]
+    out += [tail_part("coralia_tail_wrath", QW_TAIL, True), fluke_part("coralia_fluke_wrath", (60, 30, 100), QW_VEIN, (20, 10, 40), glow(QW_VEIN)),
+            torso_part("coralia_torso_wrath", toon(QW_SKIN, QC_LINE), True), head_part("coralia_head_wrath", toon(QW_SKIN, QC_LINE), True),
+            hair_part("coralia_hair_wrath", True), arm_part("coralia_arm_wrath", toon(QW_SKIN, QC_LINE, 8), True), trident_part("coralia_trident_wrath", True)]
+    return out
 
 
 # ---------------------------------------------------------------- OLD INKJAW (a giant octopus)
@@ -2538,8 +2665,9 @@ def deep_boss_icons(by, size=16):
         return ps
     out = {"brine_scourge": render_icon(size=size, pieces=serpent("scourge", 1.9, 3) + [at("scourge_mandible", 0.55, 0, -1.0), at("scourge_mandible_r", 0.55, 0, 1.0)]), "umbral_leviathan": render_icon(size=size, pieces=serpent("umbral", 2.05, 3)),
            "the_lament": render_icon(size=size, pieces=serpent("lament", 2.3, 2))}
-    out["coralia"] = render_icon(size=size, pieces=[at("coralia_tail"), at("coralia_torso"), at("coralia_head", 0, 1.25, 0),
-                                  at("coralia_arm", 0, 1.0, -0.55), at("coralia_arm", 0, 1.0, 0.55)])
+    out["coralia"] = render_icon(size=size, pieces=[at("coralia_tail"), at("coralia_fluke", -1.75, -2.8, 0), at("coralia_torso"),
+                                  at("coralia_head", 0, 1.25, 0), at("coralia_hair", -0.22, 1.97, 0), at("coralia_arm", 0, 1.0, -0.55),
+                                  at("coralia_arm", 0, 1.0, 0.55), at("coralia_trident", 0, -0.3, 0.55)])
     ink = [at("inkjaw_body")]
     for j, (x, z) in enumerate(((-0.5, -0.6), (0.5, -0.6), (-0.5, 0.6), (0.5, 0.6), (0, 0))):
         for sgi in range(3):

@@ -580,6 +580,22 @@
    },
    {
     "type": "definition",
+    "model": "faultline:wild/coralia_fluke",
+    "bedrock_identifier": "faultline:wild_coralia_fluke",
+    "display_name": "coralia_fluke",
+    "bedrock_options": {
+     "icon": "faultline.coralia",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
     "model": "faultline:wild/coralia_torso",
     "bedrock_identifier": "faultline:wild_coralia_torso",
     "display_name": "coralia_torso",
@@ -612,6 +628,22 @@
    },
    {
     "type": "definition",
+    "model": "faultline:wild/coralia_hair",
+    "bedrock_identifier": "faultline:wild_coralia_hair",
+    "display_name": "coralia_hair",
+    "bedrock_options": {
+     "icon": "faultline.coralia",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
     "model": "faultline:wild/coralia_arm",
     "bedrock_identifier": "faultline:wild_coralia_arm",
     "display_name": "coralia_arm",
@@ -628,9 +660,9 @@
    },
    {
     "type": "definition",
-    "model": "faultline:wild/coralia_torso_medusa",
-    "bedrock_identifier": "faultline:wild_coralia_torso_medusa",
-    "display_name": "coralia_torso_medusa",
+    "model": "faultline:wild/coralia_trident",
+    "bedrock_identifier": "faultline:wild_coralia_trident",
+    "display_name": "coralia_trident",
     "bedrock_options": {
      "icon": "faultline.coralia",
      "allow_offhand": false
@@ -644,9 +676,9 @@
    },
    {
     "type": "definition",
-    "model": "faultline:wild/coralia_head_medusa",
-    "bedrock_identifier": "faultline:wild_coralia_head_medusa",
-    "display_name": "coralia_head_medusa",
+    "model": "faultline:wild/coralia_tail_wrath",
+    "bedrock_identifier": "faultline:wild_coralia_tail_wrath",
+    "display_name": "coralia_tail_wrath",
     "bedrock_options": {
      "icon": "faultline.coralia",
      "allow_offhand": false
@@ -660,9 +692,89 @@
    },
    {
     "type": "definition",
-    "model": "faultline:wild/coralia_arm_medusa",
-    "bedrock_identifier": "faultline:wild_coralia_arm_medusa",
-    "display_name": "coralia_arm_medusa",
+    "model": "faultline:wild/coralia_fluke_wrath",
+    "bedrock_identifier": "faultline:wild_coralia_fluke_wrath",
+    "display_name": "coralia_fluke_wrath",
+    "bedrock_options": {
+     "icon": "faultline.coralia",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:wild/coralia_torso_wrath",
+    "bedrock_identifier": "faultline:wild_coralia_torso_wrath",
+    "display_name": "coralia_torso_wrath",
+    "bedrock_options": {
+     "icon": "faultline.coralia",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:wild/coralia_head_wrath",
+    "bedrock_identifier": "faultline:wild_coralia_head_wrath",
+    "display_name": "coralia_head_wrath",
+    "bedrock_options": {
+     "icon": "faultline.coralia",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:wild/coralia_hair_wrath",
+    "bedrock_identifier": "faultline:wild_coralia_hair_wrath",
+    "display_name": "coralia_hair_wrath",
+    "bedrock_options": {
+     "icon": "faultline.coralia",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:wild/coralia_arm_wrath",
+    "bedrock_identifier": "faultline:wild_coralia_arm_wrath",
+    "display_name": "coralia_arm_wrath",
+    "bedrock_options": {
+     "icon": "faultline.coralia",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:wild/coralia_trident_wrath",
+    "bedrock_identifier": "faultline:wild_coralia_trident_wrath",
+    "display_name": "coralia_trident_wrath",
     "bedrock_options": {
      "icon": "faultline.coralia",
      "allow_offhand": false

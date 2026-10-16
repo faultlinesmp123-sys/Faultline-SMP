@@ -1,5 +1,5 @@
 name: FaultlineBosses
-version: 1.6.8
+version: 1.6.9
 main: net.faultlinesmp.bosses.FaultlineBosses
 api-version: '1.21'
 author: FaultlineSMP
@@ -73,7 +73,7 @@ commands:
     usage: /umbral <summon [world x y z]|kill|phase|item>
     permission: bosses.admin
   coralia:
-    description: "Admin: summon or remove Coralia, Siren of the Shoals (Dark Ocean mini boss), skip to a phase, or give its summon item"
+    description: "Admin: summon or remove Coralia, Queen of the Den (the Mermaid Den's boss), skip to a phase, or give its summon item"
     usage: /coralia <summon [world x y z]|kill|phase|item>
     permission: bosses.admin
   inkjaw:

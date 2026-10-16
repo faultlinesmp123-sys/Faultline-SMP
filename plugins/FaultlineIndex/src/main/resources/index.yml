@@ -1012,7 +1012,7 @@ entries:
   - {chapter: deep, id: deep_jellywing, name: "Jellywing", icon: deep_jellywing, detect-tag: faultline_deep_jellywing,
      where: "The Dark Ocean's Sunlit Sea (y 35 up to the surface).",
      does: "Passive. A glowing ray as clear as jelly, gliding over the reefs.",
-     drops: ["Glow Ink Sacs|100%", "Siren's Comb (summons Coralia)|1.5%", "Dark Loot Bag|1% (0.4% in the Sunlit Sea)"]}
+     drops: ["Glow Ink Sacs|100%", "Dark Loot Bag|1% (0.4% in the Sunlit Sea)"]}
   - {chapter: deep, id: deep_driftback, name: "Driftback", icon: deep_driftback, detect-tag: faultline_deep_driftback,
      where: "The Dark Ocean's Sunlit Sea (y 35 up to the surface).",
      does: "Passive. A gentle giant with a whole reef growing on its back. It hums as it drifts by.",
@@ -1221,7 +1221,15 @@ entries:
   - {chapter: deep, id: deep_siren, name: "Sea Siren", icon: deep_siren, detect-tag: faultline_deep_siren,
      where: "The Dark Ocean's Sunlit Sea (y 35 up to the surface).",
      does: "Aggressive. Half woman, half fish, 34 health. Her song (4 seconds) makes everyone within 14 blocks dizzy and draws them to her. Hit her to break it.",
-     drops: ["Prismarine Crystals|100%", "Nautilus Shell|30%", "Siren's Comb (summons Coralia)|3%", "Dark Loot Bag|0.4% (1% in the Abyss)"]}
+     drops: ["Prismarine Crystals|100%", "Nautilus Shell|30%", "Dark Loot Bag|0.4% (1% in the Abyss)"]}
+  - {chapter: deep, id: deep_mermaid, name: "Mermaid", icon: deep_mermaid, detect-tag: faultline_deep_mermaid,
+     where: "Only in the Mermaid Den (the coral city round 1200, 700 in the Dark Ocean's Sunlit Sea). Ten of them, each with a house of her own.",
+     does: "Neutral: she sings and drifts round her home, 40 health. Hurt one and the whole Den turns on you; angry, her bubble song slows and dizzies you and mends the guards. Kill all ten and CORALIA rises over her throne (they come home after 30 minutes).",
+     drops: ["Prismarine Crystals|100%", "Sea Pickles|100%", "Nautilus Shell|25%"]}
+  - {chapter: deep, id: deep_merguard, name: "Mermaid Guard", icon: deep_merguard, detect-tag: faultline_deep_merguard,
+     where: "Only in the Mermaid Den: one inside each of its four gates, two by Coralia's throne, and whole waves of them in a raid.",
+     does: "Neutral: a merman in prismarine armour with a real trident (he throws it), 70 health. His net slows you. Drink an OMEN IV (Bad Omen IV exactly) inside the Den and it goes to war: every mermaid and guard attacks, then two waves of guards come in through the gates; wipe them all out and Coralia rises.",
+     drops: ["Prismarine Shards|100%", "Trident|5%", "Dark Loot Bag|1%"]}
   - {chapter: deep, id: deep_gulper, name: "Gulper Eel", icon: deep_gulper, detect-tag: faultline_deep_gulper,
      where: "The Abyss, the deepest part of the Dark Ocean (pitch black: bring a Lantern of Souls).",
      does: "Aggressive. A whip of a body behind a huge mouth, 40 health, its tail tip glowing pink. Its bite closes round you: slowed and blinded for a moment.",
@@ -1274,10 +1282,10 @@ entries:
      where: "A BOSS of the Dark Ocean, below the Sunlit Sea. Use an Umbral Sonar (Rift Warper, 1%), or it finds you on its own (0.1% every 5 minutes). 2,600 health (+20% per extra fighter).",
      does: "A huge shadow leviathan (after Below Zero's Shadow Leviathan): a dark slate body, a great flat wedge of a head rising into a crest, three red eyes down each cheek, huge black hooked claws at its jaw, a glowing cyan comb of rib-teeth under its belly, long black leg-spikes raking down its sides, and red lights down its back to a finned tail. Shadow Charge, the Grab (it seizes you: hit it hard to break free), Vanish (into the dark, out behind you), Shriek; NEW: Eclipse Coil (a ring of shadow closes: get out before it does) and Abyssal Echo (sonar marks you, lances follow).",
      drops: ["4-6 Mythic Goodie Bags|100%", "3 Goodie Bags|100%", "1,500 XP|100%", "3 Dark Loot Bags|100%", "A Dark Loot rare|50%"]}
-  - {chapter: bosses, id: coralia, name: "Coralia, Siren of the Shoals", icon: coralia, detect-tag: faultline_coralia,
-     where: "A mini boss of the Dark Ocean's open sea (never in the caves or the Abyss). Use a Siren's Comb (Jellywing, 1.5%), or she finds you (0.1% every 5 minutes). 900 health (+25% per extra fighter).",
-     does: "A giant mermaid with purple octopus-curl hair, a shell top and a green tail; at a third of her health she turns into her MEDUSA form (green skin, a nest of snakes, fangs, claws). Thralls of the Shoal, Petrifying Gaze (LOOK AWAY when her eyes glow), Eel Lash, Bubble Barrage; NEW: Siren Song (it pulls you to her) and Coral Spires (bursting up from the floor under you).",
-     drops: ["4-6 Mythic Goodie Bags|100%", "3 Goodie Bags|100%", "1,500 XP|100%", "Dark Loot Bag|100%", "A Dark Loot rare|10%"]}
+  - {chapter: bosses, id: coralia, name: "Coralia, Queen of the Den", icon: coralia, detect-tag: faultline_coralia,
+     where: "The boss of the MERMAID DEN (1200, 700 in the Dark Ocean). She only rises over her throne two ways: kill all ten of the Den's mermaids, or drink an Omen IV inside the Den and win the raid. 2,400 health (+25% per extra fighter). Her own music.",
+     does: "The mermaid queen: a crown of coral and pearls, hair fading from aqua to rose, a mother-of-pearl bodice, a coral-and-gold trident. ONLY A SWORD HURTS HER (melee). Giant air bubbles rise through the fight: swim inside one to breathe. Pink bubbles rise slowly: burst one and she takes 120 damage. She is FAST: Tidal Dash (lines up, then lances through you in a barrel roll, 2-4 times), Trident Volley, Pearl Rain, Mesmerising Gaze (LOOK AWAY), Coral Spires, Royal Guard; phase 2: Whirlpool Waltz (she circles you and the water spins you in), Siren's Aria (rings of song: slip between them), Riptide Spiral (corkscrews up, then dives on you); at a third of her health her WRATH: blue skin, eels for hair, burning eyes, Tempest (lightning down through the water) and Eel Lash.",
+     drops: ["4-6 Mythic Goodie Bags|100%", "3 Goodie Bags|100%", "1,500 XP|100%", "3 Dark Loot Bags|100%", "A Dark Loot rare|50%"]}
   - {chapter: bosses, id: old_inkjaw, name: "Old Inkjaw", icon: old_inkjaw, detect-tag: faultline_old_inkjaw,
      where: "A mini boss anywhere in the Dark Ocean. Use Inkjaw Bait (Lampsquid, 2%), or it finds you (0.1% every 5 minutes). 500 health (+20% per extra fighter).",
      does: "A giant octopus. Tentacle Slam, Ink Cloud, the Grip, Beak Bite; NEW: Ink Jet (a dash leaving a trail of ink) and Tentacle Cage.",
@@ -1295,7 +1303,7 @@ entries:
   - {chapter: consumables, name: "Umbral Sonar", icon: umbral_sonar, detect: "faultlinebosses:wild_item=umbral_sonar",
      how: "1% from Rift Warpers.", does: "Use it in the Dark Ocean, below the Sunlit Sea: the Umbral Leviathan comes."}
   - {chapter: consumables, name: "Siren's Comb", icon: sirens_comb, detect: "faultlinebosses:wild_item=sirens_comb",
-     how: "1.5% from Jellywings.", does: "Use it out in the Dark Ocean's open sea (not in the caves or the Abyss): Coralia comes."}
+     how: "No longer drops (an old one still shows up now and then).", does: "It used to call Coralia. Not any more: she only rises in the Mermaid Den, for the death of her ten mermaids or an Omen IV raid."}
   - {chapter: consumables, name: "Inkjaw Bait", icon: inkjaw_bait, detect: "faultlinebosses:wild_item=inkjaw_bait",
      how: "2% from Lampsquids.", does: "Use it anywhere in the Dark Ocean's water: Old Inkjaw comes."}
   - {chapter: consumables, name: "Glistening Pearl", icon: glistening_pearl, detect: "faultlinebosses:wild_item=glistening_pearl",
@@ -1363,7 +1371,7 @@ achievements:
      stat: mimics, count: 5, reward: {items: ["DIAMOND:6", "GOLD_BLOCK:2"], xp: 500}}
   # ---- the Dark Ocean (1.6.31)
   - {id: into_the_dark, name: "Into the Dark", icon: deep_lampsquid, desc: "Hunt 25 of the Dark Ocean's creatures.",
-     defeat: [deep_gawker, deep_bloatfin, deep_jellywing, deep_driftback, deep_clam, deep_lumenbell, deep_gasbloom, deep_fangstalker, deep_blastfin, deep_burrowshark, deep_cavecrawler, deep_glowgrub, deep_shellsnake, deep_lampsquid, deep_volteel, deep_needlejaw, deep_devilfish, deep_riftwarper, deep_hollowkin, deep_sharkquid, deep_acideel, deep_trasher, deep_radiator, deep_flakcrab, deep_nucleartoad, deep_gammaslime, deep_sulphurskater, deep_acidjelly, deep_orthocera, deep_trilobite, deep_skyfin, deep_leech, deep_boglurker, deep_corrosionshark, deep_urchin, deep_crabling, deep_bloatgut, deep_sulphurmoth, deep_hazardturtle, deep_sludgesnail, deep_shambler, deep_rustbones, deep_acidmite, deep_stormwraith, deep_mauler, deep_sailfin, deep_mantaglider, deep_leafydragon, deep_pearlhorse, deep_hammerjaw, deep_razorcuda, deep_stingray, deep_mirrorfin, deep_kelpstrangler, deep_siren, deep_gulper, deep_isopod, deep_ghostshark, deep_vampsquid, deep_dumbo, deep_swallower, deep_chainlight, deep_viperfang, deep_hagfish, deep_watcher],
+     defeat: [deep_gawker, deep_bloatfin, deep_jellywing, deep_driftback, deep_clam, deep_lumenbell, deep_gasbloom, deep_fangstalker, deep_blastfin, deep_burrowshark, deep_cavecrawler, deep_glowgrub, deep_shellsnake, deep_lampsquid, deep_volteel, deep_needlejaw, deep_devilfish, deep_riftwarper, deep_hollowkin, deep_sharkquid, deep_acideel, deep_trasher, deep_radiator, deep_flakcrab, deep_nucleartoad, deep_gammaslime, deep_sulphurskater, deep_acidjelly, deep_orthocera, deep_trilobite, deep_skyfin, deep_leech, deep_boglurker, deep_corrosionshark, deep_urchin, deep_crabling, deep_bloatgut, deep_sulphurmoth, deep_hazardturtle, deep_sludgesnail, deep_shambler, deep_rustbones, deep_acidmite, deep_stormwraith, deep_mauler, deep_sailfin, deep_mantaglider, deep_leafydragon, deep_pearlhorse, deep_hammerjaw, deep_razorcuda, deep_stingray, deep_mirrorfin, deep_kelpstrangler, deep_siren, deep_gulper, deep_isopod, deep_ghostshark, deep_vampsquid, deep_dumbo, deep_swallower, deep_chainlight, deep_viperfang, deep_hagfish, deep_watcher, deep_mermaid, deep_merguard],
      need: 25, reward: {items: ["DIAMOND:8", "PRISMARINE_CRYSTALS:16"], xp: 500}}
   - {id: acid_bath, name: "Acid Bath", icon: deep_gammaslime, desc: "Hunt 15 of the Sulphur Sea's creatures.",
      defeat: [deep_acideel, deep_trasher, deep_radiator, deep_flakcrab, deep_nucleartoad, deep_gammaslime, deep_sulphurskater, deep_acidjelly, deep_orthocera, deep_trilobite, deep_skyfin, deep_leech, deep_boglurker, deep_corrosionshark, deep_urchin, deep_crabling, deep_bloatgut, deep_sulphurmoth, deep_hazardturtle, deep_sludgesnail],

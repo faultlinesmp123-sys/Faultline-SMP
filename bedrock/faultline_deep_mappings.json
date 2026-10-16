@@ -1918,6 +1918,64 @@
    },
    {
     "type": "definition",
+    "model": "faultline:deep/mermaid",
+    "bedrock_identifier": "faultline:deep_mermaid",
+    "display_name": "mermaid",
+    "bedrock_options": {
+     "icon": "faultline.deep_mermaid",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:deep/mermaid_icon",
+    "bedrock_identifier": "faultline:deep_mermaid_egg",
+    "display_name": "mermaid egg",
+    "bedrock_options": {
+     "icon": "faultline.deep_mermaid",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:deep/merguard",
+    "bedrock_identifier": "faultline:deep_merguard",
+    "display_name": "merguard",
+    "bedrock_options": {
+     "icon": "faultline.deep_merguard",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:deep/merguard_icon",
+    "bedrock_identifier": "faultline:deep_merguard_egg",
+    "display_name": "merguard egg",
+    "bedrock_options": {
+     "icon": "faultline.deep_merguard",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   },
+   {
+    "type": "definition",
     "model": "faultline:dark_loot_bag",
     "bedrock_identifier": "faultline:dark_loot_bag",
     "display_name": "Dark Loot Bag",

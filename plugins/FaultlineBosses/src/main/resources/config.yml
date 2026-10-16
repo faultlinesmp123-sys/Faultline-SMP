@@ -623,10 +623,14 @@ wild:
     health-per-extra-fighter: 0.2
     cooldown-minutes: 15
     music: {sound: "minecraft:music_disc.5", length-seconds: 178}
-  coralia:
-    health: 900
+  coralia:   # 1.7.0: the Mermaid Den's boss (FaultlineDeep calls her). Only SWORD hits hurt her (and her pink bubbles)
+    health: 2400
     health-per-extra-fighter: 0.25
     cooldown-minutes: 10
+    speed: 0.6
+    music: {length-seconds: 285.86}                                     # faultline:coralia.music (FaultlineDeepMusic.zip)
+    air-bubble: {every-seconds: 15, size: 3.4}                          # giant air bubbles rise: swim inside one to breathe
+    pink-bubble: {every-seconds: 20, size: 2.6, damage: 120}            # hit one = 120 damage to her
   inkjaw:
     health: 500
     health-per-extra-fighter: 0.2

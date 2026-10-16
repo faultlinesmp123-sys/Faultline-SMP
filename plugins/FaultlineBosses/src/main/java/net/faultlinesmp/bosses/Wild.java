@@ -88,7 +88,7 @@ final class Wild implements Listener {
             "scourge", "umbral", "coralia", "inkjaw", "grandmaw", "lament"); // the last six: the Dark Ocean's (DeepBosses)
     static final Map<String, String> NAMES = Map.ofEntries(Map.entry("leviathan", "The Leviathan"), Map.entry("sandworm", "The Sandworm King"),
             Map.entry("lich", "The Lich"), Map.entry("frostwyrm", "The Frost Wyrm"), Map.entry("golem", "The Stone Golem"),
-            Map.entry("scourge", "The Brine Scourge"), Map.entry("umbral", "The Umbral Leviathan"), Map.entry("coralia", "Coralia, Siren of the Shoals"),
+            Map.entry("scourge", "The Brine Scourge"), Map.entry("umbral", "The Umbral Leviathan"), Map.entry("coralia", "Coralia, Queen of the Den"),
             Map.entry("inkjaw", "Old Inkjaw"), Map.entry("grandmaw", "The Grandmaw Clam"), Map.entry("lament", "The Lament"));
     /** Their Faultline Index entries (and the tag on their hitboxes, for the Index's kill detection). */
     static final Map<String, String> INDEX = Map.ofEntries(Map.entry("leviathan", "leviathan"), Map.entry("sandworm", "sandworm_king"),
@@ -147,7 +147,7 @@ final class Wild implements Listener {
         ITEMS.put("frozen_horn", new String[]{"PAPER", "&b&lFrozen Horn", "&7Sound it on a frozen peak or snowy slope.|&7The sky answers with wings.|&bSummons the Frost Wyrm."});
         ITEMS.put("brine_bait", new String[]{"PAPER", "&a&lBrine Bait", "&7A rotten, glowing lure that reeks of sulphur.|&7Use it in the water of the Sulphur Sea.|&aSummons the Brine Scourge."});
         ITEMS.put("umbral_sonar", new String[]{"PAPER", "&8&lUmbral Sonar", "&7It pings back from something huge in the dark.|&7Use it in the Dark Ocean, below the Sunlit Sea.|&8Summons the Umbral Leviathan."});
-        ITEMS.put("sirens_comb", new String[]{"PAPER", "&d&lSiren's Comb", "&7Pearl teeth, still humming a song.|&7Use it out in the Dark Ocean's open sea.|&dSummons Coralia, Siren of the Shoals."});
+        ITEMS.put("sirens_comb", new String[]{"PAPER", "&d&lSiren's Comb", "&7Pearl teeth, still humming a song.|&7Coralia no longer answers it: only the|&7Mermaid Den calls her now (kill its ten|&7mermaids, or drink an Omen IV there)."});
         ITEMS.put("inkjaw_bait", new String[]{"PAPER", "&5&lInkjaw Bait", "&7A Lampsquid's lure. Old Inkjaw is always hungry.|&7Use it anywhere in the Dark Ocean.|&5Summons Old Inkjaw."});
         ITEMS.put("glistening_pearl", new String[]{"PAPER", "&b&lGlistening Pearl", "&7A clam's pearl the size of a fist.|&7Use it on the Dark Ocean's open sea floor.|&bSummons the Grandmaw Clam."});
         ITEMS.put("mournful_shell", new String[]{"PAPER", "&9&lMournful Shell", "&7Hold it to your ear: someone is crying.|&7Use it in the Dark Ocean, below the Sunlit Sea.|&9Summons the Lament."});
@@ -218,7 +218,8 @@ final class Wild implements Listener {
             if (!deep) return "Only in the Dark Ocean.";
             if (!Leviathan.sea(l.getBlock()) && !Leviathan.sea(l.clone().add(0, -1, 0).getBlock())) return "Only in the water.";
             return switch (kind) {
-                case "coralia" -> DeepBosses.openSea(l) ? null : "Only out in the open sea (not in the caves or the Abyss).";
+                // 1.7.0: she only rises in the Mermaid Den, and only one of two ways (FaultlineDeep's Den.java calls her)
+                case "coralia" -> "Coralia only rises over her throne in the Mermaid Den (1200, 700): kill all ten of its mermaids, or drink an Omen IV there.";
                 case "grandmaw" -> !DeepBosses.openSea(l) ? "Only out in the open sea (not in the caves or the Abyss)."
                         : DeepBosses.floorNear(l, 24) == null ? "Only near the sea floor (it lives on the sand: swim down until the floor is in reach)." : null;
                 case "scourge" -> DeepBosses.sulphur(l) ? null : "Only in the Sulphur Sea (the Dark Ocean's acid region round -520, 480).";
@@ -684,9 +685,11 @@ final class Wild implements Listener {
             if (byPlayer(e) && get("lich") instanceof Lich l && ent instanceof org.bukkit.entity.EnderCrystal cr) l.crystalBroken(cr);
             return;
         }
-        if (tags.contains(DeepBosses.Scourge.PINK_TAG)) { // the Scourge's pink bubble: a player's hit bursts it and hurts the Scourge
+        if (tags.contains(DeepBosses.Swimmer.PINK_TAG)) { // a sea boss's pink bubble (the Scourge's, Coralia's): a player's hit bursts it and hurts that boss
             e.setCancelled(true);
-            if (!byPlayer(e) || !(get("scourge") instanceof DeepBosses.Scourge sc)) return;
+            DeepBosses.Swimmer sc = null;
+            for (Boss b : bosses.values()) if (b instanceof DeepBosses.Swimmer sw && sw.pinks.containsKey(ent.getUniqueId())) { sc = sw; break; }
+            if (!byPlayer(e) || sc == null) return;
             Player by = e instanceof EntityDamageByEntityEvent ee ? (ee.getDamager() instanceof Player p ? p : ee.getDamager() instanceof Projectile pr && pr.getShooter() instanceof Player s ? s : null) : null;
             if (by != null && (MORPHED.contains(by.getUniqueId()) || !survival(by))) return;
             if (e instanceof EntityDamageByEntityEvent ee && ee.getDamager() instanceof Projectile pr && !(pr instanceof Trident)) pr.remove();
@@ -704,6 +707,10 @@ final class Wild implements Listener {
                 if (by != null && MORPHED.contains(by.getUniqueId())) return;
                 if (ee.getDamager() instanceof Projectile pr && !(pr instanceof Trident)) pr.remove(); // it stuck in the boss
             }
+            if (b.swordOnly() && !swordHit(e)) {
+                if (by != null) by.sendActionBar(legacy(ChatColor.LIGHT_PURPLE + "Only a sword's edge cuts her. " + ChatColor.GRAY + "(Burst the pink bubbles too!)"));
+                return;
+            }
             if (ent instanceof LivingEntity le) hurtFlash(le);
             b.damage(e.getFinalDamage() > 0 ? e.getFinalDamage() : e.getDamage(), by);
             return;
@@ -712,6 +719,13 @@ final class Wild implements Listener {
             Entity src = ee.getDamager() instanceof Projectile pr && pr.getShooter() instanceof Entity s ? s : ee.getDamager();
             if (ours(src)) e.setCancelled(true);
         }
+    }
+
+    /** A player's own melee hit with a sword in hand (not a thrown trident, an arrow, a spell, an explosion...). */
+    static boolean swordHit(EntityDamageEvent e) {
+        if (!(e instanceof EntityDamageByEntityEvent ee) || !(ee.getDamager() instanceof Player p)) return false;
+        if (e.getCause() != EntityDamageEvent.DamageCause.ENTITY_ATTACK && e.getCause() != EntityDamageEvent.DamageCause.ENTITY_SWEEP_ATTACK) return false;
+        return p.getInventory().getItemInMainHand().getType().name().endsWith("_SWORD");
     }
 
     static void hurtFlash(LivingEntity le) {
@@ -1008,6 +1022,8 @@ final class Wild implements Listener {
         abstract String line(String what);
         void onPhase(int p) { }
         double damageTaken(double amount) { return amount; }
+        /** Only a sword's melee hit hurts it (Coralia, 1.7.0); its own pink bubbles still do. */
+        boolean swordOnly() { return false; }
         /** The health share each phase starts at (wild.<kind>.phase2-at / phase3-at). */
         double phaseAt(int p) { return p == 2 ? c("phase2-at", 0.6) : c("phase3-at", 0.3); }
         void deathAnim(int t) {

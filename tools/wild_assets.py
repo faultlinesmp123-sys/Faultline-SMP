@@ -1439,7 +1439,7 @@ def _cm_face(head, sk, line, iris, shadow, brow, skin_c=None):
     head.add(-0.12, -0.05, -0.17, 0.26, 0.08, 0.17, sk)                       # the chin
     for s in (-1, 1):
         z0, z1 = sorted((s * 0.03, s * 0.23))
-        head.add(0.31, 0.27, z0, 0.355, 0.53, z1, eye_paint((252, 252, 252), iris, (18, 16, 26), slit=iris == MD_EYE))   # big eyes
+        head.add(0.31, 0.25, z0, 0.355, 0.535, z1, eye_paint((252, 252, 252), iris, (18, 16, 26), slit=iris == MD_EYE))   # big eyes
         head.add(0.31, 0.52, z0, 0.36, 0.565, z1, solid(shadow, 3))           # eyeshadow
         a0, a1 = sorted((s * 0.215, s * 0.275))
         head.add(0.32, 0.5, a0, 0.38, 0.535, a1, solid(line, 1))              # lashes flicking out
@@ -1526,8 +1526,15 @@ def coralia():
             head.add(dx - 0.025, y0 + dy - 0.01, z - 0.025, dx + 0.025, y0 + dy + 0.04, z + 0.025, solid(CM_SPOT, 2))
     head.add(-0.26, 0.82, -0.47, 0.18, 0.98, -0.37, cp)                       # one more curl dropping down at the side
     bp = button(CM_HAIR, CM_LINE)
-    rounded(head, -0.36, 0.95, -0.46, 0.04, 1.33, -0.08, bp, 0.12)            # the big bun with its button X
-    rounded(head, -0.42, 0.92, 0.12, -0.08, 1.22, 0.44, bp, 0.1)              # the smaller one
+    def bun(x0, y0, z0, x1, y1, z1):
+        """A round bun: a core box with thinner layers on each side (no crossed boxes: the X must stay whole on its face)."""
+        head.add(x0, y0, z0, x1, y1, z1, bp)
+        e = 0.05
+        head.add(x0 + e, y0 + e, z0 - e, x1 - e, y1 - e, z0, hp); head.add(x0 + e, y0 + e, z1, x1 - e, y1 - e, z1 + e, hp)
+        head.add(x0 + e, y1, z0 + e, x1 - e, y1 + e, z1 - e, hp); head.add(x0 - e, y0 + e, z0 + e, x0, y1 - e, z1 - e, hp)
+        head.add(x1, y0 + 0.06, z0 + 0.06, x1 + 0.02, y1 - 0.06, z1 - 0.06, bp)   # the button face, standing proud
+    bun(-0.34, 0.96, -0.46, 0.02, 1.32, -0.1)                                 # the big bun with its button X
+    bun(-0.42, 0.92, 0.14, -0.12, 1.2, 0.42)                                  # the smaller one
 
     # ---- the Medusa's head
     hm = Part("coralia_head_medusa", 32, 512)

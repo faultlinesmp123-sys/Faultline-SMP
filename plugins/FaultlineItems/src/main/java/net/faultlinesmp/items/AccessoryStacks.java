@@ -39,6 +39,7 @@ final class AccessoryStacks implements Listener {
             if (lore != null && !lore.equals(m.getLore())) { m.setLore(lore); changed = true; }
         }
         if (changed) item.setItemMeta(m);
+        if (plugin.getDivingGear() != null && plugin.getDivingGear().isSuit(item) && DivingGear.wearable(item)) changed = true; // 1.2.46
         return changed;
     }
 

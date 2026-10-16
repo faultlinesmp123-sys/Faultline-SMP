@@ -123,6 +123,8 @@ force-season: ""
 
 # Show your own NECK/BACK cosmetics to yourself (seen in third person; a little of it shows when you look down).
 show-own: true
+# /cosmetics on Java opens FaultlineItems' Wardrobe (accessories + cosmetics + armour in one menu). /cosmetics all = the old list.
+open-wardrobe: true
 
 # How often (ticks) cosmetics are re-sent to everyone as a safety net. 40 = every 2 seconds.
 resend-ticks: 40

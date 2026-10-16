@@ -321,10 +321,14 @@ boots:
 
 # The server's resource pack (every custom item, boss, and the Index): FaultlineSMP.zip on GitHub (main).
 # Keep this ENABLED. If the pack changes, put its new SHA-1 in hash (sha1sum FaultlineSMP.zip).
+# The Wardrobe (/accessories): its custom background comes from the pack (font faultline:gui). false = plain chest look.
+wardrobe:
+  custom-background: true
+
 item-textures:
   enabled: true
   url: "https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/main/FaultlineSMP.zip"
-  hash: "63109f64e1d88da58ab09b30d812f755370be80d"
+  hash: "461a4d61cb8d29744745d5067f43dad7454aefda"
   # The Dark Ocean's music, a second pack sent beside the main one (empty url = not sent)
   music-url: "https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/main/FaultlineDeepMusic.zip"
   music-hash: "a0d0abb5737b66c50285db01b3824aaa70d47ff3"
@@ -459,9 +463,10 @@ diving:
     enabled: true
     below-y: 0
     damage: 2.0             # per second (halved by the Depths Charm or Abyssal Diving Gear)
-  suit:                     # the Abyssal Diving Suit does nothing in combat
-    combat-seconds: 10      # ...for this long after you hit or are hit by a player (or a monster)
-    combat-includes-monsters: true
+  suit:                     # the Abyssal Diving Suit stops working when a PLAYER hits you
+    combat-seconds: 10      # ...for this long
+    off-when-mobs-hit: false   # true = monsters' hits switch it off too
+    off-when-attacking: false  # true = hitting a player yourself switches it off too
 
 # ---------------- The Kraken's items ----------------
 kraken-gear:
@@ -529,7 +534,7 @@ enchants:
   frostbite: {chance-per-level: 0.15}
   venom: {chance-per-level: 0.15}
   thunderstrike: {chance: 0.08, damage: 4, cooldown-seconds: 8}
-  vitality: {health-per-level: 2}
+  vitality: {max-regeneration-level: 2}   # Vitality I = Regeneration I, II = Regeneration II (1.2.46)
   featherstep: {fall-reduction: 0.35}
   veinminer: {max-blocks: 32, exclude: []}   # Vein Miner (pickaxes): sneak + mine an ore; exclude e.g. [ANCIENT_DEBRIS]
   # Index boss entry id: ["enchant:level:chance", ...] (each rolled on every defeat, per fighter)

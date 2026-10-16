@@ -1017,6 +1017,25 @@ Notes:
   model used to follow the body's own pitch (squids report odd rotations): jellies and squids lay on their sides. Heading
   now comes from the velocity, eased; `UPRIGHT` kinds (bells, floaters, the clam, ghosts, crawlers) never pitch. Updates
   every 2 ticks only with a player within 48, else once a second. Tested (`DeepTest`: every creature's parts).
+- **The Wardrobe + suit/Vitality changes (Items 1.2.46, Cosmetics 1.1.4, Index 1.6.34, Deep 1.3.1)**: `/accessories`
+  (alias `/wardrobe`, and `/cosmetics` on Java; `/cosmetics all` = the old list, `open-wardrobe: false` turns that off) is
+  `Items/Wardrobe.java`: one 6-row menu with a custom background (`tools/gui_assets.py`: font `faultline:gui`, a -8 space
+  U+F801 + one 176x222 glyph per tab U+F810+tab, ascent 13; invisible filler model `faultline:gui/blank` with a hidden
+  tooltip; `wardrobe.custom-background`). Col 0 tabs (Accessories, Hat, Neck, Back, Body; row 5 take every cosmetic off),
+  col 1 the list (the 3 accessory slots = `AccessoryGuiHolder.SLOTS` {1, 10, 19}, or that slot's cosmetics, owned first),
+  col 2 scroll, col 3 your real armour (put on / take off; Curse of Binding respected; `fits()` = equippable component,
+  else vanilla's slot), cols 4-7 the black preview (front col 5, back col 7: hat/body/back cosmetics over the armour, your
+  head), col 8 eye (hide all cosmetics without taking them off: `Data.hidden`, Renderer uses `shown()`), seasonal shop,
+  help. `Wardrobe.Menu extends AccessoryGuiHolder`; only the Accessories tab holds the slots (`holdsAccessories`, `saved`:
+  switching tabs / the shop saves them out first, `hasEquipped` reads the menu only while `live()`). Shift-click puts an
+  accessory in a free slot or armour on. Cosmetics are reached by reflection through `FaultlineCosmetics.wardrobe*` (public
+  static). Bedrock: plain title + glass panes. **Abyssal Diving Suit**: only being hit BY A PLAYER switches it off now
+  (`diving.suit.off-when-mobs-hit` / `off-when-attacking`, both false; the old `combat-includes-monsters` key is ignored),
+  and it can be worn as a CHESTPLATE (equippable CHEST, added to old suits by `AccessoryStacks.refresh`; `wearsSuit` =
+  accessory or chestplate; Deep's Pressure Surge checks the chestplate too). **Vitality I/II = Regeneration I/II** (ambient,
+  topped up only when under 1.5 s left so the heal timer runs normally; never cuts a stronger potion; the old MAX_HEALTH
+  modifier is always removed). Tested: `WardrobeTest` (items), `WardrobeCosTest` (Items + Cosmetics, scratch `wtest`),
+  `NerfTest`, `BatchTest`.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

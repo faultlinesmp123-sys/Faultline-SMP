@@ -557,7 +557,8 @@ public final class FaultlineItems extends JavaPlugin {
 
         // Accessories GUI (2 slots) — see AccessoryManager for why this exists
         // instead of real inventory slots next to the shield.
-        getServer().getPluginManager().registerEvents(new AccessoryGuiListener(this), this);
+        wardrobe = new Wardrobe(this);
+        getServer().getPluginManager().registerEvents(wardrobe, this);
         getServer().getPluginManager().registerEvents(new AccessoryDeathListener(this), this);
         getCommand("accessories").setExecutor(new AccessoryCommand(this));
 
@@ -881,6 +882,8 @@ public final class FaultlineItems extends JavaPlugin {
     LifeJellyListener getLifeJellyListener() { return lifeJellyListener; }
 
     DivingGear getDivingGear() { return divingGear; }
+    private Wardrobe wardrobe;
+    Wardrobe getWardrobe() { return wardrobe; }
     SpawnProtection spawnProtection;
     Enchants enchants;
     RangerGear rangerGear;
@@ -985,7 +988,7 @@ public final class FaultlineItems extends JavaPlugin {
             // update when it closes). Taking an accessory out onto the cursor (or into your inventory, or dropping it
             // for a friend) kept its powers until the menu was closed.
             var top = player.getOpenInventory() == null ? null : player.getOpenInventory().getTopInventory();
-            if (top != null && top.getHolder() instanceof AccessoryGuiHolder) {
+            if (top != null && top.getHolder() instanceof AccessoryGuiHolder h && h.live()) {
                 items = new ItemStack[AccessoryGuiHolder.SLOTS.length];
                 for (int i = 0; i < AccessoryGuiHolder.SLOTS.length; i++) items[i] = top.getItem(AccessoryGuiHolder.SLOTS[i]);
             }
@@ -1015,191 +1018,28 @@ public final class FaultlineItems extends JavaPlugin {
     }
 
 
+    /** The menu that holds the accessory slots: the Wardrobe (Wardrobe.Menu), slots in its list column while its Accessories tab is open. */
     static class AccessoryGuiHolder implements InventoryHolder {
 
-        /** Menu slots that hold accessories, in order (index 0 = first accessory slot). */
-        public static final int[] SLOTS = {2, 4, 6};
+        /** Menu slots that hold accessories, in order (index 0 = first accessory slot): the Wardrobe's list column, rows 0-2. */
+        public static final int[] SLOTS = {1, 10, 19};
 
         static int indexOf(int menuSlot) {
             for (int i = 0; i < SLOTS.length; i++) if (SLOTS[i] == menuSlot) return i;
             return -1;
         }
 
-        private Inventory inventory;
+        Inventory inventory;
+        boolean saved; // its accessory slots were saved (and emptied): it no longer holds them
 
-        public Inventory build(FaultlineItems plugin, Player player) {
-            inventory = Bukkit.createInventory(this, 9, ChatColor.GOLD + "Accessories");
+        /** Whether the accessory slots are in this menu right now. */
+        boolean holdsAccessories() { return true; }
 
-            ItemStack[] equipped = plugin.getAccessoryManager().getSlots(player.getUniqueId());
-
-            // Decorative filler so the real slots stand out visually.
-            ItemStack filler = namedItem(Material.GRAY_STAINED_GLASS_PANE, " ", List.of());
-            for (int i = 0; i < 9; i++) {
-                if (indexOf(i) < 0) inventory.setItem(i, filler);
-            }
-            for (int i = 0; i < SLOTS.length; i++) {
-                ItemStack item = i < equipped.length ? equipped[i] : null;
-                inventory.setItem(SLOTS[i], item != null ? item : emptySlotPlaceholder());
-            }
-
-            return inventory;
-        }
-
-        private ItemStack emptySlotPlaceholder() {
-            return namedItem(Material.LIME_STAINED_GLASS_PANE, ChatColor.GREEN + "Empty Accessory Slot",
-                    List.of(ChatColor.GRAY + "Drag an accessory item here."));
-        }
-
-        private ItemStack namedItem(Material material, String name, List<String> lore) {
-            ItemStack item = new ItemStack(material);
-            ItemMeta meta = item.getItemMeta();
-            meta.setDisplayName(name);
-            meta.setLore(lore);
-            item.setItemMeta(meta);
-            return item;
-        }
+        boolean live() { return holdsAccessories() && !saved; }
 
         @Override
         public Inventory getInventory() {
             return inventory;
-        }
-    }
-
-
-    static class AccessoryGuiListener implements Listener {
-
-        private final FaultlineItems plugin;
-
-        public AccessoryGuiListener(FaultlineItems plugin) {
-            this.plugin = plugin;
-        }
-
-        @EventHandler
-        public void onClick(InventoryClickEvent event) {
-            if (!(event.getInventory().getHolder() instanceof AccessoryGuiHolder)) return;
-
-            if (event.getClickedInventory() == null
-                    || event.getClickedInventory().getHolder() != event.getInventory().getHolder()) {
-                // Clicked their OWN inventory (bottom half) while this GUI is
-                // open. BUG FIX: this used to be unconditionally cancelled
-                // along with everything else, which blocked even picking the
-                // item up in the first place — nothing could ever get onto
-                // the cursor to drag in. Now this only blocks shift-click
-                // (which would auto-transfer into the top inventory, bypassing
-                // our validation entirely) and otherwise lets normal
-                // pickup/placement within their own inventory proceed as usual.
-                if (event.isShiftClick() || event.getAction() == InventoryAction.COLLECT_TO_CURSOR) {
-                    // COLLECT_TO_CURSOR (double-click) would otherwise vacuum
-                    // matching items out of the menu, including the filler panes.
-                    event.setCancelled(true);
-                }
-                return;
-            }
-
-            event.setCancelled(true); // now only cancels clicks within our own top inventory — safe
-
-            if (!(event.getWhoClicked() instanceof Player player)) return;
-
-            int slot = event.getSlot();
-            if (AccessoryGuiHolder.indexOf(slot) < 0) return; // decorative filler
-
-            ItemStack cursor = event.getCursor();
-            ItemStack currentSlotItem = event.getCurrentItem();
-            boolean cursorEmpty = cursor == null || cursor.getType() == Material.AIR;
-            boolean slotHasRealItem = isRealAccessory(currentSlotItem);
-
-            if (cursorEmpty) {
-                if (slotHasRealItem) {
-                    player.setItemOnCursor(currentSlotItem);
-                    event.getClickedInventory().setItem(slot, placeholder());
-                }
-                return;
-            }
-
-            if (!AccessoryManager.isAccessory(plugin, cursor)) {
-                player.sendMessage(ChatColor.RED + "Only accessory items can go in these slots.");
-                return;
-            }
-
-            // Only ONE accessory goes into the slot; the rest of a stack stays on
-            // the cursor (otherwise you'd equip, and lose on death, all 16 at once).
-            ItemStack single = cursor.clone();
-            single.setAmount(1);
-            if (slotHasRealItem && currentSlotItem.isSimilar(single)) return; // already wearing that one
-            // 1.2.12: no stacking accessories: one of each (a second copy in another slot is refused)
-            for (int other : AccessoryGuiHolder.SLOTS) {
-                if (other == slot) continue;
-                ItemStack o = event.getClickedInventory().getItem(other);
-                if (isRealAccessory(o) && AccessoryManager.same(plugin, o, single)) {
-                    player.sendMessage(ChatColor.RED + "You're already wearing " + (single.getItemMeta().hasDisplayName() ? single.getItemMeta().getDisplayName() : "that accessory")
-                            + ChatColor.RED + ". Accessories don't stack.");
-                    return;
-                }
-            }
-
-            ItemStack remainder = null;
-            if (cursor.getAmount() > 1) {
-                remainder = cursor.clone();
-                remainder.setAmount(cursor.getAmount() - 1);
-            }
-
-            if (slotHasRealItem && remainder == null) {
-                player.setItemOnCursor(currentSlotItem); // clean swap
-            } else {
-                player.setItemOnCursor(remainder);
-                if (slotHasRealItem) {
-                    // The cursor is still holding the rest of the stack, so the
-                    // accessory being replaced goes back into the inventory instead.
-                    player.getInventory().addItem(currentSlotItem).values()
-                            .forEach(left -> player.getWorld().dropItemNaturally(player.getLocation(), left));
-                }
-            }
-            event.getClickedInventory().setItem(slot, single);
-        }
-
-        @EventHandler
-        public void onDrag(InventoryDragEvent event) {
-            if (!(event.getInventory().getHolder() instanceof AccessoryGuiHolder)) return;
-            // Dragging across slots (paint-mode placement) isn't worth replicating
-            // the validation for — block it entirely, single-click swap still works fine.
-            event.setCancelled(true);
-        }
-
-        @EventHandler
-        public void onClose(InventoryCloseEvent event) {
-            if (!(event.getInventory().getHolder() instanceof AccessoryGuiHolder)) return;
-            if (!(event.getPlayer() instanceof Player player)) return;
-
-            ItemStack[] toSave = new ItemStack[AccessoryManager.SLOT_COUNT];
-            for (int i = 0; i < AccessoryGuiHolder.SLOTS.length; i++) {
-                ItemStack item = event.getInventory().getItem(AccessoryGuiHolder.SLOTS[i]);
-                toSave[i] = isRealAccessory(item) ? item : null;
-                if (toSave[i] == null) continue;
-                // 1.2.12: a copy of one already worn (left over from before accessories stopped stacking) goes back
-                boolean dup = false;
-                for (int j = 0; j < i; j++) if (toSave[j] != null && AccessoryManager.same(plugin, toSave[j], toSave[i])) dup = true;
-                if (dup) {
-                    player.getInventory().addItem(toSave[i]).values().forEach(left -> player.getWorld().dropItemNaturally(player.getLocation(), left));
-                    player.sendMessage(ChatColor.RED + "Accessories don't stack: the second copy went back to your inventory.");
-                    toSave[i] = null;
-                    continue;
-                }
-                AccessoryStacks.refresh(plugin, toSave[i]);
-            }
-
-            plugin.getAccessoryManager().setSlots(player.getUniqueId(), toSave);
-        }
-
-        private boolean isRealAccessory(ItemStack item) {
-            return AccessoryManager.isAccessory(plugin, item);
-        }
-
-        private ItemStack placeholder() {
-            ItemStack item = new ItemStack(Material.LIME_STAINED_GLASS_PANE);
-            var meta = item.getItemMeta();
-            meta.setDisplayName(ChatColor.GREEN + "Empty Accessory Slot");
-            item.setItemMeta(meta);
-            return item;
         }
     }
 
@@ -1218,9 +1058,7 @@ public final class FaultlineItems extends JavaPlugin {
                 sender.sendMessage(ChatColor.RED + "Only players can use this command.");
                 return true;
             }
-
-            AccessoryGuiHolder holder = new AccessoryGuiHolder();
-            player.openInventory(holder.build(plugin, player));
+            plugin.getWardrobe().open(player, Wardrobe.tabOf(args.length > 0 ? args[0] : null));
             return true;
         }
     }
@@ -1246,7 +1084,7 @@ public final class FaultlineItems extends JavaPlugin {
             // event fires AFTER this and would re-save the items as still equipped,
             // even though they were just dropped. Wipe the open menu's slots first
             // so the close event saves them as empty.
-            if (player.getOpenInventory().getTopInventory().getHolder() instanceof AccessoryGuiHolder) {
+            if (player.getOpenInventory().getTopInventory().getHolder() instanceof AccessoryGuiHolder h && h.live()) {
                 var top = player.getOpenInventory().getTopInventory();
                 ItemStack[] live = new ItemStack[AccessoryManager.SLOT_COUNT];
                 for (int i = 0; i < AccessoryGuiHolder.SLOTS.length; i++) {

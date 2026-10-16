@@ -143,7 +143,7 @@ final class Renderer implements Listener {
     }
 
     void sendFakes(Player wearer) {
-        EnumMap<Slot, Cosmetic> worn = plugin.worn(wearer.getUniqueId());
+        EnumMap<Slot, Cosmetic> worn = plugin.shown(wearer.getUniqueId());
         if (worn.isEmpty()) return;
         for (Player v : wearer.getTrackedBy()) sendFakes(wearer, v, worn);
     }
@@ -158,7 +158,7 @@ final class Renderer implements Listener {
 
     /** Re-applies everything for a wearer: call after they change what they wear. */
     void refresh(Player wearer) {
-        EnumMap<Slot, Cosmetic> worn = plugin.worn(wearer.getUniqueId());
+        EnumMap<Slot, Cosmetic> worn = plugin.shown(wearer.getUniqueId());
         EnumSet<Slot> off = EnumSet.allOf(Slot.class);
         off.removeAll(worn.keySet());
         restore(wearer, off);
@@ -185,7 +185,7 @@ final class Renderer implements Listener {
 
     private void tick() {
         for (Player p : Bukkit.getOnlinePlayers()) {
-            EnumMap<Slot, Cosmetic> worn = plugin.worn(p.getUniqueId());
+            EnumMap<Slot, Cosmetic> worn = plugin.shown(p.getUniqueId());
             worn.keySet().removeIf(s -> s != Slot.NECK && s != Slot.BACK);
             if (worn.isEmpty() || hidden(p)) { removeDisplays(p.getUniqueId()); continue; }
             EnumMap<Slot, ItemDisplay> mine = displays.computeIfAbsent(p.getUniqueId(), k -> new EnumMap<>(Slot.class));
@@ -296,7 +296,7 @@ final class Renderer implements Listener {
     public void onTrack(PlayerTrackEntityEvent e) {
         if (!(e.getEntity() instanceof Player wearer)) return;
         Player viewer = e.getPlayer();
-        later(viewer, 2, () -> { if (wearer.isOnline()) sendFakes(wearer, viewer, plugin.worn(wearer.getUniqueId())); });
+        later(viewer, 2, () -> { if (wearer.isOnline()) sendFakes(wearer, viewer, plugin.shown(wearer.getUniqueId())); });
     }
 
     @EventHandler

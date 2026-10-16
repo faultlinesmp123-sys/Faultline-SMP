@@ -51,6 +51,7 @@ public final class FaultlineCosmetics extends JavaPlugin implements Listener {
     static final class Data {
         final LinkedHashSet<String> unlocked = new LinkedHashSet<>();
         final EnumMap<Slot, String> equipped = new EnumMap<>(Slot.class);
+        boolean hidden; // the Wardrobe's eye button: keep the outfit, show none of it
     }
 
     private static FaultlineCosmetics instance;
@@ -98,6 +99,83 @@ public final class FaultlineCosmetics extends JavaPlugin implements Listener {
     public static boolean has(UUID player, String id) {
         return instance != null && instance.data(player).unlocked.contains(id);
     }
+
+    // ------------------------------------------------------------------ the Wardrobe (FaultlineItems' /accessories, by reflection)
+
+    /** That slot's cosmetics for the Wardrobe's list: the ones you own first, then the locked ones (config order). */
+    public static List<String> wardrobeList(UUID player, String slot) {
+        if (instance == null) return List.of();
+        Slot s = slotOf(slot);
+        Data d = instance.data(player);
+        List<String> own = new ArrayList<>(), locked = new ArrayList<>();
+        for (Cosmetic c : instance.cosmetics.values()) if (c.slot() == s) (d.unlocked.contains(c.id()) ? own : locked).add(c.id());
+        own.addAll(locked);
+        return own;
+    }
+
+    /** The cosmetic worn in a slot, or null. */
+    public static String wardrobeWorn(UUID player, String slot) {
+        if (instance == null) return null;
+        Cosmetic c = instance.worn(player).get(slotOf(slot));
+        return c == null ? null : c.id();
+    }
+
+    /** A cosmetic's icon with the Wardrobe's lore (wearing it / click to wear / locked and how to get it). */
+    public static ItemStack wardrobeIcon(UUID player, String id) {
+        if (instance == null) return null;
+        Cosmetic c = instance.cosmetics.get(id);
+        if (c == null) return null;
+        Data d = instance.data(player);
+        boolean has = d.unlocked.contains(id), on = c == instance.worn(player).get(c.slot());
+        List<String> lore = new ArrayList<>(List.of("&7" + c.slot().label + " cosmetic", ""));
+        if (on) lore.add("&aWearing it. &eClick to take it off.");
+        else if (has) lore.add("&eClick to wear it.");
+        else { lore.add("&cLocked"); String how = instance.howToGet(c); if (!how.isEmpty()) lore.add(how); }
+        if (d.hidden && on) lore.add("&8(hidden: the eye button shows it again)");
+        ItemStack it = instance.icon(c, lore.toArray(new String[0]));
+        if (on) { ItemMeta im = it.getItemMeta(); im.setEnchantmentGlintOverride(true); it.setItemMeta(im); }
+        return it;
+    }
+
+    /** Wear / take off a cosmetic from the Wardrobe. A locked one tells you how to get it. Returns true if something changed. */
+    public static boolean wardrobeClick(Player p, String id) {
+        if (instance == null) return false;
+        Cosmetic c = instance.cosmetics.get(id);
+        if (c == null) return false;
+        if (!instance.data(p.getUniqueId()).unlocked.contains(id)) {
+            p.playSound(p, Sound.BLOCK_NOTE_BLOCK_BASS, 0.8f, 0.6f);
+            String how = instance.howToGet(c);
+            msg(p, "&cYou haven't unlocked " + c.name() + "&c yet." + (how.isEmpty() ? "" : " &7(" + how + "&7)"));
+            return false;
+        }
+        instance.toggle(p, c);
+        return true;
+    }
+
+    /** Takes off one slot's cosmetic (slot null = everything). */
+    public static void wardrobeTakeOff(Player p, String slot) { if (instance != null) instance.takeOff(p, slot == null ? null : slotOf(slot)); }
+
+    public static boolean wardrobeHidden(UUID player) { return instance != null && instance.data(player).hidden; }
+
+    /** The eye button: hide (or show again) everything you wear, without taking it off. */
+    public static void wardrobeSetHidden(Player p, boolean hidden) {
+        if (instance == null) return;
+        Data d = instance.data(p.getUniqueId());
+        if (d.hidden == hidden) return;
+        d.hidden = hidden;
+        instance.dirty = true;
+        instance.renderer.refresh(p);
+        p.playSound(p, hidden ? Sound.ITEM_ARMOR_EQUIP_LEATHER : Sound.ITEM_ARMOR_EQUIP_GOLD, 0.8f, hidden ? 0.8f : 1.1f);
+    }
+
+    /** Opens the seasonal shop; false when no season is on. */
+    public static boolean wardrobeShop(Player p) {
+        if (instance == null || instance.seasons.current() == null) return false;
+        instance.openShop(p);
+        return true;
+    }
+
+    private static Slot slotOf(String s) { return Slot.valueOf(s.toUpperCase(Locale.ROOT)); }
 
     // ------------------------------------------------------------------ config + storage
 
@@ -150,6 +228,7 @@ public final class FaultlineCosmetics extends JavaPlugin implements Listener {
             if (eq != null) for (String s : eq.getKeys(false)) {
                 try { d.equipped.put(Slot.valueOf(s), eq.getString(s)); } catch (IllegalArgumentException ignored) { }
             }
+            d.hidden = y.getBoolean(key + ".hidden", false);
             data.put(id, d);
         }
     }
@@ -160,6 +239,7 @@ public final class FaultlineCosmetics extends JavaPlugin implements Listener {
             Data d = e.getValue();
             if (d.unlocked.isEmpty() && d.equipped.isEmpty()) continue;
             String k = e.getKey().toString();
+            if (d.hidden) y.set(k + ".hidden", true);
             y.set(k + ".unlocked", new ArrayList<>(d.unlocked));
             for (Map.Entry<Slot, String> q : d.equipped.entrySet()) y.set(k + ".equipped." + q.getKey().name(), q.getValue());
         }
@@ -179,6 +259,12 @@ public final class FaultlineCosmetics extends JavaPlugin implements Listener {
             if (c != null && c.slot() == e.getKey() && d.unlocked.contains(c.id())) out.put(e.getKey(), c);
         }
         return out;
+    }
+
+    /** What others see on a player: what they wear, unless they hid it all (the Wardrobe's eye button). */
+    EnumMap<Slot, Cosmetic> shown(UUID id) {
+        Data d = data.get(id);
+        return d != null && d.hidden ? new EnumMap<>(Slot.class) : worn(id);
     }
 
     boolean showOwn() { return getConfig().getBoolean("show-own", true); }
@@ -449,6 +535,11 @@ public final class FaultlineCosmetics extends JavaPlugin implements Listener {
                 try {
                     boolean shop = args.length > 0 && args[0].equalsIgnoreCase("shop");
                     if (forms.use(p) && (shop ? forms.shop(p) : forms.home(p))) return true; // Bedrock: native menus
+                    boolean all = args.length > 0 && args[0].equalsIgnoreCase("all");
+                    var items = Bukkit.getPluginManager().getPlugin("FaultlineItems");
+                    // Java: the Wardrobe (FaultlineItems' /accessories) holds cosmetics too now; /cosmetics all = this plugin's own list
+                    if (!shop && !all && items != null && items.isEnabled() && getConfig().getBoolean("open-wardrobe", true)
+                            && p.performCommand("accessories hat")) return true;
                     if (shop) openShop(p); else openMenu(p, 0);
                 }
                 catch (RuntimeException | LinkageError ex) { // never fail silently: tell them, and put the cause in the console

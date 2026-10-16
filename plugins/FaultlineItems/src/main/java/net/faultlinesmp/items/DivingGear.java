@@ -57,9 +57,9 @@ final class DivingGear implements Listener {
                 ChatColor.GREEN + "Everything the Abyssal Diving Gear does",
                 ChatColor.GREEN + "3 plates: each absorbs 15% of a hit underwater",
                 ChatColor.DARK_GRAY + "(a broken plate regrows after 20 seconds)",
-                ChatColor.RED + "Doesn't work in combat",
-                ChatColor.DARK_GRAY + "(for 10 s after you hit or are hit by",
-                ChatColor.DARK_GRAY + "a player or a monster)",
+                ChatColor.GREEN + "Wear it in an accessory slot OR as a chestplate",
+                ChatColor.RED + "Stops working for 10 s after",
+                ChatColor.RED + "a player hits you",
                 ChatColor.DARK_GRAY + "Dropped by the Kraken.");
 
         final String id, name;
@@ -92,7 +92,32 @@ final class DivingGear implements Listener {
     }
 
     ItemStack item(Piece p) {
-        return FaultlineItems.NewAccessoryItems.make(plugin, p.material, p.color + "" + ChatColor.BOLD + p.name, keys.get(p), p.lore);
+        ItemStack it = FaultlineItems.NewAccessoryItems.make(plugin, p.material, p.color + "" + ChatColor.BOLD + p.name, keys.get(p), p.lore);
+        if (p == Piece.SUIT) wearable(it);
+        return it;
+    }
+
+    /** 1.2.46: the suit can also be worn in the chestplate slot (right-click it on, or put it there in /accessories). */
+    static boolean wearable(ItemStack it) {
+        if (it == null || !it.hasItemMeta()) return false;
+        org.bukkit.inventory.meta.ItemMeta m = it.getItemMeta();
+        if (m.hasEquippable() && m.getEquippable().getSlot() == org.bukkit.inventory.EquipmentSlot.CHEST) return false;
+        org.bukkit.inventory.meta.components.EquippableComponent eq = m.getEquippable();
+        eq.setSlot(org.bukkit.inventory.EquipmentSlot.CHEST);
+        m.setEquippable(eq);
+        it.setItemMeta(m);
+        return true;
+    }
+
+    boolean isSuit(ItemStack it) {
+        if (it == null || !it.hasItemMeta()) return false;
+        Byte tag = it.getItemMeta().getPersistentDataContainer().get(keys.get(Piece.SUIT), PersistentDataType.BYTE);
+        return tag != null && tag == (byte) 1;
+    }
+
+    /** Wearing the suit: in an accessory slot or as the chestplate. */
+    boolean wearsSuit(Player p) {
+        return plugin.getAccessoryManager().hasEquipped(p, keys.get(Piece.SUIT)) || isSuit(p.getInventory().getChestplate());
     }
 
     /** For give commands and the Skeleton Wanderer. */
@@ -128,7 +153,7 @@ final class DivingGear implements Listener {
 
     private boolean has(Player p, Piece... any) {
         for (Piece piece : any) {
-            if (piece == Piece.SUIT && inCombat(p)) continue; // 1.2.12: the suit does nothing in combat
+            if (piece == Piece.SUIT) { if (!inCombat(p) && wearsSuit(p)) return true; continue; } // off for a while after a player hits you
             if (plugin.getAccessoryManager().hasEquipped(p, keys.get(piece))) return true;
         }
         return false;
@@ -142,24 +167,29 @@ final class DivingGear implements Listener {
         return t != null && System.currentTimeMillis() - t < (long) (cfg("suit.combat-seconds", 10) * 1000);
     }
 
-    /** Combat = hitting, or being hit by, a player or a monster (a projectile counts as its shooter). */
+    /**
+     * 1.2.46: only being HIT BY A PLAYER switches it off (a projectile counts as its shooter). Monsters never do, and
+     * neither does hitting someone yourself (both did before). `diving.suit.off-when-mobs-hit` / `off-when-attacking`
+     * (new keys, default false, so an old config's combat-includes-monsters: true doesn't bring the old way back).
+     */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onFight(org.bukkit.event.entity.EntityDamageByEntityEvent event) {
         org.bukkit.entity.Entity by = event.getDamager();
         if (by instanceof org.bukkit.entity.Projectile pr && pr.getShooter() instanceof org.bukkit.entity.Entity s) by = s;
         org.bukkit.entity.Entity hurt = event.getEntity();
         if (by == hurt) return;
-        boolean mobs = plugin.getConfig().getBoolean("diving.suit.combat-includes-monsters", true);
+        boolean mobs = plugin.getConfig().getBoolean("diving.suit.off-when-mobs-hit", false);
+        boolean attacking = plugin.getConfig().getBoolean("diving.suit.off-when-attacking", false);
         if (hurt instanceof Player p && (by instanceof Player || mobs && by instanceof org.bukkit.entity.Enemy)) tag(p);
-        if (by instanceof Player p && (hurt instanceof Player || mobs && hurt instanceof org.bukkit.entity.Enemy)) tag(p);
+        if (attacking && by instanceof Player p && hurt instanceof Player) tag(p);
     }
 
     private void tag(Player p) {
         boolean was = inCombat(p);
         fought.put(p.getUniqueId(), System.currentTimeMillis());
-        if (!was && plugin.getAccessoryManager().hasEquipped(p, keys.get(Piece.SUIT)))
-            p.sendActionBar(ChatColor.RED + "In combat: " + ChatColor.DARK_PURPLE + "your Abyssal Diving Suit stops working "
-                    + ChatColor.GRAY + "(" + (int) cfg("suit.combat-seconds", 10) + " s after the fighting stops)");
+        if (!was && wearsSuit(p))
+            p.sendActionBar(ChatColor.RED + "A player hit you: " + ChatColor.DARK_PURPLE + "your Abyssal Diving Suit stops working "
+                    + ChatColor.GRAY + "(for " + (int) cfg("suit.combat-seconds", 10) + " s)");
     }
 
     @EventHandler

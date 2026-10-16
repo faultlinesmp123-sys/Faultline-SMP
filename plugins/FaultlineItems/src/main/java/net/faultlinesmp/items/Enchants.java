@@ -48,7 +48,7 @@ import java.util.UUID;
  *  - Frostbite I-II (swords, axes, tridents, and bows since 1.2.27: on the arrow, a 90% draw counts as charged): 15% / 30% to chill: Slowness I/II for 3/4 s.
  *  - Venom I-II (swords, axes, tridents, and bows since 1.2.27: on the arrow, a 90% draw counts as charged): 15% / 30% to poison: Poison I/II for 3 s.
  *  - Thunderstrike I (swords, axes, tridents, and bows since 1.2.27: on the arrow, a 90% draw counts as charged): 8% to call a (harmless to blocks) lightning bolt for +4 damage, 8 s cooldown.
- *  - Vitality I-II (chestplates): +2 / +4 max health while worn.
+ *  - Vitality I-II (chestplates): Regeneration I / II while worn (1.2.46; it was +2 / +4 max health).
  *  - Vein Miner I (pickaxes): sneak + mine an ore = the connected vein of that ore (enchants.veinminer.max-blocks 32),
  *    each block broken as the player (claims, quests, Fortune/Silk Touch and durability all apply).
  *  - Featherstep I (boots): 35% less fall damage (stacks with Feather Falling) and you never trample farmland.
@@ -68,7 +68,7 @@ final class Enchants implements Listener, CommandExecutor, TabCompleter {
         add(new Def("frostbite", "Frostbite", 2, Kind.MELEE, ChatColor.AQUA, "A chance to chill: Slowness."));
         add(new Def("venom", "Venom", 2, Kind.MELEE, ChatColor.DARK_GREEN, "A chance to poison."));
         add(new Def("thunderstrike", "Thunderstrike", 1, Kind.MELEE, ChatColor.YELLOW, "A chance to call lightning for extra damage."));
-        add(new Def("vitality", "Vitality", 2, Kind.CHEST, ChatColor.LIGHT_PURPLE, "More max health while worn."));
+        add(new Def("vitality", "Vitality", 2, Kind.CHEST, ChatColor.LIGHT_PURPLE, "Regeneration while worn."));
         add(new Def("veinminer", "Vein Miner", 1, Kind.PICKAXE, ChatColor.GOLD, "Sneak while mining an ore to dig out the whole vein."));
         add(new Def("featherstep", "Featherstep", 1, Kind.BOOTS, ChatColor.WHITE, "Less fall damage; never trample farmland."));
     }
@@ -365,17 +365,29 @@ final class Enchants implements Listener, CommandExecutor, TabCompleter {
 
     private void tick() { for (Player p : Bukkit.getOnlinePlayers()) vitality(p, level(p.getInventory().getChestplate(), "vitality")); }
 
-    /** +2 max health per level of Vitality on the chestplate, as a player modifier (an item modifier would hide the armour's own). */
+    /**
+     * 1.2.46: Vitality on the chestplate = Regeneration (level I = Regeneration I, II = II), refreshed every second while
+     * worn (ambient, no particles). It used to be +2 max health a level as a player modifier, which persists in player
+     * data: that old modifier is always taken off here.
+     */
     void vitality(Player p, int lvl) {
         AttributeInstance max = p.getAttribute(Attribute.MAX_HEALTH);
-        if (max == null) return;
-        double want = lvl * cfg("vitality.health-per-level", 2);
-        AttributeModifier have = null;
-        for (AttributeModifier m : max.getModifiers()) if (vitalityKey.equals(m.getKey())) have = m;
-        if (have != null && have.getAmount() == want) return;
-        if (have != null) max.removeModifier(have);
-        if (want > 0) max.addModifier(new AttributeModifier(vitalityKey, want, AttributeModifier.Operation.ADD_NUMBER, EquipmentSlotGroup.ANY));
-        if (p.getHealth() > max.getValue()) p.setHealth(max.getValue());
+        if (max != null) for (AttributeModifier m : new ArrayList<>(max.getModifiers())) if (vitalityKey.equals(m.getKey())) {
+            max.removeModifier(m);
+            if (p.getHealth() > max.getValue()) p.setHealth(max.getValue());
+        }
+        if (p.isDead()) return;
+        if (lvl <= 0) { // took the chestplate off: ours goes (ambient, no particles, at most 10 s left), a real potion stays
+            PotionEffect r = p.getPotionEffect(PotionEffectType.REGENERATION);
+            if (r != null && r.isAmbient() && !r.hasParticles() && r.getDuration() <= 200 && r.getAmplifier() <= 1) p.removePotionEffect(PotionEffectType.REGENERATION);
+            return;
+        }
+        int amp = Math.max(0, Math.min(lvl, (int) cfg("vitality.max-regeneration-level", 2)) - 1);
+        PotionEffect have = p.getPotionEffect(PotionEffectType.REGENERATION);
+        // never cut short a stronger one (a potion, a golden apple), and only top ours up when it's nearly out: re-adding
+        // it every second would restart Regeneration's heal timer and heal far faster than the real effect
+        if (have != null && (have.getAmplifier() > amp || have.getAmplifier() == amp && have.getDuration() > 30)) return;
+        p.addPotionEffect(new PotionEffect(PotionEffectType.REGENERATION, 200, amp, true, false, true));
     }
 
     // ---------------------------------------------------------------- boss drops

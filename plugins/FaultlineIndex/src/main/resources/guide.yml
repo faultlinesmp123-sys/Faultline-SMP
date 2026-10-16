@@ -113,7 +113,7 @@ chapters:
     icon: golden_ring
     text: |
       # Accessories
-      /accessories opens 3 accessory slots: rings, charms and more. One of each.
+      /accessories (or /wardrobe) opens the Wardrobe: your 3 accessory slots (one of each), your cosmetics by slot, your armour, and a preview of your outfit.
 
       # Boss enchant books
       Bosses drop books with enchantments vanilla doesn't have (Lifesteal, Venom, Vein Miner...). Item on the left of an anvil, book on the right.

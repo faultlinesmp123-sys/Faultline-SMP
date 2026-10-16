@@ -1,5 +1,5 @@
 name: FaultlineItems
-version: 1.2.45
+version: 1.2.46
 main: net.faultlinesmp.items.FaultlineItems
 api-version: '1.21'
 softdepend: [floodgate, Geyser-Spigot]
@@ -40,8 +40,9 @@ commands:
     usage: /itemsreload
     permission: items.reload
   accessories:
-    description: Open your Accessories menu (3 slots)
-    usage: /accessories
+    description: The Wardrobe - your 3 accessories, cosmetics and armour in one menu
+    usage: /accessories [accessories|hat|neck|back|body]
+    aliases: [wardrobe]
   giveaccessory:
     description: Give yourself or another player any accessory (for testing)
     usage: /giveaccessory <name> [amount] [player]   (see /giveaccessory for the list)

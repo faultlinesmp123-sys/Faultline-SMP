@@ -297,13 +297,15 @@ final class Ocean implements Listener {
         }
     }
 
-    /** The Abyssal Diving Suit (FaultlineItems: an accessory, by its tag) shuts the pressure out. */
+    /** The Abyssal Diving Suit (FaultlineItems: an accessory or the chestplate, by its tag) shuts the pressure out. */
     boolean suit(Player p) {
         try {
             var items = Bukkit.getPluginManager().getPlugin("FaultlineItems");
             if (items == null) return false;
             Object am = items.getClass().getMethod("getAccessoryManager").invoke(items);
             NamespacedKey k = NamespacedKey.fromString("faultlineitems:abyssal_diving_suit");
+            var chest = p.getInventory().getChestplate(); // worn as a chestplate counts too
+            if (chest != null && chest.hasItemMeta() && chest.getItemMeta().getPersistentDataContainer().has(k)) return true;
             for (var m : am.getClass().getMethods())
                 if (m.getName().equals("hasEquipped") && m.getParameterCount() == 2) {
                     m.setAccessible(true); // AccessoryManager is package-private: without this every call threw (the suit never helped)

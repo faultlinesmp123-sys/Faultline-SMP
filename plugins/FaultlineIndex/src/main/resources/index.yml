@@ -1162,6 +1162,30 @@ entries:
      where: "The Sulphur Sea, the Dark Ocean's acid region round -520, 480: on its islands.",
      does: "Passive. A slow snail in a rusted spiral shell. It leaves a trail of acid slime that slows and poisons whoever steps in it, and arrows bounce off its shell.",
      drops: ["Slime Balls|100%", "Dark Loot Bag|0.8%"]}
+  - {chapter: deep, id: deep_shambler, name: "Sludge Shambler", icon: deep_shambler, detect-tag: faultline_deep_shambler,
+     where: "Only during the ACID RAIN (an event over the Sulphur Sea, the Dark Ocean's acid region round -520, 480: 0.5% every 5 minutes while someone is there, 6 minutes long): in its water and on its islands.",
+     does: "Hostile. A drowned sailor soaked through with acid, 40 health. It hurls globs of sludge (5 damage, poison and slowness) and its touch poisons.",
+     drops: ["Rotten Flesh, Slime Balls|100%", "Dark Loot Bag|0.8%"]}
+  - {chapter: deep, id: deep_rustbones, name: "Rustbones", icon: deep_rustbones, detect-tag: faultline_deep_rustbones,
+     where: "Only during the ACID RAIN (an event over the Sulphur Sea, the Dark Ocean's acid region round -520, 480: 0.5% every 5 minutes while someone is there, 6 minutes long): on its islands.",
+     does: "Hostile. A skeleton in corroded armour, 30 health. Its sulphur-dipped arrows poison you (Poison II).",
+     drops: ["Bones, Arrows, Copper Ingot|100%", "Dark Loot Bag|0.8%"]}
+  - {chapter: deep, id: deep_acidmite, name: "Acid Mite", icon: deep_acidmite, detect-tag: faultline_deep_acidmite,
+     where: "Only during the ACID RAIN (an event over the Sulphur Sea, the Dark Ocean's acid region round -520, 480: 0.5% every 5 minutes while someone is there, 6 minutes long): on its islands, in packs of 3-4. Grubnash calls them too.",
+     does: "Hostile. A glowing tick the size of a cat, 8 health, fast. Its bite poisons.",
+     drops: ["Glowstone Dust|33%", "Dark Loot Bag|0.8%"]}
+  - {chapter: deep, id: deep_stormwraith, name: "Storm Wraith", icon: deep_stormwraith, detect-tag: faultline_deep_stormwraith,
+     where: "Only during the ACID RAIN (an event over the Sulphur Sea, the Dark Ocean's acid region round -520, 480: 0.5% every 5 minutes while someone is there, 6 minutes long): in the air.",
+     does: "Hostile. A shape of green storm cloud, 30 health. It drifts through walls and calls down drops of acid on you; its touch poisons and weakens.",
+     drops: ["Phantom Membrane, Lime Dye|100%", "Dark Loot Bag|0.8%"]}
+  - {chapter: deep, id: deep_mauler, name: "Bile Mauler", icon: deep_mauler, detect-tag: faultline_deep_mauler,
+     where: "Only during the ACID RAIN (an event over the Sulphur Sea, the Dark Ocean's acid region round -520, 480: 0.5% every 5 minutes while someone is there, 6 minutes long): in its water.",
+     does: "Hostile. A hulking blind shark-thing, 110 health. It charges through the water; its bite rots your armour and poisons you.",
+     drops: ["Bones, Prismarine Crystals|100%", "Brine Bait|5%", "Dark Loot Bag|0.8%"]}
+  - {chapter: bosses, id: deep_goblin, name: "Grubnash the Acid Goblin", icon: deep_goblin, detect-tag: faultline_deep_goblin,
+     where: "A MINI BOSS of the ACID RAIN: 90 seconds into the event he rides in on the storm next to someone in the Sulphur Sea. 500 health. (/deep acidrain goblin for admins; his egg is in /itemsmenu.)",
+     does: "Throws Acid Flasks (pools of acid), lobs Scrap Bombs (they go off after 1.5 s), Goblin Leaps onto you (a slam), and calls his Acid Mites. Below half health: a frenzy (faster, more often). If the rain stops first he runs off with his loot.",
+     drops: ["Emeralds, Gold Ingots, TNT|100%", "Dark Loot Bags|2", "A rare Dark Loot roll|10%", "300 XP|100%"]}
   - {chapter: bosses, id: brine_scourge, name: "The Brine Scourge", icon: brine_scourge, detect-tag: faultline_brine_scourge,
      where: "A BOSS of the Dark Ocean's SULPHUR SEA (the acid region round -520, 480), and only there. Use a Brine Bait (Trasher 3%, Corrosion Shark 4%, Acid Eel 1%, Masked Devilfish 1%), or it finds you on its own (0.1% every 5 minutes for each player in the Sulphur Sea). 2,400 health (+20% per extra fighter).",
      does: "A great teal sea worm with bone spikes down its body and two crescent mandibles. FIGHT IT UNDER THE WATER: while anyone is above the surface it is ENRAGED (it can't be hurt and hits 50% harder). Its moves poison you: watch the Sulphuric Poisoning bar (full = it hurts every second) and swim into the clean blue bubbles that rise from below to clear it. It runs a fixed cycle: Radiation Pulse (spreads of acid every second and a green pulse), Rubble Charges (5 lunges leaving acid; ramming rock stuns it and sprays rubble), Radioactive Breath (sharp turns spitting acid while rubble falls on green lines), Rubble Charges again, Toxic Bubble Spin. Below 60% it does all of it harder. Below 30%: THE MOLT. It tears off its own armoured skin (the husk sinks and dissolves) and fights on in raw, glowing flesh: faster, but it takes 15% more damage, and it no longer cares where you stand. A sulphur storm breaks (acid drops on anyone above the water). Its new cycle: Spine Barrage (its loose spines stick in the rock as acid pylons; pylons near each other are joined by burning beams: don't cross them), Sulphur Breach (it bursts out of the sea and arcs through the air, raining acid, then slams down with a shockwave), Acid Geysers (green rings under everyone: a second later acid blasts up from the floor through the surface and throws you), Corrosive Clouds (toxic clouds roll over the surface and the islands: dive under the water), Sulphur Breach again, Toxic Maelstrom (it spirals inward dragging everyone to an acid heart: swim out). Once, below 10%: the DEATH COIL (it wraps round you: hit it hard enough to break out before it crushes everyone inside). When it dies its body dissolves. Music: the Kraken's theme.",
@@ -1259,11 +1283,13 @@ achievements:
      stat: mimics, count: 5, reward: {items: ["DIAMOND:6", "GOLD_BLOCK:2"], xp: 500}}
   # ---- the Dark Ocean (1.6.31)
   - {id: into_the_dark, name: "Into the Dark", icon: deep_lampsquid, desc: "Hunt 25 of the Dark Ocean's creatures.",
-     defeat: [deep_gawker, deep_bloatfin, deep_jellywing, deep_driftback, deep_clam, deep_lumenbell, deep_gasbloom, deep_fangstalker, deep_blastfin, deep_burrowshark, deep_cavecrawler, deep_glowgrub, deep_shellsnake, deep_lampsquid, deep_volteel, deep_needlejaw, deep_devilfish, deep_riftwarper, deep_hollowkin, deep_sharkquid, deep_acideel, deep_trasher, deep_radiator, deep_flakcrab, deep_nucleartoad, deep_gammaslime, deep_sulphurskater, deep_acidjelly, deep_orthocera, deep_trilobite, deep_skyfin, deep_leech, deep_boglurker, deep_corrosionshark, deep_urchin, deep_crabling, deep_bloatgut, deep_sulphurmoth, deep_hazardturtle, deep_sludgesnail],
+     defeat: [deep_gawker, deep_bloatfin, deep_jellywing, deep_driftback, deep_clam, deep_lumenbell, deep_gasbloom, deep_fangstalker, deep_blastfin, deep_burrowshark, deep_cavecrawler, deep_glowgrub, deep_shellsnake, deep_lampsquid, deep_volteel, deep_needlejaw, deep_devilfish, deep_riftwarper, deep_hollowkin, deep_sharkquid, deep_acideel, deep_trasher, deep_radiator, deep_flakcrab, deep_nucleartoad, deep_gammaslime, deep_sulphurskater, deep_acidjelly, deep_orthocera, deep_trilobite, deep_skyfin, deep_leech, deep_boglurker, deep_corrosionshark, deep_urchin, deep_crabling, deep_bloatgut, deep_sulphurmoth, deep_hazardturtle, deep_sludgesnail, deep_shambler, deep_rustbones, deep_acidmite, deep_stormwraith, deep_mauler],
      need: 25, reward: {items: ["DIAMOND:8", "PRISMARINE_CRYSTALS:16"], xp: 500}}
   - {id: acid_bath, name: "Acid Bath", icon: deep_gammaslime, desc: "Hunt 15 of the Sulphur Sea's creatures.",
      defeat: [deep_acideel, deep_trasher, deep_radiator, deep_flakcrab, deep_nucleartoad, deep_gammaslime, deep_sulphurskater, deep_acidjelly, deep_orthocera, deep_trilobite, deep_skyfin, deep_leech, deep_boglurker, deep_corrosionshark, deep_urchin, deep_crabling, deep_bloatgut, deep_sulphurmoth, deep_hazardturtle, deep_sludgesnail],
      need: 15, reward: {items: ["DIAMOND:6", "SLIME_BLOCK:8"], xp: 600}}
+  - {id: acid_rain_survivor, name: "Through the Acid Rain", icon: deep_goblin, desc: "Slay Grubnash the Acid Goblin.",
+     defeat: [deep_goblin], need: all, reward: {items: ["EMERALD_BLOCK:2", "GOLDEN_APPLE:4"], xp: 1000}}
   - {id: tides_of_ruin, name: "Tides of Ruin", icon: brine_scourge, desc: "Defeat the Brine Scourge and the Umbral Leviathan.",
      defeat: [brine_scourge, umbral_leviathan], need: all, reward: {items: ["NETHERITE_INGOT:2", "HEART_OF_THE_SEA:1"], xp: 1500}}
   - {id: abyss_walker, name: "Abyss Walker", icon: the_lament, desc: "Defeat all six of the Dark Ocean's bosses.",

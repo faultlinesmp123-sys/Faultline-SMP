@@ -1091,6 +1091,52 @@ Notes:
   (`sulphur.always-raining`): per-player `setPlayerWeather(DOWNFALL)` re-applied every 2 s, reset on leaving / quitting /
   changing worlds, plus GREEN RAIN particles (lime/yellow concrete-powder falling dust + green dust,
   `sulphur.green-rain-particles` 40, every 4 ticks, not under a roof). Tested (`DeepTest`).
+- **The Acid Rain batch (Deep 1.5.0, Bosses 1.6.6, Items 1.2.49 = pack hash + eggs, Index 1.6.36)**:
+  **Sea level y 300** (`DeepGenerator.SEA` 100 -> 300; the owner asked for 350, but the world stops at y 319 and Geyser can't
+  show anything above it, so 300). Terrain below is unchanged: the Sunlit Sea floor stays ~46, so ~250 blocks of open water;
+  you arrive at 0 300 0. The Sulphur Sea is relative to SEA (`Sulphur.floor`: basins SEA-34, islands capped SEA+9, columns
+  SEA+6..18, all under y 319): it rises on sheer cliffs from the deep floor to the surface (the region's crust fills up to
+  ~266, so its chunks cost ~45 ms). Already-generated chunks don't change: DELETE the `faultline_deep` world folder (server
+  stopped) to get the new sea. Zone / music / pressure lines (y 35, y 20) are unchanged.
+  **Tail glitch**: deep creatures' bone anims were sampled every 2 ticks with interpolation 3 (overlapping poses) and the
+  tail swing grew to 2.2x while swimming (60 degrees, bending off the body). Now each `Beast` has its own `clock` (runs up to
+  1.8x faster while swimming: faster beats, never wider; amp max 1.25), interpolation = the real gap between poses, and no
+  anim faster than 0.8 s (`DeepMobs.animate`).
+  **Acid mobs detailed**: `tools/deep_assets.py` `_detailed()` doubles their texture resolution (ppb 32) and adds gills,
+  barnacles, rust, drips, claws, spines, glowing veins (`crust`, `rusty`, `slick`, `into(p, bone)`, `drips`, `barnacles`).
+  **The Acid Rain** (`Deep/AcidRain.java`, `acid-rain:`): every `check-minutes` 5, if anyone is in or near the Sulphur Sea
+  (`generator.sulphur` > `edge-weight` 0.15), `chance` 0.005 it starts for `minutes` 6: boss bar, thunder, green rain x3
+  (`Ocean.greenRain`), out in the open without a helmet = poison (a helmet takes `helmet-wear` instead). Its 5 creatures
+  (`DeepMobs.RAIN`, weight 0 so the normal spawner never picks them, spawned by `spawnNear` every `spawn-seconds` up to
+  `cap-per-player` 6): Sludge Shambler (DROWNED, sludge globs `GLOB_TAG`), Rustbones (SKELETON with a bow, poison II arrows
+  `onShoot`), Acid Mite (ENDERMITE, packs), Storm Wraith (VEX, acid downpour), Bile Mauler (DROWNED x1.9, charges, armour wear
+  `wearArmor`). After `goblin-after-seconds` 90: **GRUBNASH THE ACID GOBLIN** (kind `goblin`, VINDICATOR, 500 hp, own bar):
+  Acid Flasks (`FLASK_TAG` pools), Scrap Bombs (`BOMB_TAG`, 1.5 s, 10 dmg r 3.6, no blocks), Goblin Leap (slam 9), Call the
+  Mites; frenzy below 50% (Speed II, faster). Drops emeralds/gold/TNT, `darkloot bag 2`, 10% `darkloot rare`, 300 XP, Index stat
+  `acid_goblins`, achievement `acid_rain_survivor`. The rain ending melts its creatures (a living goblin runs off, no loot).
+  `/deep acidrain [start|stop|goblin]`. Index: 5 entries (deep) + Grubnash (bosses); eggs in /itemsmenu (`deep egg <id>`).
+  **Lucki is Swarm** (`Swarm.java`): when the rider drops into the whirlpool he laughs, a puff of ink, and Swarm stands in his
+  boat (the old `swarm_*` rig, still in the pack, posed like renderRig; Bedrock: a black armor stand with a wither skull),
+  points and talks (`Journey.SWARM_LINES`) while the rider is carried round and down the funnel (`reveal`, ~12 s), then sent.
+  Lucki is hidden meanwhile and back at the dock after. **The whirlpool** (`Vortex.java`): a real funnel, FAKE air sent with
+  `sendMultiBlockChange` to everyone within 96 (the world never changes: nothing floods, nothing to restore after a crash):
+  opens over 3-4 s to `journey.whirlpool-radius` 9 / `whirlpool-depth` 16 (or the floor), spray spirals down the walls, foam rim,
+  mist, a dark eye; players there slide round and down into the eye (= sent); closes at the end.
+  **Sea boss AI** (`DeepBosses.Swimmer`): every move goes through `clear(a, b, r)` (water every half block along the way; before,
+  only the end was checked, so fast moves skipped through thin walls), `step()`. `swimTo` looks ahead (`bestDir`: 60 directions,
+  the open one leading most toward the goal, sticks with the side it picked), plans an A* path over 2-block cells (`plan`,
+  1800 nodes, 48 blocks) when it hasn't got closer in 50 ticks or hasn't moved in 2 s, follows it (skipping to the furthest
+  clear waypoint), and only as a last resort `unstick()`s (ink, reappears in open water near the goal). `circle()` never picks an
+  orbit spot inside rock or out of sight (`sight()`: a block walk, MockBukkit has no ray tracing). Serpents lay their bodies
+  ALONG the head's trail (`Serpent.follow`), so segments never cut through rock at bends. Vanish only reappears in sight
+  (`seen`), the ambush / molt / clam slam stop at rock.
+  **Scourge bubbles**: every `air-bubble.every-seconds` 20 giant air bubbles (`wild/air_bubble`, translucent, made by
+  deep_assets.py `bubble()`) rise near up to 4 fighters for 12 s: inside = air refills + poison drains. Every
+  `pink-bubble.every-seconds` 30 a pink one (`wild/pink_bubble` + an invisible slime hitbox tagged `Scourge.PINK_TAG`,
+  `Wild.onHurt` -> `pinkHit`): hit it = it bursts and the Scourge takes `pink-bubble.damage` 150 (even enraged/molting).
+  Tested: `DeepTest` (ftest: 46 kinds, acid zone at the new height, funnel, Swarm, Acid Rain + goblin), `DeepBossTest` (bubbles,
+  no phasing through a wall, A* round it, it gets to the far side), `WildTest`, `MusicTest`, `StuckTest`, `AchievementTest`,
+  `SulphurPreview` (0 spills), `TownPreview` (0 leaks).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.
@@ -1113,7 +1159,7 @@ Notes:
 | `FaultlineBloodMoon.zip` | Blood Moon pack: replaces moon phase textures |
 | `FaultlineBosses.zip` | Very old zip of the FaultlineBosses source (Demon Eye only). Ignore it; the live copy is `plugins/FaultlineBosses/` |
 | `plugins/` | Source code for all nine custom plugins (edit these) |
-| `FaultlineDeepMusic.zip` | Second Java pack: the Dark Ocean's two music tracks (sent beside FaultlineSMP.zip) |
+| `FaultlineDeepMusic.zip` | Second Java pack: the Dark Ocean's three music tracks (sunken, abyss, acid; sent beside FaultlineSMP.zip) |
 | `bedrock/` | Bedrock (Geyser) packs + custom item mappings: cosmetics (`tools/cosmetics_assets.py`), ships (`tools/ship_assets.py --bedrock`), wild models (`tools/wild_assets.py`) |
 
 Resource packs are served from raw GitHub links on `main`, e.g.

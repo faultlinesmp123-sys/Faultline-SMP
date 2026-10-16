@@ -9,7 +9,7 @@ import java.util.Random;
  * THE SULPHUR SEA (Deep 1.4.0): an acid region of the Dark Ocean, around SX, SZ (an organic blob ~R blocks across, its
  * edge eased over BLEND blocks), after the Calamity mod's Sulphurous Sea. The Brine Scourge lives here now.
  *
- *  - the floor rises: basins 25-35 deep between shelves, and ISLANDS breaking the surface (up to ~y 112) of sulphurous
+ *  - the floor rises from the deep sea floor (sheer cliffs round the edge, 1.5.0) to basins 25-35 deep between shelves, and ISLANDS breaking the surface (up to ~14 above the surface) of sulphurous
  *    mud and olive shale, crusted with yellow sulphur, cut by beaches of black gravel
  *  - the water is murky green (the column's biome is SWAMP) and acidic: swimming in it poisons you (Ocean.java)
  *  - underwater: a bleached, dead reef (dead coral blocks and fans), toxic kelp, sulphur crystals (ochre froglights on
@@ -48,12 +48,12 @@ final class Sulphur {
     /** The floor (top solid block) inside the Sulphur Sea: basins, shelves and islands. */
     static double floor(DeepGenerator.Noise n, int x, int z) {
         double isl = island(n, x, z);
-        double h = 66 + Math.max(0, isl + 0.15) * 85 + n.n2(n.dunes, x * 1.3, z * 1.3) * 1.6;
+        double h = DeepGenerator.SEA - 34 + Math.max(0, isl + 0.15) * 85 + n.n2(n.dunes, x * 1.3, z * 1.3) * 1.6;
         if (isl > 0.42) h += (isl - 0.42) * 30; // the biggest islands get hills
         // the works stand over open water
         double dw = Math.hypot(x - WORKS_X, z - WORKS_Z);
-        if (dw < 30) h = Math.min(h, 74 + dw * 0.4);
-        return Math.min(114, h);
+        if (dw < 30) h = Math.min(h, DeepGenerator.SEA - 26 + dw * 0.4);
+        return Math.min(DeepGenerator.SEA + 9, h); // islands + trees stay under the build limit (y 319)
     }
 
     // =========================================================================================== blocks
@@ -209,7 +209,7 @@ final class Sulphur {
     static void column(DeepGenerator g, DeepGenerator.Noise n, Paint p, int cx, int cz, int gx, int gz) {
         long seed = n.seed;
         int b = g.upperFloor(n, cx, cz) - 2;
-        int topY = DeepGenerator.SEA + 6 + (int) (u(seed, gx, gz, 604) * 26);
+        int topY = DeepGenerator.SEA + 6 + (int) (u(seed, gx, gz, 604) * 12); // (the world stops at y 319)
         double r0 = 4 + u(seed, gx, gz, 605) * 3.5;
         double lean = (u(seed, gx, gz, 606) - 0.5) * 0.25, ang = u(seed, gx, gz, 607) * Math.PI * 2;
         if (!p.touches(cx - 12, cz - 12, cx + 12, cz + 12)) return;

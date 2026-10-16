@@ -16,7 +16,8 @@ import java.util.Random;
 /**
  * THE DARK OCEAN's terrain (world faultline_deep). Water everywhere, nothing above the surface. Top to bottom:
  *
- *  - the surface at y = SEA (100); you arrive at 0, 100, 0
+ *  - the surface at y = SEA (300 since 1.5.0, was 100); you arrive at 0, 300, 0. The Sunlit Sea's floor stays ~46, so it's
+ *    ~250 blocks of open water down to it; the Sulphur Sea rises on cliffs to just under the surface
  *  - THE SUNLIT SEA (the floor ~38-60): sand dunes, gravel and clay, kelp forests, a warm coral reef round 0,0, the
  *    "Sunken Sea" fields (navystone = cyan terracotta, prism crystal spires of prismarine with sea-lantern cores),
  *    stone arches, sea stacks that climb toward the light, whale falls (bone ribs) and blue holes
@@ -36,7 +37,7 @@ import java.util.Random;
  */
 final class DeepGenerator extends ChunkGenerator {
 
-    static final int SEA = 100, FLOOR = -50;
+    static final int SEA = 300, FLOOR = -50; // 1.5.0: the surface went up from 100 to 300
     static final int FLAT_X = 681, FLAT_Z = -951, FLAT_HALF = 75, FLAT_BLEND = 28;
 
     private volatile Noise noise;

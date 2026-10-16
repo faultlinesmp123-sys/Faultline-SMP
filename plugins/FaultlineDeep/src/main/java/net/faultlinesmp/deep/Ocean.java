@@ -55,7 +55,7 @@ import java.util.UUID;
  *      mining fatigue, the glass-creak sounds) unless you wear the Abyssal Diving Suit or have Conduit Power.
  *      UNDERTOW: a rip current sweeps across the Sunlit Sea in one direction, dragging swimmers and boats with it.
  *    One at a time, every events.every-minutes (45-90) while someone's down here; /deep event <pressure|undertow|stop>.
- *  - Respawning: back at the Dark Ocean's entry (0, 100, 0) unless you have a bed or anchor set (death.respawn).
+ *  - Respawning: back at the Dark Ocean's entry (0, 300, 0) unless you have a bed or anchor set (death.respawn).
  */
 final class Ocean implements Listener {
 
@@ -138,6 +138,7 @@ final class Ocean implements Listener {
     void greenRain() {
         if (inSulphur.isEmpty() || !pl.getConfig().getBoolean("sulphur.always-raining", true)) return;
         int n = (int) cfg("sulphur.green-rain-particles", 40);
+        if (pl.acidRain != null && pl.acidRain.active) n *= 3; // the Acid Rain: a downpour
         org.bukkit.block.data.BlockData lime = org.bukkit.Material.LIME_CONCRETE_POWDER.createBlockData();
         org.bukkit.block.data.BlockData yellow = org.bukkit.Material.YELLOW_CONCRETE_POWDER.createBlockData();
         for (UUID id : inSulphur) {

@@ -157,19 +157,204 @@ final class DeepBosses {
             return new Vector(-Math.sin(y) * Math.cos(p), -Math.sin(p), Math.cos(y) * Math.cos(p));
         }
 
-        /** Swim toward a spot: turning at most `turn` degrees a tick, never into rock (it slides up or around instead). */
+        /**
+         * Water all the way from a to b (every half block), with r blocks of room round each point. Every move goes
+         * through this (`step`): before 1.6.6 only the END of a move was checked, so a fast boss (a charge at 1.35 a
+         * tick) skipped straight through a one-block wall into the next cave.
+         */
+        static boolean clear(Location a, Location b, int r) {
+            Vector d = b.toVector().subtract(a.toVector());
+            int n = Math.max(1, (int) Math.ceil(d.length() / 0.5));
+            for (int i = 1; i <= n; i++) if (!open(a.clone().add(d.clone().multiply(i / (double) n)), r)) return false;
+            return true;
+        }
+
+        /** Move to n if the way there is clear. */
+        boolean step(Location n) {
+            if (!clear(pos, n, room())) return false;
+            pos = n;
+            return true;
+        }
+
+        // the steering state (1.6.6)
+        Vector detour;
+        int detourT, stuckT;
+        Location lastSpot;
+        final java.util.ArrayDeque<Location> path = new java.util.ArrayDeque<>();
+        int pathFor; // ticks the current path is still trusted
+        long lastPathAt;
+        Location progGoal;       // where it was heading when it last got closer
+        double progBest = 1e9;   // the closest it has been to it
+        int noProgress;          // ticks without getting any closer
+
+        /**
+         * Swim toward a spot, turning at most `turn` degrees a tick and never through rock. 1.6.6's smarter AI:
+         *  - it LOOKS AHEAD (a few body lengths): rock in the way = it picks the open direction (of 65 tried round it)
+         *    that leads most toward the goal and keeps to that detour a moment, so it rounds pillars and reefs instead of
+         *    nosing into them;
+         *  - if it still hasn't got anywhere in 2 seconds, it plans a PATH through the water (A* over 2-block cells,
+         *    within 48 blocks) and follows it;
+         *  - only if there's no way through at all does it slip off into the dark and come back up nearer (never through
+         *    a wall in front of anyone: a new open spot near the goal).
+         */
         void swimTo(Location to, double speed, float turn) {
+            if (!to.getWorld().equals(world)) return;
             Vector d = to.toVector().subtract(pos.toVector());
-            if (d.lengthSquared() < speed * speed) { if (open(to, room())) pos = to.clone(); return; }
-            yaw = turn(yaw, yawOf(flat(d)), turn);
-            float wantPitch = Math.max(-55, Math.min(55, pitchOf(d)));
-            pitch += Math.max(-turn, Math.min(turn, wantPitch - pitch));
-            Location n = pos.clone().add(dir3(yaw, pitch).multiply(speed));
-            if (open(n, room())) { pos = n; return; }
-            for (Vector alt : new Vector[]{new Vector(0, speed, 0), dirOf(yaw + 70).multiply(speed), dirOf(yaw - 70).multiply(speed), new Vector(0, -speed, 0)}) {
-                Location a = pos.clone().add(alt);
-                if (open(a, room())) { pos = a; yaw += alt.getY() == 0 ? 10 : 0; return; }
+            if (d.lengthSquared() < speed * speed) { if (clear(pos, to, room())) pos = to.clone(); stuckT = 0; return; }
+            Location goal = to;
+            // a planned path: aim at its next waypoint
+            boolean following = false;
+            if (!path.isEmpty() && pathFor-- > 0) {
+                while (!path.isEmpty() && path.peekFirst().distanceSquared(pos) < Math.max(2.25, speed * speed * 4)) path.pollFirst();
+                // skip ahead to the furthest waypoint it can already swim straight to
+                while (path.size() > 1) {
+                    java.util.Iterator<Location> it = path.iterator(); it.next();
+                    Location nxt = it.next();
+                    if (!clear(pos, nxt, room())) break;
+                    path.pollFirst();
+                }
+                if (!path.isEmpty()) { goal = path.peekFirst(); following = true; }
+            } else path.clear();
+            Vector want = goal.toVector().subtract(pos.toVector());
+            double look = Math.max(3, Math.min(10, speed * 6 + room()));
+            boolean straight = following || clear(pos, pos.clone().add(unit(want.clone()).multiply(Math.min(look, want.length() + 0.5))), room());
+            if (straight) detourT = 0;
+            else if (detourT > 0 && clear(pos, pos.clone().add(detour.clone().multiply(look)), room())) { detourT--; want = detour.clone(); } // keep to the way round it chose
+            else {
+                Vector best = bestDir(want, look);
+                if (best != null) { detour = best; detourT = 30; want = best.clone(); }
             }
+            yaw = turn(yaw, yawOf(flat(want)), turn);
+            float wantPitch = Math.max(-60, Math.min(60, pitchOf(want)));
+            pitch += Math.max(-turn, Math.min(turn, wantPitch - pitch));
+            boolean moved = step(pos.clone().add(dir3(yaw, pitch).multiply(speed)));
+            if (!moved) { // nose against rock: slide along it
+                Vector side = flat(want).crossProduct(new Vector(0, 1, 0));
+                if (side.lengthSquared() < 1e-6) side = new Vector(1, 0, 0);
+                side.normalize();
+                for (Vector alt : new Vector[]{unit(want.clone()).multiply(speed), side.clone().multiply(speed), side.clone().multiply(-speed),
+                        new Vector(0, speed, 0), new Vector(0, -speed, 0), dirOf(yaw + 70).multiply(speed), dirOf(yaw - 70).multiply(speed)}) {
+                    if (step(pos.clone().add(alt))) { moved = true; yaw = turn(yaw, yawOf(flat(alt)), turn * 2); break; }
+                }
+            }
+            // getting nowhere? (moving, but no closer to where it wants to be: dithering in front of a wall)
+            double dist = d.length();
+            if (progGoal == null || !progGoal.getWorld().equals(world) || progGoal.distanceSquared(to) > 36) { progGoal = to.clone(); progBest = dist; noProgress = 0; path.clear(); } // a new goal: an old path is no good
+            else if (dist < progBest - 1) { progBest = dist; noProgress = 0; }
+            else if (dist > 4 && ++noProgress >= 50 && path.isEmpty() && System.currentTimeMillis() - lastPathAt > 1500) {
+                lastPathAt = System.currentTimeMillis();
+                noProgress = 0;
+                List<Location> found = plan(to, 48);
+                if (found != null && found.size() > 1) { path.clear(); path.addAll(found); pathFor = 200; detourT = 0; }
+            }
+            // stuck? (it wants to go somewhere but has hardly moved in 2 s)
+            if (ticks % 10 == 0) {
+                if (lastSpot != null && lastSpot.getWorld().equals(world) && lastSpot.distanceSquared(pos) < 1.0 && d.lengthSquared() > 9) stuckT += 10;
+                else stuckT = Math.max(0, stuckT - 10);
+                lastSpot = pos.clone();
+            }
+            if (stuckT >= 40 && System.currentTimeMillis() - lastPathAt > 1500) {
+                lastPathAt = System.currentTimeMillis();
+                List<Location> found = plan(to, 48);
+                if (found != null && found.size() > 1) { path.clear(); path.addAll(found); pathFor = 200; stuckT = 0; detourT = 0; }
+                else if (stuckT >= 120) unstick(to);
+            }
+        }
+
+        /** Of the directions round `want`, the open one (clear for `look` blocks) that leads most toward it. */
+        Vector bestDir(Vector want, double look) {
+            float y0 = yawOf(flat(want)), p0 = pitchOf(want);
+            Vector u = unit(want.clone());
+            Vector best = null;
+            double score = -9;
+            for (int yo : new int[]{0, 25, -25, 50, -50, 80, -80, 115, -115, 150, -150, 180}) for (int po : new int[]{0, 30, -30, 60, -60}) {
+                Vector v = dir3(y0 + yo, Math.max(-75, Math.min(75, p0 + po)));
+                double sc = v.dot(u) + (detour != null ? v.dot(detour) * 0.6 : 0); // sticks with the side it picked
+                if (sc <= score) continue;
+                if (!clear(pos, pos.clone().add(v.clone().multiply(look)), room())) continue;
+                best = v; score = sc;
+            }
+            return best;
+        }
+
+        /** A* through the water on a 2-block grid from here toward `to` (or as near as it gets); null = no way. */
+        List<Location> plan(Location to, int range) {
+            final int cell = 2;
+            int r = room();
+            int bx = pos.getBlockX(), by = pos.getBlockY(), bz = pos.getBlockZ();
+            int gx = Math.floorDiv(to.getBlockX() - bx, cell), gy = Math.floorDiv(to.getBlockY() - by, cell), gz = Math.floorDiv(to.getBlockZ() - bz, cell);
+            int lim = range / cell;
+            gx = Math.max(-lim, Math.min(lim, gx)); gy = Math.max(-lim, Math.min(lim, gy)); gz = Math.max(-lim, Math.min(lim, gz));
+            java.util.Map<Long, long[]> seen = new java.util.HashMap<>(); // key -> {parent key, g}
+            java.util.PriorityQueue<long[]> open = new java.util.PriorityQueue<>((x, y) -> Long.compare(x[1], y[1])); // {key, f}
+            long start = key(0, 0, 0);
+            seen.put(start, new long[]{start, 0});
+            open.add(new long[]{start, 0});
+            long bestKey = start; double bestH = 1e18;
+            int expanded = 0;
+            int[][] nb = {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}, {1, 0, 1}, {1, 0, -1}, {-1, 0, 1}, {-1, 0, -1}};
+            while (!open.isEmpty() && expanded++ < 1800) {
+                long[] cur = open.poll();
+                int cx = kx(cur[0]), cy = ky(cur[0]), cz = kz(cur[0]);
+                double h = Math.abs(cx - gx) + Math.abs(cy - gy) + Math.abs(cz - gz);
+                if (h < bestH) { bestH = h; bestKey = cur[0]; }
+                if (h == 0) break;
+                long g = seen.get(cur[0])[1];
+                for (int[] o : nb) {
+                    int nx = cx + o[0], ny = cy + o[1], nz = cz + o[2];
+                    if (Math.abs(nx) > lim || Math.abs(ny) > lim || Math.abs(nz) > lim) continue;
+                    long nk = key(nx, ny, nz);
+                    long ng = g + (o[0] != 0 && o[2] != 0 ? 14 : 10);
+                    long[] was = seen.get(nk);
+                    if (was != null && was[1] <= ng) continue;
+                    Location a = new Location(world, bx + cx * cell + 0.5, by + cy * cell + 0.5, bz + cz * cell + 0.5);
+                    Location b = new Location(world, bx + nx * cell + 0.5, by + ny * cell + 0.5, bz + nz * cell + 0.5);
+                    if (!open(b, r) || !clear(a, b, r)) continue;
+                    seen.put(nk, new long[]{cur[0], ng});
+                    open.add(new long[]{nk, ng + 10 * (Math.abs(nx - gx) + Math.abs(ny - gy) + Math.abs(nz - gz))});
+                }
+            }
+            if (bestKey == start) return null;
+            java.util.LinkedList<Location> out = new java.util.LinkedList<>();
+            for (long kk = bestKey; kk != start; kk = seen.get(kk)[0])
+                out.addFirst(new Location(world, bx + kx(kk) * cell + 0.5, by + ky(kk) * cell + 0.5, bz + kz(kk) * cell + 0.5));
+            return out;
+        }
+
+        private static long key(int x, int y, int z) { return ((long) (x + 512) << 20) | ((long) (y + 512) << 10) | (z + 512); }
+        private static int kx(long k) { return (int) (k >> 20) - 512; }
+        private static int ky(long k) { return (int) ((k >> 10) & 1023) - 512; }
+        private static int kz(long k) { return (int) (k & 1023) - 512; }
+
+        /** Truly boxed in: it slips away into the dark and comes back up in open water near where it was going. */
+        void unstick(Location near) {
+            Location w = openWater(near, 6, 16, room());
+            if (w == null) return;
+            world.spawnParticle(Particle.SQUID_INK, pos, 60, 1.5 * k, 1.5 * k, 1.5 * k, 0.05);
+            pos = w;
+            world.spawnParticle(Particle.SQUID_INK, pos, 60, 1.5 * k, 1.5 * k, 1.5 * k, 0.05);
+            jumped();
+            stuckT = 0; path.clear(); detourT = 0;
+        }
+
+        /** It moved without swimming the way (a vanish, an unstick): a serpent's body starts a fresh trail. */
+        void jumped() { }
+
+        /** Can t see l (nothing solid between their eyes and it)? A vanish never reappears behind a wall. */
+        static boolean seen(Player t, Location l) { return sight(t.getEyeLocation(), l); }
+
+        /** Nothing solid between a and b. */
+        static boolean sight(Location e, Location l) {
+            Vector d = l.toVector().subtract(e.toVector());
+            double len = d.length();
+            if (len < 0.5) return true;
+            int n = (int) Math.ceil(len / 0.4); // a walk along the line (every 0.4 blocks): any solid block in the way = no
+            for (int i = 1; i < n; i++) {
+                Location q = e.clone().add(d.clone().multiply(i / (double) n));
+                if (!q.getWorld().isChunkLoaded(q.getBlockX() >> 4, q.getBlockZ() >> 4)) return false;
+                if (q.getBlock().getType().isOccluding()) return false;
+            }
+            return true;
         }
 
         /** Where to be when not mid-move: circling whoever it's after (or the pilot), a little above them. */
@@ -177,8 +362,20 @@ final class DeepBosses {
             Location c = pilot != null ? pilot.getLocation() : focus != null && focus.isOnline() && focus.getWorld().equals(world) ? focus.getLocation() : null;
             if (c == null) { List<Player> a = active(); c = a.isEmpty() ? home : a.get(0).getLocation(); }
             orbit += speedRad;
-            return c.clone().add(Math.cos(orbit) * r, up + Math.sin(ticks * 0.05) * 2, Math.sin(orbit) * r);
+            Location want = c.clone().add(Math.cos(orbit) * r, up + Math.sin(ticks * 0.05) * 2, Math.sin(orbit) * r);
+            if (ticks % 5 != 0 && orbitOk) return want;
+            // 1.6.6: never circle inside rock or behind a wall: try further round the circle, and closer in
+            orbitOk = open(want, room());
+            if (orbitOk) return want;
+            for (double rr = r; rr >= 4; rr -= 3) for (int i = 1; i <= 8; i++) {
+                double ang = orbit + i * Math.PI / 8;
+                Location alt = c.clone().add(Math.cos(ang) * rr, up, Math.sin(ang) * rr);
+                if (open(alt, room()) && sight(alt, c.clone().add(0, 1, 0))) { orbit = ang; orbitOk = true; return alt; }
+            }
+            return c.clone().add(0, Math.max(2, up), 0); // a tight cave: just come at them
         }
+
+        boolean orbitOk = true;
 
         Player targetOr(Player t) {
             if (t != null && t.isOnline() && t.getWorld().equals(world)) return t;
@@ -320,9 +517,54 @@ final class DeepBosses {
             for (int i = 2; i < n; i += hitEvery) hitbox(pos, Math.max(2, (int) Math.round(2.6 * k * (1 - taper * i))), name);
         }
 
+        /**
+         * The head's way through the water, newest first (1.6.6): the body is laid ALONG it, so every segment passes
+         * exactly where the head swam (open water) instead of being dragged straight across a bend, through the rock.
+         */
+        final java.util.LinkedList<Location> trail = new java.util.LinkedList<>();
+
+        @Override void jumped() { trail.clear(); }
+
+        void follow() {
+            if (trail.isEmpty() || !trail.getFirst().getWorld().equals(world) || trail.getFirst().distanceSquared(pos) > 0.09) trail.addFirst(pos.clone());
+            double total = 0;
+            for (double g : gaps) total += g;
+            // keep the trail a little longer than the body
+            double len = 0;
+            java.util.ListIterator<Location> it = trail.listIterator();
+            Location prev = it.hasNext() ? it.next() : null;
+            while (it.hasNext()) {
+                Location c = it.next();
+                len += c.distance(prev);
+                prev = c;
+                if (len > total + 4) { while (it.hasNext()) { it.next(); it.remove(); } break; }
+            }
+            if (len < total) { chain.lead(pos, gaps); return; } // not enough trail yet (just spawned, or jumped): the old rope
+            // lay each point at its distance along the trail
+            List<Location> pts = chain.pts;
+            pts.set(0, pos.clone());
+            double want = 0, walked = 0;
+            Location a = trail.get(0);
+            int ti = 1;
+            for (int i = 1; i < pts.size(); i++) {
+                want += gaps[Math.min(gaps.length - 1, i - 1)];
+                while (ti < trail.size()) {
+                    Location b = trail.get(ti);
+                    double seg = a.distance(b);
+                    if (walked + seg >= want) {
+                        double f = seg < 1e-6 ? 0 : (want - walked) / seg;
+                        pts.set(i, a.clone().add(b.toVector().subtract(a.toVector()).multiply(f)));
+                        break;
+                    }
+                    walked += seg; a = b; ti++;
+                }
+                if (ti >= trail.size()) pts.set(i, trail.getLast().clone());
+            }
+        }
+
         @Override
         void pose(int deathT) {
-            chain.lead(pos, gaps);
+            if (deathT > 0) chain.lead(pos, gaps); else follow();
             double roll = deathT > 0 ? Math.min(160, deathT * 3) : Math.sin(ticks * 0.08) * 6;
             float hp = Math.max(-60, Math.min(60, pitch)) - (float) (flinchAmt() * 15);
             head.pose(pos, yaw, hp, (float) roll, null);
@@ -442,6 +684,7 @@ final class DeepBosses {
             if (phase < 3 && ticks % 10 == 0) enrage(a);
             poisonTick(a);
             if (phase == 3) { stormTick(a); pylonTick(a); }
+            giantBubbles(a);
             if (attack < 0) {
                 Location c = circle(c("orbit-radius", 14), 3, phase == 3 ? 0.03 : 0.02);
                 swimTo(c, c("speed", 0.45) * spd(), 7);
@@ -507,6 +750,8 @@ final class DeepBosses {
             for (UUID id : storm) { Player p = Bukkit.getPlayer(id); if (p != null) p.resetPlayerWeather(); }
             storm.clear();
             clearPylons();
+            for (Runnable r : bubbleCleanup) r.run();
+            bubbleCleanup.clear(); pinks.clear();
         }
 
         @Override void onPhase(int p) {
@@ -635,7 +880,7 @@ final class DeepBosses {
             wantMand = 8;
             yaw = yawOf(flat(lineDir)); pitch = pitchOf(lineDir);
             Location n = pos.clone().add(lineDir.clone().multiply(speed * spd()));
-            if (!open(n, 1)) { // into the rock: stunned for a second
+            if (!clear(pos, n, 1)) { // into the rock: stunned for a second
                 stunT = 20;
                 Block b = n.getBlock();
                 world.spawnParticle(Particle.BLOCK, n, 40, 1, 1, 1, 0.1, b.getType().isSolid() ? b.getBlockData() : Material.STONE.createBlockData());
@@ -734,7 +979,7 @@ final class DeepBosses {
                 world.playSound(pos, Sound.ENTITY_SLIME_SQUISH, SoundCategory.HOSTILE, 4f, 0.4f);
                 world.playSound(pos, Sound.ENTITY_RAVAGER_ROAR, SoundCategory.HOSTILE, 4f, 0.6f);
                 sphereFx(pos, 4 * k, Particle.HAPPY_VILLAGER, 120);
-                pos = pos.clone().add(dir3(yaw, pitch).multiply(3 * k)); // it slithers forward out of the old skin
+                for (double f = 3 * k; f > 0.4; f -= 0.5) if (step(pos.clone().add(dir3(yaw, pitch).multiply(f)))) break; // it slithers forward out of the old skin
             }
             if (at >= 80) end();
         }
@@ -1052,7 +1297,7 @@ final class DeepBosses {
             double r = 4.5;
             spinAng += 0.16;
             Location target = center.clone().add(Math.cos(spinAng) * r, 0, Math.sin(spinAng) * r);
-            if (open(target, 0)) pos = target; else swimTo(target, 1.4, 40);
+            if (clear(pos, target, 0)) pos = target; else swimTo(target, 1.4, 40);
             yaw = yawOf(flat(new Vector(-Math.sin(spinAng), 0, Math.cos(spinAng))));
             wantMand = 55;
             if (at % 3 == 0) ring3(center, r, Particle.HAPPY_VILLAGER);
@@ -1123,6 +1368,132 @@ final class DeepBosses {
                 cl.addScoreboardTag(Wild.FX_TAG);
             });
             for (Player p : within(l, 2.4)) poisonAdd(p, 0.02);
+        }
+
+        // ---------------------------------------------------------------- giant bubbles (1.6.6)
+        static final String PINK_TAG = "faultline_scourge_pink";
+        final List<Runnable> bubbleCleanup = new ArrayList<>();
+        boolean toldBubbles;
+
+        /**
+         * Every `air-bubble.every-seconds` (20) the Scourge's thrashing stirs GIANT AIR BUBBLES up off the sea floor, one
+         * near each fighter (max 4): swim inside one = your air fills back up and the poison drains, for as long as it
+         * lasts (12 s, rising slowly). Every `pink-bubble.every-seconds` (30) a GIANT PINK BUBBLE rises near someone:
+         * hit it (melee or a shot) = it bursts and deals `pink-bubble.damage` (150) to the Scourge, wherever it is
+         * (even enraged or mid-molt it can't dodge that).
+         */
+        void giantBubbles(List<Player> a) {
+            if (a.isEmpty() || dying) return;
+            int air = (int) (c("air-bubble.every-seconds", 20) * 20), pink = (int) (c("pink-bubble.every-seconds", 30) * 20);
+            if (air > 0 && ticks % air == air / 2) {
+                List<Player> who = new ArrayList<>(a);
+                java.util.Collections.shuffle(who);
+                for (int i = 0; i < Math.min(4, who.size()); i++) giantBubble(who.get(i), false);
+                if (!toldBubbles) { toldBubbles = true; say(ChatColor.AQUA + "Giant air bubbles rise from the floor: " + ChatColor.GRAY + "swim inside one to breathe and wash out the poison. " + ChatColor.LIGHT_PURPLE + "Burst the pink ones to hurt the Scourge!"); }
+            }
+            if (pink > 0 && ticks % pink == pink - 1) giantBubble(a.get(random.nextInt(a.size())), true);
+        }
+
+        void giantBubble(Player t, boolean isPink) {
+            Location f = floorUnder(t.getLocation().add(random.nextGaussian() * 3, 0, random.nextGaussian() * 3), 24);
+            Location p = f.clone().add(0, 1.6, 0);
+            if (!open(p, 1)) p = t.getLocation().add(random.nextGaussian() * 2, -1.5, random.nextGaussian() * 2);
+            if (!wet(p.getBlock())) return;
+            float size = (float) (isPink ? c("pink-bubble.size", 2.6) : c("air-bubble.size", 3.4));
+            ItemStack look = new ItemStack(isPink ? Material.PINK_STAINED_GLASS : Material.LIGHT_BLUE_STAINED_GLASS);
+            org.bukkit.inventory.meta.ItemMeta lm = look.getItemMeta();
+            lm.setItemModel(new org.bukkit.NamespacedKey("faultline", isPink ? "wild/pink_bubble" : "wild/air_bubble"));
+            look.setItemMeta(lm);
+            Location p0 = p.clone();
+            ItemDisplay d = world.spawn(p0, ItemDisplay.class, e -> {
+                e.setItemStack(look);
+                e.setPersistent(false);
+                e.addScoreboardTag(Wild.FX_TAG);
+                e.setTeleportDuration(3);
+                e.setInterpolationDuration(3);
+                e.setBrightness(new org.bukkit.entity.Display.Brightness(12, 12));
+                e.setTransformation(new Transformation(new Vector3f(), new Quaternionf(), new Vector3f(0.2f, 0.2f, 0.2f), new Quaternionf()));
+            });
+            org.bukkit.entity.Slime hb = !isPink ? null : Wild.spawnAs(world, p0, EntityType.SLIME, org.bukkit.entity.Slime.class, sl -> {
+                sl.setSize(Math.max(2, Math.round(size / 0.52f / 2)));
+                sl.setAI(false);
+                sl.setGravity(false);
+                sl.setSilent(true);
+                sl.setInvisible(true);
+                sl.setPersistent(false);
+                sl.setCollidable(false);
+                sl.addScoreboardTag(Wild.FX_TAG);
+                sl.addScoreboardTag(PINK_TAG);
+                sl.setCustomName(ChatColor.LIGHT_PURPLE + "Pink Bubble");
+                sl.setCustomNameVisible(false);
+            });
+            world.playSound(p0, Sound.BLOCK_BUBBLE_COLUMN_UPWARDS_INSIDE, SoundCategory.HOSTILE, 3f, isPink ? 0.8f : 0.5f);
+            int[] age = {0};
+            int life = isPink ? 300 : 240;
+            Runnable gone = () -> { if (d.isValid()) d.remove(); if (hb != null && hb.isValid()) hb.remove(); };
+            bubbleCleanup.add(gone);
+            fx.add(() -> {
+                age[0]++;
+                if (!d.isValid() || (hb != null && !hb.isValid()) || dying) { pop(p0, isPink, false); gone.run(); return true; }
+                if (age[0] > life) { pop(p0, isPink, false); gone.run(); return true; }
+                float grow = Math.min(1f, age[0] / 20f), wob = (float) (1 + Math.sin(age[0] * 0.3) * 0.04);
+                Location up = p0.clone().add(Math.sin(age[0] * 0.07) * 0.03, isPink ? 0.03 : 0.022, Math.cos(age[0] * 0.07) * 0.03);
+                if (!wet(up.getBlock()) || !wet(up.clone().add(0, size * 0.5, 0).getBlock())) up = p0.clone(); // reached the surface or a ledge: it waits there
+                p0.setX(up.getX()); p0.setY(up.getY()); p0.setZ(up.getZ());
+                if (age[0] % 3 == 0) {
+                    d.teleport(p0);
+                    d.setInterpolationDelay(0);
+                    d.setTransformation(new Transformation(new Vector3f(), new Quaternionf().rotateY(age[0] * 0.02f),
+                            new Vector3f(size * grow * wob, size * grow / wob, size * grow * wob), new Quaternionf()));
+                    if (hb != null) hb.teleport(p0.clone().add(0, -size * 0.4, 0));
+                }
+                if (age[0] % 4 == 0) { // a shimmering skin (also what Bedrock sees)
+                    Color col = isPink ? Color.fromRGB(255, 120, 200) : Color.fromRGB(200, 235, 255);
+                    for (int i = 0; i < 8; i++) {
+                        double u = random.nextDouble() * 2 - 1, an = random.nextDouble() * Math.PI * 2, sq = Math.sqrt(1 - u * u), rr = size * grow * 0.5;
+                        world.spawnParticle(Particle.DUST, p0.getX() + sq * Math.cos(an) * rr, p0.getY() + u * rr, p0.getZ() + sq * Math.sin(an) * rr, 1, 0, 0, 0, 0, new Particle.DustOptions(col, 1.3f));
+                    }
+                    world.spawnParticle(Particle.BUBBLE, p0, 3, size * 0.3, size * 0.3, size * 0.3, 0.02);
+                }
+                if (!isPink) for (Player pl2 : active()) { // breathe
+                    if (pl2.getEyeLocation().distanceSquared(p0) > Math.pow(size * grow * 0.55 + 0.4, 2)) continue;
+                    if (pl2.getRemainingAir() < pl2.getMaximumAir()) pl2.setRemainingAir(Math.min(pl2.getMaximumAir(), pl2.getRemainingAir() + 30));
+                    poisonAdd(pl2, -c("air-bubble.poison-per-second", 0.25) / 20);
+                    if (age[0] % 20 == 0) {
+                        pl2.sendActionBar(legacy(ChatColor.AQUA + "Air! " + ChatColor.GRAY + "You breathe, and the poison washes out."));
+                        pl2.playSound(pl2.getLocation(), Sound.BLOCK_BUBBLE_COLUMN_BUBBLE_POP, 0.8f, 1.6f);
+                    }
+                }
+                return false;
+            });
+            if (hb != null) pinks.put(hb.getUniqueId(), () -> {
+                if (!hb.isValid()) return;
+                pop(p0, true, true);
+                gone.run();
+            });
+        }
+
+        final Map<UUID, Runnable> pinks = new HashMap<>();
+
+        /** A player hit a pink bubble (Wild.onHurt): it bursts and the Scourge takes the damage. */
+        void pinkHit(org.bukkit.entity.Entity bubble, Player by) {
+            Runnable r = pinks.remove(bubble.getUniqueId());
+            if (r == null || dying) return;
+            r.run();
+            if (by != null) fighters.add(by.getUniqueId());
+            double dmg = c("pink-bubble.damage", 150);
+            hp -= dmg;
+            flinch = 8;
+            world.playSound(pos, Sound.ENTITY_ELDER_GUARDIAN_HURT, SoundCategory.HOSTILE, 4f, 0.5f);
+            sphereFx(pos, 2.5 * k, Particle.HEART, 30);
+            say(ChatColor.LIGHT_PURPLE + (by != null ? by.getName() : "Someone") + " burst a pink bubble! " + ChatColor.GRAY + "The Scourge reels (" + (int) dmg + " damage).");
+            if (hp <= 0) { hp = 0; defeat(); }
+        }
+
+        void pop(Location at, boolean isPink, boolean hit) {
+            world.spawnParticle(Particle.BUBBLE_POP, at, 60, 1.2, 1.2, 1.2, 0.1);
+            world.spawnParticle(Particle.DUST, at, 40, 1.2, 1.2, 1.2, 0, new Particle.DustOptions(isPink ? Color.fromRGB(255, 120, 200) : Color.fromRGB(220, 240, 255), 2f));
+            world.playSound(at, Sound.BLOCK_BUBBLE_COLUMN_BUBBLE_POP, SoundCategory.HOSTILE, 3f, hit ? 0.5f : 0.9f);
         }
 
         /** A bubble of clean water rising from below a player: swim into it to clear some poison. */
@@ -1278,7 +1649,7 @@ final class DeepBosses {
                     if (at <= wind) { swimTo(lineFrom, 0.85, 14); if (at % 2 == 0) warn3d(lineFrom, lineDir, 32, Color.fromRGB(140, 60, 220)); return; }
                     yaw = yawOf(flat(lineDir)); pitch = pitchOf(lineDir);
                     Location n = pos.clone().add(lineDir.clone().multiply(c("charge-speed", 1.35)));
-                    if (open(n, 1)) pos = n; else { end(); return; }
+                    if (clear(pos, n, 1)) pos = n; else { end(); return; }
                     strike(pos, 2.8 * k, c("moves.charge", 17), Guard.HEAVY, lineDir.clone().multiply(1.1).setY(0.3));
                     if (at > wind + 28) end();
                 }
@@ -1298,14 +1669,14 @@ final class DeepBosses {
                     if (t == null) { hide(false); end(); return; }
                     Vector behind = t.getLocation().getDirection().setY(0);
                     Location bl = t.getLocation().add(0, 1, 0).add(behind.lengthSquared() < 0.01 ? new Vector(0, 0, -4) : behind.normalize().multiply(-5));
-                    if (at < 40) { if (open(bl, 1)) pos = bl; if (at % 4 == 0) world.spawnParticle(Particle.SQUID_INK, t.getLocation().add(0, 1, 0), 8, 3, 2, 3, 0.01); return; }
+                    if (at < 40) { if (open(bl, 1) && seen(t, bl)) { pos = bl; jumped(); } if (at % 4 == 0) world.spawnParticle(Particle.SQUID_INK, t.getLocation().add(0, 1, 0), 8, 3, 2, 3, 0.01); return; }
                     if (at == 40) {
                         hide(false);
                         Vector to = t.getLocation().add(0, 1, 0).toVector().subtract(pos.toVector());
                         yaw = yawOf(flat(to)); pitch = pitchOf(to);
                         world.playSound(pos, Sound.ENTITY_WARDEN_ATTACK_IMPACT, SoundCategory.HOSTILE, 3f, 0.5f);
                     }
-                    if (at > 40 && at < 52) { pos = pos.clone().add(dir3(yaw, pitch).multiply(0.6)); strike(pos, 2.6 * k, c("moves.ambush", 13), Guard.HEAVY, null); }
+                    if (at > 40 && at < 52) { if (!step(pos.clone().add(dir3(yaw, pitch).multiply(0.6)))) { end(); return; } strike(pos, 2.6 * k, c("moves.ambush", 13), Guard.HEAVY, null); }
                     if (at > 56) end();
                 }
                 case SHRIEK -> {
@@ -1754,7 +2125,7 @@ final class DeepBosses {
                     Vector d = mark.toVector().subtract(pos.toVector());
                     if (d.lengthSquared() < 1 || at > 40) { end(); return; }
                     Location n = pos.clone().add(d.normalize().multiply(c("jet-speed", 1.2)));
-                    if (open(n, 1)) pos = n; else { end(); return; }
+                    if (clear(pos, n, 1)) pos = n; else { end(); return; }
                     yaw = yawOf(flat(d)); pitch = pitchOf(d);
                     world.spawnParticle(Particle.SQUID_INK, pos, 25, 0.8, 0.8, 0.8, 0.02);
                     if (at % 4 == 0) world.spawn(pos.clone(), AreaEffectCloud.class, cl -> {
@@ -1893,9 +2264,10 @@ final class DeepBosses {
                     double f = Math.min(1, (at - 12) / (double) dur);
                     Location p = from.clone().add(mark.toVector().subtract(from.toVector()).multiply(f));
                     p.add(0, Math.sin(Math.PI * f) * c("slam-height", 8), 0);
-                    pos = p;
-                    if (f >= 1) {
-                        pos = mark.clone();
+                    boolean blocked = !clear(pos, p, 0); // a reef or a ledge in the way: it comes down where it is
+                    if (!blocked) pos = p;
+                    if (f >= 1 || blocked) {
+                        if (!blocked) pos = mark.clone();
                         world.playSound(pos, Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.HOSTILE, 3f, 0.6f);
                         world.spawnParticle(Particle.BLOCK, pos, 120, 3, 0.5, 3, 0, Material.SAND.createBlockData());
                         for (Player pp : a) if (pp.getLocation().distanceSquared(pos) < 25) { hit(pp, c("moves.slam", 13), pos.toVector(), Guard.HEAVY); Safe.vel(pp, flat(pp.getLocation().toVector().subtract(pos.toVector())).multiply(1.2).setY(0.8)); }

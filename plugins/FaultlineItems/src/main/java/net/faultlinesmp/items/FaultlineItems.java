@@ -7250,7 +7250,7 @@ public final class FaultlineItems extends JavaPlugin {
                 for (String id : List.of("gawker", "bloatfin", "jellywing", "driftback", "clam", "lumenbell", "gasbloom", "fangstalker", "blastfin", "burrowshark",
                         "cavecrawler", "glowgrub", "shellsnake", "lampsquid", "volteel", "needlejaw", "devilfish", "riftwarper", "hollowkin", "sharkquid",
                         "acideel", "trasher", "radiator", "flakcrab", "nucleartoad", "gammaslime", "sulphurskater", "acidjelly", "orthocera", "trilobite",
-                        "skyfin", "leech", "boglurker", "corrosionshark", "urchin", "crabling", "bloatgut", "sulphurmoth", "hazardturtle", "sludgesnail"))
+                        "skyfin", "leech", "boglurker", "corrosionshark", "urchin", "crabling", "bloatgut", "sulphurmoth", "hazardturtle", "sludgesnail", "shambler", "rustbones", "acidmite", "stormwraith", "mauler", "goblin"))
                     list.add(external(icon(Material.PAPER, "deep/" + id + "_icon", ChatColor.AQUA + "Dark Ocean egg: " + ChatColor.WHITE + id, "FaultlineDeep"), "deep egg " + id + " {amount} {player}", "FaultlineDeep"));
             }
             if (enabled("FaultlineCosmetics")) { // the seasonal currency (Candy at Halloween, Presents in Winter)

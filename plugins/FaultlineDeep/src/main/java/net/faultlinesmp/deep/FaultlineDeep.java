@@ -24,7 +24,7 @@ import java.util.List;
 
 /**
  * FAULTLINE DEEP: the Dark Ocean (a world of water only, under the Black Market's abandoned kingdom). The Kraken's Mirror
- * takes you to the kingdom, Lucki rows you out and opens a whirlpool, and you drop into the Dark Ocean at 0, 100, 0.
+ * takes you to the kingdom, Lucki rows you out and opens a whirlpool, and you drop into the Dark Ocean at 0, 300, 0.
  * DeepGenerator = the terrain, DeepMobs = its 20 creatures, Journey = the Mirror / Lucki / the whirlpool, Ocean = music,
  * events and dying down there. The bosses live in FaultlineBosses (Wild), Dark Loot in FaultlineItems.
  */
@@ -36,6 +36,7 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
     DeepMobs mobs;
     Journey journey;
     Ocean ocean;
+    AcidRain acidRain;
 
     @Override
     public void onEnable() {
@@ -44,6 +45,7 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
         mobs = new DeepMobs(this);
         journey = new Journey(this);
         ocean = new Ocean(this);
+        acidRain = new AcidRain(this);
         getServer().getPluginManager().registerEvents(mobs, this);
         getServer().getPluginManager().registerEvents(journey, this);
         getServer().getPluginManager().registerEvents(ocean, this);
@@ -58,6 +60,7 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
         if (mobs != null) mobs.shutdown();
         if (journey != null) journey.shutdown();
         if (ocean != null) ocean.shutdown();
+        if (acidRain != null) acidRain.shutdown();
     }
 
     String worldName() { return getConfig().getString("world", DEFAULT_WORLD); }
@@ -176,15 +179,27 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
                 if (!which.equals("pressure") && !which.equals("undertow")) { sender.sendMessage(ChatColor.YELLOW + "/deep event <pressure|undertow|stop>"); return true; }
                 sender.sendMessage(ocean.start(which) ? ChatColor.GREEN + "Started: " + which : ChatColor.RED + "The Dark Ocean world isn't loaded.");
             }
+            case "acidrain" -> {
+                String what = args.length > 1 ? args[1].toLowerCase() : "start";
+                switch (what) {
+                    case "stop" -> { acidRain.stop(false); sender.sendMessage(ChatColor.GREEN + "Stopped the Acid Rain."); }
+                    case "goblin" -> {
+                        if (!acidRain.active) acidRain.start();
+                        Player near = self != null && acidRain.caught(self) ? self : acidRain.caughtPlayers().stream().findFirst().orElse(self);
+                        sender.sendMessage(near != null && acidRain.spawnGoblin(near) ? ChatColor.GREEN + "Grubnash is coming." : ChatColor.RED + "No one in the Sulphur Sea to send him at (or he's already out).");
+                    }
+                    default -> sender.sendMessage(acidRain.start() ? ChatColor.GREEN + "The Acid Rain begins over the Sulphur Sea." : ChatColor.RED + "It's already raining (or the world isn't loaded).");
+                }
+            }
             case "lucki" -> { journey.removeLucki(); journey.spawnLucki(); sender.sendMessage(ChatColor.GREEN + "Lucki is back at his spot (if it's set and loaded)."); }
             case "info", "" -> {
                 sender.sendMessage(ChatColor.DARK_AQUA + "" + ChatColor.BOLD + "The Dark Ocean " + ChatColor.GRAY + "(" + worldName() + (world == null ? ", NOT LOADED" : "") + ")");
                 sender.sendMessage(ChatColor.GRAY + "Kingdom: " + spot(journey.place("kingdom")) + "  Lucki: " + spot(journey.place("lucki")) + "  Whirlpool: " + spot(journey.poolSpot()));
-                sender.sendMessage(ChatColor.GRAY + "Creatures out: " + mobs.live.size() + "   Event: " + (ocean.event == null ? "none" : ocean.event));
+                sender.sendMessage(ChatColor.GRAY + "Creatures out: " + mobs.live.size() + "   Event: " + (ocean.event == null ? "none" : ocean.event) + "   Acid Rain: " + (acidRain.active ? "falling" : "no"));
                 if (self != null && world != null && self.getWorld().equals(world)) sender.sendMessage(ChatColor.GRAY + "You're in: " + zone(self.getLocation()));
-                sender.sendMessage(ChatColor.YELLOW + "/deep set <kingdom|lucki|whirlpool>, tp [player], town [player], sulphur [player], spawn <mob>, egg <mob> [n] [player], event <pressure|undertow|stop>, lucki");
+                sender.sendMessage(ChatColor.YELLOW + "/deep set <kingdom|lucki|whirlpool>, tp [player], town [player], sulphur [player], spawn <mob>, egg <mob> [n] [player], event <pressure|undertow|stop>, acidrain [start|stop|goblin], lucki");
             }
-            default -> sender.sendMessage(ChatColor.YELLOW + "/deep [info|set|tp|town|sulphur|spawn|egg|event|lucki]");
+            default -> sender.sendMessage(ChatColor.YELLOW + "/deep [info|set|tp|town|sulphur|spawn|egg|event|acidrain|lucki]");
         }
         return true;
     }
@@ -194,10 +209,11 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         List<String> out = new ArrayList<>();
-        if (args.length == 1) out.addAll(List.of("info", "set", "tp", "town", "sulphur", "spawn", "egg", "event", "lucki"));
+        if (args.length == 1) out.addAll(List.of("info", "set", "tp", "town", "sulphur", "spawn", "egg", "event", "acidrain", "lucki"));
         else if (args.length == 2 && args[0].equalsIgnoreCase("set")) out.addAll(List.of("kingdom", "lucki", "whirlpool"));
         else if (args.length == 2 && (args[0].equalsIgnoreCase("spawn") || args[0].equalsIgnoreCase("egg"))) out.addAll(DeepMobs.KINDS.keySet());
         else if (args.length == 2 && args[0].equalsIgnoreCase("event")) out.addAll(List.of("pressure", "undertow", "stop"));
+        else if (args.length == 2 && args[0].equalsIgnoreCase("acidrain")) out.addAll(List.of("start", "stop", "goblin"));
         String last = args[args.length - 1].toLowerCase();
         out.removeIf(s -> !s.startsWith(last));
         return out;

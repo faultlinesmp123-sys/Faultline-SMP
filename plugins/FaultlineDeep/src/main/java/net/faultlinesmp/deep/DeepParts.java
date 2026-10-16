@@ -139,5 +139,23 @@ final class DeepParts {
         BONES.put("sludgesnail", List.of(new Bone("head", 0.2800f, -0.0600f, 0.0000f)));
         ANIMS.put("sludgesnail", List.of(new Anim("head", true, 0.0000f, 8.0000f, 6.0000f, 2.8000f, 0.0000f, false)));
         BODY_PIVOT.put("sludgesnail", new float[]{0.0000f, 0.0000f, 0.0000f});
+        BONES.put("shambler", List.of(new Bone("head", 0.0000f, 0.2400f, 0.0000f), new Bone("legl", 0.0000f, -0.1000f, -0.0550f), new Bone("arml", 0.0000f, 0.2200f, -0.1300f), new Bone("legr", 0.0000f, -0.1000f, 0.0550f), new Bone("armr", 0.0000f, 0.2200f, 0.1300f)));
+        ANIMS.put("shambler", List.of(new Anim("legl", true, 26.0000f, 0.0000f, 0.0000f, 1.4000f, 0.0000f, false), new Anim("legr", true, 26.0000f, 0.0000f, 0.0000f, 1.4000f, 0.5000f, false), new Anim("arml", true, 30.0000f, 0.0000f, 0.0000f, 1.4000f, 0.5000f, false), new Anim("armr", true, 30.0000f, 0.0000f, 0.0000f, 1.4000f, 0.0000f, false), new Anim("head", true, 0.0000f, 10.0000f, 6.0000f, 2.8000f, 0.0000f, false), new Anim("body", true, 0.0000f, 0.0000f, 5.0000f, 2.8000f, 0.0000f, false)));
+        BODY_PIVOT.put("shambler", new float[]{0.0000f, -0.5000f, 0.0000f});
+        BONES.put("rustbones", List.of(new Bone("head", 0.0000f, 0.2500f, 0.0000f), new Bone("legl", 0.0000f, -0.1000f, -0.0550f), new Bone("arml", 0.0000f, 0.2200f, -0.1300f), new Bone("legr", 0.0000f, -0.1000f, 0.0550f), new Bone("armr", 0.0000f, 0.2200f, 0.1300f)));
+        ANIMS.put("rustbones", List.of(new Anim("legl", true, 22.0000f, 0.0000f, 0.0000f, 1.2000f, 0.0000f, false), new Anim("legr", true, 22.0000f, 0.0000f, 0.0000f, 1.2000f, 0.5000f, false), new Anim("arml", true, 16.0000f, 0.0000f, 0.0000f, 1.2000f, 0.5000f, false), new Anim("armr", true, 16.0000f, 0.0000f, 0.0000f, 1.2000f, 0.0000f, false), new Anim("head", true, 0.0000f, 12.0000f, 0.0000f, 2.4000f, 0.0000f, false)));
+        BODY_PIVOT.put("rustbones", new float[]{0.0000f, -0.5000f, 0.0000f});
+        BONES.put("acidmite", List.of(new Bone("legl", 0.0000f, 0.0000f, -0.1800f), new Bone("legr", 0.0000f, 0.0000f, 0.1800f)));
+        ANIMS.put("acidmite", List.of(new Anim("legl", true, 0.0000f, 16.0000f, 10.0000f, 0.4000f, 0.0000f, false), new Anim("legr", true, 0.0000f, -16.0000f, -10.0000f, 0.4000f, 0.5000f, false), new Anim("body", false, 0.0000f, 0.3000f, 0.0000f, 0.8000f, 0.0000f, false)));
+        BODY_PIVOT.put("acidmite", new float[]{0.0000f, -0.1200f, 0.0000f});
+        BONES.put("stormwraith", List.of(new Bone("arml", 0.0000f, 0.1800f, -0.1600f), new Bone("armr", 0.0000f, 0.1800f, 0.1600f), new Bone("tail", -0.0500f, -0.0800f, 0.0000f)));
+        ANIMS.put("stormwraith", List.of(new Anim("arml", true, 0.0000f, 0.0000f, 20.0000f, 1.6000f, 0.0000f, false), new Anim("armr", true, 0.0000f, 0.0000f, -20.0000f, 1.6000f, 0.5000f, false), new Anim("tail", true, 0.0000f, 18.0000f, 10.0000f, 1.4000f, 0.0000f, false), new Anim("body", false, 0.0000f, 1.4000f, 0.0000f, 2.0000f, 0.0000f, false)));
+        BODY_PIVOT.put("stormwraith", new float[]{0.0000f, 0.0000f, 0.0000f});
+        BONES.put("mauler", List.of(new Bone("jaw", 0.2600f, -0.1000f, 0.0000f), new Bone("finl", 0.0800f, -0.1000f, -0.1600f), new Bone("finr", 0.0800f, -0.1000f, 0.1600f), new Bone("tail", -0.3000f, 0.0000f, 0.0000f)));
+        ANIMS.put("mauler", List.of(new Anim("tail", true, 0.0000f, 20.0000f, 0.0000f, 1.0000f, 0.0000f, false), new Anim("jaw", true, 26.0000f, 0.0000f, 0.0000f, 1.6000f, 0.0000f, true), new Anim("finl", true, 0.0000f, 0.0000f, 12.0000f, 1.6000f, 0.0000f, false), new Anim("finr", true, 0.0000f, 0.0000f, -12.0000f, 1.6000f, 0.0000f, false)));
+        BODY_PIVOT.put("mauler", new float[]{0.0000f, 0.0000f, 0.0000f});
+        BONES.put("goblin", List.of(new Bone("head", 0.0000f, 0.1700f, 0.0000f), new Bone("legl", 0.0000f, -0.1000f, -0.0600f), new Bone("arml", 0.0000f, 0.2200f, -0.1300f), new Bone("legr", 0.0000f, -0.1000f, 0.0600f), new Bone("armr", 0.0000f, 0.2200f, 0.1300f)));
+        ANIMS.put("goblin", List.of(new Anim("legl", true, 28.0000f, 0.0000f, 0.0000f, 0.9000f, 0.0000f, false), new Anim("legr", true, 28.0000f, 0.0000f, 0.0000f, 0.9000f, 0.5000f, false), new Anim("arml", true, 26.0000f, 0.0000f, 0.0000f, 0.9000f, 0.5000f, false), new Anim("armr", true, 26.0000f, 0.0000f, 0.0000f, 0.9000f, 0.0000f, false), new Anim("head", true, 0.0000f, 14.0000f, 6.0000f, 1.8000f, 0.0000f, false), new Anim("body", false, 0.0000f, 0.5000f, 0.0000f, 0.4500f, 0.0000f, false)));
+        BODY_PIVOT.put("goblin", new float[]{0.0000f, -0.5000f, 0.0000f});
     }
 }

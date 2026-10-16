@@ -946,3 +946,21 @@ deep_hazardturtle:
 deep_sludgesnail:
   large: 59379
   small: 58355
+deep_shambler:
+  large: 59380
+  small: 58356
+deep_rustbones:
+  large: 59381
+  small: 58357
+deep_acidmite:
+  large: 59382
+  small: 58358
+deep_stormwraith:
+  large: 59383
+  small: 58359
+deep_mauler:
+  large: 59384
+  small: 58360
+deep_goblin:
+  large: 59385
+  small: 58361

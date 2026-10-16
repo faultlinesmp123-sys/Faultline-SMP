@@ -135,11 +135,21 @@ final class DeepMobs implements Listener {
         k("sulphurmoth", "Sulphur Moth", ChatColor.YELLOW, P, U, EntityType.BAT, 1.0, 4, 0, 0, 12, 1.0f, "A fat, furry moth with glowing sulphur wings, drawn to the fumaroles.");
         k("hazardturtle", "Hazard Turtle", ChatColor.GOLD, N, U, EntityType.TURTLE, 1.3, 60, 6, 0.2, 5, 1.8f, "A turtle grown spikes of sulphur crystal. Hitting it hurts you back; anger it and it rams you.");
         k("sludgesnail", "Sludge Snail", ChatColor.GREEN, P, U, EntityType.FROG, 0.8, 20, 0, 0, 10, 1.2f, "A slow snail in a rusted shell, leaving a trail of acid slime. Arrows bounce off it.");
+        // ---- the ACID RAIN (1.5.0): only during the event (AcidRain.java), never from the normal spawner (weight 0)
+        k("shambler", "Sludge Shambler", ChatColor.GREEN, G, U, EntityType.DROWNED, 1.1, 40, 6, 0.24, 0, 2.1f, "A drowned sailor soaked through with acid, dripping and falling apart. It hurls globs of sludge. Only seen in the Acid Rain.");
+        k("rustbones", "Rustbones", ChatColor.GOLD, G, U, EntityType.SKELETON, 1.0, 30, 4, 0.25, 0, 1.9f, "A skeleton in corroded armour, risen from the wrecks when the acid rain falls. Its arrows are dipped in sulphur.");
+        k("acidmite", "Acid Mite", ChatColor.GREEN, G, U, EntityType.ENDERMITE, 1.5, 8, 3, 0.32, 0, 0.9f, "A glowing tick the size of a cat. They pour out of the islands in the Acid Rain, in packs.");
+        k("stormwraith", "Storm Wraith", ChatColor.DARK_GREEN, G, U, EntityType.VEX, 1.6, 30, 5, 0, 0, 1.7f, "A shape of green storm cloud with two burning eyes. It drifts through anything and calls down acid on you.");
+        k("mauler", "Bile Mauler", ChatColor.DARK_GREEN, G, U, EntityType.DROWNED, 1.9, 110, 12, 0.26, 0, 3.6f, "A hulking, blind shark-thing that comes up with the Acid Rain. It charges through the water and its bite rots armour.");
+        k("goblin", "Grubnash the Acid Goblin", ChatColor.GOLD, G, U, EntityType.VINDICATOR, 1.0, 500, 9, 0.32, 0, 1.9f, "A MINI BOSS (500 health) who rides in on the Acid Rain: a scrap-armoured goblin with a pack of bubbling flasks. He throws acid, lobs scrap bombs, leaps on you and calls his mites. Below half health he goes into a frenzy.");
     }
 
+    /** The Acid Rain's own creatures (AcidRain.java spawns them; the normal spawner never does). */
+    static final Set<String> RAIN = Set.of("shambler", "rustbones", "acidmite", "stormwraith", "mauler", "goblin");
+
     /** Where in the Sulphur Sea a kind lives: on the islands (LAND), in the air over them (AIR), on the water's surface (SURFACE). Everything else swims. */
-    static final Set<String> LAND = Set.of("flakcrab", "nucleartoad", "gammaslime", "boglurker", "crabling", "hazardturtle", "sludgesnail");
-    static final Set<String> AIR = Set.of("skyfin", "sulphurmoth");
+    static final Set<String> LAND = Set.of("flakcrab", "nucleartoad", "gammaslime", "boglurker", "crabling", "hazardturtle", "sludgesnail", "rustbones", "acidmite", "goblin");
+    static final Set<String> AIR = Set.of("skyfin", "sulphurmoth", "stormwraith");
     static final Set<String> FLOOR = Set.of("clam", "burrowshark", "cavecrawler", "glowgrub", "shellsnake", "urchin", "trilobite");
     static final String ACID_TAG = "faultline_deep_acid";
 
@@ -161,6 +171,8 @@ final class DeepMobs implements Listener {
         List<DeepParts.Bone> bones = List.of();
         float yaw = Float.NaN, pitch;                          // the smoothed heading the model shows
         int lastPose = -99;
+        double clock = Math.random() * 10;                     // its own animation time (runs faster while it swims)
+        int clockAt = -1;
         ArmorStand stand;
         UUID angryAt;
         long angryUntil;
@@ -225,6 +237,12 @@ final class DeepMobs implements Listener {
         }
         if (body instanceof Zombie z) { z.setAdult(); try { z.setShouldBurnInDay(false); } catch (Throwable ignored) { } }
         if ((k.id().equals("clam") || k.id().equals("urchin")) && body instanceof Mob m2) m2.setAI(false);
+        if (body instanceof org.bukkit.entity.AbstractSkeleton sk) {
+            try { sk.setShouldBurnInDay(false); } catch (Throwable ignored) { }
+            if (body.getEquipment() != null) body.getEquipment().setItemInMainHand(new ItemStack(Material.BOW)); // Rustbones' bow (it shows: a rusted thing in its hand)
+        }
+        if (body instanceof org.bukkit.entity.Raider rd) { rd.setCanJoinRaid(false); rd.setPatrolLeader(false); }
+        if (body instanceof Zombie z2 && k.id().equals("shambler")) try { z2.setShouldBurnInDay(false); } catch (Throwable ignored) { }
         Beast mob = new Beast(k, body);
         mob.model = w.spawn(at, ItemDisplay.class, d -> {
             d.setItemStack(modelItem(k.id()));
@@ -233,7 +251,7 @@ final class DeepMobs implements Listener {
             d.addScoreboardTag(PART);
             d.addScoreboardTag("faultline_no_bedrock_fx");
             d.setTeleportDuration(2);
-            d.setInterpolationDuration(3);
+            d.setInterpolationDuration(2); // = the update interval (3 overlapped the next pose: tails stuttered)
             d.setViewRange(1.2f);
             d.setShadowRadius(0);
         });
@@ -247,7 +265,7 @@ final class DeepMobs implements Listener {
                 e2.addScoreboardTag(PART);
                 e2.addScoreboardTag("faultline_no_bedrock_fx");
                 e2.setTeleportDuration(2);
-                e2.setInterpolationDuration(3);
+                e2.setInterpolationDuration(2);
                 e2.setViewRange(1.2f);
                 e2.setShadowRadius(0);
             });
@@ -287,7 +305,8 @@ final class DeepMobs implements Listener {
 
     /** Creatures that stay level (bells, floaters, crawlers, the clam, the ghosts): never pitched up or down. */
     static final Set<String> UPRIGHT = Set.of("lumenbell", "gasbloom", "bloatfin", "clam", "hollowkin", "blastfin", "cavecrawler", "glowgrub",
-            "acidjelly", "gammaslime", "nucleartoad", "flakcrab", "crabling", "urchin", "bloatgut", "hazardturtle", "sludgesnail", "boglurker", "sulphurskater", "trilobite");
+            "acidjelly", "gammaslime", "nucleartoad", "flakcrab", "crabling", "urchin", "bloatgut", "hazardturtle", "sludgesnail", "boglurker", "sulphurskater", "trilobite",
+            "shambler", "rustbones", "acidmite", "stormwraith", "goblin");
 
     /** Ones whose "buried" means standing disguised on the ground, not sunk into the sand. */
     static final Set<String> DISGUISED = Set.of("boglurker");
@@ -309,14 +328,22 @@ final class DeepMobs implements Listener {
         if (Float.isNaN(m.yaw)) { m.yaw = wantYaw; m.pitch = wantPitch; }
         m.yaw += angle(wantYaw - m.yaw) * 0.25f;
         m.pitch += (wantPitch - m.pitch) * 0.2f;
+        // 1.5.0: tails BEAT FASTER while it swims (its own clock runs up to 1.8x), they don't swing wider. Before, the swing
+        // grew to 2.2x (a 60-degree tail bent right off the body) and was sampled too seldom: the "tail glitch"
+        int dtT = m.clockAt < 0 ? 2 : Math.max(0, Math.min(20, m.t - m.clockAt));
+        m.clockAt = m.t;
+        m.clock += dtT / 20.0 * Math.min(1.8, 0.85 + hs * 7);
         boolean watched = force || m.t - m.lastPose >= 20 || viewerNear(l, 48);
         if (!watched) return;
+        int gap = m.t - m.lastPose;
         m.lastPose = m.t;
+        int interp = gap >= 2 && gap <= 20 ? gap : 2; // glide over exactly the time until the next pose
+        if (m.model.getInterpolationDuration() != interp) { m.model.setInterpolationDuration(interp); for (ItemDisplay d : m.parts) if (d != null && d.isValid()) d.setInterpolationDuration(interp); }
         double h = height(m);
         float s = m.k.modelScale() * (m.fused ? 1.5f : 1f);
         float down = (float) (-h * 0.5 - (m.buried && !DISGUISED.contains(m.k.id()) ? h * 0.7 : 0));
-        double time = ticks / 20.0;
-        float speed = (float) Math.min(2.2, 0.7 + hs * 9);                    // tails beat faster when it swims
+        double time = m.clock;
+        float speed = (float) Math.min(1.25, 1 + hs * 2);                    // a little wider at full speed, never more
         // the creature's frame (+x front, +y up, +z right) in the world, and the half turn item displays draw with
         Quaternionf frame = new Quaternionf().rotationY((float) Math.toRadians(-m.yaw)).rotateX((float) Math.toRadians(m.pitch))
                 .rotateY((float) Math.toRadians(-90));
@@ -362,7 +389,8 @@ final class DeepMobs implements Listener {
     static void animate(List<DeepParts.Anim> anims, String bone, double time, float amp, Quaternionf rot, Vector3f pos) {
         for (DeepParts.Anim a : anims) {
             if (!a.bone().equals(bone)) continue;
-            double w = Math.sin(2 * Math.PI * (time / a.secs() + a.phase()));
+            // a beat faster than 0.8 s can't be drawn from poses 2 ticks apart (4 samples a beat strobed): slowed to that
+            double w = Math.sin(2 * Math.PI * (time / Math.max(0.8, a.secs()) + a.phase()));
             if (a.half()) w = (w + 1) / 2;
             float k = (float) w * (a.rot() ? amp : 1f);
             if (a.rot()) rot.rotateZ((float) Math.toRadians(-a.x() * k)).rotateY((float) Math.toRadians(a.y() * k)).rotateX((float) Math.toRadians(-a.z() * k));
@@ -588,6 +616,24 @@ final class DeepMobs implements Listener {
             }
             case "sulphurmoth" -> { if (m.t % 10 == 0) w.spawnParticle(Particle.DUST, c, 2, 0.3, 0.2, 0.3, 0, new Particle.DustOptions(Color.fromRGB(250, 230, 120), 1.0f)); }
             case "sludgesnail" -> { if (m.t % 40 == 0 && nearest(c, 16) != null && m.body.isOnGround()) slime(m, m.body.getLocation()); }
+            // ---------------------------------------------------------------- the Acid Rain
+            case "shambler" -> {
+                if (m.t % 20 == 0) w.spawnParticle(Particle.FALLING_DUST, c, 3, 0.3, 0.5, 0.3, 0, Material.LIME_CONCRETE_POWDER.createBlockData());
+                if (target != null && m.cd <= 0 && target.getLocation().distanceSquared(c) < 16 * 16 && m.body.hasLineOfSight(target)) { m.cd = 80; glob(m, target); }
+            }
+            case "acidmite" -> { if (m.t % 20 == 0) w.spawnParticle(Particle.DUST, c, 2, 0.2, 0.1, 0.2, 0, new Particle.DustOptions(Color.fromRGB(170, 255, 80), 1f)); }
+            case "stormwraith" -> {
+                if (m.t % 10 == 0) w.spawnParticle(Particle.DUST, c, 6, 0.5, 0.5, 0.5, 0, new Particle.DustOptions(Color.fromRGB(90, 130, 70), 1.8f));
+                if (target != null && m.cd <= 0 && target.getLocation().distanceSquared(c) < 20 * 20) { m.cd = 60; acidDownpour(m, target); }
+            }
+            case "mauler" -> {
+                if (target != null && m.cd <= 0 && m.body.isInWater() && target.getLocation().distanceSquared(c) < 14 * 14) {
+                    m.cd = 70; dash(m, target, 1.15);
+                    w.playSound(c, Sound.ENTITY_RAVAGER_ROAR, SoundCategory.HOSTILE, 1.4f, 0.6f);
+                    w.spawnParticle(Particle.BUBBLE, c, 40, 1, 1, 1, 0.1);
+                }
+            }
+            case "goblin" -> goblin(m, target);
             default -> { }
         }
         // a neutral one whose grudge ran out calms down
@@ -633,6 +679,122 @@ final class DeepMobs implements Listener {
             sb.setItem(new ItemStack(Material.SLIME_BALL));
             sb.addScoreboardTag(ACID_TAG);
         }
+    }
+
+    /** A Sludge Shambler's glob: one big lobbed ball of sludge. */
+    void glob(Beast m, Player t) {
+        Vector v = t.getEyeLocation().toVector().subtract(m.body.getEyeLocation().toVector());
+        double d = v.length();
+        v = unit(v).multiply(Math.min(1.5, 0.6 + d * 0.06)).add(new Vector(0, 0.14 + d * 0.012, 0));
+        org.bukkit.entity.Snowball sb = m.body.launchProjectile(org.bukkit.entity.Snowball.class, v);
+        sb.setItem(new ItemStack(Material.SLIME_BLOCK));
+        sb.addScoreboardTag(ACID_TAG);
+        sb.addScoreboardTag(GLOB_TAG);
+        m.body.getWorld().playSound(m.body.getLocation(), Sound.ENTITY_SLIME_SQUISH, SoundCategory.HOSTILE, 1.4f, 0.5f);
+    }
+
+    static final String GLOB_TAG = "faultline_deep_glob", FLASK_TAG = "faultline_goblin_flask", BOMB_TAG = "faultline_goblin_bomb";
+
+    /** A Storm Wraith's downpour: drops of acid rain out of the cloud over you (and round you). */
+    void acidDownpour(Beast m, Player t) {
+        World w = t.getWorld();
+        w.playSound(t.getLocation(), Sound.WEATHER_RAIN_ABOVE, SoundCategory.HOSTILE, 1.5f, 0.6f);
+        for (int i = 0; i < 6; i++) {
+            Location from = t.getLocation().add(random.nextGaussian() * 2.2, 7 + random.nextDouble() * 3, random.nextGaussian() * 2.2);
+            if (from.getBlock().getType().isSolid()) continue;
+            org.bukkit.entity.Snowball sb = w.spawn(from, org.bukkit.entity.Snowball.class);
+            sb.setItem(new ItemStack(Material.LIME_DYE));
+            sb.setShooter(m.body);
+            Edition.vel(sb, new Vector(0, -0.8, 0));
+            sb.addScoreboardTag(ACID_TAG);
+        }
+    }
+
+    /** Corroding teeth: every armour piece loses durability. */
+    void wearArmor(Player p, int amount) {
+        for (ItemStack it : p.getInventory().getArmorContents()) {
+            if (it == null || !(it.getItemMeta() instanceof org.bukkit.inventory.meta.Damageable dm) || it.getType().getMaxDurability() <= 0) continue;
+            dm.setDamage(Math.min(it.getType().getMaxDurability() - 1, dm.getDamage() + amount));
+            it.setItemMeta(dm);
+        }
+    }
+
+    // ---------------------------------------------------------------- GRUBNASH THE ACID GOBLIN (mini boss, 500 health)
+    static final List<String> GOBLIN_LINES = List.of("Shinies! Gimme your shinies!", "Hehehe... it BURNS, don't it?", "Mites! Eat 'em!", "Boom boom BOOM!", "Grubnash never misses! ...mostly.");
+
+    void goblinSay(Beast m, String line) {
+        for (Player p : near(m.body.getLocation(), 40)) p.sendMessage(ChatColor.GOLD + "" + ChatColor.BOLD + "Grubnash" + ChatColor.DARK_GRAY + ": " + ChatColor.YELLOW + line);
+        m.body.getWorld().playSound(m.body.getLocation(), Sound.ENTITY_PIGLIN_ANGRY, SoundCategory.HOSTILE, 1.5f, 1.6f);
+    }
+
+    /** His moves: Acid Flasks (3 splashing flasks: acid pools), a Scrap Bomb (goes off after 1.5 s), a Goblin Leap (slams down on you), Call the Mites. Frenzy below half. */
+    void goblin(Beast m, Player t) {
+        World w = m.body.getWorld();
+        Location c = m.body.getLocation();
+        if (m.t % 40 == 0) w.spawnParticle(Particle.DUST, c.clone().add(0, 1, 0), 6, 0.4, 0.6, 0.4, 0, new Particle.DustOptions(Color.fromRGB(170, 255, 80), 1.3f));
+        boolean frenzy = m.body.getHealth() < m.k.health() * cfg("goblin.frenzy-at", 0.5);
+        if (frenzy && !m.inked) {
+            m.inked = true;
+            m.body.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 20 * 600, 1, false, false));
+            goblinSay(m, "You made Grubnash MAD!");
+            w.playSound(c, Sound.ENTITY_RAVAGER_ROAR, SoundCategory.HOSTILE, 2f, 1.8f);
+        }
+        if (t == null || m.cd > 0) return;
+        double d2 = t.getLocation().distanceSquared(c);
+        if (d2 > 30 * 30) return;
+        int move = random.nextInt(d2 > 49 ? 3 : 4); // far: no mites first, mostly ranged
+        if (random.nextInt(5) == 0) goblinSay(m, GOBLIN_LINES.get(random.nextInt(GOBLIN_LINES.size())));
+        switch (move) {
+            case 0 -> { // acid flasks
+                for (int i = 0; i < 3; i++) {
+                    Vector v = t.getLocation().add(random.nextGaussian() * 2, 0, random.nextGaussian() * 2).toVector().subtract(m.body.getEyeLocation().toVector());
+                    double d = v.length();
+                    v = unit(v).multiply(Math.min(1.5, 0.5 + d * 0.06)).add(new Vector(0, 0.2 + d * 0.015, 0));
+                    org.bukkit.entity.Snowball sb = m.body.launchProjectile(org.bukkit.entity.Snowball.class, v);
+                    sb.setItem(new ItemStack(Material.SPLASH_POTION));
+                    sb.addScoreboardTag(ACID_TAG); sb.addScoreboardTag(FLASK_TAG);
+                }
+                w.playSound(c, Sound.ENTITY_WITCH_THROW, SoundCategory.HOSTILE, 1.5f, 0.8f);
+            }
+            case 1 -> { // a scrap bomb
+                Vector v = t.getLocation().toVector().subtract(m.body.getEyeLocation().toVector());
+                double d = v.length();
+                v = unit(v).multiply(Math.min(1.4, 0.5 + d * 0.055)).add(new Vector(0, 0.25 + d * 0.015, 0));
+                org.bukkit.entity.Snowball sb = m.body.launchProjectile(org.bukkit.entity.Snowball.class, v);
+                sb.setItem(new ItemStack(Material.TNT));
+                sb.addScoreboardTag(ACID_TAG); sb.addScoreboardTag(BOMB_TAG);
+                w.playSound(c, Sound.ENTITY_TNT_PRIMED, SoundCategory.HOSTILE, 1.5f, 1.4f);
+            }
+            case 2 -> { // the leap
+                Vector v = t.getLocation().toVector().subtract(c.toVector()).setY(0);
+                double d = v.length();
+                Edition.vel(m.body, unit(v).multiply(Math.min(1.6, 0.4 + d * 0.11)).setY(0.75));
+                w.playSound(c, Sound.ENTITY_GOAT_LONG_JUMP, SoundCategory.HOSTILE, 1.5f, 1.2f);
+                int[] air = {0};
+                Bukkit.getScheduler().runTaskTimer(pl, task -> {
+                    if (!m.body.isValid() || ++air[0] > 60) { task.cancel(); return; }
+                    if (air[0] < 6 || !(m.body.isOnGround() || m.body.isInWater())) return;
+                    task.cancel();
+                    Location at = m.body.getLocation();
+                    w.spawnParticle(Particle.EXPLOSION, at, 3, 1, 0.2, 1, 0);
+                    w.spawnParticle(Particle.DUST, at, 50, 2.5, 0.3, 2.5, 0, new Particle.DustOptions(Color.fromRGB(170, 255, 80), 1.8f));
+                    w.playSound(at, Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.HOSTILE, 1.5f, 1.3f);
+                    for (Player p : near(at, cfg("goblin.slam-radius", 3.5))) if (fair(p)) {
+                        p.damage(cfg("goblin.slam", 9), m.body);
+                        Edition.vel(p, unit(p.getLocation().toVector().subtract(at.toVector()).setY(0)).multiply(0.8).setY(0.7));
+                    }
+                }, 2L, 2L);
+            }
+            default -> { // call the mites
+                Kind mite = KINDS.get("acidmite");
+                for (int i = 0; i < (frenzy ? 4 : 3); i++) {
+                    Beast b = spawn(mite, c.clone().add(random.nextGaussian() * 1.5, 0.2, random.nextGaussian() * 1.5));
+                    if (b != null && b.body instanceof Mob mb) mb.setTarget(t);
+                }
+                w.playSound(c, Sound.ENTITY_SILVERFISH_AMBIENT, SoundCategory.HOSTILE, 2f, 0.6f);
+            }
+        }
+        m.cd = frenzy ? (int) cfg("goblin.frenzy-cooldown", 46) : (int) cfg("goblin.cooldown", 80);
     }
 
     /** The Sulphur Urchin's spines, out in every direction. */
@@ -1065,7 +1227,9 @@ final class DeepMobs implements Listener {
         if (m.k.id().equals("hollowkin")) p.addPotionEffect(new PotionEffect(PotionEffectType.DARKNESS, 60, 0));
         if (m.k.id().equals("needlejaw")) p.addPotionEffect(new PotionEffect(PotionEffectType.POISON, 40, 0));
         switch (m.k.id()) {
-            case "acideel", "skyfin", "crabling" -> p.addPotionEffect(new PotionEffect(PotionEffectType.POISON, 60, 0));
+            case "acideel", "skyfin", "crabling", "acidmite", "shambler" -> p.addPotionEffect(new PotionEffect(PotionEffectType.POISON, 60, 0));
+            case "stormwraith" -> { p.addPotionEffect(new PotionEffect(PotionEffectType.POISON, 60, 0)); p.addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS, 60, 0)); }
+            case "mauler" -> { wearArmor(p, (int) cfg("mauler.armor-wear", 10)); p.addPotionEffect(new PotionEffect(PotionEffectType.POISON, 80, 1)); p.sendActionBar(ChatColor.DARK_GREEN + "The Bile Mauler's bite rots your armour!"); }
             case "trasher" -> p.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 40, 1));
             case "boglurker" -> p.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 60, 3)); // rooted
             case "leech" -> { if (m.latched <= 0) { m.latched = (int) cfg("leech.hold-ticks", 80); m.latchedTo = p.getUniqueId(); } }
@@ -1088,10 +1252,37 @@ final class DeepMobs implements Listener {
         if (!e.getEntity().getScoreboardTags().contains(ACID_TAG) || !(e.getEntity() instanceof org.bukkit.entity.Snowball)) return;
         Location at = e.getEntity().getLocation();
         at.getWorld().spawnParticle(Particle.DUST, at, 20, 0.4, 0.4, 0.4, 0, new Particle.DustOptions(Color.fromRGB(150, 220, 60), 1.5f));
+        Set<String> tags = e.getEntity().getScoreboardTags();
+        LivingEntity src = e.getEntity().getShooter() instanceof LivingEntity le ? le : null;
+        if (tags.contains(BOMB_TAG)) { // the goblin's scrap bomb: a fizzing second and a half, then BOOM (no blocks)
+            at.getWorld().spawnParticle(Particle.SMOKE, at, 20, 0.3, 0.3, 0.3, 0.02);
+            at.getWorld().playSound(at, Sound.ENTITY_TNT_PRIMED, SoundCategory.HOSTILE, 1.4f, 1f);
+            Bukkit.getScheduler().runTaskLater(pl, () -> {
+                at.getWorld().spawnParticle(Particle.EXPLOSION_EMITTER, at, 1);
+                at.getWorld().spawnParticle(Particle.BLOCK, at, 40, 1.2, 0.6, 1.2, 0.2, Material.IRON_BLOCK.createBlockData());
+                at.getWorld().playSound(at, Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.HOSTILE, 2f, 0.9f);
+                for (Player p : near(at, cfg("goblin.bomb-radius", 3.6))) if (fair(p)) {
+                    p.damage(cfg("goblin.bomb", 10), src);
+                    Edition.vel(p, unit(p.getLocation().toVector().subtract(at.toVector())).multiply(0.9).setY(0.5));
+                }
+            }, 30L);
+            return;
+        }
+        if (tags.contains(FLASK_TAG)) { // an acid flask shatters: a pool of acid
+            at.getWorld().playSound(at, Sound.ENTITY_SPLASH_POTION_BREAK, SoundCategory.HOSTILE, 1.4f, 0.8f);
+            at.getWorld().spawn(at, AreaEffectCloud.class, cl -> {
+                cl.setRadius(2.6f); cl.setDuration(120); cl.setRadiusPerTick(-0.01f);
+                cl.setColor(Color.fromRGB(150, 230, 60));
+                cl.addCustomEffect(new PotionEffect(PotionEffectType.POISON, 80, 1), true);
+                cl.addCustomEffect(new PotionEffect(PotionEffectType.INSTANT_DAMAGE, 1, 0), true);
+                cl.addScoreboardTag(PART);
+            });
+            return;
+        }
         if (e.getHitEntity() instanceof Player p && fair(p)) {
-            LivingEntity src = e.getEntity().getShooter() instanceof LivingEntity le ? le : null;
-            p.damage(cfg("flakcrab.flak", 3), src);
-            p.addPotionEffect(new PotionEffect(PotionEffectType.POISON, 60, 0));
+            p.damage(cfg(tags.contains(GLOB_TAG) ? "shambler.glob" : "flakcrab.flak", tags.contains(GLOB_TAG) ? 5 : 3), src);
+            p.addPotionEffect(new PotionEffect(PotionEffectType.POISON, tags.contains(GLOB_TAG) ? 80 : 60, 0));
+            if (tags.contains(GLOB_TAG)) p.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 60, 1));
         }
     }
 
@@ -1101,7 +1292,13 @@ final class DeepMobs implements Listener {
         if (m == null) return;
         cleanup(m);
         e.getDrops().clear();
-        e.setDroppedExp((int) Math.max(1, m.k.health() / 4));
+        e.setDroppedExp(m.k.id().equals("goblin") ? (int) cfg("goblin.xp", 300) : (int) Math.max(1, m.k.health() / 4));
+        if (m.k.id().equals("goblin")) {
+            Player kk = e.getEntity().getKiller();
+            for (Player p : e.getEntity().getWorld().getPlayers())
+                p.sendMessage(ChatColor.GOLD + "" + ChatColor.BOLD + "Grubnash the Acid Goblin " + ChatColor.YELLOW + "has been slain" + (kk != null ? " by " + kk.getName() : "") + "!");
+            if (pl.acidRain != null) pl.acidRain.goblinDied();
+        }
         Location at = e.getEntity().getLocation();
         if (m.k.id().equals("bloatfin")) { // its air sac bursts
             at.getWorld().spawnParticle(Particle.BUBBLE_POP, at, 40, 1.2, 1, 1.2, 0.1);
@@ -1160,6 +1357,22 @@ final class DeepMobs implements Listener {
             case "sulphurmoth" -> drops.add(new ItemStack(Material.GLOWSTONE_DUST, 1 + random.nextInt(2)));
             case "hazardturtle" -> { drops.add(new ItemStack(Material.TURTLE_SCUTE, 1 + random.nextInt(2))); drops.add(new ItemStack(Material.GLOWSTONE_DUST, 2 + random.nextInt(3))); }
             case "sludgesnail" -> drops.add(new ItemStack(Material.SLIME_BALL, 2 + random.nextInt(3)));
+            case "shambler" -> { drops.add(new ItemStack(Material.ROTTEN_FLESH, 1 + random.nextInt(2))); drops.add(new ItemStack(Material.SLIME_BALL, 1 + random.nextInt(2))); }
+            case "rustbones" -> { drops.add(new ItemStack(Material.BONE, 1 + random.nextInt(2))); drops.add(new ItemStack(Material.ARROW, 2 + random.nextInt(4))); drops.add(new ItemStack(Material.COPPER_INGOT, 1)); }
+            case "acidmite" -> { if (random.nextInt(3) == 0) drops.add(new ItemStack(Material.GLOWSTONE_DUST, 1)); }
+            case "stormwraith" -> { drops.add(new ItemStack(Material.PHANTOM_MEMBRANE, 1)); drops.add(new ItemStack(Material.LIME_DYE, 1 + random.nextInt(2))); }
+            case "mauler" -> { drops.add(new ItemStack(Material.BONE, 3 + random.nextInt(3))); drops.add(new ItemStack(Material.PRISMARINE_CRYSTALS, 2 + random.nextInt(3))); rare(killer, "mauler.brine-bait", 0.05, "scourge item brine_bait 1 %p"); }
+            case "goblin" -> { // the mini boss's hoard
+                drops.add(new ItemStack(Material.EMERALD, 6 + random.nextInt(7)));
+                drops.add(new ItemStack(Material.GOLD_INGOT, 4 + random.nextInt(5)));
+                drops.add(new ItemStack(Material.TNT, 2 + random.nextInt(3)));
+                drops.add(new ItemStack(Material.SPLASH_POTION, 1));
+                if (killer != null) {
+                    pl.console("darkloot bag " + (int) cfg("goblin.bags", 2) + " " + killer.getName());
+                    rare(killer, "goblin.rare", 0.1, "darkloot rare %p 1");
+                    pl.console("index stat " + killer.getName() + " acid_goblins 1");
+                }
+            }
             default -> { }
         }
         if (killer != null && k.zone() == DeepGenerator.Zone.SULPHUR) rare(killer, "dark-loot-bag-sulphur", 0.008, "darkloot bag 1 %p");
@@ -1171,6 +1384,16 @@ final class DeepMobs implements Listener {
     void rare(Player killer, String path, double def, String cmd) {
         if (killer == null || random.nextDouble() >= cfg("drops." + path, def)) return;
         pl.console(cmd.replace("%p", killer.getName()));
+    }
+
+    /** Rustbones' sulphur-dipped arrows. */
+    @EventHandler(ignoreCancelled = true)
+    public void onShoot(org.bukkit.event.entity.EntityShootBowEvent e) {
+        Beast m = live.get(e.getEntity().getUniqueId());
+        if (m == null || !m.k.id().equals("rustbones") || !(e.getProjectile() instanceof org.bukkit.entity.Arrow ar)) return;
+        try { ar.addCustomEffect(new PotionEffect(PotionEffectType.POISON, 80, 1), true); } catch (RuntimeException ignored) { }
+        ar.setColor(Color.fromRGB(170, 255, 80));
+        ar.setPickupStatus(org.bukkit.entity.AbstractArrow.PickupStatus.DISALLOWED);
     }
 
     @EventHandler(ignoreCancelled = true)

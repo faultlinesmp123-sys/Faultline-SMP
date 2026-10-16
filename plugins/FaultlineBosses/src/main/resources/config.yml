@@ -614,6 +614,8 @@ wild:
   scourge:
     health: 2400
     health-per-extra-fighter: 0.2
+    air-bubble: {every-seconds: 20, size: 3.4, poison-per-second: 0.25}   # giant air bubbles: breathe + wash out the poison
+    pink-bubble: {every-seconds: 30, size: 2.6, damage: 150}            # hit one = 150 damage to the Scourge
     cooldown-minutes: 15
     music: {sound: "faultline:kraken.music", length-seconds: 397.22}
   umbral:

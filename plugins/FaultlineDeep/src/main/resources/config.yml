@@ -14,6 +14,23 @@ sulphur:
   always-raining: true      # it rains there all the time (for the players in it), with green acid drops falling too
   green-rain-particles: 40  # green drops round each player every 4 ticks
 
+# The Acid Rain (1.5.0): an event over the Sulphur Sea. /deep acidrain [start|stop|goblin]
+acid-rain:
+  enabled: true
+  check-minutes: 5          # every 5 minutes, if anyone is in or near the Sulphur Sea...
+  chance: 0.005             # ...a 0.5% chance it starts
+  minutes: 6                # how long it lasts
+  helmet-wear: 2            # out in the open: a helmet loses this much durability every 3 s, no helmet = poisoned
+  spawn-seconds: 5          # its creatures (Sludge Shambler, Rustbones, Acid Mite, Storm Wraith, Bile Mauler) come this often...
+  cap-per-player: 6         # ...up to this many round each player
+  goblin-after-seconds: 90  # then Grubnash the Acid Goblin (mini boss, 500 health) rides in
+
+# Lucki's whirlpool (1.5.0): a real funnel the sea drains into
+journey:
+  whirlpool-radius: 9
+  whirlpool-depth: 16       # down to the eye (or to the sea floor if it's shallower)
+  whirlpool-seconds: 40
+
 mobs:
   sulphur:
     land-share: 0.4         # how often the spawner tries an island / the air over it instead of the water there

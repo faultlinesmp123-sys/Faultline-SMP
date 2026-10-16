@@ -1036,12 +1036,601 @@ def sludgesnail():
     return p
 
 
+
+# --------------------------------------------------------------------------------------------- the acid mobs, detailed (Deep 1.5.0)
+# Every acid creature gets twice the texture resolution (32 pixels a block) and a pass of new detail on top of its v2
+# model: crusts of sulphur, rust and barnacles, gills, drips of acid, claws, spines, glowing veins. `into(p, bone)` puts
+# boxes in an EXISTING bone (Part.bone() would reset its pivot).
+def crust(c=SULF, crack=(110, 90, 20)):
+    """A sulphur crust: lumpy yellow with dark cracks between the crystals."""
+    def f(reg, face, rng):
+        h, w = reg.shape[:2]
+        reg[:, :, 3] = 255
+        for y in range(h):
+            for x in range(w):
+                col = np.array(c, float) + rng.uniform(-18, 18)
+                if (x * 7 + y * 3) % 11 == 0 or (x + y * 5) % 13 == 0: col = np.array(crack, float)
+                reg[y, x, :3] = np.clip(col, 0, 255)
+    return f
+
+
+def rusty(base=RUST):
+    """Rusted metal: orange-brown with darker streaks running down and green verdigris flecks."""
+    def f(reg, face, rng):
+        h, w = reg.shape[:2]
+        reg[:, :, 3] = 255
+        streak = {rng.randrange(max(1, w)) for _ in range(3)}
+        for y in range(h):
+            for x in range(w):
+                col = np.array(base, float) + rng.uniform(-14, 14)
+                if x in streak: col = col * 0.7
+                if rng.random() < 0.04: col = np.array((90, 140, 110), float)
+                reg[y, x, :3] = np.clip(col, 0, 255)
+    return f
+
+
+def slick(c, shine=(240, 255, 200)):
+    """Wet, glistening skin: a few bright highlights."""
+    def f(reg, face, rng):
+        h, w = reg.shape[:2]
+        reg[:, :, 3] = 255
+        for y in range(h):
+            for x in range(w):
+                col = np.array(c, float) + rng.uniform(-8, 8)
+                if face == "up" and rng.random() < 0.05: col = np.array(shine, float)
+                reg[y, x, :3] = np.clip(col, 0, 255)
+    return f
+
+
+BARN = W.grad((200, 196, 170), (130, 124, 100), 3, (90, 86, 70), 0.2)
+DRIP = W.glow((190, 255, 110))
+DARK = solid((24, 26, 16), 2)
+CLAW = solid((40, 36, 24), 2)
+
+
+def into(p, bone):
+    p.cur_bone = bone
+    return p
+
+
+def drips(p, x, y, z, n, seed, spread=0.05, length=0.08):
+    """Little hanging drops of acid under a point."""
+    r = np.random.default_rng(seed)
+    for i in range(n):
+        dx, dz = r.uniform(-spread, spread, 2)
+        L = length * r.uniform(0.5, 1.0)
+        p.add(x + dx - 0.008, y - L, z + dz - 0.008, x + dx + 0.008, y, z + dz + 0.008, DRIP)
+
+
+def barnacles(p, pts, s=0.03):
+    for (x, y, z) in pts:
+        p.add(x - s, y, z - s, x + s, y + s * 0.9, z + s, BARN)
+        p.add(x - s * 0.4, y + s * 0.9, z - s * 0.4, x + s * 0.4, y + s * 1.05, z + s * 0.4, DARK)
+
+
+def _acideel(p):
+    into(p, None)
+    for x in (0.34, 0.31, 0.28): pair(p, x, -0.04, 0.0855, x + 0.012, 0.04, 0.09, solid((30, 36, 14), 2))      # gill slits
+    for i in range(4): p.add(0.4 + i * 0.04, -0.06, -0.045, 0.415 + i * 0.04, -0.035, 0.045, TEETH)               # upper fangs
+    into(p, "jaw")
+    for s in (-1, 1): p.add(0.5, -0.16, s * 0.04 - 0.008, 0.52, -0.1, s * 0.04 + 0.008, solid(OLIVE_D, 2))        # barbels
+    drips(p, 0.56, -0.1, 0, 3, 11, 0.04)
+    for b, xs in (("s1", (0.1, -0.06)), ("s2", (-0.22, -0.4)), ("s3", (-0.56,))):
+        into(p, b)
+        for x in xs: pair(p, x, 0.03, 0.07, x + 0.04, 0.06, 0.085, DRIP)                                             # glowing spots
+    into(p, None)
+
+
+def _trasher(p):
+    into(p, None)
+    barnacles(p, [(-0.22, 0.12, 0.08), (-0.02, 0.13, -0.09), (0.1, 0.12, 0.12)], 0.025)
+    p.add(-0.2, 0.13, -0.03, 0.12, 0.15, 0.03, crust())                                                               # a sulphur crust down the spine
+    into(p, "head")
+    for s in (-1, 1): p.add(0.58, 0.03, s * 0.03 - 0.01, 0.61, 0.05, s * 0.03 + 0.01, DARK)                          # nostrils
+    for s in (-1, 1): p.add(0.25, 0.06, s * 0.105, 0.36, 0.09, s * 0.115, solid((48, 58, 30), 3))                    # eye ridges
+    drips(p, 0.5, -0.05, 0.06, 2, 3); drips(p, 0.45, -0.05, -0.06, 2, 4)
+    for b in ("frontl", "frontr", "backl", "backr"):
+        if b not in p.pivots: continue
+        into(p, b)
+        x, _, z = p.pivots[b]
+        s = 1 if z > 0 else -1
+        for k in range(3): p.add(x + 0.06 + k * 0.012, -0.235, s * (0.215 + k * 0.025), x + 0.11 + k * 0.012, -0.215, s * (0.225 + k * 0.025), CLAW)   # claws
+    into(p, "tail")
+    for x in (-0.78, -0.62, -0.46): pair(p, x, -0.01, 0.095, x + 0.05, 0.04, 0.11, solid((54, 64, 34), 3))         # side osteoderms
+    into(p, None)
+
+
+def _radiator(p):
+    into(p, None)
+    for i, x in enumerate((-0.16, -0.08, 0.0, 0.08)): p.add(x, 0.17, -0.012, x + 0.05, 0.25 - i * 0.012, 0.012, finp(OLIVE_D, LIME))   # a spiky dorsal
+    for (x, y) in ((-0.1, 0.05), (0.0, -0.06), (0.08, 0.06), (-0.05, -0.02)): pair(p, x, y, 0.121, x + 0.08, y + 0.012, 0.128, DRIP)  # veins
+    p.add(-0.1, -0.17, -0.06, 0.12, -0.16, 0.06, W.glow((250, 255, 170)))                                            # the hot belly
+    into(p, "lure"); drips(p, 0.275, 0.33, 0, 2, 7, 0.02, 0.05); into(p, None)
+
+
+def _flakcrab(p):
+    into(p, None)
+    for (x, z) in ((-0.25, 0.25), (0.1, -0.28), (-0.05, 0.3), (0.2, 0.2)): p.add(x - 0.015, 0.17, z - 0.015, x + 0.015, 0.19, z + 0.015, solid((70, 50, 30), 2))  # rivets
+    barnacles(p, [(-0.18, 0.255, 0.18), (0.12, 0.25, -0.16), (-0.24, 0.24, -0.05)], 0.028)
+    p.add(-0.3, 0.12, -0.345, 0.3, 0.16, 0.345, rusty())                                                              # a rust band round the rim
+    for (x, z) in ((-0.12, -0.14), (-0.12, 0.14), (0.04, 0.0), (-0.2, 0.0)): p.add(x - 0.045, 0.3, z - 0.045, x + 0.045, 0.32, z + 0.045, solid((50, 54, 48), 2))  # tube rings
+    for s in (-1, 1): p.add(0.3, 0.06, s * 0.05 - 0.008, 0.48, 0.075, s * 0.05 + 0.008, solid((140, 80, 40), 2))      # antennae
+    p.add(0.3, -0.05, -0.06, 0.33, 0.0, 0.06, solid((150, 70, 50), 2))                                                # mouthparts
+    drips(p, 0.32, -0.05, 0, 2, 9, 0.04)
+
+
+def _nucleartoad(p):
+    into(p, None)
+    for k in range(3):                                                                                                # the hazard mark on its back
+        a = k * 2 * math.pi / 3 + math.pi / 2
+        x, z = math.cos(a) * 0.06 - 0.04, math.sin(a) * 0.06
+        p.add(x - 0.025, 0.125, z - 0.025, x + 0.025, 0.14, z + 0.025, W.glow((255, 240, 80)))
+    p.add(-0.055, 0.125, -0.015, -0.025, 0.14, 0.015, DARK)
+    for s in (-1, 1): p.add(0.31, 0.06, s * 0.04 - 0.01, 0.33, 0.08, s * 0.04 + 0.01, DARK)                          # nostrils
+    p.add(-0.2, -0.15, -0.16, 0.16, -0.13, 0.16, slick((170, 190, 100)))                                               # the pale wet belly
+    for (x, z) in ((-0.2, 0.15), (0.1, -0.15), (-0.1, -0.17), (0.12, 0.14)): p.add(x - 0.02, 0.08, z - 0.02, x + 0.02, 0.13, z + 0.02, ACIDGLOW)  # more warts
+    for b, s in (("legl", -1), ("legr", 1)):
+        into(p, b)
+        for k in range(3): p.add(0.08 + k * 0.0, -0.185, s * (0.19 + k * 0.04), 0.14, -0.175, s * (0.21 + k * 0.04), solid((60, 80, 30), 2))   # webbed toes
+    into(p, None)
+
+
+def _gammaslime(p):
+    into(p, None)
+    for (x, y, z, ax) in ((0.1, 0.12, -0.15, 0), (-0.16, -0.08, 0.12, 1), (0.14, -0.15, 0.1, 2)):                    # bones floating inside
+        d = [0.012, 0.012, 0.012]; d[ax] = 0.07
+        p.add(x - d[0], y - d[1], z - d[2], x + d[0], y + d[1], z + d[2], solid(BONEW, 2))
+    for (x, y, z) in ((-0.12, 0.18, -0.1), (0.18, 0.0, 0.18), (-0.2, -0.18, -0.2), (0.0, 0.22, 0.15)):
+        p.add(x - 0.025, y - 0.025, z - 0.025, x + 0.025, y + 0.025, z + 0.025, W.glow((240, 255, 200)))              # bubbles
+    p.add(-0.31, 0.27, -0.31, 0.31, 0.31, 0.31, W.glow((170, 250, 100)))                                              # a brighter crown
+    into(p, "drip"); drips(p, 0.0, -0.3, 0.0, 4, 13, 0.25, 0.14); into(p, None)
+
+
+def _sulphurskater(p):
+    into(p, None)
+    p.add(-0.26, 0.055, -0.065, 0.12, 0.07, 0.065, W.membrane((90, 96, 50), SULF))                                     # folded wing cases
+    for s in (-1, 1): p.add(0.29, -0.02, s * 0.02 - 0.012, 0.33, 0.0, s * 0.02 + 0.012, CLAW)                         # mandibles
+    into(p, "legl")
+    for (x, z) in ((0.075, -0.32), (-0.035, -0.4), (-0.135, -0.42)): p.add(x - 0.02, -0.0, z - 0.02, x + 0.02, 0.035, z + 0.02, solid(OLIVE_D, 2))   # knees
+    for (x, z) in ((0.43, -0.31), (-0.03, -0.4), (-0.48, -0.42)): p.add(x - 0.03, -0.13, z - 0.03, x + 0.03, -0.115, z + 0.03, W.glow((220, 255, 140)))   # glowing pads
+    into(p, "legr")
+    for (x, z) in ((0.075, 0.32), (-0.035, 0.4), (-0.135, 0.42)): p.add(x - 0.02, -0.0, z - 0.02, x + 0.02, 0.035, z + 0.02, solid(OLIVE_D, 2))
+    for (x, z) in ((0.43, 0.31), (-0.03, 0.4), (-0.48, 0.42)): p.add(x - 0.03, -0.13, z - 0.03, x + 0.03, -0.115, z + 0.03, W.glow((220, 255, 140)))
+    into(p, None)
+
+
+def _acidjelly(p):
+    into(p, None)
+    for i in range(12):                                                                                               # rim lights
+        a = i * math.pi / 6
+        p.add(math.cos(a) * 0.255 - 0.02, 0.0, math.sin(a) * 0.255 - 0.02, math.cos(a) * 0.255 + 0.02, 0.04, math.sin(a) * 0.255 + 0.02, W.glow((240, 255, 160)))
+    for i in range(4):                                                                                                # the four glowing rings inside
+        a = i * math.pi / 2 + math.pi / 4
+        x, z = math.cos(a) * 0.11, math.sin(a) * 0.11
+        p.add(x - 0.04, 0.12, z - 0.04, x + 0.04, 0.16, z + 0.04, W.glow((255, 220, 90)))
+    into(p, "threads")
+    for i in range(4):                                                                                                # frilly oral arms
+        a = i * math.pi / 2
+        for k in range(4):
+            x, z = math.cos(a) * (0.06 + k * 0.01), math.sin(a) * (0.06 + k * 0.01)
+            p.add(x - 0.035, -0.12 - k * 0.1, z - 0.035, x + 0.035, -0.06 - k * 0.1, z + 0.035, W.membrane((160, 230, 100), (230, 255, 160)))
+    into(p, None)
+
+
+def _orthocera(p):
+    into(p, None)
+    p.add(-0.95, 0.0, -0.02, -0.15, 0.03, 0.02, solid((150, 120, 80), 2))                                              # the siphuncle line along the top
+    barnacles(p, [(-0.4, 0.13, 0.05), (-0.62, 0.1, -0.04), (-0.3, 0.14, -0.08)], 0.022)
+    p.add(0.02, 0.1, -0.13, 0.17, 0.15, 0.13, W.grad((90, 100, 50), (50, 60, 26), 3, LIME, 0.06))                     # the hood
+    p.add(0.06, -0.15, -0.035, 0.16, -0.1, 0.035, solid((80, 90, 40), 3))                                              # the siphon
+    p.add(0.155, -0.14, -0.025, 0.17, -0.11, 0.025, DARK)
+    drips(p, -0.96, 0.0, 0.0, 2, 21, 0.01)
+
+
+def _trilobite(p):
+    into(p, None)
+    for s in (-1, 1): p.add(-0.12, -0.03, s * 0.18 - 0.012, 0.12, 0.0, s * 0.18 + 0.012, solid((90, 80, 56), 2))       # genal spines sweeping back
+    for s in (-1, 1): p.add(0.15, 0.08, s * 0.1 - 0.03, 0.22, 0.11, s * 0.1 + 0.03, W.grad((40, 34, 20), (20, 16, 10), 2, (180, 220, 90), 0.4))   # compound eye domes
+    into(p, "body1")
+    for i in range(3):
+        x = 0.1 - (i + 1) * 0.07
+        pair(p, x + 0.01, -0.035, 0.17 - i * 0.01, x + 0.045, -0.015, 0.215 - i * 0.01, solid((96, 86, 60), 2))      # pleural spines
+    into(p, "body2")
+    for i in range(3):
+        x = -0.11 - (i + 1) * 0.07
+        pair(p, x + 0.01, -0.03, 0.14 - i * 0.02, x + 0.045, -0.01, 0.18 - i * 0.02, solid((96, 86, 60), 2))
+    pair(p, -0.46, -0.02, 0.03, -0.37, 0.0, 0.05, solid((96, 86, 60), 2))                                               # tail spines
+    into(p, None)
+
+
+def _skyfin(p):
+    into(p, None)
+    p.add(-0.12, 0.08, -0.012, 0.1, 0.16, 0.012, finp(OLIVE_D, LIME))                                                 # dorsal fin
+    pair(p, -0.16, -0.12, 0.03, -0.04, -0.07, 0.06, finp(OLIVE, LIME))                                                  # pelvic fins
+    for x in (0.2, 0.22): pair(p, x, -0.04, 0.081, x + 0.01, 0.04, 0.085, solid((30, 40, 20), 2))                     # gills
+    for side, s in (("wingl", -1), ("wingr", 1)):
+        into(p, side)
+        a, b = sorted((s * 0.46, s * 0.55))
+        p.add(0.06, 0.012, a, 0.18, 0.032, b, W.glow((200, 255, 120)))                                                 # glowing wing tips
+    into(p, None)
+
+
+def _leech(p):
+    for b, x, sgn in (("front", 0.37, 1), ("back", -0.38, -1)):
+        into(p, b)
+        for i in range(8):
+            a = i * math.pi / 4
+            y, z = math.sin(a) * 0.05, math.cos(a) * 0.05
+            p.add(x - 0.012, y - 0.008, z - 0.008, x + 0.012, y + 0.008, z + 0.008, TEETH)                             # rings of hooks
+    into(p, None)
+    p.add(-0.25, 0.062, -0.03, 0.25, 0.07, 0.03, slick((80, 60, 64)))                                                  # a glistening back
+    drips(p, 0.05, -0.06, 0.0, 3, 31, 0.15, 0.06)
+
+
+def _boglurker(p):
+    into(p, None)
+    for (x, z, L) in ((0.2, 0.15, 0.25), (-0.15, 0.22, 0.3), (0.1, -0.22, 0.2), (-0.22, -0.1, 0.28), (0.22, -0.05, 0.18)):   # hanging moss
+        p.add(x - 0.015, 0.3 - L, z - 0.015, x + 0.015, 0.3, z + 0.015, W.grad((120, 140, 90), (80, 96, 60), 2, (170, 190, 130), 0.2))
+    for (x, y, z) in ((-0.23, 0.0, 0.05), (0.0, -0.1, -0.23), (-0.1, 0.15, 0.23)):                                      # glowing shelf mushrooms
+        p.add(x - 0.05, y, z - 0.05, x + 0.05, y + 0.025, z + 0.05, W.glow((190, 255, 90)))
+    for (x, y) in ((-0.1, -0.2), (0.05, 0.1), (-0.05, -0.05)): p.add(x, y, 0.222, x + 0.05, y + 0.08, 0.232, DARK)      # bark knots
+    into(p, "jaw"); drips(p, 0.25, -0.12, 0.0, 3, 41, 0.1); into(p, None)
+
+
+def _corrosionshark(p):
+    into(p, None)
+    for (x, y, z) in ((-0.15, 0.06, 0.155), (0.05, -0.04, -0.16), (-0.35, 0.02, -0.12)):                               # corroded patches glowing through
+        a, b = sorted((z, z + (0.012 if z > 0 else -0.012)))
+        p.add(x, y, a, x + 0.09, y + 0.06, b, DRIP)
+    p.add(-0.2, 0.17, -0.012, -0.17, 0.3, 0.012, rusty((110, 70, 40)))                                                  # a rusty harpoon stuck in its back
+    p.add(-0.22, 0.29, -0.03, -0.15, 0.32, 0.03, rusty((90, 60, 34)))
+    p.add(-0.2, 0.3, -0.004, -0.17, 0.4, 0.004, solid((180, 170, 140), 2))                                               # its frayed rope
+    barnacles(p, [(-0.45, 0.08, 0.04), (0.2, 0.14, -0.05)], 0.025)
+
+
+def _urchin(p):
+    into(p, None)
+    for i in range(10):                                                                                               # tube feet
+        a = i * math.pi / 5
+        x, z = math.cos(a) * 0.17, math.sin(a) * 0.17
+        p.add(x - 0.012, -0.26, z - 0.012, x + 0.012, -0.17, z + 0.012, W.glow((230, 140, 190)))
+    p.add(-0.05, -0.215, -0.05, 0.05, -0.2, 0.05, W.glow((250, 230, 90)))                                              # the glowing mouth underneath
+    for i in range(5):                                                                                                # tiny stinging tips
+        a = i * 2 * math.pi / 5
+        p.add(math.cos(a) * 0.12 - 0.015, 0.16, math.sin(a) * 0.12 - 0.015, math.cos(a) * 0.12 + 0.015, 0.21, math.sin(a) * 0.12 + 0.015, W.glow((255, 120, 180)))
+
+
+def _crabling(p):
+    into(p, None)
+    barnacles(p, [(-0.1, 0.12, 0.1)], 0.025)
+    for z in (-0.24, -0.12, 0.0, 0.12, 0.24): p.add(0.18, 0.1, z - 0.015, 0.22, 0.14, z + 0.015, solid((160, 80, 40), 2))   # rim spikes
+    for b, s in (("clawl", -1), ("clawr", 1)):
+        into(p, b)
+        a, c = sorted((s * 0.2, s * 0.26))
+        for k in range(3): p.add(0.4 + k * 0.04, 0.1, a, 0.42 + k * 0.04, 0.13, c, solid((240, 230, 200), 2))         # claw teeth
+    into(p, None)
+
+
+def _bloatgut(p):
+    into(p, None)
+    p.add(0.27, -0.09, -0.08, 0.31, -0.07, 0.08, solid((170, 80, 60), 2)); p.add(0.27, 0.0, -0.08, 0.31, 0.02, 0.08, solid((170, 80, 60), 2))   # lips
+    for (y, z) in ((0.05, 0.2), (-0.05, -0.2), (0.15, -0.1), (-0.15, 0.12)):
+        a, b = sorted((0.28, 0.29)); p.add(0.0 + z * 0.3, y, z - 0.03, 0.06 + z * 0.3, y + 0.03, z + 0.03, solid((60, 70, 20), 2))
+    pair(p, -0.24, -0.03, 0.27, 0.18, 0.0, 0.285, W.glow((220, 255, 120)))                                              # glowing side stripe
+    drips(p, 0.3, -0.09, 0.0, 2, 51, 0.03)
+
+
+def _sulphurmoth(p):
+    into(p, None)
+    p.add(0.06, -0.08, -0.08, 0.13, 0.08, 0.08, W.grad((240, 230, 180), (200, 180, 120), 3, (255, 255, 230), 0.2))     # fluffy collar
+    for x in (-0.05, 0.03, 0.1): pair(p, x, -0.18, 0.04, x + 0.012, -0.06, 0.06, solid((120, 90, 40), 2))               # legs
+    p.add(0.2, -0.06, -0.005, 0.27, -0.05, 0.005, solid((120, 90, 40), 2))                                              # the curled proboscis
+    for side, s in (("wingl", -1), ("wingr", 1)):
+        into(p, side)
+        for k in range(3):
+            a, b = sorted((s * 0.08, s * (0.44 - k * 0.04)))
+            p.add(-0.06 + k * 0.08, 0.071, a, -0.05 + k * 0.08, 0.074, b, solid((170, 130, 40), 2))                   # wing veins
+    into(p, None)
+
+
+def _hazardturtle(p):
+    into(p, None)
+    for (x, z) in ((-0.2, -0.15), (-0.2, 0.15), (0.05, -0.17), (0.05, 0.17), (0.2, 0.0)):
+        p.add(x - 0.06, 0.195, z - 0.05, x + 0.06, 0.205, z + 0.05, solid((50, 56, 32), 2))                             # scute borders
+    for (x, z) in ((0.1, 0.18), (-0.1, -0.19), (0.22, -0.12)): p.add(x - 0.02, 0.18, z - 0.02, x + 0.02, 0.25, z + 0.02, SULFGLOW)   # small crystals
+    into(p, "head")
+    p.add(0.45, -0.02, -0.03, 0.49, 0.03, 0.03, solid((60, 56, 30), 2))                                                 # the hooked beak
+    for b in ("frontl", "frontr", "backl", "backr"):
+        if b not in p.pivots: continue
+        into(p, b)
+        x, _, z = p.pivots[b]
+        s = 1 if z > 0 else -1
+        for k in range(3): p.add(x + 0.06 + k * 0.012, -0.085, s * (0.32 + k * 0.03), x + 0.12, -0.07, s * (0.33 + k * 0.03), CLAW)
+    into(p, None)
+    for x in (-0.44, -0.4): p.add(x, 0.04, -0.012, x + 0.025, 0.07, 0.012, SULFGLOW)                                     # tail spikes
+
+
+def _sludgesnail(p):
+    into(p, None)
+    for (x, y, z) in ((-0.2, -0.02, 0.17), (0.0, 0.12, -0.12), (-0.12, 0.18, 0.1)):
+        p.add(x - 0.025, y, z - 0.02, x + 0.025, y + 0.04, z + 0.02, DRIP)                                               # rust holes glowing with slime
+    drips(p, -0.24, -0.06, 0.12, 2, 61, 0.03); drips(p, 0.05, -0.06, -0.12, 2, 62, 0.03)
+    for (x, y, z) in ((-0.15, 0.24, -0.06), (0.04, 0.33, 0.05)): p.add(x - 0.02, y, z - 0.02, x + 0.02, y + 0.04, z + 0.02, W.glow((230, 255, 190)))   # slime bubbles
+    into(p, "head")
+    for s in (-1, 1): p.add(0.39, -0.1, s * 0.04 - 0.01, 0.46, -0.08, s * 0.04 + 0.01, solid((110, 130, 60), 2))       # lower tentacles
+    into(p, None)
+
+
+def _detailed(fn, extra):
+    def g():
+        p = fn()
+        p.ppb = 32
+        extra(p)
+        p.cur_bone = None
+        return p
+    g.__name__ = fn.__name__
+    g.__doc__ = fn.__doc__
+    return g
+
+
+acideel, trasher, radiator, flakcrab, nucleartoad = (_detailed(acideel, _acideel), _detailed(trasher, _trasher), _detailed(radiator, _radiator),
+                                                     _detailed(flakcrab, _flakcrab), _detailed(nucleartoad, _nucleartoad))
+gammaslime, sulphurskater, acidjelly, orthocera, trilobite = (_detailed(gammaslime, _gammaslime), _detailed(sulphurskater, _sulphurskater),
+                                                              _detailed(acidjelly, _acidjelly), _detailed(orthocera, _orthocera), _detailed(trilobite, _trilobite))
+skyfin, leech, boglurker, corrosionshark, urchin = (_detailed(skyfin, _skyfin), _detailed(leech, _leech), _detailed(boglurker, _boglurker),
+                                                    _detailed(corrosionshark, _corrosionshark), _detailed(urchin, _urchin))
+crabling, bloatgut, sulphurmoth, hazardturtle, sludgesnail = (_detailed(crabling, _crabling), _detailed(bloatgut, _bloatgut),
+                                                              _detailed(sulphurmoth, _sulphurmoth), _detailed(hazardturtle, _hazardturtle), _detailed(sludgesnail, _sludgesnail))
+
+
+# --------------------------------------------------------------------------------------------- the Acid Rain (Deep 1.5.0)
+# Five creatures that only come with the Acid Rain, and Grubnash the Acid Goblin (mini boss). Humanoids are about one
+# block tall (feet at y -0.5), front +x, walking with swinging limbs.
+def face_eyes(p, x, y0, y1, zc, w, white, iris, pupil=(14, 12, 18), slit=False):
+    """A pair of eyes on the FRONT face (+x) at z = +-zc, each w wide (thin boxes just in front of the face)."""
+    for s in (-1, 1):
+        p.add(x, y0, s * zc - w / 2, x + 0.008, y1, s * zc + w / 2, W.eye_paint(white, iris, pupil, slit))
+
+
+def _limbs(p, sk, pants, arm_w=0.05, leg_w=0.055, shoulder=0.13, hip=0.055, arm_paint=None, boots=None, hands=None):
+    """Two legs and two arms as bones (legl/legr, arml/armr), swinging like a walk."""
+    for side, s in (("l", -1), ("r", 1)):
+        p.bone("leg" + side, (0, -0.1, s * hip))
+        a, b = sorted((s * (hip - leg_w), s * (hip + leg_w)))
+        p.add(-leg_w, -0.42, a, leg_w, -0.1, b, pants)
+        p.add(-leg_w - 0.005, -0.5, a - 0.005, leg_w + 0.03, -0.42, b + 0.005, boots or pants)
+        p.bone(None)
+        p.bone("arm" + side, (0, 0.22, s * shoulder))
+        a, b = sorted((s * shoulder, s * (shoulder + arm_w * 2)))
+        p.add(-arm_w, -0.08, a, arm_w, 0.24, b, arm_paint or sk)
+        p.add(-arm_w + 0.005, -0.12, a + 0.005 * s, arm_w - 0.005, -0.08, b - 0.005 * s, hands or sk)
+        p.bone(None)
+
+
+def _walk(p, legs=24, arms=20, secs=1.0, head=None):
+    p.anim("legl", "rot", (legs, 0, 0), secs).anim("legr", "rot", (legs, 0, 0), secs, 0.5)
+    p.anim("arml", "rot", (arms, 0, 0), secs, 0.5).anim("armr", "rot", (arms, 0, 0), secs)
+    if head: p.anim("head", "rot", head, secs * 2)
+    return p
+
+
+def shambler():
+    """A drowned sailor soaked through with acid: rotting olive skin, a torn striped shirt, kelp, ribs glowing through."""
+    p = Part("shambler", 32, 256)
+    sk = slick((96, 120, 70), (220, 255, 160))
+    shirt = W.stripes_h((200, 196, 170), (60, 80, 120), 2) if hasattr(W, "stripes_h") else solid((180, 180, 160), 3)
+    p.add(-0.07, -0.1, -0.12, 0.07, 0.24, 0.12, shirt)                                       # the torso in a torn shirt
+    p.add(0.07, 0.0, -0.06, 0.075, 0.14, 0.06, solid((40, 60, 30), 2))                      # the torn hole...
+    for y in (0.02, 0.06, 0.1): p.add(0.071, y, -0.045, 0.078, y + 0.015, 0.045, DRIP)       # ...ribs glowing through
+    p.add(-0.075, -0.12, -0.125, 0.075, -0.08, 0.125, solid((60, 44, 30), 3))                # a rope belt
+    for (y, z, L) in ((0.2, 0.08, 0.2), (0.1, -0.11, 0.16), (-0.05, 0.12, 0.14)):            # kelp hanging off it
+        p.add(-0.075, y - L, z - 0.012, -0.065, y, z + 0.012, W.grad((60, 90, 40), (30, 50, 20), 2, LIME, 0.1))
+    p.bone("head", (0, 0.24, 0))
+    p.add(-0.08, 0.24, -0.08, 0.08, 0.42, 0.08, sk)
+    face_eyes(p, 0.08, 0.32, 0.36, 0.035, 0.04, (230, 255, 120), (40, 60, 10))
+    p.add(0.08, 0.26, -0.05, 0.085, 0.3, 0.05, MOUTH)
+    p.add(-0.085, 0.38, -0.085, 0.085, 0.44, 0.085, W.grad((40, 40, 30), (20, 20, 14), 2, (70, 70, 50), 0.2))   # lank hair
+    drips(p, 0.08, 0.26, 0.0, 3, 71, 0.04, 0.06)
+    p.bone(None)
+    _limbs(p, sk, solid((50, 60, 70), 3), arm_paint=shirt, boots=solid((40, 30, 24), 3))
+    into(p, "armr"); drips(p, 0.0, -0.12, 0.17, 2, 72, 0.02, 0.06); into(p, None)
+    p.pivots["body"] = (0, -0.5, 0)
+    return _walk(p, 26, 30, 1.4, (0, 10, 6)).anim("body", "rot", (0, 0, 5), 2.8)
+
+
+def rustbones():
+    """A skeleton in corroded armour, risen from the wrecks in the acid rain."""
+    p = Part("rustbones", 32, 256)
+    bone = W.grad(BONEW, (170, 164, 140), 3, (120, 140, 80), 0.05)
+    rust = rusty()
+    p.add(-0.03, -0.1, -0.03, 0.03, 0.24, 0.03, bone)                                        # the spine
+    for y in (0.0, 0.06, 0.12, 0.18): p.add(-0.05, y, -0.1, 0.06, y + 0.025, 0.1, bone)       # ribs
+    p.add(-0.07, 0.08, -0.13, 0.08, 0.25, 0.13, rust)                                        # a rusted breastplate, holed
+    p.add(0.079, 0.12, -0.04, 0.083, 0.18, 0.02, DARK)
+    p.add(-0.06, -0.12, -0.1, 0.06, -0.06, 0.1, bone)                                        # the pelvis
+    for s in (-1, 1): p.add(-0.06, 0.2, s * 0.13 - 0.05, 0.06, 0.27, s * 0.13 + 0.05, rust) # pauldrons
+    p.bone("head", (0, 0.25, 0))
+    p.add(-0.075, 0.25, -0.075, 0.075, 0.41, 0.075, bone)
+    for z in (-0.035, 0.035): p.add(0.073, 0.32, z - 0.02, 0.078, 0.35, z + 0.02, W.glow((190, 255, 90)))   # glowing sockets
+    p.add(0.073, 0.26, -0.04, 0.078, 0.29, 0.04, DARK)
+    p.add(-0.085, 0.36, -0.085, 0.085, 0.44, 0.085, rust)                                    # a dented, rusted helm
+    p.add(0.06, 0.36, -0.09, 0.1, 0.38, 0.09, rust)
+    drips(p, 0.0, 0.36, 0.08, 2, 81, 0.05, 0.05)
+    p.bone(None)
+    _limbs(p, bone, bone, arm_w=0.025, leg_w=0.03, arm_paint=bone, boots=rust, hands=bone)
+    p.pivots["body"] = (0, -0.5, 0)
+    return _walk(p, 22, 16, 1.2, (0, 12, 0))
+
+
+def acidmite():
+    """A glowing tick the size of a cat."""
+    p = Part("acidmite", 32, 128)
+    shell = W.grad((70, 90, 40), (36, 46, 20), 3, LIME, 0.1)
+    rounded(p, -0.3, -0.12, -0.2, 0.12, 0.14, 0.2, shell, 0.08)                              # the swollen abdomen
+    p.add(-0.26, 0.13, -0.12, 0.06, 0.16, 0.12, W.glow((190, 255, 90)))                      # glowing through its back
+    for x in (-0.2, -0.1, 0.0): p.add(x, 0.155, -0.15, x + 0.02, 0.165, 0.15, shell)        # segment lines
+    p.add(0.1, -0.06, -0.09, 0.26, 0.06, 0.09, solid((60, 70, 30), 3))                       # the head
+    eyes(p, 0.2, 0.24, 0.0, 0.04, 0.09, (250, 255, 160), (30, 50, 10), depth=0.01)
+    for s in (-1, 1): p.add(0.24, -0.06, s * 0.03 - 0.012, 0.32, -0.03, s * 0.03 + 0.012, CLAW)   # mandibles
+    legs = []
+    for i, x in enumerate((-0.18, -0.08, 0.02, 0.1)):
+        legs += [((x - 0.015, -0.02, 0.18, x + 0.015, 0.02, 0.32), solid((40, 50, 20), 2)), ((x - 0.015, -0.18, 0.3, x + 0.015, 0.0, 0.34), solid((40, 50, 20), 2))]
+    side_bone(p, "leg", (0.0, 0.0, 0.18), legs, True)
+    p.pivots["body"] = (0, -0.12, 0)
+    p.anim("legl", "rot", (0, 16, 10), 0.4).anim("legr", "rot", (0, -16, -10), 0.4, 0.5).anim("body", "pos", (0, 0.3, 0), 0.8)
+    return p
+
+
+def stormwraith():
+    """A shape of green storm cloud with two burning eyes and arms of mist."""
+    p = Part("stormwraith", 32, 256)
+    cloud = W.grad((120, 140, 110), (70, 86, 64), 4, (180, 200, 160), 0.1)
+    dark = W.grad((70, 86, 64), (40, 50, 36), 3, LIME, 0.04)
+    for (x, y, z, r) in ((0, 0.15, 0, 0.2), (-0.08, 0.28, 0.1, 0.13), (-0.06, 0.26, -0.12, 0.14), (0.05, 0.05, 0.14, 0.11), (0.04, 0.04, -0.13, 0.11), (-0.12, 0.08, 0, 0.14)):
+        rounded(p, x - r, y - r * 0.8, z - r, x + r, y + r * 0.8, z + r, cloud, r * 0.4)     # the billowing body
+    p.add(-0.1, -0.05, -0.13, 0.1, 0.05, 0.13, dark)
+    for z in (-0.07, 0.07): p.add(0.18, 0.18, z - 0.035, 0.205, 0.23, z + 0.035, W.glow((220, 255, 120)))   # burning eyes
+    p.add(0.19, 0.08, -0.05, 0.2, 0.11, 0.05, W.glow((180, 255, 90)))                       # a crackling mouth
+    for (x, z) in ((0.05, 0.05), (-0.05, -0.08)):                                            # little bolts in it
+        p.add(x, -0.02, z, x + 0.015, 0.1, z + 0.015, W.glow((240, 255, 170))); p.add(x + 0.01, -0.08, z + 0.01, x + 0.025, -0.02, z + 0.025, W.glow((240, 255, 170)))
+    for side, s in (("l", -1), ("r", 1)):                                                    # arms of mist
+        p.bone("arm" + side, (0.0, 0.18, s * 0.16))
+        for k in range(4):
+            a, b = sorted((s * (0.16 + k * 0.07), s * (0.23 + k * 0.07)))
+            r = 0.06 - k * 0.01
+            p.add(0.02 + k * 0.03 - r, 0.18 - k * 0.05 - r, a, 0.02 + k * 0.03 + r, 0.18 - k * 0.05 + r, b, cloud)
+        p.bone(None)
+    p.bone("tail", (-0.05, -0.08, 0))                                                        # a wispy tail trailing below
+    for k in range(5):
+        r = 0.09 - k * 0.015
+        p.add(-0.08 - k * 0.07 - r, -0.12 - k * 0.07 - r, -r, -0.08 - k * 0.07 + r, -0.12 - k * 0.07 + r, r, cloud if k % 2 else dark)
+    p.bone(None)
+    p.pivots["body"] = (0, 0, 0)
+    p.anim("arml", "rot", (0, 0, 20), 1.6).anim("armr", "rot", (0, 0, -20), 1.6, 0.5).anim("tail", "rot", (0, 18, 10), 1.4)
+    p.anim("body", "pos", (0, 1.4, 0), 2.0)
+    return p
+
+
+def mauler():
+    """A hulking, blind shark-thing: no eyes, a jaw like a bear trap, bile-green hide with old wounds."""
+    p = Part("mauler", 32, 512)
+    sk = W.grad((90, 104, 60), (46, 54, 28), 5, (140, 160, 80), 0.06)
+    belly = solid((170, 174, 120), 4)
+    rounded(p, -0.3, -0.16, -0.16, 0.28, 0.16, 0.16, sk, 0.07)                              # the body
+    p.add(-0.28, -0.17, -0.12, 0.26, -0.15, 0.12, belly)
+    p.add(0.24, -0.1, -0.13, 0.48, 0.12, 0.13, sk)                                           # the blunt eyeless head
+    for s in (-1, 1): p.add(0.3, 0.02, s * 0.13 - 0.004, 0.42, 0.06, s * 0.13 + 0.004, solid((60, 70, 40), 2))   # where eyes should be: scar tissue
+    for x in (0.2, 0.17, 0.14, 0.11): pair(p, x, -0.08, 0.16, x + 0.012, 0.06, 0.165, ACIDGLOW)                    # gills
+    for i in range(9): p.add(0.27 + i * 0.024, -0.1, -0.12, 0.285 + i * 0.024, -0.05, 0.12, TEETH)                # upper teeth
+    p.bone("jaw", (0.26, -0.1, 0))
+    p.add(0.26, -0.18, -0.12, 0.49, -0.1, 0.12, sk)
+    p.add(0.27, -0.17, -0.1, 0.47, -0.16, 0.1, MOUTH)
+    for i in range(9): p.add(0.27 + i * 0.024, -0.1, -0.11, 0.285 + i * 0.024, -0.06, 0.11, TEETH)
+    drips(p, 0.45, -0.18, 0.0, 3, 91, 0.06, 0.08)
+    p.bone(None)
+    staircase(p, -0.1, 0.14, 0.15, 0.24, -0.015, 0.015, finp((60, 70, 36), LIME), steps=4, lean=0.12)             # the dorsal fin
+    for (x, y, z) in ((-0.15, 0.1, 0.16), (0.05, -0.02, -0.165), (-0.25, 0.0, 0.15)):                           # old wounds
+        a, b = sorted((z, z + (0.008 if z > 0 else -0.008))); p.add(x, y, a, x + 0.1, y + 0.02, b, solid((120, 40, 40), 2))
+    barnacles(p, [(-0.1, 0.16, 0.06), (0.1, 0.15, -0.08)], 0.025)
+    side_bone(p, "fin", (0.08, -0.1, 0.16), [((0.0, -0.13, 0.16, 0.16, -0.09, 0.36), finp((60, 70, 36), LIME))], True)
+    p.bone("tail", (-0.3, 0, 0))
+    p.add(-0.56, -0.1, -0.1, -0.28, 0.1, 0.1, sk)
+    p.add(-0.8, 0.0, -0.015, -0.54, 0.34, 0.015, finp((60, 70, 36), LIME)); p.add(-0.76, -0.26, -0.015, -0.54, 0.0, 0.015, finp((60, 70, 36), LIME))
+    p.bone(None)
+    p.half = {"jaw"}
+    p.anim("tail", "rot", (0, 20, 0), 1.0).anim("jaw", "rot", (26, 0, 0), 1.6).anim("finl", "rot", (0, 0, 12), 1.6).anim("finr", "rot", (0, 0, -12), 1.6)
+    return p
+
+
+def goblin():
+    """GRUBNASH THE ACID GOBLIN: green and warty, huge ears, a long crooked nose, a gap-toothed grin, scrap armour,
+    a backpack of bubbling flasks, one flask always in hand."""
+    p = Part("goblin", 32, 512)
+    sk = W.grad((110, 150, 60), (70, 104, 36), 4, (150, 190, 90), 0.08)
+    scrap = rusty((130, 100, 70))
+    leather = W.grad((96, 66, 40), (60, 40, 24), 3, (130, 90, 50), 0.05)
+    # the body: short and stocky, a pot belly under a leather jerkin
+    p.add(-0.08, -0.12, -0.13, 0.09, 0.14, 0.13, leather)
+    rounded(p, -0.02, -0.1, -0.11, 0.12, 0.08, 0.11, sk, 0.04)                               # the pot belly
+    p.add(-0.09, -0.14, -0.135, 0.1, -0.1, 0.135, solid((50, 34, 20), 3))                    # belt
+    p.add(0.1, -0.135, -0.03, 0.105, -0.105, 0.03, W.glow((240, 210, 80)))                   # its buckle
+    for (y, z) in ((-0.13, 0.08), (-0.13, -0.09)): p.add(0.07, y - 0.06, z - 0.025, 0.12, y, z + 0.025, W.glow((170, 255, 80)))   # flasks on the belt
+    p.add(-0.09, 0.08, -0.15, 0.1, 0.17, 0.15, scrap)                                        # a scrap-metal collar
+    for s in (-1, 1): p.add(-0.07, 0.12, s * 0.16 - 0.05, 0.08, 0.2, s * 0.16 + 0.05, scrap)   # mismatched pauldrons
+    p.add(0.04, 0.2, 0.16, 0.06, 0.25, 0.2, solid((90, 90, 90), 2))                          # a spike on one
+    # the backpack of flasks
+    p.add(-0.2, -0.06, -0.11, -0.08, 0.16, 0.11, leather)
+    for i, (y, z) in enumerate(((0.12, -0.06), (0.12, 0.05), (0.02, -0.07), (0.02, 0.04), (-0.04, 0.0))):
+        p.add(-0.22, y, z - 0.03, -0.17, y + 0.08, z + 0.03, W.glow((170, 255, 80) if i % 2 == 0 else (240, 220, 70)))
+        p.add(-0.215, y + 0.08, z - 0.01, -0.185, y + 0.1, z + 0.01, solid((120, 90, 50), 2))   # corks
+    p.add(-0.21, 0.16, -0.01, -0.19, 0.3, 0.01, solid((80, 80, 80), 2))                      # a pipe sticking out, smoking
+    p.bone("head", (0, 0.17, 0))
+    p.add(-0.08, 0.17, -0.09, 0.09, 0.36, 0.09, sk)                                          # the big head
+    for (x, y, z) in ((0.05, 0.33, 0.06), (-0.03, 0.35, -0.05), (0.09, 0.22, 0.05)): p.add(x - 0.015, y, z - 0.015, x + 0.015, y + 0.02, z + 0.015, solid((80, 110, 40), 2))   # warts
+    face_eyes(p, 0.09, 0.27, 0.31, 0.04, 0.045, (250, 230, 90), (200, 30, 20), slit=True)
+    for s in (-1, 1): p.add(0.07, 0.31, s * 0.05 - 0.03, 0.1, 0.325, s * 0.05 + 0.03, solid((50, 70, 24), 2))   # a heavy brow
+    p.add(0.09, 0.23, -0.02, 0.2, 0.27, 0.02, sk)                                            # the long crooked nose...
+    p.add(0.19, 0.2, -0.018, 0.22, 0.25, 0.018, sk)                                          # ...hooking down
+    p.add(0.09, 0.185, -0.06, 0.095, 0.215, 0.06, MOUTH)                                     # the grin
+    for z in (-0.045, -0.015, 0.03): p.add(0.094, 0.2, z - 0.01, 0.1, 0.215, z + 0.01, TEETH)
+    p.add(-0.09, 0.34, -0.09, 0.09, 0.39, 0.09, scrap)                                       # a pot for a helmet
+    p.add(-0.02, 0.38, -0.02, 0.02, 0.43, 0.02, scrap)
+    for side, s in (("l", -1), ("r", 1)):                                                    # the huge ears
+        a, b = sorted((s * 0.09, s * 0.26))
+        p.add(-0.02, 0.26, a, 0.04, 0.32, b, sk)
+        a2, b2 = sorted((s * 0.2, s * 0.3))
+        p.add(-0.03, 0.3, a2, 0.03, 0.35, b2, sk)
+        p.add(0.0, 0.27, s * 0.14 - 0.02, 0.041, 0.31, s * 0.14 + 0.02, solid((150, 80, 70), 2))
+    p.add(0.06, 0.3, 0.17, 0.08, 0.32, 0.19, W.glow((240, 210, 80)))                         # a gold earring
+    p.bone(None)
+    _limbs(p, sk, leather, arm_w=0.045, leg_w=0.05, shoulder=0.13, hip=0.06, boots=solid((40, 30, 20), 3),
+           hands=W.grad((90, 130, 50), (60, 90, 30), 2, (120, 160, 70), 0.1))
+    into(p, "armr")                                                                          # the flask in his hand
+    p.add(0.02, -0.2, 0.16, 0.09, -0.11, 0.22, W.glow((170, 255, 80)))
+    p.add(0.04, -0.11, 0.18, 0.07, -0.08, 0.2, solid((120, 90, 50), 2))
+    drips(p, 0.05, -0.2, 0.19, 2, 101, 0.02, 0.06)
+    into(p, "arml")                                                                          # spiked bracer
+    p.add(-0.05, 0.0, -0.23, 0.05, 0.08, -0.13, scrap)
+    p.add(-0.01, 0.02, -0.25, 0.01, 0.06, -0.23, solid((90, 90, 90), 2))
+    into(p, None)
+    p.pivots["body"] = (0, -0.5, 0)
+    return _walk(p, 28, 26, 0.9, (0, 14, 6)).anim("body", "pos", (0, 0.5, 0), 0.45)
+
+
+RAIN_MOBS = [shambler, rustbones, acidmite, stormwraith, mauler, goblin]
+
+
+def bubble_paint(c, alpha=95):
+    """Clear film: mostly see-through, a brighter rim at the edges and a white highlight up top."""
+    def f(reg, face, rng):
+        h, w = reg.shape[:2]
+        for y in range(h):
+            for x in range(w):
+                edge = min(x, y, w - 1 - x, h - 1 - y) == 0
+                col, a = np.array(c, float), alpha + (60 if edge else 0)
+                if face == "up" and abs(x - w * 0.35) < w * 0.15 and abs(y - h * 0.35) < h * 0.15: col, a = np.array((255, 255, 255), float), 200
+                reg[y, x, :3] = np.clip(col + rng.uniform(-6, 6), 0, 255)
+                reg[y, x, 3] = min(255, a)
+    return f
+
+
+def bubble(name, c):
+    """The Brine Scourge's giant bubbles (FaultlineBosses: faultline:wild/air_bubble, wild/pink_bubble): a rounded ball of film."""
+    p = Part(name, 16, 64)
+    paint = bubble_paint(c)
+    for i in range(7):                                                                       # stacked slabs, widest in the middle
+        y0 = -0.5 + i / 7
+        y1 = y0 + 1 / 7
+        r = math.sqrt(max(0.0, 0.25 - ((y0 + y1) / 2) ** 2)) + 0.03
+        p.add(-r, y0, -r, r, y1, r, paint)
+    return p
+
 SULPHUR_MOBS = [acideel, trasher, radiator, flakcrab, nucleartoad, gammaslime, sulphurskater, acidjelly, orthocera, trilobite,
                 skyfin, leech, boglurker, corrosionshark, urchin, crabling, bloatgut, sulphurmoth, hazardturtle, sludgesnail]
 
 
 MOBS = [gawker, bloatfin, jellywing, driftback, clam, lumenbell, gasbloom, fangstalker, blastfin, burrowshark,
-        cavecrawler, glowgrub, shellsnake, lampsquid, volteel, needlejaw, devilfish, riftwarper, hollowkin, sharkquid] + SULPHUR_MOBS
+        cavecrawler, glowgrub, shellsnake, lampsquid, volteel, needlejaw, devilfish, riftwarper, hollowkin, sharkquid] + SULPHUR_MOBS + RAIN_MOBS
 
 
 # =====================================================================================================================
@@ -1189,6 +1778,15 @@ def main():
             "components": {"minecraft:equippable": {"slot": "head"}, "minecraft:max_stack_size": 1}})
         mappings["minecraft:paper"].append({"type": "definition", "model": f"{NS}:deep/{n}_icon", "bedrock_identifier": f"faultline:deep_{n}_egg",
             "display_name": n + " egg", "bedrock_options": {"icon": ic, "allow_offhand": True}, "components": {"minecraft:max_stack_size": 64}})
+    # the Brine Scourge's giant bubbles (Java only: item displays)
+    for i, (bn, bc) in enumerate((("air_bubble", (200, 235, 255)), ("pink_bubble", (255, 120, 200)))):
+        part = bubble(bn, bc)
+        img, boxes = W.build(part, 7100 + i)
+        img.save(os.path.join(A, "textures/item/wild", bn + ".png"))
+        model = java_model(part, boxes)
+        model["textures"] = {"t": f"{NS}:item/wild/{bn}", "particle": f"{NS}:item/wild/{bn}"}
+        W.jw(os.path.join(A, "models/item/wild", bn + ".json"), model)
+        W.jw(os.path.join(A, "items/wild", bn + ".json"), {"model": {"type": "minecraft:model", "model": f"{NS}:item/wild/{bn}"}})
     # the Dark Loot Bag (FaultlineItems DarkLoot, paper + faultline:dark_loot_bag)
     bag = bag_icon()
     W.flat_item(A, "dark_loot_bag", bag)

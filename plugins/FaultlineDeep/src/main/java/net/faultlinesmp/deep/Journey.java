@@ -57,7 +57,7 @@ import java.util.UUID;
  *  3. He rows you out toward the whirlpool spot (journey.whirlpool; by default 0, sea level, 0 in his world): a short sail,
  *     the screen fades, and you're there. He holds up one finger, and a great WHIRLPOOL opens around the boat.
  *  4. Drop into it (he lets you out; or step off yourself) and the sea pulls you down: you come out in the Dark Ocean at
- *     0, 100, 0. It stays open 40 seconds for anyone else who's earned the way; then Lucki rows home.
+ *     0, 300, 0. It stays open 40 seconds for anyone else who's earned the way; then Lucki rows home.
  *  Coming back: right-click the Mirror in the Dark Ocean (5 seconds) = back at the kingdom.
  */
 final class Journey implements Listener {
@@ -78,6 +78,9 @@ final class Journey implements Listener {
         final Player rider;
         int t, phase; // 0 talking, 1 rowing, 2 fading, 3 the whirlpool, 4 rowing home
         Location pool;
+        Vortex vortex;
+        Swarm swarm;            // 1.5.0: Lucki was Swarm all along
+        int revealT = -1;       // ticks since the rider dropped into the funnel (-1 = not yet)
         final Set<UUID> sent = new HashSet<>();
         Trip(Player rider) { this.rider = rider; }
     }
@@ -292,7 +295,7 @@ final class Journey implements Listener {
             }
             case 2 -> {
                 if (tr.t == 20) {
-                    Location at = tr.pool.clone().add(-4, 0, 0);
+                    Location at = tr.pool.clone().add(-(radius() + 3), 0, 0); // just outside the funnel
                     at.setY(tr.pool.getY() + 1);
                     at.setYaw(-90);
                     boat.teleport(at, TeleportFlag.EntityState.RETAIN_PASSENGERS);
@@ -303,16 +306,23 @@ final class Journey implements Listener {
                     p.getWorld().spawnParticle(Particle.END_ROD, lucki.getEyeLocation().add(0, 0.6, 0), 20, 0.05, 0.3, 0.05, 0.02);
                     p.getWorld().playSound(tr.pool, Sound.BLOCK_BEACON_ACTIVATE, SoundCategory.AMBIENT, 1.5f, 0.5f);
                 }
-                if (tr.t >= 70) { tr.phase = 3; tr.t = 0; p.getWorld().playSound(tr.pool, Sound.ENTITY_ELDER_GUARDIAN_CURSE, SoundCategory.AMBIENT, 1f, 0.5f); }
+                if (tr.t >= 70) {
+                    tr.phase = 3; tr.t = 0;
+                    tr.vortex = new Vortex(tr.pool, radius(), pl.getConfig().getDouble("journey.whirlpool-depth", 16));
+                    p.getWorld().playSound(tr.pool, Sound.ENTITY_ELDER_GUARDIAN_CURSE, SoundCategory.AMBIENT, 1f, 0.5f);
+                }
             }
             case 3 -> { // the whirlpool
-                whirlpool(tr);
-                if (tr.t == 40) say(p, "Go on. Jump. And don't look up.");
-                if (tr.t == 80 && p.getVehicle() == boat) { p.leaveVehicle(); Edition.vel(p, tr.pool.toVector().subtract(p.getLocation().toVector()).setY(0).normalize().multiply(0.6).setY(0.2)); }
+                tr.vortex.tick();
+                if (tr.t == 60) say(p, "Go on. Jump. And don't look up.");
+                if (tr.t == 110 && p.getVehicle() == boat) { p.leaveVehicle(); Edition.vel(p, tr.pool.toVector().subtract(p.getLocation().toVector()).setY(0).normalize().multiply(0.7).setY(0.35)); }
                 pull(tr);
-                if (tr.t > pl.getConfig().getDouble("journey.whirlpool-seconds", 40) * 20) { tr.phase = 4; tr.t = 0; }
+                if (tr.revealT >= 0) reveal(tr);
+                boolean riderGone = tr.sent.contains(p.getUniqueId());
+                if (tr.t > pl.getConfig().getDouble("journey.whirlpool-seconds", 40) * 20 && (riderGone || tr.revealT < 0)) { tr.vortex.closing = true; tr.phase = 4; tr.t = 0; }
             }
-            case 4 -> { // home again
+            case 4 -> { // the sea closes over it; then home again
+                if (tr.vortex != null && !tr.vortex.closed()) { tr.vortex.tick(); pull(tr); return; }
                 Location home = place("lucki");
                 if (home != null && boat != null && boat.isValid()) boat.teleport(home, TeleportFlag.EntityState.RETAIN_PASSENGERS);
                 endTrip();
@@ -321,41 +331,86 @@ final class Journey implements Listener {
         }
     }
 
-    /** The whirlpool itself: rings of spray and bubbles spiralling in, and the roar of the water. */
-    void whirlpool(Trip tr) {
-        World w = tr.pool.getWorld();
-        double r0 = pl.getConfig().getDouble("journey.whirlpool-radius", 7);
-        double spin = tr.t * 0.18;
-        for (int ring = 0; ring < 5; ring++) {
-            double r = r0 * (1 - ring / 5.0) + 0.6;
-            int n = 10 + ring * 2;
-            for (int i = 0; i < n; i++) {
-                double a = spin * (1 + ring * 0.35) + i * Math.PI * 2 / n;
-                Location l = tr.pool.clone().add(Math.cos(a) * r, 0.9 - ring * 0.25, Math.sin(a) * r);
-                w.spawnParticle(ring % 2 == 0 ? Particle.SPLASH : Particle.BUBBLE_POP, l, 2, 0.1, 0.05, 0.1, 0.02);
-            }
-        }
-        w.spawnParticle(Particle.DUST, tr.pool.clone().add(0, 0.5, 0), 12, 1.2, 0.2, 1.2, 0, new Particle.DustOptions(Color.fromRGB(10, 20, 50), 2.2f));
-        if (tr.t % 20 == 0) w.playSound(tr.pool, Sound.BLOCK_BUBBLE_COLUMN_WHIRLPOOL_AMBIENT, SoundCategory.AMBIENT, 2f, 0.5f);
-        if (tr.t % 50 == 0) w.playSound(tr.pool, Sound.AMBIENT_UNDERWATER_LOOP_ADDITIONS_ULTRA_RARE, SoundCategory.AMBIENT, 2f, 0.6f);
-    }
+    double radius() { return pl.getConfig().getDouble("journey.whirlpool-radius", 9); }
 
-    /** Anyone in the water near the middle is pulled in and down: earned = into the Dark Ocean, not = thrown back out. */
+    /**
+     * Anyone near it is dragged round and in; inside the funnel they slide round its walls and down into the eye. Earned =
+     * into the Dark Ocean; not = thrown back out. The rider is the one Swarm wants a word with: when they drop in, they're
+     * carried slowly round and down the funnel while he talks (`reveal`), then sent.
+     */
     void pull(Trip tr) {
-        double r0 = pl.getConfig().getDouble("journey.whirlpool-radius", 7);
+        Vortex v = tr.vortex;
+        if (v == null || v.r < 1) return;
+        double spin = v.t * 0.22;
         for (Player p : tr.pool.getWorld().getPlayers()) {
-            if (p.isInsideVehicle()) continue;
+            if (p.isInsideVehicle() || tr.sent.contains(p.getUniqueId()) || p.getGameMode() == org.bukkit.GameMode.SPECTATOR) continue;
             Location l = p.getLocation();
-            double dx = tr.pool.getX() - l.getX(), dz = tr.pool.getZ() - l.getZ(), d = Math.hypot(dx, dz);
-            if (d > r0 || Math.abs(l.getY() - tr.pool.getY()) > 6) continue;
+            double dx = v.center.getX() - l.getX(), dz = v.center.getZ() - l.getZ(), d = Math.hypot(dx, dz);
+            if (d > v.r + 3 || l.getY() > v.surf + 4 || l.getY() < v.surf - v.d - 4) continue;
             if (!earned(p)) {
-                if (tr.t % 20 == 0) { Edition.vel(p, new Vector(-dx, 0, -dz).normalize().multiply(0.9).setY(0.4)); p.sendActionBar(Component.text("The water won't take you. (Beat Rocco and Jacob.)", NamedTextColor.GRAY)); }
+                if (tr.t % 20 == 0) { Edition.vel(p, new Vector(-dx, 0, -dz).normalize().multiply(0.9).setY(0.5)); p.sendActionBar(Component.text("The water won't take you. (Beat Rocco and Jacob.)", NamedTextColor.GRAY)); }
                 continue;
             }
-            // spin round and in
-            Vector in = new Vector(dx, 0, dz).normalize().multiply(0.18), round = new Vector(-dz, 0, dx).normalize().multiply(0.22);
-            Edition.vel(p, in.add(round).setY(-0.12));
-            if (d < 2.2 && tr.sent.add(p.getUniqueId())) send(p);
+            if (p == tr.rider && v.inside(l) && tr.revealT < 0 && !v.closing) { tr.revealT = 0; continue; }
+            if (p == tr.rider && tr.revealT >= 0) continue; // reveal() carries them
+            Vector in = new Vector(dx, 0, dz).normalize(), round = new Vector(-dz, 0, dx).normalize();
+            if (v.inside(l)) Edition.vel(p, in.multiply(0.14).add(round.multiply(0.2)).setY(-0.45)); // down the wall
+            else Edition.vel(p, in.multiply(0.2).add(round.multiply(0.25)).setY(-0.04));             // in the water at the rim
+            if (v.atEye(l)) { tr.sent.add(p.getUniqueId()); send(p); }
+        }
+    }
+
+    static final String[] SWARM_LINES = {
+            "Ha. Ha ha ha...",
+            "Lucki? There is no Lucki. There never was.",
+            "You beat Rocco. You beat Jacob. And you still climbed into a stranger's boat.",
+            "Jacob was our general. Below the Bedrock remembers what you did to him.",
+            "Go on down. The Ocean is hungry, and I'm in no hurry. We'll meet again."};
+
+    /** The rider drops into the funnel, Lucki stands up in his boat... and he's Swarm. ~11 s, then down they go. */
+    void reveal(Trip tr) {
+        Player p = tr.rider;
+        int t = tr.revealT++;
+        Vortex v = tr.vortex;
+        World w = tr.pool.getWorld();
+        // carried slowly round and down the funnel, looking up at him
+        double s = Math.min(1, t / 220.0), ang = v.t * 0.12;
+        double x = Math.max(1.0, v.r * 0.55 * (1 - s));
+        Location want = v.center.clone().add(Math.cos(ang) * x, 0, Math.sin(ang) * x);
+        want.setY(v.surf + 0.2 - (v.d - 1.5) * s);
+        Vector go = want.toVector().subtract(p.getLocation().toVector());
+        if (go.length() > 1.2) go.normalize().multiply(1.2);
+        Edition.vel(p, go.multiply(0.4));
+        p.setFallDistance(0);
+        p.setRemainingAir(p.getMaximumAir());
+        if (t == 0) {
+            p.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_FALLING, 260, 0, false, false, false));
+            say(p, SWARM_LINES[0]);
+            w.playSound(lucki != null ? lucki.getLocation() : tr.pool, Sound.ENTITY_VILLAGER_AMBIENT, SoundCategory.NEUTRAL, 1.4f, 0.5f);
+        }
+        if (t == 30 && boat != null && boat.isValid()) { // the disguise drops
+            Location at = boat.getLocation().add(0, 0.45, 0);
+            w.spawnParticle(Particle.LARGE_SMOKE, at.clone().add(0, 1, 0), 60, 0.4, 0.8, 0.4, 0.02);
+            w.spawnParticle(Particle.SQUID_INK, at.clone().add(0, 1, 0), 30, 0.3, 0.6, 0.3, 0.05);
+            w.playSound(at, Sound.ENTITY_ILLUSIONER_MIRROR_MOVE, SoundCategory.HOSTILE, 2f, 0.5f);
+            w.playSound(at, Sound.ENTITY_WARDEN_NEARBY_CLOSER, SoundCategory.HOSTILE, 1.5f, 0.6f);
+            if (lucki != null) for (Player o : w.getPlayers()) o.hideEntity(pl, lucki);
+            float yaw = new Location(w, 0, 0, 0).setDirection(v.center.toVector().subtract(at.toVector())).getYaw();
+            tr.swarm = new Swarm(pl, at, yaw);
+            p.showTitle(Title.title(Component.text("SWARM", NamedTextColor.DARK_RED),
+                    Component.text("...was Lucki all along", NamedTextColor.GRAY),
+                    Title.Times.times(Duration.ofMillis(200), Duration.ofMillis(2500), Duration.ofMillis(800))));
+        }
+        if (tr.swarm != null) tr.swarm.tick(t);
+        for (int i = 1; i < SWARM_LINES.length; i++) if (t == 30 + i * 45) swarmSay(w, tr.pool, SWARM_LINES[i]);
+        if (t == 245) w.playSound(tr.pool, Sound.ENTITY_WITCH_CELEBRATE, SoundCategory.HOSTILE, 2f, 0.5f);
+        if (t >= 250 && !tr.sent.contains(p.getUniqueId())) { tr.sent.add(p.getUniqueId()); send(p); }
+    }
+
+    void swarmSay(World w, Location near, String line) {
+        for (Player o : w.getPlayers()) if (o.getLocation().distanceSquared(near) < 64 * 64) {
+            o.sendMessage(ChatColor.DARK_RED + "" + ChatColor.BOLD + "Swarm" + ChatColor.DARK_GRAY + ": " + ChatColor.GRAY + line);
+            o.playSound(o.getLocation(), Sound.ENTITY_PILLAGER_AMBIENT, 1f, 0.5f);
         }
     }
 
@@ -378,7 +433,13 @@ final class Journey implements Listener {
     }
 
     void endTrip() {
+        Trip tr = trip;
         trip = null;
+        if (tr != null) {
+            if (tr.vortex != null) tr.vortex.clear();
+            if (tr.swarm != null) tr.swarm.remove();
+        }
+        if (lucki != null && lucki.isValid()) for (Player o : lucki.getWorld().getPlayers()) o.showEntity(pl, lucki); // Lucki is back on the dock
         if (boat != null && boat.isValid()) for (Entity e : boat.getPassengers()) if (e instanceof Player p) p.leaveVehicle();
         boatHome(); // (a rider who quit or died mid-trip left him out at the whirlpool)
     }
@@ -418,5 +479,5 @@ final class Journey implements Listener {
         for (Entity en : e.getChunk().getEntities()) if (isLucki(en) && en != lucki && en != boat) en.remove(); // leftovers
     }
 
-    void shutdown() { removeLucki(); }
+    void shutdown() { endTrip(); removeLucki(); }
 }

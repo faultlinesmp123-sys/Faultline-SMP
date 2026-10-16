@@ -684,6 +684,15 @@ final class Wild implements Listener {
             if (byPlayer(e) && get("lich") instanceof Lich l && ent instanceof org.bukkit.entity.EnderCrystal cr) l.crystalBroken(cr);
             return;
         }
+        if (tags.contains(DeepBosses.Scourge.PINK_TAG)) { // the Scourge's pink bubble: a player's hit bursts it and hurts the Scourge
+            e.setCancelled(true);
+            if (!byPlayer(e) || !(get("scourge") instanceof DeepBosses.Scourge sc)) return;
+            Player by = e instanceof EntityDamageByEntityEvent ee ? (ee.getDamager() instanceof Player p ? p : ee.getDamager() instanceof Projectile pr && pr.getShooter() instanceof Player s ? s : null) : null;
+            if (by != null && (MORPHED.contains(by.getUniqueId()) || !survival(by))) return;
+            if (e instanceof EntityDamageByEntityEvent ee && ee.getDamager() instanceof Projectile pr && !(pr instanceof Trident)) pr.remove();
+            sc.pinkHit(ent, by);
+            return;
+        }
         if (tags.contains(HIT_TAG) || tags.contains(STAND_TAG)) {
             e.setCancelled(true);
             Boss b = ownerOf(ent);

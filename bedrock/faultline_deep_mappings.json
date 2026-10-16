@@ -1164,6 +1164,180 @@
    },
    {
     "type": "definition",
+    "model": "faultline:deep/shambler",
+    "bedrock_identifier": "faultline:deep_shambler",
+    "display_name": "shambler",
+    "bedrock_options": {
+     "icon": "faultline.deep_shambler",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:deep/shambler_icon",
+    "bedrock_identifier": "faultline:deep_shambler_egg",
+    "display_name": "shambler egg",
+    "bedrock_options": {
+     "icon": "faultline.deep_shambler",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:deep/rustbones",
+    "bedrock_identifier": "faultline:deep_rustbones",
+    "display_name": "rustbones",
+    "bedrock_options": {
+     "icon": "faultline.deep_rustbones",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:deep/rustbones_icon",
+    "bedrock_identifier": "faultline:deep_rustbones_egg",
+    "display_name": "rustbones egg",
+    "bedrock_options": {
+     "icon": "faultline.deep_rustbones",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:deep/acidmite",
+    "bedrock_identifier": "faultline:deep_acidmite",
+    "display_name": "acidmite",
+    "bedrock_options": {
+     "icon": "faultline.deep_acidmite",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:deep/acidmite_icon",
+    "bedrock_identifier": "faultline:deep_acidmite_egg",
+    "display_name": "acidmite egg",
+    "bedrock_options": {
+     "icon": "faultline.deep_acidmite",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:deep/stormwraith",
+    "bedrock_identifier": "faultline:deep_stormwraith",
+    "display_name": "stormwraith",
+    "bedrock_options": {
+     "icon": "faultline.deep_stormwraith",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:deep/stormwraith_icon",
+    "bedrock_identifier": "faultline:deep_stormwraith_egg",
+    "display_name": "stormwraith egg",
+    "bedrock_options": {
+     "icon": "faultline.deep_stormwraith",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:deep/mauler",
+    "bedrock_identifier": "faultline:deep_mauler",
+    "display_name": "mauler",
+    "bedrock_options": {
+     "icon": "faultline.deep_mauler",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:deep/mauler_icon",
+    "bedrock_identifier": "faultline:deep_mauler_egg",
+    "display_name": "mauler egg",
+    "bedrock_options": {
+     "icon": "faultline.deep_mauler",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:deep/goblin",
+    "bedrock_identifier": "faultline:deep_goblin",
+    "display_name": "goblin",
+    "bedrock_options": {
+     "icon": "faultline.deep_goblin",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:deep/goblin_icon",
+    "bedrock_identifier": "faultline:deep_goblin_egg",
+    "display_name": "goblin egg",
+    "bedrock_options": {
+     "icon": "faultline.deep_goblin",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   },
+   {
+    "type": "definition",
     "model": "faultline:dark_loot_bag",
     "bedrock_identifier": "faultline:dark_loot_bag",
     "display_name": "Dark Loot Bag",

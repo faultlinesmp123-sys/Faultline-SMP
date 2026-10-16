@@ -935,6 +935,23 @@ Notes:
   the Gawker/Bloatfin (cod/salmon underneath: out came an invisible fish), no interacting with any creature, the Clam
   (a shulker) doesn't hop away when hurt. Deep boss bolts: homing on top of a player no longer makes NaN, a bolt leaving the
   loaded area is dropped (it would have loaded chunks), every "towards the player" direction goes through `Swimmer.unit`.
+- **The sea boss remodel + Infernum Scourge (Bosses 1.6.3, Items 1.2.43 = pack hash, Index 1.6.32, Ships 1.6.5 = WildParts)**:
+  all 6 deep boss models redone in `tools/wild_assets.py` (`deep_bosses()`: new painters `aq_scales`, `bone_curve`, `glow_lines`,
+  `skin`, `hair`, `ribbed`, `mantle`, `suckers`, `eye_paint`, `cracks`, `arc_boxes`). The BRINE SCOURGE looks like Calamity's
+  Aquatic Scourge: teal diamond scales with navy seams, one curved bone spike per side per segment, a dark tail point, and two
+  crescent MANDIBLES as their own Java parts (`scourge_mandible` / `scourge_mandible_r`, hinge (0.55, 0, ∓1.0), opened by
+  `aMand`/`wantMand`) + a Bedrock-only `scourge_head_b` (mandibles as bones `mand_l`/`mand_r`; `scourge_head` is java_only).
+  Its fight follows Infernum's (https://infernummod.wiki.gg/wiki/Aquatic_Scourge): phase 1 is a fixed cycle (`CYCLE`) PULSE
+  (acid spreads each second + green pulse), RUBBLE (5 lunges, acid trail, ramming rock = 1 s stun + rubble fan), BREATH
+  (sharp turns spitting acid, rubble falls on green lines), RUBBLE, SPIN (toxic bubbles); phase 2 (`phaseAt` 0.6; Infernum's
+  phase 2 isn't documented) = the same, harder; phase 3 at 25%: ASCEND to the surface, a storm (player weather), the water's
+  acidity climbs exponentially (`final-acidity` 0.003 × 1.045^s, only the air is safe), FINAL = FRENZY, ACID_RAIN x2, TYPHOON.
+  Sulphuric Poisoning per player (action bar; full = 3 unblockable/s, stays full until a fresh blue bubble or air brings it
+  down; bubbles rise from below to help). Anyone above the water in phases 1-2 = ENRAGED (no damage taken, +50% dealt;
+  cleared when phase 3 starts). Death: the corpse dissolves. `Wild.phaseAt(int)` is a new per-boss hook (default
+  phase2-at / phase3-at). `Wild.Boss.tick` runs a copy of `fx` (an effect starting another one threw
+  ConcurrentModificationException). Deep boss bolts hit a player at most once every 8 ticks (`Swimmer.boltHit`: a point-blank
+  volley landed all at once). Tested (`DeepBossTest`: the new cycle, enrage, poisoning, the final phase).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

@@ -1,6 +1,6 @@
 # Written by tools/mcpack_version.py: the Bedrock packs this build expects in plugins/Geyser-Spigot/packs/
-FaultlineBedrock: {uuid: 6f2c1e84-3b7a-4d59-9e10-5a8c2d7f4b31, version: 1.44323.28625}
+FaultlineBedrock: {uuid: 6f2c1e84-3b7a-4d59-9e10-5a8c2d7f4b31, version: 1.20921.53581}
 FaultlineCosmetics: {uuid: 5f0a1c2e-7b3d-4e8f-9a61-2c4d8e0b1f37, version: 1.20859.6440}
 FaultlineDeep: {uuid: b3e1c7a4-2f5d-4c8e-9a61-5d0e7f2b9c34, version: 1.23365.8725}
 FaultlineShips: {uuid: 2b7e5d10-4c8a-4f3e-9d21-7a6b0c9e5f14, version: 1.9990.44753}
-FaultlineWild: {uuid: 8d4e2a71-5c3b-4f19-a6e0-2b7d9c1f4e83, version: 1.3960.42528}
+FaultlineWild: {uuid: 8d4e2a71-5c3b-4f19-a6e0-2b7d9c1f4e83, version: 1.17404.51902}

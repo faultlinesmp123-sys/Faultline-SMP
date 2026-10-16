@@ -765,7 +765,7 @@ final class Wild implements Listener {
                 if (b == null || args.length < 2) { sender.sendMessage(ChatColor.YELLOW + "/" + label + " phase <2|3>"); return true; }
                 int ph;
                 try { ph = Math.max(2, Math.min(3, Integer.parseInt(args[1]))); } catch (NumberFormatException ex) { sender.sendMessage(ChatColor.YELLOW + "/" + label + " phase <2|3>"); return true; }
-                b.hp = Math.min(b.hp, b.maxHp * (ph == 3 ? b.c("phase3-at", 0.3) - 0.01 : b.c("phase2-at", 0.6) - 0.01));
+                b.hp = Math.min(b.hp, b.maxHp * (b.phaseAt(ph) - 0.01));
             }
             case "item" -> {
                 String which = args.length > 1 ? args[1].toLowerCase() : summonItemOf(kind);
@@ -985,6 +985,8 @@ final class Wild implements Listener {
         abstract String line(String what);
         void onPhase(int p) { }
         double damageTaken(double amount) { return amount; }
+        /** The health share each phase starts at (wild.<kind>.phase2-at / phase3-at). */
+        double phaseAt(int p) { return p == 2 ? c("phase2-at", 0.6) : c("phase3-at", 0.3); }
         void deathAnim(int t) {
             Location c = center();
             if (t % 4 == 0) world.spawnParticle(Particle.CLOUD, c, 12, 1.5, 1, 1.5, 0.05);
@@ -1062,10 +1064,13 @@ final class Wild implements Listener {
                 if (++lonely > c("leave-after-ticks", 600)) { leave(line("leave")); return; }
             } else lonely = 0;
             if (ticks % 100 == 0) scaleFor(real);
-            if (phase == 1 && hp < maxHp * c("phase2-at", 0.6)) startPhase(2);
-            if (phase == 2 && hp < maxHp * c("phase3-at", 0.3)) startPhase(3);
+            if (phase == 1 && hp < maxHp * phaseAt(2)) startPhase(2);
+            if (phase == 2 && hp < maxHp * phaseAt(3)) startPhase(3);
             musicTick();
-            fx.removeIf(BooleanSupplier::getAsBoolean);
+            if (!fx.isEmpty()) { // an effect may start another one (falling rubble...): run a copy, keep the new ones
+                List<BooleanSupplier> run = new ArrayList<>(fx); fx.clear();
+                run.removeIf(BooleanSupplier::getAsBoolean); fx.addAll(0, run);
+            }
             minions.removeIf(m -> !m.isValid() || m.isDead());
             bodyTick(a);
             if (attack >= 0) { at++; moveTick(a); }

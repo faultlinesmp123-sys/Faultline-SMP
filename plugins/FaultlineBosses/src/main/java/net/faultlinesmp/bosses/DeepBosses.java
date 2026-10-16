@@ -226,6 +226,8 @@ final class DeepBosses {
          * A bolt that flies straight through the water (thrown projectiles barely move underwater): moved every tick,
          * hits the first player it touches. homing > 0 turns it toward its target that much a tick.
          */
+        final Map<UUID, Integer> boltHit = new HashMap<>();
+
         void bolt(Location from, Vector vel, int life, double radius, double dmg, Particle trail, ItemStack look, Player homeOn, double homing, Consumer<Player> onHit) {
             Location p = from.clone();
             Vector v = vel.clone();
@@ -254,7 +256,9 @@ final class DeepBosses {
                 if (trail != null) world.spawnParticle(trail, p, 2, 0.05, 0.05, 0.05, 0);
                 if (d != null && d.isValid()) d.teleport(p);
                 for (Player pl2 : active()) if (pl2.getLocation().add(0, 0.9, 0).distanceSquared(p) < (radius + 0.6) * (radius + 0.6)) {
-                    hit(pl2, dmg, p.toVector(), Guard.BLOCKABLE);
+                    // a volley that lands all at once (point blank) counts once every 8 ticks, like vanilla's hurt time
+                    Integer last = boltHit.get(pl2.getUniqueId());
+                    if (last == null || ticks - last >= 8) { boltHit.put(pl2.getUniqueId(), ticks); hit(pl2, dmg, p.toVector(), Guard.BLOCKABLE); }
                     if (onHit != null) onHit.accept(pl2);
                     world.spawnParticle(Particle.BUBBLE_POP, p, 10, 0.3, 0.3, 0.3, 0.05);
                     if (d != null) d.remove();
@@ -342,20 +346,42 @@ final class DeepBosses {
     //  THE BRINE SCOURGE
     // =====================================================================================================
     static final class Scourge extends Serpent {
-        static final int CHARGE = 1, SPIT = 2, TEETH = 3, BUBBLES = 4, GEYSER = 5, COIL = 6;
-        Location lineFrom, mark;
+        /*
+         * After Infernum's Aquatic Scourge. Phase 1 runs a fixed cycle: Radiation Pulse, Rubble Charges, Radioactive
+         * Breath, Rubble Charges, Toxic Bubble Spin. Phase 2 (60%) runs the same cycle harder (more globs, more rubble,
+         * a longer spin, acid clouds that linger). At 25% the sea's acidity spikes: it swims up to the surface under a
+         * storm and fights there: Frenzied Charges, Acid Rain, Acid Rain, Sulphurous Typhoon. In phases 1-2 it has to be
+         * fought UNDER the water: anyone above the surface makes it enraged and invincible. Sulphuric Poisoning (a meter
+         * per fighter) fills from its pulses, globs and bubbles; fresh-water bubbles rising from below clear some of it.
+         */
+        static final int PULSE = 1, RUBBLE = 2, BREATH = 3, SPIN = 4, FRENZY = 5, ACID_RAIN = 6, TYPHOON = 7, ASCEND = 8;
+        static final int[] CYCLE = {PULSE, RUBBLE, BREATH, RUBBLE, SPIN};
+        static final int[] FINAL = {FRENZY, ACID_RAIN, ACID_RAIN, TYPHOON};
+        int step;
+        final Map<UUID, Double> poison = new HashMap<>();
+        final Set<UUID> storm = new HashSet<>();
+        boolean enraged, ascended;
+        int finalTicks;
+        // move state
         Vector lineDir;
-        final List<Location> marks = new ArrayList<>();
-        double coilR;
+        Location way, typhoon;
+        int charge, chargeT, stunT;
+        double spinAng;
+        final Wild.Part headB, mandL, mandR;
+        double aMand = 12, wantMand = 12;
 
         Scourge(Wild w, Location at, Player by) {
-            super(w, "scourge", at, by, 1.6);
-            build("scourge_head", "scourge_body", "scourge_tail", (int) c("segments", 16), 1.9, 0.025, 3, "The Brine Scourge");
+            super(w, "scourge", at, by, 1.8);
+            build("scourge_head", "scourge_body", "scourge_tail", (int) c("segments", 18), 1.9, 0.02, 3, "The Brine Scourge");
+            headB = rig.add("scourge_head_b", k, pos);  // Bedrock: one head with the mandibles as animated bones
+            mandL = rig.add("scourge_mandible", k, pos); // Java: the two great mandibles, opening and snapping
+            mandR = rig.add("scourge_mandible_r", k, pos);
             world.playSound(pos, Sound.ENTITY_ELDER_GUARDIAN_CURSE, SoundCategory.HOSTILE, 4f, 0.4f);
             world.spawnParticle(Particle.BUBBLE_COLUMN_UP, pos, 200, 3, 3, 3, 0.2);
         }
 
         @Override double defHealth() { return 2400; }
+        @Override double phaseAt(int p) { return p == 2 ? c("phase2-at", 0.6) : c("phase3-at", 0.25); }
         @Override BarColor barColor() { return BarColor.GREEN; }
         @Override String music() { return "faultline:kraken.music"; } // "Outcast of the Sulphurous Seas"
         @Override double musicLength() { return 397.22; }
@@ -363,153 +389,450 @@ final class DeepBosses {
         @Override String line(String what) {
             return switch (what) {
                 case "spawn" -> ChatColor.DARK_GREEN + "" + ChatColor.BOLD + "The water turns sour and yellow... THE BRINE SCOURGE uncoils from the deep!";
-                case "phase2" -> ChatColor.DARK_GREEN + "The Brine Scourge coils, and the sea burns with acid.";
-                case "phase3" -> ChatColor.RED + "The Brine Scourge thrashes in a frenzy!";
-                case "death" -> ChatColor.DARK_GREEN + "The Brine Scourge dissolves into the brine it came from.";
+                case "phase2" -> ChatColor.DARK_GREEN + "The Brine Scourge thrashes. Its acid lingers in the water now.";
+                case "phase3" -> ChatColor.RED + "" + ChatColor.BOLD + "The sea's acidity spikes! " + ChatColor.GREEN + "The Brine Scourge rises for the surface. Follow it up!";
+                case "death" -> ChatColor.DARK_GREEN + "The Brine Scourge's corpse dissolves into the acid it came from.";
                 case "leave" -> ChatColor.DARK_GREEN + "The Brine Scourge " + ChatColor.GRAY + "sinks back into the sulphur dark.";
                 default -> null;
             };
         }
 
+        double spd() { return (enraged ? 1.5 : 1) * (phase >= 2 ? 1.15 : 1); }
+
+        @Override void hit(Player p, double dmg, Vector from, Guard g) { super.hit(p, dmg * (enraged ? 1.5 : 1), from, g); }
+
+        @Override double damageTaken(double amount) {
+            if (enraged || attack == ASCEND) return 0; // above the water / rising: nothing gets through
+            return amount;
+        }
+
+        Location mouth() { return Lich.joint(pos, Lich.frame(yaw, pitch, 0), 2.9, 0, 0, k); }
+
+        static double surfaceY(World w, Location l) { return w.getHighestBlockYAt(l.getBlockX(), l.getBlockZ(), org.bukkit.HeightMap.WORLD_SURFACE); }
+
+        /** Out of the water: the eyes are above the topmost block of their column (open air over the sea, or a raft). */
+        boolean surfaced(Player p) {
+            Location e = p.getEyeLocation();
+            return e.getY() >= surfaceY(world, e) + 0.3 && !p.isInWater();
+        }
+
+        // ---------------------------------------------------------------- every tick
         @Override
         void bodyTick(List<Player> a) {
-            if (attack < 0 || attack == SPIT || attack == TEETH || attack == BUBBLES || attack == GEYSER) {
-                double sp = c("speed", 0.45) * (phase == 3 ? 1.3 : 1);
-                swimTo(circle(c("orbit-radius", 14), 3, phase == 3 ? 0.03 : 0.02), sp, 7);
+            if (phase < 3 && ticks % 10 == 0) enrage(a);
+            poisonTick(a);
+            if (phase == 3 && ascended) { finalTicks++; stormTick(a); }
+            if (attack < 0) {
+                Location c = circle(c("orbit-radius", 14), 3, phase == 3 ? 0.03 : 0.02);
+                if (phase == 3 && ascended) c.setY(surfaceY(world, c) - 2.5);
+                swimTo(c, c("speed", 0.45) * spd(), 7);
+                wantMand = 12 + Math.sin(ticks * 0.1) * 8;
             }
+            aMand += (wantMand - aMand) * 0.3;
             pose(0);
-            if (ticks % 4 == 0) world.spawnParticle(Particle.DUST, chain.pts.get(random.nextInt(chain.pts.size())), 2, 0.6, 0.6, 0.6, 0, new Particle.DustOptions(Color.fromRGB(170, 200, 60), 1.4f));
+            if (ticks % 4 == 0) world.spawnParticle(Particle.DUST, chain.pts.get(random.nextInt(chain.pts.size())), 2, 0.6, 0.6, 0.6, 0, new Particle.DustOptions(Color.fromRGB(150, 210, 70), 1.4f));
+            if (enraged && ticks % 3 == 0) world.spawnParticle(Particle.DUST, pos, 8, 1.2 * k, 1.2 * k, 1.2 * k, 0, new Particle.DustOptions(Color.fromRGB(220, 40, 40), 2f));
             if (ticks % 40 == 0) world.playSound(pos, Sound.ENTITY_GUARDIAN_AMBIENT, SoundCategory.HOSTILE, 2f, 0.4f);
         }
 
+        void enrage(List<Player> a) {
+            boolean any = false;
+            for (Player p : a) if (surfaced(p)) { any = true; break; }
+            if (any == enraged) return;
+            enraged = any;
+            if (enraged) say(ChatColor.RED + "" + ChatColor.BOLD + "The Brine Scourge is ENRAGED! " + ChatColor.GRAY + "It can't be hurt while anyone is above the water. Get back under!");
+            else say(ChatColor.GREEN + "The Brine Scourge calms. Everyone is back under the water.");
+            world.playSound(pos, Sound.ENTITY_RAVAGER_ROAR, SoundCategory.HOSTILE, 3f, enraged ? 0.5f : 0.8f);
+        }
+
+        void poisonAdd(Player p, double v) { poison.merge(p.getUniqueId(), v, (x, y) -> Math.max(0, Math.min(1, x + y))); }
+
+        void poisonTick(List<Player> a) {
+            if (ticks % 10 != 0) return;
+            for (Player p : a) {
+                UUID id = p.getUniqueId();
+                double v = poison.getOrDefault(id, 0.0);
+                if (phase == 3 && ascended) // the acidity rises faster and faster: only the air above the water is safe
+                    v += p.isInWater() ? c("final-acidity", 0.003) * Math.pow(1.045, finalTicks / 20.0) : -0.02;
+                else if (v < 1) v -= 0.0025; // a full meter stays full until a fresh bubble (or a breath of air) brings it down
+                else if (ticks % 200 == 0) v = 0.97;
+                v = Math.max(0, Math.min(1, v));
+                poison.put(id, v);
+                if (v >= 1 && ticks % 20 == 0) {
+                    hit(p, c("poison-damage", 3), p.getLocation().toVector(), Guard.UNBLOCKABLE);
+                    p.addPotionEffect(new PotionEffect(PotionEffectType.NAUSEA, 80, 0, true, false, false));
+                } else if (v >= 0.6) p.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 25, 0, true, false, false));
+                if (v > 0.005) {
+                    int bars = (int) Math.round(v * 20);
+                    ChatColor col = v < 0.5 ? ChatColor.GREEN : v < 0.8 ? ChatColor.YELLOW : ChatColor.RED;
+                    p.sendActionBar(legacy(ChatColor.DARK_GREEN + "☣ Sulphuric Poisoning " + col + "|".repeat(bars) + ChatColor.DARK_GRAY + "|".repeat(20 - bars)
+                            + " " + col + (int) Math.round(v * 100) + "%"));
+                }
+            }
+        }
+
+        void stormTick(List<Player> a) {
+            for (Player p : a) if (storm.add(p.getUniqueId())) p.setPlayerWeather(org.bukkit.WeatherType.DOWNFALL);
+            if (ticks % 140 == 0 && !a.isEmpty()) {
+                Player p = a.get(random.nextInt(a.size()));
+                p.playSound(p.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, SoundCategory.WEATHER, 1f, 0.7f);
+                world.spawnParticle(Particle.FLASH, p.getLocation().add(random.nextGaussian() * 20, 18, random.nextGaussian() * 20), 1);
+            }
+        }
+
+        @Override void cleanup() {
+            for (UUID id : storm) { Player p = Bukkit.getPlayer(id); if (p != null) p.resetPlayerWeather(); }
+            storm.clear();
+        }
+
+        @Override void onPhase(int p) {
+            step = 0;
+            if (p == 3) { ascended = false; cd = 1; if (enraged) { enraged = false; say(ChatColor.GREEN + "The Brine Scourge forgets its rage: it rises for the surface."); } }
+        }
+
+        // ---------------------------------------------------------------- the rig
+        @Override
+        void pose(int deathT) {
+            super.pose(deathT);
+            double roll = deathT > 0 ? Math.min(160, deathT * 3) : Math.sin(ticks * 0.08) * 6;
+            float hp = Math.max(-60, Math.min(60, pitch)) - (float) (flinchAmt() * 15);
+            headB.pose(pos, yaw, hp, (float) roll, null);
+            Quaternionf q = Lich.frame(yaw, hp, (float) roll);
+            double open = deathT > 0 ? 55 : aMand;
+            mandL.pose(Lich.joint(pos, q, 0.55, 0, -1.0, k), yaw, hp, (float) roll, new Quaternionf().rotationY((float) Math.toRadians(open)));
+            mandR.pose(Lich.joint(pos, q, 0.55, 0, 1.0, k), yaw, hp, (float) roll, new Quaternionf().rotationY((float) Math.toRadians(-open)));
+        }
+
+        @Override void deathAnim(int t) { // the corpse dissolves in its own acid
+            pos = pos.clone().add(0, -0.05, 0);
+            for (Wild.Part p : rig.parts) p.resize(p.k * 0.985);
+            pose(t);
+            if (t % 2 == 0) for (int i = 0; i < chain.pts.size(); i += 3)
+                world.spawnParticle(Particle.DUST, chain.pts.get(i), 4, 0.8, 0.8, 0.8, 0, new Particle.DustOptions(Color.fromRGB(150, 210, 70), 1.8f));
+            if (t % 3 == 0) world.spawnParticle(Particle.BUBBLE_COLUMN_UP, pos, 20, 1.5 * k, 1, 1.5 * k, 0.1);
+            if (t % 10 == 0) world.playSound(pos, Sound.BLOCK_LAVA_EXTINGUISH, SoundCategory.HOSTILE, 2.5f, 0.5f);
+        }
+
+        // ---------------------------------------------------------------- the moves
         @Override
         int pick(List<Player> a) {
-            List<Integer> pool = new ArrayList<>(List.of(CHARGE, SPIT, TEETH, BUBBLES, GEYSER));
-            if (phase >= 2) { pool.add(COIL); pool.add(GEYSER); }
-            if (phase == 3) { pool.add(CHARGE); pool.add(CHARGE); }
-            return pool.get(random.nextInt(pool.size()));
+            if (phase == 3 && !ascended) return ASCEND;
+            int[] cyc = phase == 3 ? FINAL : CYCLE;
+            return cyc[step++ % cyc.length];
         }
 
         @Override
         void startMove(int move, Player t) {
-            hitOnce.clear(); marks.clear();
-            t = targetOr(t);
-            Location tl = t != null ? t.getLocation().add(0, 1, 0) : pos.clone().add(dirOf(yaw).multiply(10));
+            hitOnce.clear();
+            charge = 0; chargeT = 0; stunT = 0; way = null; typhoon = null;
             switch (move) {
-                case CHARGE -> {
-                    lineDir = tl.toVector().subtract(pos.toVector());
-                    if (lineDir.lengthSquared() < 0.01) lineDir = dirOf(yaw);
-                    lineDir.normalize();
-                    lineFrom = tl.clone().add(lineDir.clone().multiply(-16));
-                    world.playSound(pos, Sound.ENTITY_RAVAGER_ROAR, SoundCategory.HOSTILE, 3f, 0.4f);
-                }
-                case GEYSER -> {
-                    for (Player p : active()) marks.add(floorUnder(p.getLocation(), 40));
-                    for (int i = 0; i < phase; i++) marks.add(floorUnder(tl.clone().add(random.nextGaussian() * 6, 0, random.nextGaussian() * 6), 40));
-                    say(ChatColor.GOLD + "The sea floor starts to boil...");
-                }
-                case COIL -> { mark = tl.clone(); coilR = c("coil-start-radius", 11); say(ChatColor.DARK_GREEN + "It coils around you. The water burns."); }
+                case PULSE -> say(ChatColor.GREEN + "Its body glows: RADIATION PULSE. " + ChatColor.GRAY + "Catch the blue bubbles rising from below to clear the poison.");
+                case BREATH -> say(ChatColor.GREEN + "RADIOACTIVE BREATH. " + ChatColor.GRAY + "Watch for green lines: rubble is falling.");
+                case SPIN -> say(ChatColor.GREEN + "It circles you: TOXIC BUBBLE SPIN.");
+                case FRENZY -> say(ChatColor.RED + "It charges again and again!");
+                case ACID_RAIN -> say(ChatColor.GREEN + "It dives under you... ACID RAIN!");
+                case TYPHOON -> say(ChatColor.DARK_GREEN + "" + ChatColor.BOLD + "It spins into a SULPHUROUS TYPHOON!");
                 default -> { }
             }
         }
 
         @Override
         void moveTick(List<Player> a) {
+            Player t = targetOr(focus);
             switch (attack) {
-                case CHARGE -> {
-                    int wind = phase == 3 ? 22 : 32;
-                    if (at <= wind) { swimTo(lineFrom, 0.8, 14); if (at % 2 == 0) warn3d(lineFrom, lineDir, 34, Color.fromRGB(190, 220, 60)); return; }
-                    yaw = yawOf(flat(lineDir)); pitch = pitchOf(lineDir);
-                    Location n = pos.clone().add(lineDir.clone().multiply(c("charge-speed", 1.3)));
-                    if (open(n, 1)) pos = n; else { end(); return; }
-                    world.spawnParticle(Particle.BUBBLE, pos, 20, 1, 1, 1, 0.1);
-                    strike(pos, 2.8 * k, c("moves.charge", 16), Guard.HEAVY, lineDir.clone().multiply(1.1).setY(0.4));
-                    bodyStrike(1.6 * k, c("moves.body", 6));
-                    if (at > wind + 30) end();
-                }
-                case SPIT -> {
-                    if (at % 10 == 0 && at <= 30) {
-                        world.playSound(pos, Sound.ENTITY_LLAMA_SPIT, SoundCategory.HOSTILE, 3f, 0.4f);
-                        for (Player p : a) {
-                            Vector v = unit(p.getLocation().add(0, 1, 0).toVector().subtract(pos.toVector())).multiply(0.9);
-                            bolt(pos.clone(), v, 60, 0.5, c("moves.spit", 7), Particle.ITEM_SLIME, new ItemStack(Material.SLIME_BALL), null, 0, pp -> {
-                                pp.addPotionEffect(new PotionEffect(PotionEffectType.POISON, 60, 1));
-                                mist(pp.getLocation());
-                            });
-                        }
-                    }
-                    if (at > 40) end();
-                }
-                case TEETH -> {
-                    if (at == 12) {
-                        Player t = targetOr(focus);
-                        Vector base = t == null ? dir3(yaw, pitch) : unit(t.getLocation().add(0, 1, 0).toVector().subtract(pos.toVector()));
-                        int n = 7 + 2 * phase;
-                        for (int i = 0; i < n; i++) {
-                            double ang = Math.toRadians((i - (n - 1) / 2.0) * 7);
-                            Vector v = base.clone().rotateAroundY(ang).multiply(1.1);
-                            bolt(pos.clone(), v, 40, 0.35, c("moves.tooth", 6), Particle.CRIT, new ItemStack(Material.BONE), null, 0, null);
-                        }
-                        world.playSound(pos, Sound.ENTITY_EVOKER_FANGS_ATTACK, SoundCategory.HOSTILE, 3f, 0.6f);
-                    }
-                    if (at > 24) end();
-                }
-                case BUBBLES -> {
-                    if (at % 6 == 0 && at <= 36) {
-                        Player t = targetOr(null);
-                        Vector v = t == null ? new Vector(0, 0.1, 0) : unit(t.getLocation().add(0, 1, 0).toVector().subtract(pos.toVector())).multiply(0.22);
-                        bolt(pos.clone().add(random.nextGaussian(), random.nextGaussian(), random.nextGaussian()), v, 140, 0.8, c("moves.bubble", 8), Particle.BUBBLE,
-                                new ItemStack(Material.LIME_STAINED_GLASS), t, 0.04, pp -> pp.addPotionEffect(new PotionEffect(PotionEffectType.NAUSEA, 100, 0)));
-                        world.playSound(pos, Sound.BLOCK_BUBBLE_COLUMN_BUBBLE_POP, SoundCategory.HOSTILE, 2f, 0.5f);
-                    }
-                    if (at > 46) end();
-                }
-                case GEYSER -> {
-                    if (at < 34) { if (at % 3 == 0) for (Location m : marks) { warnRing(m, 2.4, Color.ORANGE); world.spawnParticle(Particle.BUBBLE_COLUMN_UP, m, 6, 0.8, 0.2, 0.8, 0.05); } return; }
-                    if (at == 34) for (Location m : marks) {
-                        world.playSound(m, Sound.BLOCK_LAVA_EXTINGUISH, SoundCategory.HOSTILE, 3f, 0.5f);
-                        for (int y = 0; y < 20; y += 2) world.spawnParticle(Particle.BUBBLE_COLUMN_UP, m.clone().add(0, y, 0), 25, 0.6, 1, 0.6, 0.3);
-                        world.spawnParticle(Particle.LAVA, m, 20, 1, 0.5, 1, 0);
-                        for (Player p : active()) {
-                            Location l = p.getLocation();
-                            if (Math.hypot(l.getX() - m.getX(), l.getZ() - m.getZ()) < 2.6 && l.getY() >= m.getY() - 1 && l.getY() < m.getY() + 20) {
-                                hit(p, c("moves.geyser", 12), m.toVector(), Guard.UNBLOCKABLE);
-                                Safe.vel(p, new Vector(0, 1.3, 0));
-                                p.setFireTicks(60);
-                            }
-                        }
-                    }
-                    if (at > 44) end();
-                }
-                case COIL -> {
-                    int dur = 110;
-                    coilR = c("coil-start-radius", 11) - (c("coil-start-radius", 11) - 4) * Math.min(1, at / (double) dur);
-                    double ang = at * 0.14;
-                    swimTo(mark.clone().add(Math.cos(ang) * coilR, Math.sin(at * 0.05) * 1.5, Math.sin(ang) * coilR), 1.0, 30);
-                    if (at % 3 == 0) ring3(mark, coilR, Particle.ITEM_SLIME);
-                    if (at % 20 == 0) {
-                        for (Player p : a) {
-                            Location l = p.getLocation();
-                            if (Math.hypot(l.getX() - mark.getX(), l.getZ() - mark.getZ()) < coilR + 0.5 && Math.abs(l.getY() - mark.getY()) < 6) {
-                                hit(p, c("moves.coil", 3), mark.toVector(), Guard.UNBLOCKABLE);
-                                p.addPotionEffect(new PotionEffect(PotionEffectType.POISON, 40, 1));
-                            }
-                        }
-                        hitOnce.clear();
-                    }
-                    bodyStrike(1.5 * k, c("moves.body", 6));
-                    if (at > dur) end();
-                }
+                case PULSE -> pulse(t, a);
+                case RUBBLE -> rubbleCharges(t, 5, phase >= 2 ? 10 : 14, 34, 1.45);
+                case BREATH -> breath(t, a);
+                case SPIN -> spin(t, phase >= 2 ? 130 : 90);
+                case ASCEND -> ascend(a);
+                case FRENZY -> { rubbleCharges(t, 99, 8, 18, 1.75); if (at >= 180) end(); }
+                case ACID_RAIN -> acidRain(t);
+                case TYPHOON -> typhoon(t, a);
                 default -> end();
             }
         }
 
-        void mist(Location l) {
+        /** Radiation Pulse (8 s): it advances on you, firing spreads of acid globs; each spread is a green pulse of poison. */
+        void pulse(Player t, List<Player> a) {
+            if (t != null) {
+                Location tl = t.getLocation().add(0, 1, 0);
+                swimTo(tl.clone().add(unit(pos.toVector().subtract(tl.toVector())).multiply(7)), 0.35 * spd(), 8);
+            }
+            wantMand = 25 + Math.sin(at * 0.4) * 12;
+            if (at % 20 == 10 && t != null) {
+                int n = phase >= 2 ? 6 : 4;
+                Location m = mouth();
+                Vector base = unit(t.getLocation().add(0, 1, 0).toVector().subtract(m.toVector()));
+                for (int i = 0; i < n; i++) acidGlob(m, base.clone().rotateAroundY(Math.toRadians((i - (n - 1) / 2.0) * 9)).multiply(0.75));
+                // the pulse: a green ring out of its head, and the poison with it
+                Location c = pos.clone();
+                int[] r = {0};
+                fx.add(() -> { r[0]++; ring3(c, r[0] * 1.4, Particle.HAPPY_VILLAGER); return r[0] >= 10; });
+                for (Player p : within(c, 14)) poisonAdd(p, c("pulse-poison", 0.08));
+                world.playSound(c, Sound.BLOCK_CONDUIT_ATTACK_TARGET, SoundCategory.HOSTILE, 3f, 0.5f);
+            }
+            if (at % 30 == 0) for (Player p : a) freshBubble(p);
+            if (at >= 160) end();
+        }
+
+        /** Rubble Charges: lunges leaving acid behind; slamming into rock stuns it, then it spits a spread of rubble. */
+        void rubbleCharges(Player t, int charges, int wind, int dash, double speed) {
+            if (t == null) { end(); return; }
+            if (stunT > 0) {
+                wantMand = 55;
+                if (stunT % 4 == 0) world.spawnParticle(Particle.CRIT, pos, 10, 1, 1, 1, 0.1);
+                if (--stunT == 0) { rubbleSpread(t, phase >= 2 ? 13 : 9); nextCharge(charges); }
+                return;
+            }
+            chargeT++;
+            if (chargeT == 1) {
+                lineDir = unit(t.getLocation().add(0, 1, 0).toVector().subtract(pos.toVector()));
+                world.playSound(pos, Sound.ENTITY_RAVAGER_ROAR, SoundCategory.HOSTILE, 3f, 0.5f);
+            }
+            if (chargeT <= wind) {
+                yaw = turn(yaw, yawOf(flat(lineDir)), 20); pitch = pitchOf(lineDir);
+                wantMand = 45;
+                if (chargeT % 2 == 0) warn3d(pos, lineDir, 24, Color.fromRGB(150, 220, 60));
+                return;
+            }
+            wantMand = 8;
+            yaw = yawOf(flat(lineDir)); pitch = pitchOf(lineDir);
+            Location n = pos.clone().add(lineDir.clone().multiply(speed * spd()));
+            if (!open(n, 1)) { // into the rock: stunned for a second
+                stunT = 20;
+                Block b = n.getBlock();
+                world.spawnParticle(Particle.BLOCK, n, 40, 1, 1, 1, 0.1, b.getType().isSolid() ? b.getBlockData() : Material.STONE.createBlockData());
+                world.playSound(n, Sound.ENTITY_ZOMBIE_ATTACK_IRON_DOOR, SoundCategory.HOSTILE, 3f, 0.5f);
+                return;
+            }
+            pos = n;
+            if (chargeT % 3 == 0) acidCloud(pos.clone().add(lineDir.clone().multiply(-2 * k)));
+            world.spawnParticle(Particle.BUBBLE, pos, 16, 1, 1, 1, 0.1);
+            strike(pos, 2.6 * k, c("moves.charge", 14), Guard.HEAVY, lineDir.clone().multiply(1.1).setY(0.4));
+            bodyStrike(1.6 * k, c("moves.body", 6));
+            if (chargeT > wind + dash) nextCharge(charges);
+        }
+
+        void nextCharge(int charges) {
+            charge++; chargeT = 0; hitOnce.clear();
+            if (charge >= charges) end();
+        }
+
+        void rubbleSpread(Player t, int n) {
+            Location m = mouth();
+            Vector base = unit(t.getLocation().add(0, 1, 0).toVector().subtract(m.toVector()));
+            for (int i = 0; i < n; i++) {
+                Vector v = base.clone().rotateAroundY(Math.toRadians((i - (n - 1) / 2.0) * 10)).multiply(0.8);
+                bolt(m.clone(), v, 50, 0.5, c("moves.rubble", 8), Particle.CRIT, new ItemStack(Material.COBBLED_DEEPSLATE), null, 0, null);
+            }
+            world.playSound(m, Sound.BLOCK_DEEPSLATE_BREAK, SoundCategory.HOSTILE, 3f, 0.5f);
+        }
+
+        /** Radioactive Breath (8 s): sharp turns, spitting acid; every 1.5 s rubble drops from above on green lines. */
+        void breath(Player t, List<Player> a) {
+            if (t == null) { end(); return; }
+            Location tl = t.getLocation().add(0, 1, 0);
+            if (way == null || at % 24 == 0) {
+                for (int i = 0; i < 8; i++) {
+                    Location c = tl.clone().add(random.nextGaussian() * 9, random.nextGaussian() * 4, random.nextGaussian() * 9);
+                    if (open(c, 1)) { way = c; break; }
+                }
+                if (way == null) way = tl.clone();
+            }
+            swimTo(way, 0.75 * spd(), 24);
+            wantMand = 40;
+            if (at % 4 == 0) {
+                Location m = mouth();
+                Vector v = unit(tl.toVector().subtract(m.toVector())).add(new Vector(random.nextGaussian(), random.nextGaussian(), random.nextGaussian()).multiply(0.12));
+                acidGlob(m, unit(v).multiply(0.85));
+            }
+            if (at % 30 == 0) {
+                int n = phase >= 2 ? 7 : 5;
+                for (int i = 0; i < n; i++) {
+                    Location s = i == 0 ? tl.clone() : tl.clone().add(random.nextGaussian() * 6, 0, random.nextGaussian() * 6);
+                    fallingRubble(s);
+                }
+            }
+            if (at >= 160) end();
+        }
+
+        void fallingRubble(Location s) {
+            Location floor = floorUnder(s.clone(), 40);
+            Location top = s.clone().add(0, 16, 0);
+            int[] age = {0};
+            fx.add(() -> {
+                age[0]++;
+                if (age[0] <= 20) {
+                    if (age[0] % 2 == 0) for (double y = floor.getY(); y <= top.getY(); y += 0.8)
+                        world.spawnParticle(Particle.DUST, top.getX(), y, top.getZ(), 1, 0.02, 0, 0.02, 0, new Particle.DustOptions(Color.fromRGB(120, 230, 60), 1.3f));
+                    return false;
+                }
+                bolt(top.clone(), new Vector(0, -0.9, 0), 40, 0.9, c("moves.breath-rubble", 9), Particle.CRIT, new ItemStack(Material.COBBLED_DEEPSLATE), null, 0, null);
+                return true;
+            });
+        }
+
+        /** Toxic Bubble Spin: it circles you fast, firing toxic bubbles in. */
+        void spin(Player t, int dur) {
+            if (t == null) { end(); return; }
+            spinAng += 0.12 * spd();
+            Location c = t.getLocation().add(Math.cos(spinAng) * 10, 1 + Math.sin(at * 0.1) * 2, Math.sin(spinAng) * 10);
+            swimTo(c, 1.1 * spd(), 30);
+            wantMand = 30;
+            if (at % 5 == 0) toxicBubble(mouth(), t);
+            if (at >= dur) end();
+        }
+
+        /** The final phase begins: it swims to the surface (it can't be hurt while it rises). */
+        void ascend(List<Player> a) {
+            for (Player p : a) if (storm.add(p.getUniqueId())) p.setPlayerWeather(org.bukkit.WeatherType.DOWNFALL);
+            Location s = pos.clone();
+            s.setY(surfaceY(world, s) - 2);
+            swimTo(s, 0.7, 14);
+            wantMand = 60;
+            if (at % 10 == 0) world.spawnParticle(Particle.BUBBLE_COLUMN_UP, pos, 40, 2, 2, 2, 0.3);
+            if (pos.getY() >= surfaceY(world, pos) - 3.5 || at > 220) { ascended = true; finalTicks = 0; end(); }
+        }
+
+        /** Acid Rain: it dives under you, then lunges up out of the sea, flinging acid globs that rain back down. */
+        void acidRain(Player t) {
+            if (t == null) { end(); return; }
+            double sy = surfaceY(world, pos);
+            if (at < 40) {
+                Location below = t.getLocation().add(0, -14, 0);
+                if (!open(below, 1)) below = t.getLocation().add(0, -7, 0);
+                swimTo(below, 1.0 * spd(), 20);
+                wantMand = 15;
+                return;
+            }
+            if (at == 40) {
+                lineDir = unit(t.getLocation().add(0, 12, 0).toVector().subtract(pos.toVector()));
+                world.playSound(pos, Sound.ENTITY_DOLPHIN_JUMP, SoundCategory.HOSTILE, 3f, 0.4f);
+            }
+            if (at <= 70) { // up and out of the water
+                yaw = yawOf(flat(lineDir)); pitch = pitchOf(lineDir);
+                Location n = pos.clone().add(lineDir.clone().multiply(1.3));
+                if (!n.getBlock().getType().isSolid()) pos = n;
+                wantMand = 60;
+                strike(pos, 2.6 * k, c("moves.charge", 14), Guard.HEAVY, new Vector(0, 1.0, 0));
+                if (pos.getY() > sy && at % 3 == 0) for (int i = 0; i < 3; i++) {
+                    double ang = random.nextDouble() * Math.PI * 2;
+                    lob(mouth(), new Vector(Math.cos(ang) * 0.45, 0.5 + random.nextDouble() * 0.3, Math.sin(ang) * 0.45));
+                }
+                return;
+            }
+            // back down into the sea
+            pitch = 60;
+            Location n = pos.clone().add(0, -0.9, 0);
+            if (!n.getBlock().getType().isSolid()) pos = n;
+            if (pos.getY() < sy - 3 || at > 120) end();
+        }
+
+        /** Sulphurous Typhoon: it spins into a typhoon that drifts after you, spitting acid; it circles it, spraying bubbles. */
+        void typhoon(Player t, List<Player> a) {
+            if (t == null) { end(); return; }
+            if (typhoon == null) { typhoon = pos.clone(); typhoon.setY(surfaceY(world, pos)); world.playSound(pos, Sound.ITEM_TRIDENT_RIPTIDE_3, SoundCategory.HOSTILE, 3f, 0.5f); }
+            Vector drift = t.getLocation().toVector().subtract(typhoon.toVector()).setY(0);
+            if (drift.lengthSquared() > 1) typhoon.add(drift.normalize().multiply(0.11 * spd()));
+            double base = typhoon.getY() - 12, topY = typhoon.getY() + 10;
+            if (at % 2 == 0) for (double y = base; y <= topY; y += 1.5) {
+                double r = 2 + (y - base) / (topY - base) * 3, ang = at * 0.35 + y;
+                world.spawnParticle(y > typhoon.getY() ? Particle.CLOUD : Particle.BUBBLE, typhoon.getX() + Math.cos(ang) * r, y, typhoon.getZ() + Math.sin(ang) * r, 1, 0, 0, 0, 0);
+                world.spawnParticle(Particle.DUST, typhoon.getX() + Math.cos(ang + Math.PI) * r, y, typhoon.getZ() + Math.sin(ang + Math.PI) * r, 1, 0, 0, 0, 0, new Particle.DustOptions(Color.fromRGB(150, 210, 70), 1.6f));
+            }
+            for (Player p : a) {
+                Location l = p.getLocation();
+                double dx = typhoon.getX() - l.getX(), dz = typhoon.getZ() - l.getZ(), d = Math.hypot(dx, dz);
+                if (d > 6.5 || l.getY() < base - 1 || l.getY() > topY + 2) continue;
+                Vector in = new Vector(dx, 0, dz).multiply(0.06).add(new Vector(-dz, 0, dx).multiply(0.05)).setY(0.08);
+                Safe.vel(p, p.getVelocity().multiply(0.6).add(in));
+                if (d < 3.2 && at % 10 == 0) { hit(p, c("moves.typhoon", 5), typhoon.toVector(), Guard.UNBLOCKABLE); poisonAdd(p, 0.04); }
+            }
+            if (at % 15 == 0) acidGlob(typhoon.clone().add(0, 2, 0), unit(t.getLocation().add(0, 1, 0).toVector().subtract(typhoon.toVector())).multiply(0.7));
+            spinAng += 0.09 * spd();
+            Location c = typhoon.clone().add(Math.cos(spinAng) * 8, -2, Math.sin(spinAng) * 8);
+            swimTo(c, 1.0 * spd(), 25);
+            if (at % 8 == 0) toxicBubble(mouth(), t);
+            if (at % 30 == 0) world.playSound(typhoon, Sound.ITEM_ELYTRA_FLYING, SoundCategory.HOSTILE, 2f, 0.6f);
+            if (at >= 220) end();
+        }
+
+        // ---------------------------------------------------------------- what it fires
+        void acidGlob(Location from, Vector v) {
+            bolt(from.clone(), v, 60, 0.45, c("moves.acid-glob", 7), Particle.ITEM_SLIME, new ItemStack(Material.SLIME_BALL), null, 0, p -> {
+                poisonAdd(p, c("glob-poison", 0.05));
+                p.addPotionEffect(new PotionEffect(PotionEffectType.POISON, 60, 0));
+                if (phase >= 2) acidCloud(p.getLocation());
+            });
+        }
+
+        void toxicBubble(Location from, Player t) {
+            Vector v = unit(t.getLocation().add(0, 1, 0).toVector().subtract(from.toVector())).multiply(0.3);
+            bolt(from.clone(), v, 120, 0.8, c("moves.bubble", 7), Particle.BUBBLE, new ItemStack(Material.LIME_STAINED_GLASS), t, 0.03, p -> {
+                poisonAdd(p, c("bubble-poison", 0.06));
+                p.addPotionEffect(new PotionEffect(PotionEffectType.NAUSEA, 80, 0));
+            });
+            world.playSound(from, Sound.BLOCK_BUBBLE_COLUMN_BUBBLE_POP, SoundCategory.HOSTILE, 2f, 0.5f);
+        }
+
+        /** A glob that arcs and falls (Acid Rain). */
+        void lob(Location from, Vector vel) {
+            Location p = from.clone();
+            Vector v = vel.clone();
+            int[] age = {0};
+            fx.add(() -> {
+                if (dying || ++age[0] > 100) return true;
+                v.setY(v.getY() - 0.035);
+                p.add(v);
+                if (!Double.isFinite(p.getY()) || !world.isChunkLoaded(p.getBlockX() >> 4, p.getBlockZ() >> 4) || p.getBlock().getType().isSolid()) return true;
+                world.spawnParticle(Particle.ITEM_SLIME, p, 2, 0.05, 0.05, 0.05, 0);
+                world.spawnParticle(Particle.DUST, p, 1, 0, 0, 0, 0, new Particle.DustOptions(Color.fromRGB(160, 220, 60), 1.5f));
+                for (Player pl2 : active()) if (pl2.getLocation().add(0, 0.9, 0).distanceSquared(p) < 1.4) {
+                    hit(pl2, c("moves.acid-rain", 7), p.toVector(), Guard.BLOCKABLE);
+                    poisonAdd(pl2, 0.05);
+                    return true;
+                }
+                return false;
+            });
+        }
+
+        void acidCloud(Location l) {
             world.spawn(l, AreaEffectCloud.class, cl -> {
-                cl.setRadius(2.2f); cl.setDuration(80); cl.setRadiusPerTick(-0.01f);
-                cl.setColor(Color.fromRGB(170, 200, 60));
+                cl.setRadius(phase >= 2 ? 2.6f : 2.0f); cl.setDuration(phase >= 2 ? 160 : 80); cl.setRadiusPerTick(-0.008f);
+                cl.setColor(Color.fromRGB(160, 210, 60));
                 cl.addCustomEffect(new PotionEffect(PotionEffectType.POISON, 60, 0), true);
                 cl.addScoreboardTag(Wild.FX_TAG);
+            });
+            for (Player p : within(l, 2.4)) poisonAdd(p, 0.02);
+        }
+
+        /** A bubble of clean water rising from below a player: swim into it to clear some poison. */
+        void freshBubble(Player t) {
+            Location s = t.getLocation().add(random.nextGaussian() * 2.5, -7, random.nextGaussian() * 2.5);
+            if (!open(s, 0)) s = t.getLocation().add(random.nextGaussian() * 2, -2, random.nextGaussian() * 2);
+            Location p = s.clone();
+            ItemDisplay d = world.spawn(p, ItemDisplay.class, e -> {
+                e.setItemStack(new ItemStack(Material.LIGHT_BLUE_STAINED_GLASS));
+                e.setPersistent(false);
+                e.addScoreboardTag(Wild.FX_TAG);
+                e.setTeleportDuration(2);
+                e.setTransformation(new Transformation(new Vector3f(), new Quaternionf(), new Vector3f(0.8f, 0.8f, 0.8f), new Quaternionf()));
+            });
+            int[] age = {0};
+            fx.add(() -> {
+                if (++age[0] > 110 || !d.isValid()) { d.remove(); return true; }
+                p.add(0, 0.12, 0);
+                if (p.getBlock().getType().isSolid()) { d.remove(); return true; }
+                if (age[0] % 2 == 0) d.teleport(p);
+                world.spawnParticle(Particle.BUBBLE, p, 3, 0.25, 0.25, 0.25, 0.02);
+                for (Player pl2 : active()) if (pl2.getLocation().add(0, 0.9, 0).distanceSquared(p) < 2.2) {
+                    poisonAdd(pl2, -c("fresh-bubble", 0.3));
+                    pl2.playSound(pl2.getLocation(), Sound.BLOCK_BUBBLE_COLUMN_BUBBLE_POP, 1f, 1.4f);
+                    pl2.sendActionBar(legacy(ChatColor.AQUA + "Fresh water! " + ChatColor.GRAY + "The poison eases."));
+                    d.remove();
+                    return true;
+                }
+                return false;
             });
         }
 
@@ -517,11 +840,10 @@ final class DeepBosses {
 
         @Override
         List<MoveSlot> morphMoves() {
-            List<MoveSlot> m = new ArrayList<>(List.of(new MoveSlot(CHARGE, "Charge", Material.PRISMARINE_SHARD), new MoveSlot(SPIT, "Acid Spit", Material.SLIME_BALL),
-                    new MoveSlot(TEETH, "Tooth Spray", Material.BONE), new MoveSlot(BUBBLES, "Sulphur Bubbles", Material.LIME_STAINED_GLASS),
-                    new MoveSlot(GEYSER, "Brine Geysers", Material.MAGMA_BLOCK)));
-            if (phase >= 2) m.add(new MoveSlot(COIL, "Corroding Coil", Material.KELP));
-            return m;
+            if (phase == 3) return List.of(new MoveSlot(FRENZY, "Frenzied Charges", Material.PRISMARINE_SHARD), new MoveSlot(ACID_RAIN, "Acid Rain", Material.SLIME_BALL),
+                    new MoveSlot(TYPHOON, "Sulphurous Typhoon", Material.WIND_CHARGE));
+            return List.of(new MoveSlot(PULSE, "Radiation Pulse", Material.LIME_DYE), new MoveSlot(RUBBLE, "Rubble Charges", Material.COBBLED_DEEPSLATE),
+                    new MoveSlot(BREATH, "Radioactive Breath", Material.GREEN_DYE), new MoveSlot(SPIN, "Toxic Bubble Spin", Material.LIME_STAINED_GLASS));
         }
     }
 

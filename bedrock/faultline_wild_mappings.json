@@ -420,9 +420,9 @@
    },
    {
     "type": "definition",
-    "model": "faultline:wild/scourge_head",
-    "bedrock_identifier": "faultline:wild_scourge_head",
-    "display_name": "scourge_head",
+    "model": "faultline:wild/scourge_head_b",
+    "bedrock_identifier": "faultline:wild_scourge_head_b",
+    "display_name": "scourge_head_b",
     "bedrock_options": {
      "icon": "faultline.brine_scourge",
      "allow_offhand": false

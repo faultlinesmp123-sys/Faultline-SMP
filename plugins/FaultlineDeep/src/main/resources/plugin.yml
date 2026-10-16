@@ -1,5 +1,5 @@
 name: FaultlineDeep
-version: '1.2.0'
+version: '1.2.1'
 main: net.faultlinesmp.deep.FaultlineDeep
 api-version: '1.21'
 author: FaultlineSMP
@@ -15,6 +15,9 @@ commands:
 permissions:
   faultlinedeep.admin:
     description: The /deep admin command
+    default: op
+  faultlinedeep.market:
+    description: Build in the Black Market and the Pit, open its shulker boxes, break the Bubble's glass
     default: op
   faultlinedeep.bypass:
     description: Use the Mirror and Lucki without having beaten Rocco and Jacob

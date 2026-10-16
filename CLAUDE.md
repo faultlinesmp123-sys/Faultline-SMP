@@ -997,6 +997,13 @@ Notes:
   4 sides, two rows of seats round it, a throne (north), cages, podiums, basalt pillars, banners, shroomlights. Already-made
   chunks: delete `r.1.-2.mca` (+ entities/poi) in `faultline_deep`. Previews `tools/previews/market_*.png`.
   Tested (`DeepTest`: the lift down, up, a press mid-ride, standing outside; `TownPreview`: no water touches the Pit).
+- **Deep 1.2.1 (bug pass)**: the Pit and the lift's lower car are under the Bubble's floor, so `Town.inside` missed them:
+  Pressure Surge hurt players fighting in the Pit and their drops were "eaten". `Market.dry(x, y, z)` (Bubble + Pit + lower
+  car) is what Ocean checks now. Dying somewhere dry respawns you in front of the Black Market (`Town.plotSpawn`), not at
+  the surface entry. `MarketGuard`: without `faultlinedeep.market` (op) nobody breaks the dome's shell or a gatehouse (one
+  hole floods the whole town), and in the plot / Pit / lift nobody breaks, places, empties buckets or uses anything but
+  doors, buttons, gates, the bell, the lectern and the ender chest (the tier wall's shulker boxes are safe); explosions
+  and pistons skip all of it; `market.protect` (true). Tested (`DeepTest`).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

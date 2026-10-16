@@ -149,7 +149,7 @@ final class Ocean implements Listener {
         Player p = e.getEntity();
         if (!inDeep(p) || e.getKeepInventory()) return;
         Location died = p.getLocation();
-        if (Town.inside(died.getX(), died.getY(), died.getZ())) return; // in the bubble's dry air: your things just drop
+        if (Market.dry(died.getX(), died.getY(), died.getZ())) return; // the Bubble / the Pit: dry air, your things just drop
         List<ItemStack> drops = new ArrayList<>(e.getDrops());
         e.getDrops().clear();
         Location at = p.getLocation();
@@ -204,6 +204,12 @@ final class Ocean implements Listener {
         if (pl.world == null || !p.getWorld().equals(pl.world)) return;
         if (e.isBedSpawn() || e.isAnchorSpawn()) return;
         if (!pl.getConfig().getString("death.respawn", "entry").equalsIgnoreCase("entry")) return;
+        Location died = p.getLocation(); // (still where they died)
+        if (Market.dry(died.getX(), died.getY(), died.getZ())) { // a fight in the Pit, or a fall in the town: back in front of the Black Market
+            int[] at = Town.plotSpawn();
+            e.setRespawnLocation(new Location(pl.world, at[0] + 0.5, at[1], at[2] + 0.5, 180, 0));
+            return;
+        }
         e.setRespawnLocation(new Location(pl.world, 0.5, DeepGenerator.SEA, 0.5));
     }
 
@@ -276,7 +282,7 @@ final class Ocean implements Listener {
             double y = p.getLocation().getY();
             if (y >= below) continue;
             Location at = p.getLocation();
-            if (Town.inside(at.getX(), at.getY(), at.getZ())) continue; // the bubble holds the deep back
+            if (Market.dry(at.getX(), at.getY(), at.getZ())) continue; // the Bubble and the Pit hold the deep back
             if (p.hasPotionEffect(PotionEffectType.CONDUIT_POWER) || suit(p)) {
                 if (ticks % 200 == 0) p.sendActionBar(Component.text("Your suit holds against the pressure.", NamedTextColor.DARK_AQUA));
                 continue;

@@ -24,6 +24,14 @@ final class Market {
     static final int AX0 = 661, AX1 = 693, AZ0 = -996, AZ1 = -961, AY0 = -60, AY1 = -52;
     static final int PX0 = 667, PX1 = 687, PZ0 = -990, PZ1 = -967;          // the pit inside its fence
 
+    /** Dry air the deep can't reach: the Bubble, the Pit, the lift's lower car. */
+    static boolean dry(double x, double y, double z) {
+        if (Town.inside(x, y, z)) return true;
+        boolean pit = x >= AX0 && x < AX1 + 1 && z >= AZ0 && z < AZ1 + 1 && y >= AY0 - 0.5 && y < AY1 + 1;
+        boolean car = x >= CAR_X0 - 1 && x < CAR_X1 + 1 && z >= CAR_Z0 && z < CAR_Z1 + 1 && y >= DOWN_FLOOR + 0.5 && y < DOWN_FLOOR + 4;
+        return pit || car;
+    }
+
     static final String[] TIER_COLOR = {"white", "light_gray", "yellow", "lime", "cyan", "blue", "purple", "black"};
 
     static void paint(Paint p) {

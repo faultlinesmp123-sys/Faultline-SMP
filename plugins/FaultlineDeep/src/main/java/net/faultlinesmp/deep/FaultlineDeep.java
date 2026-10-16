@@ -47,7 +47,8 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(mobs, this);
         getServer().getPluginManager().registerEvents(journey, this);
         getServer().getPluginManager().registerEvents(ocean, this);
-        getServer().getPluginManager().registerEvents(new Elevator(this), this); // the Black Market's lift down to the Pit
+        getServer().getPluginManager().registerEvents(new Elevator(this), this);
+        getServer().getPluginManager().registerEvents(new MarketGuard(this), this); // no flooding the Bubble, no robbing the market // the Black Market's lift down to the Pit
         getServer().getPluginManager().registerEvents(this, this);
         Bukkit.getScheduler().runTask(this, journey::spawnLucki);
     }

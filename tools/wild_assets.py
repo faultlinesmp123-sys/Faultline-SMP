@@ -1309,68 +1309,284 @@ CO_SKIN, CO_HAIR, CO_HAIR_HI, CO_TAIL, CO_TAIL_D, CO_TAIL_L = (176, 222, 196), (
 CO_GOLD, CO_FIN, CO_LIP, CO_CORAL = (238, 196, 76), (130, 230, 214), (200, 60, 96), (255, 120, 110)
 
 
+def toon(c, edge=None, shade=12):
+    """Cuphead style: a flat colour, a touch darker toward the bottom (no outline: rounded() overlaps two boxes, and an
+    outline on both would cross the middle of each face)."""
+    e = edge or _c(c, -95)
+    def f(reg, face, rng):
+        h, w = reg.shape[:2]
+        for y in range(h):
+            col = _c(c, -shade * (y / max(1, h - 1)) if face not in ("up", "down") else (6 if face == "up" else -shade * 1.5))
+            reg[y, :, :3] = col
+        reg[:, :, 3] = 255
+        if face not in ("up", "down") and h > 6: reg[-1, :, :3] = _c(c, -40)   # a soft shadow line at the bottom only
+    return f
+
+
+def curl(c, line, spot):
+    """A rolled tentacle curl seen end-on: a spiral on its front/back, stripes and pink suckers round it."""
+    def f(reg, face, rng):
+        h, w = reg.shape[:2]
+        reg[:, :, 3] = 255
+        cy, cx = (h - 1) / 2, (w - 1) / 2
+        for y in range(h):
+            for x in range(w):
+                col = c
+                if face in ("east", "west"):
+                    d = math.hypot(y - cy, x - cx) / max(1, min(h, w) / 2)
+                    a = math.atan2(y - cy, x - cx) / (2 * math.pi)
+                    if int(d * 3 + a * 1.0) % 2 == 0 and d < 1: col = _c(c, -30)
+                    if d > 0.92: col = line
+                else:
+                    if y == 0 or y == h - 1: col = line
+                    elif rng.random() < 0.09: col = spot
+                reg[y, x, :3] = col
+    return f
+
+
+def button(c, line):
+    """A bun with a button's X on its face (Cala Maria's hair buns)."""
+    def f(reg, face, rng):
+        h, w = reg.shape[:2]
+        reg[:, :, 3] = 255
+        for y in range(h):
+            for x in range(w):
+                col = _c(c, -10 * (y / max(1, h - 1)))
+                if face in ("east", "west", "north", "south") and h > 4 and w > 4:
+                    m = min(h, w)
+                    yy, xx = y - (h - m) / 2, x - (w - m) / 2
+                    if 0 <= yy < m and 0 <= xx < m:
+                        d = math.hypot(yy - (m - 1) / 2, xx - (m - 1) / 2) / (m / 2)
+                        if 0.62 < d < 0.8: col = line
+                        if d < 0.55 and (abs(yy - xx) < 0.8 or abs(yy + xx - (m - 1)) < 0.8): col = line
+                if y == 0 or y == h - 1 or x == 0 or x == w - 1: col = _c(c, -80)
+                reg[y, x, :3] = col
+    return f
+
+
+def shell_paint(c, ridge):
+    """A scallop shell: ribs fanning up, a darker rim."""
+    def f(reg, face, rng):
+        h, w = reg.shape[:2]
+        reg[:, :, 3] = 255
+        for y in range(h):
+            for x in range(w):
+                col = _c(c, 10 - 25 * (y / max(1, h - 1)))
+                if face in ("east", "west", "north", "south") and x % 3 == 1: col = ridge
+                if y == 0 or y == h - 1 or x == 0 or x == w - 1: col = _c(ridge, -50)
+                reg[y, x, :3] = col
+    return f
+
+
+def fish_tail(c, mark, skin_c=None, scallop=0):
+    """A mermaid tail: little U-shaped scale marks; with skin_c, the top rows are her skin in scallops over the green."""
+    def f(reg, face, rng):
+        h, w = reg.shape[:2]
+        reg[:, :, 3] = 255
+        for y in range(h):
+            for x in range(w):
+                col = _c(c, -18 * (y / max(1, h - 1)) if face not in ("up", "down") else 0)
+                if face not in ("up", "down") and (y % 4 == 3) and (x + (y // 4) * 2) % 4 in (1, 2): col = mark
+                if skin_c and face not in ("up", "down"):
+                    edge = scallop + (1.5 if (x % 4) in (1, 2) else 0)
+                    if y < edge: col = skin_c
+                    elif y < edge + 1: col = _c(skin_c, -90)
+                if skin_c and face == "up": col = skin_c
+                if face not in ("up", "down") and (x == 0 or x == w - 1): col = _c(c, -90)
+                reg[y, x, :3] = col
+    return f
+
+
+def snake_paint(c, belly, line):
+    """Snake hair: purple scales in bands, a pale belly stripe, dark outlines."""
+    def f(reg, face, rng):
+        h, w = reg.shape[:2]
+        reg[:, :, 3] = 255
+        for y in range(h):
+            for x in range(w):
+                col = _c(c, -12 * (y / max(1, h - 1)))
+                if face == "down": col = belly
+                elif (x + y) % 5 == 0: col = _c(c, -28)
+                if y == 0 or y == h - 1 or x == 0 or x == w - 1: col = line
+                reg[y, x, :3] = col
+    return f
+
+
+def leaf_paint(c, vein):
+    def f(reg, face, rng):
+        h, w = reg.shape[:2]
+        reg[:, :, 3] = 255
+        for y in range(h):
+            for x in range(w):
+                col = _c(c, -15 * (y / max(1, h - 1)))
+                if abs(x - (w - 1) / 2) < 0.6 or (y + abs(x - w // 2)) % 4 == 0: col = vein
+                if y == h - 1 or x == 0 or x == w - 1: col = _c(vein, -40)
+                reg[y, x, :3] = col
+    return f
+
+
+# CORALIA = Cala Maria: lavender skin, purple octopus-curl hair with two button buns, mint eyes under green eyeshadow, pink
+# lips, a blue scallop-shell top and a green tail; phase 3 she turns into her MEDUSA form (green skin, a nest of purple
+# snakes, yellow eyes, a mouth full of fangs, a leafy top, claws). The *_medusa parts are swapped in at phase 3.
+CM_SKIN, CM_HAIR, CM_CURL, CM_SPOT, CM_LINE = (242, 228, 250), (152, 104, 200), (204, 150, 232), (244, 158, 206), (64, 30, 82)
+CM_IRIS, CM_SHADOW, CM_LIP, CM_BRA, CM_TAIL, CM_TAIL_M = (150, 226, 206), (64, 186, 146), (240, 156, 196), (150, 212, 246), (38, 170, 140), (22, 118, 96)
+MD_SKIN, MD_EYE, MD_SNAKE, MD_BELLY, MD_LEAF = (196, 234, 204), (250, 226, 64), (150, 100, 202), (214, 176, 238), (70, 156, 84)
+
+
+def _cm_face(head, sk, line, iris, shadow, brow, skin_c=None):
+    """The shared face: a big round cartoon head with huge eyes."""
+    rounded(head, -0.3, 0.0, -0.3, 0.32, 0.7, 0.3, sk, 0.12)
+    head.add(-0.12, -0.05, -0.17, 0.26, 0.08, 0.17, sk)                       # the chin
+    for s in (-1, 1):
+        z0, z1 = sorted((s * 0.03, s * 0.23))
+        head.add(0.31, 0.27, z0, 0.355, 0.53, z1, eye_paint((252, 252, 252), iris, (18, 16, 26), slit=iris == MD_EYE))   # big eyes
+        head.add(0.31, 0.52, z0, 0.36, 0.565, z1, solid(shadow, 3))           # eyeshadow
+        a0, a1 = sorted((s * 0.215, s * 0.275))
+        head.add(0.32, 0.5, a0, 0.38, 0.535, a1, solid(line, 1))              # lashes flicking out
+        b0, b1 = sorted((s * 0.2, s * 0.25))
+        head.add(0.32, 0.55, b0, 0.38, 0.58, b1, solid(line, 1))
+        i0, i1 = sorted((s * 0.04, s * 0.12))
+        o0, o1 = sorted((s * 0.12, s * 0.21))
+        head.add(0.33, 0.585, i0, 0.37, 0.615, i1, solid(brow, 2))           # angry brows (low inside, high outside)
+        head.add(0.33, 0.615, o0, 0.37, 0.645, o1, solid(brow, 2))
+    head.add(0.32, 0.22, -0.025, 0.37, 0.27, 0.025, solid(_c(skin_c or CM_SKIN, -25), 2))   # the little nose
+
+
 def coralia():
-    """Waist = origin; the tail hangs down and back to a wide fan fin; the torso up to the neck (y 1.25); arms hang from
-    the shoulders (0, 1.0, +-0.55)."""
-    sk = skin(CO_SKIN)
-    tl = scales_grad = aq_scales(CO_TAIL, CO_TAIL_L, (200, 240, 220), CO_TAIL_D)
-    gold, hairp = solid(CO_GOLD, 6), hair(CO_HAIR, CO_HAIR_HI)
-    fin = membrane(CO_FIN, (70, 170, 160))
-    tail = Part("coralia_tail", 10, 256)
-    rounded(tail, -0.44, -0.95, -0.5, 0.44, 0.1, 0.5, tl, 0.16)               # hips
-    rounded(tail, -0.7, -1.85, -0.43, 0.25, -0.85, 0.43, tl, 0.14)
-    rounded(tail, -1.3, -2.55, -0.34, -0.4, -1.75, 0.34, tl, 0.12)
-    rounded(tail, -1.85, -3.0, -0.26, -1.15, -2.4, 0.26, tl, 0.1)
-    tail.add(0.15, -1.8, -0.3, 0.27, -0.95, 0.3, solid(CO_TAIL_L, 5))         # pale belly scales
+    """Waist = origin; the tail hangs down and back to a fan fin; the torso up to the neck (y 1.25); arms hang from
+    the shoulders (0, 1.0, +-0.55). Phase 3 parts (*_medusa) share these joints."""
+    sk, line = toon(CM_SKIN, CM_LINE), CM_LINE
+    tl = fish_tail(CM_TAIL, CM_TAIL_M)
+    tail = Part("coralia_tail", 12, 256)
+    rounded(tail, -0.46, -0.95, -0.52, 0.46, 0.1, 0.52, fish_tail(CM_TAIL, CM_TAIL_M, CM_SKIN, 2.5), 0.18)   # round hips, her skin in scallops on top
+    rounded(tail, -0.72, -1.85, -0.44, 0.26, -0.85, 0.44, tl, 0.16)
+    rounded(tail, -1.3, -2.55, -0.34, -0.4, -1.75, 0.34, tl, 0.13)
+    rounded(tail, -1.85, -3.0, -0.25, -1.15, -2.4, 0.25, tl, 0.1)
+    for s in (-1, 1):                                                         # skin scallops hanging over the green
+        for k in range(-3, 4):
+            z0, z1 = sorted((k * 0.13 - 0.05, k * 0.13 + 0.05))
+            tail.add(0.46, -0.12 - (0.04 if k % 2 else 0), z0, 0.49, 0.06, z1, toon(CM_SKIN, CM_LINE, 4))
+            a0, a1 = sorted((s * 0.52, s * 0.55))
+            tail.add(k * 0.12 - 0.05, -0.12 - (0.04 if k % 2 else 0), a0, k * 0.12 + 0.05, 0.06, a1, toon(CM_SKIN, CM_LINE, 4))
     tail.bone("fin", (-1.9, -2.8, 0))
-    for (x0, y0, x1, y1) in ((-3.2, -3.9, -1.8, -2.6), (-3.0, -2.6, -1.9, -1.7), (-3.6, -4.4, -2.9, -3.5), (-3.5, -1.8, -2.8, -1.1)):
-        tail.add(x0, y0, -0.07, x1, y1, 0.07, fin)                           # the fan fin, upright
+    fin = toon(_c(CM_TAIL, 25), CM_TAIL_M)
+    for (x0, y0, x1, y1) in ((-3.1, -3.8, -1.8, -2.6), (-2.9, -2.6, -1.9, -1.8), (-3.5, -4.3, -2.8, -3.5), (-3.4, -1.9, -2.7, -1.2)):
+        tail.add(x0, y0, -0.07, x1, y1, 0.07, fin)
     for i in range(4):
-        tail.add(-3.4 + i * 0.25, -4.1 + i * 0.6, -0.09, -1.9, -3.9 + i * 0.6, 0.09, solid((90, 200, 190), 3))   # fin rays
+        tail.add(-3.3 + i * 0.25, -4.0 + i * 0.6, -0.09, -1.9, -3.85 + i * 0.6, 0.09, solid(CM_TAIL_M, 3))
     tail.bone(None)
-    tail.add(-0.48, -0.15, -0.54, 0.48, 0.1, 0.54, gold)                      # the shell belt
-    for z in (-0.3, 0.0, 0.3): tail.add(0.44, -0.2, z - 0.1, 0.56, 0.05, z + 0.1, solid(CO_CORAL, 4))   # little shells on it
-    for s in (-1, 1):
-        tail.add(-0.35, -1.5, s * 0.4, 0.1, -1.0, s * 0.75, fin)            # side fins
-        tail.add(-0.9, -2.3, s * 0.3, -0.5, -1.9, s * 0.6, fin)
     tail.anim("fin", "rot", (0, 0, 14), 1.8)
-    torso = Part("coralia_torso", 10, 128)
-    rounded(torso, -0.28, 0.05, -0.38, 0.28, 0.55, 0.38, sk, 0.12)            # waist
-    rounded(torso, -0.32, 0.5, -0.46, 0.32, 1.05, 0.46, sk, 0.12)             # chest
-    torso.add(-0.34, 0.98, -0.62, 0.3, 1.16, 0.62, skin(_c(CO_SKIN, -8)))     # shoulders
+
+    def torso_part(name, skin_c, top_paint, leafy):
+        t = Part(name, 20, 256)
+        skp = toon(skin_c, CM_LINE)
+        rounded(t, -0.26, 0.04, -0.34, 0.26, 0.55, 0.34, skp, 0.12)          # a slim waist
+        rounded(t, -0.3, 0.5, -0.42, 0.3, 1.02, 0.42, skp, 0.13)             # chest
+        t.add(-0.3, 0.96, -0.56, 0.26, 1.12, 0.56, skp)                       # shoulders
+        t.add(-0.11, 1.08, -0.13, 0.11, 1.3, 0.13, skp)                       # neck
+        t.add(0.255, 0.26, -0.02, 0.275, 0.3, 0.02, solid(_c(skin_c, -70), 1))   # navel
+        for s in (-1, 1):
+            z0, z1 = sorted((s * 0.03, s * 0.33))
+            if leafy:
+                t.add(0.27, 0.6, z0, 0.42, 0.86, z1, top_paint)               # leaves
+                for k in range(3):
+                    q0, q1 = sorted((s * (0.06 + k * 0.1), s * (0.11 + k * 0.1)))
+                    t.add(0.3, 0.86, q0, 0.38, 0.95 - 0.03 * (k % 2), q1, top_paint)   # ragged leaf tips
+            else:
+                t.add(0.27, 0.6, z0, 0.44, 0.86, z1, top_paint)               # a scallop shell
+                q0, q1 = sorted((s * 0.08, s * 0.28))
+                t.add(0.3, 0.86, q0, 0.41, 0.9, q1, top_paint)                # its rounded top
+        t.add(-0.31, 0.7, -0.43, 0.27, 0.76, 0.43, top_paint)                 # the band round her back
+        for k in range(3):                                                    # old scars on her side
+            t.add(0.0 + k * 0.06, 0.62 + k * 0.07, 0.42, 0.06 + k * 0.06, 0.65 + k * 0.07, 0.43, solid((206, 120, 164), 2))
+        return t
+
+    torso = torso_part("coralia_torso", CM_SKIN, shell_paint(CM_BRA, (110, 172, 226)), False)
+    torso_md = torso_part("coralia_torso_medusa", MD_SKIN, leaf_paint(MD_LEAF, (40, 110, 56)), True)
+
+    # ---- the mermaid's head
+    head = Part("coralia_head", 32, 512)
+    _cm_face(head, sk, line, CM_IRIS, CM_SHADOW, (96, 50, 126))
+    head.add(0.32, 0.12, -0.075, 0.39, 0.21, 0.075, toon(CM_LIP, (170, 70, 120), 4))   # pouty pink lips
+    head.add(0.385, 0.158, -0.05, 0.395, 0.17, 0.05, solid((170, 70, 120), 1))
+    hp = toon(CM_HAIR, CM_LINE, 10)
+    head.add(0.14, 0.64, -0.31, 0.34, 0.8, 0.31, hp)                          # the fringe swept across
+    rounded(head, -0.38, 0.5, -0.37, 0.18, 0.88, 0.37, hp, 0.14)              # the crown
+    head.add(-0.42, 0.05, -0.36, -0.24, 0.8, 0.36, hp)                        # the back of the bob
     for s in (-1, 1):
-        torso.add(0.26, 0.62, s * 0.06, 0.44, 0.88, s * 0.36, gold)          # the shell top
-        torso.add(0.42, 0.7, s * 0.18 - 0.05, 0.46, 0.8, s * 0.18 + 0.05, glow((250, 250, 255)))   # a pearl on each
-    torso.add(-0.12, 1.1, -0.15, 0.12, 1.3, 0.15, sk)                         # neck
-    torso.add(0.1, 1.05, -0.2, 0.18, 1.12, 0.2, solid(CO_GOLD, 4))            # a necklace
-    head = Part("coralia_head", 10, 256)
-    rounded(head, -0.32, 0.05, -0.3, 0.34, 0.75, 0.3, sk, 0.1)
+        z0, z1 = sorted((s * 0.29, s * 0.39))
+        head.add(-0.36, 0.06, z0, 0.2, 0.74, z1, hp)                          # the sides of the bob, to the jaw
+        f0, f1 = sorted((s * 0.36, s * 0.46))
+        head.add(-0.3, -0.02, f0, 0.16, 0.1, f1, hp)                          # flicking out at the ends
+    cp = curl(CM_CURL, CM_LINE, CM_SPOT)
+    for k, z in enumerate((-0.3, -0.1, 0.1, 0.3)):                            # a row of octopus-tentacle curls on top
+        y0 = 0.8 + (0.04 if k % 2 else 0)
+        head.add(-0.28, y0, z - 0.11, 0.28, y0 + 0.24, z + 0.11, cp)         # a roll seen end-on from the front
+        for (dx, dy) in ((0.05, 0.24), (-0.12, 0.25), (0.2, 0.2)):            # pink suckers standing off them
+            head.add(dx - 0.025, y0 + dy - 0.01, z - 0.025, dx + 0.025, y0 + dy + 0.04, z + 0.025, solid(CM_SPOT, 2))
+    head.add(-0.26, 0.82, -0.47, 0.18, 0.98, -0.37, cp)                       # one more curl dropping down at the side
+    bp = button(CM_HAIR, CM_LINE)
+    rounded(head, -0.36, 0.95, -0.46, 0.04, 1.33, -0.08, bp, 0.12)            # the big bun with its button X
+    rounded(head, -0.42, 0.92, 0.12, -0.08, 1.22, 0.44, bp, 0.1)              # the smaller one
+
+    # ---- the Medusa's head
+    hm = Part("coralia_head_medusa", 32, 512)
+    msk = toon(MD_SKIN, CM_LINE)
+    _cm_face(hm, msk, line, MD_EYE, (90, 170, 110), (40, 60, 40), MD_SKIN)
+    hm.add(0.315, 0.08, -0.17, 0.35, 0.23, 0.17, solid((60, 18, 40), 2))      # a wide grin
+    for k in range(7):                                                        # fangs, top and bottom
+        z = -0.15 + k * 0.05
+        hm.add(0.34, 0.18, z - 0.018, 0.37, 0.23, z + 0.018, solid((250, 250, 245), 2))
+        hm.add(0.34, 0.08, z - 0.018 + 0.025, 0.37, 0.125, z + 0.018 + 0.025, solid((250, 250, 245), 2))
+    hm.add(0.34, 0.06, -0.03, 0.4, 0.09, 0.03, solid((110, 200, 90), 2))      # a drip of green drool
+    sp = snake_paint(MD_SNAKE, MD_BELLY, CM_LINE)
+    rounded(hm, -0.4, 0.48, -0.4, 0.22, 0.9, 0.4, sp, 0.14)                   # the nest of coils
     for s in (-1, 1):
-        head.add(0.33, 0.36, s * 0.07, 0.36, 0.54, s * 0.22, eye_paint((250, 250, 250), (220, 90, 170), (40, 20, 40)))   # big eyes
-        head.add(0.34, 0.55, s * 0.06, 0.37, 0.58, s * 0.24, solid((30, 20, 30), 2))   # lashes
-        head.add(0.34, 0.6, s * 0.08, 0.37, 0.63, s * 0.2, solid(CO_HAIR, 3))          # brows
-        head.add(-0.1, 0.25, s * 0.3, 0.12, 0.55, s * 0.42, fin)                        # fin ears
-    head.add(0.34, 0.3, -0.03, 0.39, 0.38, 0.03, skin(_c(CO_SKIN, -20)))       # nose
-    head.add(0.33, 0.16, -0.09, 0.37, 0.24, 0.09, solid(CO_LIP, 3))           # lips
-    head.add(-0.5, 0.55, -0.44, 0.24, 1.08, 0.44, hairp)                      # the great hair
-    head.add(-0.85, 0.3, -0.5, -0.25, 1.15, 0.5, hairp)
-    head.add(-1.2, -0.6, -0.45, -0.5, 0.95, 0.45, hairp)                      # down her back
-    head.add(-1.5, -1.3, -0.35, -1.0, 0.0, 0.35, hairp)
+        z0, z1 = sorted((s * 0.3, s * 0.42))
+        hm.add(-0.36, 0.1, z0, 0.12, 0.7, z1, sp)
+    hm.add(-0.44, 0.1, -0.36, -0.26, 0.82, 0.36, sp)
+    for k, z in enumerate((-0.28, 0.0, 0.28)):                                # coils looping over the top
+        hm.add(-0.3, 0.86, z - 0.12, 0.2, 1.08 + 0.04 * (k % 2), z + 0.12, sp)
+
+    def snake_head(part, x, y, z, dx=1.0, dz=0.0, big=1.0):
+        """A snake's head pointing (dx, dz) in the y plane: yellow eyes on top."""
+        L, W, H = 0.22 * big, 0.15 * big, 0.12 * big
+        hx, hz = L / 2 * dx + W / 2 * abs(dz), L / 2 * abs(dz) + W / 2 * abs(dx)
+        part.add(x - hx, y, z - hz, x + hx, y + H, z + hz, sp)
+        for s in (-1, 1):
+            ex, ez = x + dx * L * 0.22 - dz * s * W * 0.32, z + dz * L * 0.22 + dx * s * W * 0.32
+            part.add(ex - 0.025 * big, y + H - 0.01, ez - 0.025 * big, ex + 0.025 * big, y + H + 0.04 * big, ez + 0.025 * big, glow(MD_EYE))
+
+    snake_head(hm, 0.24, 1.0, -0.3); snake_head(hm, 0.26, 1.06, 0.02); snake_head(hm, 0.22, 0.98, 0.32)
+    snake_head(hm, 0.0, 0.62, -0.5, 0.0, -1.0); snake_head(hm, 0.0, 0.58, 0.5, 0.0, 1.0)
+    # the big one rearing up on the left, jaws wide, tongue out
+    for i, (x, y) in enumerate(((-0.22, 1.0), (-0.2, 1.16), (-0.12, 1.32), (0.0, 1.46), (0.14, 1.56))):
+        hm.add(x - 0.08, y, -0.4, x + 0.08, y + 0.18, -0.24, sp)
+    hm.add(0.18, 1.62, -0.42, 0.5, 1.76, -0.22, sp)                           # upper jaw
+    hm.add(0.18, 1.46, -0.4, 0.46, 1.54, -0.24, sp)                           # lower jaw
+    hm.add(0.2, 1.54, -0.4, 0.44, 1.62, -0.24, solid((150, 30, 70), 3))       # inside the mouth
     for s in (-1, 1):
-        head.add(-0.4, -0.3, s * 0.32, 0.05, 0.85, s * 0.5, hairp)          # side locks
-        head.add(-0.25, -0.75, s * 0.36, 0.05, -0.25, s * 0.48, hairp)
-    for i, z in enumerate((-0.32, -0.16, 0.0, 0.16, 0.32)):                   # a crown of coral
-        head.add(-0.12, 1.05, z - 0.05, 0.12, 1.4 + (0.2 if i == 2 else 0.08 * (i % 2)), z + 0.05, solid(CO_CORAL, 4))
-    head.add(-0.12, 1.02, -0.42, 0.12, 1.12, 0.42, gold)
-    head.add(0.0, 1.25, -0.06, 0.15, 1.42, 0.06, glow((255, 230, 120)))       # a starfish jewel
-    arm = Part("coralia_arm", 10, 64)
-    rounded(arm, -0.13, -0.6, -0.13, 0.13, 0.05, 0.13, sk, 0.05)
-    rounded(arm, -0.11, -1.15, -0.11, 0.11, -0.55, 0.11, sk, 0.04)
-    arm.add(-0.12, -1.35, -0.13, 0.14, -1.12, 0.13, skin(_c(CO_SKIN, -10)))   # hand
-    for z in (-0.09, -0.03, 0.03, 0.09): arm.add(0.0, -1.55, z - 0.025, 0.06, -1.33, z + 0.025, sk)   # fingers
-    arm.add(-0.14, -0.9, -0.14, 0.14, -0.8, 0.14, gold)                       # bracelet
-    arm.add(-0.15, -0.05, -0.15, 0.15, 0.08, 0.15, solid(CO_GOLD, 4))         # shoulder band
-    return [tail, torso, head, arm]
+        hm.add(0.4, 1.56, -0.32 + s * 0.06 - 0.015, 0.44, 1.62, -0.32 + s * 0.06 + 0.015, solid((255, 255, 250), 1))   # fangs
+        hm.add(0.3, 1.76, -0.32 + s * 0.06 - 0.03, 0.36, 1.81, -0.32 + s * 0.06 + 0.03, glow(MD_EYE))                  # eyes
+    hm.add(0.44, 1.55, -0.335, 0.66, 1.57, -0.305, solid((240, 110, 150), 2)) # the forked tongue
+    hm.add(0.64, 1.55, -0.36, 0.72, 1.57, -0.34, solid((240, 110, 150), 2))
+    hm.add(0.64, 1.55, -0.3, 0.72, 1.57, -0.28, solid((240, 110, 150), 2))
+
+    def arm_part(name, skin_c, claws):
+        a = Part(name, 16, 128)
+        skp = toon(skin_c, CM_LINE, 8)
+        rounded(a, -0.11, -0.6, -0.11, 0.11, 0.05, 0.11, skp, 0.04)
+        rounded(a, -0.09, -1.12, -0.09, 0.09, -0.55, 0.09, skp, 0.03)
+        a.add(-0.1, -1.3, -0.11, 0.12, -1.1, 0.11, skp)                        # hand
+        for z in (-0.08, -0.027, 0.027, 0.08):                                 # long fingers (claws at phase 3)
+            a.add(-0.01, -1.58, z - 0.022, 0.05, -1.28, z + 0.022, skp)
+            if claws: a.add(0.0, -1.68, z - 0.018, 0.045, -1.58, z + 0.018, solid((40, 80, 50), 2))
+        a.add(0.02, -1.42, -0.15, 0.07, -1.2, -0.105, skp)                     # thumb
+        for k in range(3):                                                     # scars across the upper arm
+            a.add(-0.04 + k * 0.02, -0.28 - k * 0.08, 0.105, 0.08 + k * 0.02, -0.25 - k * 0.08, 0.115, solid((206, 120, 164), 2))
+        return a
+
+    return [tail, torso, head, arm_part("coralia_arm", CM_SKIN, False), torso_md, hm, arm_part("coralia_arm_medusa", MD_SKIN, True)]
 
 
 # ---------------------------------------------------------------- OLD INKJAW (a giant octopus)

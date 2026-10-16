@@ -430,6 +430,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             safely("Shield dash", this::dashTick);
         }, 1L, 1L);
         getServer().getScheduler().runTaskTimer(this, this::arrowTick, 2L, 2L);
+        getServer().getScheduler().runTaskTimer(this, () -> safely("Boss music", this::quietVanilla), 40L, 40L);
         getServer().getScheduler().runTaskTimer(this, this::mortimerSpawnTick, 600L, 600L);
         getServer().getScheduler().runTaskTimer(this, this::duneSpawnTick, 300L, 600L);
         getServer().getScheduler().runTaskTimer(this, this::vultureSpawnTick, 200L, 400L);
@@ -530,6 +531,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
 
     @Override
     public void onDisable() {
+        MUSIC_HEARD.clear();
         safely("shutdown: boss form", () -> { if (morph != null) endMorph(false, ChatColor.GRAY + "The server is stopping: you're yourself again."); });
         // BUG FIX: these ran in a row, so ONE error left every boss after it frozen in the world
         // (and still glowing). Each runs on its own now, and a final sweep removes anything left.
@@ -1742,6 +1744,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 if (until == null || now >= until - 150) {
                     p.stopSound(SoundCategory.MUSIC); // pause vanilla's background track
                     p.playSound(p, MUSIC, SoundCategory.RECORDS, (float) cfg("music.volume", 0.8), musicPitch);
+                    heardMusic(p, "demoneye");
                     musicUntil.put(p.getUniqueId(), now + loopMs);
                 }
             }
@@ -3314,6 +3317,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 if (until == null || now >= until - 150) {
                     p.stopSound(SoundCategory.MUSIC);
                     p.playSound(p, MUSIC, SoundCategory.RECORDS, (float) mcfg("music.volume", cfg("music.volume", 0.8)), 1f);
+                    heardMusic(p, "frostbeard");
                     musicUntil.put(p.getUniqueId(), now + loopMs);
                 }
             }
@@ -4536,6 +4540,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             if (musicStart >= 0 && listeners.add(p.getUniqueId())) {
                 p.stopSound(SoundCategory.MUSIC);
                 p.playSound(p, "faultline:kraken.music", SoundCategory.RECORDS, (float) kcfg("music.volume", 1.0), 1f);
+                heardMusic(p, "kraken");
             }
         }
 
@@ -5368,6 +5373,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 if (p.getLocation().toVector().distanceSquared(pos) > 96 * 96) continue;
                 p.stopSound(SoundCategory.MUSIC);
                 p.playSound(p, "faultline:kraken.music", SoundCategory.RECORDS, (float) kcfg("music.volume", 1.0), 1f);
+                heardMusic(p, "kraken");
                 listeners.add(p.getUniqueId());
             }
         }
@@ -6151,6 +6157,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 if (p.getLocation().toVector().distanceSquared(pos) > 96 * 96) continue;
                 p.stopSound(SoundCategory.MUSIC);
                 p.playSound(p, "faultline:jacob.music" + which, SoundCategory.RECORDS, (float) jcfg("music.volume", 1.0), 1f);
+                heardMusic(p, "jacob");
                 listeners.add(p.getUniqueId());
             }
         }
@@ -8158,6 +8165,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 if (until == null || now >= until - 150) {
                     p.stopSound(SoundCategory.MUSIC);
                     p.playSound(p, "faultline:dune.music", SoundCategory.RECORDS, (float) dcfg("music.volume", 0.8), 1f);
+                    heardMusic(p, "dune");
                     musicUntil.put(p.getUniqueId(), now + loopMs);
                 }
             }
@@ -10196,6 +10204,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 if (p.getLocation().toVector().distanceSquared(pos) > 64 * 64) continue;
                 p.stopSound(SoundCategory.MUSIC);
                 p.playSound(p, "faultline:don.music", SoundCategory.RECORDS, (float) ncfg("music.volume", 1.0), 1f);
+                heardMusic(p, "don");
                 listeners.add(p.getUniqueId());
             }
         }
@@ -10744,11 +10753,34 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
      */
     static FaultlineBosses instance;
 
+    /** Who was last given which boss's music, and in which world (every boss's music start calls heardMusic). */
+    static final Map<UUID, String[]> MUSIC_HEARD = new java.util.concurrent.ConcurrentHashMap<>();
+
+    static void heardMusic(Player p, String kind) { MUSIC_HEARD.put(p.getUniqueId(), new String[]{kind, p.getWorld().getName()}); }
+
+    /**
+     * True while this player hears a boss's music: a wild/deep boss that has them as a listener, or any other boss
+     * still out that started its music for them in the world they're in. FaultlineDeep asks this (by reflection) so the
+     * Dark Ocean's music never plays over a boss's; the vanilla background music is also kept off while it's true.
+     */
     public static boolean hearingBossMusic(UUID id) {
         FaultlineBosses pl = instance;
-        if (pl == null || pl.wild == null) return false;
-        for (Wild.Boss b : pl.wild.bosses.values()) if (b.listeners.contains(id)) return true;
-        return false;
+        if (pl == null) return false;
+        if (pl.wild != null) for (Wild.Boss b : pl.wild.bosses.values()) if (b.listeners.contains(id)) return true;
+        String[] h = MUSIC_HEARD.get(id);
+        if (h == null) return false;
+        if (Wild.KINDS.contains(h[0])) { MUSIC_HEARD.remove(id, h); return false; } // wild/deep bosses: their listener list (above) is the truth
+        Player p = Bukkit.getPlayer(id);
+        boolean live;
+        try { live = p != null && p.getWorld().getName().equals(h[1]) && pl.rushAlive(h[0]); } catch (RuntimeException e) { live = false; }
+        if (!live) MUSIC_HEARD.remove(id, h);
+        return live;
+    }
+
+    /** Every 2 s: vanilla's background music (MUSIC category) is kept off for anyone hearing a boss's music. */
+    void quietVanilla() {
+        if (MUSIC_HEARD.isEmpty() && (wild == null || wild.bosses.isEmpty())) return;
+        for (Player p : Bukkit.getOnlinePlayers()) if (hearingBossMusic(p.getUniqueId())) p.stopSound(SoundCategory.MUSIC);
     }
 
     static final List<String> MORPH_KINDS = List.of("demoneye", "frostbeard", "dune", "frostmaw", "kraken", "jacob", "don", "rocco", "grimtusk",

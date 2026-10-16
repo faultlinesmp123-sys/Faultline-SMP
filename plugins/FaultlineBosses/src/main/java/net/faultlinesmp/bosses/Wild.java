@@ -225,7 +225,9 @@ final class Wild implements Listener {
                 default -> null;
             };
         }
-        if (deep && kind.equals("leviathan")) return Leviathan.seaSpot(l, 18) != null ? null : "Only in open water.";
+        if (deep && kind.equals("leviathan")) // it swims at the surface: only for someone near it
+            return l.getY() < l.getWorld().getHighestBlockYAt(l, org.bukkit.HeightMap.WORLD_SURFACE) - 16 ? "Only near the surface (it hunts up there)."
+                    : Leviathan.seaSpot(l, 18) != null ? null : "Only in open water.";
         if (l.getWorld().getEnvironment() != World.Environment.NORMAL) return "Only in the Overworld.";
         Biome b = l.getBlock().getBiome();
         if (!pl.getConfig().getBoolean("wild.require-biome", true)) return null;
@@ -505,12 +507,14 @@ final class Wild implements Listener {
         for (Player p : new ArrayList<>(w.getPlayers())) {
             if (!survival(p) || p.isDead() || random.nextDouble() >= chance) continue;
             List<String> fit = new ArrayList<>();
-            for (String k : DeepBosses.KINDS) if (live(k) == null && whyNot(k, p) == null) fit.add(k);
-            if (live("leviathan") == null && whyNot("leviathan", p) == null) fit.add("leviathan");
+            List<String> kinds = new ArrayList<>(DeepBosses.KINDS); kinds.add("leviathan");
+            long now = System.currentTimeMillis();
+            for (String k : kinds) if (live(k) == null && now >= cooldownUntil.getOrDefault(k, 0L) && whyNot(k, p) == null) fit.add(k);
             if (fit.isEmpty()) continue;
             String kind = fit.get(random.nextInt(fit.size()));
-            p.sendMessage(COLOR.get(kind) + "" + ChatColor.ITALIC + "The water goes cold and still. Something has noticed you...");
-            summon(kind, p.getLocation(), p);
+            lastFail = null;
+            if (summon(kind, p.getLocation(), p) != null)
+                p.sendMessage(COLOR.get(kind) + "" + ChatColor.ITALIC + "The water goes cold and still. Something has noticed you...");
         }
     }
 
@@ -1124,6 +1128,7 @@ final class Wild implements Listener {
             p.stopSound(SoundCategory.MUSIC);
             p.playSound(p, track(), SoundCategory.RECORDS, (float) c("music.volume", 1.0), 1f);
             listeners.add(p.getUniqueId());
+            FaultlineBosses.heardMusic(p, kind);
         }
 
         void stopMusic() {
@@ -1138,6 +1143,13 @@ final class Wild implements Listener {
             if (ticks % 20 != 0) return;
             for (Player p : world.getPlayers())
                 if (!listeners.contains(p.getUniqueId()) && survival(p) && p.getLocation().distanceSquared(center()) < 64 * 64) listen(p);
+            // gone (another world, or swam/flew 160+ blocks off): the music stops for them, and their own world's music comes back
+            for (java.util.Iterator<UUID> it = listeners.iterator(); it.hasNext(); ) {
+                Player p = Bukkit.getPlayer(it.next());
+                if (p != null && p.getWorld().equals(world) && p.getLocation().distanceSquared(center()) < 160 * 160) continue;
+                if (p != null) p.stopSound(track(), SoundCategory.RECORDS);
+                it.remove();
+            }
         }
 
         // ---------- hitting players ----------

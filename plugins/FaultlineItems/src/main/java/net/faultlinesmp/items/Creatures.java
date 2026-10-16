@@ -211,7 +211,7 @@ final class Creatures implements Listener, CommandExecutor {
         for (Player p : Bukkit.getOnlinePlayers()) {
             if (p.getGameMode() != GameMode.SURVIVAL && p.getGameMode() != GameMode.ADVENTURE) continue;
             World w = p.getWorld();
-            if (w.getEnvironment() != World.Environment.NORMAL || Weather.isDay(w)) continue;
+            if (!FaultlineItems.surfaceWorld(w) || Weather.isDay(w)) continue;
             if (p.getLocation().getBlock().getLightFromSky() < 12) continue; // out on the surface
             if (random.nextDouble() >= cfg("skeleton-knights.chance", 0.12)) continue;
             long near = p.getNearbyEntities(64, 32, 64).stream().filter(e -> e.getScoreboardTags().contains(KNIGHT_TAG)).count();

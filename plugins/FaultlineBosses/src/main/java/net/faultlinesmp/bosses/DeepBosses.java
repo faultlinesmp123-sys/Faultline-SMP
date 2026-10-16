@@ -570,7 +570,7 @@ final class DeepBosses {
         }
 
         void holdTick() {
-            if (!held.isOnline() || held.isDead() || !survival(held)) { release(false); return; }
+            if (!held.isOnline() || held.isDead() || !survival(held) || !held.getWorld().equals(world)) { release(false); return; }
             Location mouth = pos.clone().add(dir3(yaw, pitch).multiply(2.2 * k));
             held.teleport(mouth.setDirection(pos.toVector().subtract(mouth.toVector())));
             if (ticks % 10 == 0) hit(held, c("moves.grab-per-half-second", 2.5), pos.toVector(), Guard.UNBLOCKABLE);
@@ -1014,7 +1014,7 @@ final class DeepBosses {
         }
 
         void gripTick() {
-            if (!gripped.isOnline() || gripped.isDead() || !survival(gripped)) { releaseGrip(false); return; }
+            if (!gripped.isOnline() || gripped.isDead() || !survival(gripped) || !gripped.getWorld().equals(world)) { releaseGrip(false); return; }
             Location beak = pos.clone().add(0, -1.2 * k, 0).add(dir3(yaw, 0).multiply(0.8 * k));
             Vector pull = beak.toVector().subtract(gripped.getLocation().toVector());
             Safe.vel(gripped, pull.lengthSquared() > 0.25 ? pull.normalize().multiply(0.35) : new Vector());
@@ -1292,7 +1292,7 @@ final class DeepBosses {
         }
 
         void bubbleTick() {
-            if (!trapped.isOnline() || trapped.isDead()) { popBubble(false); return; }
+            if (!trapped.isOnline() || trapped.isDead() || !trapped.getWorld().equals(world)) { popBubble(false); return; }
             Safe.vel(trapped, new Vector(0, 0.12, 0));
             if (bubbleFx != null && bubbleFx.isValid()) bubbleFx.teleport(trapped.getLocation().add(0, 1, 0));
             if (ticks % 5 == 0) world.spawnParticle(Particle.BUBBLE, trapped.getLocation().add(0, 1, 0), 6, 0.6, 0.6, 0.6, 0.02);

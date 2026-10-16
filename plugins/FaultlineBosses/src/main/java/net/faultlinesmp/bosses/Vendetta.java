@@ -640,6 +640,7 @@ final class Vendetta implements Listener {
         void listen(Player p) {
             p.stopSound(org.bukkit.SoundCategory.MUSIC);
             p.playSound(p, "faultline:rocco.music", org.bukkit.SoundCategory.RECORDS, (float) c("music.volume", 1.0), 1f);
+            FaultlineBosses.heardMusic(p, "rocco");
             listeners.add(p.getUniqueId());
         }
 

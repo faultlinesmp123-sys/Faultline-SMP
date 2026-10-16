@@ -113,7 +113,7 @@ final class Caravan implements Listener, CommandExecutor {
         List<Player> pool = new ArrayList<>();
         for (Player p : Bukkit.getOnlinePlayers()) {
             if (near != null && p != near) continue;
-            if (p.getWorld().getEnvironment() != World.Environment.NORMAL) continue;
+            if (!FaultlineItems.surfaceWorld(p.getWorld())) continue;
             if (near == null && p.getGameMode() != GameMode.SURVIVAL && p.getGameMode() != GameMode.ADVENTURE) continue;
             pool.add(p);
         }

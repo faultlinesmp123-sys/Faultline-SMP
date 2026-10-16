@@ -421,6 +421,7 @@ final class Warlord implements Listener {
         void listen(Player p) {
             p.stopSound(SoundCategory.MUSIC);
             p.playSound(p, track(), SoundCategory.RECORDS, (float) c("music.volume", 1.0), 1f);
+            FaultlineBosses.heardMusic(p, "grimtusk");
             listeners.add(p.getUniqueId());
         }
 

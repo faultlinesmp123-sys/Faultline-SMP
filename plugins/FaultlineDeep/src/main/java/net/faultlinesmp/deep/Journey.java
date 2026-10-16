@@ -235,6 +235,11 @@ final class Journey implements Listener {
         if (pl.world == null) { say(p, "The sea's not ready for you yet. (The Dark Ocean world isn't loaded.)"); return; }
         Location spot = poolSpot();
         if (spot == null) { say(p, "I don't know where to take you. (An admin sets the spot with /deep set whirlpool.)"); return; }
+        if (!spot.getWorld().isChunkLoaded(spot.getBlockX() >> 4, spot.getBlockZ() >> 4)) spot.getChunk().load();
+        if (spot.getBlock().getType() != Material.WATER && spot.getBlock().getRelative(0, -1, 0).getType() != Material.WATER) {
+            say(p, "There's no open water out there for the whirlpool. (An admin stands in the sea and runs /deep set whirlpool.)");
+            return;
+        }
         startTrip(p);
     }
 
@@ -256,7 +261,7 @@ final class Journey implements Listener {
 
     void tick() {
         ticks++;
-        if (ticks % 100 == 0) spawnLucki();
+        if (ticks % 100 == 0) { spawnLucki(); if (trip == null) boatHome(); }
         Trip tr = trip;
         if (tr == null) return;
         tr.t++;
@@ -375,6 +380,16 @@ final class Journey implements Listener {
     void endTrip() {
         trip = null;
         if (boat != null && boat.isValid()) for (Entity e : boat.getPassengers()) if (e instanceof Player p) p.leaveVehicle();
+        boatHome(); // (a rider who quit or died mid-trip left him out at the whirlpool)
+    }
+
+    /** Lucki's boat back at his spot (it ends trips there, and drifts on waves and currents while he waits). */
+    void boatHome() {
+        Location home = place("lucki");
+        if (home == null || boat == null || !boat.isValid() || !boat.getWorld().equals(home.getWorld())) return;
+        if (boat.getLocation().distanceSquared(home) < 2.25) return;
+        boat.teleport(home, TeleportFlag.EntityState.RETAIN_PASSENGERS);
+        Edition.vel(boat, new Vector());
     }
 
     // ---- Lucki's boat can't be broken, and Lucki can't be hurt or left behind

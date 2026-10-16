@@ -911,6 +911,21 @@ Notes:
   totems, shulker of invisibility potions, a god set. `/darkloot bag|rare|give|roll`. Index: chapter `deep` (20 creatures),
   6 bosses, 6 summon items, the bag, achievements Into the Dark / Tides of Ruin / Abyss Walker. Tested: `DeepTest` (scratch
   `ftest`: world, 20 creatures, Mirror, Lucki's trip, dying, events), `DeepBossTest` (bosses harness), `DarkLootTest` (items).
+- **Deep bug pass (Deep 1.0.1, Bosses 1.6.1, Items 1.2.42)**: MUSIC NEVER OVERLAPS. Every boss's music start calls
+  `FaultlineBosses.heardMusic(p, kind)` (`MUSIC_HEARD`); `hearingBossMusic(uuid)` = a wild/deep boss lists them as a
+  listener, or that other boss is still out (`rushAlive`) and they're in the world where it started. FaultlineDeep's
+  `Ocean.music()` (every 2 s) STOPS its own track while that's true and resumes after; it also stops vanilla's underwater /
+  game music keys (`Ocean.VANILLA`, its own track shares the MUSIC category) and has 4 blocks of give round y 35 (no flipping
+  between the two songs). Bosses' `quietVanilla` (every 2 s) keeps the MUSIC category off for anyone hearing boss music.
+  Wild/deep bosses stop their music for listeners who leave (other world or 160+ blocks: `musicTick`). A NEW BOSS's music
+  start must call `heardMusic` (and `rushAlive` must know its kind). Other fixes: the Abyssal Diving Suit never protected from
+  Pressure Surge (reflection on the package-private AccessoryManager needed `setAccessible`); Lucki's boat goes home when
+  a trip ends early (rider quit/died) and drifts back to his spot; Lucki refuses a whirlpool spot that isn't water; Rift
+  Warper bolts/blinks only land in sight (no teleporting into sealed bases or other caves); spawner guardians capped at
+  `mobs.vanilla.guardian-cap` 3 near a player; no spawning on Peaceful; a deep boss's grab / grip / bubble lets go of a
+  player who changed worlds; the Leviathan only deep-spawns for players near the surface (it swims up there); deep spawns
+  respect boss cooldowns and only announce a boss that really came; meteors, the Caravan, weather and Skeleton Knight
+  patrols never pick the Dark Ocean (`FaultlineItems.surfaceWorld`). Tested: `MusicTest`, `DeepBossTest`, `DeepTest`.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

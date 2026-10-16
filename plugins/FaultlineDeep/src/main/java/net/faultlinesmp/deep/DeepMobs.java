@@ -1,6 +1,7 @@
 package net.faultlinesmp.deep;
 
 import org.bukkit.Bukkit;
+import org.bukkit.Difficulty;
 import org.bukkit.ChatColor;
 import org.bukkit.Color;
 import org.bukkit.GameMode;
@@ -51,6 +52,7 @@ import org.joml.Vector3f;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -117,6 +119,8 @@ final class DeepMobs implements Listener {
     final Random random = new Random();
     final NamespacedKey eggKey;
     final Map<UUID, Beast> live = new HashMap<>();
+    /** The guardians the spawner put in the Abyss (capped near each player; vanilla doesn't count them). */
+    final Set<UUID> guardians = new HashSet<>();
     private int ticks;
 
     /** A live creature. */
@@ -453,7 +457,7 @@ final class DeepMobs implements Listener {
     }
 
     void blink(Beast m, Player t) {
-        Location to = waterNear(t.getLocation(), 3, 6);
+        Location to = waterNear(t.getEyeLocation(), 3, 6); // in sight of its target: never through a wall into a base
         if (to == null) return;
         World w = m.body.getWorld();
         w.spawnParticle(Particle.REVERSE_PORTAL, m.body.getLocation(), 30, 0.4, 0.6, 0.4, 0.05);
@@ -463,7 +467,7 @@ final class DeepMobs implements Listener {
     }
 
     void warpBolt(Beast m, Player p) {
-        Location to = waterNear(p.getLocation(), 5, 8);
+        Location to = waterNear(p.getEyeLocation(), 5, 8); // in sight: never through rock into another cave or a sealed room
         if (to == null) return;
         to.setYaw(p.getLocation().getYaw()); to.setPitch(p.getLocation().getPitch());
         p.getWorld().spawnParticle(Particle.PORTAL, p.getLocation().add(0, 1, 0), 40, 0.4, 0.8, 0.4, 0.5);
@@ -472,12 +476,18 @@ final class DeepMobs implements Listener {
         p.sendActionBar(ChatColor.LIGHT_PURPLE + "The Rift Warper's bolt throws you through the water!");
     }
 
-    /** A water block (with water above it) between min and max blocks from l. */
+    /** A water block (with water above it) between min and max blocks from l, with nothing solid between l and it. */
     Location waterNear(Location l, double min, double max) {
         for (int i = 0; i < 12; i++) {
             double a = random.nextDouble() * Math.PI * 2, d = min + random.nextDouble() * (max - min);
             Location c = l.clone().add(Math.cos(a) * d, random.nextGaussian() * 1.5, Math.sin(a) * d);
-            if (c.getBlock().getType() == Material.WATER && c.clone().add(0, 1, 0).getBlock().getType() == Material.WATER) return c;
+            if (c.getBlock().getType() != Material.WATER || c.clone().add(0, 1, 0).getBlock().getType() != Material.WATER) continue;
+            Vector dir = c.toVector().subtract(l.toVector());
+            double len = dir.length();
+            if (len < 0.1) continue;
+            var hit = l.getWorld().rayTraceBlocks(l, dir.normalize(), len, org.bukkit.FluidCollisionMode.NEVER, true);
+            if (hit != null && hit.getHitBlock() != null) continue;
+            return c;
         }
         return null;
     }
@@ -537,6 +547,8 @@ final class DeepMobs implements Listener {
         World w = pl.world;
         if (w == null || !pl.getConfig().getBoolean("mobs.enabled", true)) return;
         int cap = (int) cfg("cap", 14);
+        if (w.getDifficulty() == Difficulty.PEACEFUL) return; // the server would delete the hostile ones at once, over and over
+        guardians.removeIf(id -> { Entity g = Bukkit.getEntity(id); return g == null || !g.isValid(); });
         for (Player p : w.getPlayers()) {
             if (p.getGameMode() == GameMode.SPECTATOR) continue;
             Location l = p.getLocation();
@@ -546,7 +558,16 @@ final class DeepMobs implements Listener {
             Location at = spawnSpot(l);
             if (at == null) continue;
             DeepGenerator.Zone z = pl.zone(at);
-            if (z == DeepGenerator.Zone.ABYSS && random.nextDouble() < cfg("vanilla.guardian-chance", 0.06)) { w.spawnEntity(at, random.nextDouble() < cfg("vanilla.elder-share", 0.08) ? EntityType.ELDER_GUARDIAN : EntityType.GUARDIAN); continue; }
+            if (z == DeepGenerator.Zone.ABYSS && random.nextDouble() < cfg("vanilla.guardian-chance", 0.06)) {
+                long near = guardians.stream().map(Bukkit::getEntity).filter(g -> g != null && g.getWorld().equals(w) && g.getLocation().distanceSquared(l) < 56 * 56).count();
+                if (near < cfg("vanilla.guardian-cap", 3)) {
+                    Entity g = w.spawnEntity(at, random.nextDouble() < cfg("vanilla.elder-share", 0.08) ? EntityType.ELDER_GUARDIAN : EntityType.GUARDIAN);
+                    if (g instanceof LivingEntity le)
+                        le.setRemoveWhenFarAway(true);
+                    guardians.add(g.getUniqueId());
+                }
+                continue;
+            }
             Kind k = pick(z, at);
             if (k != null) spawn(k, at);
         }

@@ -103,7 +103,7 @@ final class Weather implements Listener, CommandExecutor, org.bukkit.command.Tab
         Bukkit.getScheduler().runTask(plugin, () -> {
             for (World w : Bukkit.getWorlds()) {
                 try {
-                    if (w.getEnvironment() != World.Environment.NORMAL || w.getName().equals("faultline_void")) continue;
+                    if (!FaultlineItems.surfaceWorld(w)) continue;
                     if (Boolean.FALSE.equals(w.getGameRuleValue(GameRule.DO_DAYLIGHT_CYCLE)) && Math.abs(w.getTime() % 24000 - 18000) <= 100) {
                         w.setGameRule(GameRule.DO_DAYLIGHT_CYCLE, true);
                         plugin.getLogger().warning("[Weather] " + w.getName() + " was stuck at midnight with the daylight cycle off (left by an old eclipse): turned the daylight cycle back on.");
@@ -141,7 +141,7 @@ final class Weather implements Listener, CommandExecutor, org.bukkit.command.Tab
         // never on top of a FaultlineEvents event (Blood Moon, fog...): one sky event at a time
         if (plugin.faultlineEvent() != null) return;
         for (World w : Bukkit.getWorlds()) {
-            if (w.getEnvironment() != World.Environment.NORMAL || w.getName().equals("faultline_void")) continue;
+            if (!FaultlineItems.surfaceWorld(w)) continue;
             long t = w.getTime();
             // AURORA: rolled once each night, as it falls
             if (on("aurora") && !active.containsKey("aurora") && t >= 13000 && t < 14500) {
@@ -156,7 +156,7 @@ final class Weather implements Listener, CommandExecutor, org.bukkit.command.Tab
                     && random.nextDouble() < cfg("eclipse.chance-per-minute", 0.003)) start("eclipse", w, null);
         }
         for (Player p : Bukkit.getOnlinePlayers()) {
-            if (!survival(p) || p.getWorld().getEnvironment() != World.Environment.NORMAL || p.getWorld().getName().equals("faultline_void")) continue;
+            if (!survival(p) || !FaultlineItems.surfaceWorld(p.getWorld())) continue;
             Biome b = p.getLocation().getBlock().getBiome();
             if (on("sandstorm") && !active.containsKey("sandstorm") && SANDS.contains(b) && random.nextDouble() < cfg("sandstorm.chance-per-minute", 0.006)) start("sandstorm", p.getWorld(), p.getLocation());
             else if (on("blizzard") && !active.containsKey("blizzard") && SNOWY.contains(b) && random.nextDouble() < cfg("blizzard.chance-per-minute", 0.006)) start("blizzard", p.getWorld(), p.getLocation());

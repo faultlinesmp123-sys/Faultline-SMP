@@ -865,6 +865,13 @@ public final class FaultlineItems extends JavaPlugin {
     private CaveTrader caveTrader;
     Meteor meteor;
     DarkLoot darkLoot;
+
+    /** An ordinary Overworld (meteors, the Caravan, weather, patrols): not the Nether/End, nor the Dark Ocean (or the old void). */
+    static boolean surfaceWorld(World w) {
+        if (w == null || w.getEnvironment() != World.Environment.NORMAL) return false;
+        String n = w.getName();
+        return !n.equals("faultline_void") && !n.equals("faultline_deep");
+    }
     Caravan caravan;
     Weather weather;
     Creatures creatures;

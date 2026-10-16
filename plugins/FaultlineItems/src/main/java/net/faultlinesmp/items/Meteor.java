@@ -179,7 +179,7 @@ final class Meteor implements Listener, CommandExecutor {
         List<Player> pool = new ArrayList<>();
         for (Player p : Bukkit.getOnlinePlayers()) {
             if (near != null && p != near) continue;
-            if (p.getWorld().getEnvironment() != World.Environment.NORMAL) continue;
+            if (!FaultlineItems.surfaceWorld(p.getWorld())) continue;
             if (near == null && p.getGameMode() != GameMode.SURVIVAL && p.getGameMode() != GameMode.ADVENTURE) continue;
             pool.add(p);
         }
@@ -253,7 +253,7 @@ final class Meteor implements Listener, CommandExecutor {
     String startAt(World w, int x, int z) {
         if (strike != null) return "A meteor is already out (/meteor stop).";
         finding = false; // an admin's spot wins over a search still running
-        if (w.getEnvironment() != World.Environment.NORMAL) return "Meteors only fall in the Overworld.";
+        if (!FaultlineItems.surfaceWorld(w)) return "Meteors only fall in the Overworld.";
         if (!w.getWorldBorder().isInside(new Location(w, x, 64, z))) return "That's outside the world border.";
         if (!w.isChunkGenerated(x >> 4, z >> 4)) return "That land hasn't been generated yet.";
         w.getChunkAt(x >> 4, z >> 4);

@@ -98,8 +98,12 @@ final class Ocean implements Listener {
         if (!pl.getConfig().getBoolean("music.enabled", true)) return;
         long now = System.currentTimeMillis();
         for (Player p : pl.world.getPlayers()) {
-            String want = p.getLocation().getY() >= cfg("music.abyss-below-y", 35) ? "sunken" : "abyss";
-            if (bossMusic(p)) { track.remove(p.getUniqueId()); continue; } // a boss's music has the floor
+            // 4 blocks of give round the line, so swimming along y 35 doesn't flip the two songs every 2 seconds
+            double y = p.getLocation().getY(), line = cfg("music.abyss-below-y", 35);
+            String cur = track.get(p.getUniqueId());
+            String want = "sunken".equals(cur) ? (y < line - 4 ? "abyss" : "sunken") : "abyss".equals(cur) ? (y > line + 4 ? "sunken" : "abyss") : (y >= line ? "sunken" : "abyss");
+            quietVanilla(p); // vanilla's own underwater / background tracks would play over ours (or over a boss's)
+            if (bossMusic(p)) { stopMusic(p); continue; } // a boss's music has the floor: ours stops, and waits
             String have = track.get(p.getUniqueId());
             double len = cfg("music." + want + "-seconds", want.equals("sunken") ? 362 : 286);
             if (want.equals(have) && now - trackAt.getOrDefault(p.getUniqueId(), 0L) < len * 1000) continue;
@@ -110,6 +114,12 @@ final class Ocean implements Listener {
             trackAt.put(p.getUniqueId(), now);
         }
     }
+
+    /** The vanilla tracks the client could start down here (ocean biomes: the underwater and the general game music). */
+    static final List<String> VANILLA = List.of("minecraft:music.under_water", "minecraft:music.game", "minecraft:music.creative",
+            "minecraft:music.overworld.deep_dark", "minecraft:music.overworld.lush_caves", "minecraft:music.overworld.dripstone_caves");
+
+    static void quietVanilla(Player p) { for (String k : VANILLA) p.stopSound(k, SoundCategory.MUSIC); }
 
     void stopMusic(Player p) {
         String have = track.remove(p.getUniqueId());
@@ -273,7 +283,10 @@ final class Ocean implements Listener {
             Object am = items.getClass().getMethod("getAccessoryManager").invoke(items);
             NamespacedKey k = NamespacedKey.fromString("faultlineitems:abyssal_diving_suit");
             for (var m : am.getClass().getMethods())
-                if (m.getName().equals("hasEquipped") && m.getParameterCount() == 2) return (boolean) m.invoke(am, p, k);
+                if (m.getName().equals("hasEquipped") && m.getParameterCount() == 2) {
+                    m.setAccessible(true); // AccessoryManager is package-private: without this every call threw (the suit never helped)
+                    return (boolean) m.invoke(am, p, k);
+                }
         } catch (Throwable ignored) { }
         return false;
     }

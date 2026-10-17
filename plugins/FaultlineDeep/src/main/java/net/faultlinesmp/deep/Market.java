@@ -26,7 +26,7 @@ final class Market {
 
     /** Dry air the deep can't reach: the Bubble, the Pit, the lift's lower car. */
     static boolean dry(double x, double y, double z) {
-        if (Town.inside(x, y, z)) return true;
+        if (Town.inside(x, y, z) || Habitat.inDome(x, y, z)) return true; // (1.9.0: players' dome bases too)
         boolean pit = x >= AX0 && x < AX1 + 1 && z >= AZ0 && z < AZ1 + 1 && y >= AY0 - 0.5 && y < AY1 + 1;
         boolean car = x >= CAR_X0 - 1 && x < CAR_X1 + 1 && z >= CAR_Z0 && z < CAR_Z1 + 1 && y >= DOWN_FLOOR + 0.5 && y < DOWN_FLOOR + 4;
         return pit || car;

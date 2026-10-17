@@ -47,6 +47,7 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
     Outer outer;
     Tides tides;
     Volcano volcano;
+    Habitat habitat;
 
     @Override
     public void onEnable() {
@@ -66,6 +67,8 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
         tides = new Tides(this);
         volcano = new Volcano(this);
         getServer().getPluginManager().registerEvents(volcano, this);
+        habitat = new Habitat(this);
+        getServer().getPluginManager().registerEvents(habitat, this);
         getServer().getPluginManager().registerEvents(outer, this);
         if (getCommand("den") != null) getCommand("den").setExecutor(rep::command);
         getServer().getPluginManager().registerEvents(mobs, this);
@@ -354,13 +357,46 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
                     default -> sender.sendMessage(ChatColor.GOLD + volcano.where() + ChatColor.YELLOW + "\n/deep volcano [where|start [x z]|here|cool|heal]");
                 }
             }
+            case "domes" -> { for (String line : habitat.list()) sender.sendMessage(ChatColor.GRAY + line); }
+            case "give" -> { // /deep give <coral|dome_small|dome_large|vault_key|fossil> [amount] [player]
+                String what = args.length > 1 ? args[1].toLowerCase() : "";
+                int n = 1; Player to = self;
+                for (int i = 2; i < args.length; i++) { Player o = Bukkit.getPlayerExact(args[i]); if (o != null) to = o; else try { n = Math.max(1, Math.min(64, Integer.parseInt(args[i]))); } catch (NumberFormatException ignored) { } }
+                ItemStack it = switch (what) {
+                    case "coral", "air_coral" -> habitat.coral(n);
+                    case "dome_small" -> habitat.kit(6);
+                    case "dome_large" -> habitat.kit(10);
+                    case "vault_key" -> outer.vaultKey(n);
+                    case "fossil" -> outer.fossil(n);
+                    default -> null;
+                };
+                if (it == null || to == null) { sender.sendMessage(ChatColor.YELLOW + "/deep give <coral|dome_small|dome_large|vault_key|fossil> [amount] [player]"); return true; }
+                Player dest = to;
+                dest.getInventory().addItem(it).values().forEach(x -> dest.getWorld().dropItemNaturally(dest.getLocation(), x));
+                sender.sendMessage(ChatColor.GREEN + "Gave " + dest.getName() + " " + what + ".");
+            }
+            case "region" -> { // /deep region <frozen|city|glass|bones> [player]
+                String r = args.length > 1 ? args[1].toLowerCase() : "";
+                Player who = args.length > 2 ? Bukkit.getPlayerExact(args[2]) : self;
+                int[] c = switch (r) {
+                    case "frozen" -> new int[]{FrozenShelf.CX, FrozenShelf.CZ + 60};
+                    case "city" -> new int[]{DrownedCity.CX, DrownedCity.CZ + 40};
+                    case "glass" -> new int[]{GlassReef.CX, GlassReef.CZ + GlassReef.PLAZA_R + 6};
+                    case "bones" -> new int[]{BoneFields.CX, BoneFields.CZ};
+                    default -> null;
+                };
+                if (c == null || who == null || world == null) { sender.sendMessage(ChatColor.YELLOW + "/deep region <frozen|city|glass|bones> [player]"); return true; }
+                int y = Math.min(DeepGenerator.SEA - 8, generator.seaFloor(world.getSeed(), c[0], c[1]) + 12);
+                who.teleport(new Location(world, c[0] + 0.5, y, c[1] + 0.5));
+                sender.sendMessage(ChatColor.GREEN + "Sent " + who.getName() + " to " + Regions.title(r) + " (" + c[0] + ", " + c[1] + ").");
+            }
             case "lucki" -> { journey.removeLucki(); journey.spawnLucki(); sender.sendMessage(ChatColor.GREEN + "Lucki is back at his spot (if it's set and loaded)."); }
             case "info", "" -> {
                 sender.sendMessage(ChatColor.DARK_AQUA + "" + ChatColor.BOLD + "The Dark Ocean " + ChatColor.GRAY + "(" + worldName() + (world == null ? ", NOT LOADED" : "") + ")");
                 sender.sendMessage(ChatColor.GRAY + "Kingdom: " + spot(journey.place("kingdom")) + "  Lucki: " + spot(journey.place("lucki")) + "  Whirlpool: " + spot(journey.poolSpot()));
                 sender.sendMessage(ChatColor.GRAY + "Creatures out: " + mobs.live.size() + "   Event: " + (ocean.event == null ? "none" : ocean.event) + "   Acid Rain: " + (acidRain.active ? "falling" : "no"));
                 if (self != null && world != null && self.getWorld().equals(world)) sender.sendMessage(ChatColor.GRAY + "You're in: " + zone(self.getLocation()));
-                sender.sendMessage(ChatColor.YELLOW + "/deep set <kingdom|lucki|whirlpool>, tp [player], town [player], sulphur [player], trench [maw] [player], spawn <mob>, egg <mob> [n] [player], event <pressure|undertow|stop>, acidrain [start|stop|goblin], den [info|tp|raid|stop|reset|rise], eclipse, redtide, frenzy, volcano, lucki");
+                sender.sendMessage(ChatColor.YELLOW + "/deep set <kingdom|lucki|whirlpool>, tp [player], town [player], sulphur [player], trench [maw] [player], spawn <mob>, egg <mob> [n] [player], event <pressure|undertow|stop>, acidrain [start|stop|goblin], den [info|tp|raid|stop|reset|rise], eclipse, redtide, frenzy, volcano, region <name>, give <item>, domes, lucki");
             }
             default -> sender.sendMessage(ChatColor.YELLOW + "/deep [info|set|tp|town|sulphur|trench|spawn|egg|event|acidrain|den|lucki]");
         }
@@ -372,7 +408,9 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         List<String> out = new ArrayList<>();
-        if (args.length == 1) out.addAll(List.of("info", "set", "tp", "town", "sulphur", "trench", "spawn", "egg", "event", "acidrain", "den", "bloom", "migration", "sub", "lucki", "eclipse", "redtide", "frenzy", "volcano"));
+        if (args.length == 1) out.addAll(List.of("info", "set", "tp", "town", "sulphur", "trench", "spawn", "egg", "event", "acidrain", "den", "bloom", "migration", "sub", "lucki", "eclipse", "redtide", "frenzy", "volcano", "domes", "give", "region"));
+        else if (args.length == 2 && args[0].equalsIgnoreCase("give")) out.addAll(List.of("coral", "dome_small", "dome_large", "vault_key", "fossil"));
+        else if (args.length == 2 && args[0].equalsIgnoreCase("region")) out.addAll(List.of("frozen", "city", "glass", "bones"));
         else if (args.length == 2 && args[0].equalsIgnoreCase("volcano")) out.addAll(List.of("where", "start", "here", "cool", "heal"));
         else if (args.length == 2 && args[0].equalsIgnoreCase("set")) out.addAll(List.of("kingdom", "lucki", "whirlpool"));
         else if (args.length == 2 && (args[0].equalsIgnoreCase("spawn") || args[0].equalsIgnoreCase("egg"))) out.addAll(DeepMobs.KINDS.keySet());

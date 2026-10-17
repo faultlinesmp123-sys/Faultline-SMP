@@ -169,3 +169,12 @@ mobs:
   cap: 10                   # creatures round each player (each is up to 10 entities with its moving bones: keep it low)
   sulphur:
     land-share: 0.4         # how often the spawner tries an island / the air over it instead of the water there
+
+# 1.9.0 living down there (Habitat.java): Air Coral (breathe near it) and Dome Kits (glass dome bases, saved in domes.yml).
+# /deep give <coral|dome_small|dome_large|vault_key|fossil>, /deep domes
+habitat:
+  coral:
+    radius: 3.5
+    refill: 60
+  domes:
+    max-per-player: 3

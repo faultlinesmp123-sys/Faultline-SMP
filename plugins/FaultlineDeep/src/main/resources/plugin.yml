@@ -1,5 +1,5 @@
 name: FaultlineDeep
-version: '1.7.1'
+version: '1.7.2'
 main: net.faultlinesmp.deep.FaultlineDeep
 api-version: '1.21'
 author: FaultlineSMP

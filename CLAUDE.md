@@ -1256,6 +1256,11 @@ Notes:
   for open water (seagrass/kelp count, `Den.swim`) and each home's spot is cached (`homeSpot`); all 16 homes checked on
   generated terrain (scratch `dtest` `DenHomes`). `/deep den where` lists every mermaid/guard: out (where, angry), dead,
   or at home waiting for someone within 90 blocks.
+- **Deep 1.7.2 (creatures look straight)**: every Dark Ocean creature was tilted. (1) Its displays were spawned at the spawn
+  location, so they kept its yaw/pitch (an egg / `/deep spawn` = your look direction) and drew the pose on top of it: now
+  spawned with no rotation, and `pose` resets any display rotation to 0 (the frame is the whole rotation). (2) The pitch came
+  from any vertical drift (idle + sinking = nose 35 degrees down): now 0 unless swimming forward (0.06+ blocks a tick), x0.6,
+  max 20. Tested (`DeepTest`).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

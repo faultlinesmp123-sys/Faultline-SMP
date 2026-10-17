@@ -286,7 +286,11 @@ final class DeepMobs implements Listener {
         if (body instanceof org.bukkit.entity.Raider rd) { rd.setCanJoinRaid(false); rd.setPatrolLeader(false); }
         if (body instanceof Zombie z2 && k.id().equals("shambler")) try { z2.setShouldBurnInDay(false); } catch (Throwable ignored) { }
         Beast mob = new Beast(k, body);
-        mob.model = w.spawn(at, ItemDisplay.class, d -> {
+        // 1.7.2: the displays are spawned with NO rotation of their own. A display keeps the yaw/pitch it was spawned with
+        // (riding doesn't change it) and draws its transformation on top of that, so a creature from an egg or /deep spawn
+        // (your look direction) was tilted by your pitch for its whole life
+        Location flat = at.clone(); flat.setYaw(0); flat.setPitch(0);
+        mob.model = w.spawn(flat, ItemDisplay.class, d -> {
             d.setItemStack(modelItem(k.id()));
             d.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.NONE);
             d.setPersistent(false);
@@ -303,7 +307,7 @@ final class DeepMobs implements Listener {
         body.addPassenger(mob.model);
         mob.bones = DeepParts.BONES.getOrDefault(k.id(), List.of());
         for (DeepParts.Bone b : mob.bones) {
-            ItemDisplay d = w.spawn(at, ItemDisplay.class, e2 -> {
+            ItemDisplay d = w.spawn(flat, ItemDisplay.class, e2 -> {
                 e2.setItemStack(modelItem(k.id() + "__" + b.name()));
                 e2.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.NONE);
                 e2.setPersistent(false);
@@ -372,9 +376,13 @@ final class DeepMobs implements Listener {
         Location l = m.body.getLocation();
         Vector v = m.body.getVelocity();
         double hs = Math.hypot(v.getX(), v.getZ());
-        float wantYaw = hs > 0.012 ? (float) Math.toDegrees(Math.atan2(-v.getX(), v.getZ())) : l.getYaw();
-        float wantPitch = UPRIGHT.contains(m.k.id()) || m.buried ? 0 : hs + Math.abs(v.getY()) > 0.02
-                ? (float) Math.max(-35, Math.min(35, Math.toDegrees(Math.atan2(-v.getY(), Math.max(hs, 1e-3))))) : 0;
+        float wantYaw = hs > 0.03 ? (float) Math.toDegrees(Math.atan2(-v.getX(), v.getZ())) : Float.isNaN(m.yaw) ? l.getYaw() : m.yaw;
+        // 1.7.2: creatures swim LEVEL. The old pitch came from any vertical drift: a mob idling while it slowly sank or
+        // bobbed (no forward speed) pointed its nose 35 degrees down (atan of the drift over ~0). Now it only tips while
+        // really swimming forward (0.06+ blocks a tick), at most 20 degrees, and eases back to level otherwise.
+        float wantPitch = 0;
+        if (!UPRIGHT.contains(m.k.id()) && !m.buried && hs > 0.06)
+            wantPitch = (float) Math.max(-20, Math.min(20, Math.toDegrees(Math.atan2(-v.getY(), hs)) * 0.6));
         if (m.k.id().equals("clam")) wantYaw = Float.isNaN(m.yaw) ? l.getYaw() : m.yaw;
         if (m.lookAt != null && m.lookAt.isValid() && m.lookAt.getWorld().equals(l.getWorld())) { // the Watcher turns its eye on you
             Vector d = m.lookAt.getLocation().toVector().subtract(l.toVector());
@@ -397,6 +405,10 @@ final class DeepMobs implements Listener {
         int gap = m.t - m.lastPose;
         m.lastPose = m.t;
         int interp = gap >= 2 && gap <= 20 ? gap : 2; // glide over exactly the time until the next pose
+        if (m.model.getLocation().getPitch() != 0 || m.model.getLocation().getYaw() != 0) { // (the frame is the whole rotation)
+            m.model.setRotation(0, 0);
+            for (ItemDisplay d : m.parts) if (d != null && d.isValid()) d.setRotation(0, 0);
+        }
         if (m.model.getInterpolationDuration() != interp) { m.model.setInterpolationDuration(interp); for (ItemDisplay d : m.parts) if (d != null && d.isValid()) d.setInterpolationDuration(interp); }
         double h = height(m);
         float s = m.k.modelScale() * (m.fused ? 1.5f : 1f);

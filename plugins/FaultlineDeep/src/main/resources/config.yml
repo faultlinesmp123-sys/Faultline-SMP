@@ -69,6 +69,57 @@ bloom:
   chance: 0.03
   minutes: 5
 
+# 1.9.0 sea events (Tides.java): the Abyssal Eclipse (the whole sea goes pitch black, Abyss creatures rise), the Red Tide
+# (the Sunlit Sea's water poisons, creatures go mad) and Feeding Frenzies (sharks swarm when something big dies).
+# /deep eclipse|redtide [stop], /deep frenzy
+tides:
+  enabled: true
+  check-minutes: 15
+  eclipse:
+    chance: 0.03
+    minutes: 5
+  red-tide:
+    chance: 0.05
+    minutes: 10
+  frenzy:
+    chance: 0.5
+    min-health: 150
+    seconds: 60
+    cooldown-seconds: 120
+
+# 1.9.0 the Undersea Volcano (Volcano.java): rises out of the open sea floor near someone in the Sunlit Sea, erupts, cools
+# into obsidian full of Ancient Debris with 3 chests, and the sea takes it back after linger-hours. /deep volcano
+volcano:
+  enabled: true
+  check-minutes: 30
+  chance: 0.10
+  min-distance: 180
+  max-distance: 350
+  minutes: 60
+  height: 46
+  base-radius: 22
+  boil-radius: 14
+  boil-damage: 2
+  bomb-damage: 6
+  cap: 8
+  debris-min: 6
+  debris-max: 10
+  linger-hours: 6
+
+# 1.9.0 the outer ring (Outer.java): the Drowned King, the Rimeback, vault keys, Ancient Fossils
+outer:
+  king:
+    wake-radius: 30
+    cooldown-minutes: 30
+  rimeback:
+    wake-radius: 50
+    cooldown-minutes: 30
+  vault:
+    rare-chance: 0.05
+    book-chance: 0.25
+  fossil:
+    mine-chance: 0.04
+
 # The Acid Rain (1.5.0): an event over the Sulphur Sea. /deep acidrain [start|stop|goblin]
 # THE MERMAID DEN (1.7.0, round 1200, 700): ten mermaids + six guards (Den.java). Kill all ten, or drink an Omen IV
 # (Bad Omen IV exactly) inside it for a raid, and Coralia rises over her throne. The dead come home after restock-minutes.

@@ -262,6 +262,7 @@ final class Ocean implements Listener {
     /** The zones that are pitch black (`darkness.zones`, default the Abyss and the crust's caves). */
     boolean darkZone(Location l) {
         if (Market.dry(l.getX(), l.getY(), l.getZ())) return false; // the Pit and the lift: lit rooms
+        if (pl.tides != null && pl.tides.eclipse()) return true; // 1.9.0: the Abyssal Eclipse darkens the whole sea
         DeepGenerator.Zone z = pl.zone(l);
         if (z == DeepGenerator.Zone.TRENCH) return true; // (1.8.0: always, whatever an older config's list says)
         return pl.getConfig().getStringList("darkness.zones").isEmpty() ? z == DeepGenerator.Zone.ABYSS || z == DeepGenerator.Zone.CAVES

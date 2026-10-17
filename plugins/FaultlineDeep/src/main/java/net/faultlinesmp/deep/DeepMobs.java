@@ -1780,6 +1780,7 @@ final class DeepMobs implements Listener {
         if (pl.rep != null) pl.rep.killed(m, killer);
         if (m.k.id().equals("greatwhale") && pl.migration != null) pl.migration.whaleKilled(killer, at);
         if (outer != null) outer.died(m, killer, at, e);
+        if (pl.tides != null) pl.tides.bigDeath(at, m.k.health()); // 1.9.0: blood in the water
         drops(m.k, e.getDrops(), killer);
         if (m.mutated) { // 1.9.0: a mutated one drops everything twice and gives double experience
             List<ItemStack> copy = new ArrayList<>();

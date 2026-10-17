@@ -119,11 +119,13 @@ final class Gear implements Listener, CommandExecutor {
     // =====================================================================================================
     //  the items
     // =====================================================================================================
-    static final List<String> IDS = new ArrayList<>(List.of("mining_helmet", "lantern_of_souls", "knight_helm", "ancient_gear_part", "ancient_core", "museum_pedestal"));
+    static final List<String> IDS = new ArrayList<>(List.of("mining_helmet", "lantern_of_souls", "knight_helm", "ancient_gear_part", "ancient_core", "museum_pedestal",
+            "dive_helmet_1", "dive_helmet_2", "dive_helmet_3"));
     static { for (String d : DISCS.keySet()) IDS.add("disc_" + d); }
 
     ItemStack item(String id) {
         if (id.startsWith("disc_")) return disc(id.substring(5));
+        if (id.startsWith("dive_helmet_")) return plugin.diveHelmets == null ? null : plugin.diveHelmets.item(DiveHelmets.tierOf(id));
         ItemStack s;
         ItemMeta m;
         switch (id) {

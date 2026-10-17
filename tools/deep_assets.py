@@ -2529,6 +2529,199 @@ def merguard():
 DEN_MOBS = [mermaid, merguard]
 
 
+# ---- the Trench (1.8.0): its own creatures, and the Great Whale of the Leviathan Migration
+def hadalsnail():
+    """A hadal snailfish: a pale pink tadpole of a fish, soft as jelly, at home at the very bottom."""
+    p = Part("hadalsnail", 32, 256)
+    sk = W.grad((246, 210, 220), (214, 168, 186), 4, (255, 236, 240), 0.05)
+    rounded(p, 0.0, -0.1, -0.09, 0.26, 0.1, 0.09, sk, 0.06)                                       # the big soft head
+    eyes(p, 0.16, 0.22, 0.02, 0.06, 0.09, (40, 30, 40), (90, 60, 80), depth=0.01)                 # tiny dark eyes
+    p.add(0.25, -0.05, -0.04, 0.27, -0.02, 0.04, solid((200, 120, 140), 2))                       # the mouth
+    for i in range(4): pair(p, 0.04 + i * 0.05, -0.06, 0.09, 0.06 + i * 0.05, 0.06, 0.092, solid((255, 225, 232), 2))   # see-through bands
+    side_bone(p, "fin", (0.06, -0.06, 0.08), [((-0.02, -0.1, 0.08, 0.1, -0.06, 0.2), finp((240, 200, 214), (255, 232, 240)))], True)
+    p.bone("t1", (0.0, 0, 0)); rounded(p, -0.26, -0.07, -0.06, 0.02, 0.07, 0.06, sk, 0.03); p.bone(None)
+    p.bone("t2", (-0.26, 0, 0))
+    p.add(-0.5, -0.04, -0.03, -0.24, 0.04, 0.03, sk)
+    p.add(-0.62, -0.07, -0.006, -0.42, 0.07, 0.006, finp((236, 196, 210), (255, 230, 238)))      # the soft tail fin
+    p.bone(None)
+    p.pivots["body"] = (0, 0, 0)
+    p.anim("t1", "rot", (0, 10, 0), 1.4).anim("t2", "rot", (0, 18, 0), 1.4, 0.2).anim("finl", "rot", (0, 0, 20), 1.0).anim("finr", "rot", (0, 0, -20), 1.0, 0.5)
+    return p
+
+
+def anglerking():
+    """The Anglerking: a great black anglerfish with a cavern of a mouth and a glowing lure. In the Trench its lure is the only light."""
+    p = Part("anglerking", 32, 512)
+    sk = W.grad((30, 26, 34), (12, 10, 16), 5, (70, 60, 80), 0.05)
+    rounded(p, -0.26, -0.22, -0.2, 0.2, 0.2, 0.2, sk, 0.09)                                        # the round body
+    p.add(-0.1, 0.18, -0.01, 0.12, 0.26, 0.01, finp((40, 34, 44), (80, 70, 90)))                  # the dorsal fin
+    eyes(p, 0.08, 0.15, 0.06, 0.12, 0.2, (20, 20, 26), (90, 200, 220), depth=0.012)               # little pale eyes
+    p.add(0.18, 0.02, -0.2, 0.32, 0.14, 0.2, sk)                                                   # the upper jaw
+    for z in (-0.17, -0.1, -0.03, 0.04, 0.11, 0.18): p.add(0.3, -0.04, z - 0.01, 0.32, 0.03, z + 0.01, TEETH)
+    p.add(0.19, 0.0, -0.18, 0.31, 0.03, 0.18, MOUTH)
+    p.bone("jaw", (0.12, -0.08, 0))
+    p.add(0.12, -0.24, -0.21, 0.36, -0.08, 0.21, sk)                                              # the jutting lower jaw
+    for z in (-0.18, -0.11, -0.04, 0.03, 0.1, 0.17): p.add(0.33, -0.1, z - 0.01, 0.35, 0.0, z + 0.01, TEETH)
+    p.add(0.14, -0.1, -0.19, 0.33, -0.08, 0.19, MOUTH)
+    p.bone(None)
+    p.bone("lure", (0.08, 0.2, 0))
+    W.tube(p, [(0.08, 0.2, 0), (0.18, 0.4, 0), (0.34, 0.46, 0), (0.46, 0.36, 0)], 0.02, 0.012, sk)  # the rod
+    p.add(0.42, 0.28, -0.05, 0.52, 0.38, 0.05, W.glow((180, 255, 230)))                           # the glowing bulb
+    p.bone(None)
+    side_bone(p, "fin", (-0.04, -0.08, 0.18), [((-0.1, -0.14, 0.18, 0.04, -0.04, 0.3), finp((40, 34, 44), (90, 80, 100)))], True)
+    p.bone("tail", (-0.26, 0, 0))
+    p.add(-0.42, -0.06, -0.05, -0.24, 0.06, 0.05, sk)
+    p.add(-0.6, -0.14, -0.01, -0.4, 0.14, 0.01, finp((36, 30, 40), (80, 70, 90)))
+    p.bone(None)
+    p.pivots["body"] = (0, 0, 0)
+    p.half = {"jaw"}
+    p.anim("jaw", "rot", (0, 0, -22), 3.2).anim("lure", "rot", (0, 6, 10), 2.2).anim("tail", "rot", (0, 14, 0), 1.6)
+    p.anim("finl", "rot", (0, 0, 20), 1.2).anim("finr", "rot", (0, 0, -20), 1.2, 0.5).anim("body", "pos", (0, 0.8, 0), 3.0)
+    return p
+
+
+def bonecrawler():
+    """A bone crawler: a crab that wears a skull for a shell and walks on legs of bone. It pins you where you stand."""
+    p = Part("bonecrawler", 32, 256)
+    bn = W.bone((222, 214, 190)) if hasattr(W, "bone") else solid((222, 214, 190), 4)
+    dark = solid((40, 34, 30), 2)
+    rounded(p, -0.2, -0.04, -0.17, 0.16, 0.16, 0.17, bn, 0.06)                                    # the skull shell
+    for s in (-1, 1): p.add(0.13, 0.04, s * 0.09 - 0.04, 0.17, 0.1, s * 0.09 + 0.04, dark)         # empty eye sockets
+    p.add(0.13, -0.02, -0.02, 0.17, 0.03, 0.02, dark)                                              # the nose hole
+    for z in (-0.08, -0.03, 0.02, 0.07): p.add(0.15, -0.05, z - 0.015, 0.18, -0.02, z + 0.015, TEETH)
+    for s in (-1, 1):
+        a, b = sorted((s * 0.05, s * 0.07))
+        p.add(0.15, 0.06, a, 0.175, 0.08, b, W.glow((120, 200, 255)))                             # pale glints deep in the sockets
+    legs = [((x - 0.015, -0.14, 0.14, x + 0.015, -0.02, 0.32), bn) for x in (0.08, 0.0, -0.08, -0.16)]
+    side_bone(p, "legs", (0.0, -0.04, 0.14), legs, True)
+    side_bone(p, "claw", (0.14, -0.02, 0.12), [((0.14, -0.06, 0.12, 0.34, 0.02, 0.18), bn), ((0.3, -0.08, 0.14, 0.4, 0.06, 0.22), bn),
+                                               ((0.38, -0.02, 0.15, 0.44, 0.04, 0.2), bn)], True)
+    p.anim("legsl", "rot", (0, 0, 14), 0.5).anim("legsr", "rot", (0, 0, -14), 0.5, 0.5)
+    p.anim("clawl", "rot", (0, 14, 0), 1.6).anim("clawr", "rot", (0, -14, 0), 1.6, 0.4)
+    return p
+
+
+def palestalker():
+    """A pale stalker: a long, eyeless, milk-white eel lined with needle teeth. You never see it until it's already coming."""
+    p = Part("palestalker", 32, 256)
+    sk = W.grad((236, 236, 228), (190, 188, 180), 4, (255, 255, 250), 0.04)
+    rounded(p, 0.14, -0.06, -0.06, 0.42, 0.07, 0.06, sk, 0.03)                                     # the blind head
+    for i in range(5): pair(p, 0.18 + i * 0.045, 0.0, 0.06, 0.2 + i * 0.045, 0.04, 0.062, solid((200, 120, 130), 2))   # gill slits
+    for z in (-0.04, 0.0, 0.04): p.add(0.4, -0.04, z - 0.008, 0.43, 0.0, z + 0.008, TEETH)
+    p.bone("jaw", (0.16, -0.05, 0))
+    p.add(0.16, -0.1, -0.05, 0.42, -0.05, 0.05, sk)
+    for z in (-0.035, 0.0, 0.035): p.add(0.39, -0.06, z - 0.008, 0.42, -0.02, z + 0.008, TEETH)
+    p.bone(None)
+    p.add(-0.06, -0.055, -0.05, 0.16, 0.06, 0.05, sk)
+    p.bone("s1", (-0.06, 0, 0)); p.add(-0.36, -0.05, -0.045, -0.04, 0.055, 0.045, sk); p.add(-0.34, 0.05, -0.006, -0.06, 0.09, 0.006, finp((220, 220, 212), (250, 250, 244))); p.bone(None)
+    p.bone("s2", (-0.36, 0, 0)); p.add(-0.64, -0.04, -0.035, -0.34, 0.045, 0.035, sk); p.add(-0.62, 0.04, -0.006, -0.36, 0.08, 0.006, finp((220, 220, 212), (250, 250, 244))); p.bone(None)
+    p.bone("s3", (-0.64, 0, 0)); p.add(-0.95, -0.025, -0.022, -0.62, 0.03, 0.022, sk); p.add(-1.0, -0.06, -0.006, -0.86, 0.06, 0.006, finp((220, 220, 212), (250, 250, 244))); p.bone(None)
+    p.half = {"jaw"}
+    p.anim("jaw", "rot", (0, 0, -20), 2.0).anim("s1", "rot", (0, 10, 0), 1.3).anim("s2", "rot", (0, 16, 0), 1.3, 0.15).anim("s3", "rot", (0, 24, 0), 1.3, 0.3)
+    return p
+
+
+def crushjelly():
+    """A crush jelly: a heavy violet bell ringed with light. Its pulse is the weight of the whole ocean, pushing you down."""
+    p = Part("crushjelly", 32, 512)
+    bell = W.grad((120, 50, 160), (60, 20, 90), 5, (190, 120, 230), 0.05)
+    p.bone("bell", (0, 0, 0))
+    rounded(p, -0.22, 0.0, -0.22, 0.22, 0.24, 0.22, bell, 0.09)
+    rounded(p, -0.14, 0.22, -0.14, 0.14, 0.32, 0.14, bell, 0.05)
+    for i in range(12):                                                                            # the ring of light round the rim
+        a = i * math.pi / 6
+        x, z = math.cos(a) * 0.22, math.sin(a) * 0.22
+        p.add(x - 0.025, 0.0, z - 0.025, x + 0.025, 0.04, z + 0.025, W.glow((210, 140, 255)))
+    p.add(-0.1, -0.02, -0.1, 0.1, 0.12, 0.1, W.glow((255, 120, 200)))                             # its glowing heart
+    p.bone(None)
+    for i, nm in enumerate(("t1", "t2", "t3", "t4")):
+        a = i * math.pi / 2 + math.pi / 4
+        x, z = math.cos(a) * 0.12, math.sin(a) * 0.12
+        p.bone(nm, (x, 0.0, z))
+        W.tube(p, [(x, 0.0, z), (x * 1.3, -0.3, z * 1.3), (x * 0.9, -0.62, z * 0.9), (x * 1.2, -0.9, z * 1.2)], 0.035, 0.01, solid((90, 30, 120), 3))
+        p.bone(None)
+    p.pivots["body"] = (0, 0, 0)
+    p.anim("bell", "pos", (0, 0.8, 0), 2.2)
+    for i, nm in enumerate(("t1", "t2", "t3", "t4")): p.anim(nm, "rot", (12, 0, 12), 2.2, i / 4)
+    p.anim("body", "pos", (0, 1.4, 0), 4.0)
+    return p
+
+
+def tubeworm():
+    """A tubeworm colony: white tubes on a hot vent, each with a blood-red plume. Get close and they sting; hurt them and the vent scalds."""
+    p = Part("tubeworm", 32, 256)
+    tube = W.grad((236, 230, 214), (190, 180, 160), 4, (250, 246, 236), 0.05)
+    plume = W.grad((230, 40, 50), (150, 10, 24), 4, (255, 120, 120), 0.08)
+    p.add(-0.24, -0.5, -0.24, 0.24, -0.42, 0.24, solid((40, 30, 30), 3))                          # the vent's crust
+    spots = [(0.0, 0.0, 0.5, "p1"), (0.12, 0.08, 0.38, "p2"), (-0.1, 0.1, 0.42, "p3"), (0.08, -0.12, 0.3, "p4"), (-0.12, -0.08, 0.34, "p5")]
+    for (x, z, h, nm) in spots:
+        p.add(x - 0.035, -0.42, z - 0.035, x + 0.035, -0.42 + h, z + 0.035, tube)
+        p.bone(nm, (x, -0.42 + h, z))
+        p.add(x - 0.06, -0.42 + h, z - 0.06, x + 0.06, -0.42 + h + 0.12, z + 0.06, plume)
+        p.add(x - 0.04, -0.42 + h + 0.12, z - 0.04, x + 0.04, -0.42 + h + 0.18, z + 0.04, plume)
+        p.bone(None)
+    for i, (_, _, _, nm) in enumerate(spots): p.anim(nm, "rot", (8, 0, 8), 2.0 + i * 0.3, i / 5)
+    return p
+
+
+def greatwhale():
+    """A great whale of the Leviathan Migration: a blue-grey giant with a pale throat and a reef of barnacles. Gentle, unless something angers it."""
+    p = Part("greatwhale", 32, 512)
+    sk = W.grad((70, 90, 110), (40, 52, 66), 6, (120, 140, 160), 0.04)
+    belly = solid((210, 214, 220), 4)
+    rounded(p, -0.4, -0.16, -0.17, 0.3, 0.16, 0.17, sk, 0.08)                                      # the great body
+    rounded(p, 0.28, -0.13, -0.14, 0.46, 0.12, 0.14, sk, 0.06)                                     # the head
+    p.add(0.0, -0.17, -0.12, 0.44, -0.12, 0.12, belly)                                             # the pale grooved throat
+    for z in (-0.08, -0.04, 0.0, 0.04, 0.08): p.add(0.02, -0.175, z - 0.006, 0.42, -0.165, z + 0.006, solid((170, 176, 186), 2))
+    eyes(p, 0.34, 0.39, -0.04, -0.01, 0.14, (30, 30, 36), (60, 70, 90), depth=0.01)
+    for (x, y, z) in ((0.38, 0.12, 0.05), (0.32, 0.13, -0.06), (0.1, 0.16, 0.08), (-0.1, 0.16, -0.05), (-0.25, 0.15, 0.02)):
+        p.add(x - 0.02, y, z - 0.02, x + 0.02, y + 0.02, z + 0.02, solid((200, 196, 180), 3))    # barnacles
+    p.add(0.36, 0.12, -0.015, 0.4, 0.14, 0.015, solid((20, 24, 30), 2))                           # the blowhole
+    side_bone(p, "fin", (0.16, -0.1, 0.16), [((0.0, -0.13, 0.16, 0.2, -0.09, 0.42), sk)], True)     # long flippers
+    p.bone("tail", (-0.4, 0, 0))                                                                   # (one bone: Java poses bones separately)
+    p.add(-0.72, -0.1, -0.11, -0.38, 0.1, 0.11, sk)
+    p.add(-0.92, -0.025, -0.34, -0.7, 0.025, 0.34, sk)                                            # the fluke
+    p.bone(None)
+    p.pivots["body"] = (0, 0, 0)
+    p.anim("tail", "rot", (0, 0, 12), 3.0)
+    p.anim("finl", "rot", (10, 0, 14), 3.0).anim("finr", "rot", (-10, 0, -14), 3.0).anim("body", "pos", (0, 1.0, 0), 6.0)
+    return p
+
+
+
+def submersible():
+    """The Submersible (FaultlineDeep 1.8.0): a little yellow research sub. A round hull you sit inside, a big glass dome at
+    the front, a headlight, fins and a propeller (its own bone) at the back. +x = forward; the origin is where the pilot sits."""
+    p = Part("submersible", 32, 512)
+    hull = W.grad((236, 196, 50), (190, 148, 30), 5, (250, 220, 90), 0.03)
+    dark = solid((50, 54, 62), 4)
+    glass = solid((150, 214, 236), 3)
+    rounded(p, -0.75, -0.55, -0.55, 0.45, 0.55, 0.55, hull, 0.24)                                  # the hull
+    rounded(p, 0.25, -0.42, -0.45, 0.85, 0.48, 0.45, glass, 0.2)                                    # the glass dome
+    for z in (-0.46, 0.46): p.add(0.25, -0.44, z - 0.03, 0.88, 0.5, z + 0.03, dark)               # the dome's frame
+    p.add(0.84, -0.25, -0.1, 0.92, -0.1, 0.1, W.glow((255, 250, 210)))                            # the headlight
+    p.add(-0.4, 0.5, -0.12, 0.1, 0.72, 0.12, hull)                                                 # the hatch on top
+    p.add(-0.2, 0.72, -0.08, 0.0, 0.78, 0.08, dark)
+    for s in (-1, 1):
+        a, b = sorted((s * 0.55, s * 0.95))
+        p.add(-0.5, -0.12, a, -0.1, -0.04, b, hull)                                                # side fins
+        a2, b2 = sorted((s * 0.56, s * 0.62))
+        p.add(-0.2, -0.3, a2, 0.15, 0.2, b2, dark)                                                 # side portholes' rims
+    p.add(-1.05, -0.06, -0.06, -0.75, 0.06, 0.06, dark)                                           # the prop shaft
+    p.add(-1.0, 0.0, -0.02, -0.7, 0.55, 0.02, hull)                                               # the tail fin
+    p.add(-1.0, -0.4, -0.02, -0.7, 0.0, 0.02, hull)
+    p.add(-0.9, -0.3, -0.3, -0.75, -0.22, 0.3, dark)                                              # skids
+    p.bone("prop", (-1.08, 0, 0))
+    for (y, z) in ((0.3, 0), (-0.3, 0), (0, 0.3), (0, -0.3)): p.add(-1.12, min(0, y) - 0.04 + (0.04 if y == 0 else 0), min(0, z) - 0.04 + (0.04 if z == 0 else 0),
+                                                                 -1.06, max(0, y) + 0.04 - (0.04 if y == 0 else 0), max(0, z) + 0.04 - (0.04 if z == 0 else 0), solid((210, 210, 220), 3))
+    p.bone(None)
+    p.anim("prop", "rot", (0, 0, 0), 0.8)  # (Java spins it itself while it moves; Bedrock below)
+    p.anims = [("prop", "rot", (0, 0, 180), 0.4, 0.0)]
+    return p
+
+TRENCH_MOBS = [hadalsnail, anglerking, bonecrawler, palestalker, crushjelly, tubeworm, greatwhale, submersible]
+
+
 NEW_SUNLIT = [sailfin, mantaglider, leafydragon, pearlhorse, hammerjaw, razorcuda, stingray, mirrorfin, kelpstrangler, siren]
 NEW_ABYSS = [gulper, isopod, ghostshark, vampsquid, dumbo, swallower, chainlight, viperfang, hagfish, watcher]
 
@@ -2538,7 +2731,7 @@ SULPHUR_MOBS = [acideel, trasher, radiator, flakcrab, nucleartoad, gammaslime, s
 
 
 MOBS = [gawker, bloatfin, jellywing, driftback, clam, lumenbell, gasbloom, fangstalker, blastfin, burrowshark,
-        cavecrawler, glowgrub, shellsnake, lampsquid, volteel, needlejaw, devilfish, riftwarper, hollowkin, sharkquid] + SULPHUR_MOBS + RAIN_MOBS + NEW_SUNLIT + NEW_ABYSS + DEN_MOBS
+        cavecrawler, glowgrub, shellsnake, lampsquid, volteel, needlejaw, devilfish, riftwarper, hollowkin, sharkquid] + SULPHUR_MOBS + RAIN_MOBS + NEW_SUNLIT + NEW_ABYSS + DEN_MOBS + TRENCH_MOBS
 
 
 # =====================================================================================================================

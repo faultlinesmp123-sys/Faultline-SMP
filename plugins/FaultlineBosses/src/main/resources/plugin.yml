@@ -1,5 +1,5 @@
 name: FaultlineBosses
-version: 1.6.9
+version: 1.7.0
 main: net.faultlinesmp.bosses.FaultlineBosses
 api-version: '1.21'
 author: FaultlineSMP
@@ -87,6 +87,10 @@ commands:
   lament:
     description: "Admin: summon or remove the Lament (Dark Ocean mini boss), skip to a phase, or give its summon item"
     usage: /lament <summon [world x y z]|kill|phase|item>
+    permission: bosses.admin
+  titan:
+    description: "Admin: summon or remove the Abyssal Titan (the Trench's final boss), or skip to a phase"
+    usage: /titan <summon [world x y z]|kill|phase <2|3>>
     permission: bosses.admin
   bossrush:
     description: "The Boss Rush: every boss, back to back (start, top)"

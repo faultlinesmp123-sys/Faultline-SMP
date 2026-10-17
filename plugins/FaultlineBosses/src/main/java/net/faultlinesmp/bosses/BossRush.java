@@ -68,6 +68,22 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
             new Stage("frostwyrm", "The Frost Wyrm", World.Environment.NORMAL, List.of(Biome.FROZEN_PEAKS, Biome.SNOWY_SLOPES, Biome.JAGGED_PEAKS)));
     // (1.6.0: the Lost Explorer finale is gone with him; a server config still listing "explorer" just skips it)
 
+    /**
+     * THE DEEP BOSS RUSH (1.7.0): the Dark Ocean's bosses, back to back, down there. Right-click the Sigil IN the Dark
+     * Ocean (or /bossrush start deep). Each stage's spot comes from FaultlineDeep (rushSpot, by reflection: the open sea,
+     * the Abyss, the Mermaid Den's throne, the Sulphur Sea, the Trench's Maw), remembered as arenas.deep_<boss>. Grubnash
+     * is followed by his tag, like the raid bosses. The finale is the Abyssal Titan. Its own leaderboard (/bossrush top deep).
+     */
+    static final List<Stage> DEEP_STAGES = List.of(
+            new Stage("inkjaw", "Old Inkjaw", World.Environment.NORMAL, List.of()),
+            new Stage("grandmaw", "The Grandmaw Clam", World.Environment.NORMAL, List.of()),
+            new Stage("lament", "The Lament", World.Environment.NORMAL, List.of()),
+            new Stage("umbral", "The Umbral Leviathan", World.Environment.NORMAL, List.of()),
+            new Stage("goblin", "Grubnash the Acid Goblin", World.Environment.NORMAL, List.of()),
+            new Stage("scourge", "The Brine Scourge", World.Environment.NORMAL, List.of()),
+            new Stage("coralia", "Coralia, Queen of the Den", World.Environment.NORMAL, List.of()),
+            new Stage("titan", "The Abyssal Titan", World.Environment.NORMAL, List.of()));
+
     /** The list 1.3.0 wrote into server configs: still that list = use the full default (raid bosses + the Explorer). */
     static final List<String> OLD_DEFAULT = List.of("demoneye", "frostbeard", "dune", "frostmaw", "don", "kraken", "jacob", "rocco", "grimtusk");
     /** 1.3.1's list (without the Queen Spider): also upgraded to the full default. */
@@ -89,7 +105,7 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
         final Map<UUID, Location> home = new HashMap<>();
         final List<Stage> stages;
         int stage = -1, t, state; // 0 = travelling / countdown, 1 = fighting, 2 = break, 3 = finished
-        boolean defeated, hardcore; // hardcore: one death (or leaving) and the whole team is out
+        boolean defeated, hardcore, deep; // hardcore: one death (or leaving) and the whole team is out; deep: the Dark Ocean's rush
         long startedAt;
         final BossBar bar = Bukkit.createBossBar("", BarColor.RED, BarStyle.SEGMENTED_10);
         Location arena;
@@ -153,7 +169,7 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
         e.setUseInteractedBlock(org.bukkit.event.Event.Result.DENY);
         e.setUseItemInHand(org.bukkit.event.Event.Result.DENY);
         if (run != null) { e.getPlayer().sendMessage(ChatColor.RED + "A Boss Rush is already running."); return; }
-        start(e.getPlayer(), e.getPlayer().isSneaking()); // sneak + right-click = Hardcore
+        start(e.getPlayer(), e.getPlayer().isSneaking(), inDeep(e.getPlayer())); // sneak + right-click = Hardcore; in the Dark Ocean = the Deep Boss Rush
     }
 
     /** It's a Nether Star underneath: never a crafting ingredient (no beacons out of a Sigil). */
@@ -169,6 +185,42 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
     }
 
     double c(String path, double def) { return pl.getConfig().getDouble("boss-rush." + path, def); }
+
+    boolean inDeep(Player p) { return p.getWorld().getName().equals(DeepBosses.world(pl)); }
+
+    List<Stage> deepStages() {
+        List<String> order = pl.getConfig().getStringList("boss-rush.deep-bosses");
+        if (order.isEmpty()) return DEEP_STAGES;
+        List<Stage> out = new ArrayList<>();
+        for (String k : order) DEEP_STAGES.stream().filter(s -> s.kind().equalsIgnoreCase(k.trim())).findFirst().ifPresent(out::add);
+        return out.isEmpty() ? DEEP_STAGES : out;
+    }
+
+    /** Where a Deep Boss Rush stage is fought: remembered, or asked of FaultlineDeep once and remembered. */
+    Location deepArena(Stage s) {
+        String key = "arenas.deep_" + s.kind();
+        if (data.isConfigurationSection(key)) {
+            World w = Bukkit.getWorld(data.getString(key + ".world", ""));
+            if (w != null) return new Location(w, data.getDouble(key + ".x"), data.getDouble(key + ".y"), data.getDouble(key + ".z"));
+        }
+        try {
+            org.bukkit.plugin.Plugin dp = Bukkit.getPluginManager().getPlugin("FaultlineDeep");
+            if (dp == null || !dp.isEnabled()) return null;
+            Class<?> c = Class.forName("net.faultlinesmp.deep.FaultlineDeep", true, dp.getClass().getClassLoader());
+            Location l = (Location) c.getMethod("rushSpot", String.class).invoke(null, s.kind());
+            if (l == null) return null;
+            data.set(key + ".world", l.getWorld().getName());
+            data.set(key + ".x", l.getX()); data.set(key + ".y", l.getY()); data.set(key + ".z", l.getZ());
+            save();
+            return l;
+        } catch (Throwable e) {
+            pl.getLogger().warning("[Boss Rush] couldn't ask FaultlineDeep where " + s.name() + " lives: " + e);
+            return null;
+        }
+    }
+
+    /** The team stands this far from a Deep stage's spot (the Titan rises in the middle of the Maw: they wait at its edge). */
+    static double deepStandOff(String kind) { return kind.equals("titan") ? 22 : 3; }
 
     void save() {
         try { pl.getDataFolder().mkdirs(); data.save(file); } catch (Exception e) { pl.getLogger().warning("Couldn't save bossrush.yml: " + e.getMessage()); }
@@ -300,9 +352,11 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
 
     // ===================================================================== the run
 
-    void start(Player leader) { start(leader, false); }
+    void start(Player leader) { start(leader, false, false); }
 
-    void start(Player leader, boolean hardcore) {
+    void start(Player leader, boolean hardcore) { start(leader, hardcore, false); }
+
+    void start(Player leader, boolean hardcore, boolean deep) {
         if (run != null) { leader.sendMessage(ChatColor.RED + "A Boss Rush is already running."); return; }
         String busy = pl.bossOutName();
         if (busy != null) { leader.sendMessage(ChatColor.RED + busy + " is out somewhere: wait until that fight is over."); return; }
@@ -318,13 +372,15 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
                 return;
             }
         }
-        Run r = new Run(stages());
+        if (deep && Bukkit.getWorld(DeepBosses.world(pl)) == null) { leader.sendMessage(ChatColor.RED + "The Dark Ocean isn't loaded (FaultlineDeep)."); return; }
+        Run r = new Run(deep ? deepStages() : stages());
         r.hardcore = hardcore;
+        r.deep = deep;
         for (Player p : team) { r.team.add(p.getUniqueId()); r.home.put(p.getUniqueId(), p.getLocation()); p.addScoreboardTag(TAG); }
         r.startedAt = now;
         run = r;
-        Bukkit.broadcastMessage(ChatColor.RED + "" + ChatColor.BOLD + (hardcore ? "HARDCORE BOSS RUSH! " : "BOSS RUSH! ") + ChatColor.YELLOW + names(team) + ChatColor.YELLOW
-                + " take on " + r.stages.size() + " bosses, back to back." + (hardcore ? ChatColor.RED + " One death and they're all out." : ""));
+        Bukkit.broadcastMessage(ChatColor.RED + "" + ChatColor.BOLD + (hardcore ? "HARDCORE " : "") + (deep ? "DEEP BOSS RUSH! " : "BOSS RUSH! ") + ChatColor.YELLOW + names(team) + ChatColor.YELLOW
+                + " take on " + r.stages.size() + (deep ? " of the Dark Ocean's bosses" : " bosses") + ", back to back." + (hardcore ? ChatColor.RED + " One death and they're all out." : ""));
         next(r);
     }
 
@@ -342,6 +398,7 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
         Stage s = r.current();
         List<Player> team = r.alive();
         here = team.isEmpty() ? null : team.get(0).getLocation();
+        if (r.deep) { nextDeep(r, s); return; }
         Location a = arena(s);
         if (a == null && here != null && world(s.env()) != null) {
             // no arena anywhere: fight it right here (in the right dimension: the Overworld spawn area / the Nether spawn)
@@ -371,6 +428,33 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
         msgTeam(r, ChatColor.RED + "" + ChatColor.BOLD + "Boss " + (r.stage + 1) + "/" + r.stages.size() + ": " + ChatColor.GOLD + s.name());
     }
 
+    /** A Deep Boss Rush stage: everyone to that boss's spot in the Dark Ocean, with Water Breathing for the fight. */
+    void nextDeep(Run r, Stage s) {
+        Location a = deepArena(s);
+        if (a == null) {
+            msgTeam(r, ChatColor.GRAY + "(" + s.name() + " has no place in the Dark Ocean right now, so that boss is skipped.)");
+            next(r);
+            return;
+        }
+        r.arena = a;
+        r.state = 0; r.t = 0;
+        int i = 0;
+        List<Player> alive = r.alive();
+        double off = deepStandOff(s.kind());
+        for (Player p : alive) {
+            double ang = i++ * Math.PI * 2 / Math.max(1, alive.size()) * (off > 5 ? 0.25 : 1);
+            Location to = a.clone().add(Math.sin(ang) * off, 0, Math.cos(ang) * off);
+            to.setYaw(180 + (float) Math.toDegrees(ang)); to.setPitch(0);
+            if (to.getBlock().getType().isSolid()) to = a.clone();
+            p.teleport(to);
+            p.setFallDistance(0);
+            p.addPotionEffect(new org.bukkit.potion.PotionEffect(org.bukkit.potion.PotionEffectType.WATER_BREATHING, (int) c("deep-water-breathing-seconds", 600) * 20, 0, true, false, true));
+            p.playSound(p.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1f, 0.6f);
+            r.bar.addPlayer(p);
+        }
+        msgTeam(r, ChatColor.DARK_AQUA + "" + ChatColor.BOLD + "Deep boss " + (r.stage + 1) + "/" + r.stages.size() + ": " + ChatColor.AQUA + s.name());
+    }
+
     void tick() {
         Run r = run;
         if (r == null) return;
@@ -379,7 +463,7 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
         if (alive.isEmpty() && r.state != 3) { fail(r, "the whole team is out"); return; }
         Stage s = r.current();
         long secs = (System.currentTimeMillis() - r.startedAt) / 1000;
-        r.bar.setTitle(ChatColor.RED + "" + ChatColor.BOLD + (r.hardcore ? "☠ Hardcore Boss Rush " : "Boss Rush ") + ChatColor.GRAY + (r.stage + 1) + "/" + r.stages.size()
+        r.bar.setTitle(ChatColor.RED + "" + ChatColor.BOLD + (r.hardcore ? "☠ Hardcore " : "") + (r.deep ? "Deep Boss Rush " : r.hardcore ? "Boss Rush " : "Boss Rush ") + ChatColor.GRAY + (r.stage + 1) + "/" + r.stages.size()
                 + (s != null ? "  " + ChatColor.GOLD + s.name() : "") + ChatColor.GRAY + "  " + time(secs * 1000));
         r.bar.setProgress(Math.max(0, Math.min(1, (r.stage + (r.state == 2 ? 1 : 0)) / (double) r.stages.size())));
         switch (r.state) {
@@ -416,16 +500,16 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
         r.state = 3;
         long ms = System.currentTimeMillis() - r.startedAt;
         List<Player> alive = r.alive();
-        Bukkit.broadcastMessage(ChatColor.RED + "" + ChatColor.BOLD + (r.hardcore ? "HARDCORE BOSS RUSH COMPLETE! " : "BOSS RUSH COMPLETE! ") + ChatColor.YELLOW + names(alive) + ChatColor.YELLOW
-                + " beat every boss in " + ChatColor.WHITE + time(ms) + ChatColor.YELLOW + (r.hardcore ? " without a single death!" : "!"));
+        Bukkit.broadcastMessage(ChatColor.RED + "" + ChatColor.BOLD + (r.hardcore ? "HARDCORE " : "") + (r.deep ? "DEEP BOSS RUSH COMPLETE! " : "BOSS RUSH COMPLETE! ") + ChatColor.YELLOW + names(alive) + ChatColor.YELLOW
+                + (r.deep ? " beat every boss of the Dark Ocean in " : " beat every boss in ") + ChatColor.WHITE + time(ms) + ChatColor.YELLOW + (r.hardcore ? " without a single death!" : "!"));
         for (Player p : alive) {
-            p.showTitle(Title.title(legacy(ChatColor.RED + "" + ChatColor.BOLD + (r.hardcore ? "HARDCORE CHAMPION" : "BOSS RUSH CHAMPION")), legacy(ChatColor.GRAY + time(ms)),
+            p.showTitle(Title.title(legacy(ChatColor.RED + "" + ChatColor.BOLD + (r.deep ? (r.hardcore ? "HARDCORE DEEP CHAMPION" : "DEEP RUSH CHAMPION") : r.hardcore ? "HARDCORE CHAMPION" : "BOSS RUSH CHAMPION")), legacy(ChatColor.GRAY + time(ms)),
                     Title.Times.times(java.time.Duration.ofMillis(300), java.time.Duration.ofMillis(4000), java.time.Duration.ofMillis(800))));
             p.playSound(p.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1f, 1f);
             reward(p, r.hardcore ? Math.max(1, c("hardcore.reward-multiplier", 2)) : 1);
-            pl.console("index stat " + p.getName() + " boss_rush 1", p);
-            if (r.hardcore) pl.console("index stat " + p.getName() + " boss_rush_hardcore 1", p);
-            record(p, ms, alive.size(), r.hardcore);
+            pl.console("index stat " + p.getName() + (r.deep ? " deep_boss_rush 1" : " boss_rush 1"), p);
+            if (r.hardcore) pl.console("index stat " + p.getName() + (r.deep ? " deep_boss_rush_hardcore 1" : " boss_rush_hardcore 1"), p);
+            record(p, ms, alive.size(), (r.deep ? "deep" : "") + (r.hardcore ? (r.deep ? "_hardcore" : "hardcore") : r.deep ? "" : "times"));
         }
         finish(r, true);
     }
@@ -487,10 +571,13 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
     }
 
     // ---------- the leaderboard (best time per player) ----------
-    void record(Player p, long ms, int teamSize) { record(p, ms, teamSize, false); }
+    void record(Player p, long ms, int teamSize) { record(p, ms, teamSize, "times"); }
 
-    void record(Player p, long ms, int teamSize, boolean hardcore) {
-        String k = (hardcore ? "hardcore." : "times.") + p.getUniqueId();
+    void record(Player p, long ms, int teamSize, boolean hardcore) { record(p, ms, teamSize, hardcore ? "hardcore" : "times"); }
+
+    /** board: times (the Boss Rush), hardcore, deep, deep_hardcore. */
+    void record(Player p, long ms, int teamSize, String board) {
+        String k = board + "." + p.getUniqueId();
         long best = data.getLong(k + ".ms", Long.MAX_VALUE);
         if (ms < best) {
             data.set(k + ".ms", ms); data.set(k + ".name", p.getName()); data.set(k + ".team", teamSize);
@@ -500,12 +587,15 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
         save();
     }
 
-    void leaderboard(CommandSender to) { leaderboard(to, false); }
+    void leaderboard(CommandSender to) { leaderboard(to, "times"); }
 
-    void leaderboard(CommandSender to, boolean hardcore) {
-        var sec = data.getConfigurationSection(hardcore ? "hardcore" : "times");
-        to.sendMessage(ChatColor.RED + "" + ChatColor.BOLD + (hardcore ? "☠ Hardcore Boss Rush " : "Boss Rush ") + ChatColor.GRAY + "- fastest times"
-                + (hardcore ? "" : ChatColor.DARK_GRAY + " (/bossrush top hardcore)"));
+    void leaderboard(CommandSender to, boolean hardcore) { leaderboard(to, hardcore ? "hardcore" : "times"); }
+
+    void leaderboard(CommandSender to, String board) {
+        var sec = data.getConfigurationSection(board);
+        String title = switch (board) { case "hardcore" -> "☠ Hardcore Boss Rush "; case "deep" -> "Deep Boss Rush "; case "deep_hardcore" -> "☠ Hardcore Deep Boss Rush "; default -> "Boss Rush "; };
+        to.sendMessage(ChatColor.RED + "" + ChatColor.BOLD + title + ChatColor.GRAY + "- fastest times"
+                + (board.equals("times") ? ChatColor.DARK_GRAY + " (/bossrush top hardcore | deep | deep hardcore)" : ""));
         if (sec == null || sec.getKeys(false).isEmpty()) { to.sendMessage(ChatColor.GRAY + "  Nobody has finished one yet."); return; }
         List<String> ids = new ArrayList<>(sec.getKeys(false));
         ids.sort(Comparator.comparingLong(id -> sec.getLong(id + ".ms")));
@@ -551,12 +641,22 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
     // ---------- bosses from other plugins: the raid bosses (FaultlineRaids, "zraid spawnboss") and the Queen Spider
     // (FaultlineItems, "queenspider spawn"), spawned by console command and followed by their tag ----------
     static final Map<String, String> RAID_TAGS = Map.of("rotbeard", "faultline_rotbeard", "bulwark", "faultline_bulwark", "great_hog", "faultline_great_hog",
-            "queen_spider", "faultline_queen_spider");
+            "queen_spider", "faultline_queen_spider", "goblin", "faultline_deep_goblin");
     UUID raidBoss;
 
     static boolean external(String kind) { return RAID_TAGS.containsKey(kind); }
 
     boolean spawnRaidBoss(String kind, Location at) {
+        if (kind.equals("goblin")) { // Grubnash: FaultlineDeep spawns him (rushSpawn, by reflection) and hands back his UUID
+            raidBoss = null;
+            try {
+                org.bukkit.plugin.Plugin dp = Bukkit.getPluginManager().getPlugin("FaultlineDeep");
+                if (dp == null || !dp.isEnabled()) return false;
+                Class<?> c = Class.forName("net.faultlinesmp.deep.FaultlineDeep", true, dp.getClass().getClassLoader());
+                raidBoss = (UUID) c.getMethod("rushSpawn", String.class, Location.class).invoke(null, "goblin", at);
+            } catch (Throwable e) { pl.getLogger().warning("[Boss Rush] couldn't spawn Grubnash: " + e); }
+            return raidBoss != null;
+        }
         boolean queen = kind.equals("queen_spider");
         org.bukkit.plugin.Plugin other = Bukkit.getPluginManager().getPlugin(queen ? "FaultlineItems" : "FaultlineRaids");
         if (other == null || !other.isEnabled()) return false;
@@ -611,7 +711,9 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
             case "start" -> {
                 if (!(sender instanceof Player p)) return true;
                 if (!admin && !hasSigil(p)) { p.sendMessage(ChatColor.RED + "You need a Boss Rush Sigil " + ChatColor.GRAY + "(8 Netherite Blocks around a Nether Star). Right-click it to start."); return true; }
-                start(p, args.length > 1 && args[1].equalsIgnoreCase("hardcore"));
+                boolean hc = false, dp = false;
+                for (int i = 1; i < args.length; i++) { if (args[i].equalsIgnoreCase("hardcore")) hc = true; if (args[i].equalsIgnoreCase("deep")) dp = true; }
+                start(p, hc, dp || inDeep(p));
             }
             case "sigil" -> { // admin: /bossrush sigil [amount] [player]
                 if (!admin) { sender.sendMessage(ChatColor.RED + "You don't have permission to do that."); return true; }
@@ -624,7 +726,11 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
                 for (int i = 0; i < amount; i++) pl.give(target, sigil());
                 sender.sendMessage(ChatColor.GREEN + "Gave " + target.getName() + " " + amount + " Boss Rush Sigil" + (amount == 1 ? "" : "s") + ".");
             }
-            case "top", "leaderboard" -> leaderboard(sender, args.length > 1 && args[1].equalsIgnoreCase("hardcore"));
+            case "top", "leaderboard" -> {
+                boolean hc = false, dp = false;
+                for (int i = 1; i < args.length; i++) { if (args[i].equalsIgnoreCase("hardcore")) hc = true; if (args[i].equalsIgnoreCase("deep")) dp = true; }
+                leaderboard(sender, dp ? (hc ? "deep_hardcore" : "deep") : hc ? "hardcore" : "times");
+            }
             case "stop" -> {
                 if (!admin) { sender.sendMessage(ChatColor.RED + "You don't have permission to do that."); return true; }
                 if (run == null) sender.sendMessage(ChatColor.GRAY + "No Boss Rush is running.");
@@ -639,9 +745,10 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
             }
             case "setarena" -> {
                 if (!admin || !(sender instanceof Player p) || args.length < 2) { sender.sendMessage(ChatColor.YELLOW + "/bossrush setarena <boss>  (where you stand)"); return true; }
-                Stage s = STAGES.stream().filter(x -> x.kind().equalsIgnoreCase(args[1])).findFirst().orElse(null);
-                if (s == null) { sender.sendMessage(ChatColor.RED + "Bosses: " + kinds()); return true; }
-                String key = "arenas." + s.kind();
+                boolean deepArena = inDeep(p);
+                Stage s = (deepArena ? DEEP_STAGES : STAGES).stream().filter(x -> x.kind().equalsIgnoreCase(args[1])).findFirst().orElse(null);
+                if (s == null) { sender.sendMessage(ChatColor.RED + "Bosses: " + kinds() + ChatColor.GRAY + " (in the Dark Ocean: the Deep Boss Rush's: inkjaw, grandmaw, lament, umbral, goblin, scourge, coralia, titan)"); return true; }
+                String key = "arenas." + (deepArena ? "deep_" : "") + s.kind();
                 data.set(key + ".world", p.getWorld().getName());
                 data.set(key + ".x", p.getLocation().getX()); data.set(key + ".y", p.getLocation().getY()); data.set(key + ".z", p.getLocation().getZ());
                 save();
@@ -664,6 +771,8 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
                         + " - you and everyone within 10 blocks (in survival)");
                 sender.sendMessage(ChatColor.YELLOW + "/bossrush top " + ChatColor.GRAY + "- the fastest times");
                 sender.sendMessage(ChatColor.GRAY + "Bosses drop no loot in a rush. Die and you're out (you keep your things). Finish it for big rewards.");
+                sender.sendMessage(ChatColor.DARK_AQUA + "Deep Boss Rush: " + ChatColor.GRAY + "right-click the Sigil in the Dark Ocean (or /bossrush start deep): its " + DEEP_STAGES.size()
+                        + " bosses back to back down there, the Abyssal Titan last (/bossrush top deep).");
                 sender.sendMessage(ChatColor.DARK_RED + "Hardcore: " + ChatColor.GRAY + "sneak + right-click the Sigil (or /bossrush start hardcore). One death and the WHOLE team is out; "
                         + (int) c("hardcore.reward-multiplier", 2) + "x rewards, its own leaderboard (/bossrush top hardcore).");
                 if (run != null) sender.sendMessage(ChatColor.GOLD + "A rush is running: boss " + (run.stage + 1) + "/" + run.stages.size() + ".");
@@ -684,7 +793,7 @@ final class BossRush implements Listener, CommandExecutor, TabCompleter {
         List<String> o = new ArrayList<>();
         if (args.length == 1) { o.addAll(List.of("start", "top")); if (sender.hasPermission("bosses.admin")) o.addAll(List.of("stop", "skip", "setarena", "arenas", "clearcooldown", "sigil")); }
         else if (args.length == 2 && args[0].equalsIgnoreCase("setarena")) for (Stage s : STAGES) o.add(s.kind());
-        else if (args.length == 2 && (args[0].equalsIgnoreCase("start") || args[0].equalsIgnoreCase("top"))) o.add("hardcore");
+        else if (args.length >= 2 && (args[0].equalsIgnoreCase("start") || args[0].equalsIgnoreCase("top"))) { o.add("hardcore"); o.add("deep"); }
         String last = args[args.length - 1].toLowerCase();
         o.removeIf(x -> !x.startsWith(last));
         return o;

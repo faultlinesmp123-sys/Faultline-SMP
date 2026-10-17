@@ -91,6 +91,7 @@ final class Ocean implements Listener {
         if (ticks % 40 == 0) music();
         if (ticks % 20 == 0) eat();
         if (ticks % 40 == 0) sulphur();
+        if (ticks % 40 == 0) trench();
         if (ticks % 4 == 0) greenRain();
         if (ticks % 20 == 0) dark();
         holdDrops();
@@ -132,6 +133,100 @@ final class Ocean implements Listener {
 
     private final java.util.Set<UUID> rained = new java.util.HashSet<>();
 
+    // =========================================================================================== the Trench (1.8.0)
+    final java.util.Set<UUID> inTrench = new java.util.HashSet<>();
+
+    /**
+     * Every 2 s: HADAL PRESSURE. Anywhere in the Trench below `trench.pressure.below-y` (-10) the deep crushes you, all the
+     * time (not an event): Conduit Power doesn't help down here. The Abyssal Diving Suit halves it; the suit AND a Hadal
+     * Diving Helmet (FaultlineItems: a helmet tagged faultlineitems:oxygen_helmet = tier, 3+) keep it out. A title the
+     * first time you go in.
+     */
+    void trench() {
+        for (Player p : pl.world.getPlayers()) {
+            Location l = p.getLocation();
+            boolean in = pl.zone(l) == DeepGenerator.Zone.TRENCH;
+            if (in && inTrench.add(p.getUniqueId())) {
+                p.showTitle(net.kyori.adventure.title.Title.title(Component.text("The Trench", NamedTextColor.DARK_PURPLE),
+                        Component.text("No light reaches here. Something vast sleeps at the bottom.", NamedTextColor.GRAY)));
+                p.playSound(l, Sound.AMBIENT_SOUL_SAND_VALLEY_MOOD, SoundCategory.AMBIENT, 1f, 0.5f);
+            } else if (!in) inTrench.remove(p.getUniqueId());
+            if (in) maw(p, l);
+            if (!in || l.getY() >= cfg("trench.pressure.below-y", -10)) continue;
+            if (p.getGameMode() != GameMode.SURVIVAL && p.getGameMode() != GameMode.ADVENTURE) continue;
+            if (!pl.getConfig().getBoolean("trench.pressure.enabled", true)) continue;
+            if (p.getScoreboardTags().contains("faultline_boss_rush")) continue; // the Deep Boss Rush brings its own team down here
+            if (pl.subs != null && pl.subs.riding(p)) continue;                 // inside a Submersible (its hull takes the depth)
+            boolean suit = suit(p);
+            int helmet = helmetTier(p);
+            if (suit && helmet >= (int) cfg("trench.pressure.helmet-tier", 3)) {
+                if (ticks % 400 == 0) p.sendActionBar(Component.text("Your suit and helmet hold against the Trench.", NamedTextColor.DARK_AQUA));
+                continue;
+            }
+            double dmg = cfg("trench.pressure.damage", 3) * (suit ? 0.5 : 1);
+            p.damage(dmg);
+            p.addPotionEffect(new PotionEffect(PotionEffectType.MINING_FATIGUE, 60, 1, true, false, true));
+            p.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 50, 0, true, false, true));
+            p.playSound(l, Sound.BLOCK_GLASS_HIT, SoundCategory.AMBIENT, 1f, 0.4f);
+            p.sendActionBar(Component.text("Hadal pressure! ", NamedTextColor.DARK_PURPLE)
+                    .append(Component.text(suit ? "Your suit helps, but you need a Hadal Dive Helmet too." : "You need the Abyssal Diving Suit and a Hadal Dive Helmet.", NamedTextColor.GRAY)));
+        }
+    }
+
+    private final Map<UUID, Long> mawTold = new HashMap<>();
+    private long titanTried;
+
+    /**
+     * THE MAW: someone in survival who has beaten all six of the Dark Ocean's bosses (the Index) swims down into the
+     * Titan's lair = FaultlineBosses wakes the Abyssal Titan (FaultlineBosses.wakeTitan, by reflection). Anyone else is
+     * told what it wants, at most every 5 minutes.
+     */
+    void maw(Player p, Location l) {
+        if (Math.hypot(l.getX() - Trench.LX, l.getZ() - Trench.LZ) > cfg("trench.titan.wake-radius", 30) || l.getY() > Trench.BOTTOM + 30) return;
+        if (p.getGameMode() != GameMode.SURVIVAL && p.getGameMode() != GameMode.ADVENTURE) return;
+        if (!pl.getConfig().getBoolean("trench.titan.enabled", true)) return;
+        if (!sixBeaten(p)) {
+            long now = System.currentTimeMillis();
+            if (now - mawTold.getOrDefault(p.getUniqueId(), 0L) < 300_000) return;
+            mawTold.put(p.getUniqueId(), now);
+            p.sendMessage(net.kyori.adventure.text.Component.text("Something vast sleeps under the floor of the Maw. It doesn't stir for you... yet. ", NamedTextColor.DARK_PURPLE)
+                    .append(Component.text("(Beat all six of the Dark Ocean's bosses to wake the Abyssal Titan.)", NamedTextColor.GRAY)));
+            return;
+        }
+        long now = System.currentTimeMillis();
+        if (now - titanTried < 10_000) return; // (once out, Bosses answers true without summoning again)
+        titanTried = now;
+        try {
+            var bp = Bukkit.getPluginManager().getPlugin("FaultlineBosses");
+            if (bp == null) return;
+            Class<?> c = Class.forName("net.faultlinesmp.bosses.FaultlineBosses", true, bp.getClass().getClassLoader());
+            c.getMethod("wakeTitan", Location.class, Player.class).invoke(null, new Location(l.getWorld(), Trench.LX + 0.5, Trench.BOTTOM + 3, Trench.LZ + 0.5), p);
+        } catch (Throwable e) { pl.getLogger().warning("Couldn't wake the Abyssal Titan: " + e); }
+    }
+
+    /** Has this player beaten all six sea bosses? (the Index; without the Index: no one has) */
+    boolean sixBeaten(Player p) {
+        if (p.hasPermission("faultlinedeep.bypass")) return true;
+        try {
+            Class<?> c = Class.forName("net.faultlinesmp.index.FaultlineIndex", true, Bukkit.getPluginManager().getPlugin("FaultlineIndex").getClass().getClassLoader());
+            var m = c.getMethod("defeated", UUID.class, String.class);
+            for (String id : pl.getConfig().getStringList("trench.titan.needs").isEmpty()
+                    ? java.util.List.of("brine_scourge", "umbral_leviathan", "coralia", "old_inkjaw", "grandmaw_clam", "the_lament")
+                    : pl.getConfig().getStringList("trench.titan.needs"))
+                if (!(boolean) m.invoke(null, p.getUniqueId(), id)) return false;
+            return true;
+        } catch (Throwable e) { return false; }
+    }
+
+    /** The worn diving helmet's tier (FaultlineItems: faultlineitems:oxygen_helmet on the helmet), 0 = none. */
+    static int helmetTier(Player p) {
+        var h = p.getInventory().getHelmet();
+        if (h == null || !h.hasItemMeta()) return 0;
+        NamespacedKey k = NamespacedKey.fromString("faultlineitems:oxygen_helmet");
+        Integer t = k == null ? null : h.getItemMeta().getPersistentDataContainer().get(k, org.bukkit.persistence.PersistentDataType.INTEGER);
+        return t == null ? 0 : t;
+    }
+
     /**
      * The Sulphur Sea's rain is GREEN: falling drops of lime acid round every player in it who's under open sky (sent to
      * that player only, every 4 ticks), on top of the real rain. Bedrock sees the same particles.
@@ -168,6 +263,7 @@ final class Ocean implements Listener {
     boolean darkZone(Location l) {
         if (Market.dry(l.getX(), l.getY(), l.getZ())) return false; // the Pit and the lift: lit rooms
         DeepGenerator.Zone z = pl.zone(l);
+        if (z == DeepGenerator.Zone.TRENCH) return true; // (1.8.0: always, whatever an older config's list says)
         return pl.getConfig().getStringList("darkness.zones").isEmpty() ? z == DeepGenerator.Zone.ABYSS || z == DeepGenerator.Zone.CAVES
                 : pl.getConfig().getStringList("darkness.zones").contains(z.name());
     }
@@ -193,7 +289,7 @@ final class Ocean implements Listener {
                     p.sendActionBar(Component.text(pl.getConfig().getString("darkness.message", "The Abyss swallows every light."), NamedTextColor.DARK_GRAY));
             }
             p.removePotionEffect(org.bukkit.potion.PotionEffectType.NIGHT_VISION);
-            boolean lit = lantern(p) || glowLit.getOrDefault(id, 0L) > now;
+            boolean lit = lantern(p) || glowLit.getOrDefault(id, 0L) > now || pl.bloom != null && pl.bloom.active; // (the Bioluminescent Bloom lights it all)
             org.bukkit.potion.PotionEffect d = p.getPotionEffect(org.bukkit.potion.PotionEffectType.DARKNESS);
             if (lit) { if (ours(d)) p.removePotionEffect(org.bukkit.potion.PotionEffectType.DARKNESS); continue; }
             // topped up long before it runs out: re-adding it makes the client fade it in again
@@ -349,6 +445,8 @@ final class Ocean implements Listener {
             e.setRespawnLocation(new Location(pl.world, at[0] + 0.5, at[1], at[2] + 0.5, 180, 0));
             return;
         }
+        Location house = pl.rep == null ? null : pl.rep.houseSpot(p); // Honored with the Mermaid Den: home to your house there (1.8.0)
+        if (house != null) { e.setRespawnLocation(house); return; }
         e.setRespawnLocation(new Location(pl.world, 0.5, DeepGenerator.SEA, 0.5));
     }
 
@@ -422,6 +520,7 @@ final class Ocean implements Listener {
             if (y >= below) continue;
             Location at = p.getLocation();
             if (Market.dry(at.getX(), at.getY(), at.getZ())) continue; // the Bubble and the Pit hold the deep back
+            if (pl.subs != null && pl.subs.riding(p)) continue;         // so does a Submersible's hull (it takes the depth itself)
             if (p.hasPotionEffect(PotionEffectType.CONDUIT_POWER) || suit(p)) {
                 if (ticks % 200 == 0) p.sendActionBar(Component.text("Your suit holds against the pressure.", NamedTextColor.DARK_AQUA));
                 continue;

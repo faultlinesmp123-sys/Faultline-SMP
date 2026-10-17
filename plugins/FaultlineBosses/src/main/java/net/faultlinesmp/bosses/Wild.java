@@ -85,20 +85,23 @@ final class Wild implements Listener {
     static final String PART_TAG = "faultline_wild_part", STAND_TAG = "faultline_wild_stand", HIT_TAG = "faultline_wild_hitbox",
             MOB_TAG = "faultline_wild_mob", FX_TAG = "faultline_wild_fx";
     static final List<String> KINDS = List.of("leviathan", "sandworm", "lich", "frostwyrm", "golem",
-            "scourge", "umbral", "coralia", "inkjaw", "grandmaw", "lament"); // the last six: the Dark Ocean's (DeepBosses)
+            "scourge", "umbral", "coralia", "inkjaw", "grandmaw", "lament", "titan"); // the Dark Ocean's (DeepBosses): six + the Trench's Titan (1.7.0)
     static final Map<String, String> NAMES = Map.ofEntries(Map.entry("leviathan", "The Leviathan"), Map.entry("sandworm", "The Sandworm King"),
             Map.entry("lich", "The Lich"), Map.entry("frostwyrm", "The Frost Wyrm"), Map.entry("golem", "The Stone Golem"),
             Map.entry("scourge", "The Brine Scourge"), Map.entry("umbral", "The Umbral Leviathan"), Map.entry("coralia", "Coralia, Queen of the Den"),
-            Map.entry("inkjaw", "Old Inkjaw"), Map.entry("grandmaw", "The Grandmaw Clam"), Map.entry("lament", "The Lament"));
+            Map.entry("inkjaw", "Old Inkjaw"), Map.entry("grandmaw", "The Grandmaw Clam"), Map.entry("lament", "The Lament"),
+            Map.entry("titan", "The Abyssal Titan"));
     /** Their Faultline Index entries (and the tag on their hitboxes, for the Index's kill detection). */
     static final Map<String, String> INDEX = Map.ofEntries(Map.entry("leviathan", "leviathan"), Map.entry("sandworm", "sandworm_king"),
             Map.entry("lich", "lich"), Map.entry("frostwyrm", "frost_wyrm"), Map.entry("golem", "stone_golem"),
             Map.entry("scourge", "brine_scourge"), Map.entry("umbral", "umbral_leviathan"), Map.entry("coralia", "coralia"),
-            Map.entry("inkjaw", "old_inkjaw"), Map.entry("grandmaw", "grandmaw_clam"), Map.entry("lament", "the_lament"));
+            Map.entry("inkjaw", "old_inkjaw"), Map.entry("grandmaw", "grandmaw_clam"), Map.entry("lament", "the_lament"),
+            Map.entry("titan", "abyssal_titan"));
     static final Map<String, ChatColor> COLOR = Map.ofEntries(Map.entry("leviathan", ChatColor.DARK_AQUA), Map.entry("sandworm", ChatColor.GOLD),
             Map.entry("lich", ChatColor.DARK_PURPLE), Map.entry("frostwyrm", ChatColor.AQUA), Map.entry("golem", ChatColor.DARK_GREEN),
             Map.entry("scourge", ChatColor.GREEN), Map.entry("umbral", ChatColor.DARK_GRAY), Map.entry("coralia", ChatColor.LIGHT_PURPLE),
-            Map.entry("inkjaw", ChatColor.DARK_PURPLE), Map.entry("grandmaw", ChatColor.AQUA), Map.entry("lament", ChatColor.BLUE));
+            Map.entry("inkjaw", ChatColor.DARK_PURPLE), Map.entry("grandmaw", ChatColor.AQUA), Map.entry("lament", ChatColor.BLUE),
+            Map.entry("titan", ChatColor.DARK_PURPLE));
     /** Local -> display axes (a part's front +x = display +z at yaw 0), and the half turn item displays draw items with. */
     static final Quaternionf Q0 = new Quaternionf().rotationY((float) Math.toRadians(-90));
     static final Quaternionf FLIP = new Quaternionf().rotationY((float) Math.PI);
@@ -214,6 +217,11 @@ final class Wild implements Listener {
     String whyNot(String kind, Player p) {
         Location l = p.getLocation();
         boolean deep = l.getWorld().getName().equals(DeepBosses.world(pl));
+        if (kind.equals("titan")) { // the Trench's Maw only (FaultlineDeep wakes it for someone who beat all six sea bosses)
+            double mx = c("titan.maw-x", -1460), mz = c("titan.maw-z", -1640);
+            if (!deep) return "Only in the Dark Ocean's Trench.";
+            return Math.hypot(l.getX() - mx, l.getZ() - mz) < c("titan.maw-radius", 70) ? null : "It only wakes in the Maw, at the Trench's end (" + (int) mx + ", " + (int) mz + ").";
+        }
         if (DeepBosses.KINDS.contains(kind)) {
             if (!deep) return "Only in the Dark Ocean.";
             if (!Leviathan.sea(l.getBlock()) && !Leviathan.sea(l.clone().add(0, -1, 0).getBlock())) return "Only in the water.";
@@ -403,6 +411,7 @@ final class Wild implements Listener {
                 case "inkjaw" -> new DeepBosses.Inkjaw(this, at, by);
                 case "grandmaw" -> new DeepBosses.Grandmaw(this, at, by);
                 case "lament" -> new DeepBosses.Lament(this, at, by);
+                case "titan" -> new DeepBosses.Titan(this, at, by);
                 default -> null;
             };
         } catch (RuntimeException | LinkageError e) { // LinkageError: an API the server's Paper doesn't have
@@ -712,7 +721,7 @@ final class Wild implements Listener {
                 return;
             }
             if (ent instanceof LivingEntity le) hurtFlash(le);
-            b.damage(e.getFinalDamage() > 0 ? e.getFinalDamage() : e.getDamage(), by);
+            b.damage(b.hitboxHit(ent, e.getFinalDamage() > 0 ? e.getFinalDamage() : e.getDamage()), by);
             return;
         }
         if (e instanceof EntityDamageByEntityEvent ee && tags.contains(MOB_TAG)) { // a boss's side never hurts its own
@@ -1022,6 +1031,8 @@ final class Wild implements Listener {
         abstract String line(String what);
         void onPhase(int p) { }
         double damageTaken(double amount) { return amount; }
+        /** Which of its hitboxes was hit (the Titan's lures): the damage passed on. */
+        double hitboxHit(Entity hb, double amount) { return amount; }
         /** Only a sword's melee hit hurts it (Coralia, 1.7.0); its own pink bubbles still do. */
         boolean swordOnly() { return false; }
         /** The health share each phase starts at (wild.<kind>.phase2-at / phase3-at). */

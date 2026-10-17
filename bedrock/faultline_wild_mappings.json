@@ -916,6 +916,22 @@
    },
    {
     "type": "definition",
+    "model": "faultline:wild/titan_b",
+    "bedrock_identifier": "faultline:wild_titan_b",
+    "display_name": "titan_b",
+    "bedrock_options": {
+     "icon": "faultline.abyssal_titan",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
     "model": "faultline:knight_helm",
     "bedrock_identifier": "faultline:knight_helm",
     "display_name": "Knight's Helm",
@@ -937,6 +953,54 @@
     "display_name": "Mining Helmet",
     "bedrock_options": {
      "icon": "faultline.mining_helmet",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:dive_helmet_1",
+    "bedrock_identifier": "faultline:dive_helmet_1",
+    "display_name": "Copper Dive Helmet",
+    "bedrock_options": {
+     "icon": "faultline.dive_helmet_1",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:dive_helmet_2",
+    "bedrock_identifier": "faultline:dive_helmet_2",
+    "display_name": "Reinforced Dive Helmet",
+    "bedrock_options": {
+     "icon": "faultline.dive_helmet_2",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:dive_helmet_3",
+    "bedrock_identifier": "faultline:dive_helmet_3",
+    "display_name": "Hadal Dive Helmet",
+    "bedrock_options": {
+     "icon": "faultline.dive_helmet_3",
      "allow_offhand": false
     },
     "components": {

@@ -1925,8 +1925,111 @@ def lament():
     return [h, seg, tail]
 
 
+# ---------------------------------------------------------------- THE ABYSSAL TITAN (Bosses 1.7.0): the Trench's final boss
+TI_HIDE, TI_DARK, TI_PLATE, TI_BELLY = (30, 34, 52), (12, 13, 22), (52, 58, 84), (70, 64, 78)
+TI_CYAN, TI_VIOLET, TI_BONE = (90, 255, 230), (190, 110, 255), (200, 194, 176)
+TI_NECK, TI_SHOULDER, TI_ELBOW, TI_HINGE = (0.2, 2.45, 0), (0.15, 2.05, 1.45), 2.1, (0.15, -0.3, 0)
+TI_LURES = ((0.9, 0.95, 0.0), (0.45, 0.95, -0.45), (0.45, 0.95, 0.45))
+
+
+def _titan_body(p):
+    hide = glow_lines(TI_HIDE, (60, 140, 160), 7, 0.004)
+    plate = grad(TI_PLATE, TI_HIDE, 6, (90, 100, 140), 0.03)
+    rounded(p, -1.0, -1.6, -1.35, 0.9, 2.5, 1.35, hide, 0.42)                 # the colossal torso, its base sunk in the floor
+    for i in range(6):                                                          # armour plates down the chest
+        y = -0.9 + i * 0.55
+        p.add(0.78, y, -1.0 + i * 0.05, 1.0, y + 0.45, 1.0 - i * 0.05, plate)
+    p.add(0.85, -1.4, -0.85, 0.95, 2.2, 0.85, solid(TI_BELLY, 4))
+    for s in (-1, 1):                                                           # ribs showing through the hide
+        for i in range(5):
+            y = -0.6 + i * 0.5
+            a, b = sorted((s * 1.3, s * 1.42))
+            p.add(-0.7, y, a, 0.7, y + 0.16, b, bone_curve(TI_BONE, (80, 76, 70)))
+        a, b = sorted((s * 1.0, s * 1.75))
+        p.add(-0.55, 1.8, a, 0.75, 2.45, b, plate)                               # the shoulder mounts
+    for i in range(7):                                                          # spines down the back
+        y = -0.8 + i * 0.5
+        p.add(-1.25 - (i % 2) * 0.15, y, -0.08, -0.95, y + 0.3, 0.08, bone_curve(TI_BONE, (70, 66, 60)))
+    for (x, y, z) in ((0.5, 1.6, 0.9), (0.3, 0.6, -1.1), (-0.3, 1.2, 1.25), (0.6, -0.2, -0.95), (-0.6, 2.0, -0.9), (0.2, -1.0, 1.1)):
+        p.add(x - 0.06, y - 0.06, z - 0.06, x + 0.06, y + 0.06, z + 0.06, glow(TI_CYAN))   # bioluminescent spots
+    rounded(p, -0.6, 2.2, -0.6, 0.6, 2.7, 0.6, hide, 0.2)                     # the neck
+
+
+def _titan_head(p, eyes_glow):
+    hide = glow_lines(TI_HIDE, (60, 140, 160), 6, 0.0)
+    rounded(p, -0.4, -0.3, -0.8, 1.2, 0.85, 0.8, hide, 0.3)                    # the skull
+    p.add(0.9, 0.0, -0.7, 1.75, 0.55, 0.7, hide)                               # the snout
+    p.add(1.7, 0.05, -0.55, 1.95, 0.45, 0.55, solid(TI_DARK, 4))
+    for z in (-0.6, -0.4, -0.2, 0.0, 0.2, 0.4, 0.6):                           # the upper fangs
+        p.add(1.5 + abs(z) * -0.3, -0.35, z - 0.05, 1.62 + abs(z) * -0.3, 0.02, z + 0.05, teeth)
+    p.add(0.95, -0.1, -0.68, 1.75, 0.02, 0.68, solid((60, 10, 24), 3))           # the gums
+    for s in (-1, 1):                                                           # horns sweeping back
+        tube(p, [(-0.1, 0.7, s * 0.55), (-0.5, 1.1, s * 0.85), (-1.1, 1.3, s * 1.05), (-1.6, 1.15, s * 1.1)], 0.16, 0.04, bone_curve(TI_BONE, (60, 56, 50)))
+        a, b = sorted((s * 0.79, s * 0.83))
+        for i, (x, y) in enumerate(((1.15, 0.45), (0.85, 0.55), (0.55, 0.62))):  # three eyes a side
+            p.add(x - 0.1, y - 0.07, a, x + 0.1, y + 0.07, b, glow(TI_CYAN) if eyes_glow else solid(TI_DARK, 2))
+
+
+def titan():
+    """The Abyssal Titan: a colossal torso rising out of the Maw's floor (its origin = the waist), a head on its neck joint
+    TI_NECK, a lower jaw on the hinge TI_HINGE (in the head's frame), two arms from the shoulders TI_SHOULDER (each
+    `titan_arm` reaches +x TI_ELBOW, then `titan_claw` with three talons), and three lures on its brow (`titan_lure`,
+    glowing). The head's eyes are their own part (`titan_eyes`, drawn fully lit) so it stays a dark shape with burning
+    eyes. Java gets the jointed parts; Bedrock (stands can't pitch) one `titan_b` with the jaw, arms and lures as bones."""
+    hide = glow_lines(TI_HIDE, (60, 140, 160), 6, 0.0)
+    body = Part("titan_body", 10, 512, java_only=True)
+    _titan_body(body)
+    head = Part("titan_head", 10, 256, java_only=True)
+    _titan_head(head, False)
+    eyes = Part("titan_eyes", 10, 64, java_only=True)
+    for s in (-1, 1):
+        a, b = sorted((s * 0.81, s * 0.86))
+        for (x, y) in ((1.15, 0.45), (0.85, 0.55), (0.55, 0.62)): eyes.add(x - 0.1, y - 0.07, a, x + 0.1, y + 0.07, b, glow(TI_CYAN))
+    jaw = Part("titan_jaw", 10, 256, java_only=True)
+    jaw.add(0.0, -0.45, -0.7, 1.75, -0.05, 0.7, hide)
+    jaw.add(0.1, -0.08, -0.6, 1.7, 0.0, 0.6, solid((60, 10, 24), 3))
+    for z in (-0.55, -0.35, -0.15, 0.05, 0.25, 0.45): jaw.add(1.45 - abs(z) * 0.3, -0.05, z - 0.05, 1.57 - abs(z) * 0.3, 0.32, z + 0.05, teeth)
+    arm = Part("titan_arm", 10, 256, java_only=True)
+    rounded(arm, -0.2, -0.38, -0.38, TI_ELBOW + 0.2, 0.38, 0.38, hide, 0.15)
+    for x in (0.4, 1.0, 1.6): arm.add(x, 0.3, -0.3, x + 0.4, 0.46, 0.3, grad(TI_PLATE, TI_HIDE, 4))
+    claw = Part("titan_claw", 10, 256, java_only=True)
+    rounded(claw, -0.1, -0.32, -0.34, 1.5, 0.32, 0.34, hide, 0.12)
+    for (y, z) in ((0.1, -0.22), (0.1, 0.22), (-0.15, 0.0)):                  # three talons
+        tube(claw, [(1.4, y, z), (1.9, y + 0.1, z * 1.2), (2.3, y - 0.05, z * 1.3), (2.55, y - 0.35, z * 1.3)], 0.14, 0.03, bone_curve(TI_BONE, (40, 36, 34)))
+    lure = Part("titan_lure", 10, 128, java_only=True)
+    tube(lure, [(0, 0, 0), (0.3, 0.7, 0), (0.8, 1.1, 0), (1.3, 1.0, 0)], 0.07, 0.04, glow((40, 120, 130)))
+    lure.add(1.2, 0.75, -0.18, 1.55, 1.1, 0.18, glow(TI_VIOLET))
+    # Bedrock: one model, the jaw / arms / lures as animated bones
+    b = Part("titan_b", 10, 1024, bedrock_only=True)
+    _titan_body(b)
+    hd = Part("tmp"); _titan_head(hd, True)
+    b.take(hd, *TI_NECK)
+    b.bone("jaw", (TI_NECK[0] + TI_HINGE[0], TI_NECK[1] + TI_HINGE[1], 0))
+    b.take(jaw, TI_NECK[0] + TI_HINGE[0], TI_NECK[1] + TI_HINGE[1], 0, bone="jaw")
+    b.bone(None)
+    for side, s in (("arm_l", -1), ("arm_r", 1)):
+        sh = (TI_SHOULDER[0], TI_SHOULDER[1], s * TI_SHOULDER[2])
+        b.bone(side, sh)
+        am = Part("tmp")
+        # hanging forward and down: the arm along (+x, -y), the claw reaching forward
+        for (a0, b0, paint) in arm.boxes: am.add(a0[0] * 0.7, -a0[0] * 0.7 + a0[1], a0[2], b0[0] * 0.7, -b0[0] * 0.7 + b0[1], b0[2], paint)
+        for (a0, b0, paint) in claw.boxes: am.add(TI_ELBOW * 0.7 + a0[0], -TI_ELBOW * 0.7 + a0[1], a0[2], TI_ELBOW * 0.7 + b0[0], -TI_ELBOW * 0.7 + b0[1], b0[2], paint)
+        b.take(am, *sh, bone=side)
+        b.bone(None)
+    for i, (lx, ly, lz) in enumerate(TI_LURES):
+        nm = f"lure{i}"
+        piv = (TI_NECK[0] + lx, TI_NECK[1] + ly, lz)
+        b.bone(nm, piv)
+        b.take(lure, *piv, bone=nm)
+        b.bone(None)
+    b.half = {"jaw"}
+    b.anim("jaw", "rot", (0, 0, -18), 3.0).anim("arm_l", "rot", (8, 0, 10), 4.0).anim("arm_r", "rot", (-8, 0, 10), 4.0, 0.5)
+    for i in range(3): b.anim(f"lure{i}", "rot", (6, 0, 10), 2.4, i / 3)
+    return [body, head, eyes, jaw, arm, claw, lure, b]
+
+
 def deep_bosses():
-    return scourge() + umbral() + coralia() + inkjaw() + grandmaw() + lament()
+    return scourge() + umbral() + coralia() + inkjaw() + grandmaw() + lament() + titan()
 
 
 ALL_PARTS = leviathan() + sandworm() + frost_wyrm() + lich() + golem() + mimic() + locust() + ghost_captain() + aurora() + black_sun() + deep_bosses()
@@ -1951,6 +2054,7 @@ PAL = {
     "@": (226, 82, 104), "%": (160, 100, 255), "&": (52, 40, 86), "*": (240, 240, 255), "+": (198, 176, 150),
     "=": (120, 96, 80), "~": (40, 60, 120), "^": (90, 120, 200), "!": (178, 226, 62), ";": (96, 120, 40),
     "4": L_CLOTH, "5": L_CLOTH_D, "6": L_BRONZE, "7": L_SOUL, "8": L_BONE_D, "9": (64, 22, 30),
+    "j": (200, 112, 74), "J": (140, 74, 48), "u": (150, 214, 236), "z": (160, 96, 240), "q": (214, 176, 84),
 }
 
 ICONS = {
@@ -2150,6 +2254,60 @@ ICONS = {
         ".....xx..xx.....",
         ".....##..##.....",
         "................",
+        "................",
+    ],
+    "dive_helmet_1": [
+        "................",
+        "....jjjjjjjj....",
+        "...jJjjjjjjJj...",
+        "..jjJqqqqqqJjj..",
+        "..jJqquuuuqqJj..",
+        ".jjJquuuuuuqJjj.",
+        ".jjJquueuuuqJjj.",
+        ".jjJquuuuuuqJjj.",
+        ".jjJquuuuuuqJjj.",
+        "..jJqquuuuqqJj..",
+        "..jjJqqqqqqJjj..",
+        "...jJjjjjjjJj...",
+        "..qqqqqqqqqqqq..",
+        "..qJJJJJJJJJJq..",
+        "..qqqqqqqqqqqq..",
+        "................",
+    ],
+    "dive_helmet_2": [
+        "......xxxx......",
+        "....xxxxxxxx....",
+        "...xXxxxxxxXx...",
+        "..xxXOOOOOOXxx..",
+        "..xXOOuuuuOOXx..",
+        ".xxXOuuuuuuOXxx.",
+        ".OxXOuueuuuOXxO.",
+        ".OxXOuuuuuuOXxO.",
+        ".xxXOuuuuuuOXxx.",
+        "..xXOOuuuuOOXx..",
+        "..xxXOOOOOOXxx..",
+        "...xXxxxxxxXx...",
+        "..OOOOOOOOOOOO..",
+        "..OXXXXXXXXXXO..",
+        "..OOOOOOOOOOOO..",
+        "................",
+    ],
+    "dive_helmet_3": [
+        "......2222......",
+        "....22222222....",
+        "...2122222212...",
+        "..2212%%%%2122..",
+        "..212%%zzz%%12..",
+        ".2212%zzzzz%122.",
+        ".%212%zz*zz%12%.",
+        ".%212%zzzzz%12%.",
+        ".2212%zzzzz%122.",
+        "..212%%zzz%%12..",
+        "..2212%%%%2122..",
+        "...2122222212...",
+        "..%%%%%%%%%%%%..",
+        "..%1111111111%..",
+        "..%%%%%%%%%%%%..",
         "................",
     ],
     "mining_helmet": [
@@ -2582,7 +2740,29 @@ def worn_items():
            head_box(a2, (-0.6, 4.9, -4.0), (0.6, 5.5, 4.0), yel),
            head_box(a2, (-1.5, 1.8, -5.8), (1.5, 4.2, -4.7), dark),
            head_box(a2, (-1.0, 2.2, -6.0), (1.0, 3.8, -5.8), lens)]
-    return {"knight_helm": (a1, helm), "mining_helmet": (a2, hat)}
+    out = {"knight_helm": (a1, helm), "mining_helmet": (a2, hat)}
+    # the dive helmets (FaultlineItems DiveHelmets, 1.2.57): a round dome, a big front porthole, two side ports, a collar
+    for key, dome, dome_d, ring, glass in (("dive_helmet_1", (200, 112, 74), (140, 74, 48), (214, 176, 84), (150, 214, 236)),
+                                          ("dive_helmet_2", (176, 180, 192), (110, 114, 126), (214, 168, 60), (150, 214, 236)),
+                                          ("dive_helmet_3", (40, 40, 52), (22, 22, 28), (160, 100, 255), (170, 110, 255))):
+        def d(reg, face, wu, hu, c=dome): noise_fill(reg, c, rng, 7)
+        def dd(reg, face, wu, hu, c=dome_d): noise_fill(reg, c, rng, 5)
+        def rg(reg, face, wu, hu, c=ring): noise_fill(reg, c, rng, 6)
+        def gl(reg, face, wu, hu, c=glass): noise_fill(reg, c, rng, 3)
+        at = A2(128, 2)
+        el = [head_box(at, (-4.8, -4.4, -4.8), (4.8, 4.9, 4.8), d),
+              head_box(at, (-3.8, 4.9, -3.8), (3.8, 5.8, 3.8), d),
+              head_box(at, (-0.8, 5.8, -0.8), (0.8, 6.8, 0.8), rg),                      # the valve on top
+              head_box(at, (-3.0, -2.4, -5.3), (3.0, 2.6, -4.8), rg),                    # the front porthole's ring
+              head_box(at, (-2.3, -1.7, -5.5), (2.3, 1.9, -5.3), gl),                    # its glass
+              head_box(at, (-5.2, -1.2, -1.6), (-4.8, 1.6, 1.6), rg), head_box(at, (-5.4, -0.7, -1.1), (-5.2, 1.1, 1.1), gl),   # side ports
+              head_box(at, (4.8, -1.2, -1.6), (5.2, 1.6, 1.6), rg), head_box(at, (5.2, -0.7, -1.1), (5.4, 1.1, 1.1), gl),
+              head_box(at, (-5.4, -5.4, -5.4), (5.4, -4.4, 5.4), rg),                    # the collar
+              head_box(at, (-1.0, -3.0, 4.8), (1.0, -0.6, 6.6), dd)]                     # the air hose's stub
+        for (x, y) in ((-3.6, 3.6), (3.6, 3.6), (-3.6, -3.4), (3.6, -3.4)):
+            el.append(head_box(at, (x - 0.4, y - 0.4, -5.0), (x + 0.4, y + 0.4, -4.8), rg))   # bolts
+        out[key] = (at, el)
+    return out
 
 
 # =====================================================================================================================
@@ -2645,7 +2825,7 @@ def render_icon(pieces, size=16, outline=(16, 14, 20)):
 
 
 DEEP_ICON_FOR = {"scourge": "brine_scourge", "umbral": "umbral_leviathan", "coralia": "coralia", "inkjaw": "old_inkjaw",
-                 "grandmaw": "grandmaw_clam", "lament": "the_lament"}
+                 "grandmaw": "grandmaw_clam", "lament": "the_lament", "titan": "abyssal_titan"}
 
 
 def deep_boss_icons(by, size=16):
@@ -2674,6 +2854,11 @@ def deep_boss_icons(by, size=16):
             ink.append(at("inkjaw_tentacle", x + (sgi * 0.25 if j % 2 else -sgi * 0.25), -0.6 - sgi * 1.15, z, rot="down", s=1 - sgi * 0.22))
     out["old_inkjaw"] = render_icon(ink, size)
     out["grandmaw_clam"] = render_icon(size=size, pieces=[at("grandmaw_shell"), at("grandmaw_lid", -1.0, 0.75, 0, rot="up"), at("grandmaw_pearl", 0.1, 0.75, 0)])
+    N, S = TI_NECK, TI_SHOULDER
+    ti = [at("titan_body"), at("titan_head", *N), at("titan_eyes", *N), at("titan_jaw", N[0] + TI_HINGE[0], N[1] + TI_HINGE[1], 0)]
+    for sgn in (-1, 1): ti += [at("titan_arm", S[0], S[1], sgn * S[2]), at("titan_claw", S[0] + TI_ELBOW, S[1], sgn * S[2])]
+    for (lx, ly, lz) in TI_LURES: ti.append(at("titan_lure", N[0] + lx, N[1] + ly, lz))
+    out["abyssal_titan"] = render_icon(size=size, pieces=ti)
     return out
 
 
@@ -2817,7 +3002,8 @@ def main():
             "geometry": {"default": f"geometry.faultline.wild_{key}"}, "scripts": {"parent_setup": "v.helmet_layer_visible = 0.0;"},
             "render_controllers": ["controller.render.armor"]}}})
         mappings["minecraft:paper"].append({"type": "definition", "model": f"{NS}:{key}", "bedrock_identifier": f"faultline:{key}",
-            "display_name": {"knight_helm": "Knight's Helm", "mining_helmet": "Mining Helmet"}[key],
+            "display_name": {"knight_helm": "Knight's Helm", "mining_helmet": "Mining Helmet", "dive_helmet_1": "Copper Dive Helmet",
+                             "dive_helmet_2": "Reinforced Dive Helmet", "dive_helmet_3": "Hadal Dive Helmet"}[key],
             "bedrock_options": {"icon": bed_icon(key, flat), "allow_offhand": False},
             "components": {"minecraft:equippable": {"slot": "head"}, "minecraft:max_stack_size": 1}})
     # ---- flat items (bedrock_pack.py maps these from the plugins' source; their icon is the same 16x16 art)

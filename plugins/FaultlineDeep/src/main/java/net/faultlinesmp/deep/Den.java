@@ -180,7 +180,7 @@ final class Den {
             }
         }
         if (war != null) warTick(w, here);
-        else omens(here);
+        else { omens(here); if (pl.rep != null) pl.rep.tick(here); }
     }
 
     DeepMobs.Beast spawn(String kind, Location at) {
@@ -196,6 +196,7 @@ final class Den {
     /** Someone hurt one of the Den's people: everyone near turns on them. */
     void hurt(DeepMobs.Beast m, Player by) {
         if (!resident(m)) return;
+        if (pl.rep != null && war == null) pl.rep.hurt(by);
         Location l = m.body.getLocation();
         int angered = 0;
         for (DeepMobs.Beast b : everyone()) if (b != m && b.body.getWorld().equals(l.getWorld()) && b.body.getLocation().distanceSquared(l) < 48 * 48) { pl.mobs.anger(b, by, 600); angered++; }
@@ -220,8 +221,13 @@ final class Den {
         for (int i = 0; i < slot.length; i++) {
             if (slot[i] != m) continue;
             slot[i] = null;
-            if (i >= MERMAIDS) { guardBack[i - MERMAIDS] = now + (long) (cfg("guard-respawn-seconds", 120) * 1000); return; }
+            if (i >= MERMAIDS) {
+                guardBack[i - MERMAIDS] = now + (long) (cfg("guard-respawn-seconds", 120) * 1000);
+                if (killer != null && pl.rep != null && war == null) pl.rep.killedResident(killer, false);
+                return;
+            }
             if (killer == null) return; // drowned in lava or whatever: she comes back
+            if (pl.rep != null && war == null) pl.rep.killedResident(killer, true);
             dead[i] = true;
             if (restockAt == 0) restockAt = now + (long) (cfg("restock-minutes", 30) * 60_000);
             save();
@@ -263,6 +269,7 @@ final class Den {
         }
         war.fighters.add(by.getUniqueId());
         war.bar.addPlayer(by);
+        if (pl.rep != null) pl.rep.war(by, war.fighters);
         nextWave(w);
         return true;
     }

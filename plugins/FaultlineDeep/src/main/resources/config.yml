@@ -23,6 +23,52 @@ sulphur:
   always-raining: true      # it rains there all the time (for the players in it), with green acid drops falling too
   green-rain-particles: 40  # green drops round each player every 4 ticks
 
+# THE TRENCH (1.8.0): a rift from the sea floor to the bedrock in the far west (x -1250..-1650, z -100..-1650), ending in
+# the Maw (-1460, -1640) where the Abyssal Titan sleeps. Always pitch dark. /deep trench [maw] [player] goes there.
+trench:
+  pressure:
+    enabled: true
+    below-y: -10            # hadal pressure, all the time, below this height in the Trench (Conduit Power doesn't help)
+    damage: 3               # every 2 s; the Abyssal Diving Suit halves it...
+    helmet-tier: 3          # ...and the suit + a Hadal Dive Helmet (tier 3) keeps it out
+  titan:
+    enabled: true           # someone who has beaten all six sea bosses swimming into the Maw wakes the Abyssal Titan (FaultlineBosses)
+    wake-radius: 30
+    needs: [brine_scourge, umbral_leviathan, coralia, old_inkjaw, grandmaw_clam, the_lament]
+
+# THE SUBMERSIBLE (1.8.0): a research sub for any water. Inside you breathe, bites hit the hull, the deep's pressure can't
+# reach you. Below safe-y the hull cracks unless it has Hadal Plating (4 Netherite Ingots on it); Iron Ingots patch it.
+submersible:
+  speed: 0.32
+  sprint-speed: 0.55
+  safe-y: -40
+  crack-per-second: 3
+  repair-per-ingot: 10
+  plating-ingots: 4
+  hull-per-damage: 1.0
+  implode-damage: 10
+  model-scale: 2.0
+  model-lift: 0.9
+
+# THE LEVIATHAN MIGRATION (1.8.0): a pod of great whales crossing the Sunlit Sea; at the end the eldest sinks into a whale
+# fall (bones + a chest). Killing a whale can bring the Umbral Leviathan up. /deep migration [start|stop]
+migration:
+  enabled: true
+  every-minutes-min: 60
+  every-minutes-max: 120
+  distance: 600
+  speed: 0.22
+  umbral-chance: 0.35
+  heart-chance: 0.35
+
+# THE BIOLUMINESCENT BLOOM (1.8.0): a rare event with someone deep down: 5 minutes with no darkness, glowing water and
+# the glowing creatures out. /deep bloom [start|stop]
+bloom:
+  enabled: true
+  check-minutes: 10
+  chance: 0.03
+  minutes: 5
+
 # The Acid Rain (1.5.0): an event over the Sulphur Sea. /deep acidrain [start|stop|goblin]
 # THE MERMAID DEN (1.7.0, round 1200, 700): ten mermaids + six guards (Den.java). Kill all ten, or drink an Omen IV
 # (Bad Omen IV exactly) inside it for a raid, and Coralia rises over her throne. The dead come home after restock-minutes.
@@ -30,6 +76,22 @@ den:
   enabled: true
   restock-minutes: 30
   guard-respawn-seconds: 120
+  # 1.8.0: the Den's trust (den_rep.yml). Earn it defending the Den (kills near it) and with gifts to the mermaids;
+  # FRIEND = mermaid trades, ALLY = guard trades + the guards fight beside you, HONORED = a house (/den home, respawn there).
+  rep:
+    friend: 40
+    ally: 120
+    honored: 250
+    hated: -40              # at or below this, the guards attack on sight
+    kills-per-day: 60
+    gifts-per-day: 40
+    defend-radius: 120      # kills this far out from the Den's wall count
+    hurt: 10
+    kill-mermaid: 50
+    kill-guard: 20
+    omen: 200
+    war: 100
+    home-cooldown-seconds: 300
   raid:
     wave-1: 6
     wave-2: 8

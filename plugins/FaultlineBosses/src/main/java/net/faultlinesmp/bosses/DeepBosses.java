@@ -263,6 +263,7 @@ final class DeepBosses {
         static boolean open(Location l, int r) {
             World w = l.getWorld();
             int x = l.getBlockX(), y = l.getBlockY(), z = l.getBlockZ();
+            if (y - r <= w.getMinHeight() || y + r >= w.getMaxHeight()) return false; // (no water past the world's floor or roof)
             if (!w.isChunkLoaded(x >> 4, z >> 4)) return false;
             if (!wet(w.getBlockAt(x, y, z))) return false;
             int[][] d = {{r, 0, 0}, {-r, 0, 0}, {0, r, 0}, {0, -r, 0}, {0, 0, r}, {0, 0, -r}};
@@ -548,7 +549,7 @@ final class DeepBosses {
         /** The sea floor under a spot (the first solid block going down, +1), or the spot itself. */
         Location floorUnder(Location l, int max) {
             Location c = l.clone();
-            for (int i = 0; i < max; i++) {
+            for (int i = 0; i < max && c.getY() > c.getWorld().getMinHeight(); i++) {
                 if (c.getBlock().getType().isSolid()) return c.add(0, 1, 0).getBlock().getLocation().add(0.5, 0, 0.5);
                 c.add(0, -1, 0);
             }
@@ -2853,6 +2854,554 @@ final class DeepBosses {
             List<MoveSlot> m = new ArrayList<>(List.of(new MoveSlot(LUNGE, "Lunge", Material.COD), new MoveSlot(HUNT, "The Hunt", Material.BLACK_DYE),
                     new MoveSlot(WAIL, "Wail", Material.GHAST_TEAR), new MoveSlot(WHISPERS, "Whispers", Material.SCULK), new MoveSlot(TIDE, "Sorrow Tide", Material.WATER_BUCKET),
                     new MoveSlot(LIGHTEATER, "Light Eater", Material.SOUL_LANTERN)));
+            return m;
+        }
+    }
+
+    // =====================================================================================================
+    //  THE ABYSSAL TITAN (1.7.0): the Trench's final boss, asleep in the Maw at its southern end
+    // =====================================================================================================
+    /**
+     * A colossal torso rising out of the Maw's floor: it never swims, it turns to face you and reaches. A dark shape in
+     * the pitch black (its hide drawn barely lit) with burning cyan eyes and three violet lures on its brow.
+     *  phase 1: CLAW SWEEP (an arm swings low across the floor: get up off it), CRUSHING SLAM (a fist on your spot, then a
+     *           shockwave along the floor), THE LURE (its lights flare: don't look at them, or you're drawn to its jaws),
+     *           ABYSSAL ROAR (thrown back, Darkness), HADAL SPAWN (guardians come out of the dark)
+     *  phase 2 (65%): TENTACLE ERUPTION (under everyone), PRESSURE WAVE (a ring along the floor), THE GAZE (a sweeping beam
+     *           from its eyes: get behind something). Its lures can be broken now: break all three and it reels, stunned,
+     *           taking 50% more for 8 s, until they grow back
+     *  phase 3 (30%): DEVOUR (it inhales the Maw: swim away from the jaws), ABYSSAL COLLAPSE (the walls come down), faster
+     * Only someone who has beaten all six of the Dark Ocean's bosses wakes it (FaultlineDeep watches the Maw).
+     */
+    static final class Titan extends Swimmer {
+        static final int SWEEP = 1, SLAM = 2, LURE = 3, ROAR = 4, SPAWN = 5, ERUPT = 6, WAVE = 7, GAZE = 8, DEVOUR = 9, COLLAPSE = 10;
+        // the rig's joints (tools/wild_assets.py TI_*): in blocks at scale 1
+        static final double[] NECK = {0.2, 2.45, 0}, HINGE = {0.15, -0.3, 0}, MOUTH = {1.8, -0.25, 0}, EYES = {1.0, 0.5, 0};
+        static final double SH_X = 0.15, SH_Y = 2.05, SH_Z = 1.45, ELBOW = 2.1, CLAW = 2.5;
+        static final double[][] LURES = {{0.9, 0.95, 0}, {0.45, 0.95, -0.45}, {0.45, 0.95, 0.45}};
+        final Wild.Part body, head, eyes, jaw, armL, armR, clawL, clawR, bed;
+        final Wild.Part[] lures = new Wild.Part[3];
+        final org.bukkit.entity.Slime[] lureBox = new org.bukkit.entity.Slime[3];
+        final double[] lureDmg = new double[3];
+        final boolean[] lureBroken = new boolean[3];
+        final Location base;
+        Location mark, neck, mouth, eyesAt;
+        float headYaw, headPitch, beamPitch;
+        double jawOpen, wantJaw, beamYaw;
+        double lY = -30, lP = 35, rY = 30, rP = 35, wlY = -30, wlP = 35, wrY = 30, wrP = 35;
+        int stun, sweepSide;
+        double floorY;
+        final List<Location> marks = new ArrayList<>();
+        final List<Display> fxDisplays = new ArrayList<>();
+        final Map<UUID, Integer> beamHit = new HashMap<>();
+        final Set<UUID> waveHit = new HashSet<>();
+
+        Titan(Wild w, Location at, Player by) {
+            super(w, "titan", at.clone().add(0, 12, 0), by, 3.6); // (the open-water check runs well above the floor; it stands on the floor below)
+            Location f = floorUnder(at.clone(), 48);
+            floorY = f.getY();
+            base = f.clone().add(0, 0.8 * k, 0); // its waist; the torso's base sinks into the Maw's floor
+            pos = base.clone().add(0, 1.6 * k, 0);
+            yaw = by != null ? yawOf(flat(by.getLocation().toVector().subtract(base.toVector()))) : 0;
+            headYaw = yaw;
+            body = rig.add("titan_body", k, base);
+            head = rig.add("titan_head", k, base);
+            eyes = rig.add("titan_eyes", k, base);
+            jaw = rig.add("titan_jaw", k, base);
+            armL = rig.add("titan_arm", k, base);
+            armR = rig.add("titan_arm", k, base);
+            clawL = rig.add("titan_claw", k, base);
+            clawR = rig.add("titan_claw", k, base);
+            for (int i = 0; i < 3; i++) lures[i] = rig.add("titan_lure", k, base);
+            bed = rig.add("titan_b", k, base);
+            // a dark shape in the dark: the hide barely lit, the eyes and lures burning
+            for (Wild.Part p : List.of(body, head, jaw, armL, armR, clawL, clawR))
+                if (p.d != null) p.d.setBrightness(new Display.Brightness((int) c("hide-light", 3), (int) c("hide-light", 3)));
+            for (Wild.Part p : List.of(eyes, lures[0], lures[1], lures[2])) if (p.d != null) p.d.setBrightness(new Display.Brightness(15, 15));
+            hitbox(base.clone().add(0, 1.2 * k, 0), Math.max(3, (int) Math.round(3.2 * k)), "The Abyssal Titan");
+            hitbox(base.clone().add(0, 3.2 * k, 0), Math.max(2, (int) Math.round(2.0 * k)), "The Abyssal Titan");
+            world.playSound(base, Sound.ENTITY_WARDEN_EMERGE, SoundCategory.HOSTILE, 5f, 0.4f);
+            world.playSound(base, Sound.ENTITY_ELDER_GUARDIAN_CURSE, SoundCategory.HOSTILE, 5f, 0.3f);
+            pose(0);
+        }
+
+        @Override double defHealth() { return 5000; }
+        @Override double perFighter() { return c("health-per-extra-fighter", 0.25); }
+        @Override BarColor barColor() { return BarColor.PURPLE; }
+        @Override String music() { return "minecraft:music_disc.5"; }
+        @Override double musicLength() { return 178; }
+        @Override double phaseAt(int p) { return p == 2 ? c("phase2-at", 0.65) : c("phase3-at", 0.3); }
+        @Override Location center() { return pos.clone(); }
+
+        @Override String line(String what) {
+            return switch (what) {
+                case "spawn" -> ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + "The floor of the Maw splits open. Three lights rise out of the dark... THE ABYSSAL TITAN WAKES.";
+                case "phase2" -> ChatColor.DARK_PURPLE + "The Titan tears itself higher out of the rock. " + ChatColor.LIGHT_PURPLE + "Its lures can be broken now!";
+                case "phase3" -> ChatColor.DARK_RED + "The Titan's eyes burn white. The whole Trench shakes.";
+                case "death" -> ChatColor.DARK_PURPLE + "The Titan's lights go out, one by one. It sinks back into the deep, forever.";
+                case "leave" -> ChatColor.DARK_PURPLE + "The Abyssal Titan " + ChatColor.GRAY + "sinks back into the Maw's floor to sleep.";
+                default -> null;
+            };
+        }
+
+        Quaternionf bodyQ(float lean) { return Lich.frame(yaw, lean, 0); }
+
+        double reach() { return (ELBOW + CLAW) * k; }
+
+        @Override
+        void bodyTick(List<Player> a) {
+            Player t = pilot != null ? pilot : focus != null && focus.isOnline() && focus.getWorld().equals(world) ? focus : target(a);
+            if (stun > 0) {
+                stun--;
+                wantJaw = 30; wlP = 70; wrP = 70; wlY = -50; wrY = 50;
+                if (ticks % 10 == 0) world.spawnParticle(Particle.DUST, pos, 12, 2 * k, 1.5 * k, 2 * k, 0, new Particle.DustOptions(Color.fromRGB(190, 110, 255), 2f));
+                if (stun == 0) regrowLures();
+            } else if (pilot != null) {
+                yaw = turn(yaw, pilot.getLocation().getYaw(), 3f);
+                headYaw = turn(headYaw, pilot.getLocation().getYaw(), 4f);
+                headPitch += (Math.max(-40, Math.min(45, pilot.getLocation().getPitch())) - headPitch) * 0.2f;
+            } else if (t != null && attack != GAZE) {
+                float want = yawOf(flat(t.getLocation().toVector().subtract(base.toVector())));
+                yaw = turn(yaw, want, attack < 0 ? 1.2f : 0.6f);
+                Vector toT = t.getEyeLocation().toVector().subtract((neck != null ? neck : pos).toVector());
+                float hy = yawOf(flat(toT));
+                float rel = ((hy - yaw) % 360 + 540) % 360 - 180;
+                headYaw = turn(headYaw, yaw + Math.max(-55, Math.min(55, rel)), 3f);
+                headPitch += (Math.max(-40, Math.min(50, pitchOf(toT))) - headPitch) * 0.12f;
+            }
+            if (attack < 0 && stun == 0) { // breathing, the arms resting on the rock, the jaw working
+                wlY = -32; wrY = 32;
+                wlP = 38 + Math.sin(ticks * 0.05) * 6; wrP = 38 + Math.cos(ticks * 0.05) * 6;
+                wantJaw = 6 + Math.sin(ticks * 0.04) * 5;
+            }
+            lY += (wlY - lY) * 0.18; lP += (wlP - lP) * 0.18; rY += (wrY - rY) * 0.18; rP += (wrP - rP) * 0.18;
+            jawOpen += (wantJaw - jawOpen) * 0.25;
+            pose(0);
+            if (ticks % 30 == 0 && eyesAt != null) world.spawnParticle(Particle.GLOW, eyesAt, 4, 0.6 * k, 0.2 * k, 0.6 * k, 0);
+            if (ticks % 50 == 0) world.spawnParticle(Particle.BUBBLE_COLUMN_UP, base, 30, 2.5 * k, 0.5, 2.5 * k, 0.15);
+        }
+
+        @Override
+        void pose(int deathT) {
+            double sink = deathT > 0 ? Math.min(7 * k, deathT * 0.09 * k) : 0;
+            Location waist = base.clone().add(0, -sink + Math.sin(ticks * 0.03) * 0.12 * k, 0);
+            float lean = (float) (flinchAmt() * 6 + (deathT > 0 ? Math.min(25, deathT * 0.4) : 0)
+                    + (attack == SLAM && at > 20 && at < 34 ? 10 : 0) + (attack == WAVE && at > 10 && at < 22 ? 14 : 0) + (stun > 0 ? 8 : 0));
+            body.pose(waist, yaw, lean, 0, null);
+            bed.pose(waist, yaw, 0, 0, null);
+            Quaternionf bq = bodyQ(lean);
+            neck = Lich.joint(waist, bq, NECK, k);
+            float hp2 = headPitch + lean;
+            head.pose(neck, headYaw, hp2, 0, null);
+            eyes.pose(neck, headYaw, hp2, 0, null);
+            Quaternionf hq = Lich.frame(headYaw, hp2, 0);
+            jaw.pose(Lich.joint(neck, hq, HINGE, k), headYaw, hp2, 0, Lich.rotZ(-jawOpen));
+            mouth = Lich.joint(neck, hq, MOUTH, k);
+            eyesAt = Lich.joint(neck, hq, EYES, k);
+            for (int i = 0; i < 3; i++) {
+                if (lureBroken[i]) continue;
+                Location lb = Lich.joint(neck, hq, LURES[i], k);
+                lures[i].pose(lb, headYaw, hp2 - (float) (Math.sin(ticks * 0.08 + i * 2) * 8), 0, null);
+                if (lureBox[i] != null && lureBox[i].isValid()) lureBox[i].teleport(Lich.joint(neck, hq, LURES[i][0] + 1.3, LURES[i][1] + 0.6, LURES[i][2], k));
+            }
+            for (int s = -1; s <= 1; s += 2) {
+                Location sh = Lich.joint(waist, bq, SH_X, SH_Y, s * SH_Z, k);
+                float ay = (float) (yaw + (s < 0 ? lY : rY)), ap = (float) (s < 0 ? lP : rP);
+                (s < 0 ? armL : armR).pose(sh, ay, ap, 0, null);
+                Location el = sh.clone().add(dir3(ay, ap).multiply(ELBOW * k));
+                (s < 0 ? clawL : clawR).pose(el, ay, ap - 22, 0, null);
+            }
+            if (hitboxes.size() > 1) {
+                hitboxes.get(0).teleport(waist.clone().add(0, 1.2 * k, 0));
+                hitboxes.get(1).teleport(neck.clone().add(dirOf(headYaw).multiply(0.8 * k)).add(0, -0.4 * k, 0));
+            }
+            pos = waist.clone().add(0, 1.6 * k, 0);
+        }
+
+        // ---------------------------------------------------------------- the lures (phase 2+)
+        @Override
+        void onPhase(int p) {
+            if (p == 2) regrowLures();
+            if (p == 3) for (Player pl2 : active()) pl2.playSound(pl2.getLocation(), Sound.ENTITY_WARDEN_ROAR, SoundCategory.HOSTILE, 3f, 0.4f);
+        }
+
+        void regrowLures() {
+            for (int i = 0; i < 3; i++) {
+                lureBroken[i] = false; lureDmg[i] = 0;
+                lures[i].hide(false);
+                if (lureBox[i] == null || !lureBox[i].isValid()) lureBox[i] = hitbox(pos.clone(), 2, ChatColor.LIGHT_PURPLE + "Titan's Lure");
+            }
+            if (phase >= 2 && stun == 0) say(ChatColor.LIGHT_PURPLE + "Its three lures burn again. " + ChatColor.GRAY + "Break them all and it reels.");
+        }
+
+        @Override
+        double hitboxHit(org.bukkit.entity.Entity hb, double amount) {
+            for (int i = 0; i < 3; i++) {
+                if (hb != lureBox[i] || lureBroken[i]) continue;
+                lureDmg[i] += amount;
+                world.spawnParticle(Particle.DUST, hb.getLocation(), 8, 0.4, 0.4, 0.4, 0, new Particle.DustOptions(Color.fromRGB(190, 110, 255), 1.5f));
+                if (lureDmg[i] >= maxHp * c("lure-break-share", 0.03)) breakLure(i);
+                return amount * 0.5;
+            }
+            return amount;
+        }
+
+        void breakLure(int i) {
+            lureBroken[i] = true;
+            lures[i].hide(true);
+            if (lureBox[i] != null) { hitboxes.remove(lureBox[i]); lureBox[i].remove(); lureBox[i] = null; }
+            world.playSound(pos, Sound.BLOCK_GLASS_BREAK, SoundCategory.HOSTILE, 4f, 0.5f);
+            world.playSound(pos, Sound.ENTITY_ELDER_GUARDIAN_HURT, SoundCategory.HOSTILE, 4f, 0.4f);
+            if (lureBroken[0] && lureBroken[1] && lureBroken[2]) {
+                stun = (int) c("stun-ticks", 160);
+                if (attack >= 0) end();
+                say(ChatColor.LIGHT_PURPLE + "" + ChatColor.BOLD + "All three lights are out! " + ChatColor.WHITE + "The Titan reels: strike now!");
+                for (Player p : active()) p.showTitle(net.kyori.adventure.title.Title.title(legacy(ChatColor.LIGHT_PURPLE + "STUNNED"), legacy(ChatColor.GRAY + "It takes 50% more damage")));
+            } else say(ChatColor.LIGHT_PURPLE + "A lure shatters! " + ChatColor.GRAY + (3 - (lureBroken[0] ? 1 : 0) - (lureBroken[1] ? 1 : 0) - (lureBroken[2] ? 1 : 0)) + " left.");
+        }
+
+        @Override double damageTaken(double amount) { return stun > 0 ? amount * c("stun-damage-taken", 1.5) : amount; }
+
+        // ---------------------------------------------------------------- moves
+        @Override
+        int pick(List<Player> a) {
+            if (stun > 0) return -1;
+            List<Integer> pool = new ArrayList<>(List.of(SWEEP, SLAM, LURE, ROAR, SLAM, SWEEP));
+            if (minions.size() < 3) pool.add(SPAWN);
+            if (phase >= 2) { pool.add(ERUPT); pool.add(WAVE); pool.add(GAZE); }
+            if (phase >= 3) { pool.add(DEVOUR); pool.add(COLLAPSE); pool.add(ERUPT); pool.remove(Integer.valueOf(SPAWN)); }
+            return pool.get(random.nextInt(pool.size()));
+        }
+
+        @Override int nextCd() { return (int) (super.nextCd() * (phase == 3 ? 0.75 : 1.0)); }
+
+        @Override
+        void startMove(int move, Player t) {
+            hitOnce.clear(); waveHit.clear(); marks.clear(); beamHit.clear();
+            t = targetOr(t); focus = t;
+            switch (move) {
+                case SWEEP -> {
+                    float rel = t == null ? 0 : ((yawOf(flat(t.getLocation().toVector().subtract(base.toVector()))) - yaw) % 360 + 540) % 360 - 180;
+                    sweepSide = rel >= 0 ? 1 : -1; // the arm on their side starts wide on the far side and swings through
+                    world.playSound(base, Sound.ENTITY_RAVAGER_ROAR, SoundCategory.HOSTILE, 4f, 0.4f);
+                }
+                case SLAM -> {
+                    Location tl = t != null ? t.getLocation() : base.clone().add(dirOf(yaw).multiply(10));
+                    Vector d = flat(tl.toVector().subtract(base.toVector()));
+                    double dist = Math.min(reach() * 0.95, Math.max(4, Math.hypot(tl.getX() - base.getX(), tl.getZ() - base.getZ())));
+                    mark = floorUnder(base.clone().add(d.multiply(dist)).add(0, 4, 0), 20);
+                    float rel = ((yawOf(d) - yaw) % 360 + 540) % 360 - 180;
+                    sweepSide = rel >= 0 ? 1 : -1;
+                }
+                case LURE -> { world.playSound(base, Sound.BLOCK_BEACON_ACTIVATE, SoundCategory.HOSTILE, 4f, 0.5f); say(ChatColor.LIGHT_PURPLE + "Its lures flare... " + ChatColor.WHITE + "LOOK AWAY!"); }
+                case ROAR -> wantJaw = 10;
+                case ERUPT -> {
+                    for (Player p : active()) marks.add(floorUnder(p.getLocation(), 30));
+                    for (int i = 0; i < 2 + phase; i++) marks.add(floorUnder(base.clone().add(random.nextGaussian() * 14, 4, random.nextGaussian() * 14), 30));
+                    world.playSound(base, Sound.BLOCK_SCULK_SHRIEKER_SHRIEK, SoundCategory.HOSTILE, 4f, 0.5f);
+                }
+                case GAZE -> {
+                    beamYaw = headYaw - 55; beamPitch = Math.max(5, Math.min(40, headPitch + 10));
+                    world.playSound(base, Sound.ENTITY_GUARDIAN_ATTACK, SoundCategory.HOSTILE, 4f, 0.4f);
+                    say(ChatColor.AQUA + "Its eyes fix on you... " + ChatColor.WHITE + "get behind something!");
+                }
+                case DEVOUR -> { say(ChatColor.DARK_RED + "The Titan breathes in the whole Maw... " + ChatColor.WHITE + "SWIM AWAY!"); world.playSound(base, Sound.ENTITY_WARDEN_SONIC_CHARGE, SoundCategory.HOSTILE, 5f, 0.4f); }
+                case COLLAPSE -> {
+                    for (Player p : active()) marks.add(floorUnder(p.getLocation(), 30));
+                    for (int i = 0; i < 10; i++) marks.add(floorUnder(base.clone().add(random.nextGaussian() * 16, 4, random.nextGaussian() * 16), 30));
+                    world.playSound(base, Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.HOSTILE, 5f, 0.4f);
+                    say(ChatColor.DARK_RED + "The walls of the Maw crack...");
+                }
+                default -> { }
+            }
+        }
+
+        @Override
+        void moveTick(List<Player> a) {
+            switch (attack) {
+                case SWEEP -> sweep(a);
+                case SLAM -> slam(a);
+                case LURE -> lure(a);
+                case ROAR -> roar(a);
+                case SPAWN -> {
+                    wantJaw = 40;
+                    if (at == 12) for (int i = 0; i < 3 && minions.size() < 4; i++) {
+                        Player p = a.isEmpty() ? null : a.get(random.nextInt(a.size()));
+                        Location l = openWater(p != null ? p.getLocation() : pos, 5, 10, 1);
+                        if (l == null) continue;
+                        minion(l, EntityType.GUARDIAN, org.bukkit.entity.Guardian.class, ChatColor.DARK_PURPLE + "Titan's Watcher", c("spawn-health", 40), g -> { });
+                        world.spawnParticle(Particle.SQUID_INK, l, 30, 0.6, 0.6, 0.6, 0.05);
+                    }
+                    if (at > 24) end();
+                }
+                case ERUPT -> erupt(a);
+                case WAVE -> wave(a);
+                case GAZE -> gaze(a);
+                case DEVOUR -> devour(a);
+                case COLLAPSE -> collapse(a);
+                default -> end();
+            }
+        }
+
+        void sweep(List<Player> a) {
+            int s = sweepSide;
+            double reach = reach();
+            if (at < 22) { // wind up: the arm drawn back wide and raised
+                if (s > 0) { wrY = 95; wrP = -5; } else { wlY = -95; wlP = -5; }
+                if (at % 4 == 0) for (double ang = -80; ang <= 80; ang += 6) {
+                    Vector d = dirOf((float) (yaw + ang));
+                    for (double r : new double[]{reach * 0.45, reach}) {
+                        Location l = base.clone().add(d.clone().multiply(r)); l.setY(floorY + 0.3);
+                        world.spawnParticle(Particle.DUST, l, 1, 0.1, 0, 0.1, 0, new Particle.DustOptions(Color.fromRGB(200, 30, 40), 1.6f));
+                    }
+                }
+                return;
+            }
+            if (at <= 34) { // the swing, low across the floor
+                double t = (at - 22) / 12.0, from = s * 95, to = -s * 95;
+                double cur = from + (to - from) * t, prev = from + (to - from) * Math.max(0, (at - 23) / 12.0);
+                if (s > 0) { wrY = cur; wrP = 55; rY = cur; rP = 55; } else { wlY = cur; wlP = 55; lY = cur; lP = 55; }
+                if (at == 23) world.playSound(base, Sound.ENTITY_PLAYER_ATTACK_SWEEP, SoundCategory.HOSTILE, 5f, 0.4f);
+                for (Player p : a) {
+                    Location l = p.getLocation();
+                    double dx = l.getX() - base.getX(), dz = l.getZ() - base.getZ(), d = Math.hypot(dx, dz);
+                    if (d > reach || d < 2 || l.getY() > base.getY() + 1.2 * k) continue;
+                    float pr = ((yawOf(new Vector(dx, 0, dz)) - yaw) % 360 + 540) % 360 - 180;
+                    double lo = Math.min(cur, prev) - 8, hi = Math.max(cur, prev) + 8;
+                    if (pr < lo || pr > hi || !hitOnce.add(p.getUniqueId())) continue;
+                    hit(p, c("moves.sweep", 14), base.toVector(), Guard.HEAVY);
+                    Safe.vel(p, dirOf((float) (yaw + cur - s * 90)).multiply(1.2).setY(0.4));
+                }
+                return;
+            }
+            if (at > 46) end();
+        }
+
+        void slam(List<Player> a) {
+            int s = sweepSide;
+            Location sh = Lich.joint(base, bodyQ(0), SH_X, SH_Y, s * SH_Z, k);
+            Vector to = mark.toVector().subtract(sh.toVector());
+            float ay = yawOf(flat(to)) - yaw;
+            if (at < 22) {
+                if (s > 0) { wrY = ay; wrP = -60; } else { wlY = ay; wlP = -60; }
+                if (at % 3 == 0) warnRing(mark, c("slam-radius", 4.5), Color.RED);
+                return;
+            }
+            if (at < 27) { if (s > 0) { wrY = ay; wrP = pitchOf(to) + 10; } else { wlY = ay; wlP = pitchOf(to) + 10; } }
+            if (at == 27) {
+                world.playSound(mark, Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.HOSTILE, 5f, 0.5f);
+                world.playSound(mark, Sound.ENTITY_IRON_GOLEM_DAMAGE, SoundCategory.HOSTILE, 5f, 0.4f);
+                world.spawnParticle(Particle.BUBBLE_POP, mark, 120, 3, 1, 3, 0.25);
+                world.spawnParticle(Particle.BLOCK, mark, 80, 3, 0.5, 3, 0, Material.BLACKSTONE.createBlockData());
+                strike(mark.clone().add(0, 1, 0), c("slam-radius", 4.5), c("moves.slam", 16), Guard.HEAVY, new Vector(0, 0.7, 0));
+            }
+            if (at > 27 && at <= 40) { // the shockwave along the floor
+                double r = 4.5 + (at - 27) * 0.8;
+                warnRing(mark, r, Color.fromRGB(150, 80, 220));
+                for (Player p : a) {
+                    Location l = p.getLocation();
+                    double d = Math.hypot(l.getX() - mark.getX(), l.getZ() - mark.getZ());
+                    if (Math.abs(d - r) < 1.2 && l.getY() < mark.getY() + 2.5 && waveHit.add(p.getUniqueId())) hit(p, c("moves.slam-wave", 6), mark.toVector(), Guard.BLOCKABLE);
+                }
+            }
+            if (at > 48) end();
+        }
+
+        void lure(List<Player> a) {
+            if (at < 50) {
+                if (at > 30) wantJaw = 38;
+                if (at % 2 == 0) for (int i = 0; i < 3; i++) if (!lureBroken[i] && lureBox[i] != null)
+                    world.spawnParticle(Particle.END_ROD, lureBox[i].getLocation(), 2, 0.3, 0.3, 0.3, 0.01);
+                if (at % 2 == 0 && neck != null) world.spawnParticle(Particle.DUST, neck.clone().add(0, 1.5 * k, 0), 6, 1.2, 0.6, 1.2, 0, new Particle.DustOptions(Color.fromRGB(190, 110, 255), 2.2f));
+                for (Player p : a) {
+                    Vector toHead = neck.toVector().subtract(p.getEyeLocation().toVector());
+                    double look = p.getEyeLocation().getDirection().dot(unit(toHead.clone()));
+                    if (look < c("lure-look", 0.82) || !sight(p.getEyeLocation(), neck)) continue;
+                    Safe.vel(p, p.getVelocity().multiply(0.6).add(unit(mouth.toVector().subtract(p.getLocation().toVector())).multiply(c("lure-pull", 0.22))));
+                    p.addPotionEffect(new PotionEffect(PotionEffectType.NAUSEA, 60, 0));
+                    if (at % 10 == 0) p.sendActionBar(legacy(ChatColor.LIGHT_PURPLE + "The light pulls you in... " + ChatColor.WHITE + "LOOK AWAY!"));
+                }
+                return;
+            }
+            if (at == 50) {
+                wantJaw = 0; jawOpen = 4;
+                world.playSound(mouth, Sound.ENTITY_EVOKER_FANGS_ATTACK, SoundCategory.HOSTILE, 5f, 0.4f);
+                strike(mouth, c("bite-radius", 5.5), c("moves.bite", 22), Guard.HEAVY, null);
+            }
+            if (at > 62) end();
+        }
+
+        void roar(List<Player> a) {
+            if (at < 24) { wantJaw = 10 + at * 1.6; headPitch += (-20 - headPitch) * 0.1f; return; }
+            if (at == 24) {
+                world.playSound(base, Sound.ENTITY_WARDEN_ROAR, SoundCategory.HOSTILE, 6f, 0.4f);
+                world.playSound(base, Sound.ENTITY_WARDEN_SONIC_BOOM, SoundCategory.HOSTILE, 6f, 0.5f);
+                for (int i = 0; i < 6; i++) world.spawnParticle(Particle.SONIC_BOOM, mouth.clone().add(dirOf(headYaw).multiply(i * 3)), 1);
+                for (Player p : within(base, c("roar-radius", 28))) {
+                    Vector away = flat(p.getLocation().toVector().subtract(base.toVector())).multiply(c("roar-push", 1.4)).setY(0.3);
+                    Safe.vel(p, away);
+                    hit(p, c("moves.roar", 6), base.toVector(), Guard.UNBLOCKABLE);
+                    p.addPotionEffect(new PotionEffect(PotionEffectType.DARKNESS, 100, 0));
+                    p.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 60, 1));
+                }
+            }
+            if (at > 36) { wantJaw = 6; end(); }
+        }
+
+        void erupt(List<Player> a) {
+            if (at < 30) { if (at % 3 == 0) for (Location m : marks) warnRing(m, 2.6, Color.fromRGB(150, 20, 60)); return; }
+            if (at == 30) for (Location m : marks) {
+                world.playSound(m, Sound.BLOCK_SCULK_SENSOR_CLICKING, SoundCategory.HOSTILE, 3f, 0.4f);
+                world.spawnParticle(Particle.BLOCK, m, 40, 1, 0.3, 1, 0, Material.SCULK.createBlockData());
+                BlockDisplay bd = world.spawn(m.clone().add(-0.8, 0, -0.8), BlockDisplay.class, e -> {
+                    e.setBlock(Material.SCULK.createBlockData());
+                    e.setPersistent(false);
+                    e.addScoreboardTag(Wild.FX_TAG);
+                    e.setBrightness(new Display.Brightness(6, 6));
+                    e.setTransformation(new Transformation(new Vector3f(), new Quaternionf(), new Vector3f(1.6f, 0.1f, 1.6f), new Quaternionf()));
+                });
+                Bukkit.getScheduler().runTaskLater(pl, () -> { if (bd.isValid()) { bd.setInterpolationDelay(0); bd.setInterpolationDuration(5); bd.setTransformation(new Transformation(new Vector3f(), new Quaternionf(), new Vector3f(1.6f, 7f, 1.6f), new Quaternionf())); } }, 1L);
+                fxDisplays.add(bd);
+                for (Player p : a) {
+                    Location l = p.getLocation();
+                    if (Math.hypot(l.getX() - m.getX(), l.getZ() - m.getZ()) < 2.6 && l.getY() > m.getY() - 1 && l.getY() < m.getY() + 8 && hitOnce.add(p.getUniqueId())) {
+                        hit(p, c("moves.erupt", 12), m.toVector(), Guard.HEAVY);
+                        Safe.vel(p, new Vector(0, 1.1, 0));
+                    }
+                }
+            }
+            if (at == 70) clearFx();
+            if (at > 72) end();
+        }
+
+        void wave(List<Player> a) {
+            if (at < 16) { wlP = 75; wrP = 75; wlY = -20; wrY = 20; if (at % 4 == 0) warnRing(base, 6, Color.fromRGB(120, 60, 200)); return; }
+            if (at == 16) { world.playSound(base, Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.HOSTILE, 6f, 0.3f); world.spawnParticle(Particle.EXPLOSION, base.clone().add(0, -0.8 * k, 0), 6, 4, 0.5, 4, 0); }
+            double r = 5 + (at - 16) * 0.9;
+            if (at % 2 == 0) { Location c0 = base.clone(); c0.setY(floorY + 0.3); warnRing(c0, r, Color.fromRGB(150, 80, 220)); }
+            for (Player p : a) {
+                Location l = p.getLocation();
+                double d = Math.hypot(l.getX() - base.getX(), l.getZ() - base.getZ());
+                if (Math.abs(d - r) < 1.4 && l.getY() < floorY + 3 && waveHit.add(p.getUniqueId())) {
+                    hit(p, c("moves.wave", 10), base.toVector(), Guard.BLOCKABLE);
+                    p.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 60, 1));
+                }
+            }
+            if (r > c("wave-radius", 42)) end();
+        }
+
+        void gaze(List<Player> a) {
+            if (at < 24) { if (at % 2 == 0 && eyesAt != null) warn3d(eyesAt, dir3((float) beamYaw, beamPitch), 30, Color.fromRGB(90, 255, 230)); headYaw = turn(headYaw, (float) beamYaw, 4f); return; }
+            if (at > 70) { end(); return; }
+            beamYaw += c("gaze-sweep-degrees", 110) / 46.0;
+            headYaw = (float) beamYaw;
+            Location o = eyesAt;
+            Vector d = dir3((float) beamYaw, beamPitch);
+            double len = 0;
+            for (; len < c("gaze-length", 46); len += 1) {
+                Location l = o.clone().add(d.clone().multiply(len));
+                if (l.getBlock().getType().isSolid()) break;
+                if (at % 2 == 0) world.spawnParticle(Particle.DUST, l, 1, 0.15, 0.15, 0.15, 0, new Particle.DustOptions(Color.fromRGB(90, 255, 230), 2.0f));
+            }
+            if (at % 3 == 0) world.playSound(o, Sound.ENTITY_GUARDIAN_ATTACK, SoundCategory.HOSTILE, 2f, 1.6f);
+            for (Player p : a) {
+                Vector rel = p.getLocation().add(0, 0.9, 0).toVector().subtract(o.toVector());
+                double along = rel.dot(d);
+                if (along < 0 || along > len) continue;
+                if (rel.clone().subtract(d.clone().multiply(along)).length() > 1.7) continue;
+                Integer last = beamHit.get(p.getUniqueId());
+                if (last != null && ticks - last < 6) continue;
+                beamHit.put(p.getUniqueId(), ticks);
+                hit(p, c("moves.gaze", 5), o.toVector(), Guard.BLOCKABLE);
+                p.addPotionEffect(new PotionEffect(PotionEffectType.WITHER, 60, 0));
+            }
+        }
+
+        void devour(List<Player> a) {
+            if (at < 80) {
+                wantJaw = 50;
+                double pull = c("devour-pull", 0.1) * (1 + at / 80.0);
+                for (Player p : within(mouth, c("devour-radius", 45))) {
+                    Vector in = mouth.toVector().subtract(p.getLocation().toVector());
+                    Vector v = p.getVelocity().add(unit(in).multiply(pull));
+                    if (v.length() > 0.9) v.normalize().multiply(0.9);
+                    Safe.vel(p, v);
+                }
+                if (at % 2 == 0) for (int i = 0; i < 6; i++) {
+                    Location s0 = mouth.clone().add(random.nextGaussian() * 10, random.nextGaussian() * 5, random.nextGaussian() * 10);
+                    world.spawnParticle(Particle.BUBBLE, s0, 0, mouth.getX() - s0.getX(), mouth.getY() - s0.getY(), mouth.getZ() - s0.getZ(), 0.08);
+                }
+                if (at % 20 == 0) world.playSound(mouth, Sound.ENTITY_WARDEN_SONIC_CHARGE, SoundCategory.HOSTILE, 4f, 0.5f);
+                return;
+            }
+            if (at == 80) {
+                wantJaw = 0; jawOpen = 6;
+                world.playSound(mouth, Sound.ENTITY_EVOKER_FANGS_ATTACK, SoundCategory.HOSTILE, 6f, 0.3f);
+                for (Player p : within(mouth, c("devour-bite-radius", 7.5))) hit(p, c("moves.devour", 24), mouth.toVector(), Guard.UNBLOCKABLE);
+            }
+            if (at > 92) end();
+        }
+
+        void collapse(List<Player> a) {
+            if (at < 30) { if (at % 3 == 0) for (Location m : marks) warnRing(m, 2.8, Color.fromRGB(110, 90, 80)); return; }
+            if (at == 30) for (Location m : marks) {
+                Location top = m.clone().add(0, 18, 0);
+                BlockDisplay rock = world.spawn(top, BlockDisplay.class, e -> {
+                    e.setBlock((random.nextBoolean() ? Material.BLACKSTONE : Material.DEEPSLATE).createBlockData());
+                    e.setPersistent(false);
+                    e.addScoreboardTag(Wild.FX_TAG);
+                    e.setTeleportDuration(2);
+                    e.setBrightness(new Display.Brightness(5, 5));
+                    e.setTransformation(new Transformation(new Vector3f(-1.25f, 0, -1.25f), new Quaternionf().rotateY(random.nextFloat() * 3), new Vector3f(2.5f, 2.5f, 2.5f), new Quaternionf()));
+                });
+                fxDisplays.add(rock);
+                Location drop = top.clone();
+                fx.add(() -> {
+                    if (!rock.isValid() || dying) return true;
+                    drop.add(0, -1.2, 0);
+                    rock.teleport(drop);
+                    if (drop.getY() > m.getY()) return false;
+                    world.playSound(m, Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.HOSTILE, 3f, 0.6f);
+                    world.spawnParticle(Particle.BLOCK, m, 50, 1.5, 0.5, 1.5, 0, Material.BLACKSTONE.createBlockData());
+                    for (Player p : active()) {
+                        Location l = p.getLocation();
+                        if (Math.hypot(l.getX() - m.getX(), l.getZ() - m.getZ()) < 3 && Math.abs(l.getY() - m.getY()) < 3.5) hit(p, c("moves.collapse", 12), m.toVector(), Guard.HEAVY);
+                    }
+                    rock.remove();
+                    return true;
+                });
+            }
+            if (at > 60) end();
+        }
+
+        void clearFx() { for (Display d : fxDisplays) if (d.isValid()) d.remove(); fxDisplays.clear(); }
+
+        @Override void end() { if (attack == ERUPT || attack == COLLAPSE) clearFx(); super.end(); }
+
+        @Override void cleanup() { clearFx(); }
+
+        @Override
+        void deathAnim(int t) {
+            pose(t);
+            if (t % 3 == 0) world.spawnParticle(Particle.BUBBLE_COLUMN_UP, base, 40, 3 * k, 1, 3 * k, 0.2);
+            if (t % 8 == 0) world.playSound(base, Sound.ENTITY_WARDEN_DEATH, SoundCategory.HOSTILE, 5f, 0.4f);
+            if (t % 15 == 0 && t / 15 < 3) { lureBroken[t / 15] = true; lures[t / 15].hide(true); }
+        }
+
+        @Override void drops(Player p, Location at) {
+            pl.dropLocked(at, p, new ItemStack(Material.NETHERITE_INGOT, 2 + random.nextInt(3)));
+            pl.dropLocked(at, p, new ItemStack(Material.HEART_OF_THE_SEA, 1 + random.nextInt(2)));
+            pl.dropLocked(at, p, new ItemStack(Material.ECHO_SHARD, 4 + random.nextInt(5)));
+            darkLoot(p, 1.0, 5);
+            pl.console("index stat " + p.getName() + " titans 1", p);
+        }
+
+        @Override
+        List<MoveSlot> morphMoves() {
+            List<MoveSlot> m = new ArrayList<>(List.of(new MoveSlot(SWEEP, "Claw Sweep", Material.BONE), new MoveSlot(SLAM, "Crushing Slam", Material.ANVIL),
+                    new MoveSlot(LURE, "The Lure", Material.END_ROD), new MoveSlot(ROAR, "Abyssal Roar", Material.SCULK_SHRIEKER), new MoveSlot(SPAWN, "Hadal Spawn", Material.PRISMARINE_SHARD)));
+            if (phase >= 2) { m.add(new MoveSlot(ERUPT, "Tentacle Eruption", Material.SCULK)); m.add(new MoveSlot(WAVE, "Pressure Wave", Material.HEAVY_CORE)); m.add(new MoveSlot(GAZE, "The Gaze", Material.ENDER_EYE)); }
+            if (phase >= 3) { m.add(new MoveSlot(DEVOUR, "Devour", Material.ROTTEN_FLESH)); m.add(new MoveSlot(COLLAPSE, "Abyssal Collapse", Material.BLACKSTONE)); }
             return m;
         }
     }

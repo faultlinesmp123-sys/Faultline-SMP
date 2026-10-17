@@ -644,6 +644,26 @@ wild:
     health: 900
     health-per-extra-fighter: 0.25
     cooldown-minutes: 10
+  # THE ABYSSAL TITAN (1.7.0): the Trench's final boss, asleep in the Maw (FaultlineDeep wakes it for anyone who has
+  # beaten all six sea bosses). /titan summon. Its lures break in phase 2 (lure-break-share of its health each): all
+  # three = stunned for stun-ticks, taking stun-damage-taken.
+  titan:
+    health: 5000
+    health-per-extra-fighter: 0.25
+    cooldown-minutes: 30
+    scale: 3.6
+    maw-x: -1460
+    maw-z: -1640
+    maw-radius: 70
+    fight-radius: 70
+    hide-light: 3           # how lit its hide is drawn (0-15): a dark shape in the dark; the eyes and lures always burn
+    lure-break-share: 0.03
+    stun-ticks: 160
+    stun-damage-taken: 1.5
+    rewards:
+      mythic-bags: 8
+      goodie-bags: 4
+      xp: 5000
 
 # Boss death messages (1.5.8): "<player> was frozen solid by Frostbeard" instead of "was slain by Slime", when a boss
 # hit you within this many seconds of dying (the fall or the lava it knocked you into counts too).

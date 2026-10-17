@@ -1322,6 +1322,63 @@ entries:
 # reward: items ("MATERIAL:amount"), xp, cosmetic (unlocked through FaultlineCosmetics)
 # ============================================================================
 
+  # ---- the Trench (Deep 1.8.0): its creatures, its Titan, and the Leviathan Migration's whales
+  - {chapter: deep, id: deep_hadalsnail, name: "Hadal Snailfish", icon: deep_hadalsnail, detect-tag: faultline_deep_hadalsnail,
+     where: "The Trench: the rift in the far west of the Dark Ocean (x -1250 to -1650, z -100 to -1650), at the very bottom.",
+     does: "Passive. A pale pink tadpole of a fish, soft as jelly, 8 health.",
+     drops: ["Cod|100%", "Bone Meal|100%", "Dark Loot Bag|2.5%"]}
+  - {chapter: deep, id: deep_anglerking, name: "Anglerking", icon: deep_anglerking, detect-tag: faultline_deep_anglerking,
+     where: "The Trench, the Dark Ocean's deepest rift.",
+     does: "Aggressive. A great black anglerfish, 70 health. Its lure is the only light down there: it lights the dark round it, and if it can see you it draws you toward its jaws. Then it lunges; its bite slows you.",
+     drops: ["Glow Ink Sacs|100%", "Prismarine Crystals|100%", "Dark Loot Bag|5%"]}
+  - {chapter: deep, id: deep_bonecrawler, name: "Bone Crawler", icon: deep_bonecrawler, detect-tag: faultline_deep_bonecrawler,
+     where: "The Trench's floor.",
+     does: "Aggressive. A crab wearing a skull for a shell, 34 health. It leaps at you, and its claws pin you in place (Slowness IV).",
+     drops: ["Bones|100%", "Bone Block|20%", "Dark Loot Bag|2.5%"]}
+  - {chapter: deep, id: deep_palestalker, name: "Pale Stalker", icon: deep_palestalker, detect-tag: faultline_deep_palestalker,
+     where: "The Trench.",
+     does: "Aggressive. A long, eyeless, milk-white eel, 46 health. It ambushes from 13 blocks out in one fast lunge; its bite blinds you and withers you.",
+     drops: ["Bones|100%", "Phantom Membrane|100%", "Echo Shard|4%", "Dark Loot Bag|2.5%"]}
+  - {chapter: deep, id: deep_crushjelly, name: "Crush Jelly", icon: deep_crushjelly, detect-tag: faultline_deep_crushjelly,
+     where: "The Trench.",
+     does: "Neutral. A heavy violet bell ringed with light, 40 health. Swim too close (or hit it) and it pulses: everyone within 6 blocks is slammed down, takes 4 damage and is slowed and tired.",
+     drops: ["Glow Ink Sacs|100%", "Amethyst Shards|100%", "Dark Loot Bag|2.5%"]}
+  - {chapter: deep, id: deep_tubeworm, name: "Tubeworm Colony", icon: deep_tubeworm, detect-tag: faultline_deep_tubeworm,
+     where: "Rooted on the Trench's hot vents.",
+     does: "Neutral. White tubes with blood-red plumes, 30 health; it never moves. Within 2.4 blocks it stings (poison). Hit it and the vent scalds everyone within 4 blocks.",
+     drops: ["Redstone|100%", "Magma Cream|100%", "Dark Loot Bag|2.5%"]}
+  - {chapter: deep, id: deep_greatwhale, name: "Great Whale", icon: deep_greatwhale, detect-tag: faultline_deep_greatwhale,
+     where: "Only during the LEVIATHAN MIGRATION (every 1-2 hours, with someone in the Sunlit Sea): a pod of 3-5 crosses the Sunlit Sea in a straight line.",
+     does: "Passive, 400 health, the size of a house. Follow the pod: at the end of its 600-block journey the eldest sinks to the floor as a fresh WHALE FALL with a chest of loot. Killing one has a 35% chance to bring the Umbral Leviathan up from below.",
+     drops: ["Leather|100%", "Bone Blocks|100%", "Prismarine Crystals|100%"]}
+  - {chapter: bosses, id: abyssal_titan, name: "The Abyssal Titan", icon: abyssal_titan, detect-tag: faultline_abyssal_titan,
+     where: "THE FINAL BOSS of the Dark Ocean. It sleeps under the floor of the MAW, at the southern end of the Trench (-1460, -1640, at y -61). It only wakes for someone who has beaten all six of the Dark Ocean's bosses: swim down into the Maw. 5,000 health (+25% per extra fighter). Bring the Abyssal Diving Suit and a Hadal Dive Helmet: the Trench's pressure crushes everyone else.",
+     does: "A colossal torso rising out of the rock: it never moves, it turns and reaches. A dark shape in the pitch black with burning cyan eyes and three violet lures. Claw Sweep (an arm swings low across the floor: swim up off it), Crushing Slam (a fist on your spot, then a shockwave along the floor), The Lure (its lights flare: DON'T LOOK AT THEM, or you're drawn to its jaws), Abyssal Roar (thrown back, Darkness), Hadal Spawn (guardians). Below 65%: Tentacle Eruption (under everyone), Pressure Wave (a ring along the floor: get up off it), The Gaze (a sweeping beam from its eyes: get behind something), and its LURES CAN BE BROKEN: break all three and it reels, stunned, taking 50% more damage for 8 seconds. Below 30%: Devour (it inhales the whole Maw: swim away from the jaws) and Abyssal Collapse (the walls come down).",
+     drops: ["8-10 Mythic Goodie Bags|100%", "4 Goodie Bags|100%", "5,000 XP|100%", "2-4 Netherite Ingots|100%", "1-2 Hearts of the Sea|100%", "4-8 Echo Shards|100%", "5 Dark Loot Bags|100%", "A Dark Loot rare|100%"]}
+  - chapter: armor
+    name: Copper Dive Helmet
+    icon: dive_helmet_1
+    detect: faultlineitems:oxygen_helmet=1
+    how: "Craft: 5 Copper Blocks round Glass, a Nautilus Shell under it."
+    does: "A helmet with an OXYGEN TANK: 120 seconds of breath underwater (your air stays full until the tank is empty; the action bar shows it). Refills at the surface, fast in a bubble column or with Conduit Power. +2 armor."
+  - chapter: armor
+    name: Reinforced Dive Helmet
+    icon: dive_helmet_2
+    detect: faultlineitems:oxygen_helmet=2
+    how: "Craft: a Copper Dive Helmet with 4 Iron Blocks and 4 Prismarine Crystals round it."
+    does: "A 300-second oxygen tank. +3 armor."
+  - chapter: armor
+    name: Hadal Dive Helmet
+    icon: dive_helmet_3
+    detect: faultlineitems:oxygen_helmet=3
+    how: "Craft: a Reinforced Dive Helmet with 2 Netherite Ingots, 2 Hearts of the Sea and 4 Echo Shards round it."
+    does: "A 600-second oxygen tank, +3 armor, +2 toughness. Rated for the Trench: wear it WITH the Abyssal Diving Suit and the Trench's hadal pressure can't touch you."
+  - chapter: weapons
+    name: Submersible
+    icon: deep_submersible
+    detect: faultlinedeep:submersible
+    how: "Craft: Iron Blocks, Glass, Copper Blocks and a Heart of the Sea (IGI / CHC / III)."
+    does: "A little research sub. Right-click water to put it in, right-click it to climb in, sneak to climb out (sneak + punch it to pick it up). W goes where you look, S backs up, A/D slide, Jump rises, Sprint is faster. Inside you breathe, creatures' bites hit the HULL instead of you, the deep's pressure can't reach you, and its headlight lifts the Abyss's dark. Below y -40 (the Trench) the hull cracks unless you fit HADAL PLATING (right-click it with 4 Netherite Ingots); at 0% it implodes. Iron Ingots patch the hull."
 achievements:
   - {id: first_blood, name: "First Blood", icon: demon_eye, desc: "Defeat any boss.",
      defeat: [the_demon_eye, queen_spider, mortimer_freeze, the_dune_devourer, the_frostmaw, don_lorenzo, the_kraken, the_kraken_at_sea, diamond_jacob, rocco_vendetta, grimtusk, captain_rotbeard, the_great_hog, the_skeleton_captain],
@@ -1387,3 +1444,14 @@ achievements:
      defeat: [brine_scourge, umbral_leviathan], need: all, reward: {items: ["NETHERITE_INGOT:2", "HEART_OF_THE_SEA:1"], xp: 1500}}
   - {id: abyss_walker, name: "Abyss Walker", icon: the_lament, desc: "Defeat all six of the Dark Ocean's bosses.",
      defeat: [brine_scourge, umbral_leviathan, coralia, old_inkjaw, grandmaw_clam, the_lament], need: all, reward: {items: ["NETHERITE_INGOT:4", "TOTEM_OF_UNDYING:1"], xp: 3000}}
+  # ---- the Trench and the deep (Deep 1.8.0)
+  - {id: titan_slayer, name: "Titan Slayer", icon: abyssal_titan, desc: "Defeat the Abyssal Titan in the Maw.",
+     defeat: [abyssal_titan], need: all, reward: {items: ["NETHERITE_INGOT:4", "NETHER_STAR:1"], xp: 5000}}
+  - {id: hadal_zone, name: "Hadal Zone", icon: deep_anglerking, desc: "Hunt 4 of the Trench's creatures.",
+     defeat: [deep_hadalsnail, deep_anglerking, deep_bonecrawler, deep_palestalker, deep_crushjelly, deep_tubeworm], need: 4, reward: {items: ["DIAMOND:8", "ECHO_SHARD:4"], xp: 800}}
+  - {id: deep_rush_champion, name: "Lord of the Deep", icon: abyssal_titan, desc: "Finish a Deep Boss Rush (right-click a Boss Rush Sigil in the Dark Ocean).",
+     stat: deep_boss_rush, count: 1, reward: {items: ["NETHERITE_INGOT:4", "HEART_OF_THE_SEA:2"], xp: 4000}}
+  - {id: honored_by_the_den, name: "Honored by the Den", icon: deep_mermaid, desc: "Earn the Mermaid Den's highest trust (Honored).",
+     stat: den_honored, count: 1, reward: {items: ["CONDUIT:1", "PRISMARINE_CRYSTALS:32"], xp: 1500}}
+  - {id: the_bloom, name: "When the Deep Glows", icon: deep_dumbo, desc: "Be deep down when the Bioluminescent Bloom comes.",
+     stat: blooms, count: 1, reward: {items: ["GLOW_INK_SAC:16", "SEA_LANTERN:8"], xp: 500}}

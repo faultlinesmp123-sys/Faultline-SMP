@@ -442,6 +442,7 @@ public final class FaultlineItems extends JavaPlugin {
         getServer().getPluginManager().registerEvents(caveTrader, this);
         getCommand("cavetrader").setExecutor(caveTrader);
         gear = new Gear(this);
+        diveHelmets = new DiveHelmets(this);
         getServer().getPluginManager().registerEvents(gear, this);
         getCommand("fgear").setExecutor(gear);
         getCommand("giveancientgear").setExecutor(gear);
@@ -879,6 +880,7 @@ public final class FaultlineItems extends JavaPlugin {
     Weather weather;
     Creatures creatures;
     Gear gear;
+    DiveHelmets diveHelmets;
     Gear getGear() { return gear; }
     PvpLimits pvpLimits;
     LifeJellyListener getLifeJellyListener() { return lifeJellyListener; }
@@ -7211,6 +7213,8 @@ public final class FaultlineItems extends JavaPlugin {
             }
             // the wild update: gear, discs, eggs
             list.add(external(icon(Material.PAPER, "mining_helmet", ChatColor.YELLOW + "" + ChatColor.BOLD + "Mining Helmet", "FaultlineItems"), "fgear mining_helmet {amount} {player}", "FaultlineItems"));
+            for (int i = 0; i < 3; i++) // the dive helmets (1.2.57): oxygen tanks
+                list.add(external(icon(Material.PAPER, DiveHelmets.IDS[i], DiveHelmets.COLORS[i] + "" + ChatColor.BOLD + DiveHelmets.NAMES[i], "FaultlineItems"), "fgear " + DiveHelmets.IDS[i] + " {amount} {player}", "FaultlineItems"));
             list.add(external(icon(Material.PAPER, "lantern_of_souls", ChatColor.AQUA + "" + ChatColor.BOLD + "Lantern of Souls", "FaultlineItems"), "fgear lantern_of_souls {amount} {player}", "FaultlineItems"));
             list.add(external(icon(Material.PAPER, "knight_helm", ChatColor.WHITE + "" + ChatColor.BOLD + "Knight's Helm", "FaultlineItems"), "fgear knight_helm {amount} {player}", "FaultlineItems"));
             list.add(external(icon(Material.PAPER, "ancient_gear_part", ChatColor.GREEN + "Ancient Gear Part", "FaultlineItems"), "fgear ancient_gear_part {amount} {player}", "FaultlineItems"));

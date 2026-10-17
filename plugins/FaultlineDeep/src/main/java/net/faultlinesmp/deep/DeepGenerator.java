@@ -165,7 +165,7 @@ final class DeepGenerator extends ChunkGenerator {
         long h = hash(seed, cx, cz, 11);
         if (unit(h) > 0.66) return null;
         int x = cx * 144 + 24 + (int) (unit(hash(seed, cx, cz, 12)) * 96), z = cz * 144 + 24 + (int) (unit(hash(seed, cx, cz, 13)) * 96);
-        if (flatWeight(x, z) > 0 || Sulphur.near(x, z, 30) || MermaidDen.near(x, z, 30)) return null;
+        if (flatWeight(x, z) > 0 || Sulphur.near(x, z, 30) || MermaidDen.near(x, z, 30) || Trench.near(x, z, 30)) return null;
         return new int[]{x, z};
     }
 
@@ -364,6 +364,9 @@ final class DeepGenerator extends ChunkGenerator {
         double reg = region(n, x, z), reef = reef(x, z), sw = Sulphur.weight(n, x, z), mw = MermaidDen.weight(x, z);
         boolean sulphur = sw > 0.35, den = mw > 0.35;
         boolean sunken = reg > 0.15 && !sulphur && !den, warm = reef > 0.15 && !sulphur && !den;
+        // the Trench's mouth (1.8.0): nothing stands on a floor that's about to be cut away
+        Trench.Spot ts = Trench.near(x, z, 0) ? Trench.spot(x, z) : null;
+        boolean mouth = Math.hypot(x - Trench.LX, z - Trench.LZ) < Trench.LAIR_R + Trench.WALL + 16 || ts != null && ts.d() < Trench.half(n, ts, x, up, z) + 4;
         // bedrock
         for (int y = minY; y <= minY + 2; y++) d.setBlock(lx, y, lz, y == minY || rnd.nextInt(3) > 0 ? Material.BEDROCK : Material.DEEPSLATE);
         // ---- the abyss floor + mounds
@@ -412,11 +415,11 @@ final class DeepGenerator extends ChunkGenerator {
         // ---- the Sunlit Sea
         for (int y = up + 1; y <= SEA; y++) d.setBlock(lx, y, lz, Material.WATER);
         // sea stacks
-        int stack = stackTop(n, x, z);
+        int stack = mouth ? Integer.MIN_VALUE : stackTop(n, x, z);
         if (stack > up) for (int y = up + 1; y <= stack; y++)
             d.setBlock(lx, y, lz, y > stack - 2 ? Material.MOSSY_COBBLESTONE : (y % 5 == 0 ? Material.ANDESITE : Material.STONE));
         // the rest, block by block above the floor (spires, arches, whale falls), only where it's still water
-        for (int y = up + 1; y <= Math.min(SEA - 3, up + 40); y++) {
+        for (int y = up + 1; y <= Math.min(SEA - 3, up + 40) && !mouth; y++) {
             if (d.getType(lx, y, lz) != Material.WATER) continue;
             int sp = sunken ? spire(n, x, y, z, up) : 0;
             if (sp > 0) { d.setBlock(lx, y, lz, sp == 2 ? Material.SEA_LANTERN : (y + x + z) % 3 == 0 ? Material.DARK_PRISMARINE : Material.PRISMARINE); continue; }
@@ -426,9 +429,10 @@ final class DeepGenerator extends ChunkGenerator {
         }
         if (sulphur) Sulphur.decorate(this, n, d, rnd, lx, lz, x, z, up);
         else if (den) MermaidDen.decorate(this, n, d, rnd, lx, lz, x, z, up);
-        else if (mw <= 0) decorateUpper(n, d, rnd, lx, lz, x, z, up, sunken, warm);
+        else if (mw <= 0 && !mouth) decorateUpper(n, d, rnd, lx, lz, x, z, up, sunken, warm);
         decorateCrust(n, d, rnd, lx, lz, ceil, up);
         decorateAbyss(n, d, rnd, lx, lz, x, z, floorTop, ceil);
+        if (ts != null || mouth) Trench.carve(this, n, d, rnd, lx, lz, x, z, up, minY); // last: the rift cuts through all of it
     }
 
     private Material surface(Noise n, Random rnd, int x, int z, boolean sunken, boolean warm, int up) {
@@ -591,7 +595,7 @@ final class DeepGenerator extends ChunkGenerator {
     }
 
     // =========================================================================================== for the plugin
-    enum Zone { SUNLIT, CAVES, ABYSS, SULPHUR }
+    enum Zone { SUNLIT, CAVES, ABYSS, SULPHUR, TRENCH }
 
     /** Which part of the Dark Ocean a spot is in (by the terrain's own layers, so it works before a chunk loads). */
     Zone zone(long seed, int x, int y, int z) {
@@ -599,6 +603,7 @@ final class DeepGenerator extends ChunkGenerator {
         int up = upperFloor(n, x, z), ceil = abyssCeiling(n, x, z);
         if (up - ceil < 14) ceil = up - 14;
         if (y > up) return Sulphur.weight(n, x, z) > 0.35 ? Zone.SULPHUR : Zone.SUNLIT;
+        if (Trench.inside(n, x, y, z, up)) return Zone.TRENCH;
         if (y >= ceil) return Zone.CAVES;
         return Zone.ABYSS;
     }
@@ -608,6 +613,25 @@ final class DeepGenerator extends ChunkGenerator {
 
     /** How much of the Sulphur Sea a column is in (0..1). */
     double sulphur(long seed, int x, int z) { return Sulphur.weight(noiseFor(seed), x, z); }
+
+    /** A tall pocket of open Abyss water near (x0, z0) (the Deep Boss Rush): {x, y, z}, or null. */
+    int[] abyssPocket(long seed, int x0, int z0) {
+        Noise n = noiseFor(seed);
+        for (int r = 0; r < 480; r += 16) for (int a = 0; a < 360; a += r == 0 ? 360 : 20) {
+            int x = x0 + (int) Math.round(Math.cos(Math.toRadians(a)) * r), z = z0 + (int) Math.round(Math.sin(Math.toRadians(a)) * r);
+            if (flatWeight(x, z) > 0 || Trench.near(x, z, 30) || MermaidDen.near(x, z, 0) || Sulphur.near(x, z, 0)) continue;
+            if (moundTop(n, x, z) != Integer.MIN_VALUE || hangBottom(n, x, z, abyssCeiling(n, x, z)) != Integer.MAX_VALUE) continue;
+            int up = upperFloor(n, x, z), ceil = abyssCeiling(n, x, z);
+            if (up - ceil < 14) ceil = up - 14;
+            int fl = abyssFloor(n, x, z);
+            if (ceil - fl < 26) continue;
+            return new int[]{x, fl + (ceil - fl) / 2, z};
+        }
+        return null;
+    }
+
+    /** Is (x, y, z) in the Trench's water? */
+    boolean trench(long seed, int x, int y, int z) { Noise n = noiseFor(seed); return Trench.inside(n, x, y, z, upperFloor(n, x, z)); }
 
     /** The abyss's ceiling at a column. */
     int ceiling(long seed, int x, int z) { return abyssCeiling(noiseFor(seed), x, z); }

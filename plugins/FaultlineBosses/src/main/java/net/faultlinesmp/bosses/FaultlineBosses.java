@@ -10763,6 +10763,19 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
      * still out that started its music for them in the world they're in. FaultlineDeep asks this (by reflection) so the
      * Dark Ocean's music never plays over a boss's; the vanilla background music is also kept off while it's true.
      */
+    /**
+     * FaultlineDeep (by reflection) when someone who has beaten all six sea bosses swims into the Trench's Maw: wakes the
+     * Abyssal Titan there. True if it's out (just now, or already); false if it couldn't (cooldown, no room, no world).
+     */
+    public static boolean wakeTitan(Location at, Player by) {
+        FaultlineBosses pl = instance;
+        if (pl == null || pl.wild == null) return false;
+        if (pl.wild.get("titan") != null) return true;
+        if (System.currentTimeMillis() < pl.wild.cooldownUntil.getOrDefault("titan", 0L)) return false;
+        pl.wild.lastFail = null;
+        return pl.wild.summon("titan", at, by) != null;
+    }
+
     public static boolean hearingBossMusic(UUID id) {
         FaultlineBosses pl = instance;
         if (pl == null) return false;
@@ -10784,7 +10797,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
     }
 
     static final List<String> MORPH_KINDS = List.of("demoneye", "frostbeard", "dune", "frostmaw", "kraken", "jacob", "don", "rocco", "grimtusk",
-            "leviathan", "sandworm", "lich", "frostwyrm", "golem", "scourge", "umbral", "coralia", "inkjaw", "grandmaw", "lament", "off", "release");
+            "leviathan", "sandworm", "lich", "frostwyrm", "golem", "scourge", "umbral", "coralia", "inkjaw", "grandmaw", "lament", "titan", "off", "release");
     private Morph morph;
     Vendetta vendetta;
     Warlord warlord;
@@ -10814,8 +10827,8 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             case "demoneye" -> eye != null; case "frostbeard" -> mortimer != null; case "dune", "frostmaw" -> dune != null;
             case "don" -> don != null; case "kraken" -> kraken != null; case "jacob" -> jacob != null;
             case "rocco" -> vendetta != null && vendetta.rocco != null; case "grimtusk" -> warlord != null && warlord.boss != null;
-            case "rotbeard", "bulwark", "great_hog", "queen_spider" -> rush != null && rush.raidBossAlive();
-            case "leviathan", "sandworm", "lich", "frostwyrm", "golem", "scourge", "umbral", "coralia", "inkjaw", "grandmaw", "lament" -> wild != null && wild.get(kind) != null;
+            case "rotbeard", "bulwark", "great_hog", "queen_spider", "goblin" -> rush != null && rush.raidBossAlive();
+            case "leviathan", "sandworm", "lich", "frostwyrm", "golem", "scourge", "umbral", "coralia", "inkjaw", "grandmaw", "lament", "titan" -> wild != null && wild.get(kind) != null;
             default -> false;
         };
     }
@@ -10842,12 +10855,14 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 case "jacob" -> summonJacob(ahead, by);
                 case "rocco" -> vendetta.summon(ahead, by);
                 case "grimtusk" -> warlord.summon(Warlord.spawnSpot(by), by);
-                case "leviathan", "sandworm", "lich", "frostwyrm", "golem", "scourge", "umbral", "coralia", "inkjaw", "grandmaw", "lament" -> {
-                    Location l = kind.equals("leviathan") ? at : ahead;
+                case "leviathan", "sandworm", "lich", "frostwyrm", "golem", "scourge", "umbral", "coralia", "inkjaw", "grandmaw", "lament", "titan" -> {
+                    Location l = kind.equals("leviathan") || DeepBosses.KINDS.contains(kind) ? at : ahead; // the Dark Ocean's: right at their spot
+                    if (kind.equals("titan")) l = new Location(at.getWorld(), wild.c("titan.maw-x", -1460) + 0.5, at.getY(), wild.c("titan.maw-z", -1640) + 0.5);
                     if (kind.equals("golem")) { Location f = StoneGolem.openFloor(by.getLocation(), 6, 12); if (f != null) l = f; }
                     if (wild.summon(kind, l, by) == null) return false;
                 }
                 case "rotbeard", "bulwark", "great_hog", "queen_spider" -> { if (!rush.spawnRaidBoss(kind, ahead)) return false; }
+                case "goblin" -> { if (!rush.spawnRaidBoss(kind, at)) return false; }
                 default -> { return false; }
             }
         } catch (RuntimeException e) {
@@ -11106,14 +11121,14 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         if (!(sender instanceof Player p)) { sender.sendMessage("Players only."); return true; }
         if (morph != null) { sender.sendMessage(ChatColor.RED + "Someone is already in boss form. (/bossmorph off)"); return true; }
         if (!MORPH_KINDS.contains(kind) || kind.equals("off") || kind.equals("release")) {
-            sender.sendMessage(ChatColor.YELLOW + "/bossmorph <demoneye|frostbeard|dune|frostmaw|kraken|jacob|don|rocco|grimtusk|leviathan|sandworm|lich|frostwyrm|golem|scourge|umbral|coralia|inkjaw|grandmaw|lament>  |  /bossmorph off  |  /bossmorph release");
+            sender.sendMessage(ChatColor.YELLOW + "/bossmorph <demoneye|frostbeard|dune|frostmaw|kraken|jacob|don|rocco|grimtusk|leviathan|sandworm|lich|frostwyrm|golem|scourge|umbral|coralia|inkjaw|grandmaw|lament|titan>  |  /bossmorph off  |  /bossmorph release");
             return true;
         }
         boolean busy = switch (kind) {
             case "demoneye" -> eye != null; case "frostbeard" -> mortimer != null; case "dune", "frostmaw" -> dune != null;
             case "kraken" -> kraken != null; case "jacob" -> jacob != null; case "rocco" -> vendetta.rocco != null;
             case "grimtusk" -> warlord.boss != null;
-            case "leviathan", "sandworm", "lich", "frostwyrm", "golem", "scourge", "umbral", "coralia", "inkjaw", "grandmaw", "lament" -> wild.get(kind) != null;
+            case "leviathan", "sandworm", "lich", "frostwyrm", "golem", "scourge", "umbral", "coralia", "inkjaw", "grandmaw", "lament", "titan" -> wild.get(kind) != null;
             default -> don != null;
         };
         if (busy) { sender.sendMessage(ChatColor.RED + "That boss is already out. Remove it first (/" + (kind.equals("frostmaw") ? "dune" : kind) + " kill)."); return true; }
@@ -11160,7 +11175,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 case "kraken" -> { summonKraken(at.clone().add(look.clone().multiply(14)), null); morph.boss = kraken; }
                 case "jacob" -> { summonJacob(at, null); morph.boss = jacob; }
                 case "grimtusk" -> { warlord.summon(at.clone().add(look.clone().multiply(3)), null); morph.boss = warlord.boss; }
-                case "leviathan", "sandworm", "lich", "frostwyrm", "golem", "scourge", "umbral", "coralia", "inkjaw", "grandmaw", "lament" -> morph.boss = wild.summon(kind, kind.equals("leviathan") ? at : at.clone().add(look.clone().multiply(4)), null);
+                case "leviathan", "sandworm", "lich", "frostwyrm", "golem", "scourge", "umbral", "coralia", "inkjaw", "grandmaw", "lament", "titan" -> morph.boss = wild.summon(kind, kind.equals("leviathan") ? at : at.clone().add(look.clone().multiply(4)), null);
                 case "rocco" -> {
                     vendetta.summon(at.clone().add(look.clone().multiply(3)), null);
                     morph.boss = vendetta.rocco;

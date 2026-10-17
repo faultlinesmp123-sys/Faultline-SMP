@@ -328,7 +328,7 @@ wardrobe:
 item-textures:
   enabled: true
   url: "https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/main/FaultlineSMP.zip"
-  hash: "7be642497f2a9e3f156d88f63aac1b29f835771a"
+  hash: "42d0f9c7998e6553280d9aae053284fe2a63d508"
   # The Dark Ocean's music, a second pack sent beside the main one (empty url = not sent)
   music-url: "https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/main/FaultlineDeepMusic.zip"
   music-hash: "e9e6ed1623ab28d2d2af74286259157caf2dc299"
@@ -458,6 +458,15 @@ cave-trader:
     - "kraken_worm:16:0:3"
 
 # ---------------- Diving gear (after Calamity's) ----------------
+# Dive helmets (1.2.57): worn helmets with an oxygen tank (seconds of breath underwater), refilled at the surface or fast
+# in a bubble column / with Conduit Power. The Hadal one + the Abyssal Diving Suit keeps FaultlineDeep's Trench pressure out.
+dive-helmets:
+  tank-seconds:
+    copper: 120
+    reinforced: 300
+    hadal: 600
+  bubble-refill-per-second: 10
+
 diving:
   drops:
     helmet-from-drowned: 0.015

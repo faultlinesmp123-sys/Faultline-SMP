@@ -453,6 +453,8 @@ public final class FaultlineItems extends JavaPlugin {
         getCommand("fweather").setTabCompleter(weather);
         bloodMoonSky = new BloodMoonSky(this);
         getServer().getPluginManager().registerEvents(bloodMoonSky, this);
+        eventPacks = new EventPacks(this);
+        getServer().getPluginManager().registerEvents(eventPacks, this);
         getServer().getPluginManager().registerEvents(new StandGuard(this), this);
         if (getCommand("bedrockcheck") != null) getCommand("bedrockcheck").setExecutor(new BedrockCheck(this));
         // tell the console straight away when Bedrock players won't get the packs
@@ -882,6 +884,7 @@ public final class FaultlineItems extends JavaPlugin {
     Caravan caravan;
     Weather weather;
     BloodMoonSky bloodMoonSky;
+    EventPacks eventPacks;
     Creatures creatures;
     Gear gear;
     DiveHelmets diveHelmets;
@@ -3364,7 +3367,7 @@ public final class FaultlineItems extends JavaPlugin {
 
         // Fixed, unique to this pack slot — must never collide with
         // FaultlinePermadeath's heart-texture UUID or any other plugin's.
-        private static final UUID PACK_ID = UUID.fromString("9d3e7a1c-5b2f-4e8a-b6c4-7f1a2d3e4b5c");
+        static final UUID PACK_ID = UUID.fromString("9d3e7a1c-5b2f-4e8a-b6c4-7f1a2d3e4b5c");
 
         private final FaultlineItems plugin;
 

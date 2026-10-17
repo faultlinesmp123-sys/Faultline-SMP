@@ -78,6 +78,8 @@ final class PackHash {
         Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, () -> {
             refresh(plugin.getConfig().getString("item-textures.url", ""), plugin.getLogger());
             refresh(plugin.getConfig().getString("item-textures.music-url", ""), plugin.getLogger());
+            for (String id : EventPacks.EVENT_IDS.keySet()) // the event sky packs (1.2.59)
+                refresh(plugin.getConfig().getString("event-packs." + id + ".url", EventPacks.DEFAULTS.get(id)[0]), plugin.getLogger());
         }, 1L, every);
     }
 }

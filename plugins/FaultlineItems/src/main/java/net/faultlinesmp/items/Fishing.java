@@ -186,7 +186,7 @@ final class Fishing implements Listener, CommandExecutor, TabCompleter {
 
     /** One of the Dark Ocean's fish for those waters (often: hadal.chance, always in the Trench), or null = a plain fish. */
     Species hadal(String zone) {
-        if (!plugin.getConfig().getBoolean("fishing.hadal.enabled", true) || zone.equals("BUBBLE")) return null;
+        if (!plugin.getConfig().getBoolean("fishing.hadal.enabled", false) || zone.equals("BUBBLE")) return null;
         double chance = zone.equals("TRENCH") ? 1 : plugin.getConfig().getDouble("fishing.hadal.chance", 0.7);
         if (random.nextDouble() >= chance) return null;
         int total = 0;

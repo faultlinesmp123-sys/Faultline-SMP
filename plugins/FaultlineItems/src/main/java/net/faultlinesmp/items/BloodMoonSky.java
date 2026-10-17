@@ -27,7 +27,8 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * THE BLOOD MOON WITHOUT A LOADING SCREEN (Items 1.2.58). FaultlineEvents turned the moon red by pushing a second
+ * THE BLOOD MOON WITHOUT A LOADING SCREEN (Items 1.2.58). Since 1.2.59 only used when the Blood Moon pack is turned off
+ * (event-packs.blood-moon.enabled: false): EventPacks sends the red moon pack itself and shields everyone while it loads. FaultlineEvents turned the moon red by pushing a second
  * resource pack (FaultlineBloodMoon.zip) to everyone when a Blood Moon started; any pack pushed mid-game makes the client
  * reload EVERY pack (FaultlineSMP.zip is ~24 MB): the Mojang loading screen, for long enough to die in. Now, while
  * FaultlineEvents' BLOOD_MOON is on (`faultlineevents:active_event` on the main world), each Java player gets a private red
@@ -81,6 +82,7 @@ final class BloodMoonSky implements Listener {
     }
 
     boolean on(World w) {
+        if (plugin.eventPacks != null && plugin.eventPacks.sends("blood-moon")) return false; // 1.2.59: the red moon pack does it
         return enabled() && !Bukkit.getWorlds().isEmpty() && w.equals(Bukkit.getWorlds().get(0)) && w.getEnvironment() == World.Environment.NORMAL
                 && plugin.isEventActive("BLOOD_MOON");
     }
@@ -148,7 +150,7 @@ final class BloodMoonSky implements Listener {
         if (warned || e.getStatus() != PlayerResourcePackStatusEvent.Status.ACCEPTED) return;
         UUID id;
         try { id = e.getID(); } catch (RuntimeException | NoSuchMethodError ex) { return; }
-        if (id == null || OURS.contains(id) || e.getPlayer().getTicksLived() < 20 * 30) return; // join-time packs are expected
+        if (id == null || OURS.contains(id) || EventPacks.EVENT_IDS.containsValue(id) || e.getPlayer().getTicksLived() < 20 * 30) return; // join-time packs are expected
         warned = true;
         String why = plugin.isEventActive("BLOOD_MOON") ? " during the Blood Moon (FaultlineEvents' moon pack)" : "";
         String msg = "Another plugin just pushed a resource pack to " + e.getPlayer().getName() + why

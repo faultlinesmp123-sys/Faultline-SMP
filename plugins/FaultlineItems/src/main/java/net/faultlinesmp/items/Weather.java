@@ -592,6 +592,9 @@ final class Weather implements Listener, CommandExecutor, org.bukkit.command.Tab
                         }
                         p.spawnParticle(Particle.DUST, c, 6, 1.5, 0, 1.5, 0, new Particle.DustOptions(Color.fromRGB(10, 10, 14), 4f));
                     }
+                } else if (plugin.eventPacks != null && plugin.eventPacks.sends("eclipse")) {
+                    ItemDisplay old = suns.remove(p.getUniqueId()); // 1.2.59: the Eclipse pack draws the black sun in the sky
+                    if (old != null && old.isValid()) old.remove();
                 } else {
                     ItemDisplay d = sun(p);
                     Location at = p.getLocation().add(0, up, 0);

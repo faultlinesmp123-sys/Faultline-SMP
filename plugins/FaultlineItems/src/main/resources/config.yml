@@ -667,8 +667,8 @@ fishing:
   monster-chance: 0.01        # a 1.5x fish
   tag-fish-in-tournament: true   # tournament fish show their weight (they won't stack)
   announce-first-records: false  # the very first fish of a species is a "record" too: announce it?
-  hadal:                      # 1.2.59: the Dark Ocean's own fish (FaultlineDeep says which waters the hook is in)
-    enabled: true
+  hadal:                      # the Dark Ocean's own fish (FaultlineDeep says which waters the hook is in)
+    enabled: false            # off until their models are in the pack (the next update turns it on)
     chance: 0.7               # a fish caught there is one of its own species (always over the Trench)
   rewards:
     first: ["givemythicbag 2 {player}"]
@@ -755,11 +755,35 @@ ancient-core:
   knockback-resistance: 0.15
   health: 0
 
-# The Blood Moon's red moon (1.2.58), drawn by this plugin with no extra resource pack. FaultlineEvents used to push its
-# own moon pack (FaultlineBloodMoon.zip) when a Blood Moon started, and ANY pack pushed mid-game reloads every pack on
-# every client (the Mojang loading screen). Turn that pack off in FaultlineEvents' config; this draws the red moon instead.
+# Event sky packs (1.2.59): while an event is on, everyone in its world (Java) gets its own small pack on top of
+# FaultlineSMP.zip, taken off when it ends. Adding/removing a pack shows the loading screen, so pack-shield covers it.
+# The Blood Moon pack is sent from here now: keep FaultlineEvents' own moon pack OFF, or players load it twice.
+event-packs:
+  enabled: true
+  blood-moon:                 # FaultlineEvents' BLOOD_MOON: the red moon
+    enabled: true
+    url: "https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/main/FaultlineBloodMoon.zip"
+    hash: "2bd923ab60ea489e8cd0b2940799b2e04dfb4ebe"
+  eclipse:                    # the Eclipse: a black sun with a burning corona
+    enabled: true
+    url: "https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/main/FaultlineEclipse.zip"
+    hash: "90ac668c24a2408a3170e471ef677f8e0ec7048c"
+  aurora:                     # the Aurora: green and violet curtains in the clouds
+    enabled: true
+    url: "https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/main/FaultlineAurora.zip"
+    hash: "e60868fe219c3b070ccd8b92a319cc6c92daeab7"
+
+# While ANY resource pack loads for a player (joining, or an event pack going on/off): no mobs spawn near them, mobs
+# ignore them, and they can't be hurt. Lasts until the game says the pack loaded, plus grace-seconds.
+pack-shield:
+  enabled: true
+  radius: 96                  # no natural / spawner / patrol spawns this close to a loading player
+  grace-seconds: 3            # still protected this long after it loaded
+  removal-seconds: 25         # taking a pack off sends no "loaded" answer: protected this long
+  max-seconds: 120            # never protected longer than this
+
+# The Blood Moon's red moon drawn with a display instead (1.2.58), used only when event-packs.blood-moon is off.
 blood-moon-sky:
   enabled: true
-  distance: 60          # how far out the red moon is drawn (closer = never fogged, but hills can hide it)
-  size: 1.08            # x the vanilla moon's size (a hair bigger so the white moon never peeks out)
-
+  distance: 60
+  size: 1.08

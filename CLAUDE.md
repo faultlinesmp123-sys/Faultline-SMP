@@ -1324,10 +1324,25 @@ Notes:
   item, in FaultlineSMP.zip), placed `distance` 60 out along the real moon's direction (`moonDir`: the game's celestial angle
   formula from the player's time, sun rising +x) and sized like the vanilla moon (40 wide at 100) x `size` 1.08; hidden below
   the horizon. The owner must turn FaultlineEvents' moon pack off in ITS config. `onPack` warns the console + ops once when a
-  pack that isn't ours (`OURS` = Items main/music, Bosses) is accepted more than 30 s after join. RULE: never push a resource
-  pack mid-game; draw it with displays. **/tier remove <name|uuid>** (`TierManager.findAssigned`: matched against the tier
+  pack that isn't ours (`OURS` = Items main/music, Bosses) is accepted more than 30 s after join. (Since 1.2.59 the display
+  moon is only the fallback when `event-packs.blood-moon.enabled: false`.) **/tier remove <name|uuid>** (`TierManager.findAssigned`: matched against the tier
   list itself by last known name or UUID, so banned / never-cached players can be removed; tab-completes the list).
   Tested (`BloodMoonTest`).
+- **Event sky packs + the pack shield (Items 1.2.59)**: the owner WANTS real packs for the sky events, so `Items/EventPacks.java`
+  (`event-packs:`) adds a small pack on top of FaultlineSMP.zip (own UUID per event, `EVENT_IDS`, so it never touches the main
+  pack) to every Java player in the event's world while it's on, and removes it when it ends: `blood-moon` (FaultlineEvents'
+  BLOOD_MOON, `FaultlineBloodMoon.zip`), `eclipse` (Weather's Eclipse, `FaultlineEclipse.zip`: every moon phase = a black sun in a
+  burning corona, since the Eclipse sets the player's sky to night) and `aurora` (`FaultlineAurora.zip`: clouds.png = green /
+  teal / violet curtains). The last two come from `python3 tools/event_packs.py <repo> --preview tools/previews`; hashes in
+  `event-packs.<id>.hash`, also checked by PackHash. A player gets one only after their main pack loaded (`ready`, or 90 s in),
+  one load at a time; latecomers / arrivals get it then. With a pack on, the display moon (BloodMoonSky) and the Eclipse's
+  display black sun are skipped. FaultlineEvents' own moon pack must stay OFF (two loads). THE PACK SHIELD (`pack-shield:`):
+  for ANY pack (the join packs too), from the push / ACCEPTED status until SUCCESSFULLY_LOADED (or a failure) + `grace-seconds`
+  3, capped at `max-seconds` 120 (a removal sends no answer: `removal-seconds` 25): no `Enemy` spawns within `radius` 96 of that
+  player for natural reasons (`BLOCKED`: NATURAL, SPAWNER, PATROL, REINFORCEMENTS, TRIAL_SPAWNER...; eggs / plugins untouched),
+  mobs can't target them, they take no damage. The clock is server ticks (`now`), so lag stretches it. Tested
+  (`PackShieldTest`, `BloodMoonTest`, `WildItemsTest`). The hadal fishing code shipped in this jar is OFF
+  (`fishing.hadal.enabled: false`) until its models are in the pack.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.
@@ -1347,7 +1362,8 @@ Notes:
 | `FaultlineSMP.zip` | Main combined resource pack (items, bosses, Index, sounds, cinematic font) |
 | `FaultlineItemTextures.zip` | Custom item textures pack (accessories, potions, staffs, etc.) |
 | `FaultlineBossesPack.zip` | Boss models/sounds pack (Demon Eye, Dune, Frostmaw, mf_* models) |
-| `FaultlineBloodMoon.zip` | Blood Moon pack: replaces moon phase textures |
+| `FaultlineBloodMoon.zip` | Blood Moon pack: replaces moon phase textures (sent by FaultlineItems' EventPacks during a Blood Moon) |
+| `FaultlineEclipse.zip`, `FaultlineAurora.zip` | Eclipse / Aurora sky packs (`tools/event_packs.py`, sent by EventPacks during those events) |
 | `FaultlineBosses.zip` | Very old zip of the FaultlineBosses source (Demon Eye only). Ignore it; the live copy is `plugins/FaultlineBosses/` |
 | `plugins/` | Source code for all nine custom plugins (edit these) |
 | `FaultlineDeepMusic.zip` | Second Java pack: the Dark Ocean's three music tracks (sunken, abyss, acid; sent beside FaultlineSMP.zip) |

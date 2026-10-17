@@ -2,6 +2,7 @@ package net.faultlinesmp.bosses;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
@@ -83,8 +84,11 @@ final class DeathMessages implements Listener {
     @EventHandler(priority = EventPriority.HIGH)
     public void onDeath(PlayerDeathEvent e) {
         Hit h = last.remove(e.getEntity().getUniqueId());
-        if (h == null || !pl.getConfig().getBoolean("death-messages.enabled", true)) return;
-        if (System.currentTimeMillis() - h.at() > pl.getConfig().getDouble("death-messages.seconds", 5) * 1000) return;
+        if (h == null || System.currentTimeMillis() - h.at() > pl.getConfig().getDouble("death-messages.seconds", 5) * 1000) return;
+        // the Index learns this boss's weakness from the death (Index 1.7.0: Weakness.java)
+        if (Bukkit.getPluginManager().getPlugin("FaultlineIndex") != null)
+            try { Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "index died " + e.getEntity().getName() + " " + h.boss()); } catch (RuntimeException ignored) { }
+        if (!pl.getConfig().getBoolean("death-messages.enabled", true)) return;
         if (e.deathMessage() == null) return; // someone hid it on purpose (a cutscene, another plugin)
         e.deathMessage(Component.text(line(h.boss(), e.getEntity().getName()), NamedTextColor.WHITE));
     }

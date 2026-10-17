@@ -227,44 +227,44 @@ entries:
      does: "Boots: +3 armor, +15% speed, AND rocket flight. Never break. While rocket-flying (until you land) you can only hit with swords or axes, and you can't swap armor."}
 
   # ---------------------------------------------------------------- BOSSES
-  - {chapter: bosses, name: "The Demon Eye", icon: demon_eye, detect-tag: faultline_demon_eye,
+  - {chapter: bosses, weakness: "It dives in straight lines: sidestep at the last moment and hit it while it turns. Bows and tridents reach it in the air. Clear its servants first, they die fast.", name: "The Demon Eye", icon: demon_eye, detect-tag: faultline_demon_eye,
      where: "Summoned with a Suspicious Eye at night. 1,000 health.",
      does: "Four phases. Rams you, births Servants, drops Tooth Balls, then splits into a toothy mouth that spin-dashes, rains teeth, and rains blood from overhead. Later it fires homing blood and vanishes to reappear and charge from the side. Everyone fighting can be targeted, and it enrages if the fight reaches morning.",
      drops: ["10 Mythic Goodie Bags|100%", "12-16 Diamonds|100%", "2 Zombie Omens (IV-V)|100%", "Ankh|50%", "32-64 Unholy Arrows|100%",
              "1-3 Netherite Ingots|50%", "Shield of the Demon Eye|25%", "Twin Eye Staff|20%", "1,000 XP|100%"]}
-  - {chapter: bosses, name: "Queen Spider", icon: queen_spider, detect-tag: faultline_queen_spider,
+  - {chapter: bosses, weakness: "Fight her away from her webs (a sword cuts them, fire burns them) and kill the brood as it hatches, or it swarms you.", name: "Queen Spider", icon: queen_spider, detect-tag: faultline_queen_spider,
      where: "Deep in caves: 1% of spiders spawning underground. 500 health.",
      does: "Poison bites, Venom Spit, a pounce, a ground stomp, webs around every player, swarms of brood, and egg sacs (big eggs in a web: break the web before they hatch into Cave Spiders). Enrages at half health.",
      drops: ["10 Spider Eyes|100%", "5-10 Diamonds|50%", "Spider Staff|10%", "Queen's Silk|5%", "300 XP|100%"]}
-  - {chapter: bosses, name: "The Bulwark", icon: the_bulwark, detect-tag: faultline_bulwark,
+  - {chapter: bosses, weakness: "Unbreakable: he takes 80% less damage from the FRONT. Spread out so he can only face one of you, and hit him from behind. Jump his Ground Slam.", name: "The Bulwark", icon: the_bulwark, detect-tag: faultline_bulwark,
      where: "Wave 5 of every Piglin Raid. A giant Piglin Brute in netherite with a tower shield. 220 health (+60 per raid level above III).",
      does: "Shield Bash (a red line shows where it'll charge: get out of it), Ground Slam (jump before the red rings hit), and Unbreakable: it raises its shield and takes 80% less damage from the front for 4 seconds. Hit it from behind.",
      drops: ["1-3 Gold Blocks|100%", "150 XP|100%"]}
-  - {chapter: bosses, name: "The Great Hog", icon: great_hog, detect-tag: faultline_great_hog,
+  - {chapter: bosses, weakness: "Bait his Charge into a wall: he's stunned against it and open to everything. He's enraged below 50%, so save your big hits for then.", name: "The Great Hog", icon: great_hog, detect-tag: faultline_great_hog,
      where: "Ends every Piglin Raid, after the last wave: the leader of the Horde. A giant crowned Hoglin. 600 health (+200 per raid level above III).",
      does: "Charge (it paws the ground and a red lane shows where it'll run: dodge, and if it slams into a wall it's stunned and takes 50% more damage), Earthshaker (it rears up and a shockwave rolls outward: jump it), Rally (calls more of the Horde), and Fire Breath (a cone of flame). Below half health it's enraged: faster, and it charges twice in a row.",
      drops: ["8-16 Gold Ingots|100%", "1-3 Netherite Scrap|100%", "400 XP|100%", "Winning the raid: Goodie & Mythic Bags|100%"]}
-  - {chapter: bosses, name: "Captain Rotbeard", icon: captain_rotbeard, detect-tag: faultline_rotbeard,
+  - {chapter: bosses, weakness: "Kill his crew first and fight him on dry land, away from the water he pulls you into.", name: "Captain Rotbeard", icon: captain_rotbeard, detect-tag: faultline_rotbeard,
      where: "Appears at the end of level IV and V Zombie Raids. 500 health.",
      does: "A pirate captain: Cutlass Sweep, Flintlock shots, a Cannon Barrage, a Grappling Hook that pulls you in, an Anchor Slam, and he calls his crew.",
      drops: ["Rotbeard's Grappling Hook|10%", "Winning the raid: Goodie & Mythic Bags|100%"]}
 
-  - {chapter: bosses, id: mortimer_freeze, name: "Frostbeard", icon: mortimer_freeze, detect-tag: faultline_mortimer,
+  - {chapter: bosses, weakness: "Stay warm: fire or leather armor keeps his blizzard's freezing off. Don't stand still in the snow, his moves land where you were.", id: mortimer_freeze, name: "Frostbeard", icon: mortimer_freeze, detect-tag: faultline_mortimer,
      where: "Very rarely (0.01% every 30 seconds) in snowy biomes, or anywhere snowy on a Snowy Day: he comes out of the snow 20-40 blocks from a player. 700 health, and very tanky.",
      does: "A frost wizard with three forms. The Wizard summons Icicle Runners, drops his Winter Whale, throws ice orbs (hit the pink orb to send it back into him!), calls a Hailstorm, and sometimes lands to taunt you. The Snow Brute rolls as a giant snowball, ground-pounds ice spikes, sends out a Frost Nova (jump over it), and turns into a fridge that lobs ice cubes. The Blizzard fires rings of ice shards, rains icicles and hail, and sweeps a freezing beam. Maces are deflected, and fire does nothing to him.",
      drops: ["3 Mythic Goodie Bags|100%", "8-14 Diamonds|100%", "16 Blue Ice|100%", "Frost Flare|25%", "500 XP|100%"]}
 
-  - {chapter: bosses, name: "The Dune Devourer", icon: dune_devourer, detect-tag: faultline_dune, detect-name: "The Dune Devourer",
+  - {chapter: bosses, weakness: "Watch the sand: it rises where you stand. Keep moving, and hit the head each time it surfaces.", name: "The Dune Devourer", icon: dune_devourer, detect-tag: faultline_dune, detect-name: "The Dune Devourer",
      where: "Rises from below during a Sandstorm in deserts and badlands, or summon it with a Dune Idol in a desert. The ground rumbles first. 1,100 health, 35% defense.",
      does: "A giant burrowing worm that travels underground and surfaces to strike. Sand Spit (a fan of Sand Blasts), Sand Rush (charges under the surface spraying blasts up), Sandstorm (blasts sweep in from the sides), and Ambush (a bulge tracks under your feet, then it erupts: keep moving). Below 55%: Ground Slam (blasts and two Sandnadoes) and Tremor (a shockwave rolls along the ground: jump it). Below 25%: Vultures and Sand Breath (a cone of sand). Hit any part of its body to hurt it.",
      drops: ["3 Mythic Goodie Bags|100%", "8-14 Diamonds|100%", "600 XP|100%", "Cross|50%", "Ankh Shield|0.01%"]}
 
-  - {chapter: bosses, name: "The Frostmaw", icon: frostmaw, detect-tag: faultline_dune, detect-name: "The Frostmaw",
+  - {chapter: bosses, weakness: "Watch the ice: it bursts up where you stand. Keep moving, and hit the head each time it surfaces.", name: "The Frostmaw", icon: frostmaw, detect-tag: faultline_dune, detect-name: "The Frostmaw",
      where: "Rises from below on a Snowy Day anywhere snowy, or summon it with a Dune Idol in a snowy area. The ground rumbles first. 1,100 health, 35% defense.",
      does: "The Dune Devourer's frozen cousin: its hits freeze and slow you. Frost Spit, Glacier Rush (icicles launch out of the ground), Blizzard (ice from the sides in a whiteout), and Ambush (a bulge tracks under your feet, then it erupts). Below 55%: Avalanche Slam (ice shards and two Frost Vortexes) and Tremor (a freezing shockwave: jump it). Below 25%: Snow Owls and Frost Breath (a freezing cone).",
      drops: ["3 Mythic Goodie Bags|100%", "8-14 Diamonds|100%", "600 XP|100%", "Cross|50%", "Ankh Shield|0.01%"]}
 
-  - {chapter: bosses, name: "Don Lorenzo", icon: don_lorenzo, detect-tag: faultline_don,
+  - {chapter: bosses, weakness: "His men keep him safe: thin them out first, then put everything into the Don. Never take his offer.", name: "Don Lorenzo", icon: don_lorenzo, detect-tag: faultline_don,
      where: "Summoned with a Captain's Armband, only in the daytime, on flat, open ground with no buildings or villagers nearby. Right-click him to accept his challenge.",
      does: "Phase 1: 500 health, all ball: Rapid Fire (three quick shots) and a big kick. At 50 health, a cutscene, and the music starts. At the beat drop, a 32x32 box slams up around you. Phase 2: 1,500 health, 5% defense, extremely fast, with Blink Shot, Overtime Rush, Direct Shot, Ricochet, Ground Spike (jump it), Zombie Guard (don't hit him while he guards), Price Check (marks you: slower, and he hunts you), Zombie Dribble (untouchable: get out of his way), and below 60% health, Ace Eater (Feeding time... then Undead Crash and Soulless Strike). A pink orb rises every 10 seconds: hit it into him for 100-150 damage. Not dead by 2:43 of the song? At 3:05 the ceiling comes down, and nothing saves you.",
      drops: ["15 Mythic Goodie Bags|100%", "12-20 Diamonds|100%", "Lorenzo's Ball|50%", "1,500 XP|100%"]}
@@ -446,6 +446,7 @@ entries:
     does: 'Trades accessories for emeralds (rarer ones cost diamonds too): immunity charms, rings, the Spelunker Amulet, diving gear, and more. Five wares at a time, changing with every visit. He can''t be
       hurt.'
   - chapter: bosses
+    weakness: "Fight from solid ground or a ship, never in the water where he drags you down. Pop his pink bubble when it shows up."
     name: The Kraken
     icon: kraken
     detect-tag: faultline_kraken
@@ -459,6 +460,7 @@ entries:
     - Abyssal Diving Suit|40%
     - 2,000 XP|100%
   - chapter: bosses
+    weakness: "A bigger ship has more hull to lose. Repair with the Shipwright's Hammer between moves, and stay off the rail: Crushing Grip drags you off the deck."
     name: The Kraken at Sea
     icon: kraken
     detect-tag: faultline_kraken_sea
@@ -509,6 +511,7 @@ entries:
     does: "A CHESTPLATE (not an accessory) with 6 armor, an iron chestplate's. Breathe underwater, immune to Crush Depth, everything the Abyssal Diving Gear does, and 2 plates that each absorb 10% of a hit underwater (a broken plate regrows after 30 seconds). It stops working for 10 seconds after a player hits you (monsters don't switch it off)."
   # ---------------------------------------------------------------- DIAMOND JACOB
   - chapter: bosses
+    weakness: "His five counter charms blunt his moves: Falconer's Quiver (the hawk), Ender Anchor, Banner of Defiance, Ember Ward and the Diamond Heart. Wear them."
     name: Diamond Jacob
     icon: diamond_jacob
     detect-tag: faultline_jacob
@@ -580,6 +583,7 @@ entries:
 
   # ---------------------------------------------------------------- ROCCO VENDETTA
   - chapter: bosses
+    weakness: "He's tuned for a crew of seven: bring friends. Drop Werner first, and keep moving when he calls the Enforcers."
     name: Rocco Vendetta
     icon: rocco_vendetta
     detect-tag: faultline_rocco
@@ -592,6 +596,7 @@ entries:
     - 'A cosmetic: Golden Chains, Book, or Coat|100%'
     - 3,000 XP|100%
   - chapter: bosses
+    weakness: "Slow and heavy: stay out of his reach and keep hitting. He's the one to kill before Rocco."
     name: Werner
     icon: werner
     detect-tag: faultline_werner
@@ -675,15 +680,15 @@ entries:
      does: "Blow it while on a ship at sea to call the Pirate Invasion: 15+ skeleton ships come at you, with their flagship, the Black Gallows, in the back. Sink the fleet, then beat the flagship's three bosses one after the other. Its own music plays the whole time."}
 
   # ---------------------------------------------------------------- PIRATES (FaultlineShips)
-  - {chapter: bosses, name: "The Captain's Son", icon: captains_son, detect-tag: faultline_pirate_son,
+  - {chapter: bosses, weakness: "Board the flagship to fight on its deck. He's the first and weakest of the three: don't waste your best gear on him.", name: "The Captain's Son", icon: captains_son, detect-tag: faultline_pirate_son,
      where: "The first boss of the Pirate Invasion. Once the fleet is sunk the flagship drops anchor with all three captains on its deck: climb its ladders and fight them one after another. 320 health.",
      does: "Quick and cocky, with a golden cutlass. Lunges at you, throws a smoke bomb (blinds you and he appears behind you) and fires his flintlock.",
      drops: ["300 XP|100%"]}
-  - {chapter: bosses, name: "The Skeleton Commander", icon: skeleton_commander, detect-tag: faultline_pirate_commander,
+  - {chapter: bosses, weakness: "Fight him on the flagship's deck, using the masts and cabins to break his crew's line of sight.", name: "The Skeleton Commander", icon: skeleton_commander, detect-tag: faultline_pirate_commander,
      where: "The second boss of the Pirate Invasion: he waits amidships on the flagship until the Son falls. 480 health.",
      does: "The skeleton army's commander, Jolly Roger on his head. Fires a fan of 7 arrows, rallies 3 more Deckhands and Musketeers, and blows his war horn to give his crew Strength.",
      drops: ["300 XP|100%"]}
-  - {chapter: bosses, name: "The Skeleton Captain", icon: skeleton_captain, detect-tag: faultline_pirate_captain,
+  - {chapter: bosses, weakness: "Below 50% he raises a ghost crew. A Lantern of Souls shows the invisible ghosts, so you can kill them before they surround you.", name: "The Skeleton Captain", icon: skeleton_captain, detect-tag: faultline_pirate_captain,
      where: "The last boss of the Pirate Invasion: he waits on the flagship's poop deck until the Commander falls. 900 health.",
      does: "Huge, in netherite. A cutlass sweep that knocks you back, a broadside (red marks on the deck, then cannon fire comes down on them), and an anchor slam. Below half health his ghost crew of 4 Ghost Pirates rises. Beat him and everyone who fought gets 2 Mythic Goodie Bags, an accessory, a 50% Zombie Omen V and a 25% Pirate Ship Blueprint.",
      drops: ["300 XP|100%", "2 Mythic Goodie Bags (each fighter)|100%", "An accessory (each fighter)|100%", "Zombie Omen V|50%", "Pirate Ship Blueprint|25%"]}
@@ -723,11 +728,11 @@ entries:
      does: "A drowned sailor's ghost: you only see its glowing outline and its cutlass, trailing souls. It drifts down slowly instead of falling, and its blade withers you.", drops: ["1-3 Bones|100%", "2-6 Gold Nuggets|30%", "1-3 Cannonballs|20%"]}
 
   # ---------------------------------------------------------------- 1.5: meteors, the Caravan, Grimtusk, seasons
-  - {chapter: bosses, id: grimtusk, name: "Grimtusk, the Piglin Warlord", icon: grimtusk, detect-tag: faultline_grimtusk,
+  - {chapter: bosses, weakness: "Kill Ironhide first: mounted, he takes 60% less damage. He's immune to magma and fire; Fire Resistance keeps his Magma Slam and Soul Fire Lines off you.", id: grimtusk, name: "Grimtusk, the Piglin Warlord", icon: grimtusk, detect-tag: faultline_grimtusk,
      where: "Raise a Warlord's Challenge inside a Bastion Remnant in the Nether. 3,000 health (+20% per extra fighter), over 3 phases. Music: Pigstep.",
      does: "Phase 1: he rides Ironhide, his armored war hoglin, and takes 60% less damage while mounted: Tusk Charge (a red line, then Ironhide charges down it), Golden Cleave (a flaming arc in front of him), Rally the Bastion (Bastion Guards and Crossbowmen pour out) and Fireball Volley. Bring Ironhide down, or Grimtusk drops to 70% and Ironhide collapses. Phase 2 on foot adds Magma Slam (he leaps at you: jump over the ring of magma), Soul Fire Lines and Warcry (throws everyone back and drives his guards on). Below 35% he's enraged: faster, harder hitting, and Gold Rain drops gold blocks onto glowing circles.",
      drops: ["6-10 Mythic Goodie Bags|100%", "4 Goodie Bags|100%", "8-16 Gold Blocks|100%", "2-4 Ancient Debris|100%", "1-3 Netherite Ingots|50%", "Grimtusk's Cleaver|25%", "2,000 XP|100%"]}
-  - {chapter: bosses, id: ironhide, name: "Ironhide", icon: ironhide, detect-tag: faultline_ironhide,
+  - {chapter: bosses, weakness: "It has Fire Resistance, so fire weapons do nothing. Killing it knocks Grimtusk to the ground, where he takes full damage.", id: ironhide, name: "Ironhide", icon: ironhide, detect-tag: faultline_ironhide,
      where: "Grimtusk's war hoglin: he rides it out of the bastion. 600 health.",
      does: "Charges where its tusks point, gores anyone close, and shields its rider (Grimtusk takes 60% less damage while he's on it).",
      drops: ["6-11 Cooked Porkchops|100%", "4-7 Leather|100%"]}
@@ -855,27 +860,27 @@ entries:
      does: "Right-click it to start a Boss Rush: every boss back to back (14 of them), with everyone in survival within 10 blocks on your team. It's never used up. Each player can run one Boss Rush an hour."}
 
   # ---------------------------------------------------------------- 1.6: the wild update
-  - {chapter: bosses, id: leviathan, name: "The Leviathan", icon: leviathan, detect-tag: faultline_leviathan,
+  - {chapter: bosses, weakness: "Fight it from a ship and keep the hull patched: its hits break the parts nearest them. Breach and Whirl pull boats in, so stay at the helm.", id: leviathan, name: "The Leviathan", icon: leviathan, detect-tag: faultline_leviathan,
      where: "The deep ocean. A mini boss of the deep ocean. Drop an Abyssal Lure over open water (from a ship, a boat or swimming), or meet it sailing the deep ocean at night. 900 health (+25% per extra fighter).",
      does: "A sea serpent that breaches the waves as it circles you. Tidal Ram (it dives, a blue line shows, it surges along it: ships in the way take a big hit), Water Spout (geysers under you), Bile (poison globs), Abyssal Roar, Breach (it leaps clean out of the sea and crashes down on a blue ring). From 60%: the Coil (it circles you tight and crushes, ships inside break), Tail Sweep, Whirlpool (the sea drags you and your boat into the middle), and Drowned of the Deep. From 30% it rams more. Takes half damage while diving. Music: Creator.",
      drops: ["4-6 Mythic Goodie Bags|100%", "3 Goodie Bags|100%", "6-12 Diamonds|100%", "Heart of the Sea|100%", "Tidebreaker|25%", "2,000 XP|100%"]}
-  - {chapter: bosses, id: sandworm_king, name: "The Sandworm King", icon: sandworm_king, detect-tag: faultline_sandworm_king,
+  - {chapter: bosses, weakness: "If it Devours you, keep hitting: 4% of its health in hits frees you. Stay off the quicksand and spread out against Sandblast.", id: sandworm_king, name: "The Sandworm King", icon: sandworm_king, detect-tag: faultline_sandworm_king,
      where: "A mini boss of the deserts and badlands. Beat a Sandworm Drum on the sand. 900 health (+25% per extra fighter).",
      does: "A colossal worm that swims through the sand. Eruption (a ring under you, then it bursts up there and arcs back down), Slither (it rides the surface at you), Sandstone Boulders, Quicksand (slows you and drags you in), Sandblast (it rears up and sweeps a blinding cone of sand). From 60%: Sandworm Larvae and Devour (a red ring shrinks under you: still in it, you're swallowed; hit it hard to make it spit you out). From 30%: Tremor (rings race along the ground: be in the air when one passes). Music: 5.",
      drops: ["4-6 Mythic Goodie Bags|100%", "3 Goodie Bags|100%", "6-12 Diamonds|100%", "4-8 Gold Blocks|100%", "Sandworm Fang|25%", "2,000 XP|100%"]}
-  - {chapter: bosses, id: lich, name: "The Lich", icon: lich, detect-tag: faultline_lich,
+  - {chapter: bosses, weakness: "In phase 2 three crystal phylacteries shield him: break them first. A Lantern of Souls clears his Darkness.", id: lich, name: "The Lich", icon: lich, detect-tag: faultline_lich,
      where: "A mini boss of the Deep Dark. Break a Cursed Phylactery there. 900 health (+25% per extra fighter).",
      does: "An undead sorcerer-king who floats and blinks around. Soul Bolts (homing skulls), Raise the Fallen (Revenants wearing YOUR faces), Death Ring (jump the soul fire), Blink Strike, Grasp of the Grave (bone hands burst out of the floor and hold you: leave the purple rings). At 60% he hides his life in three Phylacteries (end crystals): he can't be hurt until they're broken. + Darkness and Bone Spears (lines of bone spikes run out at you). From 30%: Life Drain (beams from everyone near him heal him). Music: 13.",
      drops: ["4-6 Mythic Goodie Bags|100%", "3 Goodie Bags|100%", "2-4 Echo Shards|100%", "Totem of Undying|50%", "Staff of the Lich|25%", "2,500 XP|100%"]}
-  - {chapter: bosses, id: frost_wyrm, name: "The Frost Wyrm", icon: frost_wyrm, detect-tag: faultline_frost_wyrm,
+  - {chapter: bosses, weakness: "Shoot it while it flies and hit hard when it lands to roar. Fight on flat ground: its Gust blows you off ledges.", id: frost_wyrm, name: "The Frost Wyrm", icon: frost_wyrm, detect-tag: faultline_frost_wyrm,
      where: "A mini boss of the frozen peaks, snowy slopes, groves and ice spikes. Sound a Frozen Horn up there, or (0.001% a minute) it finds you in any snowy biome. 900 health (+25% per extra fighter).",
      does: "An ice dragon that circles high above (bring a bow). Frost Breath (it hovers and freezes a cone), Icicle Rain, Dive Bomb (a swoop down a red line), Glacial Roar (it lands and ice spikes burst out around it), Ice Shard Volley (fans of ice from its mouth). From 60%: Wyrmguard Archers and Wing Gust (three wingbeats blast you away). From 30%: a blizzard around it all fight. Music: Relic.",
      drops: ["4-6 Mythic Goodie Bags|100%", "3 Goodie Bags|100%", "8-16 Diamonds|100%", "Elytra|10%", "Glacial Fang|25%", "2,500 XP|100%"]}
-  - {chapter: bosses, id: stone_golem, name: "The Stone Golem", icon: stone_golem, detect-tag: faultline_stone_golem,
+  - {chapter: bosses, weakness: "Slow: dodge the Pound wind-up and the Boulder, then hit it after every slam.", id: stone_golem, name: "The Stone Golem", icon: stone_golem, detect-tag: faultline_stone_golem,
      where: "A mini boss of the lush caves: it wakes by itself near someone exploring one. 900 health (+25% per extra fighter).",
      does: "An ancient mossy guardian with amber eyes. Ground Pound (a shockwave ring), Boulder Throw, Crystal Spikes (amethyst bursts along a line). Below 60% it roots itself and heals (Overgrowth) until you hit it hard enough.",
      drops: ["2-4 Ancient Gear Parts|100%", "Mythic Goodie Bag|100%", "2 Goodie Bags|100%", "8-16 Amethyst Shards|100%", "600 XP|100%"]}
-  - {chapter: bosses, id: ghost_captain, name: "Captain Hollow", icon: ghost_captain, detect-tag: faultline_ghost_captain,
+  - {chapter: bosses, weakness: "Keep a Lantern of Souls lit near the ship: without it the Wailing Mary fades and he can't be hurt.", id: ghost_captain, name: "Captain Hollow", icon: ghost_captain, detect-tag: faultline_ghost_captain,
      where: "On the deck of the Ghost Ship, the Wailing Mary, on dark nights at sea. She's untouchable until someone near her holds a Lantern of Souls: then she anchors and you can board. 400 health.",
      does: "A drowned captain's ghost. Blinks behind you, sweeps with a spectral cutlass, calls up Ghost Pirates, and drags you to him with soul chains (Darkness). Beat him and her hold is yours.",
      drops: ["2 Mythic Goodie Bags|100%", "2 Goodie Bags|100%", "4-8 Diamonds|100%", "Music Disc (The Pirate Invasion)|25%", "Her hold: gold, diamonds, echo shards...|100%"]}
@@ -1270,31 +1275,31 @@ entries:
      where: "The Abyss, the deepest part of the Dark Ocean (pitch black: bring a Lantern of Souls).",
      does: "Aggressive. A great eye on a crown of tendrils, 60 health. Its gaze (16 blocks, needs to see you) does 5 damage, slows you, tires your arms and darkens your sight. It turns to follow you.",
      drops: ["Eye of Ender|100%", "Echo Shard|5%", "Umbral Sonar (summons the Umbral Leviathan)|2%", "Dark Loot Bag|1%"]}
-  - {chapter: bosses, id: deep_goblin, name: "Grubnash the Acid Goblin", icon: deep_goblin, detect-tag: faultline_deep_goblin,
+  - {chapter: bosses, weakness: "Wear a helmet in the Acid Rain. Stay spread out: a Scrap Bomb blasts everyone within 3.6 blocks. Below 50% he frenzies.", id: deep_goblin, name: "Grubnash the Acid Goblin", icon: deep_goblin, detect-tag: faultline_deep_goblin,
      where: "A MINI BOSS of the ACID RAIN: 90 seconds into the event he rides in on the storm next to someone in the Sulphur Sea. 500 health. (/deep acidrain goblin for admins; his egg is in /itemsmenu.)",
      does: "Throws Acid Flasks (pools of acid), lobs Scrap Bombs (they go off after 1.5 s), Goblin Leaps onto you (a slam), and calls his Acid Mites. Below half health: a frenzy (faster, more often). If the rain stops first he runs off with his loot.",
      drops: ["Emeralds, Gold Ingots, TNT|100%", "Dark Loot Bags|2", "A rare Dark Loot roll|10%", "300 XP|100%"]}
-  - {chapter: bosses, id: brine_scourge, name: "The Brine Scourge", icon: brine_scourge, detect-tag: faultline_brine_scourge,
+  - {chapter: bosses, weakness: "Stay UNDER the water: anyone above it enrages the Scourge (no damage taken, +50% dealt). Pop the pink bubbles (150 damage each) and breathe in the air bubbles.", id: brine_scourge, name: "The Brine Scourge", icon: brine_scourge, detect-tag: faultline_brine_scourge,
      where: "A BOSS of the Dark Ocean's SULPHUR SEA (the acid region round -520, 480), and only there. Use a Brine Bait (Trasher 3%, Corrosion Shark 4%, Acid Eel 1%, Masked Devilfish 1%), or it finds you on its own (0.1% every 5 minutes for each player in the Sulphur Sea). 2,400 health (+20% per extra fighter).",
      does: "A great teal sea worm with bone spikes down its body and two crescent mandibles. FIGHT IT UNDER THE WATER: while anyone is above the surface it is ENRAGED (it can't be hurt and hits 50% harder). Its moves poison you: watch the Sulphuric Poisoning bar (full = it hurts every second) and swim into the clean blue bubbles that rise from below to clear it. It runs a fixed cycle: Radiation Pulse (spreads of acid every second and a green pulse), Rubble Charges (5 lunges leaving acid; ramming rock stuns it and sprays rubble), Radioactive Breath (sharp turns spitting acid while rubble falls on green lines), Rubble Charges again, Toxic Bubble Spin. Below 60% it does all of it harder. Below 30%: THE MOLT. It tears off its own armoured skin (the husk sinks and dissolves) and fights on in raw, glowing flesh: faster, but it takes 15% more damage, and it no longer cares where you stand. A sulphur storm breaks (acid drops on anyone above the water). Its new cycle: Spine Barrage (its loose spines stick in the rock as acid pylons; pylons near each other are joined by burning beams: don't cross them), Sulphur Breach (it bursts out of the sea and arcs through the air, raining acid, then slams down with a shockwave), Acid Geysers (green rings under everyone: a second later acid blasts up from the floor through the surface and throws you), Corrosive Clouds (toxic clouds roll over the surface and the islands: dive under the water), Sulphur Breach again, Toxic Maelstrom (it spirals inward dragging everyone to an acid heart: swim out). Once, below 10%: the DEATH COIL (it wraps round you: hit it hard enough to break out before it crushes everyone inside). When it dies its body dissolves. Music: the Kraken's theme.",
      drops: ["4-6 Mythic Goodie Bags|100%", "3 Goodie Bags|100%", "1,500 XP|100%", "3 Dark Loot Bags|100%", "A Dark Loot rare (Diving Suit, Elytra, god set...)|50%"]}
-  - {chapter: bosses, id: umbral_leviathan, name: "The Umbral Leviathan", icon: umbral_leviathan, detect-tag: faultline_umbral_leviathan,
+  - {chapter: bosses, weakness: "It vanishes and only comes back where it can see you: keep your back to rock. A Lantern of Souls lights the dark it hides in.", id: umbral_leviathan, name: "The Umbral Leviathan", icon: umbral_leviathan, detect-tag: faultline_umbral_leviathan,
      where: "A BOSS of the Dark Ocean, below the Sunlit Sea. Use an Umbral Sonar (Rift Warper, 1%), or it finds you on its own (0.1% every 5 minutes). 2,600 health (+20% per extra fighter).",
      does: "A huge shadow leviathan (after Below Zero's Shadow Leviathan): a dark slate body, a great flat wedge of a head rising into a crest, three red eyes down each cheek, huge black hooked claws at its jaw, a glowing cyan comb of rib-teeth under its belly, long black leg-spikes raking down its sides, and red lights down its back to a finned tail. Shadow Charge, the Grab (it seizes you: hit it hard to break free), Vanish (into the dark, out behind you), Shriek; NEW: Eclipse Coil (a ring of shadow closes: get out before it does) and Abyssal Echo (sonar marks you, lances follow).",
      drops: ["4-6 Mythic Goodie Bags|100%", "3 Goodie Bags|100%", "1,500 XP|100%", "3 Dark Loot Bags|100%", "A Dark Loot rare|50%"]}
-  - {chapter: bosses, id: coralia, name: "Coralia, Queen of the Den", icon: coralia, detect-tag: faultline_coralia,
+  - {chapter: bosses, weakness: "Only sword hits hurt her. Pop her pink bubbles (120 damage each) and breathe in the air ones.", id: coralia, name: "Coralia, Queen of the Den", icon: coralia, detect-tag: faultline_coralia,
      where: "The boss of the MERMAID DEN (1200, 700 in the Dark Ocean). She only rises over her throne two ways: kill all ten of the Den's mermaids, or drink an Omen IV inside the Den and win the raid. 2,400 health (+25% per extra fighter). Her own music.",
      does: "The mermaid queen: a crown of coral and pearls, hair fading from aqua to rose, a mother-of-pearl bodice, a coral-and-gold trident. ONLY A SWORD HURTS HER (melee). Giant air bubbles rise through the fight: swim inside one to breathe. Pink bubbles rise slowly: burst one and she takes 120 damage. She is FAST: Tidal Dash (lines up, then lances through you in a barrel roll, 2-4 times), Trident Volley, Pearl Rain, Mesmerising Gaze (LOOK AWAY), Coral Spires, Royal Guard; phase 2: Whirlpool Waltz (she circles you and the water spins you in), Siren's Aria (rings of song: slip between them), Riptide Spiral (corkscrews up, then dives on you); at a third of her health her WRATH: blue skin, eels for hair, burning eyes, Tempest (lightning down through the water) and Eel Lash.",
      drops: ["4-6 Mythic Goodie Bags|100%", "3 Goodie Bags|100%", "1,500 XP|100%", "3 Dark Loot Bags|100%", "A Dark Loot rare|50%"]}
-  - {chapter: bosses, id: old_inkjaw, name: "Old Inkjaw", icon: old_inkjaw, detect-tag: faultline_old_inkjaw,
+  - {chapter: bosses, weakness: "Its ink blinds you up close: keep your distance and strike right after its Slam.", id: old_inkjaw, name: "Old Inkjaw", icon: old_inkjaw, detect-tag: faultline_old_inkjaw,
      where: "A mini boss anywhere in the Dark Ocean. Use Inkjaw Bait (Lampsquid, 2%), or it finds you (0.1% every 5 minutes). 500 health (+20% per extra fighter).",
      does: "A giant octopus. Tentacle Slam, Ink Cloud, the Grip, Beak Bite; NEW: Ink Jet (a dash leaving a trail of ink) and Tentacle Cage.",
      drops: ["4-6 Mythic Goodie Bags|100%", "3 Goodie Bags|100%", "1,500 XP|100%", "16-31 Ink Sacs|100%", "Dark Loot Bag|100%", "A Dark Loot rare|10%"]}
-  - {chapter: bosses, id: grandmaw_clam, name: "The Grandmaw Clam", icon: grandmaw_clam, detect-tag: faultline_grandmaw_clam,
+  - {chapter: bosses, weakness: "When it Shells Up it takes 85% less: back off and wait, then hit it when the shell opens.", id: grandmaw_clam, name: "The Grandmaw Clam", icon: grandmaw_clam, detect-tag: faultline_grandmaw_clam,
      where: "A mini boss of the surface area ONLY: the open sea floor of the Dark Ocean, never in the caves or the Abyss. Use a Glistening Pearl near the sand (Clam, 2%), or it finds you (0.1% every 5 minutes). 900 health (+25% per extra fighter).",
      does: "A clam the size of a house. Shell Up (85% less damage while shut), Slam (it leaps and crashes), Pearl Ring, Pearl Shot; NEW: Riptide Snap (it sucks you in and snaps shut) and Brine Bubble (traps you in a rising bubble).",
      drops: ["4-6 Mythic Goodie Bags|100%", "3 Goodie Bags|100%", "1,500 XP|100%", "Shield of the Ocean|50%", "8-15 Prismarine Crystals|100%", "Dark Loot Bag|100%", "A Dark Loot rare|10%"]}
-  - {chapter: bosses, id: the_lament, name: "The Lament", icon: the_lament, detect-tag: faultline_the_lament,
+  - {chapter: bosses, weakness: "Light Eater swallows your light: bring a Lantern of Souls. Keep moving through Sorrow Tide.", id: the_lament, name: "The Lament", icon: the_lament, detect-tag: faultline_the_lament,
      where: "A mini boss of the Dark Ocean, below the Sunlit Sea. Use a Mournful Shell (Hollow Kin, 1.5%), or it finds you (0.1% every 5 minutes). 900 health (+25% per extra fighter).",
      does: "A huge fish made of grief and dark water. Lunge, the Hunt (gone into the dark... then from behind), Wail, Whispers (Hollow Kin); NEW: Sorrow Tide (a wave that drives you away) and Light Eater (it snuffs your lights and hunts whoever carries one).",
      drops: ["4-6 Mythic Goodie Bags|100%", "3 Goodie Bags|100%", "1,500 XP|100%", "Echo Shards|30%", "Dark Loot Bag|100%", "A Dark Loot rare|10%"]}
@@ -1351,7 +1356,7 @@ entries:
      where: "Only during the LEVIATHAN MIGRATION (every 1-2 hours, with someone in the Sunlit Sea): a pod of 3-5 crosses the Sunlit Sea in a straight line.",
      does: "Passive, 400 health, the size of a house. Follow the pod: at the end of its 600-block journey the eldest sinks to the floor as a fresh WHALE FALL with a chest of loot. Killing one has a 35% chance to bring the Umbral Leviathan up from below.",
      drops: ["Leather|100%", "Bone Blocks|100%", "Prismarine Crystals|100%"]}
-  - {chapter: bosses, id: abyssal_titan, name: "The Abyssal Titan", icon: abyssal_titan, detect-tag: faultline_abyssal_titan,
+  - {chapter: bosses, weakness: "In phase 2 break its three lures (3% of its health in hits each): all three = stunned, taking 50% more. Wear the Abyssal Diving Suit and a Hadal Dive Helmet against the Trench's pressure.", id: abyssal_titan, name: "The Abyssal Titan", icon: abyssal_titan, detect-tag: faultline_abyssal_titan,
      where: "THE FINAL BOSS of the Dark Ocean. It sleeps under the floor of the MAW, at the southern end of the Trench (-1460, -1640, at y -61). It only wakes for someone who has beaten all six of the Dark Ocean's bosses: swim down into the Maw. 5,000 health (+25% per extra fighter). Bring the Abyssal Diving Suit and a Hadal Dive Helmet: the Trench's pressure crushes everyone else.",
      does: "A colossal torso rising out of the rock: it never moves, it turns and reaches. A dark shape in the pitch black with burning cyan eyes and three violet lures. Claw Sweep (an arm swings low across the floor: swim up off it), Crushing Slam (a fist on your spot, then a shockwave along the floor), The Lure (its lights flare: DON'T LOOK AT THEM, or you're drawn to its jaws), Abyssal Roar (thrown back, Darkness), Hadal Spawn (guardians). Below 65%: Tentacle Eruption (under everyone), Pressure Wave (a ring along the floor: get up off it), The Gaze (a sweeping beam from its eyes: get behind something), and its LURES CAN BE BROKEN: break all three and it reels, stunned, taking 50% more damage for 8 seconds. Below 30%: Devour (it inhales the whole Maw: swim away from the jaws) and Abyssal Collapse (the walls come down).",
      drops: ["8-10 Mythic Goodie Bags|100%", "4 Goodie Bags|100%", "5,000 XP|100%", "2-4 Netherite Ingots|100%", "1-2 Hearts of the Sea|100%", "4-8 Echo Shards|100%", "5 Dark Loot Bags|100%", "A Dark Loot rare|100%"]}

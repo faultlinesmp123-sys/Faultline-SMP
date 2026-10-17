@@ -498,6 +498,17 @@ warlord:
 # are found once (the nearest fitting biome to the world spawn, a bastion for Grimtusk) and saved in bossrush.yml;
 # /bossrush setarena <boss> sets one by hand. No loot from the bosses during a rush; dying puts you out (keep-inventory).
 # ============================================================================
+# The Night of Terrors (1.7.0, Terrors.java): one night a year every boss can come for anyone in the Overworld, and
+# FaultlineCosmetics' mobs drop five times the Candy. /terrors [start|stop|status]
+terrors:
+  enabled: true
+  date: "10-31"
+  zone: America/New_York
+  start-time: 13000
+  spawn-seconds: 120
+  max-bosses: 8
+  bosses: [demoneye, frostbeard, dune, frostmaw, don, jacob, rocco, sandworm, lich, frostwyrm, golem]
+
 boss-rush:
   # the raid bosses need FaultlineRaids and the Queen Spider FaultlineItems (skipped without them); the Lost Explorer is fought by the leader alone
   bosses: [rotbeard, bulwark, great_hog, queen_spider, golem, demoneye, frostbeard, dune, sandworm, frostmaw, don, kraken, leviathan, lich, frostwyrm, jacob, rocco, grimtusk, explorer]

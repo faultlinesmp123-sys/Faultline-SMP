@@ -86,6 +86,7 @@ final class IndexForms {
             if (e.creature) {
                 section(s, "Where to find it", "§9", e.where);
                 section(s, "What it does", "§5", e.does);
+                if (e.weakness != null) section(s, "Weakness", "§c", ix.weakness.knows(id, e.id) ? e.weakness : "??? It has to beat you once before the Index learns it.");
                 if (!e.drops.isEmpty()) {
                     s.append("§6§lDrops§r\n");
                     for (String d : e.drops) {

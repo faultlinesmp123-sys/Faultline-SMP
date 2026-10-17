@@ -38,6 +38,7 @@ final class Seasons implements Listener {
         }
     }
 
+    static final org.bukkit.NamespacedKey TERRORS = new org.bukkit.NamespacedKey("faultlinebosses", "terrors");
     private final FaultlineCosmetics plugin;
     private final Random random = new Random();
     final LinkedHashMap<String, Season> seasons = new LinkedHashMap<>();
@@ -170,9 +171,13 @@ final class Seasons implements Listener {
         var why = dead.getEntitySpawnReason();
         if (why == org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.SPAWNER || why == org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.TRIAL_SPAWNER
                 || why == org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.SPAWNER_EGG) return;
-        Season s = current();
+        // FaultlineBosses' NIGHT OF TERRORS (world PDC faultlinebosses:terrors): Candy, five times as much
+        boolean terrors = dead.getWorld().getPersistentDataContainer().has(TERRORS, org.bukkit.persistence.PersistentDataType.BYTE)
+                || !Bukkit.getWorlds().isEmpty() && Bukkit.getWorlds().get(0).getPersistentDataContainer().has(TERRORS, org.bukkit.persistence.PersistentDataType.BYTE);
+        Season s = terrors && seasons.containsKey("halloween") ? seasons.get("halloween") : current();
         if (s == null || random.nextDouble() >= s.chance()) return;
         int n = s.min() + random.nextInt(Math.max(1, s.max() - s.min() + 1));
+        if (terrors) n *= 5;
         e.getDrops().add(token(s, n));
     }
 

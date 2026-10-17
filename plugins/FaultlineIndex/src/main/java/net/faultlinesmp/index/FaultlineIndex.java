@@ -99,7 +99,7 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
     record Chapter(String id, String title, boolean creature, String icon) {}
 
     static final class Entry {
-        String id, chapter, name, icon, how, does, where, tag, nameMatch;
+        String id, chapter, name, icon, how, does, where, tag, nameMatch, weakness;
         NamespacedKey key;
         Integer keyValue;
         String keyText; // "<plugin>:<key>=<word>": items tagged with a text value (e.g. Diamond Jacob's items)
@@ -124,6 +124,7 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
     private NamespacedKey bookKey;
     final Achievements achievements = new Achievements(this);
     final IndexForms forms = new IndexForms(this);
+    Weakness weakness;
     Museum museum;
     Discord discord;
     Watch watch;
@@ -160,6 +161,8 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(new Grief(this), this); // 1.6.14: grief logs (staff channel)
         daily = new Daily(this); // 1.6.20: the daily stats post
         getServer().getPluginManager().registerEvents(daily, this);
+        weakness = new Weakness(this); // 1.7.0: boss weaknesses, learned from your deaths
+        getServer().getPluginManager().registerEvents(weakness, this);
         watch = new Watch(this); // 1.6.15: x-ray, cheats, dupes, grief, alts
         getServer().getPluginManager().registerEvents(watch, this);
         getCommand("watch").setExecutor(watch);
@@ -267,6 +270,7 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
             e.how = str(m, "how");
             e.does = str(m, "does");
             e.where = str(m, "where");
+            e.weakness = str(m, "weakness"); // 1.7.0: shown once it has killed you (Weakness.java)
             e.creature = chapters.stream().anyMatch(ch -> ch.id().equals(e.chapter) && ch.creature());
             String detect = str(m, "detect");
             if (detect != null) {
@@ -830,6 +834,7 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
         if (e.creature) {
             section(lines, "Where to find it", HEAD_HOW, e.where);
             section(lines, "What it does", HEAD_DOES, e.does);
+            if (e.weakness != null) section(lines, "Weakness", HEAD_DROPS, weakness.knows(id, e.id) ? e.weakness : "??? It has to beat you once before the Index learns it.");
             lines.add(Component.text("Drops", HEAD_DROPS, TextDecoration.BOLD));
             for (String d : e.drops) {
                 String[] parts = d.split("\\|");
@@ -938,6 +943,12 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
                     unlock(target, e, e.creature);
                     if (e.creature && museum != null) museum.bossDefeated(target, e); // a boss's own reward (trophy, disc)
                     dirty = true;
+                }
+                case "died" -> { // FaultlineBosses: /index died <player> <boss name...> (a boss killed them: learn its weakness)
+                    if (args.length < 3) { sender.sendMessage(ChatColor.YELLOW + "/index died <player> <boss name>"); return true; }
+                    String name = String.join(" ", java.util.Arrays.copyOfRange(args, 2, args.length));
+                    Entry e = entries.stream().filter(x -> x.id.equalsIgnoreCase(name)).findFirst().orElse(null);
+                    weakness.learn(target, e != null ? e : weakness.byName(name));
                 }
                 case "stat" -> { // other plugins count things for achievements: /index stat <player> <name> [amount]
                     if (args.length < 3) { sender.sendMessage(ChatColor.YELLOW + "/index stat <player> <name> [amount]"); return true; }

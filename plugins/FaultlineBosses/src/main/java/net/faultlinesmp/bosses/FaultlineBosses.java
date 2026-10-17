@@ -405,6 +405,9 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         }
         rush = new BossRush(this);
         getServer().getPluginManager().registerEvents(rush, this);
+        terrors = new Terrors(this); // 1.7.0: the Night of Terrors
+        getCommand("terrors").setExecutor(terrors);
+        getCommand("terrors").setTabCompleter(terrors);
         getCommand("bossrush").setExecutor(rush);
         getCommand("bossrush").setTabCompleter(rush);
         getServer().getScheduler().runTaskTimer(this, () -> {
@@ -532,6 +535,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
     @Override
     public void onDisable() {
         MUSIC_HEARD.clear();
+        safely("shutdown: night of terrors", () -> { if (terrors != null) terrors.stop(false); });
         safely("shutdown: boss form", () -> { if (morph != null) endMorph(false, ChatColor.GRAY + "The server is stopping: you're yourself again."); });
         // BUG FIX: these ran in a row, so ONE error left every boss after it frozen in the world
         // (and still glowing). Each runs on its own now, and a final sweep removes anything left.
@@ -10803,6 +10807,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
     Warlord warlord;
     Wild wild;
     BossRush rush;
+    Terrors terrors;
 
     // ---------- the Boss Rush (BossRush.java) asks these ----------
     boolean rushSuppressLoot(String kind) { return rush != null && rush.suppress(kind); }

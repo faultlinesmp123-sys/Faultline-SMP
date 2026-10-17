@@ -95,6 +95,10 @@ commands:
   bossrush:
     description: "The Boss Rush: every boss, back to back (start, top)"
     usage: /bossrush [start|top]
+  terrors:
+    description: "The Night of Terrors (every Oct 31 night: bosses roam): start, stop, status"
+    usage: /terrors [start|stop|status]
+    permission: bosses.admin
 
 permissions:
   bosses.admin:

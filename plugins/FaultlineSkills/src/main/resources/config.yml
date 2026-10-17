@@ -1,0 +1,33 @@
+# FaultlineSkills: four skill trees (mining, building, farming, redstone). /skills
+# XP to go from level L to L+1 = base x L^exponent. A level = one skill point in that tree.
+max-level: 50
+xp:
+  base: 100
+  exponent: 1.4
+
+# per tree: turn it off, or scale its XP
+trees:
+  mining:   { enabled: true, multiplier: 1.0 }
+  building: { enabled: true, multiplier: 1.0 }
+  farming:  { enabled: true, multiplier: 1.0 }
+  redstone: { enabled: true, multiplier: 1.0 }
+
+mining:
+  stone-xp: 0.2          # ores: coal 2, iron 4, gold 6, diamond 12, emerald 15, ancient debris 20 (deepslate +1)
+
+building:
+  place-xp: 1
+  settle-seconds: 60     # a block pays only if it's still there this long after it was placed
+  max-per-hour: 2500     # blocks (building + redstone) that pay per hour
+
+farming:
+  crop-xp: 2             # fully grown crops; melons / pumpkins 3, cane / cactus / bamboo 0.5 (never ones you placed)
+  breed-xp: 5
+  breeds-per-hour: 60
+
+redstone:
+  place-xp: 3            # components that stay settle-seconds
+  craft-xp: 2
+  craft-per-day: 64
+
+bedrock-forms: true

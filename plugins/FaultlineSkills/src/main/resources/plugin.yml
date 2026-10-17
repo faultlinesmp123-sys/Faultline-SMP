@@ -1,0 +1,18 @@
+name: FaultlineSkills
+version: '1.0.0'
+main: net.faultlinesmp.skills.FaultlineSkills
+api-version: '1.21'
+author: FaultlineSMP
+description: Skill trees for mining, building, farming and redstone, with perks
+softdepend: [floodgate, Geyser-Spigot, FaultlineIndex]
+
+commands:
+  skills:
+    description: "Your skill trees and perks: /skills, /skills top <tree>"
+    usage: /skills [top <tree>]
+    aliases: [skill, perks]
+
+permissions:
+  faultlineskills.admin:
+    description: Give / reset skill XP, look at other players' skills
+    default: op

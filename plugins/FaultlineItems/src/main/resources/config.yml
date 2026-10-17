@@ -667,6 +667,9 @@ fishing:
   monster-chance: 0.01        # a 1.5x fish
   tag-fish-in-tournament: true   # tournament fish show their weight (they won't stack)
   announce-first-records: false  # the very first fish of a species is a "record" too: announce it?
+  hadal:                      # 1.2.59: the Dark Ocean's own fish (FaultlineDeep says which waters the hook is in)
+    enabled: true
+    chance: 0.7               # a fish caught there is one of its own species (always over the Trench)
   rewards:
     first: ["givemythicbag 2 {player}"]
     second: ["givemythicbag 1 {player}"]

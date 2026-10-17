@@ -43,6 +43,7 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
     Submersible subs;
     Migration migration;
     Bloom bloom;
+    KrakenGrave grave;
 
     @Override
     public void onEnable() {
@@ -151,6 +152,26 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
             case "titan" -> new Location(w, Trench.LX + 0.5, Trench.BOTTOM + 4, Trench.LZ + 0.5);
             default -> null;
         };
+    }
+
+    /**
+     * For FaultlineItems' hadal fishing (by reflection): which waters a fishing hook is in, or null outside the Dark Ocean.
+     * "TRENCH" and "DEN" go by the column (a line dropped over the Trench reaches its fish), "SULPHUR" by the acid's weight,
+     * "ABYSS" for a hook below y 35 (or in the Crust/Abyss), "BUBBLE" for the dry town and the Pit, else "SUNLIT".
+     */
+    public static String fishZone(Location l) {
+        FaultlineDeep pl = instance;
+        if (pl == null || pl.world == null || l == null || l.getWorld() != pl.world) return null;
+        int x = l.getBlockX(), y = l.getBlockY(), z = l.getBlockZ();
+        long seed = pl.world.getSeed();
+        if (Market.dry(l.getX(), l.getY(), l.getZ())) return "BUBBLE";
+        if (pl.generator.trenchColumn(seed, x, z)) return "TRENCH";
+        if (MermaidDen.weight(x, z) > 0.9) return "DEN";
+        if (pl.generator.sulphur(seed, x, z) > 0.35) return "SULPHUR";
+        DeepGenerator.Zone zn = pl.generator.zone(seed, x, y, z);
+        if (zn == DeepGenerator.Zone.TRENCH) return "TRENCH";
+        if (zn == DeepGenerator.Zone.ABYSS || zn == DeepGenerator.Zone.CAVES || y < 35) return "ABYSS";
+        return "SUNLIT";
     }
 
     /** Spawns one of the Dark Ocean's creatures for FaultlineBosses (Grubnash in the Deep Boss Rush): its UUID, or null. */

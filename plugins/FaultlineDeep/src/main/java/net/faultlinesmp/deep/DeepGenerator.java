@@ -608,6 +608,13 @@ final class DeepGenerator extends ChunkGenerator {
         return Zone.ABYSS;
     }
 
+    /** Does a line dropped at this column reach the Trench? (its rift is under it) */
+    boolean trenchColumn(long seed, int x, int z) {
+        if (!Trench.near(x, z, 0)) return false;
+        Noise n = noiseFor(seed);
+        return Trench.inside(n, x, Trench.BOTTOM + 12, z, upperFloor(n, x, z));
+    }
+
     /** The Sunlit Sea's floor height (the top solid block) at a column. */
     int seaFloor(long seed, int x, int z) { return upperFloor(noiseFor(seed), x, z); }
 

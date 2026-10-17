@@ -44,26 +44,61 @@ import java.util.UUID;
  * single best fish in points (weight / the species' top weight x 100, so a big Tropical Fish counts like a big Salmon);
  * a boss bar shows time and the leader; at the end the top 3 get fishing.rewards.*, the winner index stat fishing_wins.
  * /fishing [top|records], admin /fishing start [minutes] | stop.
+ *
+ * HADAL FISHING (1.2.59): in the Dark Ocean (FaultlineDeep tells us which waters the hook is in, by reflection:
+ * FaultlineDeep.fishZone) a catch is often one of its own fish instead: each water has its own species (the Sunlit Sea,
+ * the Abyss below y 35, the Sulphur Sea, the Mermaid Den, and the Trench: a line dropped anywhere over the rift reaches
+ * it). They're real food (cod / salmon / tropical fish underneath) with their own model faultline:fish/<id> and PDC
+ * faultlineitems:fish_species, weighed and recorded like the rest (records by species id), Index stat hadal_fish, and the
+ * Trench's legendary The Blind King (index stat blind_king).
  */
 final class Fishing implements Listener, CommandExecutor, TabCompleter {
 
-    /** species -> {min kg, max kg} */
-    static final Map<Material, double[]> SPECIES = new LinkedHashMap<>();
-    static {
-        SPECIES.put(Material.COD, new double[]{0.4, 4.5});
-        SPECIES.put(Material.SALMON, new double[]{0.8, 9.0});
-        SPECIES.put(Material.PUFFERFISH, new double[]{0.3, 2.5});
-        SPECIES.put(Material.TROPICAL_FISH, new double[]{0.05, 0.6});
+    /** A species: id (the vanilla ones are their Material's name), min/max kg, the item underneath, the waters it lives
+     *  in (null = vanilla), how common it is there, and a line about it. */
+    record Species(String id, String name, double min, double max, Material base, String zones, int weight, String about) {
+        boolean hadal() { return zones != null; }
+        boolean in(String zone) { return zones != null && ("," + zones + ",").contains("," + zone + ","); }
     }
 
-    record Catch(UUID who, String name, Material species, double kg, double points) { }
+    static final Map<String, Species> SPECIES = new LinkedHashMap<>();
+    static void sp(String id, String name, double min, double max, Material base, String zones, int weight, String about) {
+        SPECIES.put(id, new Species(id, name, min, max, base, zones, weight, about));
+    }
+    static {
+        sp("COD", "Cod", 0.4, 4.5, Material.COD, null, 0, null);
+        sp("SALMON", "Salmon", 0.8, 9.0, Material.SALMON, null, 0, null);
+        sp("PUFFERFISH", "Pufferfish", 0.3, 2.5, Material.PUFFERFISH, null, 0, null);
+        sp("TROPICAL_FISH", "Tropical Fish", 0.05, 0.6, Material.TROPICAL_FISH, null, 0, null);
+        // the Dark Ocean (1.2.58)
+        sp("gloomfin", "Gloomfin", 0.5, 6, Material.COD, "SUNLIT", 10, "A grey-blue fish of the Sunlit Sea's open water.");
+        sp("shadow_mackerel", "Shadow Mackerel", 0.4, 3.5, Material.COD, "SUNLIT", 10, "Schools under the dark surface, striped black.");
+        sp("pearl_snapper", "Pearl Snapper", 1, 8, Material.SALMON, "SUNLIT,DEN", 5, "Pink, pearly scales. Mermaids prize it.");
+        sp("lanternjaw", "Lanternjaw", 0.3, 4, Material.COD, "ABYSS", 10, "Its glowing barbel lights the Abyss for a heartbeat.");
+        sp("grenadier", "Abyssal Grenadier", 1, 12, Material.SALMON, "ABYSS", 8, "A rat-tailed deep fish with huge eyes.");
+        sp("ghost_eel", "Ghost Eel", 2, 15, Material.SALMON, "ABYSS,TRENCH", 5, "See-through. You can watch its heart beat.");
+        sp("acid_gar", "Acid Gar", 1, 10, Material.SALMON, "SULPHUR", 8, "Armoured in green scales the acid can't eat.");
+        sp("sulphur_sprat", "Sulphur Sprat", 0.1, 0.8, Material.COD, "SULPHUR", 10, "Tiny, yellow, and tastes like a struck match.");
+        sp("mermaid_tetra", "Mermaid's Tetra", 0.05, 0.5, Material.TROPICAL_FISH, "DEN", 10, "The Den's pet fish: blue and gold.");
+        sp("coral_princess", "Coral Princess", 0.2, 2.4, Material.TROPICAL_FISH, "DEN", 6, "Frilled fins like a ballgown.");
+        sp("hadal_snailfish", "Hadal Snailfish", 0.5, 5, Material.COD, "TRENCH", 10, "Pale and soft: the deepest fish there is.");
+        sp("coelacanth", "Abyss Coelacanth", 10, 90, Material.SALMON, "TRENCH", 5, "Older than the Titan. Lobed fins like little legs.");
+        sp("titan_isopod", "Titan Isopod", 2, 20, Material.COD, "TRENCH", 6, "Not a fish. Bites the hook anyway.");
+        sp("blind_king", "The Blind King", 50, 300, Material.SALMON, "TRENCH", 1, "The Trench's legend: eyeless, ancient, enormous.");
+    }
+
+    /** The species of a vanilla fish Material, or null. */
+    static Species vanilla(Material m) { Species s = SPECIES.get(m.name()); return s != null && !s.hadal() ? s : null; }
+
+    record Catch(UUID who, String name, Species species, double kg, double points) { }
     record Record(double kg, String name, long when) { }
 
     private final FaultlineItems plugin;
     private final File file;
     final NamespacedKey weightKey;
     private final Random random = new Random();
-    final Map<Material, Record> records = new HashMap<>();
+    final Map<String, Record> records = new HashMap<>();
+    final NamespacedKey speciesKey;
 
     // the tournament
     long endsAt, lengthMs;
@@ -75,6 +110,7 @@ final class Fishing implements Listener, CommandExecutor, TabCompleter {
         this.plugin = plugin;
         file = new File(plugin.getDataFolder(), "fishing.yml");
         weightKey = new NamespacedKey(plugin, "fish_weight");
+        speciesKey = new NamespacedKey(plugin, "fish_species");
         load();
         scheduleAuto();
         Bukkit.getScheduler().runTaskTimer(plugin, this::tick, 20L, 20L);
@@ -85,16 +121,16 @@ final class Fishing implements Listener, CommandExecutor, TabCompleter {
     void load() {
         if (!file.exists()) return;
         YamlConfiguration y = YamlConfiguration.loadConfiguration(file);
-        for (Material m : SPECIES.keySet()) {
-            String b = "records." + m.name();
-            if (y.contains(b + ".kg")) records.put(m, new Record(y.getDouble(b + ".kg"), y.getString(b + ".name", "?"), y.getLong(b + ".when")));
+        for (String id : SPECIES.keySet()) {
+            String b = "records." + id;
+            if (y.contains(b + ".kg")) records.put(id, new Record(y.getDouble(b + ".kg"), y.getString(b + ".name", "?"), y.getLong(b + ".when")));
         }
     }
 
     void save() {
         YamlConfiguration y = new YamlConfiguration();
         for (var e : records.entrySet()) {
-            String b = "records." + e.getKey().name();
+            String b = "records." + e.getKey();
             y.set(b + ".kg", e.getValue().kg()); y.set(b + ".name", e.getValue().name()); y.set(b + ".when", e.getValue().when());
         }
         try { y.save(file); } catch (IOException ex) { plugin.getLogger().warning("Couldn't save fishing.yml: " + ex.getMessage()); }
@@ -105,16 +141,13 @@ final class Fishing implements Listener, CommandExecutor, TabCompleter {
         nextAuto = h > 0 ? System.currentTimeMillis() + (long) (h * 3600000) : 0;
     }
 
-    static String name(Material m) {
-        return switch (m) { case COD -> "Cod"; case SALMON -> "Salmon"; case PUFFERFISH -> "Pufferfish"; case TROPICAL_FISH -> "Tropical Fish"; default -> m.name(); };
-    }
+    static String name(Species s) { return s.name(); }
 
     static String kg(double v) { return String.format(Locale.ROOT, "%.2f kg", v); }
 
     /** A weight for a fresh catch: mostly small, big ones rare, now and then a monster. */
-    double weigh(Material m) {
-        double[] r = SPECIES.get(m);
-        double w = r[0] + (r[1] - r[0]) * Math.pow(random.nextDouble(), 2.2);
+    double weigh(Species s) {
+        double w = s.min() + (s.max() - s.min()) * Math.pow(random.nextDouble(), 2.2);
         if (random.nextDouble() < plugin.getConfig().getDouble("fishing.monster-chance", 0.01)) w *= 1.5;
         return Math.round(w * 100) / 100.0;
     }
@@ -124,18 +157,70 @@ final class Fishing implements Listener, CommandExecutor, TabCompleter {
         if (e.getState() != PlayerFishEvent.State.CAUGHT_FISH || !(e.getCaught() instanceof Item item)) return;
         if (!plugin.getConfig().getBoolean("fishing.enabled", true)) return;
         ItemStack fish = item.getItemStack();
-        if (!SPECIES.containsKey(fish.getType())) return;
-        caught(e.getPlayer(), item, fish.getType(), weigh(fish.getType()));
+        Species s = vanilla(fish.getType());
+        if (s == null) return;
+        String zone = darkWaters(e.getHook() != null ? e.getHook().getLocation() : item.getLocation());
+        Species h = zone == null ? null : hadal(zone);
+        if (h != null) {
+            s = h;
+            item.setItemStack(hadalItem(h, fish.getAmount()));
+            index(e.getPlayer(), "hadal_fish");
+            if (h.id().equals("blind_king")) {
+                index(e.getPlayer(), "blind_king");
+                Bukkit.broadcastMessage(ChatColor.DARK_AQUA + "" + ChatColor.BOLD + e.getPlayer().getName() + ChatColor.AQUA
+                        + " pulled THE BLIND KING out of the Trench!");
+            }
+        }
+        caught(e.getPlayer(), item, s, weigh(s));
     }
 
-    void caught(Player p, Item item, Material species, double kg) {
-        double points = Math.round(kg / SPECIES.get(species)[1] * 1000) / 10.0;
+    // ============================================================================================ hadal fishing
+    /** FaultlineDeep's name for the waters a hook is in, or null (not the Dark Ocean, or no FaultlineDeep). */
+    static String darkWaters(org.bukkit.Location l) {
+        if (Bukkit.getPluginManager().getPlugin("FaultlineDeep") == null) return null;
+        try {
+            Object r = Class.forName("net.faultlinesmp.deep.FaultlineDeep").getMethod("fishZone", org.bukkit.Location.class).invoke(null, l);
+            return r instanceof String z ? z : null;
+        } catch (ReflectiveOperationException | LinkageError | RuntimeException e) { return null; }
+    }
+
+    /** One of the Dark Ocean's fish for those waters (often: hadal.chance, always in the Trench), or null = a plain fish. */
+    Species hadal(String zone) {
+        if (!plugin.getConfig().getBoolean("fishing.hadal.enabled", true) || zone.equals("BUBBLE")) return null;
+        double chance = zone.equals("TRENCH") ? 1 : plugin.getConfig().getDouble("fishing.hadal.chance", 0.7);
+        if (random.nextDouble() >= chance) return null;
+        int total = 0;
+        for (Species s : SPECIES.values()) if (s.in(zone)) total += s.weight();
+        if (total <= 0) return null;
+        int r = random.nextInt(total);
+        for (Species s : SPECIES.values()) if (s.in(zone) && (r -= s.weight()) < 0) return s;
+        return null;
+    }
+
+    ItemStack hadalItem(Species s, int amount) {
+        ItemStack it = new ItemStack(s.base(), Math.max(1, amount));
+        ItemMeta m = it.getItemMeta();
+        m.setDisplayName((s.id().equals("blind_king") ? ChatColor.GOLD + "" + ChatColor.BOLD : ChatColor.AQUA + "") + s.name());
+        m.setLore(new ArrayList<>(List.of(ChatColor.GRAY + s.about(), ChatColor.DARK_AQUA + "A fish of the Dark Ocean")));
+        m.setItemModel(new NamespacedKey("faultline", "fish/" + s.id()));
+        m.getPersistentDataContainer().set(speciesKey, PersistentDataType.STRING, s.id());
+        it.setItemMeta(m);
+        return it;
+    }
+
+    void index(Player p, String stat) {
+        if (Bukkit.getPluginManager().getPlugin("FaultlineIndex") != null)
+            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "index stat " + p.getName() + " " + stat + " 1");
+    }
+
+    void caught(Player p, Item item, Species species, double kg) {
+        double points = Math.round(kg / species.max() * 1000) / 10.0;
         p.sendActionBar(ChatColor.AQUA + "You caught a " + ChatColor.WHITE + kg(kg) + " " + name(species)
                 + (running() ? ChatColor.GRAY + " (" + points + " points)" : ""));
-        Record rec = records.get(species);
+        Record rec = records.get(species.id());
         boolean record = rec == null || kg > rec.kg();
         if (record) {
-            records.put(species, new Record(kg, p.getName(), System.currentTimeMillis()));
+            records.put(species.id(), new Record(kg, p.getName(), System.currentTimeMillis()));
             save();
             if (rec != null || plugin.getConfig().getBoolean("fishing.announce-first-records", false))
                 Bukkit.broadcastMessage(ChatColor.AQUA + "🎣 NEW RECORD: " + ChatColor.WHITE + p.getName() + ChatColor.AQUA + " caught a "
@@ -146,8 +231,10 @@ final class Fishing implements Listener, CommandExecutor, TabCompleter {
             ItemStack fish = item.getItemStack().clone();
             ItemMeta m = fish.getItemMeta();
             if (record) m.setDisplayName(ChatColor.GOLD + "" + ChatColor.BOLD + "Trophy " + name(species));
-            m.setLore(List.of(ChatColor.GRAY + kg(kg) + (record ? ChatColor.GOLD + " (server record)" : ""),
+            List<String> lore = new ArrayList<>(List.of(ChatColor.GRAY + kg(kg) + (record ? ChatColor.GOLD + " (server record)" : ""),
                     ChatColor.DARK_GRAY + "Caught by " + p.getName() + ", " + new SimpleDateFormat("d MMM yyyy").format(new Date())));
+            if (species.hadal()) { lore.add(ChatColor.GRAY + species.about()); lore.add(ChatColor.DARK_AQUA + "A fish of the Dark Ocean"); }
+            m.setLore(lore);
             m.getPersistentDataContainer().set(weightKey, PersistentDataType.DOUBLE, kg);
             fish.setItemMeta(m);
             item.setItemStack(fish);
@@ -252,9 +339,12 @@ final class Fishing implements Listener, CommandExecutor, TabCompleter {
             }
             default -> {
                 sender.sendMessage(ChatColor.AQUA + "" + ChatColor.BOLD + "🎣 Server fishing records");
-                for (Material m : SPECIES.keySet()) {
-                    Record r = records.get(m);
-                    sender.sendMessage(ChatColor.GRAY + " " + name(m) + ": " + (r == null ? "none yet" : ChatColor.WHITE + kg(r.kg()) + ChatColor.GRAY + " by " + r.name()));
+                boolean dark = false;
+                for (Species sp : SPECIES.values()) {
+                    if (sp.hadal() && !dark) { dark = true; sender.sendMessage(ChatColor.DARK_AQUA + "" + ChatColor.BOLD + " The Dark Ocean"); }
+                    Record r = records.get(sp.id());
+                    if (sp.hadal() && r == null && !(args.length > 1 && args[1].equalsIgnoreCase("all"))) continue; // undiscovered: a secret
+                    sender.sendMessage(ChatColor.GRAY + " " + name(sp) + ": " + (r == null ? "none yet" : ChatColor.WHITE + kg(r.kg()) + ChatColor.GRAY + " by " + r.name()));
                 }
                 if (admin) sender.sendMessage(ChatColor.DARK_GRAY + "Admin: /fishing start [minutes] | stop [award]");
             }

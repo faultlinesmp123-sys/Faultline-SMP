@@ -258,6 +258,13 @@ final class Habitat implements Listener {
         for (Dome d : domes.values()) if (Math.hypot(d.x - x, d.z - z) < d.r + r + 2 && Math.abs(d.y - y) < d.r + r + 2) return "Too close to another dome.";
         for (int dx = -r - 1; dx <= r + 1; dx += 4) for (int dz = -r - 1; dz <= r + 1; dz += 4)
             if (!w.isChunkLoaded((x + dx) >> 4, (z + dz) >> 4)) return "Not all of the ground there is loaded.";
+        // BUG FIX: the shell overwrote whatever stood there (someone's chest = its contents gone). A container, furnace, sign...
+        // anywhere in the dome refuses it; other solid blocks are simply kept as part of the wall.
+        for (int dx = -r - 1; dx <= r + 1; dx++) for (int dz = -r - 1; dz <= r + 1; dz++) for (int dy = -1; dy <= r + 1; dy++) {
+            if (dx * dx + dy * dy + dz * dz >= (r + 0.5) * (r + 0.5) && dy >= 0) continue;
+            if (dy < 0 && dx * dx + dz * dz >= (r + 0.5) * (r + 0.5)) continue;
+            if (w.getBlockAt(x + dx, y + dy, z + dz).getState() instanceof org.bukkit.block.TileState) return "Something's in the way (a chest or another block with things in it).";
+        }
         Dome d = new Dome();
         d.id = nextId++; d.x = x; d.y = y; d.z = z; d.r = r; d.owner = p.getUniqueId();
         List<long[]> glass = new ArrayList<>(), air = new ArrayList<>(), floor = new ArrayList<>();
@@ -274,11 +281,11 @@ final class Habitat implements Listener {
         // the floor: open water / plants under the dome become glass, so it's sealed from below
         for (long[] f : floor) {
             Block b = w.getBlockAt((int) f[0], (int) f[1], (int) f[2]);
-            if (wet(b) || b.getType().isAir()) { change(d, b, Material.LIGHT_BLUE_STAINED_GLASS.createBlockData()); shell.put(pack(b.getX(), b.getY(), b.getZ()), d.id); }
+            if (Submersible.water(b) || b.getType().isAir()) { change(d, b, Material.LIGHT_BLUE_STAINED_GLASS.createBlockData()); shell.put(pack(b.getX(), b.getY(), b.getZ()), d.id); }
         }
         for (long[] g : glass) {
             Block b = w.getBlockAt((int) g[0], (int) g[1], (int) g[2]);
-            if (b.getType().isSolid() && !wet(b) && g[3] == 0) continue; // the ground keeps its own edge
+            if (!Submersible.water(b) && !b.getType().isAir()) continue; // the ground (or anything built there) is the wall
             BlockData bd = g[3] == 0 ? Material.SEA_LANTERN.createBlockData() : (g[3] + g[0] + g[2]) % 7 == 0 ? Material.CYAN_STAINED_GLASS.createBlockData()
                     : Material.LIGHT_BLUE_STAINED_GLASS.createBlockData();
             change(d, b, bd);

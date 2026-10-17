@@ -76,6 +76,8 @@ final class Volcano implements Listener {
     boolean goodSpot(long seed, int x, int z) {
         if (Math.hypot(x, z) < 200 || Math.hypot(x - 681, z + 951) < 260 || Math.abs(x) > 2850 || Math.abs(z) > 2850) return false;
         if (Regions.nearAny(x, z, 120) || MermaidDen.weight(x, z) > 0 || Math.hypot(x - MermaidDen.MX, z - MermaidDen.MZ) < 280) return false;
+        Habitat h = Habitat.instance; // never next to a player's dome base or air coral garden
+        if (h != null) for (Habitat.Dome d : h.domes.values()) if (Math.hypot(d.x - x, d.z - z) < cfg("base-radius", 22) + d.r + 40) return false;
         DeepGenerator g = pl.generator;
         for (int dx = -40; dx <= 40; dx += 40) for (int dz = -40; dz <= 40; dz += 40) {
             if (g.sulphur(seed, x + dx, z + dz) > 0.01 || g.trenchColumn(seed, x + dx, z + dz)) return false;
@@ -169,10 +171,24 @@ final class Volcano implements Listener {
         if (built >= build.size()) { build.clear(); built = 0; erupt(); }
     }
 
+    /** What the volcano may replace: sea water, sea plants and the sea floor's own rock (never anything a player built). */
+    static boolean natural(Material t) {
+        if (t.isAir() || ROCK.contains(t)) return true;
+        String n = t.name();
+        return t == Material.WATER || t == Material.BUBBLE_COLUMN || t == Material.SEAGRASS || t == Material.TALL_SEAGRASS || t == Material.KELP
+                || t == Material.KELP_PLANT || t == Material.SEA_PICKLE || t == Material.SAND || t == Material.RED_SAND || t == Material.GRAVEL
+                || t == Material.CLAY || t == Material.MUD || t == Material.STONE || t == Material.DEEPSLATE || t == Material.ANDESITE
+                || t == Material.DIORITE || t == Material.GRANITE || t == Material.CALCITE || t == Material.DRIPSTONE_BLOCK || t == Material.POINTED_DRIPSTONE
+                || t == Material.MAGMA_BLOCK || t == Material.GLOW_LICHEN || t == Material.SOUL_SAND || t == Material.SUSPICIOUS_SAND
+                || n.endsWith("CORAL") || n.endsWith("CORAL_BLOCK") || n.endsWith("CORAL_FAN") || n.endsWith("TERRACOTTA") || n.startsWith("PRISMARINE");
+    }
+
     void set(int x, int y, int z, Material m) {
         if (y < pl.world.getMinHeight() || y > DeepGenerator.SEA - 2) return;
         Block b = pl.world.getBlockAt(x, y, z);
-        if (b.getType() == Material.CHEST || b.getType() == Material.BARREL || b.getType() == Material.BEDROCK) return; // never eat a chest
+        // BUG FIX: it used to overwrite anything in the way but chests/barrels: a player's underwater base, a dome's glass,
+        // furnaces and shulkers (their contents gone). Now it only grows through sea water and the sea floor's own rock.
+        if (!natural(b.getType()) || Habitat.inDome(x + 0.5, y + 0.5, z + 0.5)) return;
         long k = pack(x, y, z);
         scar.putIfAbsent(k, b.getBlockData().getAsString());
         if (b.getType() != m) b.setType(m, false);

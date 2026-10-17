@@ -1393,6 +1393,17 @@ Notes:
   disable); `FaultlineSkills.skillLevel(uuid, tree)` for other plugins. Index stat `skill_<tree>` +1 a level. Tested: `SkillTest`
   (scratch `sktest`), `TerrorsTest` (bosses), `WeakTest` (index), `SeasonTest` (cosmetics). Pack: new models/icons from
   `deep_assets.py` (`OUTER_ICONS`, `OUTER_HEADS`), FaultlineSMP.zip 24.25 MB.
+- **Bug pass (Items 1.2.61, Deep 1.9.1, Skills 1.0.1)**: a sweep of every plugin (direct `setVelocity`, class spawns of
+  slimes, entity scans on timers, async Bukkit calls, menus without drag guards, unguarded config parsing, loot handlers that
+  ignore cancelled events, crash leftovers). Fixed: the Magic Mirror menu cancelled clicks but not DRAGS (a dragged stack fell
+  into the menu and vanished); the Mirror's anvil repair gave a whole stack back for one mirror (`repaired.setAmount(1)`);
+  FaultlineSkills paid Mining XP for blocks a cobblestone / stone / basalt GENERATOR made (`onForm`: BlockFormEvent marks
+  them placed); the VOLCANO overwrote anything in its way (an underwater base, a dome, a chest's contents): it only grows
+  through sea water and the sea floor's own rock (`Volcano.natural`), never inside a dome, and never rises within 40 blocks
+  of one (`goodSpot`); a DOME KIT's shell overwrote other players' blocks (chests lost their items): a block entity anywhere in
+  the dome refuses it, and any non-water block in the shell is kept as part of the wall. Checked and fine: LimboBlackMarket
+  (stats, quests, anti-farm, placed-ore marks), Raids menus/omens/waves, Ships' hold vs scrap, Cosmetics' shop, every
+  plugin's GUI drag guards. Tested (`SkillTest`: generator stone, `OuterTest`).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Skills → Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

@@ -1,5 +1,5 @@
 name: FaultlineItems
-version: 1.2.60
+version: 1.2.61
 main: net.faultlinesmp.items.FaultlineItems
 api-version: '1.21'
 softdepend: [floodgate, Geyser-Spigot]

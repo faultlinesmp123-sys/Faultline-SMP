@@ -247,6 +247,13 @@ public final class FaultlineSkills extends JavaPlugin implements Listener {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPush(BlockPistonExtendEvent e) { movePlaced(e.getBlocks(), e.getDirection()); }
 
+    // BUG FIX: cobblestone / stone / basalt generators (lava meeting water) made blocks no one placed: endless Mining XP.
+    // Anything that FORMS (generators, concrete, ice, snow...) counts as placed.
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onForm(org.bukkit.event.block.BlockFormEvent e) {
+        if (tracked(e.getNewState().getType())) mark(e.getBlock(), true);
+    }
+
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPull(BlockPistonRetractEvent e) { movePlaced(e.getBlocks(), e.getDirection()); }
 

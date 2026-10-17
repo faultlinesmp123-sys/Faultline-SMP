@@ -1336,6 +1336,12 @@ public final class FaultlineItems extends JavaPlugin {
                 default -> { /* clicked an empty/decorative slot, do nothing */ }
             }
         }
+
+        // BUG FIX: only clicks were cancelled; dragging a stack across the menu dropped it into slots that vanish on close
+        @EventHandler
+        public void onGuiDrag(org.bukkit.event.inventory.InventoryDragEvent event) {
+            if (event.getInventory().getHolder() instanceof MagicMirrorGuiHolder) event.setCancelled(true);
+        }
     }
 
 
@@ -1708,6 +1714,7 @@ public final class FaultlineItems extends JavaPlugin {
             if (!(event.getWhoClicked() instanceof Player player)) return;
 
             ItemStack repaired = left.clone();
+            repaired.setAmount(1); // BUG FIX: a stack of 2 identical mirrors came out as 2 repaired ones for 1 consumed
             MagicMirrorItem.setUses(plugin, repaired, 0);
 
             // Consume exactly 1 gold ingot from the right stack.

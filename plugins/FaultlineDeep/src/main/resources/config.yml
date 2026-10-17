@@ -1,6 +1,6 @@
 # FaultlineDeep: the Dark Ocean. Changing this file in the jar does NOT update the copy on the server.
 world: faultline_deep
-border-radius: 2000          # the world border: -2000..2000 (1.7.0: was 1050; the Mermaid Den is at 1200, 700)
+border-radius: 3000          # the world border: -3000..3000 (1.7.0: 2000; 1.9.0: 3000 for the outer ring: the Frozen Shelf, the Drowned City, the Glass Reef, the Bone Fields)
 
 # The Black Market (the Bubble's plot) and the Pit: players without faultlinedeep.market can't break / build / empty
 # buckets there or open its shulker boxes, barrels..., and nobody can break the Bubble's glass (the sea would pour in).

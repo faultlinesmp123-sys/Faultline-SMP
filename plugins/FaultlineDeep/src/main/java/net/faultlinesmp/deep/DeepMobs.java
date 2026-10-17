@@ -192,6 +192,48 @@ final class DeepMobs implements Listener {
         k("greatwhale", "Great Whale", ChatColor.BLUE, P, S, EntityType.DOLPHIN, 3.5, 400, 0, 0, 0, 9.0f, "One of the great whales of the Leviathan Migration, crossing the Sunlit Sea in a pod. Gentle giants. Hunting them brings something from below.");
     }
 
+    /** 1.9.0: the outer ring's creatures (zone SUNLIT; each lives only in its region: REGION), the volcanoes' (weight 0:
+     *  Volcano.java spawns them), the Frozen Shelf's mini boss the Rimeback and the Drowned City's people (PLAIN: a vanilla
+     *  drowned you see as it is, dressed by OuterMobs, no model) with their king. */
+    static {
+        var S = DeepGenerator.Zone.SUNLIT;
+        var P = Temper.PASSIVE; var N = Temper.NEUTRAL; var G = Temper.AGGRESSIVE;
+        // the Bone Fields
+        k("marroweel", "Marrow Eel", ChatColor.WHITE, G, S, EntityType.DROWNED, 1.0, 30, 7, 0.3, 10, 2.0f, "A pale eel that nests in the leviathans' bones, its body ribbed like a spine. It bites and won't let go: you bleed until you shake it off.");
+        k("scavcrab", "Scavenger Crab", ChatColor.GRAY, N, S, EntityType.SPIDER, 0.7, 26, 5, 0.26, 12, 1.5f, "A grey crab with a shell grown over with bone shards, picking the skeletons clean. Get between it and its meal and it pinches.");
+        k("ossuaryray", "Ossuary Ray", ChatColor.WHITE, N, S, EntityType.DOLPHIN, 2.0, 60, 0, 0, 5, 3.6f, "A great ray rotted down to a lattice of bones, still gliding over the Bone Fields. Hurt it and it rattles: a chill that withers.");
+        // the Glass Reef
+        k("glassjelly", "Glass Jelly", ChatColor.AQUA, N, S, EntityType.SQUID, 1.2, 20, 0, 0, 12, 1.8f, "A bell of living crystal that rings as it pulses. Its threads sting, and when it dies it shatters into flying glass.");
+        k("prismfish", "Prism Fish", ChatColor.LIGHT_PURPLE, P, S, EntityType.COD, 0.8, 6, 0, 0, 16, 1.0f, "A little fish of cut crystal. Schools of them throw rainbows across the reef.");
+        k("crystalcrab", "Crystal Crab", ChatColor.DARK_PURPLE, N, S, EntityType.SPIDER, 0.8, 40, 6, 0.24, 8, 1.6f, "An amethyst geode that walks. Its shell turns most blows aside: strike it from behind.");
+        k("shardback", "Shardback", ChatColor.BLUE, G, S, EntityType.DROWNED, 1.0, 32, 6, 0.3, 7, 1.8f, "A long fish armoured in blades of glass. It flares its crest and fires the spare ones at you.");
+        // the Frozen Shelf
+        k("narwhal", "Narwhal", ChatColor.GRAY, N, S, EntityType.DOLPHIN, 2.0, 60, 9, 0, 6, 3.0f, "A mottled grey whale with one long spiralled tusk. Gentle, until you hurt it: then it charges tusk first.");
+        k("iceseal", "Ice Seal", ChatColor.WHITE, P, S, EntityType.DOLPHIN, 1.2, 20, 0, 0, 10, 1.8f, "A fat silver seal with big black eyes. It plays round the breathing holes, and where the seals are there's air.");
+        k("frostorca", "Frost Orca", ChatColor.DARK_GRAY, G, S, EntityType.DROWNED, 1.6, 70, 9, 0.32, 5, 3.6f, "A black-and-white hunter of the Frozen Shelf. They hunt in pairs, and their bite freezes you stiff.");
+        k("rimejelly", "Rime Jelly", ChatColor.AQUA, N, S, EntityType.SQUID, 1.2, 22, 0, 0, 9, 1.8f, "A frosted bell trailing icy threads. Its sting freezes you where you swim.");
+        k("rimeback", "The Rimeback", ChatColor.AQUA, G, S, EntityType.DROWNED, 2.6, 1200, 14, 0.3, 0, 7.5f, "A MINI BOSS (1200 health): a vast orca sheathed in ice, lord of the Frozen Shelf. It sleeps in its Hollow under the ice. Frost Breath, Ice Ram, Glacier Fall, the Pod, and when it's hurt it freezes the water round it.");
+        // the undersea volcanoes
+        k("magmaeel", "Magma Eel", ChatColor.GOLD, G, S, EntityType.DROWNED, 1.0, 34, 7, 0.3, 0, 2.0f, "A black eel cracked with glowing seams, born in a volcano's vents. Its bite sears.");
+        k("cindercrab", "Cinder Crab", ChatColor.RED, N, S, EntityType.SPIDER, 0.8, 30, 5, 0.24, 0, 1.6f, "A crab with a shell of cooling lava. Hurt it and it bursts into a shower of embers.");
+        // the Drowned City (PLAIN: a vanilla drowned, dressed)
+        k("drowncitizen", "Drowned Citizen", ChatColor.DARK_AQUA, G, S, EntityType.DROWNED, 1.0, 26, 5, 0.24, 12, 1.0f, "One of the Drowned City's people, still walking its streets in the rags of their old clothes.");
+        k("drownguard", "Drowned Guard", ChatColor.DARK_GREEN, G, S, EntityType.DROWNED, 1.05, 44, 7, 0.26, 6, 1.0f, "A guard of the Drowned City in rusted mail, still on patrol. Guards carry tridents, and the keys to the vaults.");
+        k("drownpriest", "Drowned Priest", ChatColor.DARK_PURPLE, G, S, EntityType.DROWNED, 1.0, 30, 4, 0.22, 3, 1.0f, "A priest of the drowned cathedral. It mends the dead around it and curses the living: slowing, lifting, weakening.");
+        k("drownking", "The Drowned King", ChatColor.GOLD, G, S, EntityType.DROWNED, 2.2, 900, 12, 0.28, 0, 1.0f, "A MINI BOSS (900 health): the Drowned City's king, still on his throne in the palace. Trident Volley, Tidal Slam, the Royal Guard, the King's Decree and the Whirl. He carries three Drowned Vault Keys.");
+    }
+
+    /** Which outer region each of those lives in (the spawner keeps them there, and keeps the open sea's out). */
+    static final Map<String, String> REGION = Map.ofEntries(
+            Map.entry("marroweel", "bones"), Map.entry("scavcrab", "bones"), Map.entry("ossuaryray", "bones"),
+            Map.entry("glassjelly", "glass"), Map.entry("prismfish", "glass"), Map.entry("crystalcrab", "glass"), Map.entry("shardback", "glass"),
+            Map.entry("narwhal", "frozen"), Map.entry("iceseal", "frozen"), Map.entry("frostorca", "frozen"), Map.entry("rimejelly", "frozen"), Map.entry("rimeback", "frozen"),
+            Map.entry("magmaeel", "volcano"), Map.entry("cindercrab", "volcano"),
+            Map.entry("drowncitizen", "city"), Map.entry("drownguard", "city"), Map.entry("drownpriest", "city"), Map.entry("drownking", "city"));
+
+    /** Seen as their own vanilla body (no model, no Bedrock stand helmet). */
+    static final Set<String> PLAIN = Set.of("drowncitizen", "drownguard", "drownpriest", "drownking");
+
     /** The Trench's creatures (the Titan's Maw is theirs too). */
     static final Set<String> TRENCH = Set.of("hadalsnail", "anglerking", "bonecrawler", "palestalker", "crushjelly", "tubeworm");
 
@@ -201,11 +243,12 @@ final class DeepMobs implements Listener {
     /** Where in the Sulphur Sea a kind lives: on the islands (LAND), in the air over them (AIR), on the water's surface (SURFACE). Everything else swims. */
     static final Set<String> LAND = Set.of("flakcrab", "nucleartoad", "gammaslime", "boglurker", "crabling", "hazardturtle", "sludgesnail", "rustbones", "acidmite", "goblin");
     static final Set<String> AIR = Set.of("skyfin", "sulphurmoth", "stormwraith");
-    static final Set<String> FLOOR = Set.of("clam", "burrowshark", "cavecrawler", "glowgrub", "shellsnake", "urchin", "trilobite", "stingray", "kelpstrangler", "isopod", "bonecrawler", "tubeworm");
+    static final Set<String> FLOOR = Set.of("scavcrab", "crystalcrab", "cindercrab", "clam", "burrowshark", "cavecrawler", "glowgrub", "shellsnake", "urchin", "trilobite", "stingray", "kelpstrangler", "isopod", "bonecrawler", "tubeworm");
     static final String ACID_TAG = "faultline_deep_acid";
     /** Creatures that give off their own light: their models are drawn fully lit, so they shine in the Abyss's dark. */
     static final Set<String> GLOW = new java.util.HashSet<>(Set.of("jellywing", "lumenbell", "glowgrub", "lampsquid", "volteel", "needlejaw",
-            "riftwarper", "radiator", "gammaslime", "acidjelly", "sulphurmoth", "acidmite", "dumbo", "chainlight", "watcher", "viperfang", "gulper", "vampsquid", "crushjelly", "anglerking"));
+            "riftwarper", "radiator", "gammaslime", "acidjelly", "sulphurmoth", "acidmite", "dumbo", "chainlight", "watcher", "viperfang", "gulper", "vampsquid", "crushjelly", "anglerking",
+            "glassjelly", "prismfish", "shardback", "rimejelly", "magmaeel", "cindercrab")); // (1.9.0: the Glass Reef's light, the volcanoes' embers)
     /** Pale, half-seen ones: drawn a little lit (4), so they're faint shapes in the Abyss's dark instead of nothing. */
     static final Set<String> DIM = Set.of("ghostshark", "isopod", "hagfish", "swallower", "hadalsnail", "palestalker", "bonecrawler", "tubeworm");
 
@@ -213,6 +256,7 @@ final class DeepMobs implements Listener {
     final Random random = new Random();
     final NamespacedKey eggKey;
     final Map<UUID, Beast> live = new HashMap<>();
+    OuterMobs outer;
     /** The guardians the spawner put in the Abyss (capped near each player; vanilla doesn't count them). */
     final Set<UUID> guardians = new HashSet<>();
     private int ticks;
@@ -238,6 +282,8 @@ final class DeepMobs implements Listener {
         int rolled, latched;                                   // trilobite curled up / leech holding on (ticks left)
         Player lookAt;                                          // the Watcher's eye follows them
         int song;                                               // the Siren's song (ticks left)
+        boolean mutated;                                        // 1.9.0: a mutated one (OuterMobs.mutate)
+        org.bukkit.boss.BossBar bar;                            // the mini bosses' bars (the Rimeback, the Drowned King)
         UUID latchedTo;
         Beast(Kind k, LivingEntity body) { this.k = k; this.body = body; }
         boolean angry() { return angryAt != null && ticks < angryUntil; }
@@ -247,6 +293,7 @@ final class DeepMobs implements Listener {
     DeepMobs(FaultlineDeep pl) {
         this.pl = pl;
         eggKey = new NamespacedKey(pl, "deep_egg");
+        outer = new OuterMobs(pl, this);
         Bukkit.getScheduler().runTaskTimer(pl, this::tick, 2L, 2L);
     }
 
@@ -277,8 +324,8 @@ final class DeepMobs implements Listener {
         body.addScoreboardTag("faultline_deep_" + k.id());
         body.setPersistent(false);
         body.setRemoveWhenFarAway(true);
-        body.setInvisible(true);
-        body.setSilent(true);
+        body.setInvisible(!PLAIN.contains(k.id()));
+        body.setSilent(!PLAIN.contains(k.id()));
         body.setCanPickupItems(false);
         body.setCustomName(k.color() + k.name());
         body.setCustomNameVisible(false);
@@ -306,8 +353,9 @@ final class DeepMobs implements Listener {
         // (riding doesn't change it) and draws its transformation on top of that, so a creature from an egg or /deep spawn
         // (your look direction) was tilted by your pitch for its whole life
         Location flat = at.clone(); flat.setYaw(0); flat.setPitch(0);
+        boolean plain = PLAIN.contains(k.id());
         mob.model = w.spawn(flat, ItemDisplay.class, d -> {
-            d.setItemStack(modelItem(k.id()));
+            d.setItemStack(plain ? new ItemStack(Material.AIR) : modelItem(k.id()));
             d.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.NONE);
             d.setPersistent(false);
             d.addScoreboardTag(PART);
@@ -349,7 +397,7 @@ final class DeepMobs implements Listener {
             a.setSilent(true);
             a.setBasePlate(false);
             a.setMarker(false); // Geyser draws the helmet only on a real armor stand
-            a.getEquipment().setHelmet(modelItem(k.id()));
+            if (!plain) a.getEquipment().setHelmet(modelItem(k.id()));
         });
         attr(mob.stand, Attribute.SCALE, Math.max(0.0625, Math.min(16, k.modelScale())));
         for (Player p : w.getPlayers()) if (Edition.bedrock(p)) p.showEntity(pl, mob.stand);
@@ -360,6 +408,7 @@ final class DeepMobs implements Listener {
         if (k.id().equals("kelpstrangler") && body instanceof Mob m7) m7.setAI(false);                    // rooted: it never moves
         if (k.id().equals("tubeworm") && body instanceof Mob m8) m8.setAI(false);                         // rooted on its vent
         live.put(body.getUniqueId(), mob);
+        if (outer != null) outer.spawned(mob); // 1.9.0: the Drowned City's clothes, mutations
         pose(mob, true);
         return mob;
     }
@@ -517,6 +566,7 @@ final class DeepMobs implements Listener {
     }
 
     void cleanup(Beast m) {
+        if (m.bar != null) { m.bar.removeAll(); m.bar = null; }
         if (m.model != null && m.model.isValid()) m.model.remove();
         for (ItemDisplay d : m.parts) if (d != null && d.isValid()) d.remove();
         m.parts.clear();
@@ -543,6 +593,7 @@ final class DeepMobs implements Listener {
         Player target = target(m);
         World w = m.body.getWorld();
         Location c = m.body.getLocation().add(0, height(m) / 2, 0);
+        if (outer != null && (REGION.containsKey(m.k.id()) || m.mutated)) outer.tick(m, target, w, c);
         switch (m.k.id()) {
             case "jellywing" -> { if (m.t % 20 == 0) w.spawnParticle(Particle.GLOW, c, 3, 0.6, 0.2, 0.6, 0); }
             case "driftback" -> { if (m.t % 40 == 0) { w.spawnParticle(Particle.BUBBLE, c, 12, 2, 1, 2, 0.05); if (random.nextInt(4) == 0) w.playSound(c, Sound.ENTITY_DOLPHIN_AMBIENT_WATER, SoundCategory.NEUTRAL, 2f, 0.4f); } }
@@ -1448,11 +1499,13 @@ final class DeepMobs implements Listener {
 
     Kind pick(DeepGenerator.Zone z, Location at) {
         boolean floor = at.clone().add(0, -1, 0).getBlock().getType().isSolid();
+        String region = z == DeepGenerator.Zone.SUNLIT ? Regions.at(at.getBlockX(), at.getBlockZ()) : null; // 1.9.0
         List<Kind> opts = new ArrayList<>();
         int total = 0;
         for (Kind k : KINDS.values()) {
             if (k.zone() != z) continue;
             if (LAND.contains(k.id()) || AIR.contains(k.id())) continue; // (those come from landSpot)
+            if (!java.util.Objects.equals(REGION.get(k.id()), region)) continue; // the outer regions have their own, and keep them
             if (!pl.getConfig().getBoolean("mobs." + k.id() + ".enabled", true)) continue;
             boolean needsFloor = FLOOR.contains(k.id());
             if (needsFloor != floor && needsFloor) continue;
@@ -1543,6 +1596,7 @@ final class DeepMobs implements Listener {
                 if (m.maskHits == 0) { w.spawnParticle(Particle.BLOCK, ent.getLocation().add(0, 1, 0), 30, 0.4, 0.4, 0.4, 0, Material.BONE_BLOCK.createBlockData()); by.sendActionBar(ChatColor.GOLD + "You cracked the Devilfish's mask!"); }
             }
         }
+        if (outer != null && REGION.containsKey(m.k.id())) outer.hurt(m, e, by);
         // ---- the Sulphur Sea's defences
         switch (m.k.id()) {
             case "flakcrab" -> { // the front shell
@@ -1621,6 +1675,7 @@ final class DeepMobs implements Listener {
         if (m == null || !(e.getEntity() instanceof Player p)) return;
         if (m.k.temper() == Temper.PASSIVE) { e.setCancelled(true); return; }
         if (pl.rep != null) pl.rep.noteHit(p);
+        if (outer != null && (REGION.containsKey(m.k.id()) || m.mutated)) outer.bite(m, p, e);
         if (m.k.id().equals("hollowkin")) p.addPotionEffect(new PotionEffect(PotionEffectType.DARKNESS, 60, 0));
         if (m.k.id().equals("needlejaw")) p.addPotionEffect(new PotionEffect(PotionEffectType.POISON, 40, 0));
         switch (m.k.id()) {
@@ -1724,11 +1779,20 @@ final class DeepMobs implements Listener {
         if (pl.den != null) pl.den.died(m, killer);
         if (pl.rep != null) pl.rep.killed(m, killer);
         if (m.k.id().equals("greatwhale") && pl.migration != null) pl.migration.whaleKilled(killer, at);
+        if (outer != null) outer.died(m, killer, at, e);
         drops(m.k, e.getDrops(), killer);
+        if (m.mutated) { // 1.9.0: a mutated one drops everything twice and gives double experience
+            List<ItemStack> copy = new ArrayList<>();
+            for (ItemStack it : e.getDrops()) copy.add(it.clone());
+            e.getDrops().addAll(copy);
+            e.setDroppedExp(e.getDroppedExp() * 2);
+            if (killer != null) pl.console("index stat " + killer.getName() + " mutated_sea 1");
+        }
     }
 
     /** Each creature's loot: a little vanilla stuff, its rare bits (through the other plugins' commands), a Dark Loot Bag now and then. */
     void drops(Kind k, List<ItemStack> drops, Player killer) {
+        if (outer != null && outer.drops(k, drops, killer)) return;
         switch (k.id()) {
             case "gawker" -> drops.add(new ItemStack(Material.COD, 1 + random.nextInt(2)));
             case "bloatfin" -> drops.add(new ItemStack(Material.SALMON, 1));

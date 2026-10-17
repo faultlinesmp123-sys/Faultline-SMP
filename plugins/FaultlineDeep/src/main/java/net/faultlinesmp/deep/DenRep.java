@@ -153,6 +153,22 @@ final class DenRep {
 
     boolean gift(Player p, DeepMobs.Beast m, ItemStack hand) {
         if (hand == null) return false;
+        if (pl.outer != null && pl.outer.isFossil(hand)) { // 1.9.0: an Ancient Fossil = 15 reputation + a sea treasure back
+            int[] t = day(p.getUniqueId());
+            int room = (int) cfg("gifts-per-day", 40) - t[2];
+            if (room <= 0) { p.sendMessage(ChatColor.LIGHT_PURPLE + "She has had enough gifts for today." + ChatColor.GRAY + " (Come back tomorrow.)"); return true; }
+            hand.setAmount(hand.getAmount() - 1);
+            int gain = Math.min(room, (int) cfg("fossil", 15));
+            t[2] += gain;
+            ItemStack back = pl.outer.fossilReward();
+            p.getInventory().addItem(back).values().forEach(x -> p.getWorld().dropItemNaturally(p.getLocation(), x));
+            Location l = m.body.getLocation().add(0, 1, 0);
+            l.getWorld().spawnParticle(Particle.HEART, l, 8, 0.4, 0.4, 0.4, 0);
+            l.getWorld().playSound(l, Sound.ENTITY_ALLAY_ITEM_GIVEN, SoundCategory.NEUTRAL, 1f, 0.9f);
+            p.sendMessage(ChatColor.LIGHT_PURPLE + "She turns the fossil over and over, then presses something into your hand.");
+            add(p, gain, "(an Ancient Fossil for the Den)");
+            return true;
+        }
         int per; // reputation per item (crystals and pickles: 1 per 4)
         switch (hand.getType()) {
             case PRISMARINE_CRYSTALS, SEA_PICKLE -> per = -4;

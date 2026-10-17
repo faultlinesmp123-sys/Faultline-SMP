@@ -124,6 +124,12 @@ final class DeepGenerator extends ChunkGenerator {
         if (sw > 0) h = h * (1 - sw) + Sulphur.floor(n, x, z) * sw;
         double mw = MermaidDen.weight(x, z);                    // the Mermaid Den: a reef crater rising almost to the surface
         if (mw > 0) h = h * (1 - mw) + MermaidDen.floor(n, x, z) * mw;
+        // 1.9.0: the outer ring's regions
+        double fw = FrozenShelf.weight(x, z), cw = DrownedCity.weight(x, z), gw = GlassReef.weight(x, z), bw = BoneFields.weight(x, z);
+        if (fw > 0) h = h * (1 - fw) + FrozenShelf.floor(n, x, z) * fw;
+        if (cw > 0) h = h * (1 - cw) + DrownedCity.floor(n, x, z) * cw;
+        if (gw > 0) h = h * (1 - gw) + GlassReef.floor(n, x, z) * gw;
+        if (bw > 0) h = h * (1 - bw) + BoneFields.floor(n, x, z) * bw;
         return (int) Math.round(h);
     }
 
@@ -165,7 +171,7 @@ final class DeepGenerator extends ChunkGenerator {
         long h = hash(seed, cx, cz, 11);
         if (unit(h) > 0.66) return null;
         int x = cx * 144 + 24 + (int) (unit(hash(seed, cx, cz, 12)) * 96), z = cz * 144 + 24 + (int) (unit(hash(seed, cx, cz, 13)) * 96);
-        if (flatWeight(x, z) > 0 || Sulphur.near(x, z, 30) || MermaidDen.near(x, z, 30) || Trench.near(x, z, 30)) return null;
+        if (flatWeight(x, z) > 0 || Sulphur.near(x, z, 30) || MermaidDen.near(x, z, 30) || Trench.near(x, z, 30) || Regions.nearAny(x, z, 30)) return null;
         return new int[]{x, z};
     }
 
@@ -244,6 +250,7 @@ final class DeepGenerator extends ChunkGenerator {
             if (unit(h) > 0.3) continue;
             if (Sulphur.near((gx + i) * 48 + 24, (gz + j) * 48 + 24, 0)) continue; // the Sulphur Sea has its own columns
             if (MermaidDen.near((gx + i) * 48 + 24, (gz + j) * 48 + 24, 0)) continue; // and the Den is the mermaids' (1.7.0)
+            if (Regions.nearAny((gx + i) * 48 + 24, (gz + j) * 48 + 24, 0)) continue; // and the outer regions have their own (1.9.0)
             int sx = (gx + i) * 48 + 8 + (int) (unit(hash(n.seed, gx + i, gz + j, 42)) * 32);
             int sz = (gz + j) * 48 + 8 + (int) (unit(hash(n.seed, gx + i, gz + j, 43)) * 32);
             double r = 2.5 + unit(hash(n.seed, gx + i, gz + j, 44)) * 3.5;
@@ -355,6 +362,10 @@ final class DeepGenerator extends ChunkGenerator {
         Sulphur.paint(this, n, p); // the Sulphur Sea's columns, wrecks, ribcages, trees, fumaroles, pools and the Works
         Town.paint(this, p);      // the bubble and its drowned town over the build area
         MermaidDen.paint(this, n, p); // the Mermaid Den: the palace, the houses, coral trees, lamps, clams, the gates (1.7.0)
+        FrozenShelf.paint(this, n, p); // 1.9.0: the Rimeback's Hollow
+        DrownedCity.paint(this, n, p); // the Drowned City: walls, streets, ~300 buildings, the palace, the cathedral, the bank
+        GlassReef.paint(this, n, p);   // the Glass Reef: glass trees, prism spires, terrariums, arches, the Prism Spire
+        BoneFields.paint(this, n, p);  // the Bone Fields: the leviathan skeletons and vertebra columns
     }
 
     private void column(Noise n, ChunkData d, Random rnd, int minY, int lx, int lz, int x, int z) {
@@ -363,7 +374,11 @@ final class DeepGenerator extends ChunkGenerator {
         int floorTop = Math.max(floor, mound == Integer.MIN_VALUE ? floor : mound);
         double reg = region(n, x, z), reef = reef(x, z), sw = Sulphur.weight(n, x, z), mw = MermaidDen.weight(x, z);
         boolean sulphur = sw > 0.35, den = mw > 0.35;
-        boolean sunken = reg > 0.15 && !sulphur && !den, warm = reef > 0.15 && !sulphur && !den;
+        // 1.9.0: the outer ring (1 frozen, 2 city, 3 glass, 4 bones)
+        double fw = FrozenShelf.weight(x, z), cw = DrownedCity.weight(x, z), gw = GlassReef.weight(x, z), bw = BoneFields.weight(x, z);
+        int region = fw > 0.35 ? 1 : cw > 0.35 ? 2 : gw > 0.35 ? 3 : bw > 0.35 ? 4 : 0;
+        boolean outer = fw > 0 || cw > 0 || gw > 0 || bw > 0;
+        boolean sunken = reg > 0.15 && !sulphur && !den && region == 0, warm = reef > 0.15 && !sulphur && !den && region == 0;
         // the Trench's mouth (1.8.0): nothing stands on a floor that's about to be cut away
         Trench.Spot ts = Trench.near(x, z, 0) ? Trench.spot(x, z) : null;
         boolean mouth = Math.hypot(x - Trench.LX, z - Trench.LZ) < Trench.LAIR_R + Trench.WALL + 16 || ts != null && ts.d() < Trench.half(n, ts, x, up, z) + 4;
@@ -403,9 +418,21 @@ final class DeepGenerator extends ChunkGenerator {
             if (cd < cr) cave = true;
             if (cave) { d.setBlock(lx, y, lz, Material.WATER); continue; }
             Material m;
-            if (y > up - 1) m = sulphur ? Sulphur.top(n, rnd, x, z, up) : den ? MermaidDen.top(n, rnd, x, z, up) : surface(n, rnd, x, z, sunken, warm, up);
+            if (y > up - 1) m = sulphur ? Sulphur.top(n, rnd, x, z, up) : den ? MermaidDen.top(n, rnd, x, z, up) : switch (region) {
+                case 1 -> FrozenShelf.top(n, rnd, x, z, up);
+                case 2 -> DrownedCity.top(n, rnd, x, z, up);
+                case 3 -> GlassReef.top(n, rnd, x, z, up);
+                case 4 -> BoneFields.top(n, rnd, x, z, up);
+                default -> surface(n, rnd, x, z, sunken, warm, up);
+            };
             else if (sulphur && y > up - 8) m = Sulphur.under(rnd, y, up);
             else if (den && y > up - 8) m = MermaidDen.under(rnd, y, up);
+            else if (region != 0 && y > up - 8) m = switch (region) {
+                case 1 -> FrozenShelf.under(rnd, y, up);
+                case 2 -> DrownedCity.under(rnd, y, up);
+                case 3 -> GlassReef.under(rnd, y, up);
+                default -> BoneFields.under(rnd, y, up);
+            };
             else if (y > up - 4) m = sunken ? Material.CYAN_TERRACOTTA : warm ? Material.SAND : Material.SANDSTONE;
             else if (cd < cr + 1.5) m = Material.DEEPSLATE_TILES;                                   // a chimney's walls
             else m = (Math.floorMod(y + band, 9) < 3) ? Material.DEEPSLATE : Material.TUFF;
@@ -415,7 +442,7 @@ final class DeepGenerator extends ChunkGenerator {
         // ---- the Sunlit Sea
         for (int y = up + 1; y <= SEA; y++) d.setBlock(lx, y, lz, Material.WATER);
         // sea stacks
-        int stack = mouth ? Integer.MIN_VALUE : stackTop(n, x, z);
+        int stack = mouth || outer ? Integer.MIN_VALUE : stackTop(n, x, z);
         if (stack > up) for (int y = up + 1; y <= stack; y++)
             d.setBlock(lx, y, lz, y > stack - 2 ? Material.MOSSY_COBBLESTONE : (y % 5 == 0 ? Material.ANDESITE : Material.STONE));
         // the rest, block by block above the floor (spires, arches, whale falls), only where it's still water
@@ -423,13 +450,18 @@ final class DeepGenerator extends ChunkGenerator {
             if (d.getType(lx, y, lz) != Material.WATER) continue;
             int sp = sunken ? spire(n, x, y, z, up) : 0;
             if (sp > 0) { d.setBlock(lx, y, lz, sp == 2 ? Material.SEA_LANTERN : (y + x + z) % 3 == 0 ? Material.DARK_PRISMARINE : Material.PRISMARINE); continue; }
-            if (sulphur || mw > 0) continue;
+            if (sulphur || mw > 0 || outer) continue;
             if (y <= up + 26 && arch(n, x, y, z, up)) { d.setBlock(lx, y, lz, y % 3 == 0 ? Material.MOSSY_STONE_BRICKS : Material.STONE); continue; }
             if (y <= up + 8 && whale(n, x, y, z, up)) d.setBlock(lx, y, lz, Material.BONE_BLOCK);
         }
         if (sulphur) Sulphur.decorate(this, n, d, rnd, lx, lz, x, z, up);
         else if (den) MermaidDen.decorate(this, n, d, rnd, lx, lz, x, z, up);
-        else if (mw <= 0 && !mouth) decorateUpper(n, d, rnd, lx, lz, x, z, up, sunken, warm);
+        else if (region == 1) FrozenShelf.decorate(this, n, d, rnd, lx, lz, x, z, up);
+        else if (region == 2) DrownedCity.decorate(this, n, d, rnd, lx, lz, x, z, up);
+        else if (region == 3) GlassReef.decorate(this, n, d, rnd, lx, lz, x, z, up);
+        else if (region == 4) BoneFields.decorate(this, n, d, rnd, lx, lz, x, z, up);
+        else if (mw <= 0 && !mouth && !outer) decorateUpper(n, d, rnd, lx, lz, x, z, up, sunken, warm);
+        if (fw > 0) FrozenShelf.cap(n, d, rnd, lx, lz, x, z, up, fw); // the ice over the Frozen Shelf
         decorateCrust(n, d, rnd, lx, lz, ceil, up);
         decorateAbyss(n, d, rnd, lx, lz, x, z, floorTop, ceil);
         if (ts != null || mouth) Trench.carve(this, n, d, rnd, lx, lz, x, z, up, minY); // last: the rift cuts through all of it
@@ -618,6 +650,9 @@ final class DeepGenerator extends ChunkGenerator {
     /** The Sunlit Sea's floor height (the top solid block) at a column. */
     int seaFloor(long seed, int x, int z) { return upperFloor(noiseFor(seed), x, z); }
 
+    /** Which outer region a column is in ("frozen", "city", "glass", "bones") or null (1.9.0). */
+    static String outerRegion(int x, int z) { return Regions.at(x, z); }
+
     /** How much of the Sulphur Sea a column is in (0..1). */
     double sulphur(long seed, int x, int z) { return Sulphur.weight(noiseFor(seed), x, z); }
 
@@ -626,7 +661,7 @@ final class DeepGenerator extends ChunkGenerator {
         Noise n = noiseFor(seed);
         for (int r = 0; r < 480; r += 16) for (int a = 0; a < 360; a += r == 0 ? 360 : 20) {
             int x = x0 + (int) Math.round(Math.cos(Math.toRadians(a)) * r), z = z0 + (int) Math.round(Math.sin(Math.toRadians(a)) * r);
-            if (flatWeight(x, z) > 0 || Trench.near(x, z, 30) || MermaidDen.near(x, z, 0) || Sulphur.near(x, z, 0)) continue;
+            if (flatWeight(x, z) > 0 || Trench.near(x, z, 30) || MermaidDen.near(x, z, 0) || Sulphur.near(x, z, 0) || Regions.nearAny(x, z, 0)) continue;
             if (moundTop(n, x, z) != Integer.MIN_VALUE || hangBottom(n, x, z, abyssCeiling(n, x, z)) != Integer.MAX_VALUE) continue;
             int up = upperFloor(n, x, z), ceil = abyssCeiling(n, x, z);
             if (up - ceil < 14) ceil = up - 14;
@@ -671,13 +706,17 @@ final class DeepGenerator extends ChunkGenerator {
             if (y < g.abyssCeiling(n, x, z)) return Biome.DEEP_COLD_OCEAN;
             if (Sulphur.weight(n, x, z) > 0.35) return Biome.SWAMP; // murky green water: the Sulphur Sea
             if (MermaidDen.weight(x, z) > 0.35) return Biome.WARM_OCEAN; // clear tropical water: the Mermaid Den
+            if (FrozenShelf.weight(x, z) > 0.35) return Biome.FROZEN_OCEAN;   // 1.9.0: the outer ring
+            if (DrownedCity.weight(x, z) > 0.35) return Biome.COLD_OCEAN;
+            if (GlassReef.weight(x, z) > 0.35) return Biome.WARM_OCEAN;
+            if (BoneFields.weight(x, z) > 0.35) return Biome.DEEP_COLD_OCEAN;
             if (reef(x, z) > 0.15) return Biome.WARM_OCEAN;
             return g.region(n, x, z) > 0.15 ? Biome.DEEP_LUKEWARM_OCEAN : Biome.DEEP_OCEAN;
         }
 
         @Override
         public List<Biome> getBiomes(WorldInfo info) {
-            return List.of(Biome.DEEP_OCEAN, Biome.DEEP_LUKEWARM_OCEAN, Biome.WARM_OCEAN, Biome.DEEP_COLD_OCEAN, Biome.SWAMP);
+            return List.of(Biome.DEEP_OCEAN, Biome.DEEP_LUKEWARM_OCEAN, Biome.WARM_OCEAN, Biome.DEEP_COLD_OCEAN, Biome.SWAMP, Biome.FROZEN_OCEAN, Biome.COLD_OCEAN);
         }
     }
 }

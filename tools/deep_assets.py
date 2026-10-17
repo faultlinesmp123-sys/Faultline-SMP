@@ -2722,6 +2722,321 @@ def submersible():
 TRENCH_MOBS = [hadalsnail, anglerking, bonecrawler, palestalker, crushjelly, tubeworm, greatwhale, submersible]
 
 
+# --------------------------------------------------------------------------------------------- the outer ring (Deep 1.9.0)
+# The Bone Fields, the Glass Reef, the Frozen Shelf and the undersea volcanoes. 32 pixels a block.
+def glass_paint(c, alpha=150):
+    """Crystal: a see-through colour with bright facet edges and a glint."""
+    def f(reg, face, rng):
+        h, w = reg.shape[:2]
+        for y in range(h):
+            for x in range(w):
+                edge = min(x, y, w - 1 - x, h - 1 - y) == 0
+                diag = abs((x - y) % 7) == 0
+                col = np.array(c, float) * (1.25 if edge else 1.0) + (30 if diag else 0)
+                a = alpha + (70 if edge else 0) + (30 if diag else 0)
+                if face == "up" and x < w * 0.3 and y < h * 0.3: col, a = np.array((255, 255, 255), float), 220
+                reg[y, x, :3] = np.clip(col + rng.uniform(-8, 8), 0, 255)
+                reg[y, x, 3] = min(255, a)
+    return f
+
+
+BONEW = (226, 220, 200)
+
+
+def marroweel():
+    """A marrow eel: a pale eel that nests in the leviathans' bones, its body ribbed like a spine. It bites, and lets go of nothing."""
+    p = Part("marroweel", 32, 256)
+    sk = W.grad((208, 200, 180), (150, 140, 124), 4, (240, 234, 218), 0.05)
+    rib = solid((236, 230, 212), 3)
+    rounded(p, 0.12, -0.06, -0.055, 0.4, 0.07, 0.055, sk, 0.03)                                    # the bony head
+    eyes(p, 0.3, 0.35, 0.02, 0.05, 0.056, (30, 20, 20), (220, 60, 50), depth=0.01)                 # red little eyes
+    for z in (-0.035, 0.0, 0.035): p.add(0.38, -0.04, z - 0.007, 0.41, 0.0, z + 0.007, TEETH)
+    p.bone("jaw", (0.14, -0.05, 0))
+    p.add(0.14, -0.1, -0.05, 0.4, -0.05, 0.05, sk)
+    for z in (-0.03, 0.03): p.add(0.37, -0.06, z - 0.007, 0.4, -0.02, z + 0.007, TEETH)
+    p.bone(None)
+    p.add(-0.08, -0.055, -0.05, 0.14, 0.06, 0.05, sk)
+    for i, (nm, x0, x1, hh) in enumerate((("s1", -0.36, -0.06, 0.05), ("s2", -0.66, -0.34, 0.042), ("s3", -0.98, -0.64, 0.03))):
+        p.bone(nm, (x1, 0, 0))
+        p.add(x0, -hh, -hh * 0.9, x1, hh, hh * 0.9, sk)
+        for k in range(4): p.add(x0 + (x1 - x0) * k / 4, hh - 0.005, -0.006, x0 + (x1 - x0) * k / 4 + 0.025, hh + 0.04, 0.006, rib)   # spine knobs
+        p.bone(None)
+    p.half = {"jaw"}
+    p.anim("jaw", "rot", (0, 0, -22), 1.8).anim("s1", "rot", (0, 10, 0), 1.2).anim("s2", "rot", (0, 16, 0), 1.2, 0.15).anim("s3", "rot", (0, 24, 0), 1.2, 0.3)
+    return p
+
+
+def scavcrab():
+    """A scavenger crab: a grey crab with a shell grown over with bone shards, picking the skeletons clean."""
+    p = Part("scavcrab", 32, 256)
+    shell = W.grad((110, 104, 98), (70, 64, 60), 4, (150, 144, 136), 0.05)
+    bn = solid(BONEW, 3)
+    rounded(p, -0.18, -0.04, -0.2, 0.16, 0.12, 0.2, shell, 0.06)
+    for (x, z) in ((-0.1, -0.12), (0.0, 0.1), (0.08, -0.05), (-0.05, 0.02), (0.1, 0.14)): p.add(x - 0.02, 0.12, z - 0.02, x + 0.02, 0.2, z + 0.02, bn)   # bone shards
+    for s in (-1, 1):
+        a, b = sorted((s * 0.05, s * 0.09))
+        p.add(0.15, 0.08, a, 0.2, 0.12, b, solid((20, 18, 18), 2))                                # eyes on stalks
+    legs = [((x - 0.012, -0.14, 0.16, x + 0.012, -0.02, 0.34), shell) for x in (0.08, 0.0, -0.08, -0.15)]
+    side_bone(p, "legs", (0.0, -0.04, 0.16), legs, True)
+    side_bone(p, "claw", (0.14, 0.0, 0.14), [((0.14, -0.05, 0.14, 0.3, 0.03, 0.22), shell), ((0.28, -0.08, 0.15, 0.42, 0.08, 0.26), bn)], True)
+    p.anim("legsl", "rot", (0, 0, 14), 0.45).anim("legsr", "rot", (0, 0, -14), 0.45, 0.5)
+    p.anim("clawl", "rot", (0, 16, 0), 1.4).anim("clawr", "rot", (0, -16, 0), 1.4, 0.4)
+    return p
+
+
+def ossuaryray():
+    """An ossuary ray: a great ray whose body has rotted away to a lattice of bones, still gliding over the Bone Fields."""
+    p = Part("ossuaryray", 32, 512)
+    bn = W.bone(BONEW) if hasattr(W, "bone") else solid(BONEW, 4)
+    film = bubble_paint((120, 130, 150), 70)
+    rounded(p, -0.2, -0.05, -0.12, 0.22, 0.06, 0.12, bn, 0.04)                                     # the spine and skull
+    for s in (-1, 1): p.add(0.14, 0.03, s * 0.07 - 0.015, 0.18, 0.06, s * 0.07 + 0.015, solid((90, 220, 255), 1))   # cold glints for eyes
+    for side in ("l", "r"):
+        sg = 1 if side == "r" else -1
+        p.bone("wing" + side, (0.0, 0.0, sg * 0.12))
+        for k in range(5):                                                                         # finger bones fanning out
+            x = 0.16 - k * 0.09
+            a, b = sorted((sg * 0.12, sg * (0.6 - k * 0.07)))
+            p.add(x - 0.015, -0.01, a, x + 0.015, 0.02, b, bn)
+        a, b = sorted((sg * 0.12, sg * 0.56))
+        p.add(-0.24, 0.0, a, 0.18, 0.005, b, film)                                                # the ghost of its skin
+        p.bone(None)
+    p.bone("tail", (-0.2, 0, 0))
+    p.add(-0.8, -0.012, -0.012, -0.18, 0.012, 0.012, bn)
+    p.bone(None)
+    p.pivots["body"] = (0, 0, 0)
+    p.anim("wingl", "rot", (24, 0, 0), 3.2).anim("wingr", "rot", (-24, 0, 0), 3.2).anim("tail", "rot", (0, 10, 0), 2.0).anim("body", "pos", (0, 1.0, 0), 5.0)
+    return p
+
+
+def glassjelly():
+    """A glass jelly: a bell of living crystal that rings when it pulses. Kill it and it shatters."""
+    p = Part("glassjelly", 32, 256)
+    bell = glass_paint((140, 210, 255), 120)
+    p.bone("bell", (0, 0, 0))
+    rounded(p, -0.2, 0.0, -0.2, 0.2, 0.22, 0.2, bell, 0.08)
+    p.add(-0.09, 0.02, -0.09, 0.09, 0.16, 0.09, W.glow((200, 240, 255)))                          # the bright core
+    for i in range(8):
+        a = i * math.pi / 4
+        x, z = math.cos(a) * 0.2, math.sin(a) * 0.2
+        p.add(x - 0.02, -0.01, z - 0.02, x + 0.02, 0.03, z + 0.02, W.glow((255, 160, 240) if i % 2 else (160, 255, 220)))
+    p.bone(None)
+    for i, nm in enumerate(("t1", "t2", "t3", "t4")):
+        a = i * math.pi / 2
+        x, z = math.cos(a) * 0.1, math.sin(a) * 0.1
+        p.bone(nm, (x, 0.0, z))
+        W.tube(p, [(x, 0.0, z), (x * 1.3, -0.25, z * 1.3), (x, -0.5, z)], 0.02, 0.008, glass_paint((180, 230, 255), 140))
+        p.bone(None)
+    p.pivots["body"] = (0, 0, 0)
+    p.anim("bell", "pos", (0, 0.6, 0), 1.8)
+    for i, nm in enumerate(("t1", "t2", "t3", "t4")): p.anim(nm, "rot", (10, 0, 10), 1.8, i / 4)
+    p.anim("body", "pos", (0, 1.0, 0), 3.6)
+    return p
+
+
+def prismfish():
+    """A prism fish: a little fish of cut crystal. Schools of them throw rainbows across the reef."""
+    p = Part("prismfish", 32, 128)
+    body = glass_paint((255, 200, 240), 150)
+    rounded(p, -0.14, -0.08, -0.05, 0.14, 0.08, 0.05, body, 0.03)
+    for i, c in enumerate(((255, 80, 80), (255, 200, 60), (80, 220, 120), (80, 160, 255))):        # rainbow bands down its flanks
+        x = -0.09 + i * 0.05
+        pair(p, x, -0.06, 0.05, x + 0.03, 0.06, 0.052, glass_paint(c, 190))
+    eyes(p, 0.08, 0.11, 0.0, 0.03, 0.052, (250, 250, 255), (40, 40, 60), depth=0.006)
+    p.add(-0.06, 0.07, -0.004, 0.06, 0.12, 0.004, glass_paint((255, 255, 255), 160))               # the dorsal fin
+    p.bone("tail", (-0.14, 0, 0))
+    p.add(-0.26, -0.07, -0.004, -0.13, 0.07, 0.004, glass_paint((200, 160, 255), 170))
+    p.bone(None)
+    p.anim("tail", "rot", (0, 24, 0), 0.6)
+    return p
+
+
+def crystalcrab():
+    """A crystal crab: an amethyst geode that walks. Its shell turns most blows; hit the soft joints."""
+    p = Part("crystalcrab", 32, 256)
+    shell = W.grad((150, 100, 210), (90, 50, 150), 4, (210, 170, 255), 0.06)
+    xtal = glass_paint((200, 150, 255), 170)
+    rounded(p, -0.2, -0.04, -0.22, 0.18, 0.12, 0.22, shell, 0.06)
+    for (x, z, h) in ((-0.08, -0.1, 0.16), (0.04, 0.08, 0.2), (0.1, -0.04, 0.12), (-0.12, 0.12, 0.14), (0.0, -0.02, 0.22)):
+        p.add(x - 0.03, 0.12, z - 0.03, x + 0.03, 0.12 + h, z + 0.03, xtal)                       # crystals growing from its back
+    for s in (-1, 1):
+        a, b = sorted((s * 0.06, s * 0.1))
+        p.add(0.17, 0.08, a, 0.22, 0.13, b, W.glow((255, 230, 120)))
+    legs = [((x - 0.012, -0.14, 0.18, x + 0.012, -0.02, 0.36), shell) for x in (0.08, 0.0, -0.08, -0.16)]
+    side_bone(p, "legs", (0.0, -0.04, 0.18), legs, True)
+    side_bone(p, "claw", (0.16, 0.0, 0.16), [((0.16, -0.05, 0.16, 0.32, 0.04, 0.24), shell), ((0.3, -0.08, 0.17, 0.46, 0.09, 0.28), xtal)], True)
+    p.anim("legsl", "rot", (0, 0, 14), 0.5).anim("legsr", "rot", (0, 0, -14), 0.5, 0.5)
+    p.anim("clawl", "rot", (0, 14, 0), 1.6).anim("clawr", "rot", (0, -14, 0), 1.6, 0.4)
+    return p
+
+
+def shardback():
+    """A shardback: a long fish armoured in glass blades. It flares them and fires the spare ones at you."""
+    p = Part("shardback", 32, 256)
+    sk = fish((60, 70, 110), (190, 200, 230), (120, 180, 255), 0.06)
+    blade = glass_paint((150, 230, 255), 170)
+    rounded(p, -0.3, -0.09, -0.08, 0.24, 0.09, 0.08, sk, 0.04)
+    rounded(p, 0.22, -0.07, -0.065, 0.38, 0.07, 0.065, sk, 0.03)
+    eyes(p, 0.3, 0.35, 0.01, 0.05, 0.066, (240, 250, 255), (20, 40, 80), depth=0.008)
+    p.bone("blades", (0.0, 0.09, 0))
+    for i in range(6): x = 0.16 - i * 0.08; p.add(x - 0.02, 0.08, -0.006, x + 0.02, 0.2 - i * 0.012, 0.006, blade)   # the crest of blades
+    p.bone(None)
+    for i in range(4):
+        x = 0.1 - i * 0.1
+        pair(p, x - 0.015, -0.04, 0.08, x + 0.015, 0.03, 0.14, blade)                               # side blades
+    p.bone("tail", (-0.3, 0, 0))
+    p.add(-0.46, -0.05, -0.04, -0.28, 0.05, 0.04, sk)
+    p.add(-0.6, -0.12, -0.005, -0.44, 0.12, 0.005, blade)
+    p.bone(None)
+    p.anim("tail", "rot", (0, 18, 0), 0.9).anim("blades", "rot", (0, 0, 8), 1.4)
+    return p
+
+
+def narwhal():
+    """A narwhal: a mottled grey whale with a single spiralled tusk. Gentle, until you hurt one of its pod."""
+    p = Part("narwhal", 32, 512)
+    sk = W.grad((150, 156, 164), (96, 100, 108), 5, (60, 64, 72), 0.12)
+    rounded(p, -0.36, -0.13, -0.13, 0.26, 0.13, 0.13, sk, 0.07)
+    rounded(p, 0.24, -0.1, -0.1, 0.4, 0.1, 0.1, sk, 0.05)
+    p.add(-0.2, -0.14, -0.1, 0.36, -0.11, 0.1, solid((210, 214, 218), 4))                         # the pale belly
+    eyes(p, 0.32, 0.36, 0.0, 0.03, 0.1, (20, 20, 26), (50, 50, 60), depth=0.008)
+    W.tube(p, [(0.4, 0.02, 0.02), (0.7, 0.04, 0.03), (1.0, 0.06, 0.03)], 0.03, 0.008, W.grad((240, 232, 210), (200, 190, 170), 3))   # the tusk
+    for i in range(6): p.add(0.44 + i * 0.09, 0.02, 0.0, 0.46 + i * 0.09, 0.07, 0.05, solid((180, 170, 150), 2))   # its spiral grooves
+    side_bone(p, "fin", (0.12, -0.08, 0.12), [((0.02, -0.11, 0.12, 0.16, -0.07, 0.28), sk)], True)
+    p.bone("tail", (-0.36, 0, 0))
+    p.add(-0.62, -0.07, -0.08, -0.34, 0.07, 0.08, sk)
+    p.add(-0.78, -0.02, -0.24, -0.6, 0.02, 0.24, sk)
+    p.bone(None)
+    p.pivots["body"] = (0, 0, 0)
+    p.anim("tail", "rot", (0, 0, 14), 1.8).anim("finl", "rot", (10, 0, 14), 1.8).anim("finr", "rot", (-10, 0, -14), 1.8).anim("body", "pos", (0, 0.8, 0), 4.0)
+    return p
+
+
+def iceseal():
+    """An ice seal: a fat silver seal with dark spots and big black eyes. It plays round the breathing holes."""
+    p = Part("iceseal", 32, 256)
+    sk = W.grad((200, 204, 212), (150, 154, 164), 4, (90, 94, 104), 0.14)
+    rounded(p, -0.3, -0.12, -0.12, 0.18, 0.11, 0.12, sk, 0.08)
+    rounded(p, 0.16, -0.08, -0.08, 0.32, 0.08, 0.08, sk, 0.05)
+    eyes(p, 0.26, 0.31, 0.0, 0.05, 0.081, (12, 12, 16), (30, 30, 36), depth=0.008)
+    p.add(0.31, -0.03, -0.02, 0.33, 0.0, 0.02, solid((40, 36, 36), 2))                            # the nose
+    for s in (-1, 1): p.add(0.3, -0.03, s * 0.03 - 0.02, 0.32, -0.02, s * 0.03 + 0.02, solid((230, 230, 236), 1))   # whiskers
+    side_bone(p, "fin", (0.06, -0.08, 0.1), [((-0.02, -0.11, 0.1, 0.12, -0.08, 0.2), sk)], True)
+    p.bone("tail", (-0.3, 0, 0))
+    p.add(-0.42, -0.04, -0.06, -0.28, 0.04, 0.06, sk)
+    for s in (-1, 1):
+        a, b = sorted((s * 0.0, s * 0.12))
+        p.add(-0.52, -0.02, a, -0.4, 0.0, b, sk)                                                  # the hind flippers
+    p.bone(None)
+    p.anim("tail", "rot", (0, 0, 16), 1.2).anim("finl", "rot", (0, 0, 18), 1.2).anim("finr", "rot", (0, 0, -18), 1.2, 0.5)
+    return p
+
+
+def orca(name, ice):
+    p = Part(name, 32, 512)
+    black = W.grad((24, 26, 32), (10, 10, 14), 4, (50, 54, 64), 0.04)
+    white = solid((236, 240, 246), 4)
+    rounded(p, -0.4, -0.15, -0.15, 0.28, 0.15, 0.15, black, 0.08)
+    rounded(p, 0.26, -0.12, -0.12, 0.44, 0.11, 0.12, black, 0.06)
+    p.add(-0.3, -0.16, -0.11, 0.42, -0.1, 0.11, white)                                            # the white belly
+    for s in (-1, 1):
+        a, b = sorted((s * 0.115, s * 0.125))
+        p.add(0.28, 0.0, a, 0.36, 0.06, b, white)                                                 # the eye patch
+    eyes(p, 0.34, 0.37, 0.0, 0.025, 0.122, (220, 240, 255) if ice else (20, 20, 26), (120, 220, 255) if ice else (40, 40, 50), depth=0.006)
+    p.add(-0.1, 0.14, -0.012, 0.06, 0.34, 0.012, black)                                          # the tall dorsal fin
+    if ice:
+        crust = glass_paint((170, 220, 255), 200)
+        for i in range(7): x = 0.2 - i * 0.09; p.add(x - 0.03, 0.12, -0.03 + (i % 2) * 0.02, x + 0.02, 0.24 + (i % 3) * 0.04, 0.02 + (i % 2) * 0.02, crust)   # frost spikes
+        for (x, y, z) in ((0.1, 0.0, 0.15), (-0.2, 0.05, -0.15), (0.3, -0.05, 0.12), (-0.1, -0.08, -0.15)): p.add(x - 0.05, y - 0.04, z - 0.01, x + 0.05, y + 0.04, z + 0.01, crust)   # ice crust
+    p.add(0.4, -0.04, -0.11, 0.45, 0.0, 0.11, TEETH)
+    p.bone("jaw", (0.28, -0.08, 0))
+    p.add(0.28, -0.14, -0.1, 0.45, -0.08, 0.1, black)
+    p.add(0.42, -0.09, -0.09, 0.45, -0.06, 0.09, TEETH)
+    p.bone(None)
+    side_bone(p, "fin", (0.14, -0.1, 0.14), [((0.04, -0.13, 0.14, 0.2, -0.09, 0.32), black)], True)
+    p.bone("tail", (-0.4, 0, 0))
+    p.add(-0.68, -0.08, -0.09, -0.38, 0.08, 0.09, black)
+    p.add(-0.86, -0.02, -0.28, -0.66, 0.02, 0.28, black)
+    p.bone(None)
+    p.pivots["body"] = (0, 0, 0)
+    p.half = {"jaw"}
+    p.anim("jaw", "rot", (0, 0, -18), 2.4).anim("tail", "rot", (0, 0, 14), 1.6).anim("finl", "rot", (10, 0, 14), 1.6).anim("finr", "rot", (-10, 0, -14), 1.6)
+    return p
+
+
+def frostorca():
+    """A frost orca: a black-and-white hunter of the Frozen Shelf. Its bite freezes, and it hunts in pairs."""
+    return orca("frostorca", False)
+
+
+def rimeback():
+    """THE RIMEBACK: a vast orca sheathed in ice, the Frozen Shelf's mini boss. Its eyes burn pale blue."""
+    return orca("rimeback", True)
+
+
+def rimejelly():
+    """A rime jelly: a frosted white bell trailing icy threads. Its sting freezes you where you swim."""
+    p = Part("rimejelly", 32, 256)
+    bell = W.grad((236, 246, 255), (190, 214, 236), 4, (255, 255, 255), 0.06)
+    p.bone("bell", (0, 0, 0))
+    rounded(p, -0.2, 0.0, -0.2, 0.2, 0.2, 0.2, bell, 0.08)
+    for i in range(8):
+        a = i * math.pi / 4
+        x, z = math.cos(a) * 0.18, math.sin(a) * 0.18
+        p.add(x - 0.02, -0.04, z - 0.02, x + 0.02, 0.0, z + 0.02, W.glow((170, 230, 255)))
+    p.bone(None)
+    for i, nm in enumerate(("t1", "t2", "t3", "t4", "t5")):
+        a = i * 2 * math.pi / 5
+        x, z = math.cos(a) * 0.1, math.sin(a) * 0.1
+        p.bone(nm, (x, 0.0, z))
+        W.tube(p, [(x, 0.0, z), (x * 1.2, -0.3, z * 1.2), (x, -0.7, z)], 0.016, 0.006, solid((200, 230, 255), 2))
+        p.bone(None)
+    p.pivots["body"] = (0, 0, 0)
+    p.anim("bell", "pos", (0, 0.6, 0), 2.0)
+    for i, nm in enumerate(("t1", "t2", "t3", "t4", "t5")): p.anim(nm, "rot", (8, 0, 8), 2.0, i / 5)
+    p.anim("body", "pos", (0, 1.0, 0), 4.0)
+    return p
+
+
+def magmaeel():
+    """A magma eel: a black eel cracked with glowing orange seams, born in the volcanoes' vents. It burns what it bites."""
+    p = Part("magmaeel", 32, 256)
+    sk = W.glow_lines((22, 16, 16), (255, 130, 30), 4, 0.05) if hasattr(W, "glow_lines") else solid((40, 30, 30), 4)
+    rounded(p, 0.12, -0.06, -0.055, 0.4, 0.07, 0.055, sk, 0.03)
+    eyes(p, 0.3, 0.35, 0.02, 0.05, 0.056, (255, 200, 60), (255, 90, 20), depth=0.01)
+    p.bone("jaw", (0.14, -0.05, 0))
+    p.add(0.14, -0.1, -0.05, 0.4, -0.05, 0.05, sk)
+    p.add(0.16, -0.06, -0.045, 0.38, -0.05, 0.045, W.glow((255, 160, 40)))                       # the glowing throat
+    p.bone(None)
+    p.add(-0.08, -0.055, -0.05, 0.14, 0.06, 0.05, sk)
+    for nm, x0, x1, hh in (("s1", -0.36, -0.06, 0.05), ("s2", -0.66, -0.34, 0.042), ("s3", -0.98, -0.64, 0.03)):
+        p.bone(nm, (x1, 0, 0)); p.add(x0, -hh, -hh * 0.9, x1, hh, hh * 0.9, sk); p.bone(None)
+    p.half = {"jaw"}
+    p.anim("jaw", "rot", (0, 0, -22), 1.6).anim("s1", "rot", (0, 10, 0), 1.0).anim("s2", "rot", (0, 16, 0), 1.0, 0.15).anim("s3", "rot", (0, 24, 0), 1.0, 0.3)
+    return p
+
+
+def cindercrab():
+    """A cinder crab: a crab with a shell of cooling lava, still glowing in its cracks. Hurt it and it bursts into embers."""
+    p = Part("cindercrab", 32, 256)
+    shell = W.glow_lines((26, 20, 18), (255, 120, 30), 4, 0.07) if hasattr(W, "glow_lines") else solid((50, 40, 38), 4)
+    dark = solid((30, 24, 22), 3)
+    rounded(p, -0.18, -0.04, -0.2, 0.16, 0.14, 0.2, shell, 0.06)
+    for s in (-1, 1):
+        a, b = sorted((s * 0.05, s * 0.09))
+        p.add(0.15, 0.1, a, 0.2, 0.14, b, W.glow((255, 220, 80)))
+    legs = [((x - 0.012, -0.14, 0.16, x + 0.012, -0.02, 0.32), dark) for x in (0.08, 0.0, -0.08, -0.15)]
+    side_bone(p, "legs", (0.0, -0.04, 0.16), legs, True)
+    side_bone(p, "claw", (0.14, 0.0, 0.14), [((0.14, -0.05, 0.14, 0.3, 0.04, 0.22), shell), ((0.28, -0.08, 0.15, 0.4, 0.08, 0.25), shell)], True)
+    p.anim("legsl", "rot", (0, 0, 14), 0.45).anim("legsr", "rot", (0, 0, -14), 0.45, 0.5)
+    p.anim("clawl", "rot", (0, 14, 0), 1.4).anim("clawr", "rot", (0, -14, 0), 1.4, 0.4)
+    return p
+
+
+OUTER_MOBS = [marroweel, scavcrab, ossuaryray, glassjelly, prismfish, crystalcrab, shardback, narwhal, iceseal, frostorca, rimeback,
+              rimejelly, magmaeel, cindercrab]
+
+
 NEW_SUNLIT = [sailfin, mantaglider, leafydragon, pearlhorse, hammerjaw, razorcuda, stingray, mirrorfin, kelpstrangler, siren]
 NEW_ABYSS = [gulper, isopod, ghostshark, vampsquid, dumbo, swallower, chainlight, viperfang, hagfish, watcher]
 
@@ -2731,7 +3046,7 @@ SULPHUR_MOBS = [acideel, trasher, radiator, flakcrab, nucleartoad, gammaslime, s
 
 
 MOBS = [gawker, bloatfin, jellywing, driftback, clam, lumenbell, gasbloom, fangstalker, blastfin, burrowshark,
-        cavecrawler, glowgrub, shellsnake, lampsquid, volteel, needlejaw, devilfish, riftwarper, hollowkin, sharkquid] + SULPHUR_MOBS + RAIN_MOBS + NEW_SUNLIT + NEW_ABYSS + DEN_MOBS + TRENCH_MOBS
+        cavecrawler, glowgrub, shellsnake, lampsquid, volteel, needlejaw, devilfish, riftwarper, hollowkin, sharkquid] + SULPHUR_MOBS + RAIN_MOBS + NEW_SUNLIT + NEW_ABYSS + DEN_MOBS + TRENCH_MOBS + OUTER_MOBS
 
 
 # =====================================================================================================================

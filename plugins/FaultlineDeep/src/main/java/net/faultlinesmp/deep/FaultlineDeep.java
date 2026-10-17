@@ -44,6 +44,7 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
     Migration migration;
     Bloom bloom;
     KrakenGrave grave;
+    Outer outer;
 
     @Override
     public void onEnable() {
@@ -59,6 +60,8 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
         subs = new Submersible(this);
         migration = new Migration(this);
         bloom = new Bloom(this);
+        outer = new Outer(this);
+        getServer().getPluginManager().registerEvents(outer, this);
         if (getCommand("den") != null) getCommand("den").setExecutor(rep::command);
         getServer().getPluginManager().registerEvents(mobs, this);
         getServer().getPluginManager().registerEvents(journey, this);
@@ -81,6 +84,7 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
         if (subs != null) subs.shutdown();
         if (migration != null) migration.shutdown();
         if (bloom != null) bloom.stop();
+        if (outer != null) outer.shutdown();
     }
 
     String worldName() { return getConfig().getString("world", DEFAULT_WORLD); }
@@ -106,8 +110,8 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
             w.setGameRule(GameRule.KEEP_INVENTORY, false);
         } catch (RuntimeException ignored) { } // (a rule a newer server renamed)
         w.setStorm(false);
-        double r = getConfig().getDouble("border-radius", 2000);
-        if (Math.abs(r - 1050) < 1e-9) r = 2000; // 1.7.0: the border is 2000 (an old config's 1050 reads as that): room for the Mermaid Den
+        double r = getConfig().getDouble("border-radius", 3000);
+        if (Math.abs(r - 1050) < 1e-9 || Math.abs(r - 2000) < 1e-9) r = 3000; // 1.9.0: the border is 3000 (an old config's 1050 / 2000 reads as that): room for the outer ring
         w.getWorldBorder().setCenter(0, 0);
         w.getWorldBorder().setSize(r * 2);
         w.setSpawnLocation(0, DeepGenerator.SEA, 0);

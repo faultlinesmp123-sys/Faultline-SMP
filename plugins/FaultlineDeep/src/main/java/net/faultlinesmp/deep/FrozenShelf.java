@@ -158,6 +158,8 @@ final class FrozenShelf {
 
     // =========================================================================================== the Hollow's wreck
     static void paint(DeepGenerator g, DeepGenerator.Noise n, Paint p) {
+        if (!near(p.x0 + 8, p.z0 + 8, 0)) return;
+        details(g, n, p);
         if (!p.touches(CX - 22, CZ - 22, CX + 22, CZ + 22)) return;
         int fy = g.upperFloor(n, CX, CZ) + 1;
         Paint.Frame f = p.frame(CX - 4, CZ - 14, 0, true);
@@ -180,5 +182,112 @@ final class FrozenShelf {
         f.set(3, fy + 1, 8, "chest[facing=south]");
         f.set(5, fy + 1, 16, "barrel[facing=up]");
         f.set(2, fy + 1, 18, "lantern[hanging=false]");
+    }
+
+    // =========================================================================================== 1.10.0: the detail pass
+    /** Solid cap with no berg or hole over it: somewhere to stand on the ice. */
+    static boolean onIce(DeepGenerator.Noise n, int x, int z) {
+        double w = weight(x, z);
+        return w > 0.7 && thickness(n, x, z, w) > 0 && !hole(n, x, z) && berg(n, x, z) == 0;
+    }
+
+    static double ur(long h, int k) { return DeepGenerator.unit(DeepGenerator.hash(h, k, 5, 7)); }
+
+    static void details(DeepGenerator g, DeepGenerator.Noise n, Paint p) {
+        long seed = n.seed;
+        int sea = DeepGenerator.SEA;
+        // IGLOOS on the ice: a snow dome, a tunnel, a bed, a chest, an unlit campfire
+        for (int gx = Math.floorDiv(p.x0 - 8, 90); gx <= Math.floorDiv(p.x0 + 23, 90); gx++)
+            for (int gz = Math.floorDiv(p.z0 - 8, 90); gz <= Math.floorDiv(p.z0 + 23, 90); gz++) {
+                long h = DeepGenerator.hash(seed, gx, gz, 431);
+                if (DeepGenerator.unit(h) > 0.4) continue;
+                int x = gx * 90 + 12 + (int) (ur(h, 1) * 66), z = gz * 90 + 12 + (int) (ur(h, 2) * 66);
+                if (!p.touches(x - 7, z - 7, x + 7, z + 7) || lair(x, z) || Math.hypot(x - CX, z - CZ) < LAIR_R + 30) continue;
+                if (!onIce(n, x, z) || !onIce(n, x - 5, z - 7) || !onIce(n, x + 5, z + 5) || !onIce(n, x - 5, z + 5) || !onIce(n, x + 5, z - 7)) continue;
+                igloo(p.frame(x, z, (int) (ur(h, 3) * 4), false), sea + 2);
+            }
+        // ICE SPIKES standing out of the cap
+        for (int gx = Math.floorDiv(p.x0 - 3, 40); gx <= Math.floorDiv(p.x0 + 18, 40); gx++)
+            for (int gz = Math.floorDiv(p.z0 - 3, 40); gz <= Math.floorDiv(p.z0 + 18, 40); gz++) {
+                long h = DeepGenerator.hash(seed, gx, gz, 441);
+                if (DeepGenerator.unit(h) > 0.3) continue;
+                for (int k = 0; k < 1 + (int) (ur(h, 1) * 4); k++) {
+                    int x = gx * 40 + 5 + (int) (ur(h, 10 + k) * 30), z = gz * 40 + 5 + (int) (ur(h, 20 + k) * 30);
+                    if (!p.touches(x - 2, z - 2, x + 2, z + 2) || !onIce(n, x, z)) continue;
+                    int hh = 5 + (int) (ur(h, 30 + k) * 12), r2 = hh > 11 ? 1 : 0;
+                    for (int i = 0; i < hh && sea + 2 + i < 319; i++) {
+                        int rr = i < hh / 3 ? r2 : 0;
+                        for (int dx = -rr; dx <= rr; dx++) for (int dz = -rr; dz <= rr; dz++)
+                            if (Math.abs(dx) + Math.abs(dz) <= rr) p.set(x + dx, sea + 2 + i, z + dz, i < hh / 2 && dx == 0 && dz == 0 ? "blue_ice" : "packed_ice");
+                    }
+                }
+            }
+        // FISHING CAMPS at the edge of a breathing hole: a little deck, a barrel, posts with a lantern, a drying rack
+        for (int gx = Math.floorDiv(p.x0 - 12, 34); gx <= Math.floorDiv(p.x0 + 27, 34); gx++)
+            for (int gz = Math.floorDiv(p.z0 - 12, 34); gz <= Math.floorDiv(p.z0 + 27, 34); gz++) {
+                if (DeepGenerator.unit(DeepGenerator.hash(seed, gx, gz, 401)) > 0.5) continue;             // (the same holes as hole())
+                long h = DeepGenerator.hash(seed, gx, gz, 451);
+                if (DeepGenerator.unit(h) > 0.3) continue;
+                double hx = gx * 34 + 6 + DeepGenerator.unit(DeepGenerator.hash(seed, gx, gz, 402)) * 22;
+                double hz = gz * 34 + 6 + DeepGenerator.unit(DeepGenerator.hash(seed, gx, gz, 403)) * 22;
+                double r = 2.5 + DeepGenerator.unit(DeepGenerator.hash(seed, gx, gz, 404)) * 3 + 2.6;
+                double a = ur(h, 1) * Math.PI * 2;
+                int x = (int) Math.round(hx + Math.cos(a) * (r + 1.5)), z = (int) Math.round(hz + Math.sin(a) * (r + 1.5));
+                if (!p.touches(x - 4, z - 4, x + 4, z + 4) || weight(x, z) < 0.75 || hole(n, x, z) || berg(n, x, z) > 0 || thickness(n, x, z, weight(x, z)) <= 0) continue;
+                int y = sea + 2;
+                for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) if (!hole(n, x + dx, z + dz)) p.set(x + dx, y - 1, z + dz, "spruce_planks");
+                p.set(x + 1, y, z + 1, "barrel[facing=up]");
+                p.set(x - 1, y, z - 1, "spruce_fence"); p.set(x - 1, y + 1, z - 1, "spruce_fence"); p.set(x - 1, y + 2, z - 1, "lantern[hanging=false]");
+                p.set(x + 1, y, z - 1, "spruce_fence"); p.set(x + 1, y + 1, z - 1, "spruce_fence");
+                p.set(x, y + 1, z - 1, "spruce_trapdoor[half=top,facing=north]");                 // the drying rack
+                p.set(x - 1, y, z + 1, "white_carpet");
+                if (ur(h, 2) < 0.5) p.set(x, y, z + 1, "chest[facing=north]");
+            }
+        // FROZEN ANCIENTS on the floor: something huge sealed in a block of clear ice, its bones showing through
+        for (int gx = Math.floorDiv(p.x0 - 12, 120); gx <= Math.floorDiv(p.x0 + 27, 120); gx++)
+            for (int gz = Math.floorDiv(p.z0 - 12, 120); gz <= Math.floorDiv(p.z0 + 27, 120); gz++) {
+                long h = DeepGenerator.hash(seed, gx, gz, 461);
+                if (DeepGenerator.unit(h) > 0.45) continue;
+                int x = gx * 120 + 20 + (int) (ur(h, 1) * 80), z = gz * 120 + 20 + (int) (ur(h, 2) * 80);
+                if (!p.touches(x - 12, z - 12, x + 12, z + 12) || weight(x, z) < 0.8 || Math.hypot(x - CX, z - CZ) < LAIR_R + 24) continue;
+                ancient(g, n, p.frame(x, z, (int) (ur(h, 3) * 4), true), g.upperFloor(n, x, z), h);
+            }
+    }
+
+    static void igloo(Paint.Frame f, int y0) {
+        for (int x = -4; x <= 4; x++) for (int z = -4; z <= 4; z++) for (int y = 0; y <= 4; y++) {
+            double d = Math.sqrt(x * x + z * z + y * y * 1.4);
+            if (d > 4.6) continue;
+            f.set(x, y0 + y, z, d > 3.6 ? "snow_block" : "air");
+        }
+        for (int x = -1; x <= 1; x++) for (int z = -7; z <= -4; z++) for (int y = 0; y <= 2; y++)
+            f.set(x, y0 + y, z, Math.abs(x) == 1 || y == 2 ? "snow_block" : "air");                    // the tunnel
+        f.set(0, y0 + 2, -7, "air");
+        f.set(0, y0 + 2, -4, "snow_block");
+        for (int x = -2; x <= 2; x++) for (int z = -2; z <= 2; z++) if (x * x + z * z <= 6) f.set(x, y0 - 1, z, "packed_ice");
+        f.set(2, y0, 1, "white_bed[facing=south,part=foot]"); f.set(2, y0, 2, "white_bed[facing=south,part=head]");
+        f.set(-2, y0, 1, "chest[facing=east]");
+        f.set(0, y0, 0, "campfire[lit=false]");
+        f.set(-2, y0, -1, "barrel[facing=up]");
+        f.set(0, y0, 2, "red_carpet");
+        f.set(0, y0 + 4, 0, "snow_block");                                                         // the crown (the dome's top is open)
+        f.set(0, y0 + 3, 0, "lantern[hanging=true]");
+    }
+
+    /** A beast frozen in an ice block on the sea floor. */
+    static void ancient(DeepGenerator g, DeepGenerator.Noise n, Paint.Frame f, int b, long h) {
+        int L = 7 + (int) (ur(h, 4) * 3);
+        for (int x = -4; x <= 4; x++) for (int z = -L - 1; z <= L + 1; z++) for (int y = 0; y <= 6; y++) {
+            double e = (x * x) / 16.0 + (z * z) / ((L + 1.5) * (L + 1.5)) + (y - 1) * (y - 1) / 25.0;
+            if (e > 1) continue;
+            f.set(x, b + y, z, f.u(x, y, z, 5) < 0.12 ? "packed_ice" : "ice");
+        }
+        for (int z = -L + 2; z <= L - 1; z++) f.set(0, b + 3, z, "bone_block[axis=z]");             // the spine
+        for (int z = -L + 3; z <= L - 3; z += 2) for (int s = -1; s <= 1; s += 2) {               // the ribs
+            f.set(s, b + 3, z, "bone_block[axis=x]"); f.set(2 * s, b + 2, z, "bone_block[axis=y]"); f.set(2 * s, b + 1, z, "bone_block[axis=y]");
+        }
+        f.set(0, b + 3, -L + 1, "bone_block"); f.set(0, b + 2, -L + 1, "bone_block"); f.set(0, b + 3, -L, "skeleton_skull[rotation=8]");
+        f.set(-1, b + 2, -L + 1, "bone_block"); f.set(1, b + 2, -L + 1, "bone_block");
+        for (int s = -1; s <= 1; s += 2) { f.set(3 * s, b + 1, -L + 4, "bone_block[axis=x]"); f.set(3 * s, b + 1, L - 4, "bone_block[axis=x]"); } // legs
     }
 }

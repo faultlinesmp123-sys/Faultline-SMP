@@ -1404,6 +1404,23 @@ Notes:
   the dome refuses it, and any non-water block in the shell is kept as part of the wall. Checked and fine: LimboBlackMarket
   (stats, quests, anti-farm, placed-ore marks), Raids menus/omens/waves, Ships' hold vs scrap, Cosmetics' shop, every
   plugin's GUI drag guards. Tested (`SkillTest`: generator stone, `OuterTest`).
+- **The detail pass (Deep 1.10.0)**: FIX: the Drowned City palace's corner towers and front colonnade overhung the raised
+  platform and floated 3 blocks over the street (the owner's screenshot); the platform now runs flat to `hd + 5` (colonnade on
+  it, a portico roof, steps beyond), the towers stand on a footing from the ground with floors, slits and a parapet, and the
+  cathedral's bell tower has a floor over the nave. NEW `Deep/Details.java` (drawn after the regions, only into water/soft
+  plants: `put`/`soft`): THE SUNLIT SEA (cell 120, 42%, `plain()` = away from regions, the Den, Sulphur, Trench, Bubble, blue
+  holes and ruins): anchor + chain, capsized boat + spilled cargo, fallen lighthouse (lamp lit), giant nautilus shell, stone
+  head buried to the chin, cargo field; kelp is cleared round each (`clearing`). THE ABYSS (cell 110, 50%, not on mounds):
+  glowcap groves (mushroom stems, warped wart caps spotted with shroomlight = light in the dark), obelisks in standing-stone
+  rings, cages hanging from the ceiling, sculk gardens (catalyst + sensors, no shriekers). THE TRENCH: descent rigs every 260
+  blocks along it (derrick, winch, boom, chain into the rift, cage platform + soul lantern). SULPHUR: toxic copper drum dumps.
+  THE DEN: four statues of past queens (radius PALACE_R + 22) and 8 soul-sand bubble fountains to the surface. Regions:
+  FROZEN SHELF igloos, ice spikes, fishing camps at breathing holes, frozen beasts in ice on the floor (`FrozenShelf.details`);
+  DROWNED CITY chimneys, townhouse balconies, beds/candles/rugs/skulls, shop counters, street carts, crossing wells and broken
+  statues, fallen masonry (`DrownedCity.streets`); GLASS REEF floating glass jellyfish, geodes cracked open in the floor, glass
+  anemones, more buds/shards; BONE FIELDS whaler wrecks (ribs, harpoon gun, try-pots), bone shrines, tar seeps, giant teeth;
+  open sea: sponges, mossy boulders. Already-generated chunks don't change (new chunks only: delete region files to redo an
+  area). Previews: scratch `dtest` `DetailPreview`, `IglooPreview`, `RegionPreview`. Tested (`DeepTest`, `OuterTest`).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Skills → Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

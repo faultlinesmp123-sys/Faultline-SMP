@@ -132,6 +132,8 @@ final class DrownedCity {
         if (r < 110) d.setBlock(lx, y, lz, Material.SEAGRASS);
         else if (r < 125 && d.getType(lx, y + 1, lz) == Material.WATER) { d.setBlock(lx, y, lz, Paint.bd("tall_seagrass[half=lower]")); d.setBlock(lx, y + 1, lz, Paint.bd("tall_seagrass[half=upper]")); }
         else if (r < 133) d.setBlock(lx, y, lz, Paint.bd("sea_pickle[pickles=" + (1 + rnd.nextInt(3)) + ",waterlogged=true]"));
+        else if (r < 152 && street(x, z)) d.setBlock(lx, y, lz, Paint.bd(r < 146 ? "cobblestone_slab[type=bottom,waterlogged=true]" : "stone_brick_stairs[facing=" + (r % 2 == 0 ? "east" : "south") + ",waterlogged=true]")); // fallen masonry
+        else if (r < 154 && street(x, z)) d.setBlock(lx, y, lz, Paint.bd("skeleton_skull[rotation=" + rnd.nextInt(16) + "]"));
         else if (r < 140 && !street(x, z)) { // kelp in the yards
             int h = 4 + rnd.nextInt(14);
             for (int i = 0; i < h && d.getType(lx, y + i, lz) == Material.WATER; i++) d.setBlock(lx, y + i, lz, i == h - 1 ? Material.KELP : Material.KELP_PLANT);
@@ -161,6 +163,57 @@ final class DrownedCity {
         if (p.touches(CX - PLAZA_R, CZ - PLAZA_R, CX + PLAZA_R, CZ + PLAZA_R)) plaza(p);
         wall(p);
         lamps(p);
+        streets(p);
+    }
+
+    /** Is this spot clear of the three great buildings and the plaza (for street furniture)? */
+    static boolean open(int x, int z) {
+        double d = Math.hypot(x - CX, z - CZ);
+        if (d < PLAZA_R + 4 || d > R - 12) return false;
+        if (box(x - 3, z - 3, x + 3, z + 3, PAL_X - PAL_HW - 6, PAL_Z - PAL_HD - 6, PAL_X + PAL_HW + 6, PAL_Z + PAL_HD + 10)) return false;
+        if (box(x - 3, z - 3, x + 3, z + 3, CAT_X - CAT_HW - 6, CAT_Z - CAT_HD - 6, CAT_X + CAT_HW + 6, CAT_Z + CAT_HD + 6)) return false;
+        return !box(x - 3, z - 3, x + 3, z + 3, BANK_X - BANK_HW - 6, BANK_Z - BANK_HD - 6, BANK_X + BANK_HW + 6, BANK_Z + BANK_HD + 8);
+    }
+
+    /** 1.10.0: abandoned carts in the streets, wells and broken statues at the crossings. */
+    static void streets(Paint p) {
+        for (int bi = Math.floorDiv(p.x0 - CX - 8, GRID); bi <= Math.floorDiv(p.x0 + 23 - CX, GRID); bi++)
+            for (int bj = Math.floorDiv(p.z0 - CZ - 8, GRID); bj <= Math.floorDiv(p.z0 + 23 - CZ, GRID); bj++) {
+                long h = DeepGenerator.hash(0xC17L, bi, bj, 77);
+                // the crossing at the block's NW corner (4 x 4)
+                int ix = CX + bi * GRID, iz = CZ + bj * GRID;
+                if (bi != 0 && bj != 0 && open(ix + 1, iz + 1) && p.touches(ix - 1, iz - 1, ix + 4, iz + 4)) {
+                    double t = u(h, 1);
+                    if (t < 0.22) { // a well
+                        for (int x = 0; x <= 2; x++) for (int z = 0; z <= 2; z++) {
+                            if (x == 1 && z == 1) { for (int y = Y - 6; y <= Y; y++) p.set(ix + x, y, iz + z, "water"); continue; }
+                            p.set(ix + x, Y + 1, iz + z, "stone_brick_wall[waterlogged=true]");
+                        }
+                        p.set(ix, Y + 2, iz, "spruce_fence[waterlogged=true]"); p.set(ix + 2, Y + 2, iz + 2, "spruce_fence[waterlogged=true]");
+                        p.set(ix, Y + 3, iz, "spruce_slab[type=bottom,waterlogged=true]"); p.set(ix + 2, Y + 3, iz + 2, "spruce_slab[type=bottom,waterlogged=true]");
+                        p.set(ix + 1, Y + 3, iz + 1, "spruce_slab[type=bottom,waterlogged=true]");
+                    } else if (t < 0.36) { // a broken statue on a plinth
+                        p.set(ix + 1, Y + 1, iz + 1, "chiseled_stone_bricks"); p.set(ix + 2, Y + 1, iz + 1, "stone_brick_stairs[facing=west,waterlogged=true]");
+                        p.set(ix + 1, Y + 2, iz + 1, "polished_andesite");
+                        if (u(h, 2) < 0.5) p.set(ix + 1, Y + 3, iz + 1, "andesite_wall[waterlogged=true]");
+                        p.set(ix + 2, Y + 1, iz + 2, "polished_andesite_slab[type=bottom,waterlogged=true]"); // its fallen head
+                    }
+                }
+                // a cart on the street along the block's north side
+                int cx = CX + bi * GRID + 8 + (int) (u(h, 3) * 10), cz = CZ + bj * GRID + 1;
+                if (u(h, 4) < 0.28 && Math.abs(cz - CZ) > 4 && Math.abs(cx - CX) > 4 && open(cx, cz) && p.touches(cx - 3, cz - 2, cx + 3, cz + 3)) {
+                    boolean broken = u(h, 5) < 0.35;
+                    for (int x = -1; x <= 1; x++) for (int z = 0; z <= 1; z++) p.set(cx + x, Y + 1, cz + z, broken && x == 1 ? "spruce_slab[type=bottom,waterlogged=true]" : "spruce_slab[type=top,waterlogged=true]");
+                    for (int x : new int[]{-1, 1}) { // the wheels
+                        p.set(cx + x, Y + 1, cz - 1, "spruce_trapdoor[facing=north,open=true,waterlogged=true]");
+                        if (!(broken && x == 1)) p.set(cx + x, Y + 1, cz + 2, "spruce_trapdoor[facing=south,open=true,waterlogged=true]");
+                    }
+                    for (int k = 2; k <= 3; k++) for (int z = 0; z <= 1; z++) p.set(cx - k, Y + 1, cz + z, "spruce_fence[waterlogged=true]"); // the shafts
+                    String load = u(h, 6) < 0.4 ? "barrel[facing=up]" : u(h, 6) < 0.7 ? "hay_block" : "decorated_pot";
+                    p.set(cx, Y + 2, cz, load); if (u(h, 7) < 0.5) p.set(cx - 1, Y + 2, cz + 1, load);
+                    if (broken) p.set(cx + 2, Y + 1, cz + 1, load);
+                }
+            }
     }
 
     static double u(long h, int k) { return DeepGenerator.unit(DeepGenerator.hash(h, k, 13, 17)); }
@@ -201,7 +254,8 @@ final class DrownedCity {
         int top = Y + h * stand;
         if (ruin) { rubble(f, b, pal); return; }
         if (b.kind == TOWER) spire(f, b, pal, top);
-        else if (stand == n) roof(f, b, pal, top);
+        else if (stand == n) { roof(f, b, pal, top); if (u(b.h, 85) < 0.55) chimney(f, b, top); }
+        if (b.kind == TOWNHOUSE && stand >= 2 && u(b.h, 86) < 0.7) balcony(f, b, pal);
         else for (int x = 0; x < w; x++) for (int z = 0; z < d; z++) if (f.u(x, top + 1, z, 33) < 0.25) f.set(x, top + 1, z, pal.wall()); // broken stubs where a floor was
         // overgrowth: coral on the roofs, seagrass in the rooms
         for (int x = 0; x < w; x++) for (int z = 0; z < d; z++) if (f.u(x, top, z, 41) < 0.06) f.set(x, top + 1, z, f.u(x, top, z, 42) < 0.5 ? "tube_coral_block" : "brain_coral_block");
@@ -220,7 +274,39 @@ final class DrownedCity {
         if (r > 0.6) f.set(1, y, 1, "sea_pickle[pickles=3]");
         if (u(b.h, 60 + i) < 0.5) f.set(w / 2, fy + 4 - 1, d / 2, "soul_lantern[hanging=true]");
         if (b.floors > 1) for (int yy = fy + 1; yy <= fy + 4; yy++) f.set(1, yy, 1, "ladder[facing=south]");
+        // 1.10.0: a bed against the side wall, a candle on the table, a rug, and sometimes what's left of the owner
+        if (b.kind != SHOP && (i > 0 || b.floors == 1 || u(b.h, 90 + i) < 0.5)) {
+            String bed = BEDS[(int) (u(b.h, 92 + i) * BEDS.length)];
+            f.set(w - 2, y, 1, bed + "_bed[facing=north,part=head]"); f.set(w - 2, y, 2, bed + "_bed[facing=north,part=foot]");
+        }
+        if (r < 0.5) f.set(w / 2, y + 1, d / 2, "candle[candles=" + (1 + (int) (r * 6)) + ",lit=false,waterlogged=true]");
+        if (u(b.h, 94 + i) < 0.45) for (int x = w / 2 - 1; x <= w / 2 + 1; x++) if (f.get(x, y, d / 2 + 2) == Material.WATER) f.set(x, y, d / 2 + 2, BEDS[(int) (r * BEDS.length)] + "_carpet");
+        if (u(b.h, 96 + i) < 0.12) f.set(2, y, d - 2, "skeleton_skull[rotation=" + (int) (u(b.h, 97 + i) * 16) + "]");
+        if (b.kind == SHOP && i == 0) { // a counter across the shop and wares on the shelves
+            for (int x = 2; x < w - 2; x++) f.set(x, y, 3, x == w / 2 ? "spruce_trapdoor[half=top,facing=north]" : "barrel[facing=north]");
+            for (int x = 2; x < w - 2; x += 2) f.set(x, y + 1, 3, u(b.h, 100 + x) < 0.5 ? "decorated_pot" : "flower_pot");
+        }
         if (u(b.h, 70 + i) < 0.4) for (int k = 0; k < 2 + (int) (u(b.h, 71) * 6); k++) f.set(2 + k % (w - 4), y, 2 + k / (w - 4), "seagrass");
+    }
+
+    static final String[] BEDS = {"red", "blue", "green", "brown", "cyan", "white"};
+
+    /** A brick chimney through the roof at the back. */
+    static void chimney(Paint.Frame f, Bld b, int top) {
+        int x = u(b.h, 87) < 0.5 ? 1 : b.w - 2, z = b.d - 2, H = (b.w + 1) / 2 + 3;
+        for (int y = top + 1; y <= top + H; y++) f.set(x, y, z, f.u(x, y, z, 88) < 0.15 ? "mossy_cobblestone" : "bricks");
+        f.set(x, top + H + 1, z, "stone_brick_wall");
+    }
+
+    /** A balcony on the second floor over the door, an opening onto it. */
+    static void balcony(Paint.Frame f, Bld b, Pal pal) {
+        int door = b.w / 2, y = Y + 4;
+        for (int x = door - 2; x <= door + 2; x++) {
+            f.set(x, y, -1, "spruce_slab[type=top]");
+            if (f.u(x, y, -1, 89) > 0.2) f.set(x, y + 1, -1, (x == door - 2 || x == door + 2) ? "spruce_fence" : "spruce_trapdoor[half=bottom,facing=south,open=true]");
+        }
+        f.set(door, y + 1, 0, "water"); f.set(door, y + 2, 0, "water");
+        f.set(door - 2, y - 1, -1, "spruce_fence"); f.set(door + 2, y - 1, -1, "spruce_fence");
     }
 
     static void roof(Paint.Frame f, Bld b, Pal pal, int top) {
@@ -358,9 +444,11 @@ final class DrownedCity {
         Paint.Frame f = p.frame(PAL_X, PAL_Z, 0, true);
         int hw = PAL_HW, hd = PAL_HD, G = Y + 1;
         // the platform and grand stair (front = +z, toward the plaza)
-        for (int x = -hw; x <= hw; x++) for (int z = -hd; z <= hd + 6; z++) {
-            int lift = z > hd ? Math.max(0, 3 - (z - hd)) : 3;
-            for (int y = Y; y <= Y + lift; y++) f.set(x, y, z, y == Y + lift ? (z > hd ? "polished_diorite_stairs[facing=north]" : "polished_diorite") : "stone_bricks");
+        // (flat out to hd + 5 so the colonnade stands on it, then three steps down; 1.9.2: the colonnade and the corner
+        // towers used to overhang the platform's edge and float 3 blocks over the street)
+        for (int x = -hw; x <= hw; x++) for (int z = -hd; z <= hd + 8; z++) {
+            int lift = z > hd + 5 ? Math.max(0, 3 - (z - hd - 5)) : 3;
+            for (int y = Y; y <= Y + lift; y++) f.set(x, y, z, y == Y + lift ? (z > hd + 5 ? "polished_diorite_stairs[facing=north]" : (z > hd && Math.abs(x) <= 2) ? "polished_andesite" : "polished_diorite") : "stone_bricks");
         }
         int fl = Y + 3;
         // the walls: hall in the middle (x -12..12), wings either side
@@ -379,8 +467,15 @@ final class DrownedCity {
             }
         }
         // the colonnade along the front
-        for (int x = -hw + 2; x <= hw - 2; x += 4) for (int y = fl + 1; y <= fl + 9; y++) f.set(x, y, hd + 3, "quartz_pillar[axis=y]");
-        for (int x = -hw + 2; x <= hw - 2; x++) f.set(x, fl + 10, hd + 3, "quartz_bricks");
+        for (int x = -hw + 2; x <= hw - 2; x += 4) for (int y = fl + 1; y <= fl + 9; y++) {
+            if (Paint.u(PAL_X + x, 0, PAL_Z + hd, 6) < 0.12 && y > fl + 4) break; // a few broken off
+            f.set(x, y, hd + 4, y == fl + 1 ? "chiseled_quartz_block" : y == fl + 9 ? "quartz_bricks" : "quartz_pillar[axis=y]");
+        }
+        for (int x = -hw + 2; x <= hw - 2; x++) for (int z = hd + 1; z <= hd + 4; z++) {
+            if (Paint.u(PAL_X + x, fl + 10, PAL_Z + z, 7) < 0.1) continue;
+            f.set(x, fl + 10, z, z == hd + 4 ? "quartz_bricks" : "smooth_quartz_slab[type=bottom]"); // the portico roof
+        }
+        for (int x = -hw + 4; x <= hw - 4; x += 8) { f.set(x, fl + 9, hd + 2, "iron_chain"); f.set(x, fl + 8, hd + 2, "soul_lantern[hanging=true]"); }
         // the doors into the hall
         for (int x = -2; x <= 2; x++) for (int y = fl + 1; y <= fl + 6; y++) f.set(x, y, hd, "water");
         // the dome over the hall (prismarine, a gold ring)
@@ -403,8 +498,16 @@ final class DrownedCity {
         for (int[] c : corners) for (int x = c[0] - 5; x <= c[0] + 5; x++) for (int z = c[1] - 5; z <= c[1] + 5; z++) {
             double dd = Math.hypot(x - c[0], z - c[1]);
             if (dd > 5) continue;
-            for (int y = fl + 1; y <= fl + 22; y++) if (dd > 4) f.set(x, y, z, y % 6 == 0 ? "gold_block" : "polished_diorite");
-            for (int k = 0; k < 6; k++) if (dd <= 5 - k) f.set(x, fl + 23 + k, z, "prismarine_bricks");
+            f.set(x, Y, z, "stone_bricks");                                            // the footing
+            for (int y = Y + 1; y <= fl; y++) f.set(x, y, z, dd > 4 ? "stone_bricks" : "polished_diorite");
+            for (int y = fl + 1; y <= fl + 22; y++) {
+                if (dd > 4) {
+                    boolean slit = y > fl + 4 && y < fl + 20 && y % 6 == 3 && Math.floorMod((int) Math.round(Math.atan2(z - c[1], x - c[0]) * 2), 3) == 0;
+                    f.set(x, y, z, slit ? "light_blue_stained_glass_pane" : y % 6 == 0 ? "gold_block" : "polished_diorite");
+                } else if (y % 6 == 0) f.set(x, y, z, "polished_diorite");                // floors inside
+            }
+            if (dd > 4 && Math.floorMod(x + z, 2) == 0) f.set(x, fl + 23, z, "polished_diorite_wall"); // a parapet ring under the cap
+            for (int k = 0; k < 7; k++) if (dd <= 5 - k * 0.8) f.set(x, fl + 24 + k, z, k == 0 ? "gold_block" : "prismarine_bricks");
         }
         // the treasury under the throne: a stair down behind it, a vault room
         int ty = Y - 7;
@@ -460,6 +563,7 @@ final class DrownedCity {
             boolean e = Math.abs(x) == 4 || Math.abs(z - bz0) == 4;
             for (int y = top + 1; y <= top + 18; y++) if (e) f.set(x, y, z, (y - top) % 6 == 0 ? "polished_deepslate" : (y > top + 12 && (Math.abs(x) == 4 ? Math.abs(z - bz0) < 2 : Math.abs(x) < 2)) ? "water" : "deepslate_bricks");
         }
+        for (int x = -4; x <= 4; x++) for (int z = bz0 - 4; z <= bz0 + 4; z++) f.set(x, top, z, "deepslate_bricks"); // the tower's floor over the nave
         f.set(0, top + 14, bz0, "bell[attachment=ceiling,facing=north]");
         f.set(0, top + 15, bz0, "deepslate_bricks");
         for (int k = 0; k < 5; k++) for (int x = -4 + k; x <= 4 - k; x++) for (int z = bz0 - 4 + k; z <= bz0 + 4 - k; z++) f.set(x, top + 19 + k * 2, z, "deepslate_tiles");

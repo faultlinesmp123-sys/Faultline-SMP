@@ -366,6 +366,7 @@ final class DeepGenerator extends ChunkGenerator {
         DrownedCity.paint(this, n, p); // the Drowned City: walls, streets, ~300 buildings, the palace, the cathedral, the bank
         GlassReef.paint(this, n, p);   // the Glass Reef: glass trees, prism spires, terrariums, arches, the Prism Spire
         BoneFields.paint(this, n, p);  // the Bone Fields: the leviathan skeletons and vertebra columns
+        Details.paint(this, n, p);     // 1.10.0: landmarks over the open sea, the Abyss, the Trench, the Sulphur Sea and the Den
     }
 
     private void column(Noise n, ChunkData d, Random rnd, int minY, int lx, int lz, int x, int z) {
@@ -513,6 +514,13 @@ final class DeepGenerator extends ChunkGenerator {
         else if (r < 18 && d.getType(lx, y + 1, lz) == Material.WATER) { d.setBlock(lx, y, lz, tallGrassLow); d.setBlock(lx, y + 1, lz, tallGrassHigh); }
         else if (r < 19 && sunken) d.setBlock(lx, y, lz, pickles);
         else if (r == 19 && sunken) d.setBlock(lx, y, lz, Material.AMETHYST_CLUSTER);
+        // 1.10.0: sponges on the gravel and clay, mossy boulders, shell litter
+        else if (r == 20 && (below == Material.GRAVEL || below == Material.CLAY || below == Material.MUD)) d.setBlock(lx, y, lz, Material.WET_SPONGE);
+        else if (r == 21 && !sunken) {
+            d.setBlock(lx, y, lz, rnd.nextBoolean() ? Material.MOSSY_COBBLESTONE : Material.COBBLESTONE);
+            if (rnd.nextInt(3) == 0 && d.getType(lx, y + 1, lz) == Material.WATER) d.setBlock(lx, y + 1, lz, Material.MOSSY_COBBLESTONE);
+        } else if (r == 22 && !sunken) d.setBlock(lx, up, lz, Material.CALCITE);
+        else if (r == 23 && !sunken && warm) d.setBlock(lx, y, lz, pickles);
     }
 
     private void decorateCrust(Noise n, ChunkData d, Random rnd, int lx, int lz, int ceil, int up) {

@@ -69,6 +69,18 @@ final class BoneFields {
             if (r < 120) d.setBlock(lx, y, lz, Paint.bd("bone_block[axis=y]"));
             return;
         }
+        if (n.n2(n.kelp, x * 2.6 + 700, z * 2.6) > 0.66) { // 1.10.0: tar seeps, black and glossy, ringed in mud
+            d.setBlock(lx, up, lz, n.n2(n.kelp, x * 2.6 + 700, z * 2.6) > 0.72 ? Material.BLACK_CONCRETE : Material.MUD);
+            if (r < 6) d.setBlock(lx, y, lz, Paint.bd("skeleton_skull[rotation=" + rnd.nextInt(16) + "]")); // something got stuck
+            return;
+        }
+        if (r >= 163 && r < 175 && d.getType(lx, y + 1, lz) == Material.WATER) { // a tooth the size of a man, point up
+            d.setBlock(lx, y, lz, Paint.bd("bone_block[axis=y]"));
+            boolean tall = r < 168 && d.getType(lx, y + 2, lz) == Material.WATER;
+            if (tall) d.setBlock(lx, y + 1, lz, Paint.bd("pointed_dripstone[vertical_direction=up,thickness=frustum,waterlogged=true]"));
+            d.setBlock(lx, y + (tall ? 2 : 1), lz, Paint.bd("pointed_dripstone[vertical_direction=up,thickness=tip,waterlogged=true]"));
+            return;
+        }
         if (r < 60) d.setBlock(lx, y, lz, Paint.bd(DEAD[rnd.nextInt(DEAD.length)] + "[waterlogged=true]"));
         else if (r < 150) d.setBlock(lx, y, lz, Material.SEAGRASS);
         else if (r < 160) d.setBlock(lx, y, lz, Paint.bd("sea_pickle[pickles=" + (1 + rnd.nextInt(4)) + ",waterlogged=true]"));
@@ -78,6 +90,7 @@ final class BoneFields {
     // =========================================================================================== the skeletons
     static void paint(DeepGenerator g, DeepGenerator.Noise n, Paint p) {
         if (!near(p.x0 + 8, p.z0 + 8, 40)) return;
+        details(g, n, p);
         for (Skeleton s : SKELETONS) {
             int reach = (int) (s.length + 30 * s.size);
             if (p.touches(s.x - reach, s.z - reach, s.x + reach, s.z + reach)) skeleton(g, n, p, s);
@@ -94,10 +107,94 @@ final class BoneFields {
             }
     }
 
+    /** 1.10.0: the whalers who came for the bones, and the shrines of whoever mourned them. */
+    static void details(DeepGenerator g, DeepGenerator.Noise n, Paint p) {
+        for (int gx = Math.floorDiv(p.x0 - 16, 150); gx <= Math.floorDiv(p.x0 + 31, 150); gx++)
+            for (int gz = Math.floorDiv(p.z0 - 16, 150); gz <= Math.floorDiv(p.z0 + 31, 150); gz++) {
+                long h = DeepGenerator.hash(n.seed, gx, gz, 611);
+                if (DeepGenerator.unit(h) > 0.55) continue;
+                int x = gx * 150 + 25 + (int) (ur(h, 1) * 100), z = gz * 150 + 25 + (int) (ur(h, 2) * 100);
+                if (weight(x, z) < 0.85 || !p.touches(x - 16, z - 16, x + 16, z + 16) || nearBones(x, z, 22)) continue;
+                whaler(g, n, p.frame(x, z, (int) (ur(h, 3) * 4), true), g.upperFloor(n, x, z), h);
+            }
+        for (int gx = Math.floorDiv(p.x0 - 10, 110); gx <= Math.floorDiv(p.x0 + 25, 110); gx++)
+            for (int gz = Math.floorDiv(p.z0 - 10, 110); gz <= Math.floorDiv(p.z0 + 25, 110); gz++) {
+                long h = DeepGenerator.hash(n.seed, gx, gz, 621);
+                if (DeepGenerator.unit(h) > 0.4) continue;
+                int x = gx * 110 + 15 + (int) (ur(h, 1) * 80), z = gz * 110 + 15 + (int) (ur(h, 2) * 80);
+                if (weight(x, z) < 0.85 || !p.touches(x - 9, z - 9, x + 9, z + 9) || nearBones(x, z, 14)) continue;
+                shrine(g, n, p, x, z, h);
+            }
+    }
+
+    /** Is a big skeleton's spine near here (so a wreck or shrine doesn't land inside it)? */
+    static boolean nearBones(int x, int z, double r) {
+        for (Skeleton s : SKELETONS) for (double t = 0; t <= 1; t += 0.05) {
+            double[] c = spine(s, t);
+            if (Math.hypot(x - c[0], z - c[1]) < r + 12 * s.size) return true;
+        }
+        return false;
+    }
+
+    /** A whaling ship rotted down to its keel and ribs, a harpoon gun, the try-pots, a torn sail. */
+    static void whaler(DeepGenerator g, DeepGenerator.Noise n, Paint.Frame f, int b, long h) {
+        int L = 20;
+        for (int z = 0; z <= L; z++) {
+            f.set(0, b + 1, z, "stripped_dark_oak_log[axis=z]");                                     // the keel
+            if (z % 3 != 0) continue;
+            int half = (int) Math.round(1.5 + Math.sin(Math.PI * z / L) * 3.5);
+            for (int side = -1; side <= 1; side += 2) { // a rib: out along the bottom, then up the side
+                int top = b + 3 + (int) Math.round(Math.sin(Math.PI * z / L) * 2);
+                for (int k = 1; k <= half; k++) f.set(side * k, b + 1 + (k == half ? 1 : 0), z, "dark_oak_fence");
+                for (int y = b + 3; y <= top; y++) { if (f.u(side * half, y, z, 31) < 0.2) break; f.set(side * half, y, z, "dark_oak_fence"); } // (rotted off)
+            }
+        }
+        for (int z = 6; z <= 12; z++) for (int x = -2; x <= 2; x++) if (f.u(x, b + 2, z, 32) < 0.5) f.set(x, b + 2, z, "dark_oak_slab[type=bottom]"); // what's left of the deck
+        for (int y = b + 2; y <= b + 10; y++) if (y < b + 7 || ur(h, 5) < 0.5) f.set(0, y, 10, "stripped_dark_oak_log[axis=y]"); // the mast stump
+        for (int x = -3; x <= 3; x++) for (int y = b + 4; y <= b + 7; y++) if (f.u(x, y, 11, 33) < 0.45) f.set(x, y, 11, "light_gray_wool"); // the sail
+        // the harpoon gun at the bow
+        f.set(0, b + 2, L - 1, "dark_oak_fence"); f.set(0, b + 3, L - 1, "dispenser[facing=south]");
+        for (int k = 1; k <= 3; k++) f.set(0, b + 3, L - 1 + k, k == 3 ? "lightning_rod[facing=south]" : "iron_chain[axis=z]");
+        // the try-pots (where the blubber was boiled) amidships
+        f.set(-1, b + 2, 4, "cauldron"); f.set(1, b + 2, 4, "cauldron"); f.set(0, b + 2, 4, "bricks");
+        for (int i = 0; i < 6; i++) {
+            int x = (int) (ur(h, 40 + i) * 13) - 6, z = (int) (ur(h, 50 + i) * 26) - 3;
+            put(f, x, g.upperFloor(n, f.wx(x, z), f.wz(x, z)) + 1, z, i % 2 == 0 ? "barrel[facing=up]" : "iron_chain[axis=x]");
+        }
+        // harpoons still stuck in a vertebra beside it
+        f.set(6, b + 1, 8, "bone_block[axis=y]"); f.set(6, b + 2, 8, "bone_block[axis=y]");
+        f.set(5, b + 2, 8, "lightning_rod[facing=west]"); f.set(7, b + 1, 8, "lightning_rod[facing=east]");
+    }
+
+    static void put(Paint.Frame f, int x, int y, int z, String s) {
+        Material m = f.get(x, y, z);
+        if (m == Material.WATER || m == Material.SEAGRASS || m.name().startsWith("DEAD_") || m == Material.SEA_PICKLE) f.set(x, y, z, s);
+    }
+
+    /** A ring of bone pillars topped with skulls round a little altar, candles and soul lanterns on it. */
+    static void shrine(DeepGenerator g, DeepGenerator.Noise n, Paint p, int cx, int cz, long h) {
+        int fy = g.upperFloor(n, cx, cz);
+        for (int x = -6; x <= 6; x++) for (int z = -6; z <= 6; z++) {
+            double d = Math.hypot(x, z);
+            if (d <= 6.2 && p.in(cx + x, fy, cz + z)) p.set(cx + x, g.upperFloor(n, cx + x, cz + z), cz + z, d > 5.2 ? "tuff_bricks" : d < 1.6 ? "chiseled_tuff" : "polished_tuff");
+        }
+        for (int k = 0; k < 6; k++) {
+            double a = k * Math.PI / 3 + ur(h, 3);
+            int x = cx + (int) Math.round(Math.cos(a) * 5), z = cz + (int) Math.round(Math.sin(a) * 5);
+            int y0 = g.upperFloor(n, x, z) + 1, hh = 4 + (int) (ur(h, 10 + k) * 3);
+            for (int y = y0; y < y0 + hh; y++) put(p, x, y, z, "bone_block[axis=y]");
+            put(p, x, y0 + hh, z, ur(h, 20 + k) < 0.75 ? "skeleton_skull[rotation=" + (int) (ur(h, 30 + k) * 16) + "]" : "wither_skeleton_skull[rotation=0]");
+        }
+        put(p, cx, fy + 1, cz, "polished_blackstone"); put(p, cx, fy + 2, cz, "polished_blackstone_slab[type=bottom]");
+        put(p, cx + 1, fy + 1, cz, "candle[candles=3,lit=false,waterlogged=true]"); put(p, cx - 1, fy + 1, cz, "soul_lantern[hanging=false]");
+        put(p, cx, fy + 1, cz + 1, "candle[candles=2,lit=false,waterlogged=true]"); put(p, cx, fy + 1, cz - 1, "soul_lantern[hanging=false]");
+        put(p, cx, fy + 3, cz, "skeleton_skull[rotation=" + (int) (ur(h, 4) * 16) + "]");
+    }
+
     static void put(Paint p, int x, int y, int z, String s) {
         if (!p.in(x, y, z)) return;
         Material m = p.get(x, y, z);
-        if (m == Material.WATER || m == Material.SEAGRASS || m.name().startsWith("DEAD_") || m == Material.SEA_PICKLE) p.set(x, y, z, s);
+        if (m == Material.WATER || m == Material.SEAGRASS || m.name().startsWith("DEAD_") || m == Material.SEA_PICKLE) p.set(x, y, z, Paint.wet(s));
     }
 
     static void ball(Paint p, double cx, double cy, double cz, double r, String s) {

@@ -95,6 +95,10 @@ final class GlassReef {
         } else if (r < 34) d.setBlock(lx, y, lz, Paint.bd("amethyst_cluster[facing=up,waterlogged=true]"));
         else if (r < 46) d.setBlock(lx, y, lz, Paint.bd("sea_pickle[pickles=" + (1 + rnd.nextInt(4)) + ",waterlogged=true]"));
         else if (r < 52) d.setBlock(lx, y, lz, Paint.bd("small_amethyst_bud[facing=up,waterlogged=true]"));
+        else if (r < 58) d.setBlock(lx, y, lz, Paint.bd("medium_amethyst_bud[facing=up,waterlogged=true]"));
+        else if (r < 62) d.setBlock(lx, y, lz, Paint.bd(HUES[h] + "_stained_glass"));          // a shard of the reef's own colour
+        else if (r < 64) d.setBlock(lx, y, lz, Material.PEARLESCENT_FROGLIGHT);
+        else if (r < 100) d.setBlock(lx, y, lz, Material.SEAGRASS);
     }
 
     // =========================================================================================== structures
@@ -138,6 +142,89 @@ final class GlassReef {
                 if (p.touches(ax - 18, az - 18, ax + 18, az + 18)) arch(g, n, p, ax, az, DeepGenerator.hash(seed, gx, gz, 534));
             }
         if (p.touches(CX - SPIRE_R - 2, CZ - SPIRE_R - 2, CX + SPIRE_R + 2, CZ + SPIRE_R + 2)) spire(p);
+        // 1.10.0: glass jellyfish drifting over the reef
+        for (int gx = Math.floorDiv(p.x0 - 6, 36); gx <= Math.floorDiv(p.x0 + 21, 36); gx++)
+            for (int gz = Math.floorDiv(p.z0 - 6, 36); gz <= Math.floorDiv(p.z0 + 21, 36); gz++) {
+                long h = DeepGenerator.hash(seed, gx, gz, 541);
+                if (DeepGenerator.unit(h) > 0.4) continue;
+                int jx = gx * 36 + 6 + (int) (ur(h, 1) * 24), jz = gz * 36 + 6 + (int) (ur(h, 2) * 24);
+                if (weight(jx, jz) < 0.85 || Math.hypot(jx - CX, jz - CZ) < SPIRE_R + 8 || !p.touches(jx - 5, jz - 5, jx + 5, jz + 5)) continue;
+                jelly(g, n, p, jx, jz, h);
+            }
+        // geodes broken open in the floor
+        for (int gx = Math.floorDiv(p.x0 - 8, 70); gx <= Math.floorDiv(p.x0 + 23, 70); gx++)
+            for (int gz = Math.floorDiv(p.z0 - 8, 70); gz <= Math.floorDiv(p.z0 + 23, 70); gz++) {
+                long h = DeepGenerator.hash(seed, gx, gz, 551);
+                if (DeepGenerator.unit(h) > 0.32) continue;
+                int ox = gx * 70 + 12 + (int) (ur(h, 1) * 46), oz = gz * 70 + 12 + (int) (ur(h, 2) * 46);
+                if (weight(ox, oz) < 0.9 || Math.hypot(ox - CX, oz - CZ) < PLAZA_R + 14 || !p.touches(ox - 7, oz - 7, ox + 7, oz + 7)) continue;
+                geode(g, n, p, ox, oz, h);
+            }
+        // glass anemones: a ring of panes round a glowing heart
+        for (int gx = Math.floorDiv(p.x0 - 3, 14); gx <= Math.floorDiv(p.x0 + 18, 14); gx++)
+            for (int gz = Math.floorDiv(p.z0 - 3, 14); gz <= Math.floorDiv(p.z0 + 18, 14); gz++) {
+                long h = DeepGenerator.hash(seed, gx, gz, 561);
+                if (DeepGenerator.unit(h) > 0.22) continue;
+                int ax = gx * 14 + 3 + (int) (ur(h, 1) * 8), az = gz * 14 + 3 + (int) (ur(h, 2) * 8);
+                if (weight(ax, az) < 0.85 || Math.hypot(ax - CX, az - CZ) < PLAZA_R + 4 || !p.touches(ax - 2, az - 2, ax + 2, az + 2)) continue;
+                int y = g.upperFloor(n, ax, az) + 1, hu = hue(ax, az);
+                wet(p, ax, y, az, frog(hu));
+                for (int k = 0; k < 4; k++) {
+                    int ox = k == 0 ? 1 : k == 1 ? -1 : 0, oz = k == 2 ? 1 : k == 3 ? -1 : 0;
+                    wet(p, ax + ox, y, az + oz, pane(hu));
+                    if (ur(h, 3 + k) < 0.6) wet(p, ax + ox, y + 1, az + oz, pane(hu + 1));
+                }
+                wet(p, ax, y + 1, az, "amethyst_cluster[facing=up,waterlogged=true]");
+            }
+    }
+
+    /** A jellyfish of stained glass hanging in the water: a domed bell lit from inside, glass tentacles trailing. */
+    static void jelly(DeepGenerator g, DeepGenerator.Noise n, Paint p, int jx, int jz, long h) {
+        int floor = g.upperFloor(n, jx, jz);
+        int cy = floor + 12 + (int) (ur(h, 3) * 30);
+        if (cy > DeepGenerator.SEA - 8) cy = DeepGenerator.SEA - 8;
+        double r = 2 + ur(h, 4) * 2.2;
+        int hu = hue(jx, jz) + (int) (ur(h, 5) * 3);
+        int ri = (int) Math.ceil(r);
+        for (int x = -ri; x <= ri; x++) for (int z = -ri; z <= ri; z++) for (int y = 0; y <= ri; y++) {
+            double d = Math.sqrt(x * x + z * z + y * y * 1.6);
+            if (d > r) continue;
+            wet(p, jx + x, cy + y, jz + z, d > r - 1 ? glass(hu) : y == 0 && x == 0 && z == 0 ? frog(hu) : glass(hu + 1));
+        }
+        wet(p, jx, cy - 1, jz, "sea_lantern");
+        int arms = 4 + (int) (ur(h, 6) * 4);
+        for (int a = 0; a < arms; a++) {
+            double ang = a * 2 * Math.PI / arms;
+            int tx = jx + (int) Math.round(Math.cos(ang) * (r - 0.8)), tz = jz + (int) Math.round(Math.sin(ang) * (r - 0.8));
+            int len = 4 + (int) (ur(h, 10 + a) * 9);
+            for (int i = 1; i <= len && cy - i > floor + 2; i++) {
+                int sx = tx + (int) Math.round(Math.sin(i * 0.6 + a) * 0.6);
+                wet(p, sx, cy - i, tz, pane(hu + (i > len / 2 ? 1 : 0)));
+            }
+        }
+    }
+
+    /** A geode cracked open in the white floor: basalt, calcite, amethyst, and crystals growing inside. */
+    static void geode(DeepGenerator g, DeepGenerator.Noise n, Paint p, int ox, int oz, long h) {
+        int floor = g.upperFloor(n, ox, oz);
+        double R = 4 + ur(h, 3) * 2.5;
+        int ri = (int) Math.ceil(R);
+        double cy = floor - R * 0.35;
+        for (int x = -ri; x <= ri; x++) for (int z = -ri; z <= ri; z++) for (int y = (int) Math.floor(cy - R); y <= floor + 1; y++) {
+            int wx = ox + x, wz = oz + z;
+            if (!p.in(wx, y, wz)) continue;
+            double d = Math.sqrt(x * x + z * z + sq(y + 0.5 - cy));
+            if (d > R) continue;
+            boolean above = y > g.upperFloor(n, wx, wz);
+            if (above && d < R - 1.2) continue;                                // the open top
+            String s;
+            if (d > R - 1) s = "smooth_basalt";
+            else if (d > R - 2) s = "calcite";
+            else if (d > R - 3) s = Paint.u(wx, y, wz, 81) < 0.08 ? "budding_amethyst" : "amethyst_block";
+            else { s = "water"; if (y == (int) Math.floor(cy - R + 3) + 0 && Paint.u(wx, y, wz, 82) < 0.4) s = "amethyst_cluster[facing=up,waterlogged=true]"; }
+            if (above && !s.equals("smooth_basalt") && !s.equals("calcite")) continue;
+            p.set(wx, y, wz, s);
+        }
     }
 
     /** Only into water: never through the floor or another structure. */

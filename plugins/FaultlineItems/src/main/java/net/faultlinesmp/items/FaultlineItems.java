@@ -451,6 +451,8 @@ public final class FaultlineItems extends JavaPlugin {
         getServer().getPluginManager().registerEvents(weather, this);
         getCommand("fweather").setExecutor(weather);
         getCommand("fweather").setTabCompleter(weather);
+        bloodMoonSky = new BloodMoonSky(this);
+        getServer().getPluginManager().registerEvents(bloodMoonSky, this);
         getServer().getPluginManager().registerEvents(new StandGuard(this), this);
         if (getCommand("bedrockcheck") != null) getCommand("bedrockcheck").setExecutor(new BedrockCheck(this));
         // tell the console straight away when Bedrock players won't get the packs
@@ -613,6 +615,7 @@ public final class FaultlineItems extends JavaPlugin {
         if (caveTrader != null) caveTrader.removeAll();
         if (meteor != null) meteor.shutdown();
         if (weather != null) weather.shutdown();
+        if (bloodMoonSky != null) bloodMoonSky.shutdown();
         if (creatures != null) creatures.shutdown();
         if (gear != null) gear.shutdown();
         if (race != null) try { race.shutdown(); } catch (RuntimeException ignored) { }
@@ -878,6 +881,7 @@ public final class FaultlineItems extends JavaPlugin {
     }
     Caravan caravan;
     Weather weather;
+    BloodMoonSky bloodMoonSky;
     Creatures creatures;
     Gear gear;
     DiveHelmets diveHelmets;

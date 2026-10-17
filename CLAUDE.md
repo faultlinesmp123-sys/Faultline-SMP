@@ -1316,6 +1316,18 @@ Notes:
   kinds, Trench zone + pressure, Maw wake, rush spots, rep tiers/trades/home, sub ride/crack/plating, migration + whale
   fall, bloom), `TitanTest` (bosses harness: phases, lures, stun, the Deep Rush), `DeepBossTest`, `WildTest`, `StuckTest`,
   `MusicTest`, `HardcoreRushTest`, `DiveTest` (items).
+- **The Blood Moon loading screen (Items 1.2.58, LimboBlackMarket 1.0.4)**: FaultlineEvents (source NOT in this repo) pushed
+  `FaultlineBloodMoon.zip` (red moon textures) to everyone when a Blood Moon started; ANY resource pack pushed mid-game makes
+  the client reload every pack (FaultlineSMP.zip ~24 MB) = the Mojang loading screen, long enough to die. `Items/BloodMoonSky.java`
+  (`blood-moon-sky:`) draws the red moon itself while `faultlineevents:active_event` = BLOOD_MOON on the main world: a private
+  billboard ItemDisplay per Java player (model `faultline:blood_moon` = the blood moon pack's full_moon.png as a generated
+  item, in FaultlineSMP.zip), placed `distance` 60 out along the real moon's direction (`moonDir`: the game's celestial angle
+  formula from the player's time, sun rising +x) and sized like the vanilla moon (40 wide at 100) x `size` 1.08; hidden below
+  the horizon. The owner must turn FaultlineEvents' moon pack off in ITS config. `onPack` warns the console + ops once when a
+  pack that isn't ours (`OURS` = Items main/music, Bosses) is accepted more than 30 s after join. RULE: never push a resource
+  pack mid-game; draw it with displays. **/tier remove <name|uuid>** (`TierManager.findAssigned`: matched against the tier
+  list itself by last known name or UUID, so banned / never-cached players can be removed; tab-completes the list).
+  Tested (`BloodMoonTest`).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

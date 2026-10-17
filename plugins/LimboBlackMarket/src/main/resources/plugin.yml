@@ -1,5 +1,5 @@
 name: LimboBlackMarket
-version: '1.0.3'
+version: '1.0.4'
 main: net.limbosmp.blackmarket.LimboBlackMarket
 api-version: '1.21'
 author: LimboSMP
@@ -9,7 +9,7 @@ softdepend: [FaultlineKingdoms]
 commands:
   tier:
     description: Manage a player's Black Market tier
-    usage: /tier <set|get> <player> [tier]
+    usage: /tier <set|get|remove> <player> [tier]
     permission: limbomarket.tier
   markethelp:
     description: Show Black Market help

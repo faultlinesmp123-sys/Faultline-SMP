@@ -16,6 +16,7 @@ public class MarketHelpCommand implements CommandExecutor {
         if (sender.hasPermission("limbomarket.tier")) {
             sender.sendMessage(ChatColor.YELLOW + "/tier get <player>" + ChatColor.GRAY + " - view a player's tier");
             sender.sendMessage(ChatColor.YELLOW + "/tier set <player> <tier>" + ChatColor.GRAY + " - assign a tier");
+            sender.sendMessage(ChatColor.YELLOW + "/tier remove <player>" + ChatColor.GRAY + " - take someone off the tier list (banned players too)");
         }
         return true;
     }

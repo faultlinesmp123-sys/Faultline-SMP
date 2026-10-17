@@ -328,7 +328,7 @@ wardrobe:
 item-textures:
   enabled: true
   url: "https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/main/FaultlineSMP.zip"
-  hash: "42d0f9c7998e6553280d9aae053284fe2a63d508"
+  hash: "3bcf0646bc96bd13eea5584fe19289537666b9f4"
   # The Dark Ocean's music, a second pack sent beside the main one (empty url = not sent)
   music-url: "https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/main/FaultlineDeepMusic.zip"
   music-hash: "e9e6ed1623ab28d2d2af74286259157caf2dc299"
@@ -751,3 +751,12 @@ ancient-core:
   armor: 2
   knockback-resistance: 0.15
   health: 0
+
+# The Blood Moon's red moon (1.2.58), drawn by this plugin with no extra resource pack. FaultlineEvents used to push its
+# own moon pack (FaultlineBloodMoon.zip) when a Blood Moon started, and ANY pack pushed mid-game reloads every pack on
+# every client (the Mojang loading screen). Turn that pack off in FaultlineEvents' config; this draws the red moon instead.
+blood-moon-sky:
+  enabled: true
+  distance: 60          # how far out the red moon is drawn (closer = never fogged, but hills can hide it)
+  size: 1.08            # x the vanilla moon's size (a hair bigger so the white moon never peeks out)
+

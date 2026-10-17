@@ -71,6 +71,29 @@ public class TierManager {
         return true;
     }
 
+    /** Takes a player off the tier list (back to the default tier). False = they weren't on it. */
+    public boolean removeTier(UUID playerId) {
+        if (tiers.remove(playerId) == null) return false;
+        save();
+        return true;
+    }
+
+    /**
+     * Finds someone ON the tier list by name or UUID, without asking Mojang: banned players and names the server never
+     * cached still match by their last known name, and the UUID the leaderboard shows for a nameless one works too.
+     */
+    public UUID findAssigned(String nameOrUuid) {
+        try {
+            UUID id = UUID.fromString(nameOrUuid);
+            if (tiers.containsKey(id)) return id;
+        } catch (IllegalArgumentException ignored) { }
+        for (UUID id : tiers.keySet()) {
+            String name = org.bukkit.Bukkit.getOfflinePlayer(id).getName(); // UUID lookup is local-only
+            if (name != null && name.equalsIgnoreCase(nameOrUuid)) return id;
+        }
+        return null;
+    }
+
     public boolean hasTier(UUID playerId) {
         return tiers.containsKey(playerId);
     }

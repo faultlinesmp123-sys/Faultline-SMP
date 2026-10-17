@@ -57,7 +57,9 @@ public final class LimboBlackMarket extends JavaPlugin {
         LimboBlackMarket.addRecipeSafely(QuestBook.recipe(this));
         getServer().getOnlinePlayers().forEach(p -> p.discoverRecipe(questBookKey));
 
-        getCommand("tier").setExecutor(new TierCommand(this));
+        TierCommand tierCommand = new TierCommand(this);
+        getCommand("tier").setExecutor(tierCommand);
+        getCommand("tier").setTabCompleter(tierCommand);
         getCommand("givequestbook").setExecutor(new GiveQuestBookCommand(this));
         getCommand("markethelp").setExecutor(new MarketHelpCommand());
         getCommand("stats").setExecutor(new StatsCommand(this));

@@ -29,7 +29,7 @@ import java.util.List;
 import java.util.Random;
 
 /**
- * THE NIGHT OF TERRORS (Bosses 1.7.0, `terrors:`, `terrors.yml`): one night a year (`date` 10-31, in `zone`
+ * THE NIGHT OF TERRORS (Bosses 1.8.0, `terrors:`, `terrors.yml`): one night a year (`date` 10-31, in `zone`
  * America/New_York) every boss can turn up on its own. From dusk (main world time `start-time` 13000) to dawn: every
  * `spawn-seconds` (120) with no boss out, a random boss from `bosses` comes for a random survival player in the main
  * world's Overworld (`rushSummon`, the Boss Rush's own summons: their normal loot), up to `max-bosses` (8) in the night.

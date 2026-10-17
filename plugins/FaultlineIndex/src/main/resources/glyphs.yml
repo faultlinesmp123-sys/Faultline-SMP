@@ -1066,3 +1066,72 @@ deep_greatwhale:
 deep_submersible:
   large: 59419
   small: 58395
+deep_marroweel:
+  large: 59420
+  small: 58396
+deep_scavcrab:
+  large: 59421
+  small: 58397
+deep_ossuaryray:
+  large: 59422
+  small: 58398
+deep_glassjelly:
+  large: 59423
+  small: 58399
+deep_prismfish:
+  large: 59424
+  small: 58400
+deep_crystalcrab:
+  large: 59425
+  small: 58401
+deep_shardback:
+  large: 59426
+  small: 58402
+deep_narwhal:
+  large: 59427
+  small: 58403
+deep_iceseal:
+  large: 59428
+  small: 58404
+deep_frostorca:
+  large: 59429
+  small: 58405
+deep_rimeback:
+  large: 59430
+  small: 58406
+deep_rimejelly:
+  large: 59431
+  small: 58407
+deep_magmaeel:
+  large: 59432
+  small: 58408
+deep_cindercrab:
+  large: 59433
+  small: 58409
+deep_drowncitizen:
+  large: 59434
+  small: 58410
+deep_drownguard:
+  large: 59435
+  small: 58411
+deep_drownpriest:
+  large: 59436
+  small: 58412
+deep_drownking:
+  large: 59437
+  small: 58413
+air_coral:
+  large: 59438
+  small: 58414
+dome_kit_small:
+  large: 59439
+  small: 58415
+dome_kit_large:
+  large: 59440
+  small: 58416
+drowned_vault_key:
+  large: 59441
+  small: 58417
+ancient_fossil:
+  large: 59442
+  small: 58418

@@ -405,7 +405,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         }
         rush = new BossRush(this);
         getServer().getPluginManager().registerEvents(rush, this);
-        terrors = new Terrors(this); // 1.7.0: the Night of Terrors
+        terrors = new Terrors(this); // 1.8.0: the Night of Terrors
         getCommand("terrors").setExecutor(terrors);
         getCommand("terrors").setTabCompleter(terrors);
         getCommand("bossrush").setExecutor(rush);

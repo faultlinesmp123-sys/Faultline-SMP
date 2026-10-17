@@ -498,7 +498,7 @@ warlord:
 # are found once (the nearest fitting biome to the world spawn, a bastion for Grimtusk) and saved in bossrush.yml;
 # /bossrush setarena <boss> sets one by hand. No loot from the bosses during a rush; dying puts you out (keep-inventory).
 # ============================================================================
-# The Night of Terrors (1.7.0, Terrors.java): one night a year every boss can come for anyone in the Overworld, and
+# The Night of Terrors (1.8.0, Terrors.java): one night a year every boss can come for anyone in the Overworld, and
 # FaultlineCosmetics' mobs drop five times the Candy. /terrors [start|stop|status]
 terrors:
   enabled: true

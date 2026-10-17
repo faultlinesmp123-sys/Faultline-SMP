@@ -439,7 +439,7 @@ final class OuterMobs {
             if (killer != null && !fighters.contains(killer)) fighters.add(killer);
             for (Player f : fighters) {
                 String n = f.getName();
-                pl.console("index discover " + n + " " + (id.equals("rimeback") ? "rimeback" : "drowned_king"));
+                pl.console("index discover " + n + " deep_" + id);
                 pl.console("index stat " + n + " " + (id.equals("rimeback") ? "rimeback" : "drowned_king") + " 1");
                 pl.console("darkloot bag " + (id.equals("rimeback") ? 3 : 2) + " " + n);
                 if (random.nextDouble() < cfg(id + ".rare-chance", 0.25)) pl.console("darkloot rare " + n);

@@ -302,6 +302,9 @@ final class Volcano implements Listener {
                     if (vent) core.add(p);
                 }
             }
+            // the crater's plug (before the debris, so it never covers a vein) + 3 chests round the rim
+            for (int dx = -3; dx <= 3; dx++) for (int dz = -3; dz <= 3; dz++) if (Math.hypot(dx, dz) < 3.3) set(cx + dx, peakY - 1, cz + dz, Material.OBSIDIAN);
+            core.removeIf(p -> p[1] == peakY - 1);
             // debris veins in the plugged vent
             int veins = (int) cfg("debris-min", 6) + random.nextInt(Math.max(1, (int) cfg("debris-max", 10) - (int) cfg("debris-min", 6) + 1));
             java.util.Collections.shuffle(core, random);
@@ -309,8 +312,6 @@ final class Volcano implements Listener {
                 int[] p = core.get(i);
                 pl.world.getBlockAt(p[0], p[1], p[2]).setType(Material.ANCIENT_DEBRIS, false);
             }
-            // the crater's plug + 3 chests round the rim
-            for (int dx = -3; dx <= 3; dx++) for (int dz = -3; dz <= 3; dz++) if (Math.hypot(dx, dz) < 3.3) set(cx + dx, peakY - 1, cz + dz, Material.OBSIDIAN);
             for (int i = 0; i < 3; i++) {
                 double a = Math.PI * 2 * i / 3 + random.nextDouble();
                 int x = cx + (int) Math.round(Math.cos(a) * 5), z = cz + (int) Math.round(Math.sin(a) * 5);

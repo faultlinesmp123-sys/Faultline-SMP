@@ -7267,8 +7267,16 @@ public final class FaultlineItems extends JavaPlugin {
                         "acideel", "trasher", "radiator", "flakcrab", "nucleartoad", "gammaslime", "sulphurskater", "acidjelly", "orthocera", "trilobite",
                         "skyfin", "leech", "boglurker", "corrosionshark", "urchin", "crabling", "bloatgut", "sulphurmoth", "hazardturtle", "sludgesnail", "shambler", "rustbones", "acidmite", "stormwraith", "mauler", "goblin",
                         "sailfin", "mantaglider", "leafydragon", "pearlhorse", "hammerjaw", "razorcuda", "stingray", "mirrorfin", "kelpstrangler", "siren",
-                        "gulper", "isopod", "ghostshark", "vampsquid", "dumbo", "swallower", "chainlight", "viperfang", "hagfish", "watcher", "mermaid", "merguard"))
+                        "gulper", "isopod", "ghostshark", "vampsquid", "dumbo", "swallower", "chainlight", "viperfang", "hagfish", "watcher", "mermaid", "merguard",
+                        "hadalsnail", "anglerking", "bonecrawler", "palestalker", "crushjelly", "tubeworm", "greatwhale",
+                        // Deep 1.9.0: the outer ring (the Rimeback and the Drowned King are mini bosses: their eggs summon them)
+                        "marroweel", "scavcrab", "ossuaryray", "glassjelly", "prismfish", "crystalcrab", "shardback", "narwhal", "iceseal", "frostorca",
+                        "rimejelly", "rimeback", "magmaeel", "cindercrab", "drowncitizen", "drownguard", "drownpriest", "drownking"))
                     list.add(external(icon(Material.PAPER, "deep/" + id + "_icon", ChatColor.AQUA + "Dark Ocean egg: " + ChatColor.WHITE + id, "FaultlineDeep"), "deep egg " + id + " {amount} {player}", "FaultlineDeep"));
+                String[][] outer = {{"coral", "air_coral", "Air Coral"}, {"dome_small", "dome_kit_small", "Small Dome Kit"}, {"dome_large", "dome_kit_large", "Large Dome Kit"},
+                        {"vault_key", "drowned_vault_key", "Drowned Vault Key"}, {"fossil", "ancient_fossil", "Ancient Fossil"}};
+                for (String[] o : outer)
+                    list.add(external(icon(Material.PAPER, o[1], ChatColor.AQUA + "" + ChatColor.BOLD + o[2], "FaultlineDeep"), "deep give " + o[0] + " {amount} {player}", "FaultlineDeep"));
             }
             if (enabled("FaultlineCosmetics")) { // the seasonal currency (Candy at Halloween, Presents in Winter)
                 list.add(external(icon(Material.PAPER, "season_candy", ChatColor.GOLD + "" + ChatColor.BOLD + "Candy " + ChatColor.GRAY + "(Halloween)", "FaultlineCosmetics"),

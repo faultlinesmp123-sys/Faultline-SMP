@@ -3134,6 +3134,64 @@ def bag_icon():
     return W.draw(g)
 
 
+# --------------------------------------------------------------------------------------------- 1.9.0: the outer ring's items
+_OP = {"k": (22, 24, 30), "w": (235, 240, 245), "c": (120, 220, 235), "C": (60, 160, 190), "b": (40, 90, 140), "g": (200, 160, 60),
+       "G": (150, 110, 30), "y": (250, 220, 110), "o": (110, 150, 70), "O": (70, 105, 50), "t": (90, 160, 150), "T": (50, 110, 105),
+       "r": (170, 40, 40), "p": (230, 120, 200), "P": (180, 70, 160), "s": (200, 190, 160), "S": (150, 140, 110), "l": (180, 220, 255),
+       "L": (110, 170, 230), "e": (255, 70, 60), "n": (90, 60, 40), "u": (70, 70, 90), "U": (120, 120, 140), "a": (255, 255, 255), "m": (40, 60, 70)}
+
+
+def _pix(grid):
+    im = Image.new("RGBA", (16, 16), (0, 0, 0, 0))
+    for y, row in enumerate(grid):
+        for x, ch in enumerate(row[:16]):
+            if ch in _OP: im.putpixel((x, y), _OP[ch] + (255,))
+    return im
+
+
+OUTER_ICONS = {
+    "air_coral": [
+        "......a..a......", ".....a.a..a.....", "....a..pp..a....", ".....pPppPp.....", "....pPp..pPp....", "...pP.pPPp.Pp...",
+        "...p.pPppPp.p...", "....pP.pp.Pp....", ".....pPppPp.....", "......pPPp......", ".......pp.......", "......PppP......",
+        ".....SsssSs.....", "....SssssssS....", "....SSSSSSSS....", "................"],
+    "dome_kit_small": [
+        "................", "................", ".....llllll.....", "....lLaaaalL....", "...lLa....aLl...", "...lL......Ll...",
+        "..lL........Ll..", "..lL........Ll..", "..yLLLLLLLLLLy..", "..nnnnnnnnnnnn..", "..nGGGGGGGGGGn..", "..nGGnnnnnnGGn..",
+        "..nnnnnnnnnnnn..", "................", "................", "................"],
+    "dome_kit_large": [
+        "................", "....llllllll....", "...lLaaaaaaLl...", "..lLa......aLl..", ".lL..........Ll.", ".lL..........Ll.",
+        "lL............Ll", "lL............Ll", "yLLLLLLLLLLLLLLy", "nnnnnnnnnnnnnnnn", "nuuuuuuuuuuuuuun", "nuUUUUUUUUUUUUun",
+        "nuuuuuuuuuuuuuun", "nnnnnnnnnnnnnnnn", "................", "................"],
+    "drowned_vault_key": [
+        "................", "....tttt........", "...tTTTTt.......", "..tT....Tt......", "..tT....Tt......", "..tT....Tt......",
+        "...tTTTTt.......", "....tTTt........", ".....tTt........", ".....tTtt.......", ".....tTTTt......", ".....tTt........",
+        ".....tTtt.......", ".....tTTTt......", "......tt........", "................"],
+    "ancient_fossil": [
+        "................", "......nnnn......", "....nnSSSSnn....", "...nSSs..sSSn...", "..nS.ssssss.Sn..", "..nS.s.ss.s.Sn..",
+        "..nS.ssssss.Sn..", "..nS.s.ss.s.Sn..", "..nS.ssssss.Sn..", "...nS.s..s.Sn...", "...nSs.ss.sSn...", "....nSSssSSn....",
+        "......nSSn......", "................", "................", "................"],
+}
+# the Drowned City's people are plain drowned (no model): their eggs / Index icons are heads
+OUTER_HEADS = {
+    "drowncitizen": [
+        "................", "................", "...TTTTTTTTTT...", "...TttTTttTTT...", "...TtttttttTT...", "...ttcttttcttt..",
+        "...tteettteett..", "...tttttttttt...", "...ttTTTTTTtt...", "...tTkkkkkkTt...", "...ttTTTTTTtt...", "...TttttttttT...",
+        "....tttttttt....", "................", "................", "................"],
+    "drownguard": [
+        "................", "...uuuuuuuuuu...", "..uUUUUUUUUUUu..", "..uUuuuuuuuuUu..", "..uu.tttttt.uu..", "..u.ttcttctt.u..",
+        "..u.teettee.tu..", "..uutttttttuuu..", "..uuTkkkkkkTuu..", "..uuttttttttuu..", "...uuuuuuuuuu...", "................",
+        "................", "................", "................", "................"],
+    "drownpriest": [
+        "................", ".....PPPPPP.....", "....PPPPPPPP....", "...PPPgggPPPP...", "...PPtttttPPP...", "..PPttcttcttPP..",
+        "..PPteettee tPP.", "..PPtttttttPP...", "..PPtTkkkTtPP...", "..PPPttttttPP...", "..PPPPPPPPPPP...", "...PPPPPPPPP....",
+        "................", "................", "................", "................"],
+    "drownking": [
+        "..g...g..g...g..", "..gg.ggggg.gg...", "..gyggyggyggyg..", "..gggggggggggg..", "...TTTTTTTTTT...", "...ttcttttcttt..",
+        "...tteettteett..", "...tttttttttt...", "...ttTTTTTTtt...", "...tTkkkkkkTt...", "...TtTTTTTTtT...", "...TTttttttTT...",
+        "....TTttttTT....", ".....TTTTTT.....", "................", "................"],
+}
+
+
 def main():
     pack, bout = sys.argv[1], sys.argv[2]
     prev = sys.argv[sys.argv.index("--preview") + 1] if "--preview" in sys.argv else None
@@ -3209,9 +3267,25 @@ def main():
     mappings["minecraft:paper"].append({"type": "definition", "model": f"{NS}:dark_loot_bag", "bedrock_identifier": "faultline:dark_loot_bag",
         "display_name": "Dark Loot Bag", "bedrock_options": {"icon": bed_icon("dark_loot_bag", bag), "allow_offhand": True},
         "components": {"minecraft:max_stack_size": 64}})
+    # 1.9.0: the outer ring's items + the Drowned City's people (heads; they're plain drowned, no model)
+    outer_items = {}
+    for k, g in OUTER_ICONS.items():
+        im = _pix(g)
+        W.flat_item(A, k, im)
+        outer_items[k] = im
+        mappings["minecraft:paper"].append({"type": "definition", "model": f"{NS}:{k}", "bedrock_identifier": f"faultline:{k}",
+            "display_name": k, "bedrock_options": {"icon": bed_icon(k, im), "allow_offhand": True},
+            "components": {"minecraft:max_stack_size": 1 if k.startswith("dome_kit") else 64}})
+    for k, g in OUTER_HEADS.items():
+        im = _pix(g)
+        W.flat_item(A, k + "_icon", im, folder="deep")
+        icons[k] = im
+        mappings["minecraft:paper"].append({"type": "definition", "model": f"{NS}:deep/{k}_icon", "bedrock_identifier": f"faultline:deep_{k}_egg",
+            "display_name": k + " egg", "bedrock_options": {"icon": bed_icon("deep_" + k, im), "allow_offhand": True}, "components": {"minecraft:max_stack_size": 64}})
     # Index icons
     index = {"deep_" + k: v for k, v in icons.items()}
     index["dark_loot_bag"] = bag
+    index.update(outer_items)
     for k, im in index.items(): im.save(os.path.join(A, "textures/index", k + ".png"))
     W.glyphs(A, index)
     # music for Bedrock (Java gets FaultlineDeepMusic.zip)

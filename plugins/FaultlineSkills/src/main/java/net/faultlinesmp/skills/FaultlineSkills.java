@@ -280,7 +280,8 @@ public final class FaultlineSkills extends JavaPlugin implements Listener {
         while (!pending.isEmpty() && ticks - pending.peek().at() >= settle) {
             Pending pd = pending.poll();
             Player p = Bukkit.getPlayer(pd.who());
-            if (p == null || pd.block().getType() != pd.type()) continue;
+            Block b = pd.block();
+            if (p == null || b.getWorld().getBlockAt(b.getX(), b.getY(), b.getZ()).getType() != pd.type()) continue;
             Data d = data(pd.who());
             if (d.hour != hour) { d.hour = hour; d.builtThisHour = 0; d.bredThisHour = 0; }
             if (d.builtThisHour >= cfg("building.max-per-hour", 2500)) continue;

@@ -44,8 +44,8 @@ final class Weakness implements Listener {
         ALIASES.put("bulwark", "the_bulwark"); ALIASES.put("dune devourer", "the_dune_devourer"); ALIASES.put("frostmaw", "the_frostmaw");
         ALIASES.put("lorenzo", "don_lorenzo"); ALIASES.put("sandworm", "sandworm_king"); ALIASES.put("wyrm", "frost_wyrm");
         ALIASES.put("scourge", "brine_scourge"); ALIASES.put("umbral", "umbral_leviathan"); ALIASES.put("inkjaw", "old_inkjaw");
-        ALIASES.put("grandmaw", "grandmaw_clam"); ALIASES.put("lament", "the_lament"); ALIASES.put("rimeback", "rimeback");
-        ALIASES.put("drowned king", "drowned_king");
+        ALIASES.put("grandmaw", "grandmaw_clam"); ALIASES.put("lament", "the_lament"); ALIASES.put("rimeback", "deep_rimeback");
+        ALIASES.put("drowned king", "deep_drownking");
     }
 
     Weakness(FaultlineIndex ix) {
@@ -87,6 +87,7 @@ final class Weakness implements Listener {
     void learn(Player p, FaultlineIndex.Entry e) {
         if (e == null || e.weakness == null || !known.computeIfAbsent(p.getUniqueId(), k -> new HashSet<>()).add(e.id)) return;
         save();
+        ix.achievements.addStat(p, "weaknesses", 1);
         ix.getServer().getScheduler().runTaskLater(ix, () -> {
             if (!p.isOnline()) return;
             p.sendMessage(ChatColor.DARK_RED + "" + ChatColor.BOLD + "The Index learned from your death. " + ChatColor.GRAY + e.name + "'s weakness is written in its page now. "

@@ -231,7 +231,7 @@ final class Habitat implements Listener {
             int[] c = Volcano.unpack(k);
             Block b = w.getBlockAt(c[0], c[1], c[2]);
             if (b.getType() != Material.BUBBLE_CORAL_BLOCK && b.getType() != Material.DEAD_BUBBLE_CORAL_BLOCK) { removeCoral(b); continue; }
-            Location l = b.getLocation().add(0.5, 1, 0.5);
+            Location l = new Location(w, c[0] + 0.5, c[1] + 1, c[2] + 0.5);
             boolean anyone = false;
             for (Player p : w.getPlayers()) {
                 double d = p.getLocation().distanceSquared(l);

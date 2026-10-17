@@ -1384,6 +1384,91 @@ entries:
     detect: faultlinedeep:submersible
     how: "Craft: Iron Blocks, Glass, Copper Blocks and a Heart of the Sea (IGI / CHC / III)."
     does: "A little research sub. Right-click water to put it in, right-click it to climb in, sneak to climb out (sneak + punch it to pick it up). W goes where you look, S backs up, A/D slide, Jump rises, Sprint is faster. Inside you breathe, creatures' bites hit the HULL instead of you, the deep's pressure can't reach you, and its headlight lifts the Abyss's dark. Below y -40 (the Trench) the hull cracks unless you fit HADAL PLATING (right-click it with 4 Netherite Ingots); at 0% it implodes. Iron Ingots patch the hull."
+  # ---------------------------------------------------------------- the outer ring (Deep 1.9.0)
+  - {chapter: deep, id: deep_marroweel, name: "Marrow Eel", icon: deep_marroweel, detect-tag: faultline_deep_marroweel,
+     where: "THE BONE FIELDS (round -2600, 900, past the old border): a dark silt plain strewn with the skeletons of nine leviathans.",
+     does: "Aggressive. A pale eel with a body ribbed like a spine. Its bite latches on: you bleed until you shake it off.",
+     drops: ["Bones|100%", "Ancient Fossil|2%"]}
+  - {chapter: deep, id: deep_scavcrab, name: "Scavenger Crab", icon: deep_scavcrab, detect-tag: faultline_deep_scavcrab,
+     where: "THE BONE FIELDS (round -2600, 900, past the old border): a dark silt plain strewn with the skeletons of nine leviathans.",
+     does: "Neutral. A grey crab with bone shards in its shell, picking the skeletons clean. Get between it and its meal and it pinches.",
+     drops: ["Bones|100%", "Ancient Fossil|10%"]}
+  - {chapter: deep, id: deep_ossuaryray, name: "Ossuary Ray", icon: deep_ossuaryray, detect-tag: faultline_deep_ossuaryray,
+     where: "THE BONE FIELDS (round -2600, 900, past the old border): a dark silt plain strewn with the skeletons of nine leviathans.",
+     does: "Neutral. A great ray rotted down to a lattice of bones. Hurt it and it rattles: a chill that withers.",
+     drops: ["Bone Blocks|100%", "Ancient Fossil|5%"]}
+  - {chapter: deep, id: deep_glassjelly, name: "Glass Jelly", icon: deep_glassjelly, detect-tag: faultline_deep_glassjelly,
+     where: "THE GLASS REEF (round 1700, 2600): a reef of living glass, rainbow spires and sealed air gardens round the Prism Spire.",
+     does: "Neutral. A bell of living crystal that rings as it pulses. Its threads sting, and it SHATTERS into flying glass when it dies: don't kill it up close.",
+     drops: ["Glass|100%", "Glow Ink Sac|100%"]}
+  - {chapter: deep, id: deep_prismfish, name: "Prism Fish", icon: deep_prismfish, detect-tag: faultline_deep_prismfish,
+     where: "THE GLASS REEF (round 1700, 2600): a reef of living glass, rainbow spires and sealed air gardens round the Prism Spire.",
+     does: "Passive. A little fish of cut crystal that swims in schools, throwing rainbows across the reef.",
+     drops: ["Prismarine Crystals|100%"]}
+  - {chapter: deep, id: deep_crystalcrab, name: "Crystal Crab", icon: deep_crystalcrab, detect-tag: faultline_deep_crystalcrab,
+     where: "THE GLASS REEF (round 1700, 2600): a reef of living glass, rainbow spires and sealed air gardens round the Prism Spire.",
+     does: "Neutral. An amethyst geode that walks. Its shell turns most blows aside: hit it from behind.",
+     drops: ["Amethyst Shards|100%"]}
+  - {chapter: deep, id: deep_shardback, name: "Shardback", icon: deep_shardback, detect-tag: faultline_deep_shardback,
+     where: "THE GLASS REEF (round 1700, 2600): a reef of living glass, rainbow spires and sealed air gardens round the Prism Spire.",
+     does: "Aggressive. A long fish armoured in blades of glass. It flares its crest and fires the spare blades at you.",
+     drops: ["Tinted Glass|100%", "Prismarine Shards|100%"]}
+  - {chapter: deep, id: deep_narwhal, name: "Narwhal", icon: deep_narwhal, detect-tag: faultline_deep_narwhal,
+     where: "THE FROZEN SHELF (round 0, -2600): the sea frozen over, ice keels hanging down, breathing holes here and there.",
+     does: "Neutral. A mottled grey whale with one long spiralled tusk. Hurt it and it charges tusk first.",
+     drops: ["Bones|100%", "Trident|4%"]}
+  - {chapter: deep, id: deep_iceseal, name: "Ice Seal", icon: deep_iceseal, detect-tag: faultline_deep_iceseal,
+     where: "THE FROZEN SHELF (round 0, -2600): the sea frozen over, ice keels hanging down, breathing holes here and there.",
+     does: "Passive. A fat silver seal that plays round the breathing holes. Where the seals are, there's air.",
+     drops: ["Cod|100%", "Leather|100%"]}
+  - {chapter: deep, id: deep_frostorca, name: "Frost Orca", icon: deep_frostorca, detect-tag: faultline_deep_frostorca,
+     where: "THE FROZEN SHELF (round 0, -2600): the sea frozen over, ice keels hanging down, breathing holes here and there.",
+     does: "Aggressive. A black-and-white hunter that comes in pairs. Its bite freezes you stiff.",
+     drops: ["Leather|100%", "Salmon|100%"]}
+  - {chapter: deep, id: deep_rimejelly, name: "Rime Jelly", icon: deep_rimejelly, detect-tag: faultline_deep_rimejelly,
+     where: "THE FROZEN SHELF (round 0, -2600): the sea frozen over, ice keels hanging down, breathing holes here and there.",
+     does: "Neutral. A frosted bell trailing icy threads. Its sting freezes you where you swim.",
+     drops: ["Snowballs|100%", "Ice|100%"]}
+  - {chapter: deep, id: deep_magmaeel, name: "Magma Eel", icon: deep_magmaeel, detect-tag: faultline_deep_magmaeel,
+     where: "Only round an UNDERSEA VOLCANO while it erupts (it rises out of the open Sunlit Sea now and then).",
+     does: "Aggressive. A black eel cracked with glowing seams, born in the volcano's vents. Its bite sears and sets you alight.",
+     drops: ["Magma Cream|100%", "Blaze Powder|100%"]}
+  - {chapter: deep, id: deep_cindercrab, name: "Cinder Crab", icon: deep_cindercrab, detect-tag: faultline_deep_cindercrab,
+     where: "Only round an UNDERSEA VOLCANO while it erupts (it rises out of the open Sunlit Sea now and then).",
+     does: "Neutral. A crab with a shell of cooling lava. Hurt it and it bursts into a shower of embers.",
+     drops: ["Gold Nuggets|100%", "Ancient Debris|3%"]}
+  - {chapter: deep, id: deep_drowncitizen, name: "Drowned Citizen", icon: deep_drowncitizen, detect-tag: faultline_deep_drowncitizen,
+     where: "THE DROWNED CITY (round 2600, -300): a walled city of 400 buildings on the sea floor, its people still in its streets.",
+     does: "Aggressive. One of the city's people, still walking its streets in the rags of their old clothes.",
+     drops: ["Rotten Flesh|100%", "Gold Nuggets|30%", "Copper Ingot|20%"]}
+  - {chapter: deep, id: deep_drownguard, name: "Drowned Guard", icon: deep_drownguard, detect-tag: faultline_deep_drownguard,
+     where: "THE DROWNED CITY (round 2600, -300): a walled city of 400 buildings on the sea floor, its people still in its streets.",
+     does: "Aggressive. A guard in rusted mail, still on patrol, trident in hand. Guards carry the keys to the vaults.",
+     drops: ["Iron Nuggets|100%", "Drowned Vault Key|8%"]}
+  - {chapter: deep, id: deep_drownpriest, name: "Drowned Priest", icon: deep_drownpriest, detect-tag: faultline_deep_drownpriest,
+     where: "THE DROWNED CITY (round 2600, -300): a walled city of 400 buildings on the sea floor, its people still in its streets.",
+     does: "Aggressive. A priest of the drowned cathedral: it mends the dead around it and curses the living (slowing, lifting, weakening). Kill it first.",
+     drops: ["Lapis Lazuli|100%", "Bottle o' Enchanting|20%", "Drowned Vault Key|5%"]}
+  - {chapter: bosses, weakness: "Keep moving and stay out of the cone of its Frost Breath. When it Freezes Over, swim clear first, then hit it. Kill the Pod's orcas before they box you in.", id: deep_rimeback, name: "The Rimeback", icon: deep_rimeback, detect-tag: faultline_deep_rimeback,
+     where: "THE FROZEN SHELF's Hollow: swim under the ice within 50 blocks of the Shelf's middle (0, -2600) and it comes up out of the dark. Once it's dead it rests 30 minutes.",
+     does: "A MINI BOSS, 1,200 health: a vast orca sheathed in ice. Frost Breath (a freezing cone), Ice Ram, Glacier Fall (ice comes down from the shelf above), the Pod (Frost Orcas join it), and hurt, it Freezes Over the water round it.",
+     drops: ["8 Blue Ice|100%", "8 Prismarine Crystals|100%", "3 Dark Loot Bags|100%", "Frostbite II book|40%", "A Dark Loot rare|25%"]}
+  - {chapter: bosses, weakness: "Fight him in the open hall, not between the pillars where the Whirl pins you. Kill the Royal Guard as it rises, and dodge sideways when he raises his trident.", id: deep_drownking, name: "The Drowned King", icon: deep_drownking, detect-tag: faultline_deep_drownking,
+     where: "THE DROWNED CITY's palace (2600, -420): he sits his throne until someone comes within 30 blocks. Once he's dead he rests 30 minutes.",
+     does: "A MINI BOSS, 900 health: the city's king, crowned and robed. Trident Volley, Tidal Slam, the Royal Guard (his guards rise round him), the King's Decree (a curse on everyone near) and the Whirl (a current that drags you to him).",
+     drops: ["3 Drowned Vault Keys|100%", "2 Gold Blocks|100%", "2 Dark Loot Bags|100%", "A Dark Loot rare|25%"]}
+  - {chapter: weapons, name: "Air Coral", icon: air_coral, detect: "faultlinedeep:air_coral",
+     how: "Craft: a Tube Coral Block on top, 4 Prismarine Crystals round a Nautilus Shell (_T_ / PNP / _P_).",
+     does: "Plant it under water in the Dark Ocean: a coral that breathes out air. Anyone within 3.5 blocks gets their air back, and bubbles stream up from it. Break it to pick it up again."}
+  - {chapter: weapons, name: "Dome Kit", icon: dome_kit_small, detect: "faultlinedeep:dome_kit",
+     how: "Small: 5 Glass round a Sponge, 2 Sea Lanterns and a Nautilus Shell under it. Large: a Small Dome Kit in the middle of 4 Tinted Glass and 4 Sea Lanterns.",
+     does: "Right-click the sea floor in the Dark Ocean: a glass dome inflates and pushes the sea out (Small 13 blocks across, Large 21). A DRY BASE: no pressure, no Abyss dark, your drops stay if you die in it. Nobody can break its glass; sneak + right-click the glass with an empty hand to pack it away (the sea comes back, the kit comes back). 3 domes each."}
+  - {chapter: consumables, name: "Drowned Vault Key", icon: drowned_vault_key, detect: "faultlinedeep:vault_key",
+     how: "8% from Drowned Guards, 5% from Drowned Priests, 3 from the Drowned King.",
+     does: "Opens one of the Drowned City's 10 VAULTS (in the palace treasury and the bank vault). A vault opens once: gold blocks, diamonds, emerald blocks, golden apples, netherite scrap, maybe a netherite ingot, a trident, an enchanted golden apple, two Dark Loot Bags."}
+  - {chapter: consumables, name: "Ancient Fossil", icon: ancient_fossil, detect: "faultlinedeep:fossil",
+     how: "4% from mining the Bone Fields' own bone (not bone anyone placed), and from its creatures.",
+     does: "Something from before the sea was dark. Give one to a mermaid in the Den: 15 reputation, and she gives you a sea treasure back (emeralds, crystals, diamonds, a nautilus shell, sometimes a Heart of the Sea)."}
 achievements:
   - {id: first_blood, name: "First Blood", icon: demon_eye, desc: "Defeat any boss.",
      defeat: [the_demon_eye, queen_spider, mortimer_freeze, the_dune_devourer, the_frostmaw, don_lorenzo, the_kraken, the_kraken_at_sea, diamond_jacob, rocco_vendetta, grimtusk, captain_rotbeard, the_great_hog, the_skeleton_captain],
@@ -1433,7 +1518,7 @@ achievements:
      stat: mimics, count: 5, reward: {items: ["DIAMOND:6", "GOLD_BLOCK:2"], xp: 500}}
   # ---- the Dark Ocean (1.6.31)
   - {id: into_the_dark, name: "Into the Dark", icon: deep_lampsquid, desc: "Hunt 25 of the Dark Ocean's creatures.",
-     defeat: [deep_gawker, deep_bloatfin, deep_jellywing, deep_driftback, deep_clam, deep_lumenbell, deep_gasbloom, deep_fangstalker, deep_blastfin, deep_burrowshark, deep_cavecrawler, deep_glowgrub, deep_shellsnake, deep_lampsquid, deep_volteel, deep_needlejaw, deep_devilfish, deep_riftwarper, deep_hollowkin, deep_sharkquid, deep_acideel, deep_trasher, deep_radiator, deep_flakcrab, deep_nucleartoad, deep_gammaslime, deep_sulphurskater, deep_acidjelly, deep_orthocera, deep_trilobite, deep_skyfin, deep_leech, deep_boglurker, deep_corrosionshark, deep_urchin, deep_crabling, deep_bloatgut, deep_sulphurmoth, deep_hazardturtle, deep_sludgesnail, deep_shambler, deep_rustbones, deep_acidmite, deep_stormwraith, deep_mauler, deep_sailfin, deep_mantaglider, deep_leafydragon, deep_pearlhorse, deep_hammerjaw, deep_razorcuda, deep_stingray, deep_mirrorfin, deep_kelpstrangler, deep_siren, deep_gulper, deep_isopod, deep_ghostshark, deep_vampsquid, deep_dumbo, deep_swallower, deep_chainlight, deep_viperfang, deep_hagfish, deep_watcher, deep_mermaid, deep_merguard],
+     defeat: [deep_gawker, deep_bloatfin, deep_jellywing, deep_driftback, deep_clam, deep_lumenbell, deep_gasbloom, deep_fangstalker, deep_blastfin, deep_burrowshark, deep_cavecrawler, deep_glowgrub, deep_shellsnake, deep_lampsquid, deep_volteel, deep_needlejaw, deep_devilfish, deep_riftwarper, deep_hollowkin, deep_sharkquid, deep_acideel, deep_trasher, deep_radiator, deep_flakcrab, deep_nucleartoad, deep_gammaslime, deep_sulphurskater, deep_acidjelly, deep_orthocera, deep_trilobite, deep_skyfin, deep_leech, deep_boglurker, deep_corrosionshark, deep_urchin, deep_crabling, deep_bloatgut, deep_sulphurmoth, deep_hazardturtle, deep_sludgesnail, deep_shambler, deep_rustbones, deep_acidmite, deep_stormwraith, deep_mauler, deep_sailfin, deep_mantaglider, deep_leafydragon, deep_pearlhorse, deep_hammerjaw, deep_razorcuda, deep_stingray, deep_mirrorfin, deep_kelpstrangler, deep_siren, deep_gulper, deep_isopod, deep_ghostshark, deep_vampsquid, deep_dumbo, deep_swallower, deep_chainlight, deep_viperfang, deep_hagfish, deep_watcher, deep_mermaid, deep_merguard, deep_marroweel, deep_scavcrab, deep_ossuaryray, deep_glassjelly, deep_prismfish, deep_crystalcrab, deep_shardback, deep_narwhal, deep_iceseal, deep_frostorca, deep_rimejelly, deep_magmaeel, deep_cindercrab, deep_drowncitizen, deep_drownguard, deep_drownpriest],
      need: 25, reward: {items: ["DIAMOND:8", "PRISMARINE_CRYSTALS:16"], xp: 500}}
   - {id: acid_bath, name: "Acid Bath", icon: deep_gammaslime, desc: "Hunt 15 of the Sulphur Sea's creatures.",
      defeat: [deep_acideel, deep_trasher, deep_radiator, deep_flakcrab, deep_nucleartoad, deep_gammaslime, deep_sulphurskater, deep_acidjelly, deep_orthocera, deep_trilobite, deep_skyfin, deep_leech, deep_boglurker, deep_corrosionshark, deep_urchin, deep_crabling, deep_bloatgut, deep_sulphurmoth, deep_hazardturtle, deep_sludgesnail],
@@ -1460,3 +1545,35 @@ achievements:
      stat: den_honored, count: 1, reward: {items: ["CONDUIT:1", "PRISMARINE_CRYSTALS:32"], xp: 1500}}
   - {id: the_bloom, name: "When the Deep Glows", icon: deep_dumbo, desc: "Be deep down when the Bioluminescent Bloom comes.",
      stat: blooms, count: 1, reward: {items: ["GLOW_INK_SAC:16", "SEA_LANTERN:8"], xp: 500}}
+  # ---- the outer ring (Deep 1.9.0)
+  - {id: drowned_crown, name: "Long Live the King", icon: deep_drownking, desc: "Defeat the Drowned King on his throne.",
+     defeat: [deep_drownking], need: all, reward: {items: ["GOLD_BLOCK:6", "TRIDENT:1"], xp: 1500}}
+  - {id: frozen_hollow, name: "The Frozen Hollow", icon: deep_rimeback, desc: "Defeat the Rimeback under the Frozen Shelf.",
+     defeat: [deep_rimeback], need: all, reward: {items: ["DIAMOND:12", "BLUE_ICE:16"], xp: 1500}}
+  - {id: grave_robber, name: "Grave Robber", icon: drowned_vault_key, desc: "Open 5 of the Drowned City's vaults.",
+     stat: drowned_vaults, count: 5, reward: {items: ["EMERALD_BLOCK:4"], xp: 1000}}
+  - {id: bone_collector, name: "Bone Collector", icon: ancient_fossil, desc: "Dig up 10 Ancient Fossils.",
+     stat: fossils, count: 10, reward: {items: ["DIAMOND:6", "BONE_BLOCK:16"], xp: 800}}
+  - {id: outer_reaches, name: "The Outer Reaches", icon: deep_prismfish, desc: "Hunt 10 of the outer ring's creatures (the Bone Fields, the Glass Reef, the Frozen Shelf, the Drowned City).",
+     defeat: [deep_marroweel, deep_scavcrab, deep_ossuaryray, deep_glassjelly, deep_prismfish, deep_crystalcrab, deep_shardback, deep_narwhal, deep_iceseal, deep_frostorca, deep_rimejelly, deep_magmaeel, deep_cindercrab, deep_drowncitizen, deep_drownguard, deep_drownpriest], need: 10, reward: {items: ["DIAMOND:8", "PRISMARINE_CRYSTALS:16"], xp: 1000}}
+  - {id: fire_below, name: "Fire Below", icon: deep_magmaeel, desc: "Be there when an undersea volcano erupts.",
+     stat: volcanoes, count: 1, reward: {items: ["OBSIDIAN:16", "MAGMA_CREAM:8"], xp: 500}}
+  - {id: dark_noon, name: "Dark Noon", icon: deep_watcher, desc: "Live through an Abyssal Eclipse.",
+     stat: abyssal_eclipses, count: 1, reward: {items: ["GLOW_INK_SAC:16"], xp: 500}}
+  - {id: blood_water, name: "Blood in the Water", icon: deep_hammerjaw, desc: "Live through a Red Tide.",
+     stat: red_tides, count: 1, reward: {items: ["DIAMOND:4"], xp: 500}}
+  - {id: mutant_tide, name: "Something Wrong With It", icon: deep_shardback, desc: "Kill 10 mutated sea creatures.",
+     stat: mutated_sea, count: 10, reward: {items: ["DIAMOND:8", "EXPERIENCE_BOTTLE:16"], xp: 1000}}
+  - {id: home_below, name: "A Home Below", icon: dome_kit_small, desc: "Inflate a dome base in the Dark Ocean.",
+     stat: domes, count: 1, reward: {items: ["SEA_LANTERN:8", "GLASS:32"], xp: 300}}
+  - {id: learned_the_hard_way, name: "Learned the Hard Way", icon: demon_eye, desc: "Learn 5 bosses' weaknesses (they're written in the Index after a boss kills you).",
+     stat: weaknesses, count: 5, reward: {items: ["TOTEM_OF_UNDYING:1"], xp: 500}}
+  # ---- FaultlineSkills (1.0.0): skill_<tree> counts its levels gained
+  - {id: skilled_miner, name: "Deep Delver", icon: spelunker_amulet, desc: "Reach Mining level 25 (/skills).",
+     stat: skill_mining, count: 24, reward: {items: ["DIAMOND:8"], xp: 1000}}
+  - {id: skilled_builder, name: "Master Mason", icon: museum_pedestal, desc: "Reach Building level 25 (/skills).",
+     stat: skill_building, count: 24, reward: {items: ["DIAMOND:8"], xp: 1000}}
+  - {id: skilled_farmer, name: "Green Acres", icon: green_thumb, desc: "Reach Farming level 25 (/skills).",
+     stat: skill_farming, count: 24, reward: {items: ["DIAMOND:8"], xp: 1000}}
+  - {id: skilled_engineer, name: "Circuit Breaker", icon: discount_card, desc: "Reach Redstone level 25 (/skills).",
+     stat: skill_redstone, count: 24, reward: {items: ["DIAMOND:8"], xp: 1000}}

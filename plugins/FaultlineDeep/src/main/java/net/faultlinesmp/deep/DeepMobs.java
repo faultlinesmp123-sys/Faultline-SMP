@@ -555,9 +555,12 @@ final class DeepMobs implements Listener {
     void tick() {
         ticks += 2;
         if (live.isEmpty()) { if (ticks % 30 == 0) spawner(); return; }
-        for (var it = live.values().iterator(); it.hasNext(); ) {
-            Beast m = it.next();
-            if (!m.body.isValid() || m.body.isDead()) { cleanup(m); it.remove(); continue; }
+        // (a copy: a creature's turn can spawn more (crabling swarms, splits, frenzies, the Den's guards) or kill one, and
+        // changing `live` mid-loop threw ConcurrentModificationException every time, which skipped the rest of the tick
+        // and spammed a stack trace into the console 10 times a second: 1.10.1)
+        for (Beast m : new ArrayList<>(live.values())) {
+            if (live.get(m.body.getUniqueId()) != m) continue;          // removed by an earlier creature's turn
+            if (!m.body.isValid() || m.body.isDead()) { cleanup(m); live.remove(m.body.getUniqueId()); continue; }
             try { tickOne(m); } catch (RuntimeException ex) { pl.getLogger().warning("[Deep] " + m.k.id() + ": " + ex); }
         }
         if (ticks % 30 == 0) spawner();

@@ -1428,6 +1428,12 @@ Notes:
   the base fish). Index: new chapter `fish` "Dark Ocean Fish" (14 entries, ids `fish_<id>`, detect `fish_species=<id>`; the cover
   drops its blank line at 9 chapters, a page holds 14 lines), achievements Hadal Angler (stat `hadal_fish` 25), Every Fish in
   the Sea (all 13 but the King), The Blind King (stat `blind_king`). Tested (`HadalTest` in itest, `AchievementTest`).
+- **Lag hunt (Deep 1.10.1)**: `DeepMobs.tick` iterated `live` directly while a creature's turn could add or remove one
+  (the Rimeback's Pod / the Drowned King's Royal Guard summons, crabling swarms, blastfins, the Den): a
+  ConcurrentModificationException that skipped the rest of that tick (every creature froze) and printed a stack trace each
+  time. Now it loops over a copy (skipping any removed meanwhile). Load-tested every plugin in MockBukkit with 12 moving
+  players (scratch `ProfX` in each harness; Deep: `ftest` `ProfDeep`, 8 players / 60 creatures): all under ~1.5 ms/tick.
+  Dark Ocean chunk generation 6-18 ms/chunk (scratch `dtest` `GenTime`). For real lag, ask for a spark profile first.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Skills → Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

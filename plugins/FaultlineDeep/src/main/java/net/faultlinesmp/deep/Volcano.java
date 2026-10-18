@@ -77,7 +77,7 @@ final class Volcano implements Listener {
         if (Math.hypot(x, z) < 200 || Math.hypot(x - 681, z + 951) < 260 || Math.abs(x) > 2850 || Math.abs(z) > 2850) return false;
         if (Regions.nearAny(x, z, 120) || MermaidDen.weight(x, z) > 0 || Math.hypot(x - MermaidDen.MX, z - MermaidDen.MZ) < 280) return false;
         Habitat h = Habitat.instance; // never next to a player's dome base or air coral garden
-        if (h != null) for (Habitat.Dome d : h.domes.values()) if (Math.hypot(d.x - x, d.z - z) < cfg("base-radius", 22) + d.r + 40) return false;
+        if (h != null) for (Habitat.Dome d : h.domes.values()) if (pl.world != null && d.world.equals(pl.world.getName()) && Math.hypot(d.x - x, d.z - z) < cfg("base-radius", 22) + d.r + 40) return false;
         DeepGenerator g = pl.generator;
         for (int dx = -40; dx <= 40; dx += 40) for (int dz = -40; dz <= 40; dz += 40) {
             if (g.sulphur(seed, x + dx, z + dz) > 0.01 || g.trenchColumn(seed, x + dx, z + dz)) return false;

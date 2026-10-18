@@ -171,6 +171,8 @@ mobs:
     land-share: 0.4         # how often the spawner tries an island / the air over it instead of the water there
 
 # 1.9.0 living down there (Habitat.java): Air Coral (breathe near it) and Dome Kits (glass dome bases, saved in domes.yml).
+# 1.11.0: domes go under water in ANY world, have two doors, owners can break their own walls (the sea stays out), and
+# two close domes can be combined with a hallway (/dome [list|combine|yes|no]).
 # /deep give <coral|dome_small|dome_large|vault_key|fossil>, /deep domes
 habitat:
   coral:
@@ -178,3 +180,4 @@ habitat:
     refill: 60
   domes:
     max-per-player: 3
+    combine-gap: 12          # 1.11.0: two of your domes this close (glass to glass, floors within 6) can be joined by a hallway

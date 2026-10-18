@@ -1,5 +1,5 @@
 name: FaultlineDeep
-version: '1.10.1'
+version: '1.11.0'
 main: net.faultlinesmp.deep.FaultlineDeep
 api-version: '1.21'
 author: FaultlineSMP
@@ -11,6 +11,9 @@ commands:
     description: "Admin: the Dark Ocean (set kingdom/lucki/whirlpool spots, tp, spawn creatures, eggs, events)"
     usage: /deep [info|set <kingdom|lucki|whirlpool>|tp [player]|town [player]|sulphur [player]|trench [maw] [player]|spawn <mob>|egg <mob> [n] [player]|event <pressure|undertow|stop>|acidrain|den [info|where|tp|raid|stop|reset|rise]|bloom|migration|lucki]
     permission: faultlinedeep.admin
+  dome:
+    description: "Your dome bases: list them, combine two with a hallway, answer the combine question"
+    usage: /dome [list|combine|yes|no]
   den:
     description: "Your reputation with the Mermaid Den (trades, guards, a house), and /den home"
     usage: /den [home]

@@ -71,6 +71,10 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(habitat, this);
         getServer().getPluginManager().registerEvents(outer, this);
         if (getCommand("den") != null) getCommand("den").setExecutor(rep::command);
+        if (getCommand("dome") != null) {
+            getCommand("dome").setExecutor((sender, cmd, label, args) -> habitat.command(sender, args));
+            getCommand("dome").setTabCompleter((sender, cmd, label, args) -> args.length == 1 ? List.of("list", "combine", "yes", "no") : List.of());
+        }
         getServer().getPluginManager().registerEvents(mobs, this);
         getServer().getPluginManager().registerEvents(journey, this);
         getServer().getPluginManager().registerEvents(ocean, this);

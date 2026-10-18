@@ -1135,3 +1135,45 @@ drowned_vault_key:
 ancient_fossil:
   large: 59442
   small: 58418
+fish_gloomfin:
+  large: 59443
+  small: 58419
+fish_shadow_mackerel:
+  large: 59444
+  small: 58420
+fish_pearl_snapper:
+  large: 59445
+  small: 58421
+fish_lanternjaw:
+  large: 59446
+  small: 58422
+fish_grenadier:
+  large: 59447
+  small: 58423
+fish_ghost_eel:
+  large: 59448
+  small: 58424
+fish_acid_gar:
+  large: 59449
+  small: 58425
+fish_sulphur_sprat:
+  large: 59450
+  small: 58426
+fish_mermaid_tetra:
+  large: 59451
+  small: 58427
+fish_coral_princess:
+  large: 59452
+  small: 58428
+fish_hadal_snailfish:
+  large: 59453
+  small: 58429
+fish_coelacanth:
+  large: 59454
+  small: 58430
+fish_titan_isopod:
+  large: 59455
+  small: 58431
+fish_blind_king:
+  large: 59456
+  small: 58432

@@ -2742,6 +2742,194 @@
      "minecraft:max_stack_size": 64
     }
    }
+  ],
+  "minecraft:cod": [
+   {
+    "type": "definition",
+    "model": "faultline:fish/gloomfin",
+    "bedrock_identifier": "faultline:fish_gloomfin",
+    "display_name": "gloomfin",
+    "bedrock_options": {
+     "icon": "faultline.fish_gloomfin",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:fish/shadow_mackerel",
+    "bedrock_identifier": "faultline:fish_shadow_mackerel",
+    "display_name": "shadow_mackerel",
+    "bedrock_options": {
+     "icon": "faultline.fish_shadow_mackerel",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:fish/lanternjaw",
+    "bedrock_identifier": "faultline:fish_lanternjaw",
+    "display_name": "lanternjaw",
+    "bedrock_options": {
+     "icon": "faultline.fish_lanternjaw",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:fish/sulphur_sprat",
+    "bedrock_identifier": "faultline:fish_sulphur_sprat",
+    "display_name": "sulphur_sprat",
+    "bedrock_options": {
+     "icon": "faultline.fish_sulphur_sprat",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:fish/hadal_snailfish",
+    "bedrock_identifier": "faultline:fish_hadal_snailfish",
+    "display_name": "hadal_snailfish",
+    "bedrock_options": {
+     "icon": "faultline.fish_hadal_snailfish",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:fish/titan_isopod",
+    "bedrock_identifier": "faultline:fish_titan_isopod",
+    "display_name": "titan_isopod",
+    "bedrock_options": {
+     "icon": "faultline.fish_titan_isopod",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   }
+  ],
+  "minecraft:salmon": [
+   {
+    "type": "definition",
+    "model": "faultline:fish/pearl_snapper",
+    "bedrock_identifier": "faultline:fish_pearl_snapper",
+    "display_name": "pearl_snapper",
+    "bedrock_options": {
+     "icon": "faultline.fish_pearl_snapper",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:fish/grenadier",
+    "bedrock_identifier": "faultline:fish_grenadier",
+    "display_name": "grenadier",
+    "bedrock_options": {
+     "icon": "faultline.fish_grenadier",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:fish/ghost_eel",
+    "bedrock_identifier": "faultline:fish_ghost_eel",
+    "display_name": "ghost_eel",
+    "bedrock_options": {
+     "icon": "faultline.fish_ghost_eel",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:fish/acid_gar",
+    "bedrock_identifier": "faultline:fish_acid_gar",
+    "display_name": "acid_gar",
+    "bedrock_options": {
+     "icon": "faultline.fish_acid_gar",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:fish/coelacanth",
+    "bedrock_identifier": "faultline:fish_coelacanth",
+    "display_name": "coelacanth",
+    "bedrock_options": {
+     "icon": "faultline.fish_coelacanth",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:fish/blind_king",
+    "bedrock_identifier": "faultline:fish_blind_king",
+    "display_name": "blind_king",
+    "bedrock_options": {
+     "icon": "faultline.fish_blind_king",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   }
+  ],
+  "minecraft:tropical_fish": [
+   {
+    "type": "definition",
+    "model": "faultline:fish/mermaid_tetra",
+    "bedrock_identifier": "faultline:fish_mermaid_tetra",
+    "display_name": "mermaid_tetra",
+    "bedrock_options": {
+     "icon": "faultline.fish_mermaid_tetra",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:fish/coral_princess",
+    "bedrock_identifier": "faultline:fish_coral_princess",
+    "display_name": "coral_princess",
+    "bedrock_options": {
+     "icon": "faultline.fish_coral_princess",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   }
   ]
  }
 }

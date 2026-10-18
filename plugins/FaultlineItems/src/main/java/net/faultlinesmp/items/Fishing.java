@@ -186,14 +186,17 @@ final class Fishing implements Listener, CommandExecutor, TabCompleter {
 
     /** One of the Dark Ocean's fish for those waters (often: hadal.chance, always in the Trench), or null = a plain fish. */
     Species hadal(String zone) {
-        if (!plugin.getConfig().getBoolean("fishing.hadal.enabled", false) || zone.equals("BUBBLE")) return null;
+        if (!plugin.getConfig().getBoolean("fishing.hadal.enabled", true) || zone.equals("BUBBLE")) return null;
         double chance = zone.equals("TRENCH") ? 1 : plugin.getConfig().getDouble("fishing.hadal.chance", 0.7);
         if (random.nextDouble() >= chance) return null;
+        // the legend has its own roll (1.2.62: by weight it was 1 Trench catch in 27)
+        Species king = SPECIES.get("blind_king");
+        if (king.in(zone) && random.nextDouble() < plugin.getConfig().getDouble("fishing.hadal.blind-king-chance", 0.005)) return king;
         int total = 0;
-        for (Species s : SPECIES.values()) if (s.in(zone)) total += s.weight();
+        for (Species s : SPECIES.values()) if (s.in(zone) && s != king) total += s.weight();
         if (total <= 0) return null;
         int r = random.nextInt(total);
-        for (Species s : SPECIES.values()) if (s.in(zone) && (r -= s.weight()) < 0) return s;
+        for (Species s : SPECIES.values()) if (s.in(zone) && s != king && (r -= s.weight()) < 0) return s;
         return null;
     }
 

@@ -756,7 +756,7 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
         List<Component> lines = new ArrayList<>();
         lines.add(icon("faultline_index", true).append(Component.text("  FAULTLINE", TITLE, TextDecoration.BOLD)));
         lines.add(Component.text("       INDEX", TITLE, TextDecoration.BOLD));
-        lines.add(BLANK);
+        if (chapters.size() <= 8) lines.add(BLANK); // (a page holds 14 lines: 9 chapters need the blank line)
         lines.add(progress("Items", itemsHave, itemsAll));
         lines.add(progress("Creatures", mobsHave, mobsAll));
         int achDone = achievements.doneCount(id), achAll = achievements.goals.size();

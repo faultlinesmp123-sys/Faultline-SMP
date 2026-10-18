@@ -18,6 +18,7 @@ chapters:
   - {id: enemies, title: "Enemies", kind: creature, icon: vampire}
   - {id: friends, title: "Friendly Faces", kind: creature, icon: skeleton_wanderer}
   - {id: deep, title: "The Dark Ocean", kind: creature, icon: deep_lampsquid}
+  - {id: fish, title: "Dark Ocean Fish", kind: item, icon: fish_gloomfin}
 
 entries:
   # ---------------------------------------------------------------- ACCESSORIES
@@ -1469,6 +1470,49 @@ entries:
   - {chapter: consumables, name: "Ancient Fossil", icon: ancient_fossil, detect: "faultlinedeep:fossil",
      how: "4% from mining the Bone Fields' own bone (not bone anyone placed), and from its creatures.",
      does: "Something from before the sea was dark. Give one to a mermaid in the Den: 15 reputation, and she gives you a sea treasure back (emeralds, crystals, diamonds, a nautilus shell, sometimes a Heart of the Sea)."}
+  # ---------------------------------------------------------------- DARK OCEAN FISH (Items 1.2.62)
+  - {id: fish_gloomfin, chapter: fish, name: "Gloomfin", icon: fish_gloomfin, detect: "faultlineitems:fish_species=gloomfin",
+     how: "Fish in the Sunlit Sea. In the Dark Ocean 70% of catches are its own fish (every catch over the Trench: cast anywhere above the rift).",
+     does: "A grey-blue fish of the Sunlit Sea's open water. Food, weighed like every catch (0.5-6 kg); the heaviest is a server record and a Trophy Fish (/fishing records)."}
+  - {id: fish_shadow_mackerel, chapter: fish, name: "Shadow Mackerel", icon: fish_shadow_mackerel, detect: "faultlineitems:fish_species=shadow_mackerel",
+     how: "Fish in the Sunlit Sea. In the Dark Ocean 70% of catches are its own fish (every catch over the Trench: cast anywhere above the rift).",
+     does: "Schools under the dark surface, striped black. Food, weighed like every catch (0.4-3.5 kg); the heaviest is a server record and a Trophy Fish (/fishing records)."}
+  - {id: fish_pearl_snapper, chapter: fish, name: "Pearl Snapper", icon: fish_pearl_snapper, detect: "faultlineitems:fish_species=pearl_snapper",
+     how: "Fish in the Sunlit Sea and the Mermaid Den. In the Dark Ocean 70% of catches are its own fish (every catch over the Trench: cast anywhere above the rift).",
+     does: "Pink, pearly scales. Mermaids prize it. Food, weighed like every catch (1-8 kg); the heaviest is a server record and a Trophy Fish (/fishing records)."}
+  - {id: fish_lanternjaw, chapter: fish, name: "Lanternjaw", icon: fish_lanternjaw, detect: "faultlineitems:fish_species=lanternjaw",
+     how: "Fish in the Abyss (below y 35). In the Dark Ocean 70% of catches are its own fish (every catch over the Trench: cast anywhere above the rift).",
+     does: "Its glowing barbel lights the Abyss for a heartbeat. Food, weighed like every catch (0.3-4 kg); the heaviest is a server record and a Trophy Fish (/fishing records)."}
+  - {id: fish_grenadier, chapter: fish, name: "Abyssal Grenadier", icon: fish_grenadier, detect: "faultlineitems:fish_species=grenadier",
+     how: "Fish in the Abyss. In the Dark Ocean 70% of catches are its own fish (every catch over the Trench: cast anywhere above the rift).",
+     does: "A rat-tailed deep fish with huge eyes. Food, weighed like every catch (1-12 kg); the heaviest is a server record and a Trophy Fish (/fishing records)."}
+  - {id: fish_ghost_eel, chapter: fish, name: "Ghost Eel", icon: fish_ghost_eel, detect: "faultlineitems:fish_species=ghost_eel",
+     how: "Fish in the Abyss and the Trench. In the Dark Ocean 70% of catches are its own fish (every catch over the Trench: cast anywhere above the rift).",
+     does: "See-through. You can watch its heart beat. Food, weighed like every catch (2-15 kg); the heaviest is a server record and a Trophy Fish (/fishing records)."}
+  - {id: fish_acid_gar, chapter: fish, name: "Acid Gar", icon: fish_acid_gar, detect: "faultlineitems:fish_species=acid_gar",
+     how: "Fish in the Sulphur Sea. In the Dark Ocean 70% of catches are its own fish (every catch over the Trench: cast anywhere above the rift).",
+     does: "Armoured in green scales the acid can't eat. Food, weighed like every catch (1-10 kg); the heaviest is a server record and a Trophy Fish (/fishing records)."}
+  - {id: fish_sulphur_sprat, chapter: fish, name: "Sulphur Sprat", icon: fish_sulphur_sprat, detect: "faultlineitems:fish_species=sulphur_sprat",
+     how: "Fish in the Sulphur Sea. In the Dark Ocean 70% of catches are its own fish (every catch over the Trench: cast anywhere above the rift).",
+     does: "Tiny, yellow, and tastes like a struck match. Food, weighed like every catch (0.1-0.8 kg); the heaviest is a server record and a Trophy Fish (/fishing records)."}
+  - {id: fish_mermaid_tetra, chapter: fish, name: "Mermaid's Tetra", icon: fish_mermaid_tetra, detect: "faultlineitems:fish_species=mermaid_tetra",
+     how: "Fish in the Mermaid Den. In the Dark Ocean 70% of catches are its own fish (every catch over the Trench: cast anywhere above the rift).",
+     does: "The Den's pet fish: blue and gold. Food, weighed like every catch (0.05-0.5 kg); the heaviest is a server record and a Trophy Fish (/fishing records)."}
+  - {id: fish_coral_princess, chapter: fish, name: "Coral Princess", icon: fish_coral_princess, detect: "faultlineitems:fish_species=coral_princess",
+     how: "Fish in the Mermaid Den. In the Dark Ocean 70% of catches are its own fish (every catch over the Trench: cast anywhere above the rift).",
+     does: "Frilled fins like a ballgown. Food, weighed like every catch (0.2-2.4 kg); the heaviest is a server record and a Trophy Fish (/fishing records)."}
+  - {id: fish_hadal_snailfish, chapter: fish, name: "Hadal Snailfish", icon: fish_hadal_snailfish, detect: "faultlineitems:fish_species=hadal_snailfish",
+     how: "Fish in the Trench. In the Dark Ocean 70% of catches are its own fish (every catch over the Trench: cast anywhere above the rift).",
+     does: "Pale and soft: the deepest fish there is. Food, weighed like every catch (0.5-5 kg); the heaviest is a server record and a Trophy Fish (/fishing records)."}
+  - {id: fish_coelacanth, chapter: fish, name: "Abyss Coelacanth", icon: fish_coelacanth, detect: "faultlineitems:fish_species=coelacanth",
+     how: "Fish in the Trench. In the Dark Ocean 70% of catches are its own fish (every catch over the Trench: cast anywhere above the rift).",
+     does: "Older than the Titan. Lobed fins like little legs. Food, weighed like every catch (10-90 kg); the heaviest is a server record and a Trophy Fish (/fishing records)."}
+  - {id: fish_titan_isopod, chapter: fish, name: "Titan Isopod", icon: fish_titan_isopod, detect: "faultlineitems:fish_species=titan_isopod",
+     how: "Fish in the Trench. In the Dark Ocean 70% of catches are its own fish (every catch over the Trench: cast anywhere above the rift).",
+     does: "Not a fish. Bites the hook anyway. Food, weighed like every catch (2-20 kg); the heaviest is a server record and a Trophy Fish (/fishing records)."}
+  - {id: fish_blind_king, chapter: fish, name: "The Blind King", icon: fish_blind_king, detect: "faultlineitems:fish_species=blind_king",
+     how: "Fish in the Trench (very rare). In the Dark Ocean 70% of catches are its own fish (every catch over the Trench: cast anywhere above the rift).",
+     does: "The Trench's legend: eyeless, ancient, enormous. Catching it is announced to the server. Food, weighed like every catch (50-300 kg); the heaviest is a server record and a Trophy Fish (/fishing records)."}
 achievements:
   - {id: first_blood, name: "First Blood", icon: demon_eye, desc: "Defeat any boss.",
      defeat: [the_demon_eye, queen_spider, mortimer_freeze, the_dune_devourer, the_frostmaw, don_lorenzo, the_kraken, the_kraken_at_sea, diamond_jacob, rocco_vendetta, grimtusk, captain_rotbeard, the_great_hog, the_skeleton_captain],
@@ -1577,3 +1621,9 @@ achievements:
      stat: skill_farming, count: 24, reward: {items: ["DIAMOND:8"], xp: 1000}}
   - {id: skilled_engineer, name: "Circuit Breaker", icon: discount_card, desc: "Reach Redstone level 25 (/skills).",
      stat: skill_redstone, count: 24, reward: {items: ["DIAMOND:8"], xp: 1000}}
+  - {id: hadal_angler, name: "Hadal Angler", icon: fish_lanternjaw, desc: "Catch 25 of the Dark Ocean's own fish.",
+     stat: hadal_fish, count: 25, reward: {items: ["DIAMOND:6", "PRISMARINE_CRYSTALS:16"], xp: 600}}
+  - {id: every_fish, name: "Every Fish in the Sea", icon: fish_coral_princess, desc: "Catch every kind of Dark Ocean fish but the Blind King.",
+     defeat: [fish_gloomfin, fish_shadow_mackerel, fish_pearl_snapper, fish_lanternjaw, fish_grenadier, fish_ghost_eel, fish_acid_gar, fish_sulphur_sprat, fish_mermaid_tetra, fish_coral_princess, fish_hadal_snailfish, fish_coelacanth, fish_titan_isopod], need: all, reward: {items: ["DIAMOND_BLOCK:2"], xp: 1500}}
+  - {id: blind_king, name: "The Blind King", icon: fish_blind_king, desc: "Pull the Blind King out of the Trench.",
+     stat: blind_king, count: 1, reward: {items: ["NETHERITE_INGOT:1", "HEART_OF_THE_SEA:1"], xp: 3000}}

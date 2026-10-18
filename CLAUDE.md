@@ -1342,8 +1342,7 @@ Notes:
   3, capped at `max-seconds` 120 (a removal sends no answer: `removal-seconds` 25): no `Enemy` spawns within `radius` 96 of that
   player for natural reasons (`BLOCKED`: NATURAL, SPAWNER, PATROL, REINFORCEMENTS, TRIAL_SPAWNER...; eggs / plugins untouched),
   mobs can't target them, they take no damage. The clock is server ticks (`now`), so lag stretches it. Tested
-  (`PackShieldTest`, `BloodMoonTest`, `WildItemsTest`). The hadal fishing code shipped in this jar is OFF
-  (`fishing.hadal.enabled: false`) until its models are in the pack.
+  (`PackShieldTest`, `BloodMoonTest`, `WildItemsTest`). Hadal fishing shipped OFF here; it's ON since Items 1.2.62.
 - **THE OUTER RING batch (Deep 1.9.0, Bosses 1.8.0, Index 1.7.0, Items 1.2.60, Cosmetics 1.1.5, FaultlineSkills 1.0.0)**:
   **Border 3000** (`border-radius`; an old 1050 / 2000 reads as 3000). Four regions past the old border, pure functions like
   Sulphur/MermaidDen (`Regions.java`: `weight/near/nearAny/at/title`; chimneys, stacks, spires, arches, whale falls, Abyss
@@ -1421,6 +1420,14 @@ Notes:
   anemones, more buds/shards; BONE FIELDS whaler wrecks (ribs, harpoon gun, try-pots), bone shrines, tar seeps, giant teeth;
   open sea: sponges, mossy boulders. Already-generated chunks don't change (new chunks only: delete region files to redo an
   area). Previews: scratch `dtest` `DetailPreview`, `IglooPreview`, `RegionPreview`. Tested (`DeepTest`, `OuterTest`).
+- **Hadal fishing is on (Items 1.2.62, Index 1.7.1)**: `Fishing.hadal(zone)` (zone from `FaultlineDeep.fishZone`: SUNLIT /
+  ABYSS / SULPHUR / DEN / TRENCH / BUBBLE): `fishing.hadal.chance` 0.7 of catches (always over the Trench) are one of 14 species
+  (`Fishing.SPECIES`, COD / SALMON / TROPICAL_FISH + item model `faultline:fish/<id>` + PDC `faultlineitems:fish_species`); the
+  Blind King has its own roll `fishing.hadal.blind-king-chance` 0.005 (by weight it was 1 Trench catch in 27). Code default
+  `enabled` is true now. Icons from `tools/deep_assets.py` (`FISH`, `fish_icon`; Index glyphs `fish_<id>`, Bedrock mappings on
+  the base fish). Index: new chapter `fish` "Dark Ocean Fish" (14 entries, ids `fish_<id>`, detect `fish_species=<id>`; the cover
+  drops its blank line at 9 chapters, a page holds 14 lines), achievements Hadal Angler (stat `hadal_fish` 25), Every Fish in
+  the Sea (all 13 but the King), The Blind King (stat `blind_king`). Tested (`HadalTest` in itest, `AchievementTest`).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Skills → Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

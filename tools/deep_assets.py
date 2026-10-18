@@ -3192,6 +3192,103 @@ OUTER_HEADS = {
 }
 
 
+# --------------------------------------------------------------------------------------------- 1.10.0: the Dark Ocean's fish
+# (FaultlineItems Fishing: COD / SALMON / TROPICAL_FISH with item model faultline:fish/<id>)
+FISH = {  # id: (base item, style, body, belly, fin, accent)
+    "gloomfin": ("cod", "fish", (95, 115, 140), (170, 185, 200), (60, 80, 110), None),
+    "shadow_mackerel": ("cod", "slim", (60, 75, 95), (190, 200, 210), (40, 50, 65), (20, 22, 30)),
+    "pearl_snapper": ("salmon", "fish", (235, 150, 170), (250, 225, 230), (215, 110, 140), (255, 250, 245)),
+    "lanternjaw": ("cod", "lantern", (40, 45, 70), (70, 75, 100), (30, 32, 50), (150, 255, 230)),
+    "grenadier": ("salmon", "rattail", (120, 110, 120), (170, 160, 165), (90, 80, 90), None),
+    "ghost_eel": ("salmon", "eel", (200, 225, 235), (230, 245, 250), (170, 200, 215), (230, 70, 90)),
+    "acid_gar": ("salmon", "slim", (110, 160, 50), (200, 220, 90), (70, 110, 30), (230, 240, 60)),
+    "sulphur_sprat": ("cod", "small", (230, 205, 60), (250, 240, 150), (190, 160, 30), None),
+    "mermaid_tetra": ("tropical_fish", "round", (60, 120, 230), (240, 200, 70), (240, 190, 60), None),
+    "coral_princess": ("tropical_fish", "frill", (245, 120, 160), (255, 205, 220), (200, 80, 200), (255, 240, 120)),
+    "hadal_snailfish": ("cod", "snail", (235, 215, 215), (250, 235, 235), (215, 185, 190), None),
+    "coelacanth": ("salmon", "lobed", (60, 70, 110), (110, 120, 150), (40, 50, 85), (225, 225, 235)),
+    "titan_isopod": ("cod", "isopod", (190, 175, 160), (220, 210, 195), (150, 135, 120), None),
+    "blind_king": ("salmon", "king", (55, 50, 60), (95, 90, 100), (35, 32, 40), (230, 190, 70)),
+}
+
+
+def fish_icon(style, body, belly, fin, accent):
+    im = Image.new("RGBA", (16, 16), (0, 0, 0, 0))
+    px = {}
+    def put(x, y, c):
+        if 0 <= x < 16 and 0 <= y < 16: px[(x, y)] = c
+    shapes = {  # half-height of the body at each x (head at the right), tail start
+        "fish": ([0, 0, 0, 1, 2, 2, 3, 3, 3, 3, 3, 3, 2, 2, 1, 0], 3),
+        "slim": ([0, 0, 0, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 0], 3),
+        "small": ([0, 0, 0, 0, 0, 1, 1, 2, 2, 2, 2, 2, 1, 1, 0, 0], 5),
+        "round": ([0, 0, 0, 0, 2, 3, 4, 4, 4, 4, 4, 3, 3, 2, 1, 0], 4),
+        "frill": ([0, 0, 0, 0, 2, 3, 3, 4, 4, 4, 4, 3, 3, 2, 1, 0], 4),
+        "lantern": ([0, 0, 0, 1, 1, 2, 2, 3, 3, 3, 4, 4, 4, 3, 2, 0], 3),
+        "rattail": ([0, 1, 1, 1, 1, 1, 1, 1, 2, 2, 3, 3, 3, 3, 2, 1], 0),
+        "eel": ([0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 1, 0], 0),
+        "snail": ([0, 0, 0, 1, 1, 2, 2, 3, 3, 3, 3, 3, 3, 3, 2, 0], 3),
+        "lobed": ([0, 0, 1, 1, 2, 2, 3, 3, 3, 3, 3, 3, 3, 2, 1, 0], 2),
+        "king": ([0, 0, 1, 2, 3, 3, 4, 4, 5, 5, 5, 5, 4, 4, 3, 1], 2),
+    }
+    cy = 8
+    if style == "isopod":
+        for x in range(2, 14):
+            hh = 4 if 4 <= x <= 11 else 3
+            for y in range(cy - hh, cy + hh + 1):
+                band = (x % 2 == 0)
+                put(x, y, _c(body, -18) if band else body)
+            put(x, cy - hh - 1, _c(body, -60)); put(x, cy + hh + 1, _c(body, -60))
+        for y in range(cy - 3, cy + 4): put(14, y, _c(body, -60)); put(1, y, _c(body, -60))
+        for x in (4, 7, 10): put(x, cy + 6, fin); put(x + 1, cy + 6, fin)
+        put(13, cy - 2, (20, 20, 25)); put(13, cy + 2, (20, 20, 25))
+        put(15, cy - 3, fin); put(15, cy + 3, fin)
+    else:
+        prof, tail = shapes[style]
+        for x, hh in enumerate(prof):
+            if hh == 0: continue
+            for y in range(cy - hh, cy + hh + 1):
+                put(x, y, belly if y > cy else body)
+            put(x, cy - hh - 1, _c(body, -70)); put(x, cy + hh + 1, _c(body, -70))
+        # the tail
+        if style not in ("eel", "rattail"):
+            for k in range(3):
+                put(tail - k, cy - 1 - k, fin); put(tail - k, cy + 1 + k, fin); put(tail - k, cy, fin)
+                put(tail - k, cy - 2 - k, _c(fin, -60)); put(tail - k, cy + 2 + k, _c(fin, -60))
+        else:
+            put(0, cy, fin)
+        # fins
+        top = min(y for (x, y) in px if 6 <= x <= 9)
+        for x in range(6, 10 if style != "frill" else 12): put(x, top - 1, fin)
+        if style in ("frill", "round"):
+            for x in range(6, 11): put(x, top - 2, fin if x % 2 else _c(fin, 30)); put(x, cy + 6, fin)
+        if style == "lobed":
+            put(7, cy + 4, fin); put(7, cy + 5, fin); put(9, cy + 4, fin); put(9, cy + 5, fin)
+        # the eye
+        if style == "king":
+            put(13, cy - 1, _c(body, -30))  # eyeless: a scar
+            for x in range(9, 14): put(x, cy - 5, accent)  # a crown of old hooks
+            put(10, cy - 6, accent); put(12, cy - 6, accent)
+        elif style == "snail":
+            put(13, cy - 1, (30, 30, 35))
+        else:
+            put(13 if style != "rattail" else 14, cy - 1, (15, 15, 20))
+            if style in ("round", "lantern"): put(12, cy - 1, (240, 240, 245))
+        if style == "lantern":
+            put(15, cy - 4, accent); put(14, cy - 4, _c(body, -40)); put(15, cy - 3, _c(body, -40))
+        if style == "slim" and accent:
+            for x in range(4, 13, 2): put(x, cy - 1, accent)
+        if style == "eel" and accent:
+            put(9, cy, accent)  # its heart
+        if style == "fish" and accent:
+            for x in range(5, 12, 3): put(x, cy, accent)
+        if style == "frill" and accent:
+            put(10, cy, accent); put(8, cy + 1, accent)
+        if style == "lobed" and accent:
+            for x in range(5, 12, 2): put(x, cy - 2 + (x % 3), accent)
+    for (x, y), c in px.items(): im.putpixel((x, y), tuple(int(max(0, min(255, v))) for v in c[:3]) + (255,))
+    return im
+
+
 def main():
     pack, bout = sys.argv[1], sys.argv[2]
     prev = sys.argv[sys.argv.index("--preview") + 1] if "--preview" in sys.argv else None
@@ -3282,8 +3379,17 @@ def main():
         icons[k] = im
         mappings["minecraft:paper"].append({"type": "definition", "model": f"{NS}:deep/{k}_icon", "bedrock_identifier": f"faultline:deep_{k}_egg",
             "display_name": k + " egg", "bedrock_options": {"icon": bed_icon("deep_" + k, im), "allow_offhand": True}, "components": {"minecraft:max_stack_size": 64}})
+    # 1.10.0: the Dark Ocean's fish (Fishing.hadalItem: faultline:fish/<id> on cod / salmon / tropical fish)
+    fish_icons = {}
+    for k, (base, style, body, belly, fin, acc) in FISH.items():
+        im = fish_icon(style, body, belly, fin, acc)
+        W.flat_item(A, k, im, folder="fish")
+        fish_icons["fish_" + k] = im
+        mappings.setdefault("minecraft:" + base, []).append({"type": "definition", "model": f"{NS}:fish/{k}", "bedrock_identifier": f"faultline:fish_{k}",
+            "display_name": k, "bedrock_options": {"icon": bed_icon("fish_" + k, im), "allow_offhand": True}, "components": {"minecraft:max_stack_size": 64}})
     # Index icons
     index = {"deep_" + k: v for k, v in icons.items()}
+    index.update(fish_icons)
     index["dark_loot_bag"] = bag
     index.update(outer_items)
     for k, im in index.items(): im.save(os.path.join(A, "textures/index", k + ".png"))

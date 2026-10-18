@@ -328,7 +328,7 @@ wardrobe:
 item-textures:
   enabled: true
   url: "https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/main/FaultlineSMP.zip"
-  hash: "b57bf23916ee1279e391041309d911234fd58578"
+  hash: "4a178ebef37ae310b3c424fe405d8cb7a459b6a0"
   # The Dark Ocean's music, a second pack sent beside the main one (empty url = not sent)
   music-url: "https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/main/FaultlineDeepMusic.zip"
   music-hash: "e9e6ed1623ab28d2d2af74286259157caf2dc299"
@@ -668,8 +668,9 @@ fishing:
   tag-fish-in-tournament: true   # tournament fish show their weight (they won't stack)
   announce-first-records: false  # the very first fish of a species is a "record" too: announce it?
   hadal:                      # the Dark Ocean's own fish (FaultlineDeep says which waters the hook is in)
-    enabled: false            # off until their models are in the pack (the next update turns it on)
+    enabled: true             # the Dark Ocean's own fish (1.2.62: their models are in the pack)
     chance: 0.7               # a fish caught there is one of its own species (always over the Trench)
+    blind-king-chance: 0.005  # the Trench's legend: 1 Trench catch in 200
   rewards:
     first: ["givemythicbag 2 {player}"]
     second: ["givemythicbag 1 {player}"]

@@ -270,6 +270,30 @@ def coralia(built, bp=0.0, roll=0.0, tail=0.0, fluke=0.0, hair=20.0, hy=0.0, hp=
     return sc
 
 
+def titan(built, lean=0.0, hy=0.0, hp=0.0, jaw=6.0, lY=-32, lP=38, rY=32, rP=38):
+    """Mirrors DeepBosses.Titan.pose(): torso from the waist, head/eyes/lures on the neck, jaw on its hinge, arms from
+    the shoulders, claws at the elbows (22 degrees lower)."""
+    sc = Scene(built)
+    k, yaw = 3.6, 0.0
+    waist = np.array([0, 0.0, 0])
+    F = frame(yaw, lean)
+    def J(o, M, p): return np.asarray(o, float) + M @ (np.array(p, float) * k)
+    sc.pose("titan_body", k, waist, yaw, lean)
+    neck = J(waist, F, (0.2, 2.45, 0))
+    H = frame(yaw + hy, hp + lean)
+    sc.pose("titan_head", k, neck, yaw + hy, hp + lean)
+    sc.pose("titan_eyes", k, neck, yaw + hy, hp + lean)
+    sc.pose("titan_jaw", k, J(neck, H, (0.15, -0.3, 0)), yaw + hy, hp + lean, 0, Rz(math.radians(-jaw)))
+    for i, l in enumerate(((0.9, 0.95, 0.0), (0.45, 0.95, -0.45), (0.45, 0.95, 0.45))):
+        sc.pose("titan_lure", k, J(neck, H, l), yaw + hy, hp + lean - 8 * math.sin(i * 2))
+    for s, ay, ap in ((-1, lY, lP), (1, rY, rP)):
+        sh = J(waist, F, (0.15, 2.05, s * 1.45))
+        sc.pose("titan_arm", k, sh, yaw + ay, ap)
+        el = sh + frame(yaw + ay, ap) @ np.array([2.1 * k, 0, 0])
+        sc.pose("titan_claw", k, el, yaw + ay, ap - 22)
+    return sc
+
+
 SCENES = {
     "coralia": lambda b: [coralia(b).render(az=-60, el=10, title="Coralia (front)", span=14),
                           coralia(b).render(az=120, el=10, title="back", span=14),
@@ -300,6 +324,12 @@ SCENES = {
                         golem(b, -8, -8, 10, 10, 0, 0, 20, 0.45, hp=18).render(az=-50, el=12, title="pound: SLAM", span=11),
                         golem(b, 20, 175, 6, 12, 0, 0, -14, 0.05).render(az=-50, el=12, title="boulder: heave", span=11),
                         golem(b, 30, 30, 14, 14, 38, -28, 18, 0.75, hp=22).render(az=-50, el=12, title="overgrowth: kneel", span=11)],
+    "titan": lambda b: [titan(b).render(az=-60, el=12, title="the Abyssal Titan (front)", span=26),
+                        titan(b).render(az=150, el=12, title="back", span=26),
+                        titan(b).render(az=-90, el=5, title="side", span=26),
+                        titan(b, lean=10, hp=20, jaw=40, lY=-60, lP=-20, rY=60, rP=-20).render(az=-50, el=12, title="slam: wind-up, roaring", span=26),
+                        titan(b, jaw=30, lY=-50, lP=70, rY=50, rP=70).render(az=-50, el=12, title="stunned", span=26),
+                        titan(b, hp=-30, jaw=55).render(az=-70, el=-10, title="devour (from below)", span=26)],
     "frostwyrm": lambda b: [wyrm(b, 35).render(title="flight, wings up"), wyrm(b, -30).render(title="flight, wings down"),
                             wyrm(b, 0, breath=True).render(az=90, el=10, title="frost breath (side)"),
                             wyrm(b, 62, landed=True).render(az=-30, el=15, title="landed, roaring")],

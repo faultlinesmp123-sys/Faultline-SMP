@@ -1935,45 +1935,119 @@ TI_LURES = ((0.9, 0.95, 0.0), (0.45, 0.95, -0.45), (0.45, 0.95, 0.45))
 def _titan_body(p):
     hide = glow_lines(TI_HIDE, (60, 140, 160), 7, 0.004)
     plate = grad(TI_PLATE, TI_HIDE, 6, (90, 100, 140), 0.03)
+    dark_plate = grad((40, 44, 66), TI_DARK, 5, (70, 80, 110), 0.02)
+    bone = bone_curve(TI_BONE, (80, 76, 70))
     rounded(p, -1.0, -1.6, -1.35, 0.9, 2.5, 1.35, hide, 0.42)                 # the colossal torso, its base sunk in the floor
-    for i in range(6):                                                          # armour plates down the chest
+    # the chest: overlapping plates in two columns, a glowing seam between them, a rift showing the heart
+    for i in range(6):
         y = -0.9 + i * 0.55
-        p.add(0.78, y, -1.0 + i * 0.05, 1.0, y + 0.45, 1.0 - i * 0.05, plate)
-    p.add(0.85, -1.4, -0.85, 0.95, 2.2, 0.85, solid(TI_BELLY, 4))
-    for s in (-1, 1):                                                           # ribs showing through the hide
-        for i in range(5):
+        for s in (-1, 1):
+            a, b = sorted((s * 0.08, s * (1.02 - i * 0.05)))
+            p.add(0.78 + (i % 2) * 0.03, y, a, 1.02 + (i % 2) * 0.03, y + 0.47, b, plate)
+            a, b = sorted((s * (0.98 - i * 0.05), s * (1.12 - i * 0.05)))
+            p.add(0.7, y + 0.05, a, 0.94, y + 0.4, b, dark_plate)                # the plate's rim
+    p.add(0.9, -1.0, -0.07, 1.06, 2.15, 0.07, glow(TI_CYAN))                    # the seam
+    p.add(0.95, 0.3, -0.32, 1.1, 1.3, 0.32, solid((20, 4, 12), 3))              # the rift
+    p.add(1.0, 0.45, -0.22, 1.14, 1.15, 0.22, glow((255, 70, 110)))             # the heart beating inside it
+    p.add(1.02, 0.6, -0.12, 1.17, 1.0, 0.12, glow((255, 190, 200)))
+    p.add(0.85, -1.4, -0.85, 0.95, -0.95, 0.85, solid(TI_BELLY, 4))
+    for s in (-1, 1):
+        for i in range(5):                                                      # ribs showing through the hide
             y = -0.6 + i * 0.5
-            a, b = sorted((s * 1.3, s * 1.42))
-            p.add(-0.7, y, a, 0.7, y + 0.16, b, bone_curve(TI_BONE, (80, 76, 70)))
-        a, b = sorted((s * 1.0, s * 1.75))
-        p.add(-0.55, 1.8, a, 0.75, 2.45, b, plate)                               # the shoulder mounts
-    for i in range(7):                                                          # spines down the back
+            a, b = sorted((s * 1.3, s * 1.44))
+            p.add(-0.7, y, a, 0.7, y + 0.16, b, bone)
+            a, b = sorted((s * 1.33, s * 1.36))
+            p.add(-0.6, y + 0.17, a, 0.6, y + 0.21, b, glow((60, 150, 160)))     # glowing flesh between them
+        # PAULDRONS: three stacked shells over each shoulder with spikes
+        for k in range(3):
+            a, b = sorted((s * (0.95 + k * 0.12), s * (1.8 + k * 0.08)))
+            p.add(-0.65 + k * 0.08, 1.75 + k * 0.28, a, 0.85 - k * 0.05, 2.1 + k * 0.28, b, plate if k != 1 else dark_plate)
+        for k in range(3):
+            x = -0.4 + k * 0.4
+            tube(p, [(x, 2.55, s * 1.45), (x - 0.1, 2.95, s * 1.6), (x - 0.25, 3.25, s * 1.75)], 0.11, 0.03, bone)
+        # gill slits glowing on the flanks
+        for i in range(4):
+            a, b = sorted((s * 1.34, s * 1.37))
+            p.add(0.1, 0.9 + i * 0.22, a, 0.55, 0.98 + i * 0.22, b, glow(TI_CYAN))
+        # barnacle crust and old coral on the lower torso
+        for (x, y, z) in ((0.4, -1.2, 1.2), (-0.3, -1.0, 1.25), (0.1, -1.45, 1.3), (-0.6, -1.3, 1.1), (0.6, -0.5, 1.28)):
+            p.add(x - 0.1, y - 0.1, s * z - 0.1, x + 0.1, y + 0.12, s * z + 0.1, solid((150, 150, 140), 3))
+            p.add(x - 0.04, y + 0.1, s * z - 0.04, x + 0.04, y + 0.14, s * z + 0.04, solid((40, 40, 40), 2))
+        for (x, y) in ((-0.2, -1.55), (0.5, -1.5)):
+            a, b = sorted((s * 1.2, s * 1.5))
+            p.add(x - 0.15, y, a, x + 0.15, y + 0.5, b, solid((120, 60, 140), 4))     # dead coral growing on it
+        # broken chains hanging from the shoulders: something tried to bind it here
+        for k in range(5):
+            y = 1.6 - k * 0.35
+            p.add(0.2 - 0.06, y - 0.15, s * 1.5 - 0.06 + (k % 2) * 0.03, 0.2 + 0.06, y + 0.15, s * 1.5 + 0.06, solid((70, 72, 78), 3))
+    for i in range(7):                                                          # spines down the back, curving up
         y = -0.8 + i * 0.5
-        p.add(-1.25 - (i % 2) * 0.15, y, -0.08, -0.95, y + 0.3, 0.08, bone_curve(TI_BONE, (70, 66, 60)))
-    for (x, y, z) in ((0.5, 1.6, 0.9), (0.3, 0.6, -1.1), (-0.3, 1.2, 1.25), (0.6, -0.2, -0.95), (-0.6, 2.0, -0.9), (0.2, -1.0, 1.1)):
+        h = 0.5 + (3 - abs(i - 3)) * 0.12
+        tube(p, [(-1.0, y, 0), (-1.3, y + h * 0.4, 0), (-1.45 - h * 0.3, y + h, 0)], 0.12, 0.03, bone)
+        for s in (-1, 1):
+            a, b = sorted((s * 0.25, s * 0.55))
+            p.add(-1.15, y + 0.05, a, -0.95, y + 0.25, b, dark_plate)               # small back plates
+    for (x, y, z) in ((0.5, 1.6, 0.9), (0.3, 0.6, -1.1), (-0.3, 1.2, 1.25), (0.6, -0.2, -0.95), (-0.6, 2.0, -0.9), (0.2, -1.0, 1.1),
+                      (-0.8, 0.3, 0.7), (-0.8, 1.4, -0.6), (0.0, -0.4, -1.3), (-0.4, -1.2, 0.9)):
         p.add(x - 0.06, y - 0.06, z - 0.06, x + 0.06, y + 0.06, z + 0.06, glow(TI_CYAN))   # bioluminescent spots
+    # roots / tendrils spreading into the Maw's floor round its base
+    for k in range(8):
+        a = k * math.pi / 4 + 0.3
+        ox, oz = math.cos(a), math.sin(a)
+        tube(p, [(ox * 0.9, -1.4, oz * 1.2), (ox * 1.5, -1.6, oz * 1.7), (ox * 2.1, -1.65, oz * 2.2), (ox * 2.6, -1.62, oz * 2.5)],
+             0.2, 0.05, hide)
     rounded(p, -0.6, 2.2, -0.6, 0.6, 2.7, 0.6, hide, 0.2)                     # the neck
+    for i in range(3):                                                          # its ridged front
+        p.add(0.5, 2.25 + i * 0.15, -0.45, 0.66, 2.33 + i * 0.15, 0.45, plate)
 
 
 def _titan_head(p, eyes_glow):
     hide = glow_lines(TI_HIDE, (60, 140, 160), 6, 0.0)
+    plate = grad(TI_PLATE, TI_HIDE, 6, (90, 100, 140), 0.03)
+    bone = bone_curve(TI_BONE, (60, 56, 50))
     rounded(p, -0.4, -0.3, -0.8, 1.2, 0.85, 0.8, hide, 0.3)                    # the skull
     p.add(0.9, 0.0, -0.7, 1.75, 0.55, 0.7, hide)                               # the snout
     p.add(1.7, 0.05, -0.55, 1.95, 0.45, 0.55, solid(TI_DARK, 4))
-    for z in (-0.6, -0.4, -0.2, 0.0, 0.2, 0.4, 0.6):                           # the upper fangs
-        p.add(1.5 + abs(z) * -0.3, -0.35, z - 0.05, 1.62 + abs(z) * -0.3, 0.02, z + 0.05, teeth)
+    p.add(0.4, 0.72, -0.85, 1.35, 0.86, 0.85, plate)                           # the heavy brow ridge
+    p.add(1.1, 0.5, -0.72, 1.8, 0.62, 0.72, plate)                             # plates down the snout
+    for i in range(4):
+        p.add(0.2 - i * 0.18, 0.86, -0.5 + i * 0.05, 0.38 - i * 0.18, 0.98 + i * 0.03, 0.5 - i * 0.05, plate)   # crest plates going back
+    for s in (-1, 1):
+        a, b = sorted((s * 0.15, s * 0.3))
+        p.add(1.75, 0.32, a, 1.96, 0.42, b, solid((10, 10, 16), 2))                # nostrils
+    for i, z in enumerate((-0.6, -0.42, -0.24, -0.06, 0.12, 0.3, 0.48, 0.64)):   # the upper fangs, uneven
+        ln = 0.42 if i in (0, 7) else 0.3 + (i % 3) * 0.06
+        p.add(1.5 + abs(z) * -0.3, 0.02 - ln, z - 0.05, 1.62 + abs(z) * -0.3, 0.02, z + 0.05, teeth)
     p.add(0.95, -0.1, -0.68, 1.75, 0.02, 0.68, solid((60, 10, 24), 3))           # the gums
-    for s in (-1, 1):                                                           # horns sweeping back
-        tube(p, [(-0.1, 0.7, s * 0.55), (-0.5, 1.1, s * 0.85), (-1.1, 1.3, s * 1.05), (-1.6, 1.15, s * 1.1)], 0.16, 0.04, bone_curve(TI_BONE, (60, 56, 50)))
+    for s in (-1, 1):
+        # horns: a big pair sweeping back, a smaller pair below
+        tube(p, [(-0.1, 0.7, s * 0.55), (-0.5, 1.1, s * 0.85), (-1.1, 1.3, s * 1.05), (-1.6, 1.15, s * 1.1), (-1.85, 0.9, s * 1.05)], 0.17, 0.03, bone)
+        tube(p, [(0.0, 0.2, s * 0.75), (-0.4, 0.15, s * 1.05), (-0.8, 0.3, s * 1.25)], 0.1, 0.03, bone)
+        # cheek frills: three fanned spines with webbing
+        for k in range(3):
+            y = -0.2 + k * 0.25
+            tube(p, [(-0.2, y, s * 0.8), (-0.6, y + 0.05, s * (1.1 + k * 0.08)), (-0.9, y + 0.1, s * (1.25 + k * 0.1))], 0.06, 0.02, bone)
+        a, b = sorted((s * 0.8, s * 1.15))
+        p.add(-0.7, -0.2, a, -0.2, 0.45, b, glow_lines((40, 60, 80), (80, 170, 190), 3, 0.0))
+        # three eyes a side, sunk in dark sockets ringed with glow
         a, b = sorted((s * 0.79, s * 0.83))
-        for i, (x, y) in enumerate(((1.15, 0.45), (0.85, 0.55), (0.55, 0.62))):  # three eyes a side
+        a2, b2 = sorted((s * 0.77, s * 0.8))
+        for i, (x, y) in enumerate(((1.15, 0.45), (0.85, 0.55), (0.55, 0.62))):
+            p.add(x - 0.13, y - 0.1, a2, x + 0.13, y + 0.1, b2, solid(TI_DARK, 2))
             p.add(x - 0.1, y - 0.07, a, x + 0.1, y + 0.07, b, glow(TI_CYAN) if eyes_glow else solid(TI_DARK, 2))
+        # glowing gill slits behind the jaw
+        for i in range(3):
+            a, b = sorted((s * 0.78, s * 0.82))
+            p.add(-0.3 + i * 0.15, -0.25, a, -0.24 + i * 0.15, 0.15, b, glow(TI_CYAN))
+    # barnacles on the skull
+    for (x, y, z) in ((0.1, 0.84, 0.3), (-0.2, 0.7, -0.6), (0.6, 0.85, -0.4)):
+        p.add(x - 0.07, y, z - 0.07, x + 0.07, y + 0.1, z + 0.07, solid((150, 150, 140), 3))
 
 
 def titan():
     """The Abyssal Titan: a colossal torso rising out of the Maw's floor (its origin = the waist), a head on its neck joint
     TI_NECK, a lower jaw on the hinge TI_HINGE (in the head's frame), two arms from the shoulders TI_SHOULDER (each
-    `titan_arm` reaches +x TI_ELBOW, then `titan_claw` with three talons), and three lures on its brow (`titan_lure`,
+    `titan_arm` reaches +x TI_ELBOW, then `titan_claw` with four talons), and three lures on its brow (`titan_lure`,
     glowing). The head's eyes are their own part (`titan_eyes`, drawn fully lit) so it stays a dark shape with burning
     eyes. Java gets the jointed parts; Bedrock (stands can't pitch) one `titan_b` with the jaw, arms and lures as bones."""
     hide = glow_lines(TI_HIDE, (60, 140, 160), 6, 0.0)
@@ -1985,20 +2059,45 @@ def titan():
     for s in (-1, 1):
         a, b = sorted((s * 0.81, s * 0.86))
         for (x, y) in ((1.15, 0.45), (0.85, 0.55), (0.55, 0.62)): eyes.add(x - 0.1, y - 0.07, a, x + 0.1, y + 0.07, b, glow(TI_CYAN))
+    plate = grad(TI_PLATE, TI_HIDE, 6, (90, 100, 140), 0.03)
+    bone = bone_curve(TI_BONE, (60, 56, 50))
     jaw = Part("titan_jaw", 10, 256, java_only=True)
     jaw.add(0.0, -0.45, -0.7, 1.75, -0.05, 0.7, hide)
+    jaw.add(0.2, -0.55, -0.55, 1.6, -0.42, 0.55, plate)                        # the chin plate
     jaw.add(0.1, -0.08, -0.6, 1.7, 0.0, 0.6, solid((60, 10, 24), 3))
-    for z in (-0.55, -0.35, -0.15, 0.05, 0.25, 0.45): jaw.add(1.45 - abs(z) * 0.3, -0.05, z - 0.05, 1.57 - abs(z) * 0.3, 0.32, z + 0.05, teeth)
+    jaw.add(0.3, -0.02, -0.25, 1.3, 0.06, 0.25, solid((140, 40, 70), 3))        # the tongue
+    for i, z in enumerate((-0.55, -0.37, -0.19, 0.0, 0.19, 0.37, 0.55)):
+        ln = 0.42 if i in (1, 5) else 0.3                                        # two tusks among the lower teeth
+        jaw.add(1.45 - abs(z) * 0.3, -0.05, z - 0.05, 1.57 - abs(z) * 0.3, -0.05 + ln, z + 0.05, teeth)
+    for s in (-1, 1):                                                           # mandible spikes
+        for k in range(3):
+            x = 0.3 + k * 0.45
+            tube(jaw, [(x, -0.5, s * 0.6), (x - 0.1, -0.75, s * 0.75), (x - 0.25, -0.9, s * 0.8)], 0.07, 0.02, bone)
     arm = Part("titan_arm", 10, 256, java_only=True)
     rounded(arm, -0.2, -0.38, -0.38, TI_ELBOW + 0.2, 0.38, 0.38, hide, 0.15)
-    for x in (0.4, 1.0, 1.6): arm.add(x, 0.3, -0.3, x + 0.4, 0.46, 0.3, grad(TI_PLATE, TI_HIDE, 4))
+    for x in (0.2, 0.75, 1.3, 1.8):                                             # armour bands, overlapping
+        arm.add(x, 0.28, -0.36, x + 0.48, 0.46, 0.36, plate)
+        arm.add(x + 0.05, -0.42, -0.3, x + 0.4, -0.3, 0.3, grad((40, 44, 66), TI_DARK, 4))
+    for x in (0.5, 1.1, 1.7): arm.add(x, -0.05, -0.41, x + 0.08, 0.05, 0.41, glow(TI_CYAN))   # glowing joints in the hide
+    tube(arm, [(TI_ELBOW - 0.1, 0.3, 0), (TI_ELBOW - 0.4, 0.75, 0), (TI_ELBOW - 0.8, 1.0, 0)], 0.13, 0.03, bone)   # the elbow spike
+    for k in range(3): tube(arm, [(0.4 + k * 0.6, 0.45, 0), (0.25 + k * 0.6, 0.7, 0)], 0.07, 0.02, bone)            # little spines
+    arm.add(TI_ELBOW - 0.3, -0.45, -0.45, TI_ELBOW + 0.1, 0.45, 0.45, solid((70, 72, 78), 3))   # an iron shackle at the wrist
+    for k in range(3): arm.add(TI_ELBOW - 0.18, -0.55 - k * 0.3, -0.07, TI_ELBOW - 0.02, -0.3 - k * 0.3, 0.07, solid((60, 62, 68), 3))  # its broken chain
     claw = Part("titan_claw", 10, 256, java_only=True)
     rounded(claw, -0.1, -0.32, -0.34, 1.5, 0.32, 0.34, hide, 0.12)
-    for (y, z) in ((0.1, -0.22), (0.1, 0.22), (-0.15, 0.0)):                  # three talons
-        tube(claw, [(1.4, y, z), (1.9, y + 0.1, z * 1.2), (2.3, y - 0.05, z * 1.3), (2.55, y - 0.35, z * 1.3)], 0.14, 0.03, bone_curve(TI_BONE, (40, 36, 34)))
+    claw.add(0.3, 0.26, -0.3, 1.4, 0.4, 0.3, plate)                            # the back of the hand
+    claw.add(0.4, -0.36, -0.22, 1.3, -0.28, 0.22, glow((90, 200, 210)))        # a glowing palm
+    for (y, z) in ((0.12, -0.26), (0.12, 0.0), (0.12, 0.26), (-0.18, 0.0)):    # four talons, knuckle plates on each
+        claw.add(1.3, y - 0.1, z - 0.11, 1.55, y + 0.13, z + 0.11, plate)
+        tube(claw, [(1.4, y, z), (1.9, y + 0.1, z * 1.2), (2.3, y - 0.05, z * 1.3), (2.55, y - 0.35, z * 1.3), (2.62, y - 0.55, z * 1.3)],
+             0.14, 0.02, bone_curve(TI_BONE, (40, 36, 34)))
     lure = Part("titan_lure", 10, 128, java_only=True)
     tube(lure, [(0, 0, 0), (0.3, 0.7, 0), (0.8, 1.1, 0), (1.3, 1.0, 0)], 0.07, 0.04, glow((40, 120, 130)))
+    for k in range(4): lure.add(0.15 + k * 0.28, 0.4 + k * 0.17 - (0.1 if k == 3 else 0), -0.09, 0.22 + k * 0.28, 0.48 + k * 0.17, 0.09, glow(TI_CYAN))  # rings up the stalk
     lure.add(1.2, 0.75, -0.18, 1.55, 1.1, 0.18, glow(TI_VIOLET))
+    lure.add(1.15, 0.82, -0.12, 1.6, 1.03, 0.12, glow((235, 200, 255)))        # its bright core
+    for (y, z) in ((0.7, -0.1), (0.7, 0.1), (0.68, 0.0)):                      # little feelers dangling under the bulb
+        lure.add(1.33, y - 0.25, z - 0.02, 1.37, y, z + 0.02, glow((150, 90, 220)))
     # Bedrock: one model, the jaw / arms / lures as animated bones
     b = Part("titan_b", 10, 1024, bedrock_only=True)
     _titan_body(b)

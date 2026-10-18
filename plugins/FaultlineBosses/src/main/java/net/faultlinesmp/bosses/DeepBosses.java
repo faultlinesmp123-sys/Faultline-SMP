@@ -2884,6 +2884,8 @@ final class DeepBosses {
         final org.bukkit.entity.Slime[] lureBox = new org.bukkit.entity.Slime[3];
         final double[] lureDmg = new double[3];
         final boolean[] lureBroken = new boolean[3];
+        final Location[] lureAt = new Location[3];
+        static final double BULB_X = 1.375, BULB_Y = 0.925, LURE_BOX = 1.56; // a size 3 slime
         final Location base;
         Location mark, neck, mouth, eyesAt;
         float headYaw, headPitch, beamPitch;
@@ -3001,8 +3003,11 @@ final class DeepBosses {
             for (int i = 0; i < 3; i++) {
                 if (lureBroken[i]) continue;
                 Location lb = Lich.joint(neck, hq, LURES[i], k);
-                lures[i].pose(lb, headYaw, hp2 - (float) (Math.sin(ticks * 0.08 + i * 2) * 8), 0, null);
-                if (lureBox[i] != null && lureBox[i].isValid()) lureBox[i].teleport(Lich.joint(neck, hq, LURES[i][0] + 1.3, LURES[i][1] + 0.6, LURES[i][2], k));
+                float lp = hp2 - (float) (Math.sin(ticks * 0.08 + i * 2) * 8);
+                lures[i].pose(lb, headYaw, lp, 0, null);
+                // the hitbox sits round the bulb (tools/wild_assets.py: x 1.2..1.55, y 0.75..1.1 from the lure's base), swaying with it
+                lureAt[i] = Lich.joint(lb, Lich.frame(headYaw, lp, 0), BULB_X, BULB_Y, 0, k);
+                if (lureBox[i] != null && lureBox[i].isValid()) lureBox[i].teleport(lureAt[i].clone().add(0, -LURE_BOX / 2, 0));
             }
             for (int s = -1; s <= 1; s += 2) {
                 Location sh = Lich.joint(waist, bq, SH_X, SH_Y, s * SH_Z, k);
@@ -3022,6 +3027,8 @@ final class DeepBosses {
         @Override
         void onPhase(int p) {
             if (p == 2) regrowLures();
+            // one big hit can skip phase 2 (startPhase jumps straight to 3): the lures must still grow
+            if (p == 3 && stun == 0 && !lureBroken[0] && !lureBroken[1] && !lureBroken[2] && lureBox[0] == null) regrowLures();
             if (p == 3) for (Player pl2 : active()) pl2.playSound(pl2.getLocation(), Sound.ENTITY_WARDEN_ROAR, SoundCategory.HOSTILE, 3f, 0.4f);
         }
 
@@ -3029,7 +3036,7 @@ final class DeepBosses {
             for (int i = 0; i < 3; i++) {
                 lureBroken[i] = false; lureDmg[i] = 0;
                 lures[i].hide(false);
-                if (lureBox[i] == null || !lureBox[i].isValid()) lureBox[i] = hitbox(pos.clone(), 2, ChatColor.LIGHT_PURPLE + "Titan's Lure");
+                if (lureBox[i] == null || !lureBox[i].isValid()) lureBox[i] = hitbox(lureAt[i] != null ? lureAt[i].clone().add(0, -LURE_BOX / 2, 0) : pos.clone(), 3, ChatColor.LIGHT_PURPLE + "Titan's Lure");
             }
             if (phase >= 2 && stun == 0) say(ChatColor.LIGHT_PURPLE + "Its three lures burn again. " + ChatColor.GRAY + "Break them all and it reels.");
         }
@@ -3210,8 +3217,8 @@ final class DeepBosses {
         void lure(List<Player> a) {
             if (at < 50) {
                 if (at > 30) wantJaw = 38;
-                if (at % 2 == 0) for (int i = 0; i < 3; i++) if (!lureBroken[i] && lureBox[i] != null)
-                    world.spawnParticle(Particle.END_ROD, lureBox[i].getLocation(), 2, 0.3, 0.3, 0.3, 0.01);
+                if (at % 2 == 0) for (int i = 0; i < 3; i++) if (!lureBroken[i] && lureAt[i] != null)
+                    world.spawnParticle(Particle.END_ROD, lureAt[i], 2, 0.3, 0.3, 0.3, 0.01);
                 if (at % 2 == 0 && neck != null) world.spawnParticle(Particle.DUST, neck.clone().add(0, 1.5 * k, 0), 6, 1.2, 0.6, 1.2, 0, new Particle.DustOptions(Color.fromRGB(190, 110, 255), 2.2f));
                 for (Player p : a) {
                     Vector toHead = neck.toVector().subtract(p.getEyeLocation().toVector());

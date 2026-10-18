@@ -1434,6 +1434,16 @@ Notes:
   time. Now it loops over a copy (skipping any removed meanwhile). Load-tested every plugin in MockBukkit with 12 moving
   players (scratch `ProfX` in each harness; Deep: `ftest` `ProfDeep`, 8 players / 60 creatures): all under ~1.5 ms/tick.
   Dark Ocean chunk generation 6-18 ms/chunk (scratch `dtest` `GenTime`). For real lag, ask for a spark profile first.
+- **The Titan detail pass (Bosses 1.8.1, Items 1.2.63 = pack hash, Ships 1.6.10 = WildParts)**: the Abyssal Titan's model
+  (`tools/wild_assets.py` `_titan_body`, `_titan_head`, `titan()`; joints `TI_*` unchanged) has overlapping chest plates
+  round a glowing seam, a rift with a red heart, ribs with glowing flesh between them, 3-layer spiked pauldrons, gills,
+  barnacles, dead coral, broken chains, back spines, 8 root tendrils into the floor; the head a brow ridge, snout and crest
+  plates, nostrils, uneven fangs, two pairs of horns, glowing cheek frills; the jaw a tongue and tusks; arms banded with a
+  shackle and elbow spike; claws with FOUR talons and a glowing palm; lures ringed with feelers. Preview:
+  `python3 tools/wild_rig_preview.py tools/previews titan` (mirrors `Titan.pose`). FIXES: one big hit from phase 1 to 3
+  (`startPhase` jumps) never called `onPhase(2)`, so the lures never grew and the stun was impossible: `onPhase(3)` grows
+  them when they never did. Lure hitboxes (size 3 slimes now, matching the bulb) sit on the swaying bulb (`lureAt`,
+  `BULB_X/Y`), not ~1 block under it; the Lure move's sparks come from the bulbs in phase 1 too. Tested (`TitanTest`).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Skills → Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

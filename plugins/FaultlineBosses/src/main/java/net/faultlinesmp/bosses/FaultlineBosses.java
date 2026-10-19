@@ -7636,7 +7636,9 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 // Now: a deliberate dive is allowed deeper, and the push adds lift instead of overriding its speed.
                 double maxDepth = (attack == 5 && sub == 0) ? 9 : dcfg("max-burrow-depth", 3);
                 double depth = top - hp().getY();
-                if (depth > maxDepth) vel.setY(vel.getY() + Math.min(0.25, 0.06 + (depth - maxDepth) * 0.02));
+                // (1.8.3: only to lift a worm that's too deep, never on top of a burst already going up: it stacked onto
+                // the Ambush eruption and threw it 20 blocks into the air)
+                if (depth > maxDepth && vel.getY() < 0.3) vel.setY(Math.min(0.3, vel.getY() + Math.min(0.25, 0.06 + (depth - maxDepth) * 0.02)));
             }
             if (!inGround && !flying) {
                 vel.setY(vel.getY() - dcfg("gravity", 0.045));

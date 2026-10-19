@@ -7539,7 +7539,8 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             // 1.8.3: in the open air (not burrowing, and no move holding it up) it can't pull itself UP: steering toward
             // anything above it countered gravity, so a target up high (someone on a pillar, a ring set at their height)
             // kept it hovering. In the air it can only bend its arc sideways and down.
-            if (!flying && !solidAt(hp()) && d.getY() > 0) d.setY(0);
+            boolean buried = solidAt(hp()) && hp().getY() < groundY(hp().getX(), hp().getZ(), hp().getY()) + 0.5;
+            if (!flying && !buried && d.getY() > 0) d.setY(0);
             vel.add(d);
         }
 
@@ -7620,7 +7621,9 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         int highFor;
 
         void physics() {
-            boolean inGround = solidAt(hp());
+            // 1.8.3: "in the ground" = in a solid block that's really in the ground, not up inside a 1-wide pillar someone
+            // built (it burst up the column at them with no gravity): above the real ground, gravity works
+            boolean inGround = solidAt(hp()) && hp().getY() < groundY(hp().getX(), hp().getZ(), hp().getY()) + 0.5;
             // 1.8.3 safety net: a worm belongs in the ground. Held up (gravity off) more than 4 blocks over the ground for
             // over 1.5 s = gravity back on, whatever the move wanted
             if (flying && !inGround && hp().getY() > groundY(hp().getX(), hp().getZ(), hp().getY()) + 4) {
@@ -7736,7 +7739,10 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                         // "Sand Spit" almost never spat. It spits a fan at the top of every breach.
                         if (count == 9) fan(hp(), tp, 7, dcfg("spit-spread-degrees", 40), 0.55, dcfg("blast-damage", 6));
                         // (1.8.3: never flies on up to someone standing high: past 6 above the ground, gravity takes it)
-                        if (count >= 14 || hp().getY() > groundY(hp().getX(), hp().getZ(), hp().getY()) + dcfg("breach-max-height", 6)) { flying = false; sub = 2; count = 0; }
+                        if (count >= 14 || hp().getY() > groundY(hp().getX(), hp().getZ(), hp().getY()) + dcfg("breach-max-height", 6)) {
+                            flying = false; sub = 2; count = 0;
+                            vel.setY(Math.min(vel.getY(), 0.4)); // (it was still going up at full speed: another 15 blocks)
+                        }
                     } else if (sub == 2) { // dives back under and lines up again
                         steer(under, dcfg("spit-speed", 0.75), 0.14);
                         if (count >= 25) { sub = 0; count = 0; }
@@ -7882,7 +7888,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                         if (t % 8 == 0) world.playSound(new Location(world, hp().getX(), gy, hp().getZ()), org.bukkit.Sound.ENTITY_WARDEN_DIG, 1.4f, 0.6f);
                         if (t >= dcfg("ambush-warning-ticks", 22)) { // ERUPT
                             flying = false;
-                            vel = new Vector(0, 1.45, 0);
+                            vel = new Vector(0, dcfg("ambush-burst", 1.15), 0); // (1.45 threw it ~20 blocks up)
                             aim = new Vector(hp().getX(), gy, hp().getZ());
                             roar(1.1f);
                             world.spawnParticle(Particle.BLOCK, aim.toLocation(world), 90, 1.5, 0.4, 1.5, 0.15, surface.createBlockData());

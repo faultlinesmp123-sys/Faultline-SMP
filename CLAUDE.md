@@ -1475,6 +1475,21 @@ Notes:
   crosses the surface (`surfaceSpray`, the Devourer's sand spray). Rubble charges and the breach hand their speed to `vel`
   (it comes out of a lunge still moving). Yaw eases 20/tick and holds when moving straight up/down. Tested (`DeepBossTest`:
   leaps out + falls back in, never in rock, never stops, no snaps, still gets round a wall).
+- **The worms stay in the ground (Bosses 1.8.3)**: the Dune Devourer / Frostmaw and the Sandworm King flew up to players
+  who stood high (a pillar, a cliff, the air). Dune (`FaultlineBosses.Dune`): `groundY` is now the LOWEST of the column and 4
+  spots 2 blocks round it (`columnY`), so a 1-wide pillar isn't ground; `physics()` counts "in the ground" only below that
+  (no gravity inside a pillar was a free climb) and its too-deep lift uses it too and never stacks on an upward burst;
+  `steer()` can't pull it UP while it's out in the air (steering at a high target cancelled gravity = hovering); Ground
+  Slam and Tremor tunnel under you and LEAP out with gravity (`leapFromGround`, `slam-leap` 1.0, `tremor-leap` 0.85; they
+  flew up 24 / 9 blocks and hung there); Breath rears up out of the ground (`breathSpot` = ground + 1.5/3, was your height +
+  up to 7); the Sand Spit breach stops at `breach-max-height` 6 over the ground and loses its upward speed; the Ambush erupts
+  from 2 under the surface at `ambush-burst` 1.0; the Sandstorm / Vultures prowl rings and the intro use the ground under you;
+  a safety net turns gravity back on after `max-hover-ticks` 30 held more than 4 over the ground. Sandworm King: `groundAt`
+  searches DOWN from the target (Wild.ground kept a floating target's own height) with the same 5-spot minimum, and
+  `keepLow()` holds the head at most `head-max-above` 1.8 (rearing `rear-max-above` 3.4) x scale over the ground, except the
+  Eruption arc (`erupt-height` 7, was 10) and the Devour burst (`devour-height` 4.5, was 7). Tested (`WormAirTest` in the
+  bosses harness: a player on a 20-tall pillar and 25 up in the air; before: up to 38 blocks up and hanging the whole time;
+  now at most 12.6 and never over 4 up for more than ~2 s).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Skills → Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

@@ -7823,7 +7823,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                     // 1.8.3: it used to FLY up 24 blocks over you (gravity off) and hang there; now it tunnels under you and
                     // LEAPS out of the ground (gravity on: up, an arc, the top), then plunges
                     if (sub == 0) {
-                        if (leapFromGround(tp, dcfg("slam-leap", 1.15))) { sub = 3; t = 0; roar(0.8f); }
+                        if (leapFromGround(tp, dcfg("slam-leap", 1.0))) { sub = 3; t = 0; roar(0.8f); }
                         else if (t > 70) next();
                     } else if (sub == 3) { // in the air: just gravity, until the top of the arc
                         if (vel.getY() <= 0 || t > 40) { sub = 1; t = 0; }

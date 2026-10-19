@@ -7890,7 +7890,8 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                         if (t % 8 == 0) world.playSound(new Location(world, hp().getX(), gy, hp().getZ()), org.bukkit.Sound.ENTITY_WARDEN_DIG, 1.4f, 0.6f);
                         if (t >= dcfg("ambush-warning-ticks", 22)) { // ERUPT
                             flying = false;
-                            vel = new Vector(0, dcfg("ambush-burst", 1.15), 0); // (1.45 threw it ~20 blocks up)
+                            hp().setY(gy - 2); // (it rose 6 blocks through the ground at full speed first: ~16 blocks up in all)
+                            vel = new Vector(0, dcfg("ambush-burst", 1.0), 0); // (1.45 threw it ~20 blocks up)
                             aim = new Vector(hp().getX(), gy, hp().getZ());
                             roar(1.1f);
                             world.spawnParticle(Particle.BLOCK, aim.toLocation(world), 90, 1.5, 0.4, 1.5, 0.15, surface.createBlockData());

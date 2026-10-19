@@ -111,7 +111,13 @@ final class Sandworm extends Wild.Boss {
      * balloon) the worm's "ground" was in the air and it swam up there after them. Now: inside the ground = up to the top
      * of it; in the open = straight down to the first floor (128 blocks); nothing = the world's top block there.
      */
-    double groundAt(Location l) {
+    double groundAt(Location l) { // (the lowest of here and 2 blocks round: a 1-wide pillar someone stands on isn't ground)
+        double g = columnAt(l);
+        for (int[] o : new int[][]{{2, 0}, {-2, 0}, {0, 2}, {0, -2}}) g = Math.min(g, columnAt(l.clone().add(o[0], 0, o[1])));
+        return g;
+    }
+
+    double columnAt(Location l) {
         World w = l.getWorld();
         int x = l.getBlockX(), z = l.getBlockZ(), min = w.getMinHeight() + 1, max = w.getMaxHeight() - 2;
         int y = Math.max(min, Math.min(max, l.getBlockY()));

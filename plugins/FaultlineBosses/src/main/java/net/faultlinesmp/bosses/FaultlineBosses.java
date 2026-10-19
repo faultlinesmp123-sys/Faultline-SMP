@@ -7491,7 +7491,18 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
          * Now: from inside the ground it climbs to the top; from the air it finds the floor below. Also rounds
          * correctly below y=0, and over a hole or the void it stays level instead of sinking.
          */
+        /**
+         * 1.8.3: the ground is the LOWEST of the column and four spots 2 blocks round it, so a 1-wide pillar someone
+         * built to stand on (or a lone tree trunk, a fence post) isn't "ground": the worm used to tunnel up it and tower
+         * over the sand. Real hills (wider than that) still count.
+         */
         double groundY(double x, double z, double fromY) {
+            double g = columnY(x, z, fromY);
+            for (int[] o : new int[][]{{2, 0}, {-2, 0}, {0, 2}, {0, -2}}) g = Math.min(g, columnY(x + o[0], z + o[1], fromY));
+            return g;
+        }
+
+        double columnY(double x, double z, double fromY) {
             int bx = (int) Math.floor(x), bz = (int) Math.floor(z), y = (int) Math.floor(fromY);
             int min = world.getMinHeight(), max = world.getMaxHeight() - 1;
             y = Math.max(min, Math.min(max, y));
@@ -7524,7 +7535,12 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             Vector want = goal.clone().subtract(hp());
             if (want.lengthSquared() < 0.01) return;
             want.normalize().multiply(speed);
-            vel.add(want.subtract(vel).multiply(turn));
+            Vector d = want.subtract(vel).multiply(turn);
+            // 1.8.3: in the open air (not burrowing, and no move holding it up) it can't pull itself UP: steering toward
+            // anything above it countered gravity, so a target up high (someone on a pillar, a ring set at their height)
+            // kept it hovering. In the air it can only bend its arc sideways and down.
+            if (!flying && !solidAt(hp()) && d.getY() > 0) d.setY(0);
+            vel.add(d);
         }
 
         // ---------- main loop ----------
@@ -7657,7 +7673,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             if (intro > 0) {
                 flying = true;
                 vel = new Vector();
-                hp().setX(feet.getX()); hp().setZ(feet.getZ()); hp().setY(feet.getY() - 9);
+                hp().setX(feet.getX()); hp().setZ(feet.getZ()); hp().setY(groundY(feet.getX(), feet.getZ(), feet.getY() + 0.5) - 9); // (under the ground, not 9 under their feet)
                 if (intro % 3 == 0) {
                     for (int i = 0; i < 6; i++) {
                         double ang = random.nextDouble() * Math.PI * 2, r = random.nextDouble() * 4;
@@ -7743,7 +7759,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 }
                 case 1 -> { // SAND RUSH CHARGE: sinks to your side, then charges underground, spraying blasts up
                     if (sub == 0) {
-                        if (t == 0) { side = new Vector(-(tp.getZ() - hp().getZ()), 0, tp.getX() - hp().getX()); if (side.lengthSquared() < 0.01) side = new Vector(1, 0, 0); side.normalize(); }
+                        if (t == 0 || side == null) { side = new Vector(-(tp.getZ() - hp().getZ()), 0, tp.getX() - hp().getX()); if (side.lengthSquared() < 0.01) side = new Vector(1, 0, 0); side.normalize(); }
                         double gy = groundY(tp.getX(), tp.getZ(), tp.getY());
                         steer(tp.clone().add(side.clone().multiply(14)).setY(gy - 2), 0.7, 0.12);
                         if (solidAt(hp()) && hp().getY() < gy - 1) {
@@ -7771,7 +7787,8 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 case 2 -> { // SANDSTORM: wind and dust; groups of 3 blasts sweep in from your sides while it prowls
                     // circles around you just under the surface (it used to crawl so slowly it looked frozen)
                     double ang = t * 0.05;
-                    Vector ring = tp.clone().add(new Vector(Math.cos(ang) * 10, -2.5, Math.sin(ang) * 10));
+                    Vector ring = tp.clone().add(new Vector(Math.cos(ang) * 10, 0, Math.sin(ang) * 10));
+                    ring.setY(groundY(ring.getX(), ring.getZ(), tp.getY()) - 2.5); // (1.8.3: under the ground there, not 2.5 under their head)
                     steer(ring, dcfg("sandstorm-prowl-speed", 0.6), 0.1);
                     if (t % 4 == 0) for (Player p : active())
                         { p.spawnParticle(Particle.DUST, p.getLocation().add(0, 1.5, 0), 20, 6, 2, 6, 0, new Particle.DustOptions(dust(), 2.2f));
@@ -7834,7 +7851,8 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 }
                 case 4 -> { // VULTURES: a short roar and four vultures circle down from above
                     double orbit = t * 0.12; // prowls in a ring under you while they arrive (it used to sit at your feet)
-                    steer(tp.clone().add(new Vector(Math.cos(orbit) * 7, -3.5, Math.sin(orbit) * 7)), 0.7, 0.12);
+                    Vector prowl = tp.clone().add(new Vector(Math.cos(orbit) * 7, 0, Math.sin(orbit) * 7));
+                    steer(prowl.setY(groundY(prowl.getX(), prowl.getZ(), tp.getY()) - 3.5), 0.7, 0.12);
                     if (t == 5) {
                         roar(1.4f);
                         for (int i = 0; i < 4 && vultures.size() < 8; i++) {

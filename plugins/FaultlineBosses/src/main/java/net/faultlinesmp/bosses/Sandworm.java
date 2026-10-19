@@ -9,6 +9,7 @@ import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
+import org.bukkit.World;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.boss.BarColor;
@@ -104,7 +105,38 @@ final class Sandworm extends Wild.Boss {
         };
     }
 
-    double groundAt(Location l) { return ground(l); }
+    /**
+     * The ground at a spot: the surface BELOW it (1.8.3). Wild.ground() searches up and down 32 blocks and, finding no floor,
+     * keeps the spot's own height, so for a target up on a pillar, on a cliff edge or in the air (jumping, elytra, a
+     * balloon) the worm's "ground" was in the air and it swam up there after them. Now: inside the ground = up to the top
+     * of it; in the open = straight down to the first floor (128 blocks); nothing = the world's top block there.
+     */
+    double groundAt(Location l) {
+        World w = l.getWorld();
+        int x = l.getBlockX(), z = l.getBlockZ(), min = w.getMinHeight() + 1, max = w.getMaxHeight() - 2;
+        int y = Math.max(min, Math.min(max, l.getBlockY()));
+        if (w.getBlockAt(x, y, z).getType().isSolid()) {
+            for (int i = 0; i < 64 && y < max; i++, y++) if (!w.getBlockAt(x, y, z).getType().isSolid()) return y;
+            return l.getY();
+        }
+        for (int i = 0; i < 128 && y > min; i++, y--) if (w.getBlockAt(x, y - 1, z).getType().isSolid()) return y;
+        return w.getHighestBlockYAt(x, z) + 1;
+    }
+
+    /**
+     * A worm belongs in the ground (1.8.3): every tick its head is held at most `head-max-above` (1.8) x scale over the
+     * ground under it (`rear-max-above` 3.4 when it rears up for Boulders, Tremor and Sandblast). Only the Eruption's arc
+     * and the Devour burst may go higher, and those come straight back down.
+     */
+    void keepLow() {
+        if (attack == ERUPT && at > (phase == 3 ? 26 : 36)) return;
+        if (attack == DEVOUR && at > (phase == 3 ? 24 : 30)) return;
+        if (dying) return;
+        boolean rear = attack == SANDBLAST || attack == BOULDERS || attack == TREMOR;
+        double allow = (rear ? c("rear-max-above", 3.4) : c("head-max-above", 1.8)) * k;
+        double gy = groundAt(headPos);
+        if (headPos.getY() > gy + allow) headPos.setY(Math.max(gy + allow, headPos.getY() - 0.6));
+    }
 
     // =====================================================================================================
     //  moving through the sand
@@ -134,6 +166,7 @@ final class Sandworm extends Wild.Boss {
         double wantShake = attack == TREMOR ? 10 : attack == ERUPT && at > (phase == 3 ? 26 : 36) && at < (phase == 3 ? 46 : 56) ? 7
                 : attack == DEVOUR && victim != null ? 9 : attack == SANDBLAST && at > 18 ? 3 : 0;
         double wantLift = attack == BOULDERS && at < 20 ? 1.2 : attack == BROOD ? 0.6 : 0;
+        keepLow();
         rageShake += (wantShake - rageShake) * 0.2;
         headLift += (wantLift - headLift) * 0.15;
         place();
@@ -292,7 +325,7 @@ final class Sandworm extends Wild.Boss {
         }
         int t = at - wind, dur = 40;
         double f = Math.min(1, t / (double) dur);
-        double up = 10 * k;
+        double up = c("erupt-height", 7) * k; // (was 10 x scale: a 15-block flight)
         Location p = mark.clone().add(arcDir.clone().multiply(-6 + 14 * f));
         p.setY(mark.getY() - 6 * k + (up + 6 * k) * Math.sin(Math.PI * f) * 1.0 + (f > 0.5 ? -6 * k * (f - 0.5) : 0));
         Vector dir = p.toVector().subtract(headPos.toVector());
@@ -462,7 +495,7 @@ final class Sandworm extends Wild.Boss {
         int t = at - wind;
         int hold = (int) c("devour-hold-ticks", 50);
         if (t <= 8) { // the burst, straight up
-            headPos = mark.clone().add(0, -6 * k + (13 * k) * t / 8.0, 0);
+            headPos = mark.clone().add(0, -6 * k + ((6 + c("devour-height", 4.5)) * k) * t / 8.0, 0); // (it reared 7 x scale over the ground)
             if (t == 1) {
                 world.spawnParticle(Particle.BLOCK, mark.clone().add(0, 0.5, 0), 200, 2, 1, 2, 0.3, Material.SAND.createBlockData());
                 world.playSound(mark, Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.HOSTILE, 3f, 0.4f);

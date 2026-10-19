@@ -7551,7 +7551,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 if (intro > 0) introTick(target);
                 else {
                     checkPhase();
-                    if (transition > 0) { transition--; steer(target == null ? hp() : eye(target).add(new Vector(0, -2, 0)), 0.4, 0.08); }
+                    if (transition > 0) { transition--; steer(target == null ? hp() : underFoot(target), 0.4, 0.08); }
                     else if (pl != null && attack < 0) pilotIdle(pl); // boss form: it tunnels along under the admin
                     else if (target != null) attackTick(target);
                     else flying = false; // no target: never left hovering mid-move (the frozen "pillar")
@@ -7601,8 +7601,15 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         }
 
         /** Underground it steers freely; in the air, gravity pulls it into an arc (unless an attack is flying it). */
+        int highFor;
+
         void physics() {
             boolean inGround = solidAt(hp());
+            // 1.8.3 safety net: a worm belongs in the ground. Held up (gravity off) more than 4 blocks over the ground for
+            // over 1.5 s = gravity back on, whatever the move wanted
+            if (flying && !inGround && hp().getY() > groundY(hp().getX(), hp().getZ(), hp().getY()) + 4) {
+                if (++highFor > dcfg("max-hover-ticks", 30)) { flying = false; vel.setY(Math.min(vel.getY(), 0)); }
+            } else highFor = 0;
             if (inGround && !flying) { // never burrows deep out of reach: pushed back up past the max depth
                 double top = surfaceAbove(hp());
                 // BUG FIX: this SET its vertical speed to +0.08 (up) every tick past 3 blocks deep, cancelling any dive.
@@ -7712,7 +7719,8 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                         // BUG FIX: the fan only fired from the air at long range, but the worm now closes in underground, so
                         // "Sand Spit" almost never spat. It spits a fan at the top of every breach.
                         if (count == 9) fan(hp(), tp, 7, dcfg("spit-spread-degrees", 40), 0.55, dcfg("blast-damage", 6));
-                        if (count >= 14) { flying = false; sub = 2; count = 0; } // gravity arcs it back down
+                        // (1.8.3: never flies on up to someone standing high: past 6 above the ground, gravity takes it)
+                        if (count >= 14 || hp().getY() > groundY(hp().getX(), hp().getZ(), hp().getY()) + dcfg("breach-max-height", 6)) { flying = false; sub = 2; count = 0; }
                     } else if (sub == 2) { // dives back under and lines up again
                         steer(under, dcfg("spit-speed", 0.75), 0.14);
                         if (count >= 25) { sub = 0; count = 0; }
@@ -7787,14 +7795,20 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                     if (t >= 160) next();
                 }
                 case 3 -> { // GROUND SLAM (twice): climbs high, roars, plummets; the impact bursts into blasts + two Sandnadoes
+                    // 1.8.3: it used to FLY up 24 blocks over you (gravity off) and hang there; now it tunnels under you and
+                    // LEAPS out of the ground (gravity on: up, an arc, the top), then plunges
                     if (sub == 0) {
-                        flying = true;
-                        steer(tp.clone().add(new Vector(random.nextGaussian() * 2, 24, random.nextGaussian() * 2)), 1.0, 0.15);
-                        if (t >= 40) { sub = 1; t = 0; roar(0.8f); }
+                        if (leapFromGround(tp, dcfg("slam-leap", 1.15))) { sub = 3; t = 0; roar(0.8f); }
+                        else if (t > 70) next();
+                    } else if (sub == 3) { // in the air: just gravity, until the top of the arc
+                        if (vel.getY() <= 0 || t > 40) { sub = 1; t = 0; }
                     } else if (sub == 1) {
                         flying = false;
                         jaw = Math.max(jaw, 2); // gaping as it plummets
-                        steer(tp.clone().add(new Vector(0, -6, 0)), 1.3, 0.25);
+                        Vector down = tp.clone().subtract(hp()).setY(0);
+                        vel.setX(vel.getX() * 0.8 + (down.lengthSquared() > 0.01 ? down.normalize().getX() * 0.12 : 0));
+                        vel.setZ(vel.getZ() * 0.8 + (down.lengthSquared() > 0.01 ? down.normalize().getZ() * 0.12 : 0));
+                        vel.setY(Math.min(vel.getY(), -0.9));
                         if (solidAt(hp()) || t > 70) {
                             Vector at = hp().clone();
                             at.setY(groundY(at.getX(), at.getZ(), at.getY() + 2) + 0.5);
@@ -7814,7 +7828,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                             count++;
                             sub = 2; t = 0;
                         }
-                    } else if (t >= 15) {
+                    } else if (sub == 2 && t >= 15) {
                         if (count >= 2) next(); else { sub = 0; t = 0; }
                     }
                 }
@@ -7867,10 +7881,11 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                     } else if (t >= 30) next();
                 }
                 case 6 -> { // TREMOR: climbs, slams straight down, and a shockwave rolls out along the ground (jump it!)
-                    if (sub == 0) {
-                        flying = true;
-                        steer(tp.clone().add(new Vector(0, 9, 0)), 1.0, 0.2);
-                        if (t >= 25) { sub = 1; t = 0; roar(0.7f); }
+                    if (sub == 0) { // 1.8.3: a leap out of the ground (it used to fly up 9 blocks and hang)
+                        if (leapFromGround(tp, dcfg("tremor-leap", 0.85))) { sub = 3; t = 0; roar(0.7f); }
+                        else if (t > 70) next();
+                    } else if (sub == 3) {
+                        if (vel.getY() <= 0 || t > 30) { sub = 1; t = 0; }
                     } else if (sub == 1) {
                         flying = false;
                         vel = new Vector(vel.getX() * 0.5, -1.3, vel.getZ() * 0.5);
@@ -7880,7 +7895,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                             world.playSound(aim.toLocation(world), org.bukkit.Sound.ENTITY_GENERIC_EXPLODE, 2f, 0.5f);
                             sub = 2; t = 0;
                         }
-                    } else {
+                    } else if (sub == 2) {
                         double r = 1 + t * 0.7; // the ring rolls outward
                         for (int i = 0; i < 28; i++) {
                             double a = Math.PI * 2 * i / 28;
@@ -7907,12 +7922,17 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                         if (from.lengthSquared() < 0.01) from = new Vector(1, 0, 0);
                         if (t == 0) aim = breathSpot(tp, from.normalize()); // BUG FIX: it used to hover inside walls
                         Vector spot = aim;
-                        flying = true;
-                        steer(spot, 1.0, 0.25);
-                        if (hp().distanceSquared(spot) < 2.5 * 2.5 || t > 45) { sub = 1; t = 0; roar(1.3f); }
+                        // 1.8.3: it tunnels there first (under the ground), then rears up: it used to fly over at your height
+                        double sgy = groundY(spot.getX(), spot.getZ(), spot.getY());
+                        boolean near = Math.hypot(hp().getX() - spot.getX(), hp().getZ() - spot.getZ()) < 3;
+                        flying = near;
+                        steer(near ? spot : spot.clone().setY(sgy - dcfg("travel-depth", 2.5)), 1.0, 0.25);
+                        if (hp().distanceSquared(spot) < 2.5 * 2.5 || t > 60) { sub = 1; t = 0; roar(1.3f); }
                     } else {
                         flying = true;
                         vel.multiply(0.5);
+                        double bgy = groundY(hp().getX(), hp().getZ(), hp().getY());
+                        if (hp().getY() > bgy + 3.5) hp().setY(hp().getY() - 0.4); // reared up out of the ground, never hovering
                         jaw = Math.max(jaw, 2);
                         vel = vel.add(tp.clone().subtract(hp()).multiply(0.001)); // keeps its head turned toward you
                         if (t % 2 == 0) {
@@ -7970,18 +7990,45 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             next();
         }
 
-        /** A spot 8 blocks from you with open air and a clear line to you (tries a few angles, then higher up). */
+        /**
+         * A spot 8 blocks from you where it can rear up: just over the GROUND there (1.8.3: it was your height + up to 7,
+         * so on a pillar or a cliff it hovered in the air), with open air and a clear line to you.
+         */
         Vector breathSpot(Vector tp, Vector away) {
-            for (int lift = 0; lift <= 6; lift += 3) {
+            for (double lift : new double[]{1.5, 3}) {
                 for (int deg : new int[]{0, 50, -50, 100, -100, 150, -150, 180}) {
-                    Vector spot = tp.clone().add(away.clone().rotateAroundY(Math.toRadians(deg)).multiply(8)).setY(tp.getY() + 1.5 + lift);
+                    Vector spot = tp.clone().add(away.clone().rotateAroundY(Math.toRadians(deg)).multiply(8));
+                    spot.setY(groundY(spot.getX(), spot.getZ(), tp.getY() + 1) + lift);
                     if (solidAt(spot) || solidAt(spot.clone().add(new Vector(0, 1, 0)))) continue;
                     org.bukkit.util.RayTraceResult hit = world.rayTraceBlocks(spot.toLocation(world), tp.clone().subtract(spot).normalize(),
                             spot.distance(tp), org.bukkit.FluidCollisionMode.NEVER, true);
                     if (hit == null) return spot;
                 }
             }
-            return tp.clone().add(away.clone().multiply(8)).setY(tp.getY() + 4.5);
+            Vector spot = tp.clone().add(away.clone().multiply(8));
+            return spot.setY(groundY(spot.getX(), spot.getZ(), tp.getY() + 1) + 2);
+        }
+
+        /** Under the ground below someone (who may be up on a pillar or in the air). */
+        Vector underFoot(Player p) {
+            Vector f = p.getLocation().toVector();
+            return f.setY(groundY(f.getX(), f.getZ(), f.getY() + 0.5) - dcfg("travel-depth", 2.5));
+        }
+
+        /**
+         * Tunnels under `tp` (beside them), and once it's buried close by, LEAPS: up out of the ground with gravity on.
+         * True the tick it leaps.
+         */
+        boolean leapFromGround(Vector tp, double up) {
+            flying = false;
+            double gy = groundY(tp.getX(), tp.getZ(), tp.getY() + 0.5);
+            Vector under = tp.clone().setY(gy - dcfg("travel-depth", 2.5));
+            steer(under, 0.95, 0.2);
+            if (!solidAt(hp()) || Math.hypot(hp().getX() - tp.getX(), hp().getZ() - tp.getZ()) > 5) return false;
+            Vector side = tp.clone().subtract(hp()).setY(0);
+            vel = (side.lengthSquared() > 0.01 ? side.normalize().multiply(0.18) : new Vector()).setY(up);
+            world.spawnParticle(Particle.BLOCK, hp().toLocation(world).add(0, 2, 0), 80, 1.5, 0.4, 1.5, 0.15, surface.createBlockData());
+            return true;
         }
 
         void watchdog(List<Player> a) {

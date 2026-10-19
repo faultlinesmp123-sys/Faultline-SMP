@@ -7630,7 +7630,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 if (++highFor > dcfg("max-hover-ticks", 30)) { flying = false; vel.setY(Math.min(vel.getY(), 0)); }
             } else highFor = 0;
             if (inGround && !flying) { // never burrows deep out of reach: pushed back up past the max depth
-                double top = surfaceAbove(hp());
+                double top = Math.min(surfaceAbove(hp()), groundY(hp().getX(), hp().getZ(), hp().getY())); // (1.8.3: a pillar over it isn't "deep")
                 // BUG FIX: this SET its vertical speed to +0.08 (up) every tick past 3 blocks deep, cancelling any dive.
                 // Ambush wants to go 4+ blocks deep, so it could never get there and bobbed at the surface for 2.5s.
                 // Now: a deliberate dive is allowed deeper, and the push adds lift instead of overriding its speed.

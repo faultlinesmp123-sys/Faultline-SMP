@@ -1461,6 +1461,20 @@ Notes:
   `Market.dry`/`inDome` count hallways (Dark Ocean only); the volcano only avoids Dark Ocean domes. Tested (`DomeTest` in
   scratch `ftest`: Overworld lake, doors, owner/other breaking, flow, no/yes, walkable hallway, no leaks, save/load, the Dark
   Ocean, 3-dome limit, packing away; `OuterTest`).
+- **The Scourge swims like the Dune Devourer (Bosses 1.8.2)**: `Scourge.swimTo` (override; `wild.scourge.dune-swim: false`
+  = the old turn-on-the-spot swim) moves with MOMENTUM: `vel` is turned toward the way it wants to go by at most
+  `turn * turn-mult` (0.8) degrees a tick (`bend`: a goal behind it = a wide loop, never stopping and backing up; speed eases
+  to the move's speed, a bit slower in hard turns) and carries straight on near its goal. The way still comes from the
+  shared `Swimmer.heading()` (planned A* path / straight / round rock) and `progress()` (stuck → plan, unstick), split out of
+  `Swimmer.swimTo` for this; blocked = slides along the wall, boxed in = the old `swimTo` takes that tick. Between moves
+  (`idleDune`) it makes PASSES: to a spot `pass-overshoot` 12 beyond its prey (beside + under, sides swap), speed
+  `cruise * spd * pass-speed` 1.1, then loops round. Every `leap-every-seconds` 9 (+-20%), if the surface over its prey is
+  open sea within `leap-max-depth` 40, it LEAPS: up through the surface (`passable` = no rock), then `airborne`: gravity
+  `dune-gravity` 0.055 arcs it back down (`fly`), a splash, and anyone it bursts through takes `moves.leap` 8 and is thrown.
+  Just splashed down (no room for `clear`) it moves `loose` until it's deep again. Spray + bubbles wherever a body point
+  crosses the surface (`surfaceSpray`, the Devourer's sand spray). Rubble charges and the breach hand their speed to `vel`
+  (it comes out of a lunge still moving). Yaw eases 20/tick and holds when moving straight up/down. Tested (`DeepBossTest`:
+  leaps out + falls back in, never in rock, never stops, no snaps, still gets round a wall).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Skills → Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

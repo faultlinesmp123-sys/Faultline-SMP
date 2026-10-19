@@ -343,6 +343,28 @@ final class DeepBosses {
             if (!to.getWorld().equals(world)) return;
             Vector d = to.toVector().subtract(pos.toVector());
             if (d.lengthSquared() < speed * speed) { if (clear(pos, to, room())) pos = to.clone(); stuckT = 0; return; }
+            Vector want = heading(to, speed);
+            yaw = turn(yaw, yawOf(flat(want)), turn);
+            float wantPitch = Math.max(-60, Math.min(60, pitchOf(want)));
+            pitch += Math.max(-turn, Math.min(turn, wantPitch - pitch));
+            boolean moved = step(pos.clone().add(dir3(yaw, pitch).multiply(speed)));
+            if (!moved) { // nose against rock: slide along it
+                Vector side = flat(want).crossProduct(new Vector(0, 1, 0));
+                if (side.lengthSquared() < 1e-6) side = new Vector(1, 0, 0);
+                side.normalize();
+                for (Vector alt : new Vector[]{unit(want.clone()).multiply(speed), side.clone().multiply(speed), side.clone().multiply(-speed),
+                        new Vector(0, speed, 0), new Vector(0, -speed, 0), dirOf(yaw + 70).multiply(speed), dirOf(yaw - 70).multiply(speed)}) {
+                    if (step(pos.clone().add(alt))) { moved = true; yaw = turn(yaw, yawOf(flat(alt)), turn * 2); break; }
+                }
+            }
+            progress(to, d);
+        }
+
+        /**
+         * Which way to swim toward `to` right now: along a planned path if it has one, else straight, else round
+         * whatever rock is ahead (the open direction leading most toward it, kept to for a moment).
+         */
+        Vector heading(Location to, double speed) {
             Location goal = to;
             // a planned path: aim at its next waypoint
             boolean following = false;
@@ -366,20 +388,11 @@ final class DeepBosses {
                 Vector best = bestDir(want, look);
                 if (best != null) { detour = best; detourT = 30; want = best.clone(); }
             }
-            yaw = turn(yaw, yawOf(flat(want)), turn);
-            float wantPitch = Math.max(-60, Math.min(60, pitchOf(want)));
-            pitch += Math.max(-turn, Math.min(turn, wantPitch - pitch));
-            boolean moved = step(pos.clone().add(dir3(yaw, pitch).multiply(speed)));
-            if (!moved) { // nose against rock: slide along it
-                Vector side = flat(want).crossProduct(new Vector(0, 1, 0));
-                if (side.lengthSquared() < 1e-6) side = new Vector(1, 0, 0);
-                side.normalize();
-                for (Vector alt : new Vector[]{unit(want.clone()).multiply(speed), side.clone().multiply(speed), side.clone().multiply(-speed),
-                        new Vector(0, speed, 0), new Vector(0, -speed, 0), dirOf(yaw + 70).multiply(speed), dirOf(yaw - 70).multiply(speed)}) {
-                    if (step(pos.clone().add(alt))) { moved = true; yaw = turn(yaw, yawOf(flat(alt)), turn * 2); break; }
-                }
-            }
-            // getting nowhere? (moving, but no closer to where it wants to be: dithering in front of a wall)
+            return want;
+        }
+
+        /** Getting nowhere (dithering in front of a wall) or stuck: plan a path through the water, or as a last resort slip away. */
+        void progress(Location to, Vector d) {
             double dist = d.length();
             if (progGoal == null || !progGoal.getWorld().equals(world) || progGoal.distanceSquared(to) > 36) { progGoal = to.clone(); progBest = dist; noProgress = 0; path.clear(); } // a new goal: an old path is no good
             else if (dist < progBest - 1) { progBest = dist; noProgress = 0; }
@@ -830,12 +843,190 @@ final class DeepBosses {
         /** Out of the water (a breach that came down on an island, a shove): it drops back in and swims, never hangs in the air. */
         void regainWater() {
             if (wet(pos.getBlock())) return;
+            if (airborne && !pos.getBlock().getType().isSolid() && !pos.clone().add(0, -1, 0).getBlock().getType().isSolid()) return; // mid-leap: gravity has it
             Location below = pos.clone().add(0, -0.8, 0);
             if (!below.getBlock().getType().isSolid()) { pos = below; return; } // falls
             Location w = openWater(pos, 1, 16, 1);
             if (w == null) return;
             Vector d = w.toVector().subtract(pos.toVector());
             pos = d.length() < 1.2 ? w : pos.clone().add(d.normalize().multiply(1.2)); // slithers off the rock into the sea
+        }
+
+        // ---------------------------------------------------------------- swimming like the Dune Devourer (Bosses 1.8.2)
+        /*
+         * It swims with MOMENTUM, like the Dune Devourer tunnels: a velocity it bends toward where it wants to go (how hard
+         * = the move's turn), so it sweeps in long curves, overshoots and loops back round instead of turning on the spot.
+         * Between moves it makes passes at its prey (beside and under them, never parking on them) and every
+         * `leap-every-seconds` it surges up and LEAPS out of the sea in an arc, gravity pulling it back in with a splash;
+         * the water sprays wherever its body breaks the surface (the Devourer's sand spray). Rock still stops it: blocked,
+         * it slides along the wall, and when that fails the old pathfinder (A*, unstick) takes over for that tick.
+         * `wild.scourge.dune-swim: false` = the old turn-on-the-spot swimming.
+         */
+        Vector vel = new Vector();
+        boolean leaping, airborne;
+        int leapCd = 100, leapT, passSide = 1, passT;
+        Location passGoal;
+
+        int leapGap() { return (int) (c("leap-every-seconds", 9) * 20 * (0.8 + random.nextDouble() * 0.4)); }
+        boolean[] wasWet;
+
+        boolean duneSwim() { return pl.getConfig().getBoolean("wild.scourge.dune-swim", true); }
+
+        /** Nothing solid all the way from a to b (water or air: a leap goes through both). */
+        static boolean passable(Location a, Location b) {
+            Vector d = b.toVector().subtract(a.toVector());
+            int n = Math.max(1, (int) Math.ceil(d.length() / 0.5));
+            for (int i = 1; i <= n; i++) {
+                Location q = a.clone().add(d.clone().multiply(i / (double) n));
+                if (!q.getWorld().isChunkLoaded(q.getBlockX() >> 4, q.getBlockZ() >> 4) || q.getBlock().getType().isSolid()) return false;
+                if (q.getY() >= q.getWorld().getMaxHeight() - 2) return false;
+            }
+            return true;
+        }
+
+        @Override
+        void swimTo(Location to, double speed, float turn) {
+            if (!duneSwim() || !to.getWorld().equals(world)) { super.swimTo(to, speed, turn); return; }
+            boolean inWater = wet(pos.getBlock());
+            if (!inWater && airborne) { fly(); return; }
+            if (inWater) airborne = false;
+            Vector d = to.toVector().subtract(pos.toVector());
+            double dist = d.length();
+            if (dist > 3.5 || vel.lengthSquared() < 0.01) { // close in, it doesn't brake: it carries straight on through and loops back
+                Vector want = leaping ? d.clone() : heading(to, speed); // (round rock / along a planned path, like the others)
+                vel = bend(vel, want, speed, turn * c("turn-mult", 0.8));
+            }
+            double max = Math.max(speed, 0.2) * 1.15;
+            if (vel.length() > max) vel.multiply(max / vel.length());
+            Location n = pos.clone().add(vel);
+            // leaping, or just splashed down at the surface (too little water round it for the usual room check): it
+            // may move through anything that isn't rock, and dives on into the deep
+            boolean loose = leaping || !open(pos, room());
+            boolean ok = loose ? passable(pos, n) : clear(pos, n, room());
+            if (!ok && !leaping) { // rock ahead: slide along it, losing the speed into the wall
+                Vector[] alts = {vel.clone().setY(0), new Vector(0, vel.getY(), 0), vel.clone().setX(0), vel.clone().setZ(0)};
+                for (Vector alt : alts) {
+                    if (alt.lengthSquared() < 1e-4) continue;
+                    Location m = pos.clone().add(alt);
+                    if (clear(pos, m, room())) { n = m; vel = alt.multiply(0.9); ok = true; break; }
+                }
+            }
+            if (ok) {
+                pos = n;
+                if (leaping && !wet(pos.getBlock())) { // out of the sea: the arc begins
+                    leaping = false; airborne = true;
+                    world.playSound(pos, Sound.ENTITY_DOLPHIN_JUMP, SoundCategory.HOSTILE, 4f, 0.4f);
+                    world.playSound(pos, Sound.ENTITY_PLAYER_SPLASH_HIGH_SPEED, SoundCategory.HOSTILE, 3f, 0.5f);
+                }
+            } else { // boxed in: the pathfinder takes this tick, and its way out becomes the new heading
+                leaping = false;
+                Location before = pos.clone();
+                super.swimTo(to, speed, turn);
+                vel = pos.toVector().subtract(before.toVector());
+                if (vel.lengthSquared() < 1e-4) vel = dir3(yaw, pitch).multiply(0.05);
+                return;
+            }
+            if (!leaping) progress(to, d); // (getting nowhere = plan a path, as before)
+            face();
+        }
+
+        /**
+         * The new velocity: its heading turned toward `want` by at most `maxDeg` this tick (so a goal behind it means a
+         * wide loop round, never stopping and backing up), its speed easing toward `speed` (a little slower in a hard turn).
+         */
+        static Vector bend(Vector vel, Vector want, double speed, double maxDeg) {
+            Vector w = unit(want.clone());
+            double sp = vel.length();
+            Vector cur = sp < 0.05 ? w.clone() : vel.clone().multiply(1 / sp);
+            double dot = Math.max(-1, Math.min(1, cur.dot(w)));
+            double ang = Math.acos(dot), max = Math.toRadians(Math.max(1, maxDeg));
+            Vector dir;
+            if (ang <= max) dir = w;
+            else {
+                Vector axis = cur.getCrossProduct(w);
+                if (axis.lengthSquared() < 1e-8) axis = new Vector(0, 1, 0); // straight behind: loop round sideways
+                dir = cur.clone().rotateAroundAxis(axis.normalize(), max);
+            }
+            double turnFrac = Math.min(1, ang / Math.PI);
+            double next = sp + (speed * (1 - 0.25 * turnFrac) - sp) * 0.12;
+            return unit(dir).multiply(Math.max(0.08, next));
+        }
+
+        /** In the air (a leap): gravity bends it back down; back in the water it dives on, with a splash. */
+        void fly() {
+            vel.setY(Math.max(-1.4, vel.getY() - c("dune-gravity", 0.055)));
+            Location n = pos.clone().add(vel);
+            if (passable(pos, n)) pos = n;
+            else { airborne = false; vel.multiply(0.3).setY(0); regainWater(); } // came down on an island: slithers back in
+            if (wet(pos.getBlock())) {
+                airborne = false;
+                world.playSound(pos, Sound.ENTITY_GENERIC_SPLASH, SoundCategory.HOSTILE, 4f, 0.5f);
+                world.spawnParticle(Particle.SPLASH, pos.clone().add(0, 1, 0), 120, 2.5, 0.5, 2.5, 0.3);
+                world.spawnParticle(Particle.BUBBLE_POP, pos, 60, 2, 1, 2, 0.15);
+            }
+            face();
+        }
+
+        void face() {
+            double h2 = vel.getX() * vel.getX() + vel.getZ() * vel.getZ();
+            if (h2 > 0.0025 && h2 > vel.lengthSquared() * 0.04) yaw = turn(yaw, yawOf(flat(vel)), 20); // (straight up/down: keeps its heading, no flip)
+            pitch = (float) Math.max(-70, Math.min(70, pitchOf(vel)));
+        }
+
+        /** Between moves: passes at its prey, now and then a leap out of the sea. */
+        void idleDune(List<Player> a) {
+            if (airborne) { // the leap's arc: anyone it bursts through is thrown
+                fly();
+                strike(pos, 2.2 * k, c("moves.leap", 8), Guard.HEAVY, vel.clone().setY(0).multiply(0.8).setY(0.7));
+                return;
+            }
+            Player t = pilot != null ? pilot : focus != null && focus.isOnline() && focus.getWorld().equals(world) ? focus : a.isEmpty() ? null : a.get(0);
+            if (t == null) { swimTo(wetTarget(circle(c("orbit-radius", 14), -1, 0.03)), cruise() * spd(), 9); return; }
+            Location tl = t.getLocation();
+            double speed = cruise() * spd() * c("pass-speed", 1.1);
+            if (--leapCd <= 0) {
+                leapCd = leapGap();
+                double top = surfaceY(world, tl);
+                // only up through open sea: the surface over them is water, and not too far up from it
+                if (wet(world.getBlockAt(tl.getBlockX(), (int) top, tl.getBlockZ())) && top - pos.getY() < c("leap-max-depth", 40) && top - pos.getY() > 2) {
+                    leaping = true; leapT = 0; hitOnce.clear();
+                    world.playSound(pos, Sound.ENTITY_GUARDIAN_ATTACK, SoundCategory.HOSTILE, 3f, 0.4f);
+                }
+            }
+            if (leaping) {
+                Location up = withY(tl.clone().add(dirOf(yaw).multiply(3)), surfaceY(world, tl) + 6);
+                swimTo(up, speed * 1.5, 30);
+                if (++leapT > 80) { leaping = false; leapCd = leapGap(); } // (never stuck "leaping" under a ledge)
+                return;
+            }
+            // a PASS: it rushes past them (beside and under, the side swapping each pass) to a spot well beyond, then
+            // sweeps round in a wide loop for the next one, like the Devourer's runs through the sand
+            if (passGoal == null || !passGoal.getWorld().equals(world) || pos.distanceSquared(passGoal) < 12 || ++passT > 140) {
+                Vector through = flat(tl.toVector().subtract(pos.toVector()));
+                if (through.lengthSquared() < 1) through = dirOf(yaw);
+                through.normalize();
+                Vector side = through.clone().crossProduct(new Vector(0, 1, 0)).multiply(3 * passSide);
+                passSide = -passSide;
+                passGoal = wetTarget(tl.clone().add(through.multiply(c("pass-overshoot", 12))).add(side).add(0, -2, 0));
+                passT = 0;
+            }
+            swimTo(passGoal, speed, 8);
+        }
+
+        /** Spray and bubbles wherever a body segment breaks the surface (the Dune Devourer's sand spray). */
+        void surfaceSpray() {
+            List<Location> pts = chain.pts;
+            if (wasWet == null || wasWet.length != pts.size()) { wasWet = new boolean[pts.size()]; for (int i = 0; i < pts.size(); i++) wasWet[i] = wet(pts.get(i).getBlock()); return; }
+            for (int i = 0; i < pts.size(); i++) {
+                boolean w = wet(pts.get(i).getBlock());
+                if (w != wasWet[i]) {
+                    Location l = withY(pts.get(i), surfaceY(world, pts.get(i)) + 1);
+                    world.spawnParticle(Particle.SPLASH, l, 30, 1, 0.3, 1, 0.3);
+                    world.spawnParticle(Particle.BUBBLE_POP, l, 10, 0.8, 0.3, 0.8, 0.05);
+                    if (i == 0) world.playSound(l, Sound.ENTITY_GENERIC_SPLASH, SoundCategory.HOSTILE, 2.5f, 0.6f);
+                }
+                wasWet[i] = w;
+            }
         }
 
         @Override void hit(Player p, double dmg, Vector from, Guard g) { super.hit(p, dmg * (enraged ? 1.5 : 1), from, g); }
@@ -867,10 +1058,14 @@ final class DeepBosses {
             giantBubbles(a);
             if (attack != BREACH || flight == null) regainWater();
             if (attack < 0) { // between moves it keeps swimming: wide, fast loops round its prey, always under the water
-                Location c = wetTarget(circle(c("orbit-radius", 14), -1, phase == 3 ? 0.045 : 0.032));
-                swimTo(c, cruise() * spd(), 9);
-                wantMand = 12 + Math.sin(ticks * 0.1) * 8;
-            }
+                if (duneSwim()) idleDune(a);
+                else {
+                    Location c = wetTarget(circle(c("orbit-radius", 14), -1, phase == 3 ? 0.045 : 0.032));
+                    swimTo(c, cruise() * spd(), 9);
+                }
+                wantMand = (leaping || airborne ? 40 : 12) + Math.sin(ticks * 0.1) * 8;
+            } else leaping = false;
+            surfaceSpray();
             aMand += (wantMand - aMand) * 0.3;
             pose(0);
             if (ticks % 4 == 0) world.spawnParticle(Particle.DUST, chain.pts.get(random.nextInt(chain.pts.size())), molted ? 4 : 2, 0.6, 0.6, 0.6, 0, new Particle.DustOptions(molted ? Color.fromRGB(190, 255, 90) : Color.fromRGB(150, 210, 70), molted ? 1.8f : 1.4f));
@@ -1068,6 +1263,7 @@ final class DeepBosses {
                 return;
             }
             pos = n;
+            vel = lineDir.clone().multiply(speed * spd()); // (it comes out of the lunge still moving, like the Dune Devourer)
             if (chargeT % 3 == 0) acidCloud(pos.clone().add(lineDir.clone().multiply(-2 * k)));
             world.spawnParticle(Particle.BUBBLE, pos, 16, 1, 1, 1, 0.1);
             strike(pos, 2.6 * k, c("moves.charge", 14), Guard.HEAVY, lineDir.clone().multiply(1.1).setY(0.4));
@@ -1331,6 +1527,7 @@ final class DeepBosses {
             wantMand = 60;
             if (n.getBlock().getType().isSolid()) n = pos.clone().add(0, Math.max(0.4, flight.getY()), 0); // over an island: glide over it
             pos = n;
+            vel = flight.clone();
             strike(pos, 2.6 * k, c("moves.breach", 14), Guard.HEAVY, flight.clone().setY(0.8));
             bodyStrike(1.6 * k, c("moves.body", 6));
             if (pos.getY() > sy + 1 && at % 3 == 0) for (int i = 0; i < 3; i++) {

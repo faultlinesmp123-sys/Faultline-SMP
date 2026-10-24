@@ -16,6 +16,18 @@ default-tier: "1"
 # still happens normally in-game either way — this only gates rewards.
 anti-farm-cooldown-minutes: 10
 
+# Head bounties: /bounty place <player> [amount] puts the player heads in your hand on someone's name.
+# Whoever kills them gets every head on them. No payout for a kill the anti-farm cooldown flags, an
+# alt on the same connection, or (by default) your own kingdom: the bounty just stays up.
+bounty:
+  enabled: true
+  tagged-heads-only: true     # only real heads (tagged with a tier when a player died), not decorative/mob heads
+  min-heads: 1
+  expire-days: 7              # unclaimed heads go back to whoever put them up (0 = never)
+  cancel-lock-minutes: 30     # how long before you can take your heads back off a bounty
+  same-kingdom-claims: false
+  same-ip-claims: false
+
 tiers:
   "1":
     display-name: "&7Tier 1"

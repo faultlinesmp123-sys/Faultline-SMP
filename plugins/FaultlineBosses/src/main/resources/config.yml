@@ -264,6 +264,29 @@ kraken:
       surge: 0.03
       barrage: 0.03
       barnacle: 0.005
+  abyssal:                    # the ABYSSAL KRAKEN: a Bait Worm dropped in the Dark Ocean (any open water this deep)
+    enabled: true
+    world: faultline_deep
+    min-depth: 60             # blocks of water under the worm (max 63)
+    scale: 40.0               # 10x the normal Kraken (a head ~70 blocks wide, arms ~220 long)
+    health: 9000
+    damage-multiplier: 1.5    # on top of his normal damage
+    hit-scale: 2.2            # how much bigger his hit areas get (rings, ink, surge...): smaller than his size, so you can dodge
+    move-scale: 2.2           # how much faster he swims
+    reach-scale: 2.5          # how far he notices fighters, plays music, shows his bar
+    station: 50               # how far from his prey his head hangs
+    station-height: 20        # ...and how high above them (his beak and arms hang low)
+    arena-radius: 140
+    rest-multiplier: 0.75     # shorter rests between moves
+    pink-multiplier: 3.0      # pink bubbles hurt him 3x as much
+    reward-multiplier: 2.0    # bags, diamonds, XP
+    dark-loot-bags: 4
+    dark-loot-rare-chance: 0.5
+    netherite: 2
+    damage:
+      clap: 26                # Abyssal Clap
+      ink-per-second: 3       # Ink Storm
+      arm-touch: 6            # swimming into one of his arms
   cooldown-minutes: 10
   arena-radius: 24            # how far he swims from where he rose
   phase2-at: 0.66

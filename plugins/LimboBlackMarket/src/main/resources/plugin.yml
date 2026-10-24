@@ -1,5 +1,5 @@
 name: LimboBlackMarket
-version: '1.0.4'
+version: '1.1.0'
 main: net.limbosmp.blackmarket.LimboBlackMarket
 api-version: '1.21'
 author: LimboSMP
@@ -29,6 +29,10 @@ commands:
     permission: limbomarket.reload
     aliases: [freload]
 
+  bounty:
+    description: Put player heads on someone's name; whoever kills them gets the heads
+    usage: /bounty <place <player> [amount]|list|info <player>|cancel <player>|claim>
+    aliases: [bounties]
   givequestbook:
     description: Give yourself or another player a Quest Book
     usage: /givequestbook [amount] [player]

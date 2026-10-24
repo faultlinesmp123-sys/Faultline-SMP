@@ -13,6 +13,8 @@ public class MarketHelpCommand implements CommandExecutor {
         sender.sendMessage(ChatColor.GRAY + "Bring a Black Market head to staff at the market to trade it in.");
         sender.sendMessage(ChatColor.GRAY + "Quests: craft a " + ChatColor.GOLD + "Quest Book"
                 + ChatColor.GRAY + " (Book + Iron Ingot) and right-click it.");
+        sender.sendMessage(ChatColor.YELLOW + "/bounty place <player>" + ChatColor.GRAY + " - put the heads in your hand on someone; their killer gets them ("
+                + ChatColor.YELLOW + "/bounty list" + ChatColor.GRAY + ")");
         if (sender.hasPermission("limbomarket.tier")) {
             sender.sendMessage(ChatColor.YELLOW + "/tier get <player>" + ChatColor.GRAY + " - view a player's tier");
             sender.sendMessage(ChatColor.YELLOW + "/tier set <player> <tier>" + ChatColor.GRAY + " - assign a tier");

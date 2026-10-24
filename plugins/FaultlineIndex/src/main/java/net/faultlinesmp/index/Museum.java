@@ -41,7 +41,7 @@ final class Museum implements Listener {
     /** Boss entry -> its music disc(s) (FaultlineItems Gear.DISCS). */
     static final Map<String, List<String>> DISCS = Map.of(
             "the_demon_eye", List.of("demon_eye"), "the_dune_devourer", List.of("dune"), "don_lorenzo", List.of("don"),
-            "the_kraken", List.of("kraken"), "the_kraken_at_sea", List.of("kraken"), "diamond_jacob", List.of("jacob1", "jacob2"),
+            "the_kraken", List.of("kraken"), "the_kraken_at_sea", List.of("kraken"), "the_abyssal_kraken", List.of("kraken"), "diamond_jacob", List.of("jacob1", "jacob2"),
             "rocco_vendetta", List.of("rocco"), "the_skeleton_captain", List.of("pirates"),
             "ghost_captain", List.of("pirates"));
 

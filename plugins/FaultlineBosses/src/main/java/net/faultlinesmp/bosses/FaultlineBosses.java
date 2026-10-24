@@ -810,6 +810,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         boolean worm = source != null && source.getScoreboardTags().contains(DUNE_TAG);
         if (source != null && source.getScoreboardTags().contains(DON_TAG)) amount *= ncfg("damage-multiplier", 1.3); // Don hits 30% harder
         if (source != null && source.getScoreboardTags().contains(KRAKEN_TAG)) amount *= kcfg("damage-multiplier", 1.2) / Math.max(0.01, cfg("damage-multiplier", 1.0)); // his own multiplier
+        if (source != null && source.getScoreboardTags().contains(KRAKEN_ABYSSAL_TAG)) amount *= kcfg("abyssal.damage-multiplier", 1.5); // the Abyssal Kraken hits harder still
         if (source != null && source.getScoreboardTags().contains(JACOB_TAG)) amount *= jcfg("damage-multiplier", 1.0) / Math.max(0.01, cfg("damage-multiplier", 1.0));
         if (source != null && Vendetta.isBody(source)) amount *= getConfig().getDouble("rocco.damage-multiplier", 1.0) / Math.max(0.01, cfg("damage-multiplier", 1.0));
         amount *= frost ? mcfg("damage-multiplier", 1.5) : worm ? dcfg("damage-multiplier", 1.2) : cfg("damage-multiplier", 1.0);
@@ -3974,8 +3975,10 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
     // =====================================================================================================
     static final String KRAKEN_TAG = "faultline_kraken", KRAKEN_TENT_TAG = "faultline_kraken_tentacle",
             KRAKEN_PINK_TAG = "faultline_kraken_pink", KRAKEN_EEL_TAG = "faultline_kraken_eel", KRAKEN_MINION_TAG = "faultline_kraken_minion",
-            KRAKEN_SEA_TAG = "faultline_kraken_sea"; // the Kraken at Sea (fought from a ship)
+            KRAKEN_SEA_TAG = "faultline_kraken_sea", // the Kraken at Sea (fought from a ship)
+            KRAKEN_ABYSSAL_TAG = "faultline_kraken_abyssal"; // the Abyssal Kraken (the Dark Ocean: 10x his size)
     private Kraken kraken;
+    private boolean krakenNormalOnly; // boss form: no Abyssal Kraken
     private long krakenCooldownUntil;
     private final Map<UUID, Sink> sinking = new HashMap<>();
     private static final org.bukkit.NamespacedKey WORM_KEY = new org.bukkit.NamespacedKey("faultlineitems", "kraken_worm");
@@ -3983,6 +3986,12 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
     private static final org.bukkit.NamespacedKey DIVING_KEY = new org.bukkit.NamespacedKey("faultlineitems", "diving_tier");
 
     private double kcfg(String path, double def) { return getConfig().getDouble("kraken." + path, def); }
+
+    /** The Dark Ocean (FaultlineDeep's world): a Kraken woken there is the Abyssal Kraken, ten times his size. */
+    boolean colossalWorld(World w) {
+        return w != null && getConfig().getBoolean("kraken.abyssal.enabled", true)
+                && w.getName().equals(getConfig().getString("kraken.abyssal.world", "faultline_deep"));
+    }
 
     static boolean isWater(Block b) {
         Material m = b.getType();
@@ -4135,8 +4144,10 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             if (s.sinking < 0) {
                 if (!isWater(item.getLocation().getBlock())) { if (s.age > 200) it.remove(); continue; } // never hit the water
                 String why = null;
-                if (item.getWorld().getEnvironment() != World.Environment.NORMAL || !deepOcean(item.getLocation())) why = "It needs a Deep Ocean.";
-                else if (waterDepth(item.getLocation()) < kcfg("min-depth", 15)) why = "The water isn't deep enough here (it needs " + (int) kcfg("min-depth", 15) + "+ blocks).";
+                boolean abyss = colossalWorld(item.getWorld()); // the Dark Ocean: the Abyssal Kraken, in any open water deep enough
+                int need = (int) (abyss ? Math.min(63, kcfg("abyssal.min-depth", 60)) : kcfg("min-depth", 15));
+                if (!abyss && (item.getWorld().getEnvironment() != World.Environment.NORMAL || !deepOcean(item.getLocation()))) why = "It needs a Deep Ocean.";
+                else if (waterDepth(item.getLocation()) < need) why = "The water isn't deep enough here (it needs " + need + "+ blocks).";
                 else if (kraken != null) why = "Something down there is already awake...";
                 else if (sinking.values().stream().anyMatch(o -> o != s && o.sinking >= 0)) why = "Another worm is already sinking. Something down there is stirring..."; // BUG FIX: the second worm was lost
                 else if (System.currentTimeMillis() < krakenCooldownUntil) why = "The deep is still recovering. Try again in a few minutes.";
@@ -4190,19 +4201,20 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
     void summonKraken(Location at, Player by) {
         if (kraken != null) return;
         World w = at.getWorld();
+        boolean abyss = colossalWorld(w);
         for (Player p : w.getPlayers()) {
-            if (p.getLocation().distanceSquared(at) > 96 * 96) continue;
+            if (p.getLocation().distanceSquared(at) > (abyss ? 240 * 240 : 96 * 96)) continue;
             p.playSound(p.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 2f, 0.45f);
             p.playSound(p.getLocation(), Sound.ENTITY_WARDEN_ROAR, 1.6f, 0.5f);
             p.playSound(p.getLocation(), Sound.ENTITY_ELDER_GUARDIAN_CURSE, 1.2f, 0.5f);
-            p.showTitle(Title.title(legacy(ChatColor.DARK_AQUA + "" + ChatColor.BOLD + "THE KRAKEN APPEARS"),
-                    legacy(ChatColor.GRAY + "from the depths..."),
+            p.showTitle(Title.title(legacy(abyss ? ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + "THE ABYSSAL KRAKEN" : ChatColor.DARK_AQUA + "" + ChatColor.BOLD + "THE KRAKEN APPEARS"),
+                    legacy(ChatColor.GRAY + (abyss ? "Something the size of a mountain rises..." : "from the depths...")),
                     Title.Times.times(java.time.Duration.ofMillis(300), java.time.Duration.ofMillis(3000), java.time.Duration.ofMillis(900))));
             Vector shake = new Vector(random.nextGaussian() * 0.25, 0.15, random.nextGaussian() * 0.25); // the water shakes
             if (survival(p)) Safe.vel(p, p.getVelocity().add(shake));
         }
         kraken = new Kraken(at, by);
-        Bukkit.broadcastMessage(ChatColor.DARK_AQUA + "" + ChatColor.BOLD + "The Kraken " + ChatColor.GRAY + "has risen from the deep" + (by != null ? " (summoned by " + by.getName() + ")" : "") + "!");
+        Bukkit.broadcastMessage(ChatColor.DARK_AQUA + "" + ChatColor.BOLD + kraken.title() + " " + ChatColor.GRAY + "has risen from the " + (abyss ? "Dark Ocean" : "deep") + (by != null ? " (summoned by " + by.getName() + ")" : "") + "!");
     }
 
     // ---------- the boss ----------
@@ -4243,6 +4255,15 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         final ShipLink.Vessel vessel;
         final boolean atSea;
         boolean surgeHitShip, biteHitShip;
+        // ---- the Abyssal Kraken (Bosses 1.9.0): woken in the Dark Ocean, ten times his size and harder. k = how many times
+        // bigger (1 for the normal Kraken, so nothing changes for him), hs = how much bigger his hit areas get (smaller than
+        // k, so you can still swim out of them), ms = how much faster he moves (to cross his own size).
+        final boolean colossal;
+        final double k, hs, ms;
+        final Map<UUID, Integer> touched = new HashMap<>();
+        final List<Vector> storm = new ArrayList<>(); int stormT;
+        double far(double d) { return colossal ? d * kcfg("abyssal.reach-scale", 2.5) : d; }
+        double bodyR(double d) { return colossal ? d * k * 0.6 : d; }
 
         final class Arm {
             final int index;
@@ -4264,7 +4285,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 for (int j = 0; j < SEGS; j++)
                     segs[j] = spawnDisplay(p[j].toLocation(world), j == SEGS - 1 ? "kraken_tentacle_tip" : "kraken_tentacle", 1f, 2, Display.Billboard.FIXED);
                 tip = (Slime) world.spawnEntity(p[SEGS].toLocation(world), EntityType.SLIME, false);
-                tip.setSize(3);
+                tip.setSize(colossal ? (int) Math.min(40, Math.round(3 * hs * 2)) : 3);
                 setupHitbox(tip, 200, KRAKEN_TENT_TAG, "Kraken Tentacle");
             }
 
@@ -4338,7 +4359,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                     d.setInterpolationDelay(0);
                     d.setTransformation(new Transformation(new Vector3f(), rot, new Vector3f(wxy, wxy, (float) len[j] * deathFade), new Quaternionf()));
                 }
-                if (tip != null && tip.isValid()) tip.teleport(p[SEGS].toLocation(world).subtract(0, 0.8, 0));
+                if (tip != null && tip.isValid()) tip.teleport(p[SEGS].toLocation(world).subtract(0, colossal ? tip.getSize() * 0.26 : 0.8, 0));
             }
 
             void remove() {
@@ -4351,7 +4372,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             final ItemDisplay d; final Vector pos; int age; boolean gone;
             Bubble(Vector at) {
                 pos = at.clone();
-                d = spawnDisplay(at.toLocation(world), "kraken_air_bubble", (float) kcfg("air-bubble-scale", 3.0), 2, Display.Billboard.FIXED);
+                d = spawnDisplay(at.toLocation(world), "kraken_air_bubble", (float) (kcfg("air-bubble-scale", 3.0) * hs), 2, Display.Billboard.FIXED);
                 d.setBrightness(new Display.Brightness(15, 15));
             }
             void pop() {
@@ -4366,7 +4387,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             final ItemDisplay d; final Slime box; final Vector pos; int age;
             Pink(Vector at) {
                 pos = at.clone();
-                d = spawnDisplay(at.toLocation(world), "kraken_pink_bubble", 2.6f, 2, Display.Billboard.FIXED);
+                d = spawnDisplay(at.toLocation(world), "kraken_pink_bubble", colossal ? 4f : 2.6f, 2, Display.Billboard.FIXED);
                 d.setBrightness(new Display.Brightness(15, 15));
                 d.setGlowing(true); d.setGlowColorOverride(Color.fromRGB(255, 110, 200));
                 box = (Slime) world.spawnEntity(at.toLocation(world), EntityType.SLIME, false);
@@ -4380,7 +4401,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             final ItemDisplay d; final Vector pos, v; int life;
             Barnacle(Vector from, Vector v) {
                 pos = from.clone(); this.v = v;
-                d = spawnDisplay(from.toLocation(world), "kraken_barnacle", 1.3f, 1, Display.Billboard.FIXED);
+                d = spawnDisplay(from.toLocation(world), "kraken_barnacle", (float) (1.3 * hs), 1, Display.Billboard.FIXED);
             }
         }
 
@@ -4407,21 +4428,26 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             world = at.getWorld();
             this.vessel = vessel;
             atSea = vessel != null;
-            scale = (float) kcfg("scale", 4.0);
-            maxHp = atSea ? kcfg("sea.health", 1600) : kcfg("health", 2200); hp = maxHp; defense = kcfg("defense", 0.3);
+            colossal = !atSea && !krakenNormalOnly && colossalWorld(world);
+            scale = (float) (colossal ? kcfg("abyssal.scale", 40.0) : kcfg("scale", 4.0));
+            k = colossal ? scale / Math.max(0.5, kcfg("scale", 4.0)) : 1;
+            hs = colossal ? kcfg("abyssal.hit-scale", 2.2) : 1;
+            ms = colossal ? kcfg("abyssal.move-scale", 2.2) : 1;
+            maxHp = atSea ? kcfg("sea.health", 1600) : colossal ? kcfg("abyssal.health", 9000) : kcfg("health", 2200); hp = maxHp; defense = kcfg("defense", 0.3);
             double floor = seabedY(at.getX(), at.getZ(), at.getY());
             home = atSea ? new Location(world, at.getX(), surfaceY(at.getX(), at.getZ(), at.getY()) + kcfg("sea.rise", 1.2) * scale / 4, at.getZ())
                          : new Location(world, at.getX(), Math.max(floor + 9 * scale / 4, at.getY() - 4), at.getZ());
-            pos = home.toVector().add(new Vector(0, -14, 0)); // starts deep below, and rises
+            pos = home.toVector().add(new Vector(0, -14 * k, 0)); // starts deep below, and rises
             if (by != null) {
                 Vector to = by.getLocation().toVector().subtract(pos);
                 yaw = (float) Math.toDegrees(Math.atan2(-to.getX(), to.getZ()));
                 fighters.add(by.getUniqueId());
             }
             hitbox = (Slime) world.spawnEntity(pos.toLocation(world), EntityType.SLIME, false);
-            hitbox.setSize((int) Math.max(4, Math.round(11 * scale / 4))); // about 5.7 blocks: matches his 7-block-wide head
+            hitbox.setSize((int) Math.min(127, Math.max(4, Math.round(11 * scale / 4)))); // about 5.7 blocks: matches his 7-block-wide head
             setupHitbox(hitbox, 1000, KRAKEN_TAG, "The Kraken");
             if (atSea) hitbox.addScoreboardTag(KRAKEN_SEA_TAG);
+            if (colossal) hitbox.addScoreboardTag(KRAKEN_ABYSSAL_TAG);
             mantle = spawnDisplay(pos.toLocation(world), "kraken_mantle_1", scale, 2, Display.Billboard.FIXED);
             beakTop = spawnDisplay(pos.toLocation(world), "kraken_beak", scale * 0.55f, 2, Display.Billboard.FIXED);
             beakBottom = spawnDisplay(pos.toLocation(world), "kraken_beak", scale * 0.5f, 2, Display.Billboard.FIXED);
@@ -4430,13 +4456,19 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             for (ItemDisplay d : new ItemDisplay[]{mantle, beakTop, beakBottom, pupilL, pupilR}) d.setViewRange(8f);
             for (int i = 0; i < ARMS; i++) arms[i] = new Arm(i);
             for (Arm a : arms) for (ItemDisplay d : a.segs) if (d != null) d.setViewRange(8f);
-            proxy(hitbox, mantle, EntityType.GLOW_SQUID, kcfg("bedrock.squid-scale", 10)); // Bedrock: a giant glow squid
-            bar = Bukkit.createBossBar(ChatColor.DARK_AQUA + "" + ChatColor.BOLD + "The Kraken", BarColor.BLUE, BarStyle.SEGMENTED_6);
+            if (colossal) { // big displays are culled by a box at their origin: give them one their size (or they blink out)
+                for (ItemDisplay d : new ItemDisplay[]{mantle, beakTop, beakBottom, pupilL, pupilR}) { d.setViewRange(16f); d.setDisplayWidth(scale * 2.5f); d.setDisplayHeight(scale * 2.5f); }
+                for (Arm a : arms) for (ItemDisplay d : a.segs) if (d != null) { d.setViewRange(16f); d.setDisplayWidth(scale); d.setDisplayHeight(scale); }
+            }
+            proxy(hitbox, mantle, EntityType.GLOW_SQUID, colossal ? 16 : kcfg("bedrock.squid-scale", 10)); // Bedrock: a giant glow squid
+            bar = Bukkit.createBossBar(ChatColor.DARK_AQUA + "" + ChatColor.BOLD + title(), colossal ? BarColor.PURPLE : BarColor.BLUE, BarStyle.SEGMENTED_6);
             pinkTimer = (int) kcfg("pink-bubble-seconds", 15) * 20;
             playMusic();
         }
 
         // ---------- helpers ----------
+        String title() { return colossal ? "The Abyssal Kraken" : "The Kraken"; }
+
         double speed() { return phase == 1 ? kcfg("phase1-speed", 0.6) : phase == 2 ? kcfg("phase2-speed", 0.85) : kcfg("phase3-speed", 1.05); }
         int windup(int base) { return (int) Math.round(base * (phase == 1 ? 1.0 : phase == 2 ? 0.8 : 0.65)); }
         Location loc() { return pos.toLocation(world, yaw, 0); }
@@ -4463,7 +4495,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             List<Player> a = new ArrayList<>();
             for (Player p : world.getPlayers()) {
                 if (!survival(p) || p.isDead() || down.contains(p.getUniqueId())) continue;
-                if (p.getLocation().toVector().distanceSquared(pos) > 64 * 64) continue;
+                if (p.getLocation().toVector().distanceSquared(pos) > far(64) * far(64)) continue;
                 a.add(p);
             }
             return a;
@@ -4488,7 +4520,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         }
 
         void say(String text) {
-            for (Player p : world.getPlayers()) if (p.getLocation().toVector().distanceSquared(pos) < 80 * 80) p.sendActionBar(legacy(text));
+            for (Player p : world.getPlayers()) if (p.getLocation().toVector().distanceSquared(pos) < far(80) * far(80)) p.sendActionBar(legacy(text));
         }
 
         // ---------- the update ----------
@@ -4498,7 +4530,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             if (hitbox.getHealth() < 900 && !dying) hitbox.setHealth(1000);
             if (dying) { bossPart("Kraken", "death", this::deathTick); if (kraken != this) return; renderAll(); return; }
             if (leaving) { bossPart("Kraken", "leaving", this::leaveTick); if (kraken != this) return; renderAll(); return; }
-            for (Player p : world.getPlayers()) if (survival(p) && !p.isDead() && p.getLocation().toVector().distanceSquared(pos) < 48 * 48) join(p);
+            for (Player p : world.getPlayers()) if (survival(p) && !p.isDead() && p.getLocation().toVector().distanceSquared(pos) < far(48) * far(48)) join(p);
             List<Player> a = active();
             if (atSea && intro <= 0 && !vessel.alive()) { lostAtSea(); return; } // the ship's gone under: he's won
             if (a.isEmpty() && pilot(this) == null) {
@@ -4523,6 +4555,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             if (!atSea) bossPart("Kraken", "eels", () -> eelTick(a));
             bossPart("Kraken", "ink", () -> inkTick(a));
             bossPart("Kraken", "grip", this::gripTick);
+            if (colossal) bossPart("Kraken", "arm contact", () -> armTouch(a));
             if (pilot(this) == null) bossPart("Kraken", "watchdog", () -> watchdog(a));
             renderAll();
             minions.removeIf(m -> !m.isValid() || m.isDead());
@@ -4641,22 +4674,27 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                     int cycle = (int) Math.max(20, 40 / sp), c = ticks % cycle;
                     double flat = Math.hypot(to.getX(), to.getZ());
                     Vector station = tp.clone().add(new Vector(0, 2, 0));
-                    if (flat > 0.1) station.subtract(new Vector(to.getX(), 0, to.getZ()).multiply(Math.min(1, 10 / flat))); // ~10 blocks away
+                    if (colossal) station.add(new Vector(0, kcfg("abyssal.station-height", 20), 0)); // his beak and arms hang low: his head stays above you
+                    double sd = colossal ? kcfg("abyssal.station", 50) : 10;
+                    if (colossal) { // always that far off (the normal one stays put once he's within 10): never with you inside his head
+                        Vector away = flat > 0.1 ? new Vector(-to.getX(), 0, -to.getZ()).multiply(1 / flat) : new Vector(Math.sin(Math.toRadians(yaw)), 0, -Math.cos(Math.toRadians(yaw)));
+                        station.add(away.multiply(sd));
+                    } else if (flat > 0.1) station.subtract(new Vector(to.getX(), 0, to.getZ()).multiply(Math.min(1, sd / flat))); // ~10 blocks away
                     thrusting = c < 10;
                     if (c < 10) { // the jet: contracts, pushes, and a stream of bubbles shoots out of his siphon
                         pulse = (float) Math.sin(c / 10.0 * Math.PI);
-                        Vector push = safeDir(station.subtract(pos), new Vector()).multiply(0.06 * sp);
+                        Vector push = safeDir(station.subtract(pos), new Vector()).multiply(0.06 * sp * ms);
                         vel.add(push);
                         if (c % 2 == 0) {
                             Vector back = safeDir(push.clone().multiply(-1), new Vector(0, 0, -1));
                             Location sl = siphon().toLocation(world);
-                            for (int i = 0; i < 4; i++) world.spawnParticle(Particle.BUBBLE, sl.clone().add(back.clone().multiply(i * 0.8)), 3, 0.2, 0.2, 0.2, 0.02);
+                            for (int i = 0; i < 4; i++) world.spawnParticle(Particle.BUBBLE, sl.clone().add(back.clone().multiply(i * 0.8 * k)), colossal ? 12 : 3, 0.2 * k, 0.2 * k, 0.2 * k, 0.02);
                         }
                     } else pulse *= 0.85f;
                 }
             }
             if (!finite(vel)) vel = new Vector();
-            double cap = 0.9 * sp + (attack == 5 ? (atSea ? 1.8 : 1.0) : 0);
+            double cap = (0.9 * sp + (attack == 5 ? (atSea ? 1.8 : 1.0) : 0)) * ms;
             if (vel.length() > cap) vel = vel.normalize().multiply(cap);
             pos.add(vel);
             if (vel.lengthSquared() > 0.0004) moveDir = vel.clone().normalize();
@@ -4683,9 +4721,9 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             if (atSea) { keepAtSurface(); return; }
             if (!finite(pos)) pos = home.toVector();
             Vector flat = pos.clone().subtract(home.toVector()).setY(0);
-            double limit = kcfg("arena-radius", 24);
+            double limit = colossal ? kcfg("abyssal.arena-radius", 140) : kcfg("arena-radius", 24);
             if (flat.length() > limit) { pos = home.toVector().add(flat.normalize().multiply(limit)).setY(pos.getY()); vel.multiply(0.3); }
-            double top = surfaceY(pos.getX(), pos.getZ(), Math.min(pos.getY(), home.getY() + 30)) - 5.5 * scale / 4;
+            double top = surfaceY(pos.getX(), pos.getZ(), Math.min(pos.getY(), home.getY() + 30 * k)) - 5.5 * scale / 4;
             double floor = seabedY(pos.getX(), pos.getZ(), pos.getY()) + 4.5 * scale / 4;
             if (top < floor) { // a shallow spot: the middle of the water column
                 double mid = (top + floor) / 2; pos.setY(mid);
@@ -4709,7 +4747,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 for (int k = 0; k < 64 && y > world.getMinHeight(); k++, y--) if (isWater(world.getBlockAt(bx, y, bz))) return y + 1;
                 return fromY;
             }
-            for (int k = 0; k < 128 && y < world.getMaxHeight() - 1; k++, y++) if (!isWater(world.getBlockAt(bx, y, bz))) return y;
+            for (int i = 0, n = colossal ? 420 : 128; i < n && y < world.getMaxHeight() - 1; i++, y++) if (!isWater(world.getBlockAt(bx, y, bz))) return y;
             return fromY + 32;
         }
 
@@ -4745,7 +4783,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             if (--bubbleTimer <= 0) {
                 bubbleTimer = phase == 1 ? 100 : phase == 2 ? 90 : 80;
                 int n = 2 + random.nextInt(2);
-                for (int i = 0; i < n && airs.size() < 10; i++) spawnAir();
+                for (int i = 0; i < n && airs.size() < (colossal ? 14 : 10); i++) spawnAir();
             }
             for (Bubble b : airs) {
                 if (b.gone) continue;
@@ -4756,7 +4794,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 b.d.teleport(l);
                 if (b.age % 10 == 0) world.spawnParticle(Particle.BUBBLE, l, 4, 0.6, 0.6, 0.6, 0.02);
                 for (Player p : a) {
-                    if (eye(p).distanceSquared(b.pos) > 2.0 * 2.0) continue;
+                    if (eye(p).distanceSquared(b.pos) > 2.0 * hs * 2.0 * hs) continue;
                     if (counter(p, "coral_lung")) { // Coral Lung: all your air, and 5 seconds of water breathing
                         if (p.getRemainingAir() < p.getMaximumAir()) p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_BREATH, 0.8f, 1.2f);
                         p.setRemainingAir(p.getMaximumAir());
@@ -4768,13 +4806,20 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         }
 
         void spawnAir() {
+            Vector c = colossal ? nearFighter() : pos; // the giant's head is far off: his bubbles rise among the fighters
             for (int tries = 0; tries < 8; tries++) {
-                double ang = random.nextDouble() * Math.PI * 2, dist = 6 + random.nextDouble() * 12;
-                Vector at = pos.clone().add(new Vector(Math.cos(ang) * dist, random.nextDouble() * 6 - 4, Math.sin(ang) * dist));
+                double ang = random.nextDouble() * Math.PI * 2, dist = colossal ? 5 + random.nextDouble() * 10 : 6 + random.nextDouble() * 12;
+                Vector at = c.clone().add(new Vector(Math.cos(ang) * dist, random.nextDouble() * 6 - 4, Math.sin(ang) * dist));
                 if (!isWater(at.toLocation(world).getBlock())) continue;
                 airs.add(new Bubble(at));
                 return;
             }
+        }
+
+        /** A random fighter's position (the Abyssal Kraken puts bubbles, eels and minions round them), or his head. */
+        Vector nearFighter() {
+            List<Player> a = active();
+            return a.isEmpty() ? pos.clone() : a.get(random.nextInt(a.size())).getLocation().toVector();
         }
 
         void popAirNear(Vector c, double r) { for (Bubble b : airs) if (b.pos.distanceSquared(c) < r * r) b.pop(); }
@@ -4796,9 +4841,10 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             }
             if (--pinkTimer > 0) return;
             pinkTimer = (int) kcfg("pink-bubble-seconds", 15) * 20;
+            Vector pc = colossal ? nearFighter() : pos;
             for (int tries = 0; tries < 8; tries++) {
                 double ang = random.nextDouble() * Math.PI * 2, dist = 7 + random.nextDouble() * 6;
-                Vector at = pos.clone().add(new Vector(Math.cos(ang) * dist, random.nextDouble() * 4 - 2, Math.sin(ang) * dist));
+                Vector at = pc.clone().add(new Vector(Math.cos(ang) * dist, random.nextDouble() * 4 - 2, Math.sin(ang) * dist));
                 if (atSea) at.setY(surfaceY(at.getX(), at.getZ(), at.getY() + 3) + 1.8);
                 else if (!isWater(at.toLocation(world).getBlock())) continue;
                 pink = new Pink(at);
@@ -4815,7 +4861,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             world.playSound(l, Sound.BLOCK_AMETHYST_BLOCK_BREAK, 2f, 0.7f);
             pink.remove(); pink = null;
             double dmg = kcfg("pink-damage-min", 150) + random.nextDouble() * (kcfg("pink-damage-max", 200) - kcfg("pink-damage-min", 150));
-            damage(dmg, by, true);
+            damage(dmg * (colossal ? kcfg("abyssal.pink-multiplier", 3.0) : 1), by, true);
             flinch = 1;
         }
 
@@ -4854,7 +4900,8 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 // and (phase 3) Eight-Arm Barrage. Whirlpool, Spawn of the Deep and the depths moves need you underwater.
                 List<Integer> pool = atSea ? new ArrayList<>(List.of(1, 2, 3, 5, 6, 7)) : new ArrayList<>(List.of(1, 2, 3, 4, 5, 6, 7, 8));
                 if (phase == 3) pool.addAll(atSea ? List.of(10, 10, 10) : List.of(9, 10, 11, 9, 10, 11));
-                if (minions.size() >= 4) pool.removeIf(m -> m == 8);
+                if (colossal) { pool.add(12); if (phase >= 2) pool.add(13); } // the Abyssal Kraken: Abyssal Clap, Ink Storm
+                if (minions.size() >= (colossal ? 8 : 4)) pool.removeIf(m -> m == 8);
                 int pick;
                 do pick = pool.get(random.nextInt(pool.size())); while (pick == lastAttack && pool.size() > 1);
                 attack = pick; lastAttack = pick; t = 0; sub = 0; count = 0;
@@ -4871,21 +4918,23 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 case 5 -> beakBite(target, a);
                 case 6 -> barnacleBarrage(a);
                 case 7 -> tidalSurge(a);
-                case 8 -> spawnOfTheDeep();
+                case 8 -> spawnOfTheDeep(a);
                 case 9 -> whirlpool(a, true);
                 case 10 -> eightArmBarrage(a);
                 case 11 -> crushingDepths(a);
+                case 12 -> abyssalClap(target, a);
+                case 13 -> inkStorm(a);
                 default -> endAttack(10);
             }
             t++;
         }
 
-        int rest() { return phase == 1 ? 50 : phase == 2 ? 36 : 26; }
+        int rest() { int r = phase == 1 ? 50 : phase == 2 ? 36 : 26; return colossal ? (int) Math.round(r * kcfg("abyssal.rest-multiplier", 0.75)) : r; }
 
         /** Arms that aren't doing anything drift and curl around him. */
         void idleArms() {
             double s = scale / 4;
-            Player near = null; double bd = 25 * 25;
+            Player near = null; double bd = far(25) * far(25);
             for (Player p : world.getPlayers()) { if (!survival(p)) continue; double d = eye(p).distanceSquared(pos); if (d < bd) { bd = d; near = p; } }
             // his two front-most arms are the curious ones
             Vector fwd = new Vector(-Math.sin(Math.toRadians(yaw)), 0, Math.cos(Math.toRadians(yaw)));
@@ -4904,15 +4953,16 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                     arm.curl = 0.45 + 0.35 * Math.sin(ticks * 0.035 + arm.index * 1.3); // each arm curls and uncurls on its own rhythm
                     if (near != null && (arm.index == first || arm.index == second)) { g = g.multiply(0.65).add(eye(near).multiply(0.35)); arm.curl = 0.3; } // lazily reaching for you
                 }
-                if (recoilT > 0) g.add(arm.outward().multiply(recoilT * 0.8)); // flinches away when he's hit
+                if (recoilT > 0) g.add(arm.outward().multiply(recoilT * 0.8 * k)); // flinches away when he's hit
                 arm.goal = g;
             }
         }
 
         void ring(Vector c, double r, Color col) {
-            for (int i = 0; i < 20; i++) {
-                double a = Math.PI * 2 * i / 20;
-                world.spawnParticle(Particle.DUST, c.toLocation(world).add(Math.cos(a) * r, 0, Math.sin(a) * r), 1, 0, 0, 0, 0, new Particle.DustOptions(col, 1.4f));
+            int n = colossal ? 40 : 20;
+            for (int i = 0; i < n; i++) {
+                double a = Math.PI * 2 * i / n;
+                world.spawnParticle(Particle.DUST, c.toLocation(world).add(Math.cos(a) * r, 0, Math.sin(a) * r), 1, 0, 0, 0, 0, new Particle.DustOptions(col, colossal ? 2.2f : 1.4f));
             }
         }
 
@@ -4921,10 +4971,10 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             int w = windup(34);
             if (t == 0) { Arm arm = armNear(target.getLocation().toVector()); arm.busy = true; sub = arm.index; }
             Arm arm = arms[sub];
-            if (t < w - 12) lockPoint = target.getLocation().toVector();
+            if (t < w - (colossal ? 22 : 12)) lockPoint = target.getLocation().toVector();
             if (t < w) {
-                arm.goal = lockPoint.clone().add(new Vector(Math.cos(t * 0.35) * 2.2, 9, Math.sin(t * 0.35) * 2.2)); arm.follow = 0.12; arm.wave = 0.7; // coils up, writhing
-                if (t % 3 == 0) ring(lockPoint, 3.2, Color.fromRGB(220, 40, 40));
+                arm.goal = lockPoint.clone().add(new Vector(Math.cos(t * 0.35) * 2.2 * k, 9 * k, Math.sin(t * 0.35) * 2.2 * k)); arm.follow = 0.12; arm.wave = 0.7; // coils up, writhing
+                if (t % 3 == 0) ring(lockPoint, 3.2 * hs, Color.fromRGB(220, 40, 40));
             } else if (t < w + 8) {
                 arm.goal = lockPoint.clone().add(new Vector(0, -1.5, 0)); arm.follow = 0.65; arm.wave = 0.1; // SLAM
                 if (t == w + 3) {
@@ -4935,13 +4985,13 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                     world.playSound(impact.toLocation(world), Sound.ENTITY_GENERIC_EXPLODE, 1.6f, 0.6f);
                     world.spawnParticle(Particle.BUBBLE_POP, impact.toLocation(world), 80, 2, 1, 2, 0.15);
                     seaHit(impact, kcfg("sea.ship-damage.slam", 0.04), 4.0);
-                    for (Player p : a) if (p.getLocation().toVector().add(new Vector(0, 0.9, 0)).distanceSquared(impact) < 3.6 * 3.6) {
+                    for (Player p : a) if (p.getLocation().toVector().add(new Vector(0, 0.9, 0)).distanceSquared(impact) < 3.6 * hs * 3.6 * hs) {
                         strike(p, kcfg("damage.slam", 22), Guard.HEAVY, arm.tipPos());
                         Safe.vel(p, p.getLocation().toVector().subtract(impact).setY(0).multiply(0.3).setY(-0.5));
                     }
                 }
             } else if (t <= w + 22) {
-                arm.goal = lockPoint.clone().add(new Vector(0, 5, 0)); arm.follow = 0.12; arm.wave = 0.3; // recoils back up after the hit
+                arm.goal = lockPoint.clone().add(new Vector(0, 5 * k, 0)); arm.follow = 0.12; arm.wave = 0.3; // recoils back up after the hit
             } else endAttack(rest());
         }
 
@@ -4954,7 +5004,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             if (count == 1) { if (gripped == null) endAttack(rest()); return; }
             if (gripped == null) {
                 arm.goal = eye(target); arm.follow = 0.18 * speed() + 0.06; arm.wave = 0.25;
-                if (arm.tipPos().distanceSquared(eye(target)) < 2.6 * 2.6 && t > 6) {
+                if (arm.tipPos().distanceSquared(eye(target)) < 2.6 * hs * 2.6 * hs && t > 6) {
                     count = 1;
                     gripped = target.getUniqueId(); gripArm = sub; gripHits = 0; gripT = 0;
                     world.playSound(target.getLocation(), Sound.ENTITY_SLIME_SQUISH, 2f, 0.5f);
@@ -4978,8 +5028,8 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             if (near != null) away.add(safeDir(eye(p).subtract(near.pos), new Vector()).multiply(0.8));
             if (atSea) away = safeDir(pos.clone().subtract(eye(p)).setY(0), new Vector(0, 0, 1)).add(new Vector(0, eye(p).getY() > surface() + 0.5 ? 0.35 : -0.2, 0)); // off the deck and into the sea
             // the tip wraps around you (circling your body) while the arm drags you down and away from the air
-            arm.goal = eye(p).add(new Vector(Math.cos(gripT * 0.45) * 0.9, -0.4, Math.sin(gripT * 0.45) * 0.9)); arm.follow = 0.35;
-            Safe.vel(p, safeDir(away, new Vector(0, -1, 0)).multiply(0.28));
+            arm.goal = eye(p).add(new Vector(Math.cos(gripT * 0.45) * 0.9 * hs, -0.4, Math.sin(gripT * 0.45) * 0.9 * hs)); arm.follow = 0.35;
+            Safe.vel(p, safeDir(away, new Vector(0, -1, 0)).multiply(colossal ? 0.4 : 0.28));
             if (gripT % 20 == 0) strike(p, kcfg("damage.grip-per-second", 4), Guard.UNBLOCKABLE, arm.tipPos());
             if (gripHits >= needHits || gripT >= maxT) {
                 p.sendActionBar(legacy(ChatColor.GREEN + "You broke free!"));
@@ -4998,21 +5048,37 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             beakOpen = t < 16 ? t / 16f : Math.max(0, 1 - (t - 16) / 10f);
             pulse = t >= 8 && t <= 16 ? (float) Math.sin((t - 8) / 8.0 * Math.PI) : pulse * 0.85f; // he clenches to squirt it
             if (t == 14) {
-                inkCenter = pos.clone().add(target.getLocation().toVector().subtract(pos).multiply(0.6));
+                inkCenter = colossal ? eye(target) : pos.clone().add(target.getLocation().toVector().subtract(pos).multiply(0.6));
                 inkT = 100;
                 world.playSound(pos.toLocation(world), Sound.ENTITY_SQUID_SQUIRT, 3f, 0.4f);
                 Vector from = siphon(); // octopuses ink through their siphon
                 Vector dir = safeDir(inkCenter.clone().subtract(from), new Vector(0, 0, 1));
-                for (int i = 0; i < 30; i++) world.spawnParticle(Particle.SQUID_INK, from.clone().add(dir.clone().multiply(i * 0.5)).toLocation(world), 6, 0.3, 0.3, 0.3, 0.02);
+                double len = Math.min(from.distance(inkCenter), 15 * k);
+                for (int i = 0; i < 30; i++) world.spawnParticle(Particle.SQUID_INK, from.clone().add(dir.clone().multiply(i * len / 30)).toLocation(world), 6, 0.3 * hs, 0.3 * hs, 0.3 * hs, 0.02);
             }
             if (t > 30) endAttack(rest());
         }
 
         void inkTick(List<Player> a) {
+            if (stormT > 0) { // the Ink Storm: a cloud on every fighter, and the ink burns
+                stormT--;
+                double r = 6 * hs;
+                for (Vector c : storm) {
+                    if (stormT % 2 == 0) world.spawnParticle(Particle.SQUID_INK, c.toLocation(world), 30, r * 0.5, r * 0.4, r * 0.5, 0.01);
+                    for (Player p : a) {
+                        if (eye(p).distanceSquared(c) > r * r) continue;
+                        if (counter(p, "glow_gland")) { p.addPotionEffect(new PotionEffect(PotionEffectType.NIGHT_VISION, 60, 0, true, false, true)); continue; }
+                        p.addPotionEffect(new PotionEffect(PotionEffectType.DARKNESS, 60, 0, true, false, true));
+                        p.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 30, 1, true, false, true));
+                        if (stormT % 20 == 0) strike(p, kcfg("abyssal.damage.ink-per-second", 3), Guard.UNBLOCKABLE, c);
+                    }
+                }
+                if (stormT <= 0) storm.clear();
+            }
             if (inkT <= 0 || inkCenter == null) return;
             inkT--;
-            double r = 7;
-            if (inkT % 2 == 0) world.spawnParticle(Particle.SQUID_INK, inkCenter.toLocation(world), 30, r * 0.5, r * 0.4, r * 0.5, 0.01);
+            double r = 7 * hs;
+            if (inkT % 2 == 0) world.spawnParticle(Particle.SQUID_INK, inkCenter.toLocation(world), colossal ? 60 : 30, r * 0.5, r * 0.4, r * 0.5, 0.01);
             for (Player p : a) {
                 if (eye(p).distanceSquared(inkCenter) > r * r) continue;
                 if (counter(p, "glow_gland")) { // Glow Gland: immune, and you can see through it
@@ -5027,16 +5093,16 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         /** 4) Whirlpool (and 9: the Abyssal Vortex): pulls everyone toward his beak. */
         void whirlpool(List<Player> a, boolean abyssal) {
             int dur = abyssal ? 140 : 90;
-            double range = abyssal ? 26 : 18, pullBase = abyssal ? 0.16 : 0.1;
+            double range = (abyssal ? 26 : 18) * hs, pullBase = (abyssal ? 0.16 : 0.1) * (colossal ? 1.3 : 1);
             beakOpen = 1;
             Vector c = beak();
             if (t == 0) {
                 world.playSound(c.toLocation(world), Sound.ENTITY_ELDER_GUARDIAN_AMBIENT, 2.5f, 0.5f);
-                if (abyssal) { popAirNear(c, 12); inkCenter = c.clone(); inkT = 80; say(ChatColor.DARK_AQUA + "" + ChatColor.BOLD + "ABYSSAL VORTEX!"); }
+                if (abyssal) { popAirNear(c, 12 * hs); inkCenter = c.clone(); inkT = 80; say(ChatColor.DARK_AQUA + "" + ChatColor.BOLD + "ABYSSAL VORTEX!"); }
             }
             for (Arm arm : arms) { // every arm spins around him
                 double ang = Math.toRadians(arm.index * 45) + t * 0.15;
-                arm.goal = pos.clone().add(new Vector(Math.cos(ang) * 15, -4, Math.sin(ang) * 15)); arm.follow = 0.2; arm.wave = 0.5;
+                arm.goal = pos.clone().add(new Vector(Math.cos(ang) * 15 * k, -4 * k, Math.sin(ang) * 15 * k)); arm.follow = 0.2; arm.wave = 0.5;
             }
             if (t % 3 == 0) for (int i = 0; i < 3; i++) {
                 double ang = t * 0.3 + i * 2.1, rr = range * (1 - (t % 30) / 30.0);
@@ -5049,7 +5115,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 double pull = pullBase * (counter(p, "eelskin_wrap") ? 0.5 : 1);
                 Vector swirl = safeDir(new Vector(-to.getZ(), 0, to.getX()), new Vector()).multiply(pull * 0.6); // straight above/below: no swirl (not NaN)
                 Safe.vel(p, p.getVelocity().multiply(0.8).add(to.normalize().multiply(pull)).add(swirl));
-                if (d < 3.5 && t % 20 == 0) strike(p, kcfg("damage.whirlpool-bite", 8), Guard.UNBLOCKABLE, c);
+                if (d < bodyR(3.5) && t % 20 == 0) strike(p, kcfg("damage.whirlpool-bite", 8), Guard.UNBLOCKABLE, c);
             }
             if (t >= dur) endAttack(rest());
         }
@@ -5060,10 +5126,10 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             if (t < w) {
                 beakOpen = t / (float) w;
                 Vector back = safeDir(pos.clone().subtract(target.getLocation().toVector()), new Vector(0, 0, 1));
-                vel.add(back.multiply(0.01));
-                for (Arm arm : arms) { arm.goal = arm.root().add(new Vector(0, 6, 0)).add(arm.outward().multiply(15)); arm.follow = 0.1; } // spread wide
+                vel.add(back.multiply(0.01 * ms));
+                for (Arm arm : arms) { arm.goal = arm.root().add(new Vector(0, 6 * k, 0)).add(arm.outward().multiply(15 * k)); arm.follow = 0.1; } // spread wide
             } else if (t == w) {
-                vel = safeDir(eye(target).subtract(pos), new Vector(0, 0, 1)).multiply(1.4 * speed() + 0.5);
+                vel = safeDir(eye(target).subtract(colossal ? beak() : pos), new Vector(0, 0, 1)).multiply((1.4 * speed() + 0.5) * ms); // the giant aims his beak
                 if (atSea) { // at sea: he lunges at the hull, staying at the surface, far enough to reach it
                     Vector to = eye(target).subtract(pos).setY(0);
                     vel = safeDir(to, new Vector(0, 0, 1)).multiply(Math.max(1.0, Math.min(2.4, to.length() * 0.14)));
@@ -5077,8 +5143,8 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                     seaHit(beak(), kcfg("sea.ship-damage.bite", 0.07), 6);
                     vel.multiply(-0.3);
                 }
-                for (Arm arm : arms) { arm.goal = arm.root().subtract(safeDir(vel, new Vector(0, 0, 1)).multiply(17)).add(arm.outward().multiply(3)); arm.follow = 0.3; } // trail behind
-                for (Player p : a) if (eye(p).distanceSquared(beak()) < 4.5 * 4.5) strike(p, kcfg("damage.bite", 20), Guard.HEAVY, beak());
+                for (Arm arm : arms) { arm.goal = arm.root().subtract(safeDir(vel, new Vector(0, 0, 1)).multiply(17 * k)).add(arm.outward().multiply(3 * k)); arm.follow = 0.3; } // trail behind
+                for (Player p : a) if (eye(p).distanceSquared(beak()) < bodyR(4.5) * bodyR(4.5)) strike(p, kcfg("damage.bite", 20), Guard.HEAVY, beak());
             } else {
                 beakOpen = Math.max(0, beakOpen - 0.1f);
                 if (t > w + 26) endAttack(rest());
@@ -5092,7 +5158,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 world.playSound(pos.toLocation(world), Sound.ENTITY_LLAMA_SPIT, 2.5f, 0.5f);
                 for (Player p : a) {
                     Vector aim = safeDir(eye(p).subtract(beak()), new Vector(0, 0, 1));
-                    for (int i = -2; i <= 2; i++) barnacles.add(new Barnacle(beak(), aim.clone().rotateAroundY(Math.toRadians(i * 9)).multiply(0.7)));
+                    for (int i = -2; i <= 2; i++) barnacles.add(new Barnacle(beak(), aim.clone().rotateAroundY(Math.toRadians(i * 9)).multiply(colossal ? 1.4 : 0.7)));
                 }
             }
             if (t > 60) endAttack(rest());
@@ -5106,8 +5172,8 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 if (b.d.isValid()) b.d.teleport(l);
                 boolean solid = world.getBlockAt(l).getType().isSolid();
                 if (solid && atSea && b.life % 2 == 0) seaHit(b.pos, kcfg("sea.ship-damage.barnacle", 0.005), 2.0); // they chip the hull
-                boolean done = b.life > 60 || solid;
-                for (Player p : a) if (!done && eye(p).distanceSquared(b.pos) < 1.4 * 1.4) { strike(p, kcfg("damage.barnacle", 8), Guard.BLOCKABLE, b.pos); done = true; }
+                boolean done = b.life > (colossal ? 90 : 60) || solid;
+                for (Player p : a) if (!done && eye(p).distanceSquared(b.pos) < 1.4 * hs * 1.4 * hs) { strike(p, kcfg("damage.barnacle", 8), Guard.BLOCKABLE, b.pos); done = true; }
                 if (done) { if (b.d.isValid()) b.d.remove(); it.remove(); }
             }
         }
@@ -5118,14 +5184,15 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             if (t == 0) surgeHitShip = false;
             if (t < w) {
                 pulse = t / (float) w;
-                for (Arm arm : arms) { arm.goal = arm.root().add(new Vector(0, -2, 0)).add(arm.outward().multiply(2)); arm.follow = 0.15; } // curls in tight
+                for (Arm arm : arms) { arm.goal = arm.root().add(new Vector(0, -2 * k, 0)).add(arm.outward().multiply(2 * k)); arm.follow = 0.15; } // curls in tight
             } else {
-                double r = (t - w) * 0.9;
+                double r = (t - w) * 0.9 * ms + (colossal ? 3 * k : 0);
                 pulse = Math.max(0, pulse - 0.15f);
-                for (Arm arm : arms) { arm.goal = arm.root().add(arm.outward().multiply(r + 3)); arm.follow = 0.4; } // flings out
+                for (Arm arm : arms) { arm.goal = arm.root().add(arm.outward().multiply(r + 3 * k)); arm.follow = 0.4; } // flings out
                 if (t == w) world.playSound(pos.toLocation(world), Sound.ENTITY_WARDEN_SONIC_BOOM, 2f, 0.5f);
-                if (t % 2 == 0) for (int i = 0; i < 28; i++) {
-                    double ang = Math.PI * 2 * i / 28;
+                int pts = colossal ? 120 : 28;
+                if (t % 2 == 0) for (int i = 0; i < pts; i++) {
+                    double ang = Math.PI * 2 * i / pts;
                     world.spawnParticle(Particle.BUBBLE_POP, pos.toLocation(world).add(Math.cos(ang) * r, 0, Math.sin(ang) * r), 1, 0, 0.6, 0, 0);
                 }
                 popAirNear(pos, r);
@@ -5142,23 +5209,24 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 for (Player p : a) {
                     Vector d = p.getLocation().toVector().subtract(pos);
                     double flat = Math.hypot(d.getX(), d.getZ());
-                    if (Math.abs(flat - r) < 1.2 && Math.abs(eye(p).getY() - pos.getY()) < (atSea ? 6.0 : 2.0)) { // at sea: it reaches the deck
+                    if (Math.abs(flat - r) < 1.2 * hs && Math.abs(eye(p).getY() - pos.getY()) < (atSea ? 6.0 : 2.0 * hs)) { // at sea: it reaches the deck
                         strike(p, kcfg("damage.surge", 15), Guard.HEAVY, pos);
                         Safe.vel(p, safeDir(d.setY(0), new Vector(1, 0, 0)).multiply(1.1).setY(0.3));
                     }
                 }
-                if (r > 22) endAttack(rest());
+                if (r > 22 * k) endAttack(rest());
             }
         }
 
         /** 8) Spawn of the Deep: Drowned with tridents rise to help him. */
-        void spawnOfTheDeep() {
+        void spawnOfTheDeep(List<Player> a) {
             beakOpen = 0.6f;
             if (t == 10) {
                 world.playSound(pos.toLocation(world), Sound.ENTITY_ELDER_GUARDIAN_CURSE, 2f, 0.8f);
-                for (int i = 0; i < 3 && minions.size() < 6; i++) {
+                for (int i = 0; i < (colossal ? 5 : 3) && minions.size() < (colossal ? 10 : 6); i++) {
                     double ang = random.nextDouble() * Math.PI * 2;
-                    Location l = pos.toLocation(world).add(Math.cos(ang) * 6, -2, Math.sin(ang) * 6);
+                    Vector c = colossal ? nearFighter() : pos; // the giant's spawn rise among the fighters
+                    Location l = c.toLocation(world).add(Math.cos(ang) * (colossal ? 9 : 6), -2, Math.sin(ang) * (colossal ? 9 : 6));
                     if (!isWater(l.getBlock())) continue;
                     org.bukkit.entity.Drowned d = Wild.spawnAs(world, l, EntityType.DROWNED, org.bukkit.entity.Drowned.class, z -> {
                         z.getEquipment().setItemInMainHand(new ItemStack(Material.TRIDENT));
@@ -5185,7 +5253,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 for (int i = 0; i < ARMS; i++) {
                     Player p = a.get(i % a.size());
                     double ang = Math.toRadians(i * 45);
-                    barrageTargets.add(p.getLocation().toVector().add(new Vector(Math.cos(ang) * 3, 0, Math.sin(ang) * 3)));
+                    barrageTargets.add(p.getLocation().toVector().add(new Vector(Math.cos(ang) * 3 * hs, 0, Math.sin(ang) * 3 * hs)));
                     arms[i].busy = true;
                 }
                 say(ChatColor.DARK_AQUA + "" + ChatColor.BOLD + "EIGHT-ARM BARRAGE!");
@@ -5195,8 +5263,8 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 Vector at = barrageTargets.get(i);
                 Arm arm = arms[i];
                 if (t < slamAt) {
-                    arm.goal = at.clone().add(new Vector(0, 8, 0)); arm.follow = 0.12;
-                    if (t % 3 == 0 && t > slamAt - 18) ring(at, 3, Color.fromRGB(220, 40, 40));
+                    arm.goal = at.clone().add(new Vector(0, 8 * k, 0)); arm.follow = 0.12;
+                    if (t % 3 == 0 && t > slamAt - 18) ring(at, 3 * hs, Color.fromRGB(220, 40, 40));
                 } else if (t < slamAt + 6) {
                     arm.goal = at.clone().add(new Vector(0, -1.5, 0)); arm.follow = 0.7;
                     if (t == slamAt + 3) {
@@ -5205,7 +5273,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                         world.playSound(impact.toLocation(world), Sound.ENTITY_GENERIC_EXPLODE, 1.2f, 0.7f);
                         world.spawnParticle(Particle.BUBBLE_POP, impact.toLocation(world), 40, 1.5, 0.8, 1.5, 0.1);
                         seaHit(impact, kcfg("sea.ship-damage.barrage", 0.03), 3.5);
-                        for (Player p : a) if (p.getLocation().toVector().add(new Vector(0, 0.9, 0)).distanceSquared(impact) < 3.4 * 3.4) strike(p, kcfg("damage.barrage", 17), Guard.HEAVY, impact);
+                        for (Player p : a) if (p.getLocation().toVector().add(new Vector(0, 0.9, 0)).distanceSquared(impact) < 3.4 * hs * 3.4 * hs) strike(p, kcfg("damage.barrage", 17), Guard.HEAVY, impact);
                     }
                 } else arm.busy = false;
             }
@@ -5219,11 +5287,11 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 world.playSound(pos.toLocation(world), Sound.ENTITY_ELDER_GUARDIAN_CURSE, 2.5f, 0.4f);
                 for (int i = 0; i < 4; i++) spawnAir();
             }
-            vel.add(new Vector(0, -0.02, 0));
+            vel.add(new Vector(0, -0.02 * ms, 0));
             pulse = 0.4f + (float) Math.sin(t * 0.3) * 0.2f;
             if (t > 20 && t % 20 == 0) for (Player p : a) {
                 boolean safe = false;
-                for (Bubble b : airs) if (eye(p).distanceSquared(b.pos) < 2.2 * 2.2) { safe = true; break; }
+                for (Bubble b : airs) if (eye(p).distanceSquared(b.pos) < 2.2 * hs * 2.2 * hs) { safe = true; break; }
                 if (safe) continue;
                 int tier = divingTier(p);
                 if (tier >= 4) continue; // the Abyssal Diving Suit is immune
@@ -5238,8 +5306,8 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         void eelTick(List<Player> a) {
             if (phase == 3 && intro <= 0 && transition <= 0 && ++eelTimer >= kcfg("eel-every-ticks", 200)) {
                 eelTimer = 0;
-                for (int i = 0; i < 2 && eels.size() < kcfg("max-eels", 6); i++) {
-                    Vector at = pos.clone().add(new Vector(random.nextGaussian() * 3, -2, random.nextGaussian() * 3));
+                for (int i = 0; i < (colossal ? 3 : 2) && eels.size() < kcfg("max-eels", 6) * (colossal ? 2 : 1); i++) {
+                    Vector at = (colossal ? nearFighter().add(new Vector(0, 3, 0)) : pos.clone()).add(new Vector(random.nextGaussian() * (colossal ? 6 : 3), -2, random.nextGaussian() * (colossal ? 6 : 3)));
                     if (isWater(at.toLocation(world).getBlock())) eels.add(new Eel(at));
                 }
             }
@@ -5271,19 +5339,99 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             }
         }
 
+        // ---------- the Abyssal Kraken's own moves ----------
+        /** 12) Abyssal Clap: two arms rise either side of you, a red ring marks the spot, and they clap shut on it. */
+        void abyssalClap(Player target, List<Player> a) {
+            int w = windup(44);
+            if (t == 0) {
+                Vector to = target.getLocation().toVector();
+                Arm one = armNear(to); one.busy = true;
+                Arm two = armNear(to); two.busy = true; // armNear skips busy arms: the next nearest
+                sub = one.index; count = two.index;
+                say(ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + "ABYSSAL CLAP!");
+            }
+            Arm one = arms[sub], two = arms[count];
+            if (t < w - 16) lockPoint = target.getLocation().toVector().add(new Vector(0, 1, 0));
+            Vector side = safeDir(lockPoint.clone().subtract(pos).setY(0).getCrossProduct(new Vector(0, 1, 0)), new Vector(1, 0, 0));
+            double r = 4.5 * hs;
+            if (t < w) {
+                double open = 14 * hs;
+                one.goal = lockPoint.clone().add(side.clone().multiply(open)).add(new Vector(0, 3 * hs, 0)); one.follow = 0.14; one.wave = 0.5;
+                two.goal = lockPoint.clone().add(side.clone().multiply(-open)).add(new Vector(0, 3 * hs, 0)); two.follow = 0.14; two.wave = 0.5;
+                if (t % 3 == 0) ring(lockPoint, r, Color.fromRGB(150, 40, 200));
+            } else if (t < w + 8) {
+                one.goal = lockPoint.clone(); two.goal = lockPoint.clone(); one.follow = 0.7; two.follow = 0.7; one.wave = 0.05; two.wave = 0.05;
+                if (t == w + 4) {
+                    squashT = 6;
+                    world.playSound(lockPoint.toLocation(world), Sound.ENTITY_GENERIC_EXPLODE, 2.2f, 0.4f);
+                    world.playSound(lockPoint.toLocation(world), Sound.ENTITY_WARDEN_SONIC_BOOM, 1.4f, 0.6f);
+                    world.spawnParticle(Particle.BUBBLE_POP, lockPoint.toLocation(world), 120, r * 0.5, r * 0.5, r * 0.5, 0.2);
+                    for (Player p : a) if (eye(p).distanceSquared(lockPoint) < r * r) {
+                        hitCooldown.remove(p.getUniqueId()); // an arm brushing you a moment before never saves you from the clap
+                        strike(p, kcfg("abyssal.damage.clap", 26), Guard.HEAVY, lockPoint);
+                        p.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 60, 2));
+                        p.addPotionEffect(new PotionEffect(PotionEffectType.NAUSEA, 100, 0));
+                    }
+                }
+            } else if (t < w + 24) {
+                one.goal = lockPoint.clone().add(side.clone().multiply(6 * hs)).add(new Vector(0, 6 * hs, 0)); one.follow = 0.1;
+                two.goal = lockPoint.clone().add(side.clone().multiply(-6 * hs)).add(new Vector(0, 6 * hs, 0)); two.follow = 0.1;
+            } else endAttack(rest());
+        }
+
+        /** 13) Ink Storm (phase 2+): he clenches and ink bursts on every fighter at once. It burns, blinds and slows. */
+        void inkStorm(List<Player> a) {
+            beakOpen = t < 14 ? t / 14f : Math.max(0, 1 - (t - 14) / 10f);
+            pulse = t <= 14 ? (float) Math.sin(t / 14.0 * Math.PI) : pulse * 0.85f;
+            if (t == 0) say(ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + "INK STORM! " + ChatColor.GRAY + "Swim out of the black!");
+            if (t == 14) {
+                storm.clear();
+                for (Player p : a) storm.add(eye(p));
+                stormT = 100;
+                world.playSound(pos.toLocation(world), Sound.ENTITY_SQUID_SQUIRT, 3f, 0.3f);
+                world.playSound(pos.toLocation(world), Sound.ENTITY_ELDER_GUARDIAN_CURSE, 2f, 0.4f);
+            }
+            if (t > 34) endAttack(rest());
+        }
+
+        /** The Abyssal Kraken's arms are a hazard on their own: swim into one and it hurts (once a second). */
+        void armTouch(List<Player> a) {
+            if (intro > 0 || ticks % 4 != 0) return;
+            touched.replaceAll((id, v) -> v - 4);
+            touched.values().removeIf(v -> v <= 0);
+            for (Player p : a) {
+                if (touched.containsKey(p.getUniqueId())) continue;
+                Vector e = eye(p);
+                outer:
+                for (Arm arm : arms) for (int j = 0; j < SEGS; j++) {
+                    Vector s = arm.p[j], d = arm.p[j + 1].clone().subtract(s);
+                    double l2 = d.lengthSquared();
+                    double f = l2 < 1e-6 ? 0 : Math.max(0, Math.min(1, e.clone().subtract(s).dot(d) / l2));
+                    double rr = arm.width[j] * 0.55;
+                    if (s.clone().add(d.multiply(f)).distanceSquared(e) > rr * rr) continue;
+                    touched.put(p.getUniqueId(), 20);
+                    strike(p, kcfg("abyssal.damage.arm-touch", 6), Guard.BLOCKABLE, arm.p[j]);
+                    Safe.vel(p, safeDir(e.clone().subtract(arm.p[j]), new Vector(0, 1, 0)).multiply(0.6));
+                    break outer;
+                }
+            }
+        }
+
         // ---------- the watchdog: never stuck where nobody can see him ----------
         void watchdog(List<Player> a) {
             if (a.isEmpty() || intro > 0 || transition > 0) { lastSeen = ticks; return; }
             for (Player p : a) {
                 Vector d = eye(p).subtract(pos);
                 double len = d.length();
-                if (len > 34) continue;
+                if (len > far(34)) continue;
                 if (len < 0.5 || world.rayTraceBlocks(pos.toLocation(world), d.multiply(1 / len), len, org.bukkit.FluidCollisionMode.NEVER, true) == null) { lastSeen = ticks; return; }
             }
             if (ticks - lastSeen < 300) return;
             lastSeen = ticks;
             Player f = a.get(random.nextInt(a.size()));
-            Vector spot = f.getLocation().toVector().add(new Vector(random.nextGaussian() * 6, 0, random.nextGaussian() * 6));
+            Vector spot = colossal
+                    ? f.getLocation().toVector().add(safeDir(new Vector(random.nextGaussian(), 0, random.nextGaussian()), new Vector(1, 0, 0)).multiply(kcfg("abyssal.station", 50))).add(new Vector(0, kcfg("abyssal.station-height", 20), 0))
+                    : f.getLocation().toVector().add(new Vector(random.nextGaussian() * 6, 0, random.nextGaussian() * 6));
             pos = spot; vel = new Vector();
             keepInWater();
             endAttack(20);
@@ -5299,7 +5447,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             float sq = squashT > 0 ? squashT * 0.04f : 0; if (squashT > 0) squashT--; // the jolt of a slam landing
             // he swells up and leans back before his big attacks, so you can read them coming
             // BUG FIX: when he died mid-wind-up, attack and t froze, so his head stayed swollen through the whole death
-            boolean winding = !dying && !leaving && ((attack == 1 && t < windup(34)) || (attack == 5 && t < windup(24)) || (attack == 7 && t < windup(26))
+            boolean winding = !dying && !leaving && ((attack == 1 && t < windup(34)) || (attack == 12 && t < windup(44)) || (attack == 5 && t < windup(24)) || (attack == 7 && t < windup(26))
                     || (attack == 10 && t < 20) || (attack == 3 && t < 14));
             swell += ((winding ? 1f : 0f) - swell) * 0.12f;
             // BUG FIX: this stepped inside swim(), which doesn't run while he dies or leaves, so the death shudder never
@@ -5326,7 +5474,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             mantle.setInterpolationDelay(0);
             mantle.setTransformation(new Transformation(new Vector3f(), rot, new Vector3f(scale * sxz, scale * sy, scale * sxz), new Quaternionf()));
             // eyes follow the nearest player
-            Player look = null; double bd = 40 * 40;
+            Player look = null; double bd = far(40) * far(40);
             for (Player p : world.getPlayers()) { double d = p.getLocation().toVector().distanceSquared(pos); if (d < bd) { bd = d; look = p; } }
             float s = scale / 16f;
             for (int i = 0; i < 2; i++) {
@@ -5361,9 +5509,9 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
 
         void updateBar() {
             bar.setProgress(Math.max(0, Math.min(1, hp / maxHp)));
-            bar.setTitle(ChatColor.DARK_AQUA + "" + ChatColor.BOLD + "The Kraken" + ChatColor.GRAY + "  Phase " + phase);
+            bar.setTitle(ChatColor.DARK_AQUA + "" + ChatColor.BOLD + title() + ChatColor.GRAY + "  Phase " + phase);
             for (Player p : world.getPlayers()) {
-                boolean near = p.getLocation().toVector().distanceSquared(pos) < 80 * 80;
+                boolean near = p.getLocation().toVector().distanceSquared(pos) < far(80) * far(80);
                 if (near && !bar.getPlayers().contains(p)) bar.addPlayer(p);
                 else if (!near && bar.getPlayers().contains(p)) bar.removePlayer(p);
             }
@@ -5374,7 +5522,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             if (!getConfig().getBoolean("kraken.music.enabled", true)) return;
             musicStart = System.currentTimeMillis();
             for (Player p : world.getPlayers()) {
-                if (p.getLocation().toVector().distanceSquared(pos) > 96 * 96) continue;
+                if (p.getLocation().toVector().distanceSquared(pos) > far(96) * far(96)) continue;
                 p.stopSound(SoundCategory.MUSIC);
                 p.playSound(p, "faultline:kraken.music", SoundCategory.RECORDS, (float) kcfg("music.volume", 1.0), 1f);
                 heardMusic(p, "kraken");
@@ -5442,7 +5590,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             if (deathT == 1) { // an agonized roar
                 world.playSound(c, Sound.ENTITY_ENDER_DRAGON_GROWL, 3f, 0.35f);
                 world.playSound(c, Sound.ENTITY_ELDER_GUARDIAN_DEATH, 3f, 0.5f);
-                for (Player p : world.getPlayers()) if (p.getLocation().distanceSquared(c) < 48 * 48 && survival(p))
+                for (Player p : world.getPlayers()) if (p.getLocation().distanceSquared(c) < far(48) * far(48) && survival(p))
                     Safe.vel(p, p.getVelocity().add(new Vector(random.nextGaussian() * 0.2, 0.1, random.nextGaussian() * 0.2))); // the water shakes
             }
             if (deathT <= 40) {                                                  // 1) death throes
@@ -5452,7 +5600,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 roll = (float) (Math.sin(deathT * 0.9) * 0.25);
                 for (Arm a : arms) {
                     a.busy = true;
-                    a.goal = a.root().add(a.outward().multiply(16)).add(new Vector(random.nextGaussian() * 4, Math.sin(deathT * 0.5 + a.index) * 8, random.nextGaussian() * 4));
+                    a.goal = a.root().add(a.outward().multiply(16 * k)).add(new Vector(random.nextGaussian() * 4 * k, Math.sin(deathT * 0.5 + a.index) * 8 * k, random.nextGaussian() * 4 * k));
                     a.follow = 0.35; a.wave = 1.0;
                 }
                 if (deathT % 3 == 0) mantle.setItemStack(modelItem(random.nextBoolean() ? "kraken_mantle_3" : "kraken_mantle_1")); // the veins flicker
@@ -5464,7 +5612,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 jigV += (float) (random.nextGaussian() * 0.04);
                 for (Arm a : arms) {
                     a.busy = true;
-                    a.goal = a.root().add(new Vector(0, 3, 0)).add(a.outward().multiply(-1.5)); // wrapped back around his body
+                    a.goal = a.root().add(new Vector(0, 3 * k, 0)).add(a.outward().multiply(-1.5 * k)); // wrapped back around his body
                     a.follow = 0.12; a.wave = 0.5; a.curl = 1.0;
                 }
                 if (deathT % 8 == 0) world.playSound(c, Sound.ENTITY_ELDER_GUARDIAN_HURT, 1.6f, 0.3f);
@@ -5476,28 +5624,28 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 world.spawnParticle(Particle.SQUID_INK, c, 200, 6, 5, 6, 0.05);
             } else if (deathT <= 170) {                                          // 4) sinks, rolling onto his side, limp arms trailing up
                 double kk = (deathT - 66) / 104.0;
-                pos.add(new Vector(0, -0.06, 0));
+                pos.add(new Vector(0, -0.06 * ms, 0));
                 roll += (1.25f - roll) * 0.03f; lean += (0.4f - lean) * 0.03f;
                 beakOpen += (0.35f - beakOpen) * 0.05f; pulse *= 0.9f;
-                for (Arm a : arms) { a.goal = a.root().add(new Vector(0, 15, 0)).add(a.outward().multiply(6 + 3 * kk)); a.follow = 0.035; a.wave = 0.12; a.curl = 0.2; }
+                for (Arm a : arms) { a.goal = a.root().add(new Vector(0, 15 * k, 0)).add(a.outward().multiply((6 + 3 * kk) * k)); a.follow = 0.035; a.wave = 0.12; a.curl = 0.2; }
                 if (deathT % 14 == 0 && kk < 0.7) { // NEW: final twitches, one arm at a time
                     Arm a = arms[random.nextInt(ARMS)];
-                    a.goal = a.root().add(a.outward().multiply(14)).add(new Vector(0, -4, 0)); a.follow = 0.5;
+                    a.goal = a.root().add(a.outward().multiply(14 * k)).add(new Vector(0, -4 * k, 0)); a.follow = 0.5;
                 }
                 if (deathT % 6 == 0) world.spawnParticle(Particle.BUBBLE_COLUMN_UP, c, 25, 3, 2, 3, 0.05);
             } else if (deathT <= 200) {                                          // 5) shrinking away into the dark
                 deathFade = 1 - (deathT - 170) / 30f;
-                pos.add(new Vector(0, -0.05, 0));
+                pos.add(new Vector(0, -0.05 * ms, 0));
                 if (deathT % 4 == 0) world.spawnParticle(Particle.BUBBLE, c, 30, 3, 3, 3, 0.1);
             } else {                                                             // gone: the title, and his hoard
                 world.spawnParticle(Particle.BUBBLE_COLUMN_UP, c, 200, 4, 4, 4, 0.3);
                 world.playSound(c, Sound.ENTITY_ENDER_DRAGON_DEATH, 2.5f, 0.6f);
                 for (Player p : world.getPlayers()) {
-                    if (p.getLocation().distanceSquared(c) > 96 * 96) continue;
-                    p.showTitle(Title.title(legacy(ChatColor.DARK_AQUA + "" + ChatColor.BOLD + "THE KRAKEN HAS FALLEN"), legacy(ChatColor.GRAY + "The deep is quiet again."),
+                    if (p.getLocation().distanceSquared(c) > far(96) * far(96)) continue;
+                    p.showTitle(Title.title(legacy(ChatColor.DARK_AQUA + "" + ChatColor.BOLD + (colossal ? "THE ABYSSAL KRAKEN HAS FALLEN" : "THE KRAKEN HAS FALLEN")), legacy(ChatColor.GRAY + "The deep is quiet again."),
                             Title.Times.times(java.time.Duration.ofMillis(300), java.time.Duration.ofMillis(3000), java.time.Duration.ofMillis(900))));
                 }
-                Bukkit.broadcastMessage(ChatColor.DARK_AQUA + "" + ChatColor.BOLD + "The Kraken " + ChatColor.GRAY + "has been slain!");
+                Bukkit.broadcastMessage(ChatColor.DARK_AQUA + "" + ChatColor.BOLD + title() + " " + ChatColor.GRAY + "has been slain!");
                 if (!rewarded) { rewarded = true; rewards(); }
                 removeEverything();
                 if (kraken == this) kraken = null;
@@ -5516,8 +5664,8 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
 
         void leaveTick() {
             leaveT++;
-            pos.add(new Vector(0, -0.25, 0));
-            for (Arm a : arms) { a.goal = a.root().add(new Vector(0, 17, 0)).add(a.outward().multiply(5)); a.follow = 0.1; }
+            pos.add(new Vector(0, -0.25 * ms, 0));
+            for (Arm a : arms) { a.goal = a.root().add(new Vector(0, 17 * k, 0)).add(a.outward().multiply(5 * k)); a.follow = 0.1; }
             if (leaveT > 60) { removeEverything(); if (kraken == this) kraken = null; }
         }
 
@@ -5528,8 +5676,14 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 Player p = Bukkit.getPlayer(id);
                 if (p == null || !p.getWorld().equals(world)) continue;
                 Location at = p.getLocation();
-                console("givemythicbag " + (int) kcfg("rewards.mythic-bags", 18) + " " + p.getName(), p);
-                dropLocked(at, p, new ItemStack(Material.DIAMOND, (int) kcfg("rewards.diamonds-min", 16) + random.nextInt((int) kcfg("rewards.diamonds-extra", 9))));
+                double more = colossal ? kcfg("abyssal.reward-multiplier", 2.0) : 1;
+                console("givemythicbag " + (int) Math.round(kcfg("rewards.mythic-bags", 18) * more) + " " + p.getName(), p);
+                dropLocked(at, p, new ItemStack(Material.DIAMOND, Math.min(64, (int) Math.round(((int) kcfg("rewards.diamonds-min", 16) + random.nextInt((int) kcfg("rewards.diamonds-extra", 9))) * more))));
+                if (colossal) { // the deep's own loot on top
+                    console("darkloot bag " + (int) kcfg("abyssal.dark-loot-bags", 4) + " " + p.getName(), p);
+                    console("darkloot rare " + p.getName() + " " + kcfg("abyssal.dark-loot-rare-chance", 0.5), p);
+                    dropLocked(at, p, new ItemStack(Material.NETHERITE_INGOT, (int) kcfg("abyssal.netherite", 2)));
+                }
                 if (random.nextDouble() < kcfg("rewards.suit-chance", 0.4)) console("givediving suit 1 " + p.getName(), p);
                 // 1.6.0: the Mirror (the way to the Dark Ocean) comes from the Kraken now, every fighter, every time. It
                 // only works for someone who has also beaten Rocco Vendetta and Diamond Jacob (FaultlineDeep checks).
@@ -5537,14 +5691,15 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                     console("givelostmirror 1 " + p.getName(), p);
                     p.sendMessage(ChatColor.AQUA + "The Kraken coughs up a strange Mirror. " + ChatColor.GRAY + "(Right-click it once you've beaten Rocco and Jacob.)");
                 }
-                int xp = (int) kcfg("rewards.xp", 2000);
+                int xp = (int) (kcfg("rewards.xp", 2000) * more);
                 for (int left = xp; left > 0; ) { int amount = Math.min(left, 100); left -= amount; world.spawn(at, org.bukkit.entity.ExperienceOrb.class).setExperience(amount); }
                 p.sendMessage(ChatColor.DARK_AQUA + "The Kraken's hoard is yours. " + ChatColor.GRAY + "(Only you can pick up your loot.)");
-                console("index discover " + p.getName() + (atSea ? " the_kraken_at_sea" : " the_kraken"), p);
+                console("index discover " + p.getName() + (atSea ? " the_kraken_at_sea" : colossal ? " the_abyssal_kraken" : " the_kraken"), p);
             }
         }
 
         void removeEverything() {
+            storm.clear(); stormT = 0;
             // BUG FIX: rewards come at the END of his 10-second death; a restart/reload during it removed him with no loot
             if (dying && !rewarded) { rewarded = true; try { rewards(); } catch (RuntimeException e) { logBossPart("Kraken", "rewards", e); } }
             if (dying && !rewarded) { rewarded = true; rewards(); } // stopped mid-death (a restart, /kraken kill): you still get the loot
@@ -5574,7 +5729,8 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             for (int k = 0; k < 64 && y < world.getMaxHeight() - 1; k++, y++) if (!world.getBlockAt(bx, y + 1, bz).getType().isSolid()) return y + 1;
             return fromY;
         }
-        for (int k = 0; k < 128 && y > world.getMinHeight(); k++, y--) if (world.getBlockAt(bx, y - 1, bz).getType().isSolid()) return y;
+        // 400: the Dark Ocean is ~250 blocks deep (128 found no floor there, and the Abyssal Kraken was pushed up to the surface)
+        for (int k = 0; k < 400 && y > world.getMinHeight(); k++, y--) if (world.getBlockAt(bx, y - 1, bz).getType().isSolid()) return y;
         return fromY - 32;
     }
 
@@ -11251,7 +11407,11 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 }
                 case "frostbeard" -> { summonMortimer(at.clone().add(look.clone().multiply(3)).getBlock(), p); morph.boss = mortimer; }
                 case "dune", "frostmaw" -> { summonDune(p, kind.equals("frostmaw")); morph.boss = dune; }
-                case "kraken" -> { summonKraken(at.clone().add(look.clone().multiply(14)), null); morph.boss = kraken; }
+                case "kraken" -> { // boss form is always the normal-sized Kraken (even in the Dark Ocean)
+                    krakenNormalOnly = true;
+                    try { summonKraken(at.clone().add(look.clone().multiply(14)), null); } finally { krakenNormalOnly = false; }
+                    morph.boss = kraken;
+                }
                 case "jacob" -> { summonJacob(at, null); morph.boss = jacob; }
                 case "grimtusk" -> { warlord.summon(at.clone().add(look.clone().multiply(3)), null); morph.boss = warlord.boss; }
                 case "leviathan", "sandworm", "lich", "frostwyrm", "golem", "scourge", "umbral", "coralia", "inkjaw", "grandmaw", "lament", "titan" -> morph.boss = wild.summon(kind, kind.equals("leviathan") ? at : at.clone().add(look.clone().multiply(4)), null);

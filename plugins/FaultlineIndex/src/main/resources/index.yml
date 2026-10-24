@@ -472,6 +472,21 @@ entries:
     - 16-24 Diamonds|100%
     - Abyssal Diving Suit|40%
     - 2,000 XP|100%
+  - chapter: bosses
+    weakness: "His arms hurt to touch: keep out of the gaps between them. Hit the pink bubbles (3x damage on him), and when the ink storm comes, swim out of the black."
+    name: The Abyssal Kraken
+    icon: kraken
+    detect-tag: faultline_kraken_abyssal
+    where: 'Drop a Bait Worm anywhere in the Dark Ocean with 60+ blocks of water under it. It sinks for 8 seconds... and the Kraken rises, ten times his size.'
+    does: '9,000 health, ten times bigger than the Kraken (a head ~70 blocks wide, arms ~220 blocks long) and he hits 50% harder. Every Kraken move, scaled up: bigger slams, a wider tidal surge, ink and air bubbles round the fighters. Swimming into one of his arms hurts. Two moves of his own: the Abyssal Clap (two arms clap shut on a red ring) and, from phase 2, the Ink Storm (ink bursts on every fighter at once and burns). Pink bubbles hurt him 3x as much.'
+    drops:
+    - 36 Mythic Goodie Bags|100%
+    - 32-48 Diamonds|100%
+    - 4 Dark Loot Bags|100%
+    - 2 Netherite Ingots|100%
+    - A Dark Loot rare|50%
+    - The Mirror..??|100%
+    - 4,000 XP|100%
   - chapter: enemies
     name: Kraken Eel
     icon: kraken_eel
@@ -1521,6 +1536,8 @@ achievements:
      defeat: [captain_rotbeard, the_great_hog], need: all, reward: {items: ["DIAMOND:12"], xp: 300}}
   - {id: lord_of_the_deep, name: "Lord of the Deep", icon: kraken, desc: "Defeat the Kraken.",
      defeat: [the_kraken], need: all, reward: {items: ["DIAMOND:10", "HEART_OF_THE_SEA:1"], xp: 500}}
+  - {id: abyssal_kraken_slayer, name: "Bigger Fish", icon: kraken, desc: "Defeat the Abyssal Kraken in the Dark Ocean.",
+     defeat: [the_abyssal_kraken], need: all, reward: {items: ["NETHERITE_INGOT:1", "HEART_OF_THE_SEA:2"], xp: 1500}}
   - {id: hold_the_line, name: "Hold the Line", icon: kraken, desc: "Defeat the Kraken at Sea without losing your ship.",
      defeat: [the_kraken_at_sea], need: all, reward: {items: ["DIAMOND:10"], xp: 500}}
   - {id: warlords_bane, name: "Warlord's Bane", icon: grimtusk, desc: "Defeat Grimtusk, the Piglin Warlord.",
@@ -1540,6 +1557,10 @@ achievements:
      stat: mutants, count: 25, reward: {items: ["DIAMOND:3", "GOLDEN_APPLE:2"], xp: 500}}
   - {id: mutant_slayer, name: "Mutant Slayer", icon: broodmother, desc: "Kill 250 mutants.",
      stat: mutants, count: 250, reward: {items: ["NETHERITE_SCRAP:2", "ENCHANTED_GOLDEN_APPLE:1"], xp: 2500}}
+  - {id: bounty_hunter, name: "Bounty Hunter", icon: slayer_crown, desc: "Claim a bounty: kill a player someone put heads on (/bounty).",
+     stat: bounties_claimed, count: 1, reward: {items: ["DIAMOND:4"], xp: 300}}
+  - {id: headhunter, name: "Headhunter", icon: slayer_crown, desc: "Claim 10 bounties.",
+     stat: bounties_claimed, count: 10, reward: {items: ["NETHERITE_SCRAP:2"], xp: 1500}}
   - {id: good_customer, name: "Good Customer", icon: caravan_merchant, desc: "Make 10 trades with the Caravan Merchant.",
      stat: caravan_trades, count: 10, reward: {items: ["EMERALD:16"], xp: 300}}
   - {id: pirate_hunter, name: "Pirate Hunter", icon: skeleton_navigator, desc: "Sink 5 skeleton ships.",

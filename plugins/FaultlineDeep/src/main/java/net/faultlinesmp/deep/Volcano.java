@@ -209,6 +209,9 @@ final class Volcano implements Listener {
         save();
     }
 
+    /** Where a volcano is rising or erupting right now (x, z), or null. */
+    int[] spot() { return state.equals("rising") || state.equals("erupting") ? new int[]{cx, cz} : null; }
+
     boolean near(Player p, double r) { return p.getWorld().equals(pl.world) && Math.hypot(p.getLocation().getX() - cx, p.getLocation().getZ() - cz) < r; }
 
     void tick() {

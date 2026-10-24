@@ -81,6 +81,7 @@ final class Habitat implements Listener {
     final Map<String, Map<Long, Piece>> shell = new HashMap<>(); // world -> shell block -> its dome / hallway
     final Map<UUID, int[]> asking = new HashMap<>();           // player -> {new dome, other dome, until (server tick)}
     final File file;
+    final DomeUpgrades upgrades;
     int nextId = 1;
     int secs;
 
@@ -96,6 +97,8 @@ final class Habitat implements Listener {
 
     static final class Dome extends Piece {
         int x, y, z, r;
+        final Set<String> ups = new HashSet<>(); // 1.12.0: its upgrades (DomeUpgrades)
+        String tint;                             // the Stained Shell's colour
         boolean inside(double px, double py, double pz) { return py >= y - 0.5 && (px - x - 0.5) * (px - x - 0.5) + (py - y) * (py - y) + (pz - z - 0.5) * (pz - z - 0.5) < (r - 0.6) * (r - 0.6); }
         /** The air it was given: block centres closer than r - 0.5, from its floor up. */
         boolean hollow(int bx, int by, int bz) { int dx = bx - x, dy = by - y, dz = bz - z; return dy >= 0 && dx * dx + dy * dy + dz * dz < (r - 0.5) * (r - 0.5); }
@@ -120,6 +123,7 @@ final class Habitat implements Listener {
         coralKey = new NamespacedKey(pl, "air_corals");
         kitKey = new NamespacedKey(pl, "dome_kit");
         file = new File(pl.getDataFolder(), "domes.yml");
+        upgrades = new DomeUpgrades(pl, this);
         load();
         try {
             ShapedRecipe c = new ShapedRecipe(new NamespacedKey(pl, "air_coral"), coral(1));
@@ -282,8 +286,13 @@ final class Habitat implements Listener {
     // =========================================================================================== domes
     static final Set<Material> CLEAR = Set.of(Material.WATER, Material.BUBBLE_COLUMN, Material.SEAGRASS, Material.TALL_SEAGRASS, Material.KELP, Material.KELP_PLANT, Material.SEA_PICKLE);
     /** What domes and hallways are made of: dismantling only puts the sea back where one of these (or air) still is. */
-    static final Set<Material> OURS = Set.of(Material.LIGHT_BLUE_STAINED_GLASS, Material.CYAN_STAINED_GLASS, Material.SEA_LANTERN, Material.PRISMARINE_BRICKS,
-            Material.DARK_PRISMARINE, Material.DARK_OAK_DOOR);
+    static final Set<Material> OURS = ours();
+
+    static Set<Material> ours() {
+        Set<Material> s = new HashSet<>(List.of(Material.SEA_LANTERN, Material.PRISMARINE_BRICKS, Material.DARK_PRISMARINE, Material.DARK_OAK_DOOR));
+        for (Material m : Material.values()) if (!m.isLegacy() && m.name().endsWith("_STAINED_GLASS")) s.add(m); // (the Stained Shell recolours it)
+        return s;
+    }
 
     /** Water, air or a sea plant: room for glass. */
     static boolean open(Block b) { return b.getType().isAir() || CLEAR.contains(b.getType()) || Submersible.water(b); }
@@ -629,6 +638,7 @@ final class Habitat implements Listener {
     boolean command(org.bukkit.command.CommandSender sender, String[] args) {
         if (!(sender instanceof Player p)) { for (String line : list()) sender.sendMessage(line); return true; }
         String sub = args.length > 0 ? args[0].toLowerCase(java.util.Locale.ROOT) : "list";
+        if (upgrades.command(p, sub, args)) return true; // upgrades, trust, untrust, home, color
         switch (sub) {
             case "yes", "y" -> answer(p, true);
             case "no", "n" -> answer(p, false);
@@ -650,7 +660,7 @@ final class Habitat implements Listener {
                             + (joins > 0 ? ChatColor.DARK_AQUA + " (" + joins + " hallway" + (joins == 1 ? "" : "s") + ")" : ""));
                 }
                 if (n == 0) p.sendMessage(ChatColor.GRAY + "You have no domes. Craft a Dome Kit and right-click under water.");
-                else p.sendMessage(ChatColor.DARK_GRAY + "/dome combine (inside a dome) joins it to your nearest other dome.");
+                else p.sendMessage(ChatColor.DARK_GRAY + "/dome combine (inside a dome) joins it to your nearest other dome. /dome upgrades (inside one): 20 upgrades. /dome trust <player>.");
             }
         }
         return true;
@@ -721,7 +731,10 @@ final class Habitat implements Listener {
             y.set(p + "at", d.x + "," + d.y + "," + d.z);
             y.set(p + "r", d.r);
             y.set(p + "before", befores(d));
+            if (!d.ups.isEmpty()) y.set(p + "upgrades", new ArrayList<>(d.ups));
+            if (d.tint != null) y.set(p + "tint", d.tint);
         }
+        for (var t : upgrades.trust.entrySet()) y.set("trust." + t.getKey(), t.getValue().stream().map(UUID::toString).toList());
         for (Hall h : halls.values()) {
             String p = "halls." + h.id + ".";
             y.set(p + "owner", h.owner.toString());
@@ -763,9 +776,17 @@ final class Habitat implements Listener {
             d.x = Integer.parseInt(at[0]); d.y = Integer.parseInt(at[1]); d.z = Integer.parseInt(at[2]);
             d.r = s.getInt(k + ".r");
             readBefores(d, s.getStringList(k + ".before"));
+            d.ups.addAll(s.getStringList(k + ".upgrades"));
+            d.tint = s.getString(k + ".tint");
             domes.put(d.id, d);
             nextId = Math.max(nextId, d.id + 1);
         } catch (RuntimeException ex) { pl.getLogger().warning("Skipped a broken dome in domes.yml (" + k + ")"); }
+        ConfigurationSection ts = y.getConfigurationSection("trust");
+        if (ts != null) for (String k : ts.getKeys(false)) try {
+            Set<UUID> t = new HashSet<>();
+            for (String v : ts.getStringList(k)) t.add(UUID.fromString(v));
+            if (!t.isEmpty()) upgrades.trust.put(UUID.fromString(k), t);
+        } catch (IllegalArgumentException ignored) { }
         ConfigurationSection hs = y.getConfigurationSection("halls");
         if (hs != null) for (String k : hs.getKeys(false)) try {
             Hall h = new Hall();
@@ -783,6 +804,14 @@ final class Habitat implements Listener {
         for (Dome d : domes.values()) worlds.add(d.world);
         for (Hall h : halls.values()) worlds.add(h.world);
         for (String w : worlds) rebuildShell(w);
+    }
+
+    /** The (x, z) of each of a player's domes in a world (the Abyssal Chart marks them). */
+    List<int[]> domesOf(UUID owner, World w) {
+        List<int[]> out = new ArrayList<>();
+        if (w == null) return out;
+        for (Dome d : domes.values()) if (d.owner.equals(owner) && d.world.equals(w.getName())) out.add(new int[]{d.x, d.z});
+        return out;
     }
 
     /** /deep domes: every dome. */

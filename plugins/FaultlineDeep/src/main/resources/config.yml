@@ -170,6 +170,25 @@ mobs:
   sulphur:
     land-share: 0.4         # how often the spawner tries an island / the air over it instead of the water there
 
+# 1.12.0 THE GLIMMERTIDE (Glimmertide.java): the Dark Ocean's season. Glimmer Pearls from creatures and glimmer shoals,
+# spent at the Glimmer Shop (/glimmer, only during the season). /deep season [start|stop|auto|shoal], /glimmer top.
+glimmertide:
+  enabled: true
+  zone: America/New_York
+  windows: ["11-01..11-14", "02-01..02-14", "05-01..05-14", "08-01..08-14"]   # month-day..month-day
+  drop-chance: 0.15          # a creature killed by a player drops 1-2 pearls (bosses / mini bosses: 8-12)
+  shoal-seconds: 120         # how often each swimmer rolls for a shoal
+  shoal-chance: 0.35
+  shoal-life-seconds: 60
+  bloom-multiplier: 3        # the Bloom comes this much more often
+  # shop: ["id;MATERIAL;price;Name;console command|another command"]  ({player} = the buyer). Leave it out for the defaults.
+
+# 1.12.0 the Abyssal Chart (AbyssMap.java): a map of the whole Dark Ocean that fills in as you explore it (each player
+# their own fog, saved in abyss_map.yml). Craft: 4 glow ink sacs + 4 prismarine crystals round a map. /chart, /deep give chart
+abyss-map:
+  enabled: true
+  reveal-cells: 2            # how far round you it uncovers (in map pixels of 48 blocks)
+
 # 1.9.0 living down there (Habitat.java): Air Coral (breathe near it) and Dome Kits (glass dome bases, saved in domes.yml).
 # 1.11.0: domes go under water in ANY world, have two doors, owners can break their own walls (the sea stays out), and
 # two close domes can be combined with a hallway (/dome [list|combine|yes|no]).
@@ -181,3 +200,33 @@ habitat:
   domes:
     max-per-player: 3
     combine-gap: 12          # 1.11.0: two of your domes this close (glass to glass, floors within 6) can be joined by a hallway
+  # 1.12.0 DOME UPGRADES (/dome upgrades inside your dome): what each costs ("MATERIAL:n,MATERIAL:n", plain items).
+  # Leave one out and it uses its default. /dome trust|untrust <player>, /dome home [n], /dome color <colour>.
+  upgrades:
+    enabled: true
+    airlock: "IRON_BLOCK:2,PRISMARINE_BRICKS:8"
+    keycard: "GOLD_INGOT:8,REDSTONE:16"
+    vault: "DIAMOND:4,IRON_BLOCK:2"
+    oxygen: "PRISMARINE_CRYSTALS:16,NAUTILUS_SHELL:1"
+    bubble_ring: "PRISMARINE_CRYSTALS:24,SPONGE:2"
+    hydroponics: "BONE_BLOCK:8,GLOWSTONE:8"
+    fish_trap: "STRING:16,IRON_BARS:8"
+    furnace: "MAGMA_BLOCK:8,COPPER_BLOCK:4"
+    regen: "GOLDEN_APPLE:2,GLISTERING_MELON_SLICE:8"
+    floodlights: "SEA_LANTERN:16,GLOWSTONE:16"
+    sonar: "ECHO_SHARD:2,AMETHYST_SHARD:8"
+    turret: "HEART_OF_THE_SEA:1,PRISMARINE_SHARD:32"
+    ward: "LODESTONE:1,ENDER_PEARL:8"
+    beacon: "ECHO_SHARD:4,COMPASS:1"
+    respawn: "NAUTILUS_SHELL:2,DIAMOND:2"
+    dock: "IRON_BLOCK:4,COPPER_BLOCK:8"
+    pressure: "NETHERITE_SCRAP:2,OBSIDIAN:16"
+    heat: "BLAZE_ROD:6,MAGMA_BLOCK:4"
+    alarm: "BELL:1,REDSTONE_BLOCK:2"
+    tint: "AMETHYST_SHARD:16,GLASS:16"
+  upgrades-settings:
+    fish-every-seconds: 300
+    hydroponics-boost: 0.5
+    turret-damage: 4
+    dock-repair: 2           # hull % every 5 s
+    home-cooldown-seconds: 300

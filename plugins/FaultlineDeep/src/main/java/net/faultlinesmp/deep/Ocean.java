@@ -123,6 +123,7 @@ final class Ocean implements Listener {
             boolean wet = p.isInWater() || l.getBlock().getType() == org.bukkit.Material.WATER;
             if (!in || !wet || p.getGameMode() == GameMode.CREATIVE || p.getGameMode() == GameMode.SPECTATOR) continue;
             if (!pl.getConfig().getBoolean("sulphur.acid-water", true)) continue;
+            if (pl.habitat != null && pl.habitat.upgrades.shielded(l)) continue; // 1.12.0: a dome's Pressure Hull
             Integer tier = tierKey == null ? null : p.getPersistentDataContainer().get(tierKey, org.bukkit.persistence.PersistentDataType.INTEGER);
             if (tier != null && tier >= (int) cfg("sulphur.safe-diving-tier", 3)) continue;
             p.addPotionEffect(new org.bukkit.potion.PotionEffect(org.bukkit.potion.PotionEffectType.POISON, 60, 0, false, true, true));
@@ -157,6 +158,7 @@ final class Ocean implements Listener {
             if (!pl.getConfig().getBoolean("trench.pressure.enabled", true)) continue;
             if (p.getScoreboardTags().contains("faultline_boss_rush")) continue; // the Deep Boss Rush brings its own team down here
             if (pl.subs != null && pl.subs.riding(p)) continue;                 // inside a Submersible (its hull takes the depth)
+            if (pl.habitat != null && pl.habitat.upgrades.shielded(l)) continue; // 1.12.0: a dome's Pressure Hull
             boolean suit = suit(p);
             int helmet = helmetTier(p);
             if (suit && helmet >= (int) cfg("trench.pressure.helmet-tier", 3)) {
@@ -262,6 +264,7 @@ final class Ocean implements Listener {
     /** The zones that are pitch black (`darkness.zones`, default the Abyss and the crust's caves). */
     boolean darkZone(Location l) {
         if (Market.dry(l.getX(), l.getY(), l.getZ())) return false; // the Pit and the lift: lit rooms
+        if (pl.habitat != null && pl.habitat.upgrades.lit(l)) return false; // 1.12.0: a dome's Floodlights
         if (pl.tides != null && pl.tides.eclipse()) return true; // 1.9.0: the Abyssal Eclipse darkens the whole sea
         DeepGenerator.Zone z = pl.zone(l);
         if (z == DeepGenerator.Zone.TRENCH) return true; // (1.8.0: always, whatever an older config's list says)
@@ -522,6 +525,7 @@ final class Ocean implements Listener {
             Location at = p.getLocation();
             if (Market.dry(at.getX(), at.getY(), at.getZ())) continue; // the Bubble and the Pit hold the deep back
             if (pl.subs != null && pl.subs.riding(p)) continue;         // so does a Submersible's hull (it takes the depth itself)
+            if (pl.habitat != null && pl.habitat.upgrades.shielded(at)) continue; // 1.12.0: a dome's Pressure Hull
             if (p.hasPotionEffect(PotionEffectType.CONDUIT_POWER) || suit(p)) {
                 if (ticks % 200 == 0) p.sendActionBar(Component.text("Your suit holds against the pressure.", NamedTextColor.DARK_AQUA));
                 continue;

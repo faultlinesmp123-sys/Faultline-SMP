@@ -32,18 +32,19 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * THE ABYSSAL CHART (Deep 1.9.0): a map of the whole Dark Ocean (4096 blocks across, one pixel = 32 blocks) that fills in
+ * THE ABYSSAL CHART (Deep 1.12.0): a map of the whole Dark Ocean (6144 blocks across, one pixel = 48 blocks) that fills in
  * as YOU explore it: fog everywhere you haven't been (each player's own, saved in abyss_map.yml), and once you've swum
  * somewhere it shows the depth of the floor, the Sulphur Sea and its islands, the Mermaid Den, the Trench and the Maw,
- * the Bubble, the ruins you passed, and markers for the places that matter (the Bubble, the Den, the Maw, the Sulphur
- * Works, the arrival point, the Kraken's Grave once it's open) and you. Every 1% more of the ocean you uncover is Index
+ * the Bubble, the four outer regions (the Frozen Shelf, the Drowned City, the Glass Reef, the Bone Fields), the ruins you
+ * passed, and markers for the places that matter (the Bubble, the Den, the Maw, the Sulphur Works, the regions, the
+ * arrival point, your domes, an erupting volcano) and you. Every 1% more of the ocean you uncover is Index
  * stat chart_percent (achievement Cartographer of the Deep at 50).
  *  - craft: glow ink sacs + prismarine crystals round a map. /deep map [player]
  *  - it's one shared MapView (id in abyss_map.yml) with a per-player renderer, so everyone's copy shows their own fog
  *  - the terrain picture is worked out once from the generator's pure functions (no chunks loaded), off the main thread
  */
 final class AbyssMap implements Listener {
-    static final int CELL = 32, HALF = 2048, N = 128; // N x N cells = the map's pixels
+    static final int CELL = 48, HALF = 3072, N = 128; // N x N cells = the map's pixels (the border is 3000)
 
     final FaultlineDeep pl;
     final NamespacedKey itemKey;
@@ -184,11 +185,11 @@ final class AbyssMap implements Listener {
             boolean[] ru = new boolean[N * N];
             for (int gz = 0; gz < N; gz++) for (int gx = 0; gx < N; gx++) {
                 int x = gx * CELL - HALF + CELL / 2, z = gz * CELL - HALF + CELL / 2;
-                c[gz * N + gx] = colour(g, seed, x, z);
+                c[gz * N + gx] = colour(g, seed, x, z, radius());
             }
             for (boolean abyss : new boolean[]{false, true}) {
                 int cell = abyss ? Ruins.ABYSS : Ruins.SUN;
-                for (int a = -1000 / cell - 1; a <= 1000 / cell + 1; a++) for (int b = -1000 / cell - 1; b <= 1000 / cell + 1; b++) {
+                for (int a = -HALF / cell - 1; a <= HALF / cell + 1; a++) for (int b = -HALF / cell - 1; b <= HALF / cell + 1; b++) {
                     Ruins.Site s = Ruins.site(seed, a, b, abyss);
                     if (s == null) continue;
                     int px = cell(s.x()), pz = cell(s.z());
@@ -203,10 +204,24 @@ final class AbyssMap implements Listener {
         }
     }
 
-    static Color colour(DeepGenerator g, long seed, int x, int z) {
-        if (Math.abs(x) > HALF - 48 || Math.abs(z) > HALF - 48) return new Color(4, 4, 8);
-        double radius = 2000;
+    double radius() {
+        double r = pl.getConfig().getDouble("border-radius", 3000);
+        return (Math.abs(r - 1050) < 1e-9 || Math.abs(r - 2000) < 1e-9) ? 3000 : r;
+    }
+
+    static Color colour(DeepGenerator g, long seed, int x, int z, double radius) {
         if (Math.abs(x) > radius || Math.abs(z) > radius) return new Color(6, 6, 12);     // past the border
+        // the outer ring's regions
+        if (FrozenShelf.weight(x, z) > 0.5) return FrozenShelf.lair(x, z) ? new Color(120, 190, 230) : new Color(225, 240, 250);
+        if (DrownedCity.weight(x, z) > 0.5) {
+            if (Math.hypot(x - DrownedCity.PAL_X, z - DrownedCity.PAL_Z) < 34) return new Color(220, 190, 90);
+            return DrownedCity.inside(x, z) ? new Color(120, 130, 120) : new Color(80, 90, 85);
+        }
+        if (GlassReef.weight(x, z) > 0.5) {
+            double h = (Math.atan2(z - GlassReef.CZ, x - GlassReef.CX) / Math.PI + 1) / 2;   // rainbow round the reef
+            return Color.getHSBColor((float) h, 0.55f, 0.95f);
+        }
+        if (BoneFields.weight(x, z) > 0.5) return new Color(205, 195, 170);
         if (Town.e(x, Town.FLOOR + 1, z) < 1) {                                          // the Bubble
             if (x >= Town.PLOT_X0 && x <= Town.PLOT_X1 && z >= Town.PLOT_Z0 && z <= Town.PLOT_Z1) return new Color(52, 40, 64);
             return new Color(150, 220, 235);
@@ -241,14 +256,20 @@ final class AbyssMap implements Listener {
     }
 
     /** The places that get a marker: x, z, type, name. */
-    List<Object[]> landmarks() {
+    List<Object[]> landmarks(Player viewer) {
         List<Object[]> l = new ArrayList<>();
         l.add(new Object[]{0, 0, MapCursor.Type.TARGET_POINT, "Arrival"});
         l.add(new Object[]{Town.CX, Town.CZ, MapCursor.Type.MANSION, "The Bubble"});
         l.add(new Object[]{MermaidDen.MX, MermaidDen.MZ, MapCursor.Type.MONUMENT, "The Mermaid Den"});
         l.add(new Object[]{Sulphur.WORKS_X, Sulphur.WORKS_Z, MapCursor.Type.BANNER_LIME, "The Sulphur Works"});
         l.add(new Object[]{Trench.LX, Trench.LZ, MapCursor.Type.RED_X, "The Maw"});
+        l.add(new Object[]{FrozenShelf.CX, FrozenShelf.CZ, MapCursor.Type.BANNER_LIGHT_BLUE, "The Frozen Shelf"});
+        l.add(new Object[]{DrownedCity.CX, DrownedCity.CZ, MapCursor.Type.BANNER_GRAY, "The Drowned City"});
+        l.add(new Object[]{GlassReef.CX, GlassReef.CZ, MapCursor.Type.BANNER_MAGENTA, "The Glass Reef"});
+        l.add(new Object[]{BoneFields.CX, BoneFields.CZ, MapCursor.Type.BANNER_WHITE, "The Bone Fields"});
         if (pl.grave != null && pl.grave.open()) l.add(new Object[]{KrakenGrave.GX, KrakenGrave.GZ, MapCursor.Type.BANNER_BLACK, "The Kraken's Grave"});
+        if (pl.habitat != null && viewer != null) for (int[] d : pl.habitat.domesOf(viewer.getUniqueId(), pl.world)) l.add(new Object[]{d[0], d[1], MapCursor.Type.BANNER_CYAN, "Your dome", Boolean.TRUE});
+        if (pl.volcano != null) { int[] v = pl.volcano.spot(); if (v != null) l.add(new Object[]{v[0], v[1], MapCursor.Type.RED_MARKER, "Volcano", Boolean.TRUE}); }
         return l;
     }
 
@@ -281,9 +302,10 @@ final class AbyssMap implements Listener {
             }
             MapCursorCollection cur = new MapCursorCollection();
             BitSet b = seen(id);
-            for (Object[] lm : landmarks()) {
+            for (Object[] lm : landmarks(p)) {
                 int gx = cell((int) lm[0]), gz = cell((int) lm[1]);
-                if (gx < 0 || gz < 0 || gx >= N || gz >= N || !b.get(gz * N + gx)) continue;
+                boolean always = lm.length > 4; // your own domes, an erupting volcano: shown even in the fog
+                if (gx < 0 || gz < 0 || gx >= N || gz >= N || (!always && !b.get(gz * N + gx))) continue;
                 cur.addCursor(new MapCursor(px((int) lm[0]), px((int) lm[1]), (byte) 8, (MapCursor.Type) lm[2], true, (String) lm[3]));
             }
             if (pl.world != null && p.getWorld() == pl.world) {

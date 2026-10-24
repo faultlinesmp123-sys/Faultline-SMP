@@ -1,5 +1,5 @@
 name: FaultlineDeep
-version: '1.11.0'
+version: '1.12.0'
 main: net.faultlinesmp.deep.FaultlineDeep
 api-version: '1.21'
 author: FaultlineSMP
@@ -14,6 +14,13 @@ commands:
   dome:
     description: "Your dome bases: list them, combine two with a hallway, answer the combine question"
     usage: /dome [list|combine|yes|no]
+  glimmer:
+    description: "The Glimmer Shop (during the Glimmertide, the Dark Ocean's season), /glimmer top"
+    usage: /glimmer [top]
+    aliases: [gshop, glimmertide]
+  chart:
+    description: "How much of the Dark Ocean you've uncovered on the Abyssal Chart"
+    usage: /chart
   den:
     description: "Your reputation with the Mermaid Den (trades, guards, a house), and /den home"
     usage: /den [home]

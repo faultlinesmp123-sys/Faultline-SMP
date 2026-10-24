@@ -1443,6 +1443,7 @@ final class DeepMobs implements Listener {
             }
             Kind k = pick(z, at);
             if (k != null && k.temper() == Temper.AGGRESSIVE && MermaidDen.weight(at.getBlockX(), at.getBlockZ()) > 0.3) continue; // the Den is guarded
+            if (k != null && k.temper() == Temper.AGGRESSIVE && pl.habitat != null && pl.habitat.upgrades.warded(at)) continue; // 1.12.0: a dome's Mob Ward
             if (k != null && k.id().equals("sulphurskater")) at.setY(DeepGenerator.SEA + 0.2); // it lives on the surface
             if (k != null) spawn(k, at);
             if (k != null && k.id().equals("razorcuda")) for (int i = 0; i < 2; i++) { // they hunt in threes

@@ -1476,9 +1476,15 @@ entries:
   - {chapter: weapons, name: "Air Coral", icon: air_coral, detect: "faultlinedeep:air_coral",
      how: "Craft: a Tube Coral Block on top, 4 Prismarine Crystals round a Nautilus Shell (_T_ / PNP / _P_).",
      does: "Plant it under water in the Dark Ocean: a coral that breathes out air. Anyone within 3.5 blocks gets their air back, and bubbles stream up from it. Break it to pick it up again."}
+  - {chapter: weapons, name: "Abyssal Chart", icon: abyssal_chart, detect: "faultlinedeep:abyss_map",
+     how: "4 Glow Ink Sacs and 4 Prismarine Crystals round a Map.",
+     does: "A map of the WHOLE Dark Ocean (6,000 blocks across) covered in fog. It fills in wherever you swim: the depth of the floor, the Sulphur Sea and its islands, the Mermaid Den, the Trench and the Maw, the Bubble, the four outer regions and the ruins you passed, with markers for the places you've found. Your own domes and an erupting volcano always show. Everyone's copy shows their own discoveries. /chart says how much you've uncovered."}
   - {chapter: weapons, name: "Dome Kit", icon: dome_kit_small, detect: "faultlinedeep:dome_kit",
      how: "Small: 5 Glass round a Sponge, 2 Sea Lanterns and a Nautilus Shell under it. Large: a Small Dome Kit in the middle of 4 Tinted Glass and 4 Sea Lanterns.",
-     does: "Right-click under water ANYWHERE (the Dark Ocean, an Overworld ocean or lake): a glass dome inflates and pushes the water out (Small 13 blocks across, Large 21), with two doors to swim in and out. Build inside: chests, crafting tables, beds. Only you can break its walls, and the sea still stays out (a broken wall is an open window). Put two of your domes close together (up to 12 blocks apart) and it asks if you want to combine them: yes = a glass hallway joins them (/dome combine asks again from inside one). In the Dark Ocean it's a DRY BASE: no pressure, no Abyss dark, your drops stay. Sneak + right-click its glass with an empty hand to pack it away (the kit comes back). 3 domes each."}
+     does: "Right-click under water ANYWHERE (the Dark Ocean, an Overworld ocean or lake): a glass dome inflates and pushes the water out (Small 13 blocks across, Large 21), with two doors to swim in and out. Build inside: chests, crafting tables, beds. Only you can break its walls, and the sea still stays out (a broken wall is an open window). Put two of your domes close together (up to 12 blocks apart) and it asks if you want to combine them: yes = a glass hallway joins them (/dome combine asks again from inside one). In the Dark Ocean it's a DRY BASE: no pressure, no Abyss dark, your drops stay. Sneak + right-click its glass with an empty hand to pack it away (the kit comes back). 3 domes each. /dome upgrades (standing in it): 20 upgrades bought with materials: Airlock, Keycard Doors, Locked Vault, Oxygen Reserve, Bubble Ring, Hydroponics Bay, Fish Trap, Thermal Vents, Med Bay, Floodlights, Sonar, Defense Pulse, Mob Ward, Home Beacon (/dome home), Respawn Pod, Docking Bay, Pressure Hull, Heat Lamps, Intruder Alarm and Stained Shell. /dome trust <player> lets friends through locked doors and vaults."}
+  - {chapter: weapons, name: "Glimmer Pearl", icon: glimmer_pearl, detect: "faultlinedeep:glimmer_pearl",
+     how: "Only during the Glimmertide (the Dark Ocean's season: the first two weeks of November, February, May and August). Dark Ocean creatures drop 1-2 (15%), bosses 8-12, and glimmer shoals (glowing orbs drifting through the water) give one per orb you swim through.",
+     does: "The Glimmertide's currency. Spend them at the Glimmer Shop (/glimmer, open during the season): Dark Loot Bags, Air Coral, Dome Kits, the Abyssal Chart, a Submersible, Hearts of the Sea, a Conduit, a Trident, Mythic Goodie Bags, a Bait Worm for the Abyssal Kraken... They keep between seasons. /glimmer top: this season's best collectors."}
   - {chapter: consumables, name: "Drowned Vault Key", icon: drowned_vault_key, detect: "faultlinedeep:vault_key",
      how: "8% from Drowned Guards, 5% from Drowned Priests, 3 from the Drowned King.",
      does: "Opens one of the Drowned City's 10 VAULTS (in the palace treasury and the bank vault). A vault opens once: gold blocks, diamonds, emerald blocks, golden apples, netherite scrap, maybe a netherite ingot, a trident, an enchanted golden apple, two Dark Loot Bags."}
@@ -1629,6 +1635,14 @@ achievements:
      stat: red_tides, count: 1, reward: {items: ["DIAMOND:4"], xp: 500}}
   - {id: mutant_tide, name: "Something Wrong With It", icon: deep_shardback, desc: "Kill 10 mutated sea creatures.",
      stat: mutated_sea, count: 10, reward: {items: ["DIAMOND:8", "EXPERIENCE_BOTTLE:16"], xp: 1000}}
+  - {id: cartographer_of_the_deep, name: "Cartographer of the Deep", icon: abyssal_chart, desc: "Uncover half of the Dark Ocean on your Abyssal Chart.",
+     stat: chart_percent, count: 50, reward: {items: ["DIAMOND:12", "NAUTILUS_SHELL:4"], xp: 2000}}
+  - {id: deep_architect, name: "Deep Architect", icon: dome_kit_large, desc: "Install 20 dome upgrades (/dome upgrades).",
+     stat: dome_upgrades, count: 20, reward: {items: ["SEA_LANTERN:32", "HEART_OF_THE_SEA:1"], xp: 2000}}
+  - {id: glimmer_collector, name: "Glimmer Collector", icon: glimmer_pearl, desc: "Collect 50 Glimmer Pearls during the Glimmertide.",
+     stat: glimmer_pearls, count: 50, reward: {items: ["DIAMOND:6"], xp: 500}}
+  - {id: tidecaller, name: "Tidecaller", icon: glimmer_pearl, desc: "Collect 500 Glimmer Pearls.",
+     stat: glimmer_pearls, count: 500, reward: {items: ["NETHERITE_INGOT:1", "CONDUIT:1"], xp: 3000}}
   - {id: home_below, name: "A Home Below", icon: dome_kit_small, desc: "Inflate a dome base in the Dark Ocean.",
      stat: domes, count: 1, reward: {items: ["SEA_LANTERN:8", "GLASS:32"], xp: 300}}
   - {id: learned_the_hard_way, name: "Learned the Hard Way", icon: demon_eye, desc: "Learn 5 bosses' weaknesses (they're written in the Index after a boss kills you).",

@@ -55,7 +55,8 @@ final class Bloom {
             if (secs % (int) Math.max(1, cfg("check-minutes", 10) * 60) != 0) return;
             boolean anyone = false;
             for (Player p : w.getPlayers()) if (DeepMobs.fair(p) && deep(p)) { anyone = true; break; }
-            if (anyone && random.nextDouble() < cfg("chance", 0.03)) start();
+            double season = pl.glimmer != null && pl.glimmer.active() ? pl.getConfig().getDouble("glimmertide.bloom-multiplier", 3) : 1; // 1.12.0: the Glimmertide
+            if (anyone && random.nextDouble() < cfg("chance", 0.03) * season) start();
             return;
         }
         if (System.currentTimeMillis() >= endsAt) { stop(); return; }

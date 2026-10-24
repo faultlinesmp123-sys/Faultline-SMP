@@ -1177,3 +1177,9 @@ fish_titan_isopod:
 fish_blind_king:
   large: 59456
   small: 58432
+abyssal_chart:
+  large: 59457
+  small: 58433
+glimmer_pearl:
+  large: 59458
+  small: 58434

@@ -3170,7 +3170,17 @@ OUTER_ICONS = {
         "................", "......nnnn......", "....nnSSSSnn....", "...nSSs..sSSn...", "..nS.ssssss.Sn..", "..nS.s.ss.s.Sn..",
         "..nS.ssssss.Sn..", "..nS.s.ss.s.Sn..", "..nS.ssssss.Sn..", "...nS.s..s.Sn...", "...nSs.ss.sSn...", "....nSSssSSn....",
         "......nSSn......", "................", "................", "................"],
+    # 1.12.0: the Abyssal Chart's Index icon (the item itself is a vanilla filled map) and the Glimmertide's token
+    "abyssal_chart": [
+        "................", ".SSSSSSSSSSSSSS.", ".SssssssssssssS.", ".SsbbbbmmmkkksS.", ".SsbCcbbmmkkksS.", ".SsbccCbbmmkksS.",
+        ".SsbbccbbbmmksS.", ".SsbbbbbebbmmsS.", ".SsbbbbeeebbmsS.", ".SsbbbbbebbbbsS.", ".SsbCcbbbbbbbsS.", ".SsbcCcbbbccbsS.",
+        ".SsbbbbbbbcCbsS.", ".SssssssssssssS.", ".SSSSSSSSSSSSSS.", "................"],
+    "glimmer_pearl": [
+        "................", ".......a........", "......ala.......", ".....a.l.a......", "....lllllll.....", "...llcaaacll....",
+        "..llcaaaaaccl...", "..lcaaaaaaacl...", "..lcaaapaaacl.a.", "..lccaapaaccl.l.", "...lccappcclalal", "....lllcclll..l.",
+        "......llll...a..", "................", "................", "................"],
 }
+OUTER_NO_ITEM = {"abyssal_chart"}  # Index icon only
 # the Drowned City's people are plain drowned (no model): their eggs / Index icons are heads
 OUTER_HEADS = {
     "drowncitizen": [
@@ -3368,8 +3378,9 @@ def main():
     outer_items = {}
     for k, g in OUTER_ICONS.items():
         im = _pix(g)
-        W.flat_item(A, k, im)
         outer_items[k] = im
+        if k in OUTER_NO_ITEM: continue
+        W.flat_item(A, k, im)
         mappings["minecraft:paper"].append({"type": "definition", "model": f"{NS}:{k}", "bedrock_identifier": f"faultline:{k}",
             "display_name": k, "bedrock_options": {"icon": bed_icon(k, im), "allow_offhand": True},
             "components": {"minecraft:max_stack_size": 1 if k.startswith("dome_kit") else 64}})

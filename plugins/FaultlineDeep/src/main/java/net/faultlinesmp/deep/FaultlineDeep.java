@@ -48,6 +48,8 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
     Tides tides;
     Volcano volcano;
     Habitat habitat;
+    AbyssMap chart;
+    Glimmertide glimmer;
 
     @Override
     public void onEnable() {
@@ -69,11 +71,28 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(volcano, this);
         habitat = new Habitat(this);
         getServer().getPluginManager().registerEvents(habitat, this);
+        getServer().getPluginManager().registerEvents(habitat.upgrades, this);
+        chart = new AbyssMap(this);
+        glimmer = new Glimmertide(this);
+        getServer().getPluginManager().registerEvents(glimmer, this);
+        if (getCommand("glimmer") != null) {
+            getCommand("glimmer").setExecutor((sender, cmd, label, args) -> glimmer.command(sender, args));
+            getCommand("glimmer").setTabCompleter((sender, cmd, label, args) -> args.length == 1 ? List.of("top") : List.of());
+        }
+        getServer().getPluginManager().registerEvents(chart, this);
+        if (getCommand("chart") != null) getCommand("chart").setExecutor((sender, cmd, label, args) -> {
+            if (sender instanceof Player p) sender.sendMessage(chart.status(p)); else sender.sendMessage("Players only.");
+            return true;
+        });
         getServer().getPluginManager().registerEvents(outer, this);
         if (getCommand("den") != null) getCommand("den").setExecutor(rep::command);
         if (getCommand("dome") != null) {
             getCommand("dome").setExecutor((sender, cmd, label, args) -> habitat.command(sender, args));
-            getCommand("dome").setTabCompleter((sender, cmd, label, args) -> args.length == 1 ? List.of("list", "combine", "yes", "no") : List.of());
+            getCommand("dome").setTabCompleter((sender, cmd, label, args) -> {
+                if (args.length == 1) return List.of("list", "combine", "yes", "no", "upgrades", "trust", "untrust", "home", "color").stream().filter(s -> s.startsWith(args[0].toLowerCase())).toList();
+                if (args.length == 2 && args[0].equalsIgnoreCase("color")) return DomeUpgrades.COLOURS.stream().filter(s -> s.startsWith(args[1].toLowerCase())).toList();
+                return null; // (player names)
+            });
         }
         getServer().getPluginManager().registerEvents(mobs, this);
         getServer().getPluginManager().registerEvents(journey, this);
@@ -99,6 +118,8 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
         if (outer != null) outer.shutdown();
         if (tides != null) tides.stop();
         if (volcano != null) volcano.shutdown();
+        if (chart != null) chart.shutdown();
+        if (glimmer != null) glimmer.shutdown();
     }
 
     String worldName() { return getConfig().getString("world", DEFAULT_WORLD); }
@@ -362,6 +383,7 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
                 }
             }
             case "domes" -> { for (String line : habitat.list()) sender.sendMessage(ChatColor.GRAY + line); }
+            case "season", "glimmertide" -> glimmer.admin(sender, args.length > 1 ? args[1].toLowerCase() : "");
             case "give" -> { // /deep give <coral|dome_small|dome_large|vault_key|fossil> [amount] [player]
                 String what = args.length > 1 ? args[1].toLowerCase() : "";
                 int n = 1; Player to = self;
@@ -372,9 +394,11 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
                     case "dome_large" -> habitat.kit(10);
                     case "vault_key" -> outer.vaultKey(n);
                     case "fossil" -> outer.fossil(n);
+                    case "chart", "map" -> chart.item();
+                    case "glimmer", "pearl", "glimmer_pearl" -> glimmer.pearl(n);
                     default -> null;
                 };
-                if (it == null || to == null) { sender.sendMessage(ChatColor.YELLOW + "/deep give <coral|dome_small|dome_large|vault_key|fossil> [amount] [player]"); return true; }
+                if (it == null || to == null) { sender.sendMessage(ChatColor.YELLOW + "/deep give <coral|dome_small|dome_large|vault_key|fossil|chart|glimmer> [amount] [player]"); return true; }
                 Player dest = to;
                 dest.getInventory().addItem(it).values().forEach(x -> dest.getWorld().dropItemNaturally(dest.getLocation(), x));
                 sender.sendMessage(ChatColor.GREEN + "Gave " + dest.getName() + " " + what + ".");
@@ -412,8 +436,9 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         List<String> out = new ArrayList<>();
-        if (args.length == 1) out.addAll(List.of("info", "set", "tp", "town", "sulphur", "trench", "spawn", "egg", "event", "acidrain", "den", "bloom", "migration", "sub", "lucki", "eclipse", "redtide", "frenzy", "volcano", "domes", "give", "region"));
-        else if (args.length == 2 && args[0].equalsIgnoreCase("give")) out.addAll(List.of("coral", "dome_small", "dome_large", "vault_key", "fossil"));
+        if (args.length == 1) out.addAll(List.of("info", "set", "tp", "town", "sulphur", "trench", "spawn", "egg", "event", "acidrain", "den", "bloom", "migration", "sub", "lucki", "eclipse", "redtide", "frenzy", "volcano", "domes", "give", "region", "season"));
+        else if (args.length == 2 && args[0].equalsIgnoreCase("season")) out.addAll(List.of("start", "stop", "auto", "shoal"));
+        else if (args.length == 2 && args[0].equalsIgnoreCase("give")) out.addAll(List.of("coral", "dome_small", "dome_large", "vault_key", "fossil", "chart", "glimmer"));
         else if (args.length == 2 && args[0].equalsIgnoreCase("region")) out.addAll(List.of("frozen", "city", "glass", "bones"));
         else if (args.length == 2 && args[0].equalsIgnoreCase("volcano")) out.addAll(List.of("where", "start", "here", "cool", "heal"));
         else if (args.length == 2 && args[0].equalsIgnoreCase("set")) out.addAll(List.of("kingdom", "lucki", "whirlpool"));

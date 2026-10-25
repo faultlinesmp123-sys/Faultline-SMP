@@ -1,0 +1,373 @@
+<title>Patty Cottage</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Figtree:wght@400;600;700&display=swap">
+<style>
+  /* Layout: full-bleed 3D scene; a plot "deed" card top-left and a toolbar along the bottom. */
+  :root {
+    --panel: #fffdf8;
+    --panel-line: #eadfcf;
+    --ink: #2a211b;
+    --ink-soft: #6d5f53;
+    --ketchup: #d23a2b;
+    --mustard: #f3b72f;
+    --chip: #f6efe3;
+    --chip-on: #2a211b;
+    --chip-on-ink: #fffdf8;
+    --scene: #9fd4f2;
+    --shadow: 0 10px 30px rgba(40, 25, 10, 0.18);
+    --font-display: "Lilita One", "Arial Rounded MT Bold", "Trebuchet MS", sans-serif;
+    --font-body: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --panel: #1c1916; --panel-line: #3a332c; --ink: #f4ece2; --ink-soft: #b5a796;
+      --ketchup: #ef5a4a; --mustard: #f6c450; --chip: #2a2520; --chip-on: #f4ece2;
+      --chip-on-ink: #1c1916; --shadow: 0 10px 30px rgba(0, 0, 0, 0.45); color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --panel: #1c1916; --panel-line: #3a332c; --ink: #f4ece2; --ink-soft: #b5a796;
+    --ketchup: #ef5a4a; --mustard: #f6c450; --chip: #2a2520; --chip-on: #f4ece2;
+    --chip-on-ink: #1c1916; --shadow: 0 10px 30px rgba(0, 0, 0, 0.45); color-scheme: dark;
+  }
+  html, body { height: 100%; }
+  body { background: var(--scene); color: var(--ink); font-family: var(--font-body); overflow: hidden; }
+  #stage { position: fixed; inset: 0; }
+  #scene { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+  #scene:active { cursor: grabbing; }
+
+  .deed {
+    position: fixed;
+    top: calc(env(safe-area-inset-top, 0px) + 16px);
+    left: calc(env(safe-area-inset-left, 0px) + 16px);
+    width: min(330px, calc(100vw - 32px));
+    background: var(--panel);
+    border: 1px solid var(--panel-line);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+    padding: 16px 18px 14px;
+    display: grid;
+    gap: 10px;
+  }
+  .eyebrow {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--ketchup); display: flex; align-items: center; gap: 8px;
+  }
+  .eyebrow::before {
+    content: ""; width: 14px; height: 9px; border-radius: 7px 7px 2px 2px;
+    background: linear-gradient(var(--mustard) 0 45%, var(--ketchup) 45% 70%, var(--mustard) 70%);
+  }
+  h1 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 34px; line-height: 1; letter-spacing: 0.01em; text-wrap: balance; }
+  .blurb { margin: 0; font-size: 14px; line-height: 1.45; color: var(--ink-soft); }
+  .stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 14px; margin: 2px 0 0; }
+  .stats div { min-width: 0; }
+  .stats dt { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); }
+  .stats dd { margin: 2px 0 0; font-weight: 700; font-size: 15px; font-variant-numeric: tabular-nums; }
+  .price {
+    display: flex; justify-content: space-between; align-items: baseline;
+    border-top: 1px dashed var(--panel-line); padding-top: 10px;
+  }
+  .price span { font-size: 12px; color: var(--ink-soft); }
+  .price strong { font-family: var(--font-display); font-weight: 400; font-size: 20px; color: var(--ketchup); }
+
+  .toolbar {
+    position: fixed;
+    left: 50%; transform: translateX(-50%);
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+    display: flex; flex-wrap: wrap; justify-content: center; gap: 8px;
+    background: var(--panel); border: 1px solid var(--panel-line); border-radius: 999px;
+    box-shadow: var(--shadow); padding: 6px;
+    max-width: calc(100vw - 32px);
+  }
+  .toolbar button {
+    font: 600 14px/1 var(--font-body); color: var(--ink); background: var(--chip);
+    border: 0; border-radius: 999px; padding: 10px 16px; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .toolbar button[aria-pressed="true"] { background: var(--chip-on); color: var(--chip-on-ink); }
+  .toolbar button:focus-visible { outline: 3px solid var(--mustard); outline-offset: 2px; }
+  .toolbar kbd { font: 600 11px/1 var(--font-body); opacity: 0.55; }
+  .hint {
+    position: fixed;
+    right: calc(env(safe-area-inset-right, 0px) + 16px);
+    top: calc(env(safe-area-inset-top, 0px) + 16px);
+    font-size: 12px; color: var(--ink); background: var(--panel); border: 1px solid var(--panel-line);
+    border-radius: 999px; padding: 7px 12px; box-shadow: var(--shadow);
+  }
+  .loading {
+    position: fixed; inset: 0; display: grid; place-items: center;
+    font-family: var(--font-display); font-size: 22px; color: #2a211b; pointer-events: none;
+  }
+  @media (max-width: 640px) {
+    .deed { padding: 12px 14px; gap: 6px; width: calc(100vw - 32px); }
+    h1 { font-size: 26px; }
+    .blurb, .stats { display: none; }
+    .hint { display: none; }
+    .toolbar { border-radius: 18px; }
+    .toolbar kbd { display: none; }
+  }
+</style>
+
+<div id="stage"><canvas id="scene" aria-label="3D model of the Patty Cottage, a studded starter house"></canvas></div>
+<div class="loading" id="loading">Stacking studs…</div>
+
+<section class="deed" aria-label="House details">
+  <div class="eyebrow">Burger Empire · Maple Bun Lane</div>
+  <h1>Patty Cottage</h1>
+  <p class="blurb">The starter home. Kitchen, bedroom, a garage with your first food truck parked out front, and a grill out back.</p>
+  <dl class="stats">
+    <div><dt>Parts</dt><dd id="stat-parts">–</dd></div>
+    <div><dt>Studs</dt><dd id="stat-studs">–</dd></div>
+    <div><dt>Lot</dt><dd>64 × 56 studs</dd></div>
+    <div><dt>Scale</dt><dd>R15 · 5.2 studs</dd></div>
+  </dl>
+  <div class="price"><span>Plot deed price</span><strong>Free starter</strong></div>
+</section>
+
+<div class="hint">Drag to orbit · Scroll to zoom · Right-drag to pan</div>
+
+<div class="toolbar" role="toolbar" aria-label="View controls">
+  <button id="btn-roof" type="button" aria-pressed="false">Lift roof <kbd>R</kbd></button>
+  <button id="btn-night" type="button" aria-pressed="false">Night <kbd>N</kbd></button>
+  <button id="btn-spin" type="button" aria-pressed="true">Spin <kbd>S</kbd></button>
+  <button id="btn-reset" type="button">Reset view</button>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const PARTS = /*PARTS*/[];
+
+const canvas = document.getElementById('scene');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const scene = new THREE.Scene();
+const SKY_DAY = new THREE.Color(0x9fd4f2);
+const SKY_NIGHT = new THREE.Color(0x0d1633);
+scene.background = SKY_DAY.clone();
+scene.fog = new THREE.Fog(SKY_DAY.clone(), 160, 360);
+
+const camera = new THREE.PerspectiveCamera(38, 1, 0.5, 1200);
+const HOME_POS = new THREE.Vector3(70, 52, 78);
+const HOME_TARGET = new THREE.Vector3(2, 4, 0);
+camera.position.copy(HOME_POS);
+
+const hemi = new THREE.HemisphereLight(0xe4f3ff, 0x5b7d3c, 1.5);
+scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xfff4e0, 2.4);
+sun.position.set(55, 95, 45);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -60, right: 60, top: 60, bottom: -60, near: 10, far: 260 });
+sun.shadow.bias = -0.0004;
+sun.shadow.normalBias = 0.03;
+scene.add(sun);
+
+// Endless lawn beyond the plot, so the lot doesn't float in the sky.
+const outerGround = new THREE.Mesh(
+  new THREE.PlaneGeometry(1200, 1200),
+  new THREE.MeshStandardMaterial({ color: new THREE.Color().setRGB(70 / 255, 132 / 255, 58 / 255, THREE.SRGBColorSpace), roughness: 0.9 })
+);
+outerGround.rotation.x = -Math.PI / 2;
+outerGround.position.y = -1.02;
+outerGround.receiveShadow = true;
+scene.add(outerGround);
+
+const GEO = {
+  Block: new THREE.BoxGeometry(1, 1, 1),
+  Ball: new THREE.SphereGeometry(0.5, 24, 16),
+  Cyl: new THREE.CylinderGeometry(0.5, 0.5, 1, 32),
+};
+const studGeo = new THREE.CylinderGeometry(0.3, 0.3, 0.18, 14);
+const studMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.42 });
+
+const srgb = (c) => new THREE.Color().setRGB(c[0] / 255, c[1] / 255, c[2] / 255, THREE.SRGBColorSpace);
+const WARM = new THREE.Color(0xffc979);
+
+const matCache = new Map();
+const lampMats = [];
+const windowMats = [];
+function materialFor(p) {
+  const key = `${p.c}|${p.m}|${p.t}|${p.gl}`;
+  if (matCache.has(key)) return matCache.get(key);
+  const color = srgb(p.c);
+  const mat = new THREE.MeshStandardMaterial({
+    color,
+    roughness: p.m === 'Metal' ? 0.3 : p.m === 'Glass' ? 0.08 : 0.48,
+    metalness: p.m === 'Metal' ? 0.75 : 0,
+    transparent: p.t > 0,
+    opacity: 1 - p.t,
+    depthWrite: p.t === 0,
+  });
+  if (p.m === 'Neon') {
+    mat.emissive = color.clone();
+    mat.emissiveIntensity = 0.35;
+    if (p.gl === 1) lampMats.push(mat);
+  }
+  if (p.gl === 2) { mat.emissive = WARM.clone(); mat.emissiveIntensity = 0; windowMats.push(mat); }
+  matCache.set(key, mat);
+  return mat;
+}
+
+const groups = {};
+const studsByGroup = {};
+const lamps = [];
+let partCount = 0;
+let studCount = 0;
+
+for (const p of PARTS) {
+  if (!groups[p.g]) { groups[p.g] = new THREE.Group(); groups[p.g].name = p.g; scene.add(groups[p.g]); }
+  const [sx, sy, sz] = p.s;
+  const mesh = new THREE.Mesh(p.sh === 'Block' ? GEO.Block : p.sh === 'Ball' ? GEO.Ball : GEO.Cyl, materialFor(p));
+  mesh.position.set(...p.p);
+  if (p.sh === 'CylX') { mesh.rotation.z = Math.PI / 2; mesh.scale.set(sy, sx, sz); }
+  else mesh.scale.set(sx, sy, sz);
+  mesh.castShadow = p.t < 0.3;
+  mesh.receiveShadow = true;
+  groups[p.g].add(mesh);
+  if (!p.po) partCount++;
+
+  if (p.gl === 1) lamps.push(p);
+
+  if (p.st && p.sh === 'Block') {
+    const nx = Math.floor(sx + 1e-6), nz = Math.floor(sz + 1e-6);
+    if (nx && nz) {
+      const list = (studsByGroup[p.g] ||= []);
+      list.push({ p, nx, nz });
+      studCount += nx * nz;
+    }
+  }
+}
+
+// One instanced mesh of studs per group, so studs hide with their group.
+const m4 = new THREE.Matrix4();
+for (const [g, list] of Object.entries(studsByGroup)) {
+  const total = list.reduce((n, e) => n + e.nx * e.nz, 0);
+  const inst = new THREE.InstancedMesh(studGeo, studMat, total);
+  inst.receiveShadow = true;
+  let i = 0;
+  for (const { p, nx, nz } of list) {
+    const top = p.p[1] + p.s[1] / 2 + 0.09;
+    const color = srgb(p.c);
+    for (let a = 0; a < nx; a++) {
+      for (let b = 0; b < nz; b++) {
+        m4.makeTranslation(p.p[0] - nx / 2 + 0.5 + a, top, p.p[2] - nz / 2 + 0.5 + b);
+        inst.setMatrixAt(i, m4);
+        inst.setColorAt(i, color);
+        i++;
+      }
+    }
+  }
+  inst.instanceMatrix.needsUpdate = true;
+  inst.instanceColor.needsUpdate = true;
+  groups[g].add(inst);
+}
+
+// Real light from each fixture after dark.
+const pointLights = [];
+for (const p of lamps) {
+  const light = new THREE.PointLight(WARM, 0, 26, 1.6);
+  light.position.set(p.p[0], p.p[1] - 0.6, p.p[2]);
+  groups[p.g].add(light);
+  pointLights.push(light);
+}
+
+document.getElementById('stat-parts').textContent = partCount.toLocaleString();
+document.getElementById('stat-studs').textContent = studCount.toLocaleString();
+
+// ------------------------------------------------------------- controls
+const controls = new OrbitControls(camera, canvas);
+controls.target.copy(HOME_TARGET);
+controls.enableDamping = true;
+controls.minDistance = 12;
+controls.maxDistance = 240;
+controls.maxPolarAngle = Math.PI * 0.47;
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+controls.autoRotate = !reduceMotion;
+controls.autoRotateSpeed = 0.55;
+controls.update();
+
+const btn = {
+  roof: document.getElementById('btn-roof'),
+  night: document.getElementById('btn-night'),
+  spin: document.getElementById('btn-spin'),
+  reset: document.getElementById('btn-reset'),
+};
+const press = (b, on) => b.setAttribute('aria-pressed', String(on));
+press(btn.spin, controls.autoRotate);
+
+controls.addEventListener('start', () => { controls.autoRotate = false; press(btn.spin, false); });
+
+function toggleRoof() {
+  const lifted = groups.Roof.visible;
+  groups.Roof.visible = !lifted;
+  press(btn.roof, lifted);
+}
+let nightTarget = 0;
+let night = 0;
+function toggleNight() { nightTarget = nightTarget ? 0 : 1; press(btn.night, nightTarget === 1); }
+function toggleSpin() { controls.autoRotate = !controls.autoRotate; press(btn.spin, controls.autoRotate); }
+function resetView() { camera.position.copy(HOME_POS); controls.target.copy(HOME_TARGET); controls.update(); }
+
+btn.roof.addEventListener('click', toggleRoof);
+btn.night.addEventListener('click', toggleNight);
+btn.spin.addEventListener('click', toggleSpin);
+btn.reset.addEventListener('click', resetView);
+window.addEventListener('keydown', (e) => {
+  if (e.target.closest && e.target.closest('input, textarea')) return;
+  const k = e.key.toLowerCase();
+  if (k === 'r') toggleRoof();
+  else if (k === 'n') toggleNight();
+  else if (k === 's') toggleSpin();
+});
+
+// ------------------------------------------------------------- day / night
+const SUN_DAY = new THREE.Color(0xfff4e0), SUN_NIGHT = new THREE.Color(0x8fa6ff);
+function applyNight(t) {
+  scene.background.copy(SKY_DAY).lerp(SKY_NIGHT, t);
+  scene.fog.color.copy(scene.background);
+  hemi.intensity = THREE.MathUtils.lerp(1.5, 0.18, t);
+  sun.intensity = THREE.MathUtils.lerp(2.4, 0.3, t);
+  sun.color.copy(SUN_DAY).lerp(SUN_NIGHT, t);
+  for (const m of lampMats) m.emissiveIntensity = THREE.MathUtils.lerp(0.35, 2.2, t);
+  for (const m of windowMats) m.emissiveIntensity = t * 0.9;
+  for (const l of pointLights) l.intensity = t * 38;
+}
+
+// ------------------------------------------------------------- render loop
+function resize() {
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  if (!w || !h) return;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  // Pull back on tall phone screens so the whole lot fits.
+  camera.fov = w / h < 0.8 ? 55 : 38;
+  camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(canvas);
+resize();
+
+const clock = new THREE.Clock();
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(clock.getDelta(), 0.1);
+  if (night !== nightTarget) {
+    const step = reduceMotion ? 1 : dt * 1.6;
+    night = nightTarget > night ? Math.min(nightTarget, night + step) : Math.max(nightTarget, night - step);
+    applyNight(night);
+  }
+  controls.update();
+  renderer.render(scene, camera);
+});
+document.getElementById('loading').remove();
+</script>

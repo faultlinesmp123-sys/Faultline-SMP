@@ -79,6 +79,21 @@ final class Outer implements Listener {
 
     double cfg(String path, double def) { return pl.getConfig().getDouble("outer." + path, def); }
 
+    /** 1.14.0: the Reaches (the Sunlit Sea's biomes): a small title when you swim into a new one (not in the landmarks). */
+    final Map<UUID, Reaches.Kind> reach = new HashMap<>();
+
+    void reachTitle(Player p, Location l, String outerRegion) {
+        int x = l.getBlockX(), z = l.getBlockZ();
+        long seed = l.getWorld().getSeed();
+        Reaches.Kind k = null;
+        if (outerRegion == null && pl.generator.sulphur(seed, x, z) < 0.2 && MermaidDen.weight(x, z) < 0.2 && !Trench.near(x, z, 0)
+                && l.getY() > pl.generator.seaFloor(seed, x, z) - 3)
+            k = Reaches.at(seed, x, z);
+        Reaches.Kind was = k == null ? reach.remove(p.getUniqueId()) : reach.put(p.getUniqueId(), k);
+        if (k == null || k == was || k == Reaches.Kind.OPEN || !pl.getConfig().getBoolean("reaches.titles", true)) return;
+        p.sendTitle(ChatColor.AQUA + Reaches.title(k), ChatColor.GRAY + Reaches.subtitle(k), 10, 50, 20);
+    }
+
     // =========================================================================================== every 2 s
     void tick() {
         World w = pl.world;
@@ -91,6 +106,7 @@ final class Outer implements Listener {
                 p.sendTitle(ChatColor.AQUA + Regions.title(now), ChatColor.GRAY + Regions.subtitle(now), 10, 60, 20);
                 p.playSound(l, Sound.AMBIENT_UNDERWATER_LOOP_ADDITIONS_ULTRA_RARE, SoundCategory.AMBIENT, 1f, 0.8f);
             }
+            reachTitle(p, l, now);
             if (now == null) region.remove(p.getUniqueId()); else region.put(p.getUniqueId(), now);
             if (p.getGameMode() != org.bukkit.GameMode.SURVIVAL && p.getGameMode() != org.bukkit.GameMode.ADVENTURE) continue;
             if ("city".equals(now)) wakeKing(p);
@@ -158,7 +174,7 @@ final class Outer implements Listener {
     static double sq(double d) { return d * d; }
 
     @EventHandler
-    public void onQuit(PlayerQuitEvent e) { region.remove(e.getPlayer().getUniqueId()); }
+    public void onQuit(PlayerQuitEvent e) { region.remove(e.getPlayer().getUniqueId()); reach.remove(e.getPlayer().getUniqueId()); }
 
     // =========================================================================================== items
     ItemStack vaultKey(int n) {

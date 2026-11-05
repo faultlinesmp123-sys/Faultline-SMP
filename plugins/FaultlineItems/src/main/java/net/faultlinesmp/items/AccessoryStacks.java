@@ -65,7 +65,6 @@ final class AccessoryStacks implements Listener {
         try { out.add(plugin.getTrinkets().item(TrinketGear.Piece.FANG)); } catch (RuntimeException ignored) { }
         // 1.2.65's pass
         try { for (TrinketGear.Piece tp : List.of(TrinketGear.Piece.LANTERN, TrinketGear.Piece.THUMB, TrinketGear.Piece.TREASURE, TrinketGear.Piece.SMELTER)) out.add(plugin.getTrinkets().item(tp)); } catch (RuntimeException ignored) { }
-        try { out.add(plugin.getMirrorGear().item()); } catch (RuntimeException ignored) { }
         try { out.add(plugin.getJacobGear().item(JacobGear.Piece.HEART)); } catch (RuntimeException ignored) { }
         out.removeIf(java.util.Objects::isNull);
         cache = out;

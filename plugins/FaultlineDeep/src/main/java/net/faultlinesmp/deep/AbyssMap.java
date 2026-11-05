@@ -245,6 +245,8 @@ final class AbyssMap implements Listener {
         // open sea: the deeper the floor, the darker the blue
         double t = Math.max(0, Math.min(1, (floor + 40) / 140.0));
         Color c = mix(new Color(10, 22, 70), new Color(40, 110, 170), t);
+        Reaches.Kind k = Reaches.at(seed, x, z); // 1.14.0: each biome's own tint, shaded by depth
+        if (k != Reaches.Kind.OPEN) c = mix(c, Reaches.colour(k), 0.65);
         if (den > 0.05) c = mix(c, new Color(200, 90, 130), den * 0.6);                    // the Den's outer cliff
         return c;
     }

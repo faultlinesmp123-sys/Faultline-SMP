@@ -512,13 +512,13 @@ entries:
     how: Dropped by Diamond Jacob.
     does: Take 10% less damage from everything.
 
-  - chapter: accessories
+  - chapter: weapons
     id: lost_mirror
     name: Mirror..??
     icon: lost_mirror
     detect: faultlineitems:lost_mirror
     how: Dropped by Diamond Jacob (every fighter, every time).
-    does: Right-click it to be taken to the abandoned kingdom where the Black Market stands. Find Lucki on his little boat there; he rows you out and opens the way down into the Dark Ocean. Right-click it in the Dark Ocean to come back. Worn in /accessories, a hit that would take a third of your health or more bounces off you and back at whoever dealt it (up to 6 hearts). Then it needs 60 seconds to clear. You look into it. Something looks back.
+    does: 'Not an accessory: just right-click it. It takes you to the abandoned kingdom where the Black Market stands. Find Lucki on his little boat there; he rows you out and opens the way down into the Dark Ocean. Right-click it in the Dark Ocean to come back up. You look into it. Something looks back.'
 
   # ---------------------------------------------------------------- SHIPS (FaultlineShips)
   - {chapter: weapons, name: "Sloop Blueprint", icon: sloop_blueprint, detect: "faultlineships:sloop_blueprint",

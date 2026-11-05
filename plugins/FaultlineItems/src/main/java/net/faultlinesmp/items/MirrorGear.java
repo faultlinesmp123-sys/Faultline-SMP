@@ -1,88 +1,124 @@
 package net.faultlinesmp.items;
 
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
-import org.bukkit.Particle;
-import org.bukkit.Sound;
-import org.bukkit.SoundCategory;
-import org.bukkit.attribute.Attribute;
-import org.bukkit.attribute.AttributeInstance;
-import org.bukkit.entity.Entity;
-import org.bukkit.entity.LivingEntity;
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
-import org.bukkit.entity.Projectile;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
-import org.bukkit.event.entity.EntityDamageByEntityEvent;
-import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.inventory.InventoryOpenEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.persistence.PersistentDataType;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.List;
 
 /**
- * Mirror..?? (1.2.65: dropped by Diamond Jacob, every fighter): worn, a big hit bounces off you and back at whoever
- * dealt it. Right-clicked (FaultlineDeep): the way to the abandoned kingdom and the Dark Ocean, once you've beaten Jacob.
+ * Mirror..?? (dropped by Diamond Jacob, every fighter). 1.2.66: a plain ITEM, not an accessory: right-clicked (FaultlineDeep)
+ * it's the way to the abandoned kingdom and the Dark Ocean, once you've beaten Jacob, and the way back up. Its old worn power
+ * (reflecting a big hit) is gone. Old Mirrors are rebuilt (`convert`: no accessory tag, new lore) wherever they're found in a
+ * player's inventory / ender chest, and one left in an accessory slot is taken out (`unslot`, 30 ticks after join).
  */
 final class MirrorGear implements Listener {
 
     private final FaultlineItems plugin;
     final NamespacedKey key;
-    private final Map<UUID, Long> ready = new HashMap<>();
-    private boolean reflecting; // a reflected hit can't be reflected again (two Mirrors facing each other)
 
     MirrorGear(FaultlineItems plugin) {
         this.plugin = plugin;
         key = new NamespacedKey(plugin, "lost_mirror");
     }
 
-    int cooldown() { return (int) Math.max(1, Balance.num(plugin, "mirror.cooldown-seconds", 45, 60)); } // 1.2.65: was 45 (every Jacob fighter gets one now)
-    double threshold() { return plugin.getConfig().getDouble("mirror.min-hit-share", 0.33); }
+    private static final List<String> LORE = List.of(
+            ChatColor.DARK_GRAY + "" + ChatColor.ITALIC + "You look into it. Something looks back.",
+            ChatColor.AQUA + "Right-click: go to the abandoned kingdom",
+            ChatColor.AQUA + "(needs Diamond Jacob beaten).",
+            ChatColor.AQUA + "In the Dark Ocean: right-click to go back up.",
+            ChatColor.DARK_GRAY + "Dropped by Diamond Jacob.");
 
     ItemStack item() {
-        return FaultlineItems.NewAccessoryItems.make(plugin, Material.GLASS_PANE, ChatColor.WHITE + "" + ChatColor.BOLD + "Mirror..??", key,
-                ChatColor.GREEN + "A hit that would take a third of your",
-                ChatColor.GREEN + "health or more bounces off you, back",
-                ChatColor.GREEN + "at whoever dealt it. You take none of it.",
-                ChatColor.DARK_GRAY + "Then it needs " + cooldown() + " seconds to clear.",
-                ChatColor.DARK_GRAY + "" + ChatColor.ITALIC + "You look into it. Something looks back.",
-                ChatColor.AQUA + "Right-click: go to the abandoned kingdom",
-                ChatColor.AQUA + "(needs Diamond Jacob beaten).",
-                ChatColor.DARK_GRAY + "Dropped by Diamond Jacob.");
+        ItemStack item = new ItemStack(Material.GLASS_PANE);
+        ItemMeta m = item.getItemMeta();
+        m.setDisplayName(ChatColor.WHITE + "" + ChatColor.BOLD + "Mirror..??");
+        m.setLore(LORE);
+        m.addEnchant(Enchantment.LURE, 1, true);
+        m.addItemFlags(ItemFlag.HIDE_ENCHANTS);
+        m.setMaxStackSize(1);
+        m.setItemModel(new NamespacedKey("faultline", key.getKey()));
+        m.getPersistentDataContainer().set(key, PersistentDataType.BYTE, (byte) 1);
+        item.setItemMeta(m);
+        return item;
     }
 
-    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
-    public void onHurt(EntityDamageByEntityEvent event) {
-        if (reflecting || !(event.getEntity() instanceof Player p)) return;
-        if (!plugin.getAccessoryManager().hasEquipped(p, key)) return;
-        AttributeInstance max = p.getAttribute(Attribute.MAX_HEALTH);
-        double hp = max == null ? 20 : max.getValue();
-        if (event.getFinalDamage() < hp * threshold()) return;
-        long now = System.currentTimeMillis();
-        if (now < ready.getOrDefault(p.getUniqueId(), 0L)) return;
-        ready.put(p.getUniqueId(), now + cooldown() * 1000L);
+    boolean is(ItemStack it) {
+        return it != null && it.getType() != Material.AIR && it.getPersistentDataContainer().has(key);
+    }
 
-        double dmg = event.getDamage();
-        event.setCancelled(true);
-        Entity from = event.getDamager();
-        if (from instanceof Projectile pr && pr.getShooter() instanceof Entity shooter) { pr.remove(); from = shooter; }
-        p.getWorld().playSound(p.getLocation(), Sound.BLOCK_GLASS_BREAK, SoundCategory.PLAYERS, 1.2f, 0.7f);
-        p.getWorld().playSound(p.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_RESONATE, SoundCategory.PLAYERS, 1.4f, 0.6f);
-        p.getWorld().spawnParticle(Particle.END_ROD, p.getLocation().add(0, 1.1, 0), 30, 0.4, 0.6, 0.4, 0.08);
-        p.sendActionBar(net.kyori.adventure.text.Component.text("The Mirror..?? throws the blow back. (" + cooldown() + "s)", net.kyori.adventure.text.format.NamedTextColor.WHITE));
-        if (from instanceof LivingEntity back && !back.equals(p) && back.isValid() && !back.isDead()) {
-            reflecting = true;
-            try { back.damage(Math.min(dmg, Balance.num(plugin, "mirror.max-reflect", 30, 12)), p); }
-            finally { reflecting = false; }
-            back.getWorld().spawnParticle(Particle.END_ROD, back.getLocation().add(0, back.getHeight() / 2, 0), 20, 0.3, 0.4, 0.3, 0.05);
+    /** An old (accessory) Mirror becomes the plain item. True if it changed. */
+    boolean convert(ItemStack it) {
+        if (!is(it)) return false;
+        ItemMeta m = it.getItemMeta();
+        boolean changed = m.getPersistentDataContainer().has(plugin.getAccessoryKey());
+        if (changed) m.getPersistentDataContainer().remove(plugin.getAccessoryKey());
+        if (!LORE.equals(m.getLore())) { m.setLore(LORE); changed = true; }
+        if (changed) it.setItemMeta(m);
+        return changed;
+    }
+
+    private void convertAll(org.bukkit.inventory.Inventory inv) {
+        if (inv == null) return;
+        ItemStack[] c = inv.getContents();
+        boolean any = false;
+        for (ItemStack it : c) any |= convert(it);
+        if (any) inv.setContents(c);
+    }
+
+    /** A Mirror still in an accessory slot goes to the inventory (an open Wardrobe is closed first, or it would save it back). */
+    void unslot(Player p) {
+        var am = plugin.getAccessoryManager();
+        var top = p.getOpenInventory() == null ? null : p.getOpenInventory().getTopInventory();
+        ItemStack[] slots = am.getSlots(p.getUniqueId());
+        boolean found = false;
+        for (int i = 0; slots != null && i < slots.length; i++) if (is(slots[i])) found = true;
+        if (!found) return;
+        if (top != null && top.getHolder() instanceof FaultlineItems.AccessoryGuiHolder) p.closeInventory();
+        slots = am.getSlots(p.getUniqueId());
+        for (int i = 0; slots != null && i < slots.length; i++) {
+            if (!is(slots[i])) continue;
+            ItemStack m = slots[i].clone();
+            convert(m);
+            slots[i] = null;
+            p.getInventory().addItem(m).values().forEach(left -> p.getWorld().dropItemNaturally(p.getLocation(), left));
         }
+        am.setSlots(p.getUniqueId(), slots);
+        p.sendMessage(ChatColor.WHITE + "The Mirror..?? " + ChatColor.GRAY + "isn't an accessory any more: it's been taken out of your accessory slot and put in your inventory.");
     }
 
     @EventHandler
-    public void onQuit(PlayerQuitEvent event) {
-        if (System.currentTimeMillis() >= ready.getOrDefault(event.getPlayer().getUniqueId(), 0L)) ready.remove(event.getPlayer().getUniqueId());
+    public void onJoin(PlayerJoinEvent e) {
+        Player p = e.getPlayer();
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (!p.isOnline()) return;
+            try { unslot(p); convertAll(p.getInventory()); convertAll(p.getEnderChest()); }
+            catch (RuntimeException ex) { plugin.getLogger().warning("[Mirror] " + ex); }
+        }, 30L);
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onOpen(InventoryOpenEvent e) {
+        if (!(e.getPlayer() instanceof Player p)) return;
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            if (!p.isOnline()) return;
+            try {
+                convertAll(p.getInventory());
+                var top = p.getOpenInventory().getTopInventory();
+                if (top != null && AccessoryStacks.realStorage(top)) convertAll(top);
+            } catch (RuntimeException ignored) { }
+        });
     }
 }

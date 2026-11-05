@@ -31,6 +31,9 @@ import java.util.Random;
  *  - the build area: a flat 150 x 150 floor, its top block at exactly y = -50, centred on 681, -951. Over it stands THE
  *    BUBBLE (Town.java): a glass dome with no water inside, an abandoned town and a 50 x 50 plot to build on
  *  - abandoned RUINS all over the floor, Sunlit Sea and Abyss (Ruins.java)
+ *  - 1.14.0: THE REACHES (Reaches.java): the Sunlit Sea's open floor is a map of biomes (shallows, kelp, plateaus, lantern
+ *    trees, dunes, crag needles, sunken peaks, a glowing reef, floating isles, the old open sea); the Sulphur Sea is a
+ *    mushroom forest
  *
  * Everything is a pure function of (seed, x, y, z), so features that cross chunk borders (spires, arches, chimneys)
  * line up without a populator. Runs on the world generation threads: nothing here touches the world.
@@ -55,6 +58,7 @@ final class DeepGenerator extends ChunkGenerator {
         final SimplexNoiseGenerator c1, c2, c3, m1, m2, warpX, warpZ;
         final SimplexOctaveGenerator sulphur;         // 1.4.0 (made last: everything before keeps its old shape)
         final SimplexNoiseGenerator sulphurEdge;
+        final SimplexOctaveGenerator plateau, ridges, detail; // 1.14.0: the Reaches (made last, as always)
 
         Noise(long seed) {
             this.seed = seed;
@@ -79,6 +83,9 @@ final class DeepGenerator extends ChunkGenerator {
             warpZ = new SimplexNoiseGenerator(r.nextLong());
             sulphur = oct(r, 3, 1 / 88.0);
             sulphurEdge = new SimplexNoiseGenerator(r.nextLong());
+            plateau = oct(r, 2, 1 / 70.0);
+            ridges = oct(r, 3, 1 / 240.0);
+            detail = oct(r, 2, 1 / 30.0);
         }
 
         private static SimplexOctaveGenerator oct(Random r, int octaves, double scale) {
@@ -120,6 +127,7 @@ final class DeepGenerator extends ChunkGenerator {
         if (cy > 0.88) h -= (cy - 0.88) * 110;                  // canyons winding across the sea floor
         h += reef(x, z) * 8;                                    // the reef rises toward the light
         h = Math.max(30, Math.min(86, h));
+        h = Reaches.floor(n, x, z, h);                          // 1.14.0: the Reaches (the old floor is the OPEN sea's)
         double sw = Sulphur.weight(n, x, z);                    // the Sulphur Sea: shelves and islands out of the water
         if (sw > 0) h = h * (1 - sw) + Sulphur.floor(n, x, z) * sw;
         double mw = MermaidDen.weight(x, z);                    // the Mermaid Den: a reef crater rising almost to the surface
@@ -379,7 +387,10 @@ final class DeepGenerator extends ChunkGenerator {
         double fw = FrozenShelf.weight(x, z), cw = DrownedCity.weight(x, z), gw = GlassReef.weight(x, z), bw = BoneFields.weight(x, z);
         int region = fw > 0.35 ? 1 : cw > 0.35 ? 2 : gw > 0.35 ? 3 : bw > 0.35 ? 4 : 0;
         boolean outer = fw > 0 || cw > 0 || gw > 0 || bw > 0;
-        boolean sunken = reg > 0.15 && !sulphur && !den && region == 0, warm = reef > 0.15 && !sulphur && !den && region == 0;
+        // 1.14.0: the Reaches (which biome of the open Sunlit Sea this is)
+        Reaches.Kind kind = !sulphur && !den && region == 0 && sw <= 0 && mw <= 0 && !outer ? Reaches.at(n.seed, x, z) : null;
+        boolean open = kind == Reaches.Kind.OPEN;
+        boolean sunken = reg > 0.15 && open, warm = kind == Reaches.Kind.SHALLOWS || reef > 0.15 && open;
         // the Trench's mouth (1.8.0): nothing stands on a floor that's about to be cut away
         Trench.Spot ts = Trench.near(x, z, 0) ? Trench.spot(x, z) : null;
         boolean mouth = Math.hypot(x - Trench.LX, z - Trench.LZ) < Trench.LAIR_R + Trench.WALL + 16 || ts != null && ts.d() < Trench.half(n, ts, x, up, z) + 4;
@@ -408,7 +419,7 @@ final class DeepGenerator extends ChunkGenerator {
             boolean cave = false;
             // (no caves near an island's surface: their water would spill out; 1.5.2: and none in the raised Sulphur plateau above
             // the old crust band, which made its chunks cost 3x to generate: 3 noise lookups a block, 250 blocks a column)
-            if (y > ceil + 1 && y < up - 3 && !((sw > 0 || mw > 0) && (y > SEA - 14 || y > 70))) {
+            if (y > ceil + 1 && y < up - 3 && !((sw > 0 || mw > 0) && (y > SEA - 14 || y > 70)) && !(up > 110 && y > 100)) {
                 double a = n.c1.noise(x / 44.0, y / 22.0, z / 44.0), b = n.c2.noise(x / 44.0, y / 22.0, z / 44.0);
                 cave = Math.abs(a) < 0.1 && Math.abs(b) < 0.1;                                     // winding tunnels
                 if (!cave) cave = n.c3.noise(x / 60.0, y / 26.0, z / 60.0) > 0.64;                  // caverns
@@ -424,7 +435,8 @@ final class DeepGenerator extends ChunkGenerator {
                 case 2 -> DrownedCity.top(n, rnd, x, z, up);
                 case 3 -> GlassReef.top(n, rnd, x, z, up);
                 case 4 -> BoneFields.top(n, rnd, x, z, up);
-                default -> surface(n, rnd, x, z, sunken, warm, up);
+                default -> kind != null && kind != Reaches.Kind.OPEN && kind != Reaches.Kind.SHALLOWS ? Reaches.top(kind, n, rnd, x, z, up)
+                        : surface(n, rnd, x, z, sunken, warm, up);
             };
             else if (sulphur && y > up - 8) m = Sulphur.under(rnd, y, up);
             else if (den && y > up - 8) m = MermaidDen.under(rnd, y, up);
@@ -434,6 +446,7 @@ final class DeepGenerator extends ChunkGenerator {
                 case 3 -> GlassReef.under(rnd, y, up);
                 default -> BoneFields.under(rnd, y, up);
             };
+            else if (kind != null && !open && (y > up - 6 || y > 64)) m = Reaches.under(kind, rnd, y, up); // their own rock, cliffs too
             else if (y > up - 4) m = sunken ? Material.CYAN_TERRACOTTA : warm ? Material.SAND : Material.SANDSTONE;
             else if (cd < cr + 1.5) m = Material.DEEPSLATE_TILES;                                   // a chimney's walls
             else m = (Math.floorMod(y + band, 9) < 3) ? Material.DEEPSLATE : Material.TUFF;
@@ -443,7 +456,7 @@ final class DeepGenerator extends ChunkGenerator {
         // ---- the Sunlit Sea
         for (int y = up + 1; y <= SEA; y++) d.setBlock(lx, y, lz, Material.WATER);
         // sea stacks
-        int stack = mouth || outer ? Integer.MIN_VALUE : stackTop(n, x, z);
+        int stack = mouth || outer || !open ? Integer.MIN_VALUE : stackTop(n, x, z);
         if (stack > up) for (int y = up + 1; y <= stack; y++)
             d.setBlock(lx, y, lz, y > stack - 2 ? Material.MOSSY_COBBLESTONE : (y % 5 == 0 ? Material.ANDESITE : Material.STONE));
         // the rest, block by block above the floor (spires, arches, whale falls), only where it's still water
@@ -452,8 +465,31 @@ final class DeepGenerator extends ChunkGenerator {
             int sp = sunken ? spire(n, x, y, z, up) : 0;
             if (sp > 0) { d.setBlock(lx, y, lz, sp == 2 ? Material.SEA_LANTERN : (y + x + z) % 3 == 0 ? Material.DARK_PRISMARINE : Material.PRISMARINE); continue; }
             if (sulphur || mw > 0 || outer) continue;
+            if (!open && kind != Reaches.Kind.DUNES) continue;
             if (y <= up + 26 && arch(n, x, y, z, up)) { d.setBlock(lx, y, lz, y % 3 == 0 ? Material.MOSSY_STONE_BRICKS : Material.STONE); continue; }
             if (y <= up + 8 && whale(n, x, y, z, up)) d.setBlock(lx, y, lz, Material.BONE_BLOCK);
+        }
+        // 1.14.0: the Reaches' tall features (lantern trees, lumen domes, crag needles, hanging isles) and the Sulphur Sea's mushrooms
+        if (!mouth && kind != null) {
+            int reach = Reaches.reach(kind);
+            for (int y = up + 1; reach > 0 && y <= Math.min(SEA - 3, up + reach); y++) {
+                if (d.getType(lx, y, lz) != Material.WATER) continue;
+                Material f = Reaches.feature(this, n, kind, x, y, z, up);
+                if (f != null) d.setBlock(lx, y, lz, f);
+            }
+            if (kind == Reaches.Kind.ISLES) {
+                int[] isle = Reaches.isle(n, x, z);
+                if (isle != null && isle[0] > up + 8) {
+                    for (int y = isle[0]; y <= Math.min(SEA - 4, isle[1]); y++) d.setBlock(lx, y, lz, Reaches.isleBlock(isle, x, y));
+                    Reaches.dressIsle(d, rnd, lx, lz, Math.min(SEA - 4, isle[1]) + 1, pickles);
+                }
+            }
+        }
+        if (sulphur && !mouth) for (int y = up + 1; y <= Math.min(318, up + 40); y++) {
+            Material at = d.getType(lx, y, lz);
+            if (at != Material.WATER && !at.isAir()) continue;
+            Material f = Reaches.mushroom(this, n, x, y, z);
+            if (f != null) d.setBlock(lx, y, lz, f);
         }
         if (sulphur) Sulphur.decorate(this, n, d, rnd, lx, lz, x, z, up);
         else if (den) MermaidDen.decorate(this, n, d, rnd, lx, lz, x, z, up);
@@ -461,7 +497,10 @@ final class DeepGenerator extends ChunkGenerator {
         else if (region == 2) DrownedCity.decorate(this, n, d, rnd, lx, lz, x, z, up);
         else if (region == 3) GlassReef.decorate(this, n, d, rnd, lx, lz, x, z, up);
         else if (region == 4) BoneFields.decorate(this, n, d, rnd, lx, lz, x, z, up);
-        else if (mw <= 0 && !mouth && !outer) decorateUpper(n, d, rnd, lx, lz, x, z, up, sunken, warm);
+        else if (mw <= 0 && !mouth && !outer) {
+            if (kind == null || !Reaches.decorate(kind, n, d, rnd, lx, lz, x, z, up, tallGrassLow, tallGrassHigh, pickles))
+                decorateUpper(n, d, rnd, lx, lz, x, z, up, sunken, warm);
+        }
         if (fw > 0) FrozenShelf.cap(n, d, rnd, lx, lz, x, z, up, fw); // the ice over the Frozen Shelf
         decorateCrust(n, d, rnd, lx, lz, ceil, up);
         decorateAbyss(n, d, rnd, lx, lz, x, z, floorTop, ceil);
@@ -491,7 +530,7 @@ final class DeepGenerator extends ChunkGenerator {
         Material below = d.getType(lx, up, lz);
         if (!below.isSolid()) return;
         double clump = n.n2(n.coral, x, z);
-        if (warm && clump > 0.1 && rnd.nextDouble() < reef(x, z) * 1.3) { // the reef: coral heads in clumps, one kind each
+        if (warm && clump > 0.1 && rnd.nextDouble() < Math.max(reef(x, z), Reaches.shallows(x, z) * 0.55) * 1.3) { // the reef: coral heads in clumps, one kind each
             int kind = Math.floorMod((int) Math.floor(n.n2(n.coral, x + 500, z) * 3 + 3), CORAL_BLOCKS.length);
             if (clump > 0.35) { // a coral head: a little mound of coral block
                 int hh = 1 + (int) ((clump - 0.35) * 8);
@@ -719,12 +758,15 @@ final class DeepGenerator extends ChunkGenerator {
             if (GlassReef.weight(x, z) > 0.35) return Biome.WARM_OCEAN;
             if (BoneFields.weight(x, z) > 0.35) return Biome.DEEP_COLD_OCEAN;
             if (reef(x, z) > 0.15) return Biome.WARM_OCEAN;
+            Reaches.Kind k = Reaches.at(n.seed, x, z); // 1.14.0
+            if (k != Reaches.Kind.OPEN) return Reaches.biome(k);
             return g.region(n, x, z) > 0.15 ? Biome.DEEP_LUKEWARM_OCEAN : Biome.DEEP_OCEAN;
         }
 
         @Override
         public List<Biome> getBiomes(WorldInfo info) {
-            return List.of(Biome.DEEP_OCEAN, Biome.DEEP_LUKEWARM_OCEAN, Biome.WARM_OCEAN, Biome.DEEP_COLD_OCEAN, Biome.SWAMP, Biome.FROZEN_OCEAN, Biome.COLD_OCEAN);
+            return List.of(Biome.DEEP_OCEAN, Biome.DEEP_LUKEWARM_OCEAN, Biome.WARM_OCEAN, Biome.DEEP_COLD_OCEAN, Biome.SWAMP, Biome.FROZEN_OCEAN, Biome.COLD_OCEAN,
+                    Biome.OCEAN, Biome.LUKEWARM_OCEAN);
         }
     }
 }

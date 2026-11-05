@@ -494,12 +494,6 @@ kraken-gear:
     glow-gland-from-glow-squid: 0.04
     eelskin-wrap-from-drowned: 0.02
 
-# Mirror..?? (accessory, dropped by the Kraken): a big hit is thrown back at whoever dealt it
-mirror:
-  cooldown-seconds: 60     # 1.2.65: was 45 (every Diamond Jacob fighter gets a Mirror now)
-  min-hit-share: 0.33      # only hits taking at least this share of your max health
-  max-reflect: 12          # most damage sent back (6 hearts; 1.2.65: was 30)
-
 # ---------------- Weather events (Weather.java) ----------------
 # AURORA some nights (XP x2, cheaper enchanting till dawn), SANDSTORM in deserts (dust, husks, buried treasure), BLIZZARD
 # in snowy biomes (keep warm: a fire within 4 blocks or 2+ leather pieces), ECLIPSE at midday (5 min night, neutral mobs

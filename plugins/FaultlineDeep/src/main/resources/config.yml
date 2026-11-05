@@ -107,6 +107,12 @@ volcano:
   linger-hours: 6
 
 # 1.9.0 the outer ring (Outer.java): the Drowned King, the Rimeback, vault keys, Ancient Fossils
+# The Reaches (1.14.0): the Sunlit Sea's biomes (Sunlit Shallows, Kelpwood, Ember Meadows, Lantern Groves, Pale Dunes,
+# Needle Fields, Drowned Peaks, Lumen Reef, Hanging Isles). Their terrain only appears in NEW chunks: stop the server and
+# delete the faultline_deep world folder to get the new sea. titles: a title when you swim into one.
+reaches:
+  titles: true
+
 outer:
   king:
     wake-radius: 30

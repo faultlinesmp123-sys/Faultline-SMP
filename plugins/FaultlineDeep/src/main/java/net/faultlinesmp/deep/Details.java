@@ -48,6 +48,7 @@ final class Details {
     static boolean plain(long seed, int x, int z, int room) {
         if (Math.abs(x) > 2940 || Math.abs(z) > 2940 || Math.hypot(x, z) < 90) return false;
         if (Sulphur.near(x, z, room) || MermaidDen.near(x, z, room) || Regions.nearAny(x, z, room) || Trench.near(x, z, room + 10)) return false;
+        if (!Reaches.quiet(seed, x, z)) return false; // 1.14.0: only the quiet biomes
         if (Math.max(Math.abs(x - DeepGenerator.FLAT_X), Math.abs(z - DeepGenerator.FLAT_Z)) < DeepGenerator.FLAT_HALF + DeepGenerator.FLAT_BLEND + 30) return false;
         int cx = Math.floorDiv(x, 144), cz = Math.floorDiv(z, 144);
         for (int i = -1; i <= 1; i++) for (int j = -1; j <= 1; j++) {

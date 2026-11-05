@@ -6893,7 +6893,7 @@ public final class FaultlineItems extends JavaPlugin {
             ACCESSORY_TYPES.put("glowgland", pl -> pl.getKrakenGear().counter(KrakenGear.Counter.GLOW_GLAND));
             ACCESSORY_TYPES.put("eelskin", pl -> pl.getKrakenGear().counter(KrakenGear.Counter.EELSKIN_WRAP));
             for (JacobGear.Piece jp : JacobGear.Piece.values()) ACCESSORY_TYPES.put(jp.id.replace("_", ""), pl -> pl.getJacobGear().item(jp));
-            ACCESSORY_TYPES.put("lostmirror", pl -> pl.getMirrorGear().item());
+            ACCESSORY_TYPES.put("lostmirror", pl -> pl.getMirrorGear().item()); // (not an accessory since 1.2.66; kept so old give commands still work)
             for (RangerGear.Piece rp : RangerGear.Piece.values()) ACCESSORY_TYPES.put(rp.command, pl -> pl.getRangerGear().item(rp)); // 1.2.27
             for (TrinketGear.Piece tp : TrinketGear.Piece.values()) ACCESSORY_TYPES.put(tp.command, pl -> pl.getTrinkets().item(tp)); // 1.2.28
 
@@ -6975,7 +6975,7 @@ public final class FaultlineItems extends JavaPlugin {
                 pl -> pl.getJacobGear().item(JacobGear.Piece.BANNER),
                 pl -> pl.getJacobGear().item(JacobGear.Piece.EMBER),
                 pl -> pl.getJacobGear().item(JacobGear.Piece.HEART),
-                // the Kraken's Mirror (the way to the Dark Ocean) and the Dark Ocean's loot bag
+                // Jacob's Mirror (the way to the Dark Ocean; an item, not an accessory, since 1.2.66) and the Dark Ocean's loot bag
                 pl -> pl.getMirrorGear().item(),
                 pl -> pl.darkLoot.bag(), // 1.2.41
                 pl -> pl.balloons.item(null, 0), // 1.2.24

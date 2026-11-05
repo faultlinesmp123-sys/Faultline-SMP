@@ -1810,7 +1810,7 @@ final class DeepMobs implements Listener {
             }
             case "lumenbell" -> drops.add(new ItemStack(Material.GLOW_INK_SAC, 1));
             case "gasbloom" -> { drops.add(new ItemStack(Material.SLIME_BALL, 1 + random.nextInt(2))); drops.add(new ItemStack(Material.FERMENTED_SPIDER_EYE, 1)); }
-            case "fangstalker" -> { drops.add(new ItemStack(Material.BONE, 1 + random.nextInt(3))); rare(killer, "fangstalker.abyssal-lure", 0.01, "leviathan item abyssal_lure 1 %p"); }
+            case "fangstalker" -> { drops.add(new ItemStack(Material.BONE, 1 + random.nextInt(3))); rare(killer, "fangstalker.bag", 0.01, "darkloot bag 1 %p"); }
             case "blastfin" -> drops.add(new ItemStack(Material.GUNPOWDER, 1 + random.nextInt(2)));
             case "burrowshark" -> { drops.add(new ItemStack(Material.SAND, 2 + random.nextInt(4))); drops.add(new ItemStack(Material.BONE, 1 + random.nextInt(2))); }
             case "cavecrawler" -> drops.add(new ItemStack(Material.STRING, 1 + random.nextInt(2)));
@@ -1849,11 +1849,11 @@ final class DeepMobs implements Listener {
             case "acidmite" -> { if (random.nextInt(3) == 0) drops.add(new ItemStack(Material.GLOWSTONE_DUST, 1)); }
             case "stormwraith" -> { drops.add(new ItemStack(Material.PHANTOM_MEMBRANE, 1)); drops.add(new ItemStack(Material.LIME_DYE, 1 + random.nextInt(2))); }
             case "mauler" -> { drops.add(new ItemStack(Material.BONE, 3 + random.nextInt(3))); drops.add(new ItemStack(Material.PRISMARINE_CRYSTALS, 2 + random.nextInt(3))); rare(killer, "mauler.brine-bait", 0.05, "scourge item brine_bait 1 %p"); }
-            case "sailfin" -> { drops.add(new ItemStack(Material.COD, 2 + random.nextInt(2))); drops.add(new ItemStack(Material.PRISMARINE_SHARD, 1 + random.nextInt(2))); rare(killer, "sailfin.abyssal-lure", 0.01, "leviathan item abyssal_lure 1 %p"); }
+            case "sailfin" -> { drops.add(new ItemStack(Material.COD, 2 + random.nextInt(2))); drops.add(new ItemStack(Material.PRISMARINE_SHARD, 1 + random.nextInt(2))); rare(killer, "sailfin.inkjaw-bait", 0.01, "inkjaw item inkjaw_bait 1 %p"); }
             case "mantaglider" -> { drops.add(new ItemStack(Material.LEATHER, 3 + random.nextInt(3))); drops.add(new ItemStack(Material.PRISMARINE_CRYSTALS, 4 + random.nextInt(5))); rare(killer, "mantaglider.bag", 0.1, "darkloot bag 1 %p"); }
             case "leafydragon" -> { drops.add(new ItemStack(Material.KELP, 2 + random.nextInt(3))); if (random.nextDouble() < 0.3) drops.add(new ItemStack(Material.SEA_PICKLE, 1)); }
             case "pearlhorse" -> { drops.add(new ItemStack(Material.PRISMARINE_CRYSTALS, 1 + random.nextInt(2))); if (random.nextDouble() < cfg("pearlhorse.heart-chance", 0.005)) drops.add(new ItemStack(Material.HEART_OF_THE_SEA, 1)); }
-            case "hammerjaw" -> { drops.add(new ItemStack(Material.BONE, 2 + random.nextInt(2))); drops.add(new ItemStack(Material.LEATHER, 1 + random.nextInt(2))); rare(killer, "hammerjaw.abyssal-lure", 0.015, "leviathan item abyssal_lure 1 %p"); }
+            case "hammerjaw" -> { drops.add(new ItemStack(Material.BONE, 2 + random.nextInt(2))); drops.add(new ItemStack(Material.LEATHER, 1 + random.nextInt(2))); rare(killer, "hammerjaw.bag", 0.015, "darkloot bag 1 %p"); }
             case "razorcuda" -> { drops.add(new ItemStack(Material.COD, 1)); if (random.nextBoolean()) drops.add(new ItemStack(Material.BONE, 1)); }
             case "stingray" -> { drops.add(new ItemStack(Material.LEATHER, 1 + random.nextInt(2))); drops.add(new ItemStack(Material.SPIDER_EYE, 1)); }
             case "mirrorfin" -> { drops.add(new ItemStack(Material.QUARTZ, 1 + random.nextInt(2))); drops.add(new ItemStack(Material.SALMON, 1)); }
@@ -1883,7 +1883,7 @@ final class DeepMobs implements Listener {
                 drops.add(new ItemStack(Material.GOLD_INGOT, 4 + random.nextInt(5)));
                 drops.add(new ItemStack(Material.TNT, 2 + random.nextInt(3)));
                 drops.add(new ItemStack(Material.SPLASH_POTION, 1));
-                if (killer != null && !killer.getScoreboardTags().contains("faultline_boss_rush")) { // (no loot in a Boss Rush)
+                if (killer != null) {
                     pl.console("darkloot bag " + (int) cfg("goblin.bags", 2) + " " + killer.getName());
                     rare(killer, "goblin.rare", 0.1, "darkloot rare %p 1");
                     pl.console("index stat " + killer.getName() + " acid_goblins 1");

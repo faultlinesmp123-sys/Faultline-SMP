@@ -42,7 +42,7 @@ final class JacobGear implements Listener {
         EMBER("ember_ward", Material.BLAZE_POWDER, ChatColor.GOLD, "Ember Ward",
                 ChatColor.GREEN + "You can't be set on fire", ChatColor.GREEN + "25% less fire damage (his flames too)"),
         HEART("diamond_heart", Material.DIAMOND, ChatColor.AQUA, "Diamond Heart",
-                ChatColor.GREEN + "Take 8% less damage from everything");
+                ChatColor.GREEN + "Take 10% less damage from everything");
 
         final String id, name; final Material material; final ChatColor color; final String[] lore;
         Piece(String id, Material material, ChatColor color, String name, String... lore) {
@@ -114,7 +114,7 @@ final class JacobGear implements Listener {
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onHeartDamage(EntityDamageEvent event) {
         if (!(event.getEntity() instanceof Player p) || !has(p, Piece.HEART)) return;
-        double cut = plugin.getConfig().getDouble("diamond-heart.damage-reduction", 0.08);
+        double cut = Balance.num(plugin, "diamond-heart.damage-reduction", 0.08, 0.1);
         if (cut > 0) event.setDamage(event.getDamage() * (1 - cut));
     }
 

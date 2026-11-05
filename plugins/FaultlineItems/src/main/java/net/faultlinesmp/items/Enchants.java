@@ -59,8 +59,8 @@ import java.util.UUID;
  * 1.2.52: Lifesteal on PLAYERS heals only on every 5th hit you land on players (`lifesteal.pvp-every-hits`; mobs: every hit).
  * New: Executioner I-II, Cleave I-II, Bleed I-II (weapons), Arrowguard I-II (chestplates), Thornhide I-II (leggings),
  * Swiftstride I-II and Tidecaller I (boots), Autosmelt I (pickaxes), Clearsight I (helmets). They drop through
- * enchants.new-boss-drops, rolled ON TOP of boss-drops (a server config keeps its old boss-drops lists).
- * Which boss drops which: enchants.boss-drops (entry id: ["enchant:level:chance", ...]); the Index's Museum asks for a
+ * the boss list below (1.2.65: DROPS, one list per boss that's left; enchants.drops.<entry> overrides it).
+ * Which boss drops which: enchants.drops (entry id: ["enchant:level:chance", ...]); the Index's Museum asks for a
  * roll on every boss defeat (`fenchant bossdrop <player> <entry>`), so every boss is covered by one hook.
  * Stored on the item as PDC faultlineitems:fenchants ("lifesteal=2;venom=1") plus a lore line each.
  */
@@ -92,67 +92,33 @@ final class Enchants implements Listener, CommandExecutor, TabCompleter {
     }
     private static void add(Def d) { DEFS.put(d.id, d); }
 
-    static final Map<String, List<String>> DEFAULT_DROPS = new LinkedHashMap<>();
+    /**
+     * 1.2.65: which boss drops which book, now that only these bosses are left (every enchant still drops somewhere; the
+     * bigger the boss, the better the book and the chance). Read from enchants.drops.<entry> when a server config sets it;
+     * the old enchants.boss-drops / new-boss-drops lists (full of removed bosses) are no longer read.
+     */
+    static final Map<String, List<String>> DROPS = new LinkedHashMap<>();
     static {
-        DEFAULT_DROPS.put("the_demon_eye", List.of("thunderstrike:1:0.25", "featherstep:1:0.2"));
-        DEFAULT_DROPS.put("queen_spider", List.of("venom:1:0.3"));
-        DEFAULT_DROPS.put("the_bulwark", List.of("vitality:1:0.2"));
-        DEFAULT_DROPS.put("the_great_hog", List.of("vitality:1:0.25"));
-        DEFAULT_DROPS.put("captain_rotbeard", List.of("lifesteal:1:0.2"));
-        DEFAULT_DROPS.put("mortimer_freeze", List.of("frostbite:1:0.3"));
-        DEFAULT_DROPS.put("the_dune_devourer", List.of("venom:1:0.3"));
-        DEFAULT_DROPS.put("the_frostmaw", List.of("frostbite:2:0.25"));
-        DEFAULT_DROPS.put("don_lorenzo", List.of("lifesteal:1:0.3"));
-        DEFAULT_DROPS.put("the_kraken", List.of("thunderstrike:1:0.3"));
-        DEFAULT_DROPS.put("the_kraken_at_sea", List.of("thunderstrike:1:0.3"));
-        DEFAULT_DROPS.put("diamond_jacob", List.of("vitality:2:0.35"));
-        DEFAULT_DROPS.put("rocco_vendetta", List.of("lifesteal:2:0.35"));
-        DEFAULT_DROPS.put("brine_scourge", List.of("lifesteal:2:0.35", "venom:2:0.35", "veinminer:1:0.25"));
-        DEFAULT_DROPS.put("umbral_leviathan", List.of("vitality:2:0.35", "thunderstrike:1:0.35", "veinminer:1:0.25"));
-        DEFAULT_DROPS.put("coralia", List.of("featherstep:1:0.2", "frostbite:1:0.2"));
-        DEFAULT_DROPS.put("old_inkjaw", List.of("venom:1:0.2", "lifesteal:1:0.15"));
-        DEFAULT_DROPS.put("grandmaw_clam", List.of("vitality:1:0.2"));
-        DEFAULT_DROPS.put("the_lament", List.of("lifesteal:1:0.2", "frostbite:2:0.1"));
-        DEFAULT_DROPS.put("the_skeleton_captain", List.of("thunderstrike:1:0.3"));
-        DEFAULT_DROPS.put("grimtusk", List.of("lifesteal:1:0.3", "vitality:1:0.2"));
-        DEFAULT_DROPS.put("leviathan", List.of("thunderstrike:1:0.2"));
-        DEFAULT_DROPS.put("sandworm_king", List.of("venom:2:0.2"));
-        DEFAULT_DROPS.put("lich", List.of("lifesteal:2:0.2"));
-        DEFAULT_DROPS.put("frost_wyrm", List.of("frostbite:2:0.25"));
-        DEFAULT_DROPS.put("stone_golem", List.of("vitality:1:0.2", "veinminer:1:0.3"));
-        DEFAULT_DROPS.put("ghost_captain", List.of("featherstep:1:0.3"));
-    }
-
-    /** 1.2.52 books, rolled ON TOP of enchants.boss-drops (enchants.new-boss-drops.<entry> overrides these). */
-    static final Map<String, List<String>> NEW_DROPS = new LinkedHashMap<>();
-    static {
-        NEW_DROPS.put("the_demon_eye", List.of("clearsight:1:0.2"));
-        NEW_DROPS.put("queen_spider", List.of("bleed:1:0.25"));
-        NEW_DROPS.put("the_bulwark", List.of("arrowguard:1:0.25"));
-        NEW_DROPS.put("the_great_hog", List.of("cleave:1:0.2"));
-        NEW_DROPS.put("captain_rotbeard", List.of("tidecaller:1:0.2"));
-        NEW_DROPS.put("mortimer_freeze", List.of("swiftstride:1:0.2"));
-        NEW_DROPS.put("the_dune_devourer", List.of("autosmelt:1:0.2"));
-        NEW_DROPS.put("the_frostmaw", List.of("arrowguard:1:0.2"));
-        NEW_DROPS.put("don_lorenzo", List.of("executioner:1:0.25"));
-        NEW_DROPS.put("the_kraken", List.of("tidecaller:1:0.3"));
-        NEW_DROPS.put("the_kraken_at_sea", List.of("tidecaller:1:0.3"));
-        NEW_DROPS.put("diamond_jacob", List.of("executioner:2:0.2", "arrowguard:2:0.2"));
-        NEW_DROPS.put("rocco_vendetta", List.of("cleave:2:0.2", "thornhide:1:0.25"));
-        NEW_DROPS.put("brine_scourge", List.of("bleed:2:0.25", "tidecaller:1:0.3"));
-        NEW_DROPS.put("umbral_leviathan", List.of("clearsight:1:0.3", "executioner:1:0.25"));
-        NEW_DROPS.put("coralia", List.of("swiftstride:1:0.2"));
-        NEW_DROPS.put("old_inkjaw", List.of("clearsight:1:0.2"));
-        NEW_DROPS.put("grandmaw_clam", List.of("thornhide:1:0.25"));
-        NEW_DROPS.put("the_lament", List.of("bleed:1:0.2"));
-        NEW_DROPS.put("the_skeleton_captain", List.of("cleave:1:0.25"));
-        NEW_DROPS.put("grimtusk", List.of("thornhide:2:0.2", "cleave:1:0.2"));
-        NEW_DROPS.put("leviathan", List.of("tidecaller:1:0.25"));
-        NEW_DROPS.put("sandworm_king", List.of("autosmelt:1:0.25"));
-        NEW_DROPS.put("lich", List.of("executioner:1:0.2"));
-        NEW_DROPS.put("frost_wyrm", List.of("swiftstride:2:0.2"));
-        NEW_DROPS.put("stone_golem", List.of("autosmelt:1:0.3"));
-        NEW_DROPS.put("ghost_captain", List.of("swiftstride:1:0.2"));
+        // land (and the raid / pirate bosses)
+        DROPS.put("queen_spider", List.of("venom:1:0.3", "bleed:1:0.25"));
+        DROPS.put("captain_rotbeard", List.of("lifesteal:1:0.2", "tidecaller:1:0.2"));
+        DROPS.put("the_bulwark", List.of("arrowguard:1:0.25", "thornhide:1:0.2"));
+        DROPS.put("the_great_hog", List.of("vitality:1:0.25", "cleave:1:0.2"));
+        DROPS.put("the_skeleton_captain", List.of("thunderstrike:1:0.3", "cleave:1:0.25"));
+        DROPS.put("ghost_captain", List.of("featherstep:1:0.3", "swiftstride:1:0.2"));
+        DROPS.put("diamond_jacob", List.of("vitality:2:0.35", "executioner:2:0.25", "arrowguard:2:0.25", "veinminer:1:0.25", "autosmelt:1:0.2"));
+        // the Dark Ocean
+        DROPS.put("the_abyssal_kraken", List.of("thunderstrike:1:0.35", "tidecaller:1:0.35", "lifesteal:2:0.3", "frostbite:2:0.25"));
+        DROPS.put("brine_scourge", List.of("lifesteal:2:0.35", "venom:2:0.35", "bleed:2:0.25", "veinminer:1:0.25"));
+        DROPS.put("umbral_leviathan", List.of("vitality:2:0.35", "clearsight:1:0.3", "executioner:1:0.25", "veinminer:1:0.25"));
+        DROPS.put("coralia", List.of("featherstep:1:0.25", "frostbite:2:0.25", "swiftstride:2:0.25"));
+        DROPS.put("old_inkjaw", List.of("venom:1:0.2", "clearsight:1:0.2"));
+        DROPS.put("grandmaw_clam", List.of("vitality:1:0.2", "thornhide:1:0.25"));
+        DROPS.put("the_lament", List.of("lifesteal:1:0.2", "bleed:1:0.2", "frostbite:1:0.15"));
+        DROPS.put("deep_goblin", List.of("autosmelt:1:0.2"));
+        DROPS.put("deep_rimeback", List.of("frostbite:2:0.3", "arrowguard:1:0.2"));
+        DROPS.put("deep_drownking", List.of("lifesteal:1:0.25", "tidecaller:1:0.25"));
+        DROPS.put("abyssal_titan", List.of("executioner:2:0.4", "cleave:2:0.4", "thornhide:2:0.4", "swiftstride:2:0.35", "vitality:2:0.4"));
     }
 
     private final FaultlineItems plugin;
@@ -179,6 +145,13 @@ final class Enchants implements Listener, CommandExecutor, TabCompleter {
 
     /** 1.2.53: every boss enchant was nerfed; a server config still holding the old default reads as the new one. */
     private double nerf(String path, double oldDefault, double newDefault) { return Balance.num(plugin, "enchants." + path, oldDefault, newDefault); }
+
+    /** 1.2.65's balance pass: a value still equal to ANY of its old defaults reads as the new one. */
+    private double tune(String path, double newDefault, double... olds) {
+        double v = plugin.getConfig().getDouble("enchants." + path, newDefault);
+        for (double o : olds) if (Math.abs(v - o) < 1e-9) return newDefault;
+        return v;
+    }
 
     // ---------------------------------------------------------------- items
 
@@ -324,11 +297,11 @@ final class Enchants implements Listener, CommandExecutor, TabCompleter {
             victim.getWorld().spawnParticle(Particle.DAMAGE_INDICATOR, victim.getLocation().add(0, 1, 0), 4, 0.2, 0.3, 0.2, 0.05);
         }
         Integer t = ench.get("thunderstrike");
-        if (t != null && full && random.nextDouble() < nerf("thunderstrike.chance", 0.08, 0.05)
+        if (t != null && full && random.nextDouble() < tune("thunderstrike.chance", 0.07, 0.08, 0.05)
                 && thunderReady.getOrDefault(p.getUniqueId(), 0L) <= System.currentTimeMillis()) {
-            thunderReady.put(p.getUniqueId(), System.currentTimeMillis() + (long) (nerf("thunderstrike.cooldown-seconds", 8, 12) * 1000));
+            thunderReady.put(p.getUniqueId(), System.currentTimeMillis() + (long) (tune("thunderstrike.cooldown-seconds", 10, 8, 12) * 1000));
             victim.getWorld().strikeLightningEffect(victim.getLocation());
-            e.setDamage(e.getDamage() + nerf("thunderstrike.damage", 4, 3));
+            e.setDamage(e.getDamage() + tune("thunderstrike.damage", 4, 3));
         }
         Integer f = ench.get("frostbite");
         if (f != null && full && random.nextDouble() < nerf("frostbite.chance-per-level", 0.15, 0.1) * f) {
@@ -395,7 +368,7 @@ final class Enchants implements Listener, CommandExecutor, TabCompleter {
         if (!(e.getEntity() instanceof Player p)) return;
         if (e.getDamager() instanceof org.bukkit.entity.Projectile) {
             int a = level(p.getInventory().getChestplate(), "arrowguard");
-            if (a > 0) e.setDamage(e.getDamage() * (1 - nerf("arrowguard.reduction-per-level", 0.1, 0.06) * a));
+            if (a > 0) e.setDamage(e.getDamage() * (1 - tune("arrowguard.reduction-per-level", 0.08, 0.1, 0.06) * a));
             return;
         }
         if (e.getCause() != EntityDamageEvent.DamageCause.ENTITY_ATTACK || !(e.getDamager() instanceof LivingEntity att) || att.equals(p)) return;
@@ -437,7 +410,7 @@ final class Enchants implements Listener, CommandExecutor, TabCompleter {
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onFall(EntityDamageEvent e) {
         if (e.getCause() != EntityDamageEvent.DamageCause.FALL || !(e.getEntity() instanceof Player p)) return;
-        if (level(p.getInventory().getBoots(), "featherstep") > 0) e.setDamage(e.getDamage() * (1 - nerf("featherstep.fall-reduction", 0.35, 0.25)));
+        if (level(p.getInventory().getBoots(), "featherstep") > 0) e.setDamage(e.getDamage() * (1 - tune("featherstep.fall-reduction", 0.3, 0.35, 0.25)));
     }
 
     @EventHandler(ignoreCancelled = true)
@@ -463,7 +436,7 @@ final class Enchants implements Listener, CommandExecutor, TabCompleter {
         if (level(tool, "veinminer") <= 0) return;
         if (plugin.getConfig().getStringList("enchants.veinminer.exclude").contains(start.getType().name())) return;
         String fam = family(start.getType());
-        int max = (int) nerf("veinminer.max-blocks", 32, 16);
+        int max = (int) tune("veinminer.max-blocks", 20, 32, 16);
         java.util.List<org.bukkit.block.Block> vein = new ArrayList<>();
         java.util.Set<org.bukkit.block.Block> seen = new java.util.HashSet<>(List.of(start));
         java.util.ArrayDeque<org.bukkit.block.Block> queue = new java.util.ArrayDeque<>(List.of(start));
@@ -568,10 +541,8 @@ final class Enchants implements Listener, CommandExecutor, TabCompleter {
     /** One boss defeat: roll that boss's books for this player. */
     List<ItemStack> bossDrop(Player p, String entry) {
         List<ItemStack> got = new ArrayList<>();
-        List<String> rolls = new ArrayList<>(plugin.getConfig().isList("enchants.boss-drops." + entry)
-                ? plugin.getConfig().getStringList("enchants.boss-drops." + entry) : DEFAULT_DROPS.getOrDefault(entry, List.of()));
-        rolls.addAll(plugin.getConfig().isList("enchants.new-boss-drops." + entry)
-                ? plugin.getConfig().getStringList("enchants.new-boss-drops." + entry) : NEW_DROPS.getOrDefault(entry, List.of()));
+        List<String> rolls = plugin.getConfig().isList("enchants.drops." + entry)
+                ? plugin.getConfig().getStringList("enchants.drops." + entry) : DROPS.getOrDefault(entry, List.of());
         for (String r : rolls) {
             String[] s = r.split(":");
             if (s.length != 3) continue;

@@ -36,25 +36,9 @@ final class DeathMessages implements Listener {
     /** Lowercase name fragment -> lines (%p = the player). First match wins, so the more specific come first. */
     static final Map<String, List<String>> LINES = new java.util.LinkedHashMap<>();
     static {
-        LINES.put("demon eye", List.of("%p was devoured by the Demon Eye", "%p couldn't outstare the Demon Eye", "%p was torn apart by the Demon Eye's teeth"));
-        LINES.put("eye", List.of("%p was devoured by the Demon Eye's brood", "%p was swarmed by the Servants of the Eye")); // servants, the twin eye
         LINES.put("hawk", List.of("%p was carried off by Jacob's Great Hawk", "%p was torn apart by Jacob's Great Hawk"));
-        LINES.put("frostbeard", List.of("%p was frozen solid by Frostbeard", "%p was buried in Frostbeard's blizzard", "%p was shattered by Frostbeard"));
-        LINES.put("mortimer", List.of("%p was frozen solid by Frostbeard", "%p was buried in Frostbeard's blizzard"));
-        LINES.put("frostmaw", List.of("%p was dragged under the ice by the Frostmaw", "%p was swallowed by the Frostmaw"));
-        LINES.put("dune", List.of("%p was swallowed by the Dune Devourer", "%p was dragged under the sand by the Dune Devourer"));
-        LINES.put("don", List.of("%p refused Don Lorenzo's offer", "%p was whacked by Don Lorenzo", "%p sleeps with the fishes, thanks to Don Lorenzo"));
         LINES.put("kraken", List.of("%p was dragged to the depths by the Kraken", "%p was squeezed to death by the Kraken", "%p became the Kraken's lunch"));
         LINES.put("jacob", List.of("%p fell before Diamond Jacob", "%p was cut down by Diamond Jacob", "%p was crushed by Diamond Jacob's war mace"));
-        LINES.put("werner", List.of("%p was flattened by Werner", "%p was folded in half by Werner"));
-        LINES.put("rocco", List.of("%p was taken for a ride by Rocco Vendetta", "%p owed Rocco Vendetta money", "%p got the Vendetta treatment"));
-        LINES.put("ironhide", List.of("%p was trampled by Ironhide", "%p was gored by Ironhide's tusks"));
-        LINES.put("grimtusk", List.of("%p was cleaved in two by Grimtusk", "%p was gored by Grimtusk, the Piglin Warlord", "%p fell in Grimtusk's bastion"));
-        LINES.put("leviathan", List.of("%p was dragged into the deep by the Leviathan", "%p was swallowed whole by the Leviathan", "%p was rammed by the Leviathan"));
-        LINES.put("sandworm", List.of("%p was devoured by the Sandworm King", "%p was buried alive by the Sandworm King", "%p was spat out by the Sandworm King"));
-        LINES.put("lich", List.of("%p had their soul drained by the Lich", "%p joined the Lich's army of the dead", "%p was cursed by the Lich"));
-        LINES.put("wyrm", List.of("%p was frozen by the Frost Wyrm's breath", "%p was snatched from the ground by the Frost Wyrm", "%p was impaled by the Frost Wyrm's icicles"));
-        LINES.put("golem", List.of("%p was pounded flat by the Stone Golem", "%p was crushed by the Stone Golem's boulder", "%p woke the Stone Golem"));
     }
 
     DeathMessages(FaultlineBosses pl) { this.pl = pl; }

@@ -66,8 +66,7 @@ import java.util.*;
  *   LANTERN OF SOULS   held: lights your way, reveals invisible things nearby (they glow), lifts Darkness, and lets you
  *                      board the Ghost Ship (FaultlineShips). Soul lantern ringed with phantom membranes and amethyst.
  *   KNIGHT'S HELM      the Skeleton Knights' great helm (they drop it).
- *   ANCIENT GEAR PART  from the Stone Golem; four of them around an amethyst block (with shards) = an ANCIENT CORE
- *                      accessory (+3 armor, +25% knockback resistance, +2 hearts).
+ *   (the ANCIENT GEAR PART / ANCIENT CORE went with the Stone Golem in 1.2.65: OldGear takes them away)
  *   BOSS MUSIC DISCS   each boss theme on a disc (bosses drop them, through the Index). Put one in a jukebox to play it
  *                      (Java and Bedrock: it's the boss's own music), right-click again to take it out.
  *   MUSEUM PEDESTAL    place it, right-click it with anything to put it on show (Java: it floats and turns; Bedrock: a
@@ -79,14 +78,9 @@ final class Gear implements Listener, CommandExecutor {
     static final String TAG = "faultline_gear_fx";
     static final Map<String, String[]> DISCS = new LinkedHashMap<>(); // id -> {title, sound}
     static {
-        DISCS.put("demon_eye", new String[]{"The Demon Eye: It Sees Everything", "faultline:demon_eye.music"});
-        DISCS.put("dune", new String[]{"The Dune Devourer", "faultline:dune.music"});
-        DISCS.put("don", new String[]{"Don Lorenzo", "faultline:don.music"});
         DISCS.put("kraken", new String[]{"The Kraken", "faultline:kraken.music"});
         DISCS.put("jacob1", new String[]{"Diamond Jacob I", "faultline:jacob.music1"});
         DISCS.put("jacob2", new String[]{"Diamond Jacob II", "faultline:jacob.music2"});
-        DISCS.put("rocco", new String[]{"Rocco Vendetta", "faultline:rocco.music"});
-        DISCS.put("explorer", new String[]{"The Lost Explorer: Black Knife", "faultline:explorer.music"});
         DISCS.put("pirates", new String[]{"The Pirate Invasion", "faultline:pirates.music"});
     }
 
@@ -119,7 +113,7 @@ final class Gear implements Listener, CommandExecutor {
     // =====================================================================================================
     //  the items
     // =====================================================================================================
-    static final List<String> IDS = new ArrayList<>(List.of("mining_helmet", "lantern_of_souls", "knight_helm", "ancient_gear_part", "ancient_core", "museum_pedestal",
+    static final List<String> IDS = new ArrayList<>(List.of("mining_helmet", "lantern_of_souls", "knight_helm", "museum_pedestal",
             "dive_helmet_1", "dive_helmet_2", "dive_helmet_3"));
     static { for (String d : DISCS.keySet()) IDS.add("disc_" + d); }
 
@@ -155,18 +149,6 @@ final class Gear implements Listener, CommandExecutor {
                         ChatColor.GREEN + "Reveals invisible creatures nearby,", ChatColor.GREEN + "lifts Darkness, and lets you board", ChatColor.GREEN + "the Ghost Ship."));
                 m.setItemModel(new NamespacedKey("faultline", "lantern_of_souls"));
                 m.setMaxStackSize(1);
-            }
-            case "ancient_gear_part" -> {
-                s = new ItemStack(Material.PAPER); m = s.getItemMeta();
-                m.setDisplayName(ChatColor.GREEN + "Ancient Gear Part");
-                m.setLore(List.of(ChatColor.GRAY + "A cog from a Stone Golem's core.", ChatColor.GRAY + "Four around an amethyst block make", ChatColor.GRAY + "an Ancient Core."));
-                m.setItemModel(new NamespacedKey("faultline", "ancient_gear_part"));
-                m.setMaxStackSize(64);
-            }
-            case "ancient_core" -> {
-                return FaultlineItems.NewAccessoryItems.make(plugin, Material.PAPER, ChatColor.DARK_GREEN + "" + ChatColor.BOLD + "Ancient Core", coreKey,
-                        ChatColor.GREEN + "+" + Balance.num(coreArmor()) + " armor, +" + Balance.pct(coreKnock()) + "% knockback resistance.",
-                        ChatColor.DARK_GRAY + "Built from a Stone Golem's gears.");
             }
             case "museum_pedestal" -> {
                 s = new ItemStack(Material.POLISHED_BLACKSTONE_BRICK_WALL); m = s.getItemMeta();
@@ -221,11 +203,7 @@ final class Gear implements Listener, CommandExecutor {
         lantern.shape("PAP", "ASA", "PAP");
         lantern.setIngredient('P', Material.PHANTOM_MEMBRANE); lantern.setIngredient('A', Material.AMETHYST_SHARD); lantern.setIngredient('S', Material.SOUL_LANTERN);
         FaultlineItems.addRecipeSafely(lantern);
-        ShapedRecipe core = new ShapedRecipe(new NamespacedKey(plugin, "ancient_core"), item("ancient_core"));
-        core.shape("GAG", "ABA", "GAG");
-        core.setIngredient('G', new RecipeChoice.ExactChoice(item("ancient_gear_part")));
-        core.setIngredient('A', Material.AMETHYST_SHARD); core.setIngredient('B', Material.AMETHYST_BLOCK);
-        FaultlineItems.addRecipeSafely(core);
+        Bukkit.removeRecipe(new NamespacedKey(plugin, "ancient_core")); // 1.2.65: the Stone Golem (and his Ancient Core) are gone
         ShapedRecipe pedestal = new ShapedRecipe(new NamespacedKey(plugin, "museum_pedestal"), withAmount(item("museum_pedestal"), 2));
         pedestal.shape("GQG", " W ", "BBB");
         pedestal.setIngredient('G', Material.GOLD_INGOT); pedestal.setIngredient('Q', Material.QUARTZ_SLAB);
@@ -294,7 +272,7 @@ final class Gear implements Listener, CommandExecutor {
             }
             light(p, want);
             if (ticks % 4 == 0) {
-                boolean core = plugin.getAccessoryManager().hasEquipped(p, coreKey);
+                boolean core = false; // 1.2.65: the Ancient Core is gone (OldGear takes it); this takes its modifiers off
                 modifier(p, Attribute.ARMOR, coreArmor, coreArmor(), AttributeModifier.Operation.ADD_NUMBER, core);
                 modifier(p, Attribute.KNOCKBACK_RESISTANCE, coreKb, coreKnock(), AttributeModifier.Operation.ADD_NUMBER, core);
                 double hearts = plugin.getConfig().getDouble("ancient-core.health", 0); // 1.2.31: was +4 (2 hearts); 0 takes it off
@@ -595,6 +573,7 @@ final class Gear implements Listener, CommandExecutor {
                 String ex = c.getOrDefault(slotKey(b), PersistentDataType.STRING, "");
                 if (ex.isEmpty() || shows.containsKey(worldKey(b))) continue;
                 ItemStack it = decode(ex);
+                if (OldGear.old(it)) { c.remove(slotKey(b)); plugin.getLogger().info("[OldGear] took a removed boss's item off a pedestal at " + b.getX() + " " + b.getY() + " " + b.getZ()); continue; }
                 if (it != null) shows.put(worldKey(b), new Show(b, it));
             }
         } catch (RuntimeException ignored) { }
@@ -624,7 +603,7 @@ final class Gear implements Listener, CommandExecutor {
     }
 
     // =====================================================================================================
-    //  /fgear <id> [amount] [player], /giveancientgear <n> <player>, /givedisc <id|random> <player>
+    //  /fgear <id> [amount] [player], /givedisc <id|random> <player>
     // =====================================================================================================
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
@@ -632,8 +611,7 @@ final class Gear implements Listener, CommandExecutor {
         String name = command.getName().toLowerCase(Locale.ROOT);
         String id;
         int argAt;
-        if (name.equals("giveancientgear")) { id = "ancient_gear_part"; argAt = 0; }
-        else if (name.equals("givedisc")) {
+        if (name.equals("givedisc")) {
             if (args.length < 1) { sender.sendMessage(ChatColor.YELLOW + "/givedisc <" + String.join("|", DISCS.keySet()) + "|random> [player]"); return true; }
             String d = args[0].toLowerCase(Locale.ROOT);
             if (d.equals("random")) d = new ArrayList<>(DISCS.keySet()).get(new Random().nextInt(DISCS.size()));
@@ -654,7 +632,7 @@ final class Gear implements Listener, CommandExecutor {
         if (target == null) { sender.sendMessage("Who should get it?"); return true; }
         Player to = target;
         for (int i = 0; i < amount; i++) to.getInventory().addItem(item(id)).values().forEach(left -> to.getWorld().dropItemNaturally(to.getLocation(), left));
-        if (!name.equals("givedisc") && !name.equals("giveancientgear")) sender.sendMessage(ChatColor.GREEN + "Gave " + amount + " " + id + " to " + target.getName() + ".");
+        if (!name.equals("givedisc")) sender.sendMessage(ChatColor.GREEN + "Gave " + amount + " " + id + " to " + target.getName() + ".");
         else if (name.equals("givedisc")) target.sendMessage(ChatColor.LIGHT_PURPLE + "A music disc dropped for you: " + ChatColor.WHITE + DISCS.get(id.substring(5))[0]);
         return true;
     }

@@ -1,68 +1,23 @@
 name: FaultlineBosses
-version: 1.9.0
+version: 2.0.0
 main: net.faultlinesmp.bosses.FaultlineBosses
 api-version: '1.21'
 author: FaultlineSMP
-description: Summonable bosses for Faultline SMP — The Demon Eye
+description: Bosses for Faultline SMP - Diamond Jacob, the Abyssal Kraken and the Dark Ocean
 softdepend: [FaultlineItems, FaultlineRaids, FaultlineCosmetics, floodgate, Geyser-Spigot]
 
 commands:
-  demoneye:
-    description: "Admin: summon or remove the Demon Eye, or give Suspicious Eyes"
-    usage: /demoneye <summon|kill|give> [amount] [player]
-    permission: bosses.admin
-  frostbeard:
-    description: "Admin: summon or remove Frostbeard the Snow Wizard"
-    aliases: [mortimer]
-    usage: /frostbeard <summon|kill|egg> [amount] [player]
-    permission: bosses.admin
-  dune:
-    description: "Admin: summon or remove the Dune Devourer, or give its spawn egg"
-    usage: /dune <summon|kill|egg|item|vulture> ...
-    permission: bosses.admin
   jacob:
     description: "Admin: summon or remove Diamond Jacob, skip to a phase, or give his items"
     usage: /jacob <summon|kill|phase|item>
     permission: bosses.admin
-  rocco:
-    description: "Admin: summon or remove Rocco Vendetta, skip to a phase, set his tattoos, call Werner, or give his items"
-    usage: /rocco <summon|kill|phase|tattoos|werner|tattoo|item>
-    permission: bosses.admin
   kraken:
     description: "Admin: summon or remove the Kraken, force a phase, spawn a pink bubble, or get a Bait Worm"
-    usage: /kraken <summon|sea|kill|phase|bubble|worm>
+    usage: /kraken <summon|kill|phase|bubble|worm>
     permission: bosses.admin
-  don:
-    description: "Don Lorenzo (admin: summon, kill, phase2, speech, armband, ball)"
-    usage: /don <summon|kill|phase2|speech|armband|ball>
-
   bossmorph:
     description: "Admin: become a boss and control it (your hotbar becomes its moves)"
-    usage: /bossmorph <demoneye|frostbeard|dune|frostmaw|kraken|jacob|don|rocco|grimtusk|leviathan|sandworm|lich|frostwyrm|golem|off|release>
-    permission: bosses.admin
-  grimtusk:
-    description: "Admin: summon or remove Grimtusk, the Piglin Warlord, skip to a phase, or give his items"
-    usage: /grimtusk <summon|kill|phase|item>
-    permission: bosses.admin
-  leviathan:
-    description: "Admin: summon or remove the Leviathan, skip to a phase, or give its items"
-    usage: /leviathan <summon [world x y z]|kill|phase|item>
-    permission: bosses.admin
-  sandworm:
-    description: "Admin: summon or remove the Sandworm King, skip to a phase, or give its items"
-    usage: /sandworm <summon [world x y z]|kill|phase|item>
-    permission: bosses.admin
-  lich:
-    description: "Admin: summon or remove the Lich, skip to a phase, or give his items"
-    usage: /lich <summon [world x y z]|kill|phase|item>
-    permission: bosses.admin
-  frostwyrm:
-    description: "Admin: summon or remove the Frost Wyrm, skip to a phase, or give its items"
-    usage: /frostwyrm <summon [world x y z]|kill|phase|item>
-    permission: bosses.admin
-  stonegolem:
-    description: "Admin: summon or remove the Stone Golem (a lush-cave mini boss)"
-    usage: /stonegolem <summon [world x y z]|kill|phase>
+    usage: /bossmorph <jacob|scourge|umbral|coralia|inkjaw|grandmaw|lament|titan|off|release>
     permission: bosses.admin
   scourge:
     description: "Admin: summon or remove the Brine Scourge (Dark Ocean boss), skip to a phase, or give its summon item"
@@ -91,13 +46,6 @@ commands:
   titan:
     description: "Admin: summon or remove the Abyssal Titan (the Trench's final boss), or skip to a phase"
     usage: /titan <summon [world x y z]|kill|phase <2|3>>
-    permission: bosses.admin
-  bossrush:
-    description: "The Boss Rush: every boss, back to back (start, top)"
-    usage: /bossrush [start|top]
-  terrors:
-    description: "The Night of Terrors (every Oct 31 night: bosses roam): start, stop, status"
-    usage: /terrors [start|stop|status]
     permission: bosses.admin
 
 permissions:

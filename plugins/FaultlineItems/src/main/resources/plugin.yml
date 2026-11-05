@@ -1,5 +1,5 @@
 name: FaultlineItems
-version: 1.2.64
+version: 1.2.65
 main: net.faultlinesmp.items.FaultlineItems
 api-version: '1.21'
 softdepend: [floodgate, Geyser-Spigot]
@@ -181,10 +181,6 @@ commands:
   fgear:
     description: "Admin: give the new gear (mining helmet, lantern, knight's helm, ancient gear/core, pedestal, music discs)"
     usage: /fgear <id> [amount] [player]
-    permission: items.fgear
-  giveancientgear:
-    description: "Admin/console: give Ancient Gear Parts (the Stone Golem drops them)"
-    usage: /giveancientgear [amount] [player]
     permission: items.fgear
   givedisc:
     description: "Admin/console: give a boss music disc"

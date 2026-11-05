@@ -47,9 +47,9 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * THE WAY DOWN: the Kraken's Mirror (FaultlineItems lost_mirror), the abandoned kingdom, Lucki and the whirlpool.
+ * THE WAY DOWN: Diamond Jacob's Mirror (FaultlineItems lost_mirror), the abandoned kingdom, Lucki and the whirlpool.
  *
- *  1. Right-click the Mirror (needs Rocco Vendetta AND Diamond Jacob beaten: the Index's kill records): after 3 seconds of
+ *  1. Right-click the Mirror (needs Diamond Jacob beaten (Deep 1.13.0: Rocco is gone): the Index's kill records): after 3 seconds of
  *     the glass clouding over you're in the abandoned kingdom where the Black Market stands (journey.kingdom, set by an
  *     admin with /deep set kingdom).
  *  2. Lucki waits at the dock in his little boat (journey.lucki, /deep set lucki): a fisherman (a villager that doesn't
@@ -130,15 +130,13 @@ final class Journey implements Listener {
         return it != null && it.hasItemMeta() && mirrorKey != null && it.getItemMeta().getPersistentDataContainer().has(mirrorKey, PersistentDataType.BYTE);
     }
 
-    /** Has this player beaten both Rocco Vendetta and Diamond Jacob? (asks the Index; without the Index: yes) */
+    /** Has this player beaten Diamond Jacob? (asks the Index; without the Index: yes) */
     boolean earned(Player p) {
         if (p.hasPermission("faultlinedeep.bypass")) return true;
         try {
             Class<?> c = Class.forName("net.faultlinesmp.index.FaultlineIndex", true, Bukkit.getPluginManager().getPlugin("FaultlineIndex").getClass().getClassLoader());
             var m = c.getMethod("defeated", UUID.class, String.class);
-            boolean rocco = (boolean) m.invoke(null, p.getUniqueId(), pl.getConfig().getString("journey.needs.rocco", "rocco_vendetta"));
-            boolean jacob = (boolean) m.invoke(null, p.getUniqueId(), pl.getConfig().getString("journey.needs.jacob", "diamond_jacob"));
-            return rocco && jacob;
+            return (boolean) m.invoke(null, p.getUniqueId(), pl.getConfig().getString("journey.needs.jacob", "diamond_jacob"));
         } catch (Throwable e) {
             return true;
         }
@@ -157,8 +155,8 @@ final class Journey implements Listener {
         Location kingdom = place("kingdom");
         if (kingdom == null) { p.sendMessage(ChatColor.GRAY + "You look into the Mirror. It shows nothing... yet. " + ChatColor.DARK_GRAY + "(An admin sets the kingdom with /deep set kingdom.)"); return; }
         if (!inDeep && !earned(p)) {
-            p.sendMessage(ChatColor.DARK_AQUA + "" + ChatColor.ITALIC + "You look into the Mirror. Two faces look back, and they don't let you through.");
-            p.sendMessage(ChatColor.GRAY + "Beat " + ChatColor.WHITE + "Rocco Vendetta" + ChatColor.GRAY + " and " + ChatColor.WHITE + "Diamond Jacob" + ChatColor.GRAY + " first.");
+            p.sendMessage(ChatColor.DARK_AQUA + "" + ChatColor.ITALIC + "You look into the Mirror. A knight in diamond looks back, and he doesn't let you through.");
+            p.sendMessage(ChatColor.GRAY + "Beat " + ChatColor.WHITE + "Diamond Jacob" + ChatColor.GRAY + " first.");
             p.playSound(p.getLocation(), Sound.BLOCK_GLASS_HIT, 1f, 0.6f);
             return;
         }
@@ -232,7 +230,7 @@ final class Journey implements Listener {
         talkCd.put(p.getUniqueId(), now + 3000);
         if (trip != null) { say(p, trip.rider == p ? "Hold tight." : "One at a time, friend. Wait for me to come back. Or swim after us."); return; }
         if (!earned(p)) {
-            say(p, "Who sent you? No... you haven't earned the way. Rocco and Jacob still stand. Come back when they don't.");
+            say(p, "Who sent you? No... you haven't earned the way. Jacob still stands. Come back when he doesn't.");
             return;
         }
         if (pl.world == null) { say(p, "The sea's not ready for you yet. (The Dark Ocean world isn't loaded.)"); return; }
@@ -348,7 +346,7 @@ final class Journey implements Listener {
             double dx = v.center.getX() - l.getX(), dz = v.center.getZ() - l.getZ(), d = Math.hypot(dx, dz);
             if (d > v.r + 3 || l.getY() > v.surf + 4 || l.getY() < v.surf - v.d - 4) continue;
             if (!earned(p)) {
-                if (tr.t % 20 == 0) { Edition.vel(p, new Vector(-dx, 0, -dz).normalize().multiply(0.9).setY(0.5)); p.sendActionBar(Component.text("The water won't take you. (Beat Rocco and Jacob.)", NamedTextColor.GRAY)); }
+                if (tr.t % 20 == 0) { Edition.vel(p, new Vector(-dx, 0, -dz).normalize().multiply(0.9).setY(0.5)); p.sendActionBar(Component.text("The water won't take you. (Beat Diamond Jacob.)", NamedTextColor.GRAY)); }
                 continue;
             }
             if (p == tr.rider && v.inside(l) && tr.revealT < 0 && !v.closing) { tr.revealT = 0; continue; }
@@ -363,7 +361,7 @@ final class Journey implements Listener {
     static final String[] SWARM_LINES = {
             "Ha. Ha ha ha...",
             "Lucki? There is no Lucki. There never was.",
-            "You beat Rocco. You beat Jacob. And you still climbed into a stranger's boat.",
+            "You beat Jacob. And you still climbed into a stranger's boat.",
             "Jacob was our general. Below the Bedrock remembers what you did to him.",
             "Go on down. The Ocean is hungry, and I'm in no hurry. We'll meet again."};
 

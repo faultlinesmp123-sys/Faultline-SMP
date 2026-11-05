@@ -160,39 +160,6 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
         return generator.zone(l.getWorld().getSeed(), l.getBlockX(), l.getBlockY(), l.getBlockZ());
     }
 
-    // =========================================================================================== FaultlineBosses' Deep Boss Rush
-    /**
-     * Where each stage of the Deep Boss Rush is fought (FaultlineBosses asks by reflection, once, and remembers it): the
-     * open Sunlit Sea (Old Inkjaw), near its floor (the Grandmaw Clam), a tall pocket of the Abyss (the Lament, the Umbral
-     * Leviathan), the Sulphur Sea's water (the Brine Scourge) and its Works (Grubnash), Coralia's throne, the Trench's Maw.
-     */
-    public static Location rushSpot(String kind) {
-        FaultlineDeep pl = instance;
-        if (pl == null || pl.world == null) return null;
-        World w = pl.world;
-        long seed = w.getSeed();
-        DeepGenerator g = pl.generator;
-        return switch (kind) {
-            case "inkjaw" -> new Location(w, 200.5, Math.min(DeepGenerator.SEA - 30, g.seaFloor(seed, 200, 200) + 24), 200.5);
-            case "grandmaw" -> new Location(w, 300.5, g.seaFloor(seed, 300, -300) + 4, -299.5);
-            case "lament", "umbral" -> {
-                int[] p = g.abyssPocket(seed, kind.equals("lament") ? 300 : -200, kind.equals("lament") ? 300 : -500);
-                yield p == null ? null : new Location(w, p[0] + 0.5, p[1], p[2] + 0.5);
-            }
-            case "scourge" -> {
-                for (int r = 0; r < 200; r += 8) for (int a = 0; a < 360; a += r == 0 ? 360 : 30) {
-                    int x = Sulphur.SX + (int) Math.round(Math.cos(Math.toRadians(a)) * r), z = Sulphur.SZ + (int) Math.round(Math.sin(Math.toRadians(a)) * r);
-                    if (g.sulphur(seed, x, z) > 0.8 && g.seaFloor(seed, x, z) < DeepGenerator.SEA - 22) yield new Location(w, x + 0.5, DeepGenerator.SEA - 10, z + 0.5);
-                }
-                yield null;
-            }
-            case "goblin" -> new Location(w, Sulphur.WORKS_X + 0.5, DeepGenerator.SEA + 3, Sulphur.WORKS_Z + 0.5);
-            case "coralia" -> { int[] t = MermaidDen.throne(); yield new Location(w, t[0] + 0.5, t[1] + 3, t[2] + 6.5); }
-            case "titan" -> new Location(w, Trench.LX + 0.5, Trench.BOTTOM + 4, Trench.LZ + 0.5);
-            default -> null;
-        };
-    }
-
     /**
      * For FaultlineItems' hadal fishing (by reflection): which waters a fishing hook is in, or null outside the Dark Ocean.
      * "TRENCH" and "DEN" go by the column (a line dropped over the Trench reaches its fish), "SULPHUR" by the acid's weight,
@@ -211,15 +178,6 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
         if (zn == DeepGenerator.Zone.TRENCH) return "TRENCH";
         if (zn == DeepGenerator.Zone.ABYSS || zn == DeepGenerator.Zone.CAVES || y < 35) return "ABYSS";
         return "SUNLIT";
-    }
-
-    /** Spawns one of the Dark Ocean's creatures for FaultlineBosses (Grubnash in the Deep Boss Rush): its UUID, or null. */
-    public static java.util.UUID rushSpawn(String id, Location at) {
-        FaultlineDeep pl = instance;
-        DeepMobs.Kind k = DeepMobs.KINDS.get(id);
-        if (pl == null || pl.mobs == null || k == null) return null;
-        DeepMobs.Beast b = pl.mobs.spawn(k, at);
-        return b == null ? null : b.body.getUniqueId();
     }
 
     void console(String cmd) {

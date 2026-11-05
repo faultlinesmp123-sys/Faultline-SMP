@@ -257,7 +257,7 @@ final class DeepBosses {
         void clearBubbles() { for (Runnable r : new ArrayList<>(bubbleCleanup)) r.run(); bubbleCleanup.clear(); pinks.clear(); }
 
 
-        static boolean wet(Block b) { return Leviathan.sea(b); }
+        static boolean wet(Block b) { return RigMath.sea(b); }
 
         /** Water at l and at r blocks out along each axis. */
         static boolean open(Location l, int r) {
@@ -1037,7 +1037,7 @@ final class DeepBosses {
             return molted ? amount * c("molt-damage-taken", 1.15) : amount; // the raw flesh under the shell
         }
 
-        Location mouth() { return Lich.joint(pos, Lich.frame(yaw, pitch, 0), 2.9, 0, 0, k); }
+        Location mouth() { return RigMath.joint(pos, RigMath.frame(yaw, pitch, 0), 2.9, 0, 0, k); }
 
         static Location withY(Location l, double y) { Location c = l.clone(); c.setY(y); return c; }
 
@@ -1144,10 +1144,10 @@ final class DeepBosses {
             double roll = deathT > 0 ? Math.min(160, deathT * 3) : Math.sin(ticks * 0.08) * 6;
             float hp = Math.max(-60, Math.min(60, pitch)) - (float) (flinchAmt() * 15);
             headB.pose(pos, yaw, hp, (float) roll, null);
-            Quaternionf q = Lich.frame(yaw, hp, (float) roll);
+            Quaternionf q = RigMath.frame(yaw, hp, (float) roll);
             double open = deathT > 0 ? 55 : aMand;
-            mandL.pose(Lich.joint(pos, q, 0.55, 0, -1.0, k), yaw, hp, (float) roll, new Quaternionf().rotationY((float) Math.toRadians(open)));
-            mandR.pose(Lich.joint(pos, q, 0.55, 0, 1.0, k), yaw, hp, (float) roll, new Quaternionf().rotationY((float) Math.toRadians(-open)));
+            mandL.pose(RigMath.joint(pos, q, 0.55, 0, -1.0, k), yaw, hp, (float) roll, new Quaternionf().rotationY((float) Math.toRadians(open)));
+            mandR.pose(RigMath.joint(pos, q, 0.55, 0, 1.0, k), yaw, hp, (float) roll, new Quaternionf().rotationY((float) Math.toRadians(-open)));
         }
 
         @Override void deathAnim(int t) { // the corpse dissolves in its own acid
@@ -2063,7 +2063,7 @@ final class DeepBosses {
             wrath = true;
             tailP.swap("coralia_tail_wrath"); fluke.swap("coralia_fluke_wrath"); torso.swap("coralia_torso_wrath"); headP.swap("coralia_head_wrath");
             hair.swap("coralia_hair_wrath"); armL.swap("coralia_arm_wrath"); armR.swap("coralia_arm_wrath"); trident.swap("coralia_trident_wrath");
-            Location h = Lich.joint(pos, Lich.frame(yaw, 0, 0), 0, 1.6, 0, k);
+            Location h = RigMath.joint(pos, RigMath.frame(yaw, 0, 0), 0, 1.6, 0, k);
             world.spawnParticle(Particle.DUST, h, 80, k, k, k, 0, new Particle.DustOptions(Color.fromRGB(255, 80, 200), 2f));
             world.spawnParticle(Particle.BUBBLE_POP, h, 60, k, k, k, 0.15);
             world.playSound(pos, Sound.ENTITY_ELDER_GUARDIAN_CURSE, SoundCategory.HOSTILE, 3f, 0.5f);
@@ -2096,7 +2096,7 @@ final class DeepBosses {
                 }
             }
             if (attack == ARIA || attack == PEARLS || attack == WALTZ) motion(new Vector());
-            if (ticks % 3 == 0) world.spawnParticle(Particle.BUBBLE, Lich.joint(pos, Lich.frame(yaw, 0, 0), -1.0, -1.6, 0, k), 2, 0.4, 0.4, 0.4, 0.02);
+            if (ticks % 3 == 0) world.spawnParticle(Particle.BUBBLE, RigMath.joint(pos, RigMath.frame(yaw, 0, 0), -1.0, -1.6, 0, k), 2, 0.4, 0.4, 0.4, 0.02);
             if (wrath && ticks % 4 == 0) world.spawnParticle(Particle.DUST, pos.clone().add(0, 1.2 * k, 0), 2, 0.7 * k, 1.2 * k, 0.7 * k, 0, new Particle.DustOptions(Color.fromRGB(255, 80, 200), 1.4f));
             pose(0);
         }
@@ -2162,31 +2162,31 @@ final class DeepBosses {
             float y = (float) (yaw + spin);
             float bodyPitch = (float) Math.max(-60, Math.min(175, lean + pitch * 0.6));
             float rl = (float) (roll + barrel + sway * 4);
-            Quaternionf bq = Lich.frame(y, bodyPitch, rl);
-            Quaternionf tq = Lich.rotZ(aTail);
+            Quaternionf bq = RigMath.frame(y, bodyPitch, rl);
+            Quaternionf tq = RigMath.rotZ(aTail);
             tailP.pose(pos, y, bodyPitch, rl, tq);
-            fluke.pose(Lich.joint(pos, new Quaternionf(bq).mul(tq), -1.75, -2.8, 0, k), y, bodyPitch, rl, new Quaternionf(tq).mul(Lich.rotZ(40 + aFluke)));
+            fluke.pose(RigMath.joint(pos, new Quaternionf(bq).mul(tq), -1.75, -2.8, 0, k), y, bodyPitch, rl, new Quaternionf(tq).mul(RigMath.rotZ(40 + aFluke)));
             torso.pose(pos, y, bodyPitch, rl, null);
-            Location neck = Lich.joint(pos, bq, 0, 1.25, 0, k);
-            Quaternionf hq = new Quaternionf().rotationY((float) Math.toRadians(-hy)).mul(Lich.rotZ(-hp));
+            Location neck = RigMath.joint(pos, bq, 0, 1.25, 0, k);
+            Quaternionf hq = new Quaternionf().rotationY((float) Math.toRadians(-hy)).mul(RigMath.rotZ(-hp));
             headP.pose(neck, y, bodyPitch, rl, hq);
-            Quaternionf hairQ = new Quaternionf(hq).mul(Lich.rotZ(-(aHair + Math.sin(ticks * 0.12) * 6)));
-            hair.pose(Lich.joint(neck, new Quaternionf(bq).mul(hq), -0.22, 0.72, 0, k), y, bodyPitch, rl, hairQ);
-            Quaternionf qL = Lich.rotZ(swL + sway * 6).mul(Lich.rotX(spL)), qR = Lich.rotZ(swR - sway * 6).mul(Lich.rotX(-spR));
-            armL.pose(Lich.joint(pos, bq, 0, 1.0, -0.55, k), y, bodyPitch, rl, qL);
-            Location shR = Lich.joint(pos, bq, 0, 1.0, 0.55, k);
+            Quaternionf hairQ = new Quaternionf(hq).mul(RigMath.rotZ(-(aHair + Math.sin(ticks * 0.12) * 6)));
+            hair.pose(RigMath.joint(neck, new Quaternionf(bq).mul(hq), -0.22, 0.72, 0, k), y, bodyPitch, rl, hairQ);
+            Quaternionf qL = RigMath.rotZ(swL + sway * 6).mul(RigMath.rotX(spL)), qR = RigMath.rotZ(swR - sway * 6).mul(RigMath.rotX(-spR));
+            armL.pose(RigMath.joint(pos, bq, 0, 1.0, -0.55, k), y, bodyPitch, rl, qL);
+            Location shR = RigMath.joint(pos, bq, 0, 1.0, 0.55, k);
             armR.pose(shR, y, bodyPitch, rl, qR);
-            trident.pose(Lich.joint(shR, new Quaternionf(bq).mul(qR), 0, -1.3, 0, k), y, bodyPitch, rl, new Quaternionf(qR).mul(Lich.rotZ(tilt)));
-            if (hitboxes.size() > 1) { hitboxes.get(0).teleport(Lich.joint(pos, bq, 0, 0.4, 0, k)); hitboxes.get(1).teleport(Lich.joint(pos, new Quaternionf(bq).mul(tq), -0.8, -1.9, 0, k)); }
+            trident.pose(RigMath.joint(shR, new Quaternionf(bq).mul(qR), 0, -1.3, 0, k), y, bodyPitch, rl, new Quaternionf(qR).mul(RigMath.rotZ(tilt)));
+            if (hitboxes.size() > 1) { hitboxes.get(0).teleport(RigMath.joint(pos, bq, 0, 0.4, 0, k)); hitboxes.get(1).teleport(RigMath.joint(pos, new Quaternionf(bq).mul(tq), -0.8, -1.9, 0, k)); }
         }
 
         /** The tip of her trident (where volleys and bolts leave from). */
         Location tip() {
-            Quaternionf bq = Lich.frame((float) (yaw + spin), (float) Math.max(-60, Math.min(175, lean + pitch * 0.6)), (float) (roll + barrel));
-            Quaternionf qR = Lich.rotZ(swR).mul(Lich.rotX(-spR));
-            Location shR = Lich.joint(pos, bq, 0, 1.0, 0.55, k);
-            Location hand = Lich.joint(shR, new Quaternionf(bq).mul(qR), 0, -1.3, 0, k);
-            return Lich.joint(hand, new Quaternionf(bq).mul(qR).mul(Lich.rotZ(tilt)), 0, 2.3, 0, k);
+            Quaternionf bq = RigMath.frame((float) (yaw + spin), (float) Math.max(-60, Math.min(175, lean + pitch * 0.6)), (float) (roll + barrel));
+            Quaternionf qR = RigMath.rotZ(swR).mul(RigMath.rotX(-spR));
+            Location shR = RigMath.joint(pos, bq, 0, 1.0, 0.55, k);
+            Location hand = RigMath.joint(shR, new Quaternionf(bq).mul(qR), 0, -1.3, 0, k);
+            return RigMath.joint(hand, new Quaternionf(bq).mul(qR).mul(RigMath.rotZ(tilt)), 0, 2.3, 0, k);
         }
 
         // ---------------------------------------------------------------- moves
@@ -2295,7 +2295,7 @@ final class DeepBosses {
                     if (at > 56) { spin = 0; end(); }
                 }
                 case GAZE -> {
-                    Location eyes = Lich.joint(pos, Lich.frame(yaw, 0, 0), 0.3, 1.6, 0, k);
+                    Location eyes = RigMath.joint(pos, RigMath.frame(yaw, 0, 0), 0.3, 1.6, 0, k);
                     if (at < 22) { if (at % 3 == 0) world.spawnParticle(Particle.END_ROD, eyes, 4, 0.2, 0.1, 0.2, 0.01); return; }
                     if (at == 22) {
                         world.playSound(pos, Sound.BLOCK_STONE_PLACE, SoundCategory.HOSTILE, 3f, 0.5f);
@@ -2560,10 +2560,10 @@ final class DeepBosses {
             float roll = (float) (deathT > 0 ? Math.min(140, deathT * 2.5) : Math.sin(ticks * 0.06) * 5);
             float bp = (float) Math.max(-30, Math.min(30, pitch * 0.5)) - (float) (flinchAmt() * 12);
             body.pose(pos, yaw, bp, roll, null);
-            Quaternionf bq = Lich.frame(yaw, bp, roll);
+            Quaternionf bq = RigMath.frame(yaw, bp, roll);
             for (int i = 0; i < ARMS; i++) {
                 double ang = i * 2 * Math.PI / ARMS;
-                Location root = Lich.joint(pos, bq, Math.cos(ang) * 0.7, -0.6, Math.sin(ang) * 0.7, k);
+                Location root = RigMath.joint(pos, bq, Math.cos(ang) * 0.7, -0.6, Math.sin(ang) * 0.7, k);
                 Location p = root;
                 double outYaw = yaw + Math.toDegrees(ang) - 90;
                 for (int s = 0; s < SEGS; s++) {
@@ -2764,9 +2764,9 @@ final class DeepBosses {
             shut = open < 6;
             float roll = (float) (flinchAmt() * 6);
             shell.pose(pos, yaw, 0, roll, null);
-            Quaternionf q = Lich.frame(yaw, 0, roll);
-            lid.pose(Lich.joint(pos, q, -1.0, 0.75, 0, k), yaw, 0, roll, Lich.rotZ(open));
-            pearl.pose(Lich.joint(pos, q, 0.1, 0.75 + Math.sin(ticks * 0.08) * 0.05, 0, k), yaw + ticks, 0, 0, null);
+            Quaternionf q = RigMath.frame(yaw, 0, roll);
+            lid.pose(RigMath.joint(pos, q, -1.0, 0.75, 0, k), yaw, 0, roll, RigMath.rotZ(open));
+            pearl.pose(RigMath.joint(pos, q, 0.1, 0.75 + Math.sin(ticks * 0.08) * 0.05, 0, k), yaw + ticks, 0, 0, null);
             pearl.hide(open < 10);
             if (!hitboxes.isEmpty()) hitboxes.get(0).teleport(pos.clone().add(0, 0.4 * k, 0));
         }
@@ -3143,7 +3143,7 @@ final class DeepBosses {
             };
         }
 
-        Quaternionf bodyQ(float lean) { return Lich.frame(yaw, lean, 0); }
+        Quaternionf bodyQ(float lean) { return RigMath.frame(yaw, lean, 0); }
 
         double reach() { return (ELBOW + CLAW) * k; }
 
@@ -3189,25 +3189,25 @@ final class DeepBosses {
             body.pose(waist, yaw, lean, 0, null);
             bed.pose(waist, yaw, 0, 0, null);
             Quaternionf bq = bodyQ(lean);
-            neck = Lich.joint(waist, bq, NECK, k);
+            neck = RigMath.joint(waist, bq, NECK, k);
             float hp2 = headPitch + lean;
             head.pose(neck, headYaw, hp2, 0, null);
             eyes.pose(neck, headYaw, hp2, 0, null);
-            Quaternionf hq = Lich.frame(headYaw, hp2, 0);
-            jaw.pose(Lich.joint(neck, hq, HINGE, k), headYaw, hp2, 0, Lich.rotZ(-jawOpen));
-            mouth = Lich.joint(neck, hq, MOUTH, k);
-            eyesAt = Lich.joint(neck, hq, EYES, k);
+            Quaternionf hq = RigMath.frame(headYaw, hp2, 0);
+            jaw.pose(RigMath.joint(neck, hq, HINGE, k), headYaw, hp2, 0, RigMath.rotZ(-jawOpen));
+            mouth = RigMath.joint(neck, hq, MOUTH, k);
+            eyesAt = RigMath.joint(neck, hq, EYES, k);
             for (int i = 0; i < 3; i++) {
                 if (lureBroken[i]) continue;
-                Location lb = Lich.joint(neck, hq, LURES[i], k);
+                Location lb = RigMath.joint(neck, hq, LURES[i], k);
                 float lp = hp2 - (float) (Math.sin(ticks * 0.08 + i * 2) * 8);
                 lures[i].pose(lb, headYaw, lp, 0, null);
                 // the hitbox sits round the bulb (tools/wild_assets.py: x 1.2..1.55, y 0.75..1.1 from the lure's base), swaying with it
-                lureAt[i] = Lich.joint(lb, Lich.frame(headYaw, lp, 0), BULB_X, BULB_Y, 0, k);
+                lureAt[i] = RigMath.joint(lb, RigMath.frame(headYaw, lp, 0), BULB_X, BULB_Y, 0, k);
                 if (lureBox[i] != null && lureBox[i].isValid()) lureBox[i].teleport(lureAt[i].clone().add(0, -LURE_BOX / 2, 0));
             }
             for (int s = -1; s <= 1; s += 2) {
-                Location sh = Lich.joint(waist, bq, SH_X, SH_Y, s * SH_Z, k);
+                Location sh = RigMath.joint(waist, bq, SH_X, SH_Y, s * SH_Z, k);
                 float ay = (float) (yaw + (s < 0 ? lY : rY)), ap = (float) (s < 0 ? lP : rP);
                 (s < 0 ? armL : armR).pose(sh, ay, ap, 0, null);
                 Location el = sh.clone().add(dir3(ay, ap).multiply(ELBOW * k));
@@ -3383,7 +3383,7 @@ final class DeepBosses {
 
         void slam(List<Player> a) {
             int s = sweepSide;
-            Location sh = Lich.joint(base, bodyQ(0), SH_X, SH_Y, s * SH_Z, k);
+            Location sh = RigMath.joint(base, bodyQ(0), SH_X, SH_Y, s * SH_Z, k);
             Vector to = mark.toVector().subtract(sh.toVector());
             float ay = yawOf(flat(to)) - yaw;
             if (at < 22) {

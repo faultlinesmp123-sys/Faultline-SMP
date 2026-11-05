@@ -25,38 +25,28 @@ import java.util.*;
 
 /**
  * THE MUSEUM (the "wild" update), kept by the Index:
- *   BOSS TROPHIES   the first time you help defeat a boss you get its trophy (a little statue on a gold plinth).
- *                   Put it on a Museum Pedestal (FaultlineItems) to show it off.
+ *   (BOSS TROPHIES were removed in 1.8.0 with the land bosses; FaultlineItems' OldGear takes old ones away.)
  *   MUSIC DISCS     bosses with their own theme drop it as a disc sometimes (FaultlineItems /givedisc; jukeboxes play it).
  *   HALL OF FIRSTS  /museum: every boss and every item in the Index, with who got there first on the whole server and
  *                   when. Firsts are announced (and posted to Discord when the bridge is on).
- * Saved in museum.yml (firsts) and progress.yml (who has had which trophy).
+ * Saved in museum.yml (firsts).
  */
 final class Museum implements Listener {
 
-    /** Bosses whose trophy art exists (tools/wild_assets.py TROPHY_BOSSES): by Index icon. */
-    static final Set<String> TROPHIES = new HashSet<>(List.of("demon_eye", "mortimer_freeze", "dune_devourer", "frostmaw", "don_lorenzo", "kraken",
-            "diamond_jacob", "rocco_vendetta", "grimtusk", "queen_spider", "leviathan", "sandworm_king", "lich", "frost_wyrm",
-            "stone_golem", "ghost_captain"));
     /** Boss entry -> its music disc(s) (FaultlineItems Gear.DISCS). */
     static final Map<String, List<String>> DISCS = Map.of(
-            "the_demon_eye", List.of("demon_eye"), "the_dune_devourer", List.of("dune"), "don_lorenzo", List.of("don"),
-            "the_kraken", List.of("kraken"), "the_kraken_at_sea", List.of("kraken"), "the_abyssal_kraken", List.of("kraken"), "diamond_jacob", List.of("jacob1", "jacob2"),
-            "rocco_vendetta", List.of("rocco"), "the_skeleton_captain", List.of("pirates"),
-            "ghost_captain", List.of("pirates"));
+            "the_abyssal_kraken", List.of("kraken"), "diamond_jacob", List.of("jacob1", "jacob2"),
+            "the_skeleton_captain", List.of("pirates"), "ghost_captain", List.of("pirates"));
 
     private final FaultlineIndex index;
-    final NamespacedKey trophyKey;
     private final File file;
     final Map<String, String> firsts = new HashMap<>(); // entry id -> "player|epoch millis"
-    final Map<UUID, Set<String>> trophies = new HashMap<>();
     private final Random random = new Random();
     private boolean dirty;
     private final Map<String, Long> recent = new HashMap<>();
 
     Museum(FaultlineIndex index) {
         this.index = index;
-        trophyKey = new NamespacedKey(index, "trophy");
         file = new File(index.getDataFolder(), "museum.yml");
         load();
         Bukkit.getScheduler().runTaskTimer(index, () -> { if (dirty) save(); }, 1200L, 1200L);
@@ -67,16 +57,11 @@ final class Museum implements Listener {
         YamlConfiguration y = YamlConfiguration.loadConfiguration(file);
         var f = y.getConfigurationSection("firsts");
         if (f != null) for (String k : f.getKeys(false)) firsts.put(k, f.getString(k));
-        var t = y.getConfigurationSection("trophies");
-        if (t != null) for (String k : t.getKeys(false)) {
-            try { trophies.put(UUID.fromString(k), new HashSet<>(t.getStringList(k))); } catch (IllegalArgumentException ignored) { }
-        }
     }
 
     void save() {
         YamlConfiguration y = new YamlConfiguration();
         for (var e : firsts.entrySet()) y.set("firsts." + e.getKey(), e.getValue());
-        for (var e : trophies.entrySet()) y.set("trophies." + e.getKey(), new ArrayList<>(e.getValue()));
         try { index.getDataFolder().mkdirs(); y.save(file); dirty = false; } catch (IOException ex) { index.getLogger().warning("Couldn't save museum.yml: " + ex.getMessage()); }
     }
 
@@ -94,21 +79,13 @@ final class Museum implements Listener {
         if (e.chapter.equals("bosses") || index.getConfig().getBoolean("museum.announce-item-firsts", false) || e.creature) Bukkit.broadcastMessage(line);
     }
 
-    /** A player was credited with defeating a boss (first time = their trophy). */
+    /** A player was credited with defeating a boss (its disc / enchant book rolls). */
     void bossDefeated(Player p, FaultlineIndex.Entry e) {
         if (!e.chapter.equals("bosses")) return;
         // the kill credit and the boss's own "index discover" both land here: one roll per defeat
         Long last = recent.put(p.getUniqueId() + e.id, System.currentTimeMillis());
         if (last != null && System.currentTimeMillis() - last < 10000) return;
         if (index.daily != null) index.daily.boss(p, e);
-        if (e.icon != null && TROPHIES.contains(e.icon) && trophies.computeIfAbsent(p.getUniqueId(), k -> new HashSet<>()).add(e.icon)) {
-            dirty = true;
-            ItemStack t = trophy(e, p.getName());
-            p.getInventory().addItem(t).values().forEach(left -> p.getWorld().dropItemNaturally(p.getLocation(), left));
-            p.sendMessage(ChatColor.GOLD + "✦ You earned the " + ChatColor.WHITE + ChatColor.BOLD + e.name + " Trophy" + ChatColor.GOLD + "! " + ChatColor.GRAY + "Put it on a Museum Pedestal.");
-            p.playSound(p.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 0.8f, 1.2f);
-        }
-        if (p.getScoreboardTags().contains("faultline_boss_rush")) return; // Boss Rush stages: no discs or enchant books (the rush has its own reward)
         List<String> discs = DISCS.get(e.id);
         if (discs != null && random.nextDouble() < index.getConfig().getDouble("museum.disc-chance", 0.2)
                 && Bukkit.getPluginManager().getPlugin("FaultlineItems") != null) {
@@ -118,22 +95,6 @@ final class Museum implements Listener {
         // boss enchant books (FaultlineItems 1.2.17 decides which and how likely: enchants.boss-drops)
         if (Bukkit.getPluginManager().getPlugin("FaultlineItems") != null && Bukkit.getPluginCommand("fenchant") != null)
             Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "fenchant bossdrop " + p.getName() + " " + e.id);
-    }
-
-    ItemStack trophy(FaultlineIndex.Entry e, String earnedBy) {
-        ItemStack it = new ItemStack(Material.PAPER);
-        ItemMeta m = it.getItemMeta();
-        m.setDisplayName(ChatColor.GOLD + "" + ChatColor.BOLD + e.name + " Trophy");
-        List<String> lore = new ArrayList<>();
-        lore.add(ChatColor.GRAY + "A trophy for defeating " + e.name + ".");
-        if (earnedBy != null) lore.add(ChatColor.DARK_GRAY + "Earned by " + earnedBy + ", " + new SimpleDateFormat("d MMM yyyy").format(new Date()));
-        lore.add(ChatColor.DARK_GRAY + "Show it off on a Museum Pedestal.");
-        m.setLore(lore);
-        m.setItemModel(new NamespacedKey("faultline", "trophy/trophy_" + e.icon));
-        m.setMaxStackSize(1);
-        m.getPersistentDataContainer().set(trophyKey, PersistentDataType.STRING, e.icon);
-        it.setItemMeta(m);
-        return it;
     }
 
     // =====================================================================================================
@@ -158,8 +119,7 @@ final class Museum implements Listener {
             FaultlineIndex.Entry e = list.get(page * 45 + i);
             String first = firsts.get(e.id);
             ItemStack icon;
-            if (bosses && e.icon != null && TROPHIES.contains(e.icon) && first != null) icon = trophy(e, null);
-            else icon = new ItemStack(first != null ? (bosses ? Material.WITHER_SKELETON_SKULL : Material.ITEM_FRAME) : Material.GRAY_STAINED_GLASS_PANE);
+            icon = new ItemStack(first != null ? (bosses ? Material.WITHER_SKELETON_SKULL : Material.ITEM_FRAME) : Material.GRAY_STAINED_GLASS_PANE);
             ItemMeta m = icon.getItemMeta();
             m.setDisplayName((first != null ? ChatColor.GOLD : ChatColor.GRAY) + e.name);
             List<String> lore = new ArrayList<>();

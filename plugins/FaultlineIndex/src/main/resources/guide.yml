@@ -72,13 +72,13 @@ chapters:
       Killing the same player again within 10 minutes doesn't count.
   - id: bosses
     title: "Bosses"
-    icon: demon_eye
+    icon: diamond_jacob
     text: |
       # Bosses
-      Bosses drop the best loot on the server: Mythic Goodie Bags, boss weapons, enchant books, music discs, trophies. Bring friends: most get harder (and give more) with more fighters.
+      Bosses drop the best loot on the server: Mythic Goodie Bags, boss weapons, enchant books, music discs. Bring friends: most get harder (and give more) with more fighters.
 
-      # Boss Rush
-      Right-click a Boss Rush Sigil to fight every boss back to back. Hardcore Boss Rush: one death and your whole team is out, double rewards.
+      # The road to the Dark Ocean
+      Diamond Jacob is the last boss on land, and the hardest. Beat him and he drops the Mirror..??: right-click it to find your way to the Dark Ocean, where the rest of the bosses live.
 
       # How to find each one
   - id: world

@@ -941,7 +941,7 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
                     Entry e = entries.stream().filter(x -> x.id.equalsIgnoreCase(want)).findFirst().orElse(null);
                     if (e == null) { sender.sendMessage(ChatColor.RED + "No Index entry called " + want + "."); return true; }
                     unlock(target, e, e.creature);
-                    if (e.creature && museum != null) museum.bossDefeated(target, e); // a boss's own reward (trophy, disc)
+                    if (e.creature && museum != null) museum.bossDefeated(target, e); // a boss's own reward (disc, enchant book)
                     dirty = true;
                 }
                 case "died" -> { // FaultlineBosses: /index died <player> <boss name...> (a boss killed them: learn its weakness)

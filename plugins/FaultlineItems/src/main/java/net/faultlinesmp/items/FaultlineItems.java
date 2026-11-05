@@ -378,6 +378,7 @@ public final class FaultlineItems extends JavaPlugin {
         getServer().getPluginManager().registerEvents(divingGear, this);
         getServer().getPluginManager().registerEvents(new AccessoryStacks(this), this); // 1.2.12: accessories don't stack
         getServer().getPluginManager().registerEvents(new MaceRules(this), this);
+        getServer().getPluginManager().registerEvents(new OldGear(this), this); // 1.2.65: the removed bosses' items and trophies
         getServer().getPluginManager().registerEvents(new MaceEnchants(this), this); // 1.2.55: Unbreaking III, Wind Burst II, Mending only
         enchants = new Enchants(this);
         getServer().getPluginManager().registerEvents(enchants, this); // 1.2.17: boss enchant books
@@ -445,7 +446,6 @@ public final class FaultlineItems extends JavaPlugin {
         diveHelmets = new DiveHelmets(this);
         getServer().getPluginManager().registerEvents(gear, this);
         getCommand("fgear").setExecutor(gear);
-        getCommand("giveancientgear").setExecutor(gear);
         getCommand("givedisc").setExecutor(gear);
         weather = new Weather(this);
         getServer().getPluginManager().registerEvents(weather, this);
@@ -510,7 +510,7 @@ public final class FaultlineItems extends JavaPlugin {
         this.queenSpiderManager = new QueenSpiderManager(this);
         getServer().getPluginManager().registerEvents(queenSpiderManager, this);
         getServer().getScheduler().runTaskTimer(this, queenSpiderManager::tick, 10L, 10L);
-        getCommand("queenspider").setExecutor((sender, cmd, label, args) -> { // /queenspider spawn [<world> <x> <y> <z>] (the Boss Rush uses this)
+        getCommand("queenspider").setExecutor((sender, cmd, label, args) -> { // /queenspider spawn [<world> <x> <y> <z>]
             if (args.length == 0 || !args[0].equalsIgnoreCase("spawn")) { sender.sendMessage(ChatColor.YELLOW + "/queenspider spawn [<world> <x> <y> <z>]"); return true; }
             Location at;
             if (args.length >= 5) {
@@ -2737,13 +2737,13 @@ public final class FaultlineItems extends JavaPlugin {
 
         static ItemStack ankhPiece(FaultlineItems plugin) {
             return piece(plugin, Material.GOLD_NUGGET, ChatColor.YELLOW + "" + ChatColor.BOLD + "Ankh", ankhPieceKey,
-                    ChatColor.GRAY + "A piece of the Ankh Shield.", ChatColor.DARK_GRAY + "Dropped by the Demon Eye.",
+                    ChatColor.GRAY + "A piece of the Ankh Shield.", ChatColor.DARK_GRAY + "Dropped by Diamond Jacob.",
                     ChatColor.DARK_GRAY + "Goes below the Cross in the recipe.");
         }
 
         static ItemStack cross(FaultlineItems plugin) {
             return piece(plugin, Material.NETHERITE_SCRAP, ChatColor.GOLD + "" + ChatColor.BOLD + "Cross", crossKey,
-                    ChatColor.GRAY + "A piece of the Ankh Shield.", ChatColor.DARK_GRAY + "Dropped by the Dune Devourer (and the Frostmaw).",
+                    ChatColor.GRAY + "A piece of the Ankh Shield.", ChatColor.DARK_GRAY + "Dropped by the Abyssal Kraken.",
                     ChatColor.DARK_GRAY + "Goes in the middle of the recipe.");
         }
 
@@ -7231,8 +7231,6 @@ public final class FaultlineItems extends JavaPlugin {
                 list.add(external(icon(Material.PAPER, DiveHelmets.IDS[i], DiveHelmets.COLORS[i] + "" + ChatColor.BOLD + DiveHelmets.NAMES[i], "FaultlineItems"), "fgear " + DiveHelmets.IDS[i] + " {amount} {player}", "FaultlineItems"));
             list.add(external(icon(Material.PAPER, "lantern_of_souls", ChatColor.AQUA + "" + ChatColor.BOLD + "Lantern of Souls", "FaultlineItems"), "fgear lantern_of_souls {amount} {player}", "FaultlineItems"));
             list.add(external(icon(Material.PAPER, "knight_helm", ChatColor.WHITE + "" + ChatColor.BOLD + "Knight's Helm", "FaultlineItems"), "fgear knight_helm {amount} {player}", "FaultlineItems"));
-            list.add(external(icon(Material.PAPER, "ancient_gear_part", ChatColor.GREEN + "Ancient Gear Part", "FaultlineItems"), "fgear ancient_gear_part {amount} {player}", "FaultlineItems"));
-            list.add(external(icon(Material.PAPER, "ancient_core", ChatColor.DARK_GREEN + "" + ChatColor.BOLD + "Ancient Core", "FaultlineItems"), "fgear ancient_core {amount} {player}", "FaultlineItems"));
             list.add(external(icon(Material.POLISHED_BLACKSTONE_BRICK_WALL, "museum_pedestal", ChatColor.GOLD + "" + ChatColor.BOLD + "Museum Pedestal", "FaultlineItems"), "fgear museum_pedestal {amount} {player}", "FaultlineItems"));
             for (var d : Gear.DISCS.entrySet())
                 list.add(external(icon(Material.PAPER, "disc/disc_" + d.getKey(), ChatColor.AQUA + "Music Disc " + ChatColor.GRAY + "(" + d.getValue()[0] + ")", "FaultlineItems"), "fgear disc_" + d.getKey() + " {amount} {player}", "FaultlineItems"));
@@ -7250,15 +7248,6 @@ public final class FaultlineItems extends JavaPlugin {
             list.add(external(icon(Material.CHEST, null, ChatColor.GOLD + "" + ChatColor.BOLD + "Mimic " + ChatColor.GRAY + "(spawns one)", "FaultlineItems"), "fcreature mimic {player}", "FaultlineItems"));
             list.add(external(icon(Material.SKELETON_HORSE_SPAWN_EGG, null, ChatColor.WHITE + "" + ChatColor.BOLD + "Skeleton Knight Patrol " + ChatColor.GRAY + "(spawns one)", "FaultlineItems"), "fcreature knights {player}", "FaultlineItems"));
             if (enabled("FaultlineBosses")) {
-                list.add(external(icon(Material.PAPER, "abyssal_lure", ChatColor.DARK_AQUA + "" + ChatColor.BOLD + "Abyssal Lure " + ChatColor.GRAY + "(the Leviathan)", "FaultlineBosses"), "leviathan item abyssal_lure {amount} {player}", "FaultlineBosses"));
-                list.add(external(icon(Material.PAPER, "sandworm_drum", ChatColor.GOLD + "" + ChatColor.BOLD + "Sandworm Drum " + ChatColor.GRAY + "(the Sandworm King)", "FaultlineBosses"), "sandworm item sandworm_drum {amount} {player}", "FaultlineBosses"));
-                list.add(external(icon(Material.PAPER, "lich_phylactery", ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + "Cursed Phylactery " + ChatColor.GRAY + "(the Lich)", "FaultlineBosses"), "lich item lich_phylactery {amount} {player}", "FaultlineBosses"));
-                list.add(external(icon(Material.PAPER, "frozen_horn", ChatColor.AQUA + "" + ChatColor.BOLD + "Frozen Horn " + ChatColor.GRAY + "(the Frost Wyrm)", "FaultlineBosses"), "frostwyrm item frozen_horn {amount} {player}", "FaultlineBosses"));
-                list.add(external(icon(Material.IRON_GOLEM_SPAWN_EGG, null, ChatColor.DARK_GREEN + "" + ChatColor.BOLD + "The Stone Golem " + ChatColor.GRAY + "(summons it)", "FaultlineBosses"), "stonegolem summon {world} {x} {y} {z}", "FaultlineBosses"));
-                list.add(external(icon(Material.TRIDENT, "tidebreaker", ChatColor.DARK_AQUA + "" + ChatColor.BOLD + "Tidebreaker", "FaultlineBosses"), "leviathan item tidebreaker {amount} {player}", "FaultlineBosses"));
-                list.add(external(icon(Material.DIAMOND_SWORD, "sandworm_fang", ChatColor.GOLD + "" + ChatColor.BOLD + "Sandworm Fang", "FaultlineBosses"), "sandworm item sandworm_fang {amount} {player}", "FaultlineBosses"));
-                list.add(external(icon(Material.STICK, "lich_staff", ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + "Staff of the Lich", "FaultlineBosses"), "lich item lich_staff {amount} {player}", "FaultlineBosses"));
-                list.add(external(icon(Material.DIAMOND_SWORD, "glacial_fang", ChatColor.AQUA + "" + ChatColor.BOLD + "Glacial Fang", "FaultlineBosses"), "frostwyrm item glacial_fang {amount} {player}", "FaultlineBosses"));
                 // the Dark Ocean's bosses (Bosses 1.6.0): their summon items (used down there) + a summon right here
                 String[][] deep = {{"scourge", "brine_bait", "Brine Bait", "the Brine Scourge"}, {"umbral", "umbral_sonar", "Umbral Sonar", "the Umbral Leviathan"},
                         {"coralia", "sirens_comb", "Siren's Comb", "Coralia"}, {"inkjaw", "inkjaw_bait", "Inkjaw Bait", "Old Inkjaw"},
@@ -7292,44 +7281,12 @@ public final class FaultlineItems extends JavaPlugin {
                         "cosmetic tokens {player} winter {amount}", "FaultlineCosmetics"));
             }
             if (enabled("FaultlineBosses")) {
-                list.add(external(icon(Material.ENDER_EYE, "suspicious_eye", ChatColor.DARK_RED + "" + ChatColor.BOLD + "Suspicious Eye", "FaultlineBosses"),
-                        "demoneye give {amount} {player}", "FaultlineBosses"));
-                list.add(external(icon(Material.PAPER, "captains_armband", ChatColor.LIGHT_PURPLE + "" + ChatColor.BOLD + "Captain's Armband", "FaultlineBosses"),
-                        "don armband {amount} {player}", "FaultlineBosses"));
-                list.add(external(icon(Material.FIREWORK_STAR, "lorenzos_ball", ChatColor.LIGHT_PURPLE + "" + ChatColor.BOLD + "Lorenzo's Ball", "FaultlineBosses"),
-                        "don ball {amount} {player}", "FaultlineBosses"));
-                list.add(external(icon(Material.FLINT, "talon", ChatColor.GOLD + "Talon", "FaultlineBosses"),
-                        "dune item talon {amount} {player}", "FaultlineBosses"));
-                list.add(external(icon(Material.HEART_OF_THE_SEA, "dune_idol", ChatColor.GOLD + "" + ChatColor.BOLD + "Dune Idol", "FaultlineBosses"),
-                        "dune item idol {amount} {player}", "FaultlineBosses"));
-                list.add(external(icon(Material.SILVERFISH_SPAWN_EGG, null, ChatColor.GOLD + "" + ChatColor.BOLD + "Dune Devourer Spawn Egg", "FaultlineBosses"),
-                        "dune egg {amount} {player}", "FaultlineBosses"));
-                list.add(external(icon(Material.POLAR_BEAR_SPAWN_EGG, null, ChatColor.AQUA + "" + ChatColor.BOLD + "Frostmaw Spawn Egg", "FaultlineBosses"),
-                        "dune egg frost {amount} {player}", "FaultlineBosses"));
-                list.add(external(icon(Material.SNOW_GOLEM_SPAWN_EGG, null, ChatColor.AQUA + "" + ChatColor.BOLD + "Frostbeard Spawn Egg", "FaultlineBosses"),
-                        "frostbeard egg {amount} {player}", "FaultlineBosses"));
-                list.add(external(icon(Material.BLAZE_ROD, "twin_eye_staff", ChatColor.RED + "" + ChatColor.BOLD + "Twin Eye Staff", "FaultlineBosses"),
-                        "demoneye item staff {amount} {player}", "FaultlineBosses"));
-                list.add(external(icon(Material.SHIELD, null, ChatColor.DARK_RED + "" + ChatColor.BOLD + "Shield of the Demon Eye", "FaultlineBosses"),
-                        "demoneye item shield {amount} {player}", "FaultlineBosses"));
-                list.add(external(icon(Material.ARROW, "unholy_arrow", ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + "Unholy Arrow", "FaultlineBosses"),
-                        "demoneye item arrows {amount} {player}", "FaultlineBosses"));
                 list.add(external(icon(Material.GOAT_HORN, "jacob_horn", ChatColor.AQUA + "" + ChatColor.BOLD + "Diamond War Horn", "FaultlineBosses"),
                         "jacob item horn {amount} {player}", "FaultlineBosses"));
                 list.add(external(icon(Material.NETHERITE_AXE, "jacob_hammer", ChatColor.AQUA + "" + ChatColor.BOLD + "Jacob's War Hammer", "FaultlineBosses"),
                         "jacob item hammer {amount} {player}", "FaultlineBosses"));
                 list.add(external(icon(Material.NETHERITE_SWORD, "jacob_sword", ChatColor.GOLD + "" + ChatColor.BOLD + "Ember Blade", "FaultlineBosses"),
                         "jacob item sword {amount} {player}", "FaultlineBosses"));
-                list.add(external(icon(Material.PAPER, "vendetta_contract", ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + "Vendetta Contract", "FaultlineBosses"),
-                        "rocco item contract {amount} {player}", "FaultlineBosses"));
-                list.add(external(icon(Material.PAPER, "vendetta_fist", ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + "Vendetta Fist", "FaultlineBosses"),
-                        "rocco item fist {amount} {player}", "FaultlineBosses"));
-                list.add(external(icon(Material.NETHER_STAR, "boss_rush_sigil", ChatColor.RED + "" + ChatColor.BOLD + "Boss Rush Sigil", "FaultlineBosses"),
-                        "bossrush sigil {amount} {player}", "FaultlineBosses"));
-                list.add(external(icon(Material.PAPER, "warlord_challenge", ChatColor.GOLD + "" + ChatColor.BOLD + "Warlord's Challenge " + ChatColor.GRAY + "(Grimtusk)", "FaultlineBosses"),
-                        "grimtusk item challenge {amount} {player}", "FaultlineBosses"));
-                list.add(external(icon(Material.NETHERITE_AXE, "warlord_cleaver", ChatColor.GOLD + "" + ChatColor.BOLD + "Grimtusk's Cleaver", "FaultlineBosses"),
-                        "grimtusk item cleaver {amount} {player}", "FaultlineBosses"));
             }
             if (enabled("FaultlineRaids")) {
                 String[] roman = {"I", "II", "III", "IV", "V"};

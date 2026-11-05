@@ -664,7 +664,7 @@ final class DeepGenerator extends ChunkGenerator {
     /** How much of the Sulphur Sea a column is in (0..1). */
     double sulphur(long seed, int x, int z) { return Sulphur.weight(noiseFor(seed), x, z); }
 
-    /** A tall pocket of open Abyss water near (x0, z0) (the Deep Boss Rush): {x, y, z}, or null. */
+    /** A tall pocket of open Abyss water near (x0, z0): {x, y, z}, or null. */
     int[] abyssPocket(long seed, int x0, int z0) {
         Noise n = noiseFor(seed);
         for (int r = 0; r < 480; r += 16) for (int a = 0; a < 360; a += r == 0 ? 360 : 20) {

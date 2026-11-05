@@ -69,13 +69,12 @@ import java.util.function.BooleanSupplier;
 import static net.faultlinesmp.bosses.FaultlineBosses.*;
 
 /**
- * THE WILD BOSSES (the "wild" update): the Leviathan (the deep ocean, fights ships too), the Sandworm King (deserts),
- * the Lich (the Deep Dark), the Frost Wyrm (the frozen peaks) and the Stone Golem (a lush-cave mini boss).
+ * THE RIGGED BOSSES' FRAMEWORK. Since 2.0.0 only the Dark Ocean's bosses use it (DeepBosses.java): the land wild bosses
+ * (Leviathan, Sandworm King, Lich, Frost Wyrm, Stone Golem) were removed with the other land bosses.
  *
  * They share everything here: a RIG of model parts (tools/wild_assets.py; WildParts.java holds each part's scale), the
- * fight loop (health scaled per fighter, phases, music, boss bar, boss form, the Boss Rush, loot), their summoning
- * items and the weapons they drop. Each boss is its own class (Leviathan.java, Sandworm.java, Lich.java,
- * FrostWyrm.java, StoneGolem.java) with just its body and its moves.
+ * fight loop (health scaled per fighter, phases, music, boss bar, boss form, loot) and their
+ * summoning items.
  *
  * Java players see each part as an ItemDisplay. Bedrock players (Geyser can't draw displays) see the same part as the
  * helmet of an armor stand only they can see, drawn by FaultlineWild.mcpack full size. Hitting that stand hits the boss.
@@ -84,22 +83,15 @@ final class Wild implements Listener {
 
     static final String PART_TAG = "faultline_wild_part", STAND_TAG = "faultline_wild_stand", HIT_TAG = "faultline_wild_hitbox",
             MOB_TAG = "faultline_wild_mob", FX_TAG = "faultline_wild_fx";
-    static final List<String> KINDS = List.of("leviathan", "sandworm", "lich", "frostwyrm", "golem",
-            "scourge", "umbral", "coralia", "inkjaw", "grandmaw", "lament", "titan"); // the Dark Ocean's (DeepBosses): six + the Trench's Titan (1.7.0)
-    static final Map<String, String> NAMES = Map.ofEntries(Map.entry("leviathan", "The Leviathan"), Map.entry("sandworm", "The Sandworm King"),
-            Map.entry("lich", "The Lich"), Map.entry("frostwyrm", "The Frost Wyrm"), Map.entry("golem", "The Stone Golem"),
-            Map.entry("scourge", "The Brine Scourge"), Map.entry("umbral", "The Umbral Leviathan"), Map.entry("coralia", "Coralia, Queen of the Den"),
+    static final List<String> KINDS = List.of("scourge", "umbral", "coralia", "inkjaw", "grandmaw", "lament", "titan"); // the Dark Ocean's (DeepBosses): six + the Trench's Titan (1.7.0)
+    static final Map<String, String> NAMES = Map.ofEntries(Map.entry("scourge", "The Brine Scourge"), Map.entry("umbral", "The Umbral Leviathan"), Map.entry("coralia", "Coralia, Queen of the Den"),
             Map.entry("inkjaw", "Old Inkjaw"), Map.entry("grandmaw", "The Grandmaw Clam"), Map.entry("lament", "The Lament"),
             Map.entry("titan", "The Abyssal Titan"));
     /** Their Faultline Index entries (and the tag on their hitboxes, for the Index's kill detection). */
-    static final Map<String, String> INDEX = Map.ofEntries(Map.entry("leviathan", "leviathan"), Map.entry("sandworm", "sandworm_king"),
-            Map.entry("lich", "lich"), Map.entry("frostwyrm", "frost_wyrm"), Map.entry("golem", "stone_golem"),
-            Map.entry("scourge", "brine_scourge"), Map.entry("umbral", "umbral_leviathan"), Map.entry("coralia", "coralia"),
+    static final Map<String, String> INDEX = Map.ofEntries(Map.entry("scourge", "brine_scourge"), Map.entry("umbral", "umbral_leviathan"), Map.entry("coralia", "coralia"),
             Map.entry("inkjaw", "old_inkjaw"), Map.entry("grandmaw", "grandmaw_clam"), Map.entry("lament", "the_lament"),
             Map.entry("titan", "abyssal_titan"));
-    static final Map<String, ChatColor> COLOR = Map.ofEntries(Map.entry("leviathan", ChatColor.DARK_AQUA), Map.entry("sandworm", ChatColor.GOLD),
-            Map.entry("lich", ChatColor.DARK_PURPLE), Map.entry("frostwyrm", ChatColor.AQUA), Map.entry("golem", ChatColor.DARK_GREEN),
-            Map.entry("scourge", ChatColor.GREEN), Map.entry("umbral", ChatColor.DARK_GRAY), Map.entry("coralia", ChatColor.LIGHT_PURPLE),
+    static final Map<String, ChatColor> COLOR = Map.ofEntries(Map.entry("scourge", ChatColor.GREEN), Map.entry("umbral", ChatColor.DARK_GRAY), Map.entry("coralia", ChatColor.LIGHT_PURPLE),
             Map.entry("inkjaw", ChatColor.DARK_PURPLE), Map.entry("grandmaw", ChatColor.AQUA), Map.entry("lament", ChatColor.BLUE),
             Map.entry("titan", ChatColor.DARK_PURPLE));
     /** Local -> display axes (a part's front +x = display +z at yaw 0), and the half turn item displays draw items with. */
@@ -119,10 +111,8 @@ final class Wild implements Listener {
         this.pl = pl;
         this.random = pl.random;
         itemKey = new NamespacedKey(pl, "wild_item");
-        recipe("abyssal_lure", new String[]{"NPN", "PHP", "NPN"}, 'N', Material.NAUTILUS_SHELL, 'P', Material.PRISMARINE_CRYSTALS, 'H', Material.HEART_OF_THE_SEA);
-        recipe("sandworm_drum", new String[]{"RSR", "SGS", "RSR"}, 'R', Material.RABBIT_HIDE, 'S', Material.CHISELED_SANDSTONE, 'G', Material.GOLD_BLOCK);
-        recipe("lich_phylactery", new String[]{"EBE", "BTB", "EBE"}, 'E', Material.ECHO_SHARD, 'B', Material.BONE_BLOCK, 'T', Material.TOTEM_OF_UNDYING);
-        recipe("frozen_horn", new String[]{"IDI", "DGD", "IDI"}, 'I', Material.BLUE_ICE, 'D', Material.DIAMOND, 'G', Material.GOAT_HORN);
+        for (String old : List.of("abyssal_lure", "sandworm_drum", "lich_phylactery", "frozen_horn")) // (2.0.0: the land bosses' summons are gone)
+            Bukkit.removeRecipe(new NamespacedKey(pl, "wild_" + old));
     }
 
     private void recipe(String which, String[] shape, Object... ing) {
@@ -144,20 +134,12 @@ final class Wild implements Listener {
     // =====================================================================================================
     static final Map<String, String[]> ITEMS = new LinkedHashMap<>();
     static {
-        ITEMS.put("abyssal_lure", new String[]{"PAPER", "&3&lAbyssal Lure", "&7Drop it in the deep ocean, from a ship or a boat|&7or swimming. Something vast takes the bait.|&3Summons the Leviathan."});
-        ITEMS.put("sandworm_drum", new String[]{"PAPER", "&6&lSandworm Drum", "&7Beat it on the sand of a desert or badlands.|&7The ground answers.|&6Summons the Sandworm King."});
-        ITEMS.put("lich_phylactery", new String[]{"PAPER", "&5&lCursed Phylactery", "&7Break it open in the Deep Dark.|&7Something that should be dead comes for it.|&5Summons the Lich."});
-        ITEMS.put("frozen_horn", new String[]{"PAPER", "&b&lFrozen Horn", "&7Sound it on a frozen peak or snowy slope.|&7The sky answers with wings.|&bSummons the Frost Wyrm."});
         ITEMS.put("brine_bait", new String[]{"PAPER", "&a&lBrine Bait", "&7A rotten, glowing lure that reeks of sulphur.|&7Use it in the water of the Sulphur Sea.|&aSummons the Brine Scourge."});
         ITEMS.put("umbral_sonar", new String[]{"PAPER", "&8&lUmbral Sonar", "&7It pings back from something huge in the dark.|&7Use it in the Dark Ocean, below the Sunlit Sea.|&8Summons the Umbral Leviathan."});
         ITEMS.put("sirens_comb", new String[]{"PAPER", "&d&lSiren's Comb", "&7Pearl teeth, still humming a song.|&7Coralia no longer answers it: only the|&7Mermaid Den calls her now (kill its ten|&7mermaids, or drink an Omen IV there)."});
         ITEMS.put("inkjaw_bait", new String[]{"PAPER", "&5&lInkjaw Bait", "&7A Lampsquid's lure. Old Inkjaw is always hungry.|&7Use it anywhere in the Dark Ocean.|&5Summons Old Inkjaw."});
         ITEMS.put("glistening_pearl", new String[]{"PAPER", "&b&lGlistening Pearl", "&7A clam's pearl the size of a fist.|&7Use it on the Dark Ocean's open sea floor.|&bSummons the Grandmaw Clam."});
         ITEMS.put("mournful_shell", new String[]{"PAPER", "&9&lMournful Shell", "&7Hold it to your ear: someone is crying.|&7Use it in the Dark Ocean, below the Sunlit Sea.|&9Summons the Lament."});
-        ITEMS.put("tidebreaker", new String[]{"TRIDENT", "&3&lTidebreaker", "&7The Leviathan's fang, made a trident.|&aWhere it lands, the sea bursts up:|&aenemies nearby are thrown and slowed.|&8Dropped by the Leviathan."});
-        ITEMS.put("sandworm_fang", new String[]{"DIAMOND_SWORD", "&6&lSandworm Fang", "&7A tooth from the Sandworm King's maw.|&aRight-click: Burrow Dash &7(lunge through the|&7ground, blinding what you pass; 10 s)|&8Dropped by the Sandworm King."});
-        ITEMS.put("lich_staff", new String[]{"STICK", "&5&lStaff of the Lich", "&7It still remembers its master.|&aRight-click: Soul Bolt &7(a withering skull,|&7no explosion; 3 s)|&8Dropped by the Lich."});
-        ITEMS.put("glacial_fang", new String[]{"DIAMOND_SWORD", "&b&lGlacial Fang", "&7Carved from the Frost Wyrm's horn.|&aYour hits freeze and slow.|&8Dropped by the Frost Wyrm."});
     }
 
     ItemStack item(String which) {
@@ -185,8 +167,7 @@ final class Wild implements Listener {
     void giveItem(Player p, String which, int amount) { for (int i = 0; i < amount; i++) { ItemStack it = item(which); if (it != null) pl.give(p, it); } }
 
     static String summonItemOf(String kind) {
-        return switch (kind) { case "leviathan" -> "abyssal_lure"; case "sandworm" -> "sandworm_drum"; case "lich" -> "lich_phylactery";
-            case "frostwyrm" -> "frozen_horn"; case "scourge" -> "brine_bait"; case "umbral" -> "umbral_sonar";
+        return switch (kind) { case "scourge" -> "brine_bait"; case "umbral" -> "umbral_sonar";
             case "coralia" -> "sirens_comb"; case "inkjaw" -> "inkjaw_bait"; case "grandmaw" -> "glistening_pearl";
             case "lament" -> "mournful_shell"; default -> null; };
     }
@@ -199,20 +180,6 @@ final class Wild implements Listener {
     // =====================================================================================================
     //  where each one can be called
     // =====================================================================================================
-    static final Set<Biome> OCEANS = new HashSet<>(List.of(Biome.OCEAN, Biome.DEEP_OCEAN, Biome.COLD_OCEAN, Biome.DEEP_COLD_OCEAN,
-            Biome.LUKEWARM_OCEAN, Biome.DEEP_LUKEWARM_OCEAN, Biome.WARM_OCEAN, Biome.FROZEN_OCEAN, Biome.DEEP_FROZEN_OCEAN));
-    static final Set<Biome> SANDS = new HashSet<>(List.of(Biome.DESERT, Biome.BADLANDS, Biome.ERODED_BADLANDS, Biome.WOODED_BADLANDS, Biome.BEACH));
-    static final Set<Biome> PEAKS = new HashSet<>(List.of(Biome.FROZEN_PEAKS, Biome.JAGGED_PEAKS, Biome.SNOWY_SLOPES, Biome.GROVE,
-            Biome.ICE_SPIKES, Biome.SNOWY_PLAINS, Biome.STONY_PEAKS, Biome.FROZEN_OCEAN, Biome.SNOWY_TAIGA));
-
-    /** A snowy biome: the peaks/slopes/snowy list, or anywhere cold enough to snow (not a frozen ocean). */
-    static boolean snowy(Location l) {
-        Biome b = l.getBlock().getBiome();
-        if (b == Biome.FROZEN_OCEAN || b == Biome.DEEP_FROZEN_OCEAN) return false;
-        if (PEAKS.contains(b)) return true;
-        try { return l.getBlock().getTemperature() < 0.15; } catch (RuntimeException e) { return false; }
-    }
-
     /** Null if it can be summoned here, else why not. */
     String whyNot(String kind, Player p) {
         Location l = p.getLocation();
@@ -224,7 +191,7 @@ final class Wild implements Listener {
         }
         if (DeepBosses.KINDS.contains(kind)) {
             if (!deep) return "Only in the Dark Ocean.";
-            if (!Leviathan.sea(l.getBlock()) && !Leviathan.sea(l.clone().add(0, -1, 0).getBlock())) return "Only in the water.";
+            if (!RigMath.sea(l.getBlock()) && !RigMath.sea(l.clone().add(0, -1, 0).getBlock())) return "Only in the water.";
             return switch (kind) {
                 // 1.7.0: she only rises in the Mermaid Den, and only one of two ways (FaultlineDeep's Den.java calls her)
                 case "coralia" -> "Coralia only rises over her throne in the Mermaid Den (1200, 700): kill all ten of its mermaids, or drink an Omen IV there.";
@@ -235,19 +202,7 @@ final class Wild implements Listener {
                 default -> null;
             };
         }
-        if (deep && kind.equals("leviathan")) // it swims at the surface: only for someone near it
-            return l.getY() < l.getWorld().getHighestBlockYAt(l, org.bukkit.HeightMap.WORLD_SURFACE) - 16 ? "Only near the surface (it hunts up there)."
-                    : Leviathan.seaSpot(l, 18) != null ? null : "Only in open water.";
-        if (l.getWorld().getEnvironment() != World.Environment.NORMAL) return "Only in the Overworld.";
-        Biome b = l.getBlock().getBiome();
-        if (!pl.getConfig().getBoolean("wild.require-biome", true)) return null;
-        return switch (kind) {
-            case "leviathan" -> OCEANS.contains(b) && Leviathan.seaSpot(l, 18) != null ? null : "Only over open ocean (from a ship, a boat, or swimming).";
-            case "sandworm" -> SANDS.contains(b) ? null : "Only in a desert or badlands.";
-            case "lich" -> b == Biome.DEEP_DARK ? null : "Only in the Deep Dark (deep below, where the Wardens sleep).";
-            case "frostwyrm" -> PEAKS.contains(b) ? null : "Only on frozen peaks, snowy slopes, groves or ice spikes.";
-            default -> null;
-        };
+        return "Only the Dark Ocean's bosses are left.";
     }
 
     @EventHandler(priority = EventPriority.HIGH)
@@ -260,17 +215,11 @@ final class Wild implements Listener {
         if (type == null) return;
         if (event.getAction() == Action.RIGHT_CLICK_BLOCK && event.getClickedBlock() != null
                 && event.getClickedBlock().getType().isInteractable() && !p.isSneaking()) return;
-        switch (type) {
-            case "sandworm_fang" -> { event.setUseItemInHand(Result.DENY); burrowDash(p); return; }
-            case "lich_staff" -> { event.setUseItemInHand(Result.DENY); event.setUseInteractedBlock(Result.DENY); soulBolt(p); return; }
-            case "tidebreaker", "glacial_fang" -> { return; } // the trident throws as usual; the sword just hits
-            default -> { }
-        }
         String kind = kindOfItem(type);
         if (kind == null) return;
         event.setUseInteractedBlock(Result.DENY);
         event.setUseItemInHand(Result.DENY);
-        if (live(kind) != null) { p.sendActionBar(legacy(ChatColor.GRAY + NAMES.get(kind) + " is already out there. " + ChatColor.WHITE + "/" + (kind.equals("golem") ? "stonegolem" : kind) + " kill" + ChatColor.GRAY + " (admins)")); return; }
+        if (live(kind) != null) { p.sendActionBar(legacy(ChatColor.GRAY + NAMES.get(kind) + " is already out there. " + ChatColor.WHITE + "/" + kind + " kill" + ChatColor.GRAY + " (admins)")); return; }
         if (p.getWorld().getDifficulty() == Difficulty.PEACEFUL) { p.sendActionBar(legacy(ChatColor.RED + "Nothing answers on Peaceful.")); return; }
         long cd = cooldownUntil.getOrDefault(kind, 0L);
         if (System.currentTimeMillis() < cd) { p.sendActionBar(legacy(ChatColor.GRAY + "Nothing answers yet... try again in " + ((cd - System.currentTimeMillis()) / 60000 + 1) + " min.")); return; }
@@ -281,115 +230,15 @@ final class Wild implements Listener {
         if (p.getGameMode() != GameMode.CREATIVE) hand.setAmount(hand.getAmount() - 1);
     }
 
-    // =====================================================================================================
-    //  the weapons they drop
-    // =====================================================================================================
-    boolean ready(Player p, String what, double seconds) {
-        long now = System.currentTimeMillis();
-        long at = weaponCd.getOrDefault(p.getUniqueId(), 0L);
-        if (now < at) { p.sendActionBar(legacy(ChatColor.GRAY + what + ": " + ((at - now) / 1000 + 1) + "s")); return false; }
-        weaponCd.put(p.getUniqueId(), now + (long) (seconds * 1000));
-        return true;
-    }
-
-    /** Sandworm Fang: a lunge along the ground, blinding and hurting what you pass through. */
-    void burrowDash(Player p) {
-        if (!ready(p, "Burrow Dash", c("weapons.sandworm-fang.cooldown-seconds", 10))) return;
-        Vector f = Vendetta.flatDir(p.getLocation());
-        Safe.vel(p, f.clone().multiply(1.6).setY(0.25));
-        World w = p.getWorld();
-        w.playSound(p.getLocation(), Sound.BLOCK_SAND_BREAK, 1.4f, 0.6f);
-        Set<UUID> hitAlready = new HashSet<>();
-        int[] t = {0};
-        Bukkit.getScheduler().runTaskTimer(pl, task -> {
-            if (!p.isOnline() || ++t[0] > 10) { task.cancel(); return; }
-            Location l = p.getLocation();
-            w.spawnParticle(Particle.BLOCK, l, 18, 0.5, 0.2, 0.5, 0, Material.SAND.createBlockData());
-            for (Entity e : w.getNearbyEntities(l, 1.8, 1.5, 1.8)) {
-                if (!(e instanceof LivingEntity le) || e == p || e instanceof ArmorStand || !hitAlready.add(e.getUniqueId())) continue;
-                if (e instanceof Player o && (!survival(o) || !o.getWorld().getPVP())) continue;
-                le.damage(c("weapons.sandworm-fang.dash-damage", 8), p);
-                le.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 60, 0));
-            }
-        }, 1L, 1L);
-    }
-
-    /** Staff of the Lich: a slow withering skull that doesn't break blocks. */
-    void soulBolt(Player p) {
-        if (!ready(p, "Soul Bolt", c("weapons.lich-staff.cooldown-seconds", 3))) return;
-        WitherSkull s = p.launchProjectile(WitherSkull.class, p.getEyeLocation().getDirection().multiply(1.2));
-        s.setYield(0);
-        s.setIsIncendiary(false);
-        s.addScoreboardTag(FX_TAG);
-        s.addScoreboardTag("faultline_soul_bolt");
-        p.getWorld().playSound(p.getLocation(), Sound.ENTITY_WITHER_SHOOT, 0.7f, 1.5f);
-    }
-
-    /** BUG FIX: logging out while swallowed by the Sandworm (Devour) left you 10 blocks up in the air at your next login. */
-    @EventHandler
-    public void onQuit(org.bukkit.event.player.PlayerQuitEvent e) {
-        if (get("sandworm") instanceof Sandworm sw && sw.victim == e.getPlayer()) {
-            Player p = e.getPlayer();
-            Location down = sw.mark != null ? sw.mark.clone() : p.getLocation();
-            down.setY(ground(down.getWorld(), down));
-            down.setYaw(p.getLocation().getYaw()); down.setPitch(p.getLocation().getPitch());
-            p.teleport(down);
-            p.setFallDistance(0);
-            sw.victim = null;
-        }
-    }
-
     @EventHandler(ignoreCancelled = true)
     public void onBoltHit(ProjectileHitEvent e) {
         Projectile pr = e.getEntity();
-        if (pr instanceof Trident t && "tidebreaker".equals(itemType(t.getItemStack())) && t.getShooter() instanceof Player p) {
-            Location at = pr.getLocation();
-            World w = at.getWorld();
-            w.spawnParticle(Particle.SPLASH, at, 120, 2, 1, 2, 0.4);
-            w.spawnParticle(Particle.BUBBLE_POP, at, 40, 1.5, 1, 1.5, 0.1);
-            w.playSound(at, Sound.ENTITY_GENERIC_SPLASH, 1.5f, 0.6f);
-            for (Entity en : w.getNearbyEntities(at, 3.5, 2.5, 3.5)) {
-                if (!(en instanceof LivingEntity le) || en == p || en instanceof ArmorStand) continue;
-                if (en instanceof Player o && (!survival(o) || !o.getWorld().getPVP())) continue;
-                Vector away = en.getLocation().toVector().subtract(at.toVector()).setY(0);
-                if (away.lengthSquared() < 0.01) away = new Vector(1, 0, 0);
-                Safe.vel(le, away.normalize().multiply(0.9).setY(0.6));
-                le.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 60, 1));
-                le.damage(c("weapons.tidebreaker.burst-damage", 4), p);
-            }
-        }
-        if (pr.getScoreboardTags().contains("faultline_leviathan_bile")) { Leviathan.bileLands(pr); pr.remove(); return; }
-        if (pr.getScoreboardTags().contains("faultline_lich_bolt")) { Lich.boltLands(this, e); return; }
-        if (pr.getScoreboardTags().contains(FrostWyrm.SHARD_TAG)) { FrostWyrm.shardLands(this, e); return; }
         if (pr.getScoreboardTags().contains("faultline_wild_boulder")) { e.setCancelled(true); return; }
-        if (pr.getScoreboardTags().contains("faultline_soul_bolt") && pr.getShooter() instanceof Player p) {
-            e.setCancelled(true);
-            Location at = pr.getLocation();
-            pr.getWorld().spawnParticle(Particle.SOUL, at, 20, 0.5, 0.5, 0.5, 0.02);
-            pr.getWorld().playSound(at, Sound.PARTICLE_SOUL_ESCAPE, 1.2f, 0.8f);
-            if (e.getHitEntity() instanceof LivingEntity le && le != p && !(le instanceof ArmorStand)) {
-                if (!(le instanceof Player o) || survival(o) && o.getWorld().getPVP()) {
-                    le.damage(c("weapons.lich-staff.damage", 8), p);
-                    le.addPotionEffect(new PotionEffect(PotionEffectType.WITHER, 60, 1));
-                }
-            }
-            pr.remove();
-        }
     }
 
     @EventHandler(ignoreCancelled = true)
     public void onSkullBlast(EntityExplodeEvent e) {
         if (ours(e.getEntity())) { e.blockList().clear(); e.setCancelled(true); }
-    }
-
-    /** Glacial Fang: a frozen hit. */
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onFangHit(EntityDamageByEntityEvent e) {
-        if (!(e.getDamager() instanceof Player p) || !(e.getEntity() instanceof LivingEntity le)) return;
-        if (!"glacial_fang".equals(itemType(p.getInventory().getItemInMainHand()))) return;
-        le.setFreezeTicks(Math.min(le.getMaxFreezeTicks() + 60, le.getFreezeTicks() + 80));
-        le.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 50, 1));
-        le.getWorld().spawnParticle(Particle.SNOWFLAKE, le.getLocation().add(0, 1, 0), 12, 0.3, 0.5, 0.3, 0.02);
     }
 
     // =====================================================================================================
@@ -400,11 +249,6 @@ final class Wild implements Listener {
         Boss b;
         try {
             b = switch (kind) {
-                case "leviathan" -> new Leviathan(this, at, by);
-                case "sandworm" -> new Sandworm(this, at, by);
-                case "lich" -> new Lich(this, at, by);
-                case "frostwyrm" -> new FrostWyrm(this, at, by);
-                case "golem" -> new StoneGolem(this, at, by);
                 case "scourge" -> new DeepBosses.Scourge(this, at, by);
                 case "umbral" -> new DeepBosses.Umbral(this, at, by);
                 case "coralia" -> new DeepBosses.Coralia(this, at, by);
@@ -442,7 +286,7 @@ final class Wild implements Listener {
         return t;
     }
 
-    static final Map<String, Double> OLD_HEALTH = Map.of("leviathan", 2400.0, "sandworm", 3600.0, "lich", 2800.0, "frostwyrm", 3200.0);
+    static final Map<String, Double> OLD_HEALTH = Map.of();
 
     /** " at Leviathan.java:66 < Wild.java:340": where in our code it broke, so a screenshot of the chat is enough. */
     static String where(Throwable e) {
@@ -500,14 +344,11 @@ final class Wild implements Listener {
         if (!bosses.isEmpty()) lastBusy = ticks;
         if (ticks - lastBusy < 2400 ? ticks % 100 == 50 : ticks % 1200 == 50) sweep(false);
         if (ticks % 40 == 0) standUpkeep();
-        if (ticks % 1200 == 600) StoneGolem.naturalSpawns(this);
-        if (ticks % 2400 == 1200) Leviathan.naturalSpawns(this);
-        if (ticks % 1200 == 300) naturalSpawns();
         if (ticks % 6000 == 3000) deepSpawns();
     }
 
     /**
-     * The Dark Ocean's bosses and mini bosses (+ the Leviathan) turn up on their own: every 5 minutes each survival player
+     * The Dark Ocean's bosses and mini bosses turn up on their own: every 5 minutes each survival player
      * in the Dark Ocean rolls wild.deep-spawns.chance (0.1%), and one that fits where they are comes for them.
      */
     void deepSpawns() {
@@ -518,7 +359,7 @@ final class Wild implements Listener {
         for (Player p : new ArrayList<>(w.getPlayers())) {
             if (!survival(p) || p.isDead() || random.nextDouble() >= chance) continue;
             List<String> fit = new ArrayList<>();
-            List<String> kinds = new ArrayList<>(DeepBosses.KINDS); kinds.add("leviathan");
+            List<String> kinds = new ArrayList<>(DeepBosses.KINDS);
             long now = System.currentTimeMillis();
             for (String k : kinds) if (live(k) == null && now >= cooldownUntil.getOrDefault(k, 0L) && whyNot(k, p) == null) fit.add(k);
             if (fit.isEmpty()) continue;
@@ -575,46 +416,6 @@ final class Wild implements Listener {
 
     static boolean voidWorld(World w) { return w.getName().equals("faultline_void") || w.getName().equals("faultline_deep"); }
 
-    /**
-     * Natural spawns for the four wild bosses (once a minute, per eligible survival player, config wild.<kind>.natural-chance-per-minute;
-     * 0 turns it off). Before, the Sandworm King, the Lich and the Frost Wyrm only came from crafted summon items and the
-     * Leviathan only at night from a FaultlineShips ship (0.4% every 2 minutes), so in practice nobody ever met them.
-     * One wild boss at a time from this (natural-gap-minutes between any two natural spawns).
-     */
-    void naturalSpawns() {
-        if (!pl.getConfig().getBoolean("wild.natural-spawns", true)) return;
-        if (System.currentTimeMillis() < nextNatural) return;
-        List<Player> ps = new ArrayList<>(Bukkit.getOnlinePlayers());
-        java.util.Collections.shuffle(ps, random);
-        for (Player p : ps) {
-            if (!survival(p) || p.isDead() || p.getWorld().getEnvironment() != World.Environment.NORMAL || voidWorld(p.getWorld())) continue;
-            if (p.getWorld().getDifficulty() == Difficulty.PEACEFUL) continue;
-            Location l = p.getLocation();
-            Biome b = l.getBlock().getBiome();
-            String kind = null;
-            if (b == Biome.DEEP_DARK) kind = "lich";
-            else if (SANDS.contains(b) && b != Biome.BEACH && l.getBlockY() >= l.getWorld().getHighestBlockYAt(l) - 2 && isDay(p.getWorld())) kind = "sandworm";
-            else if (snowy(l) && !p.isInWater() && l.getBlockY() >= l.getWorld().getHighestBlockYAt(l) - 2) kind = "frostwyrm"; // any snowy biome (1.5.3)
-            else if (OCEANS.contains(b) && b.getKey().getKey().startsWith("deep_") && (p.isInWater() || p.isInsideVehicle() || ShipLink.of(p) != null)) kind = "leviathan";
-            if (kind == null || live(kind) != null) continue;
-            if (System.currentTimeMillis() < cooldownUntil.getOrDefault(kind, 0L)) continue;
-            double def = switch (kind) { case "lich" -> 0.04; case "leviathan" -> 0.02; case "frostwyrm" -> 0.00001; default -> 0.015; };
-            double chance = c(kind + ".natural-chance-per-minute", def);
-            if (kind.equals("frostwyrm") && chance == 0.015) chance = 0.00001; // 0.001% since 1.5.3 (an old config's 0.015 reads as that)
-            if (random.nextDouble() >= chance) continue;
-            if (!kind.equals("frostwyrm") && whyNot(kind, p) != null) continue; // the wyrm: any snowy biome, not just the peaks
-            p.sendMessage(COLOR.get(kind) + "" + ChatColor.ITALIC + switch (kind) {
-                case "lich" -> "The sculk falls silent. Something that should be dead has found you...";
-                case "sandworm" -> "The sand under your feet starts to tremble...";
-                case "frostwyrm" -> "A shadow with wings passes over the peaks...";
-                default -> "Something enormous passes beneath you...";
-            });
-            if (summon(kind, l, p) != null) {
-                nextNatural = System.currentTimeMillis() + (long) (pl.getConfig().getDouble("wild.natural-gap-minutes", 20) * 60000);
-                return;
-            }
-        }
-    }
 
     static boolean isDay(World w) { long t = w.getTime(); return t < 12300 || t > 23800; }
 
@@ -642,7 +443,7 @@ final class Wild implements Listener {
         int n = 0;
         for (World wd : Bukkit.getWorlds()) for (Entity e : wd.getEntities()) {
             Set<String> t = e.getScoreboardTags();
-            boolean body = t.contains(PART_TAG) || t.contains(STAND_TAG) || t.contains(HIT_TAG) || t.contains(Lich.CRYSTAL_TAG);
+            boolean body = t.contains(PART_TAG) || t.contains(STAND_TAG) || t.contains(HIT_TAG);
             boolean loose = none && (t.contains(MOB_TAG) || all && t.contains(FX_TAG));
             if (!body && !loose || owned.contains(e.getUniqueId())) continue;
             if (e.getVehicle() != null && owned.contains(e.getVehicle().getUniqueId())) continue;
@@ -689,11 +490,6 @@ final class Wild implements Listener {
     public void onHurt(EntityDamageEvent e) {
         Entity ent = e.getEntity();
         Set<String> tags = ent.getScoreboardTags();
-        if (tags.contains(Lich.CRYSTAL_TAG)) { // a Phylactery: a player's hit shatters it (never an explosion)
-            e.setCancelled(true);
-            if (byPlayer(e) && get("lich") instanceof Lich l && ent instanceof org.bukkit.entity.EnderCrystal cr) l.crystalBroken(cr);
-            return;
-        }
         if (tags.contains(DeepBosses.Swimmer.PINK_TAG)) { // a sea boss's pink bubble (the Scourge's, Coralia's): a player's hit bursts it and hurts that boss
             e.setCancelled(true);
             DeepBosses.Swimmer sc = null;
@@ -773,11 +569,11 @@ final class Wild implements Listener {
         String sub = args.length > 0 ? args[0].toLowerCase() : "";
         Player self = sender instanceof Player p ? p : null;
         Boss b = live(kind);
-        String label = kind.equals("golem") ? "stonegolem" : kind;
+        String label = kind;
         switch (sub) {
             case "summon" -> {
                 Location at = null;
-                if (args.length >= 5) { // summon <world> <x> <y> <z> (the Boss Rush, consoles)
+                if (args.length >= 5) { // summon <world> <x> <y> <z> (consoles)
                     World w = Bukkit.getWorld(args[1]);
                     try { if (w != null) at = new Location(w, Double.parseDouble(args[2]), Double.parseDouble(args[3]), Double.parseDouble(args[4])); }
                     catch (NumberFormatException ignored) { }
@@ -1108,7 +904,7 @@ final class Wild implements Listener {
                 // Before 1.4.6 it just hung there, which looked like a frozen boss.
                 a = onlookers();
                 if (!a.isEmpty() && ticks % 60 == 0) for (Player p : a)
-                    p.sendActionBar(legacy(color() + name() + ChatColor.GRAY + " is fighting you for show (creative: no damage). " + ChatColor.WHITE + "/gamemode survival" + ChatColor.GRAY + " for real, " + ChatColor.WHITE + "/" + (kind.equals("golem") ? "stonegolem" : kind) + " kill" + ChatColor.GRAY + " to remove it."));
+                    p.sendActionBar(legacy(color() + name() + ChatColor.GRAY + " is fighting you for show (creative: no damage). " + ChatColor.WHITE + "/gamemode survival" + ChatColor.GRAY + " for real, " + ChatColor.WHITE + "/" + kind + " kill" + ChatColor.GRAY + " to remove it."));
             }
             if (a.isEmpty() && pilot == null && !watched()) {
                 if (++lonely > c("leave-after-ticks", 600)) { leave(line("leave")); return; }
@@ -1272,8 +1068,7 @@ final class Wild implements Listener {
                     p.showTitle(Title.title(legacy(color() + "" + ChatColor.BOLD + name().toUpperCase() + " FALLS"), legacy(ChatColor.GRAY + "Victory."),
                             Title.Times.times(java.time.Duration.ofMillis(300), java.time.Duration.ofMillis(3000), java.time.Duration.ofMillis(800))));
                 world.spawnParticle(Particle.EXPLOSION_EMITTER, c, 1);
-                if (!rewarded) { rewarded = true; if (!pl.rushSuppressLoot(kind)) rewards(); }
-                pl.rushDefeated(kind);
+                if (!rewarded) { rewarded = true; rewards(); }
             }
             if (deathT > 80) {
                 removeEverything();

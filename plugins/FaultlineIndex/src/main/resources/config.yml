@@ -3,7 +3,7 @@
 # Bedrock players (Geyser) get the Index as menus (Floodgate/Geyser forms): Bedrock can't follow the book's links.
 bedrock-forms: true
 
-# The museum: boss trophies (first defeat), boss music discs (a chance on every defeat), and /museum (the Hall of Firsts).
+# The museum: boss music discs (a chance on every defeat), and /museum (the Hall of Firsts).
 museum:
   disc-chance: 0.2
   announce-firsts: true          # "X is the first to defeat Y!" (bosses and creatures)
@@ -47,7 +47,7 @@ discord:
   # announcements matching any of these (Java regexes) are posted
   forward: ["(?i)has been defeated", "(?i)has fallen", "(?i)has been laid to rest", "(?i)meteor", "(?i)caravan", "(?i)achievement",
             "(?i)is the first to", "(?i)aurora", "(?i)sandstorm", "(?i)blizzard", "(?i)eclipse", "(?i)locust", "(?i)ghost ship|wailing mary",
-            "(?i)invasion", "(?i)boss rush"]
+            "(?i)invasion"]
 
 # Watch (1.6.15): catches x-rayers, cheaters, dupers and griefers. Daily log files in plugins/FaultlineIndex/logs/,
 # /watch in game. LOG lines go to the Discord logs channel, ALERTS also to staff in game (faultlineindex.alerts) and ping

@@ -24,9 +24,8 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Mirror..?? (1.2.41: dropped by the Kraken, every fighter; the Lost Explorer is gone): worn, a big hit bounces off you and
- * back at whoever dealt it. Right-clicked (FaultlineDeep): the way to the abandoned kingdom and the Dark Ocean, once
- * you've beaten Rocco Vendetta and Diamond Jacob.
+ * Mirror..?? (1.2.65: dropped by Diamond Jacob, every fighter): worn, a big hit bounces off you and back at whoever
+ * dealt it. Right-clicked (FaultlineDeep): the way to the abandoned kingdom and the Dark Ocean, once you've beaten Jacob.
  */
 final class MirrorGear implements Listener {
 
@@ -40,7 +39,7 @@ final class MirrorGear implements Listener {
         key = new NamespacedKey(plugin, "lost_mirror");
     }
 
-    int cooldown() { return Math.max(1, plugin.getConfig().getInt("mirror.cooldown-seconds", 45)); }
+    int cooldown() { return (int) Math.max(1, Balance.num(plugin, "mirror.cooldown-seconds", 45, 60)); } // 1.2.65: was 45 (every Jacob fighter gets one now)
     double threshold() { return plugin.getConfig().getDouble("mirror.min-hit-share", 0.33); }
 
     ItemStack item() {
@@ -51,8 +50,8 @@ final class MirrorGear implements Listener {
                 ChatColor.DARK_GRAY + "Then it needs " + cooldown() + " seconds to clear.",
                 ChatColor.DARK_GRAY + "" + ChatColor.ITALIC + "You look into it. Something looks back.",
                 ChatColor.AQUA + "Right-click: go to the abandoned kingdom",
-                ChatColor.AQUA + "(needs Rocco Vendetta and Diamond Jacob beaten).",
-                ChatColor.DARK_GRAY + "Dropped by the Kraken.");
+                ChatColor.AQUA + "(needs Diamond Jacob beaten).",
+                ChatColor.DARK_GRAY + "Dropped by Diamond Jacob.");
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
@@ -76,7 +75,7 @@ final class MirrorGear implements Listener {
         p.sendActionBar(net.kyori.adventure.text.Component.text("The Mirror..?? throws the blow back. (" + cooldown() + "s)", net.kyori.adventure.text.format.NamedTextColor.WHITE));
         if (from instanceof LivingEntity back && !back.equals(p) && back.isValid() && !back.isDead()) {
             reflecting = true;
-            try { back.damage(Math.min(dmg, plugin.getConfig().getDouble("mirror.max-reflect", 30)), p); }
+            try { back.damage(Math.min(dmg, Balance.num(plugin, "mirror.max-reflect", 30, 12)), p); }
             finally { reflecting = false; }
             back.getWorld().spawnParticle(Particle.END_ROD, back.getLocation().add(0, back.getHeight() / 2, 0), 20, 0.3, 0.4, 0.3, 0.05);
         }

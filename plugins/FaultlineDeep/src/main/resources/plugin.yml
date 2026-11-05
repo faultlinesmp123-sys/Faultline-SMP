@@ -1,5 +1,5 @@
 name: FaultlineDeep
-version: '1.12.0'
+version: '1.13.0'
 main: net.faultlinesmp.deep.FaultlineDeep
 api-version: '1.21'
 author: FaultlineSMP
@@ -33,5 +33,5 @@ permissions:
     description: Build in the Black Market and the Pit, open its shulker boxes, break the Bubble's glass
     default: op
   faultlinedeep.bypass:
-    description: Use the Mirror and Lucki without having beaten Rocco and Jacob
+    description: Use the Mirror and Lucki without having beaten Diamond Jacob
     default: false

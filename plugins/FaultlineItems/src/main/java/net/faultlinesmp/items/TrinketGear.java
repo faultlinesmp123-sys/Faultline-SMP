@@ -53,10 +53,10 @@ import java.util.UUID;
  *  - Miner's Lantern Charm (craft: lanterns, glowstone dust, a diamond): mining stone makes the ores within 4 blocks glow for
  *    you for 3 s (Java: glowing block outlines only you see; Bedrock: particles). The Watch knows (metadata
  *    faultline_ore_sense): its x-ray alerts become log lines for wearers.
- *  - Green Thumb Ring (craft: wheat, bone blocks, gold): crops within 8 blocks of you grow 15% faster.
- *  - Treasure Sense (3% from Drowned): buried treasure chests and your Pirate Treasure Maps' X within 30 blocks show
+ *  - Green Thumb Ring (craft: wheat, bone blocks, gold): crops within 8 blocks of you grow 20% faster.
+ *  - Treasure Sense (3% from Drowned): buried treasure chests and your Pirate Treasure Maps' X within 40 blocks show
  *    in the action bar with a ping.
- *  - Smelter's Glove (craft: leather, iron, a blast furnace): 20% of raw iron / gold / copper you mine drops smelted.
+ *  - Smelter's Glove (craft: leather, iron, a blast furnace): 30% of raw iron / gold / copper you mine drops smelted.
  *  - Featherfall Charm (craft: feathers, slime ball, gold): no fall damage from 5 blocks or less.
  */
 final class TrinketGear implements Listener {
@@ -66,10 +66,10 @@ final class TrinketGear implements Listener {
         PAULDRON("ironhide_pauldron", "pauldron", Material.IRON_NUGGET, ChatColor.GRAY, "Ironhide Pauldron", "15% less knockback."),
         CREST("gladiators_crest", "crest", Material.GOLD_NUGGET, ChatColor.GOLD, "Gladiator's Crest", "+1 armor for every player", "within 10 blocks (max +4)."),
         GUARDIAN("guardians_oath", "guardian", Material.NAUTILUS_SHELL, ChatColor.BLUE, "Guardian's Oath", "Kingdom-mates near you", "take 1% less damage."),
-        LANTERN("miners_lantern", "lantern", Material.AMETHYST_SHARD, ChatColor.YELLOW, "Miner's Lantern Charm", "Mining stone makes ores", "within 4 blocks glow."),
-        THUMB("green_thumb", "greenthumb", Material.PRISMARINE_CRYSTALS, ChatColor.GREEN, "Green Thumb Ring", "Crops near you grow", "15% faster."),
-        TREASURE("treasure_sense", "treasure", Material.COMPASS, ChatColor.GOLD, "Treasure Sense", "Buried treasure and your map's X", "ping within 30 blocks."),
-        SMELTER("smelters_glove", "smelter", Material.LEATHER, ChatColor.RED, "Smelter's Glove", "20% of raw iron, gold and", "copper drops smelted."),
+        LANTERN("miners_lantern", "lantern", Material.AMETHYST_SHARD, ChatColor.YELLOW, "Miner's Lantern Charm", "Mining stone makes ores", "within 5 blocks glow."),
+        THUMB("green_thumb", "greenthumb", Material.PRISMARINE_CRYSTALS, ChatColor.GREEN, "Green Thumb Ring", "Crops near you grow", "20% faster."),
+        TREASURE("treasure_sense", "treasure", Material.COMPASS, ChatColor.GOLD, "Treasure Sense", "Buried treasure and your map's X", "ping within 40 blocks."),
+        SMELTER("smelters_glove", "smelter", Material.LEATHER, ChatColor.RED, "Smelter's Glove", "30% of raw iron, gold and", "copper drops smelted."),
         FEATHERFALL("featherfall_charm", "featherfall", Material.FEATHER, ChatColor.WHITE, "Featherfall Charm", "No fall damage from", "5 blocks or less.");
 
         final String id, command, name;
@@ -114,7 +114,15 @@ final class TrinketGear implements Listener {
 
     boolean wearing(Player p, Piece piece) { return plugin.getAccessoryManager().hasEquipped(p, key(piece)); }
 
-    private double cfg(String path, double def) { return plugin.getConfig().getDouble("trinkets." + path, def); }
+    /** 1.2.65 balance: the weak utility charms get a bump (a server config still holding the old default reads as the new one). */
+    static final Map<String, double[]> RETUNE = Map.of(
+            "thumb-boost", new double[] {0.15, 0.2}, "treasure-range", new double[] {30, 40},
+            "smelter-chance", new double[] {0.2, 0.3}, "lantern-radius", new double[] {4, 5});
+
+    private double cfg(String path, double def) {
+        double[] r = RETUNE.get(path);
+        return r == null ? plugin.getConfig().getDouble("trinkets." + path, def) : Balance.num(plugin, "trinkets." + path, r[0], r[1]);
+    }
 
     // ---------------------------------------------------------------- recipes
 

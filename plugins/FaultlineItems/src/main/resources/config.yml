@@ -496,9 +496,9 @@ kraken-gear:
 
 # Mirror..?? (accessory, dropped by the Kraken): a big hit is thrown back at whoever dealt it
 mirror:
-  cooldown-seconds: 45
+  cooldown-seconds: 60     # 1.2.65: was 45 (every Diamond Jacob fighter gets a Mirror now)
   min-hit-share: 0.33      # only hits taking at least this share of your max health
-  max-reflect: 30          # most damage sent back
+  max-reflect: 12          # most damage sent back (6 hearts; 1.2.65: was 30)
 
 # ---------------- Weather events (Weather.java) ----------------
 # AURORA some nights (XP x2, cheaper enchanting till dawn), SANDSTORM in deserts (dust, husks, buried treasure), BLIZZARD
@@ -555,52 +555,24 @@ spawn-protection:
 enchants:
   boss-drops-enabled: true
   anvil-levels-per-level: 6
-  # 1.2.53: ALL boss enchants nerfed (a server config still holding an old default reads as the new value)
+  # 1.2.53: ALL boss enchants nerfed; 1.2.65 tuned the weak ones back up (a server config still holding an old default reads as the new value)
   lifesteal: {per-level: 0.05, max-per-hit: 2, pvp-every-hits: 5}   # 1.2.52: on PLAYERS it heals only every 5th hit (mobs: every hit)
   # 1.2.52 enchants
   executioner: {below: 0.3, bonus-per-level: 0.08}       # +8% / +16% damage to anything under 30% health
   cleave: {share-per-level: 0.15, radius: 2.5}           # charged swings: 15% / 30% of the hit to everything beside the target
   bleed: {chance-per-level: 0.08, seconds: 2, damage: 1} # 8% / 16%: bleeds 1 a second for 3 / 4 s
-  arrowguard: {reduction-per-level: 0.06}                # chestplates: -6% / -12% projectile damage
+  arrowguard: {reduction-per-level: 0.08}                # chestplates: -8% / -16% projectile damage (1.2.65: was 6%)
   thornhide: {reflect-per-level: 0.06}                   # leggings: 6% / 12% of a melee hit back at the attacker
   swiftstride: {speed-per-level: 0.03}                   # boots: +3% / +6% speed
   frostbite: {chance-per-level: 0.10}
   venom: {chance-per-level: 0.10}
-  thunderstrike: {chance: 0.05, damage: 3, cooldown-seconds: 12}
+  thunderstrike: {chance: 0.07, damage: 4, cooldown-seconds: 10}   # 1.2.65: was 5% / +3 / 12 s
   vitality: {max-regeneration-level: 1, level1-below: 0.5}   # Regeneration I; Vitality I only below half health
-  featherstep: {fall-reduction: 0.25}
-  veinminer: {max-blocks: 16, exclude: []}   # Vein Miner (pickaxes): sneak + mine an ore; exclude e.g. [ANCIENT_DEBRIS]
-  # 1.2.52's books (Executioner, Cleave, Bleed, Arrowguard, Thornhide, Swiftstride, Tidecaller, Autosmelt, Clearsight) are
-  # rolled ON TOP of boss-drops from the code's defaults; to change them add new-boss-drops: {<entry>: ["id:level:chance"]}.
-  # Index boss entry id: ["enchant:level:chance", ...] (each rolled on every defeat, per fighter)
-  boss-drops:
-    the_demon_eye: ["thunderstrike:1:0.25", "featherstep:1:0.2"]
-    queen_spider: ["venom:1:0.3"]
-    the_bulwark: ["vitality:1:0.2"]
-    the_great_hog: ["vitality:1:0.25"]
-    captain_rotbeard: ["lifesteal:1:0.2"]
-    mortimer_freeze: ["frostbite:1:0.3"]
-    the_dune_devourer: ["venom:1:0.3"]
-    the_frostmaw: ["frostbite:2:0.25"]
-    don_lorenzo: ["lifesteal:1:0.3"]
-    the_kraken: ["thunderstrike:1:0.3"]
-    the_kraken_at_sea: ["thunderstrike:1:0.3"]
-    diamond_jacob: ["vitality:2:0.35"]
-    rocco_vendetta: ["lifesteal:2:0.35"]
-    brine_scourge: ["lifesteal:2:0.35", "venom:2:0.35", "veinminer:1:0.25"]
-    umbral_leviathan: ["vitality:2:0.35", "thunderstrike:1:0.35", "veinminer:1:0.25"]
-    coralia: ["featherstep:1:0.2", "frostbite:1:0.2"]
-    old_inkjaw: ["venom:1:0.2", "lifesteal:1:0.15"]
-    grandmaw_clam: ["vitality:1:0.2"]
-    the_lament: ["lifesteal:1:0.2", "frostbite:2:0.1"]
-    the_skeleton_captain: ["thunderstrike:1:0.3"]
-    grimtusk: ["lifesteal:1:0.3", "vitality:1:0.2"]
-    leviathan: ["thunderstrike:1:0.2"]
-    sandworm_king: ["venom:2:0.2"]
-    lich: ["lifesteal:2:0.2"]
-    frost_wyrm: ["frostbite:2:0.25"]
-    stone_golem: ["vitality:1:0.2", "veinminer:1:0.3"]
-    ghost_captain: ["featherstep:1:0.3"]
+  featherstep: {fall-reduction: 0.3}       # 1.2.65: was 25%
+  veinminer: {max-blocks: 20, exclude: []}  # 1.2.65: was 16   # Vein Miner (pickaxes): sneak + mine an ore; exclude e.g. [ANCIENT_DEBRIS]
+  # 1.2.65: which boss drops which book is in the code (only the bosses that are left: Jacob, the raid / pirate bosses,
+  # the Abyssal Kraken and the Dark Ocean's bosses). The old boss-drops / new-boss-drops lists are NOT read any more.
+  # To change one boss: drops: {<Index boss entry id>: ["enchant:level:chance", ...]} (each rolled on every defeat, per fighter)
 
 # Elytra races (1.2.17): admins build a course (/race create, /race cp add) and host it (/race host <course> [lend]).
 race:
@@ -735,26 +707,25 @@ trinkets:
   crest-max: 4
   guardian-radius: 8
   guardian-reduction: 0.01           # Guardian's Oath: kingdom-mates near you take 1% less damage
-  lantern-radius: 4
+  lantern-radius: 5                  # 1.2.65: was 4
   lantern-seconds: 3
   lantern-cooldown-seconds: 1.5
   thumb-radius: 8
-  thumb-boost: 0.15
+  thumb-boost: 0.2                   # 1.2.65: was 0.15
   treasure-drowned-chance: 0.03
-  treasure-range: 30
-  smelter-chance: 0.2
+  treasure-range: 40                 # 1.2.65: was 30
+  smelter-chance: 0.3                # 1.2.65: was 0.2
   featherfall-blocks: 5
 
-# Ancient Core (accessory, from Stone Golem gear parts). 1.2.31 balance: was +3 armor, +25% knockback resistance and
-# +2 hearts, more than Diamond Jacob's Diamond Heart from a far harder fight.
 # Diamond Heart (Diamond Jacob drop). 1.2.38: take this fraction less from every kind of damage (replaced +2 hearts).
+# 1.2.65: 10% (was 8%): Jacob is the last land boss now, and much harder.
 diamond-heart:
-  damage-reduction: 0.08
+  damage-reduction: 0.1
 
-ancient-core:
-  armor: 2
-  knockback-resistance: 0.15
-  health: 0
+# 1.2.65: the removed land bosses' items (their summons, weapons, drops, discs, the Ancient Core, the Boss Rush Sigil)
+# and the boss trophies are taken away wherever they turn up; crafted summons give their materials back. false = off.
+old-gear:
+  enabled: true
 
 # Event sky packs (1.2.59): while an event is on, everyone in its world (Java) gets its own small pack on top of
 # FaultlineSMP.zip, taken off when it ends. Adding/removing a pack shows the loading screen, so pack-shield covers it.

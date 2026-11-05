@@ -61,9 +61,12 @@ final class AccessoryStacks implements Listener {
         out.add(FaultlineItems.DiscountCardItem.create(plugin));
         out.add(FaultlineItems.LifeJellyItem.create(plugin));
         out.add(FaultlineItems.ShieldOfTheOceanItem.create(plugin));
-        try { out.add(plugin.getGear().item("ancient_core")); } catch (RuntimeException ignored) { }
         try { out.add(plugin.getRangerGear().item(RangerGear.Piece.WINDRUNNER)); out.add(plugin.getRangerGear().item(RangerGear.Piece.OATH)); } catch (RuntimeException ignored) { }
         try { out.add(plugin.getTrinkets().item(TrinketGear.Piece.FANG)); } catch (RuntimeException ignored) { }
+        // 1.2.65's pass
+        try { for (TrinketGear.Piece tp : List.of(TrinketGear.Piece.LANTERN, TrinketGear.Piece.THUMB, TrinketGear.Piece.TREASURE, TrinketGear.Piece.SMELTER)) out.add(plugin.getTrinkets().item(tp)); } catch (RuntimeException ignored) { }
+        try { out.add(plugin.getMirrorGear().item()); } catch (RuntimeException ignored) { }
+        try { out.add(plugin.getJacobGear().item(JacobGear.Piece.HEART)); } catch (RuntimeException ignored) { }
         out.removeIf(java.util.Objects::isNull);
         cache = out;
         cachedAt = now;

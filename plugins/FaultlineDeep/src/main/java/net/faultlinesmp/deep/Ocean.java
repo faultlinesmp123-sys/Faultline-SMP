@@ -156,7 +156,6 @@ final class Ocean implements Listener {
             if (!in || l.getY() >= cfg("trench.pressure.below-y", -10)) continue;
             if (p.getGameMode() != GameMode.SURVIVAL && p.getGameMode() != GameMode.ADVENTURE) continue;
             if (!pl.getConfig().getBoolean("trench.pressure.enabled", true)) continue;
-            if (p.getScoreboardTags().contains("faultline_boss_rush")) continue; // the Deep Boss Rush brings its own team down here
             if (pl.subs != null && pl.subs.riding(p)) continue;                 // inside a Submersible (its hull takes the depth)
             if (pl.habitat != null && pl.habitat.upgrades.shielded(l)) continue; // 1.12.0: a dome's Pressure Hull
             boolean suit = suit(p);

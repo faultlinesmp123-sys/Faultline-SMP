@@ -36,13 +36,11 @@ final class Weakness implements Listener {
     final Map<UUID, Set<String>> known = new HashMap<>();
     static final Map<String, String> ALIASES = new HashMap<>();
     static {
-        ALIASES.put("frostbeard", "mortimer_freeze"); ALIASES.put("mortimer", "mortimer_freeze");
         ALIASES.put("grubnash", "deep_goblin"); ALIASES.put("acid goblin", "deep_goblin");
         ALIASES.put("captain hollow", "ghost_captain"); ALIASES.put("titan", "abyssal_titan");
-        ALIASES.put("kraken", "the_kraken"); ALIASES.put("demon eye", "the_demon_eye"); ALIASES.put("jacob", "diamond_jacob");
-        ALIASES.put("rocco", "rocco_vendetta"); ALIASES.put("rotbeard", "captain_rotbeard"); ALIASES.put("great hog", "the_great_hog");
-        ALIASES.put("bulwark", "the_bulwark"); ALIASES.put("dune devourer", "the_dune_devourer"); ALIASES.put("frostmaw", "the_frostmaw");
-        ALIASES.put("lorenzo", "don_lorenzo"); ALIASES.put("sandworm", "sandworm_king"); ALIASES.put("wyrm", "frost_wyrm");
+        ALIASES.put("kraken", "the_abyssal_kraken"); ALIASES.put("jacob", "diamond_jacob");
+        ALIASES.put("rotbeard", "captain_rotbeard"); ALIASES.put("great hog", "the_great_hog");
+        ALIASES.put("bulwark", "the_bulwark");
         ALIASES.put("scourge", "brine_scourge"); ALIASES.put("umbral", "umbral_leviathan"); ALIASES.put("inkjaw", "old_inkjaw");
         ALIASES.put("grandmaw", "grandmaw_clam"); ALIASES.put("lament", "the_lament"); ALIASES.put("rimeback", "deep_rimeback");
         ALIASES.put("drowned king", "deep_drownking");

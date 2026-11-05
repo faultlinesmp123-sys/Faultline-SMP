@@ -59,7 +59,7 @@ final class Discord implements Listener {
 
     static final List<String> DEFAULT_FORWARD = List.of(
             "(?i)has been defeated", "(?i)has fallen", "(?i)has been laid to rest", "(?i)defeated", "(?i)meteor", "(?i)caravan",
-            "(?i)achievement", "(?i)is the first to", "(?i)aurora", "(?i)sandstorm", "(?i)blizzard", "(?i)eclipse", "(?i)locust",
+            "(?i)achievement", "(?i)is the first to", "(?i)sandstorm", "(?i)blizzard", "(?i)eclipse",
             "(?i)ghost ship|wailing mary", "(?i)invasion", "(?i)boss rush");
     static final List<String> DEFAULT_WHISPERS = List.of("msg", "tell", "w", "whisper", "r", "reply", "m", "t", "pm", "dm",
             "emsg", "etell", "ewhisper", "er", "ereply", "message", "teammsg", "tm");

@@ -29,7 +29,6 @@ import java.util.UUID;
  * and it's taken off again when the event ends:
  *  - blood-moon (FaultlineEvents' BLOOD_MOON on the main world): FaultlineBloodMoon.zip, the red moon
  *  - eclipse (Weather's Eclipse in its world): FaultlineEclipse.zip, a black sun with a burning corona where the moon is
- *  - aurora (Weather's Aurora in its world): FaultlineAurora.zip, green / violet aurora curtains for clouds
  * (made by tools/event_packs.py; url/hash under event-packs.<id>, the hash checked like the main pack's by PackHash).
  * Someone joining or arriving mid-event gets it once their main pack has loaded. Each pack's own id (EVENT_IDS) keeps it
  * apart from the main pack, so adding or removing it never touches the others.
@@ -49,13 +48,11 @@ final class EventPacks implements Listener {
     static {
         EVENT_IDS.put("blood-moon", UUID.fromString("b10d0000-6d6f-4f6e-8a1b-000000000001"));
         EVENT_IDS.put("eclipse", UUID.fromString("ec11b5e0-6d6f-4f6e-8a1b-000000000002"));
-        EVENT_IDS.put("aurora", UUID.fromString("a0a0a000-6d6f-4f6e-8a1b-000000000003"));
     }
     static final String RAW = "https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/main/";
     static final Map<String, String[]> DEFAULTS = Map.of(
             "blood-moon", new String[]{RAW + "FaultlineBloodMoon.zip", "2bd923ab60ea489e8cd0b2940799b2e04dfb4ebe"},
-            "eclipse", new String[]{RAW + "FaultlineEclipse.zip", "90ac668c24a2408a3170e471ef677f8e0ec7048c"},
-            "aurora", new String[]{RAW + "FaultlineAurora.zip", "e60868fe219c3b070ccd8b92a319cc6c92daeab7"});
+            "eclipse", new String[]{RAW + "FaultlineEclipse.zip", "90ac668c24a2408a3170e471ef677f8e0ec7048c"});
     /** What counts as a natural spawn the shield stops. */
     static final Set<String> BLOCKED = Set.of("NATURAL", "SPAWNER", "PATROL", "REINFORCEMENTS", "VILLAGE_INVASION", "JOCKEY", "MOUNT",
             "TRAP", "TRIAL_SPAWNER", "ENDER_PEARL", "SILVERFISH_BLOCK", "LIGHTNING", "SLIME_SPLIT", "RAID", "DEFAULT");

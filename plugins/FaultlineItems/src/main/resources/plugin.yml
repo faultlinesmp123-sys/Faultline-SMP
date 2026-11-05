@@ -1,5 +1,5 @@
 name: FaultlineItems
-version: 1.2.66
+version: 1.2.67
 main: net.faultlinesmp.items.FaultlineItems
 api-version: '1.21'
 softdepend: [floodgate, Geyser-Spigot]
@@ -125,8 +125,8 @@ commands:
     permission: items.givelostmirror
   fweather:
     aliases: [weatherevent]
-    description: "Weather events now (admins: start/stop aurora, sandstorm, blizzard, eclipse, locusts)"
-    usage: /fweather [list|<aurora|sandstorm|blizzard|eclipse|locusts> [player]|stop [event]|status]
+    description: "Weather events now (admins: start/stop sandstorm, blizzard, eclipse)"
+    usage: /fweather [list|<sandstorm|blizzard|eclipse> [player]|stop [event]|status]
   fenchant:
     description: "Admin: boss enchant books (/fenchant give <id> [level] [amount] [player], /fenchant list)"
     usage: /fenchant [list|give <id> [level] [amount] [player]]

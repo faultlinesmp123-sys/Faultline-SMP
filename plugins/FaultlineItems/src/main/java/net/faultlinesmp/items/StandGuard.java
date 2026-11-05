@@ -22,7 +22,7 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * The armor stands that draw things for Bedrock players only (WildRig stands: locusts, Mimics; museum pedestals).
+ * The armor stands that draw things for Bedrock players only (WildRig stands: Mimics; museum pedestals).
  * Java players never see them, but Bedrock players do, and their hits and clicks land on the stand instead of the
  * thing it draws. Without this a Bedrock player punching a Mimic broke the stand (dropping its model) and never hurt
  * the Mimic, and punching a pedestal's stand dropped a COPY of the exhibit.

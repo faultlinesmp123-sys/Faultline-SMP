@@ -14,11 +14,8 @@ import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
 import org.bukkit.WeatherType;
 import org.bukkit.World;
-import org.bukkit.attribute.Attribute;
-import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.block.Biome;
 import org.bukkit.block.Block;
-import org.bukkit.block.data.Ageable;
 import org.bukkit.block.data.Lightable;
 import org.bukkit.boss.BarColor;
 import org.bukkit.boss.BarStyle;
@@ -30,7 +27,6 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
-import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Bee;
 import org.bukkit.entity.CaveSpider;
 import org.bukkit.entity.Display;
@@ -44,19 +40,12 @@ import org.bukkit.entity.Player;
 import org.bukkit.entity.PolarBear;
 import org.bukkit.entity.Spider;
 import org.bukkit.entity.Stray;
-import org.bukkit.entity.Vex;
 import org.bukkit.entity.Wolf;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
-import org.bukkit.event.enchantment.EnchantItemEvent;
-import org.bukkit.event.enchantment.PrepareItemEnchantEvent;
 import org.bukkit.event.entity.EntityCombustEvent;
-import org.bukkit.event.entity.EntityDamageByEntityEvent;
-import org.bukkit.event.entity.EntityDeathEvent;
-import org.bukkit.event.entity.EntityTargetEvent;
-import org.bukkit.event.player.PlayerExpChangeEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
@@ -71,30 +60,25 @@ import java.util.*;
 
 /**
  * WEATHER EVENTS (config weather:): rare things the sky (or the fields) do on their own.
- *   AURORA     some nights: ribbons of light across the sky (Java: glowing models; Bedrock: coloured particles).
- *              Experience is doubled and enchanting is cheaper until dawn.
  *   SANDSTORM  in deserts / badlands: thick dust, slowness, husk hordes, and buried treasure in the sand you dig.
  *   BLIZZARD   in snowy biomes: snow, cold (you freeze unless you're near a fire or wearing leather), stray packs.
  *   ECLIPSE    at midday the sun goes dark for 5 minutes: it turns to night and every neutral mob turns on you.
- *   LOCUSTS    a swarm finds a farm and eats the crops (back to seedlings) until it's driven off.
- * Admin: /fweather <aurora|sandstorm|blizzard|eclipse|locusts> [here] | stop [kind] | status
+ * (The Aurora and the Locust Swarm were removed in Items 1.2.67; leftover locusts carry TAG and are swept on startup.)
+ * Admin: /fweather <sandstorm|blizzard|eclipse> [player] | stop [kind] | status
  */
 final class Weather implements Listener, CommandExecutor, org.bukkit.command.TabCompleter {
 
     static final String TAG = "faultline_weather", HUSK_TAG = "faultline_sandstorm_husk", STRAY_TAG = "faultline_blizzard_stray",
-            LOCUST_TAG = "faultline_locust", PART_TAG = "faultline_weather_part";
-    static final List<String> KINDS = List.of("aurora", "sandstorm", "blizzard", "eclipse", "locusts");
+            PART_TAG = "faultline_weather_part";
+    static final List<String> KINDS = List.of("sandstorm", "blizzard", "eclipse");
     static final Map<String, String> ABOUT = Map.of(
-            "aurora", "night sky lights: double XP, cheaper enchanting until dawn",
             "sandstorm", "deserts/badlands: dust, husks, treasure in the sand",
             "blizzard", "snowy biomes: freezing cold, strays",
-            "eclipse", "a black sun: beasts turn on you for 5 min",
-            "locusts", "a swarm eats a farm until it's driven off");
+            "eclipse", "a black sun: beasts turn on you for 5 min");
 
     private final FaultlineItems plugin;
     private final Random random = new Random();
     final Map<String, Event> active = new LinkedHashMap<>();
-    private final Map<String, Long> lastNight = new HashMap<>();
     private int ticks;
 
     Weather(FaultlineItems plugin) {
@@ -143,14 +127,6 @@ final class Weather implements Listener, CommandExecutor, org.bukkit.command.Tab
         for (World w : Bukkit.getWorlds()) {
             if (!FaultlineItems.surfaceWorld(w)) continue;
             long t = w.getTime();
-            // AURORA: rolled once each night, as it falls
-            if (on("aurora") && !active.containsKey("aurora") && t >= 13000 && t < 14500) {
-                long day = w.getFullTime() / 24000;
-                if (!Objects.equals(lastNight.get(w.getName()), day)) {
-                    lastNight.put(w.getName(), day);
-                    if (random.nextDouble() < cfg("aurora.chance-per-night", 0.2)) start("aurora", w, null);
-                }
-            }
             // ECLIPSE: around midday
             if (on("eclipse") && !active.containsKey("eclipse") && t >= 4500 && t < 7500 && !w.getPlayers().isEmpty()
                     && random.nextDouble() < cfg("eclipse.chance-per-minute", 0.003)) start("eclipse", w, null);
@@ -160,10 +136,6 @@ final class Weather implements Listener, CommandExecutor, org.bukkit.command.Tab
             Biome b = p.getLocation().getBlock().getBiome();
             if (on("sandstorm") && !active.containsKey("sandstorm") && SANDS.contains(b) && random.nextDouble() < cfg("sandstorm.chance-per-minute", 0.006)) start("sandstorm", p.getWorld(), p.getLocation());
             else if (on("blizzard") && !active.containsKey("blizzard") && SNOWY.contains(b) && random.nextDouble() < cfg("blizzard.chance-per-minute", 0.006)) start("blizzard", p.getWorld(), p.getLocation());
-            else if (on("locusts") && !active.containsKey("locusts") && isDay(p.getWorld()) && random.nextDouble() < cfg("locusts.chance-per-minute", 0.004)) {
-                Location farm = farmNear(p.getLocation(), 16, (int) cfg("locusts.min-crops", 16));
-                if (farm != null) start("locusts", p.getWorld(), farm);
-            }
         }
     }
 
@@ -172,20 +144,6 @@ final class Weather implements Listener, CommandExecutor, org.bukkit.command.Tab
     static final Set<Biome> SANDS = new HashSet<>(List.of(Biome.DESERT, Biome.BADLANDS, Biome.ERODED_BADLANDS, Biome.WOODED_BADLANDS));
     static final Set<Biome> SNOWY = new HashSet<>(List.of(Biome.SNOWY_PLAINS, Biome.SNOWY_TAIGA, Biome.SNOWY_SLOPES, Biome.SNOWY_BEACH, Biome.GROVE,
             Biome.ICE_SPIKES, Biome.FROZEN_PEAKS, Biome.JAGGED_PEAKS, Biome.FROZEN_RIVER, Biome.FROZEN_OCEAN, Biome.DEEP_FROZEN_OCEAN));
-    static final Set<Material> CROPS = new HashSet<>(List.of(Material.WHEAT, Material.CARROTS, Material.POTATOES, Material.BEETROOTS,
-            Material.MELON_STEM, Material.PUMPKIN_STEM, Material.SWEET_BERRY_BUSH, Material.TORCHFLOWER_CROP, Material.PITCHER_CROP));
-
-    /** The middle of a field near l with at least n crops within r, or null. */
-    static Location farmNear(Location l, int r, int n) {
-        World w = l.getWorld();
-        int count = 0; double x = 0, y = 0, z = 0;
-        for (int dx = -r; dx <= r; dx++) for (int dz = -r; dz <= r; dz++) for (int dy = -4; dy <= 4; dy++) {
-            Block b = w.getBlockAt(l.getBlockX() + dx, l.getBlockY() + dy, l.getBlockZ() + dz);
-            if (!CROPS.contains(b.getType())) continue;
-            count++; x += b.getX(); y += b.getY(); z += b.getZ();
-        }
-        return count < n ? null : new Location(w, x / count + 0.5, y / count + 1.5, z / count + 0.5);
-    }
 
     // =====================================================================================================
     //  starting and ending
@@ -193,11 +151,9 @@ final class Weather implements Listener, CommandExecutor, org.bukkit.command.Tab
     Event start(String kind, World w, Location at) {
         if (active.containsKey(kind)) return null;
         Event e = switch (kind) {
-            case "aurora" -> new Aurora(w);
             case "sandstorm" -> at == null ? null : new Sandstorm(at);
             case "blizzard" -> at == null ? null : new Blizzard(at);
             case "eclipse" -> new Eclipse(w);
-            case "locusts" -> at == null ? null : new Locusts(at);
             default -> null;
         };
         if (e == null) return null;
@@ -227,119 +183,6 @@ final class Weather implements Listener, CommandExecutor, org.bukkit.command.Tab
         abstract boolean tick();
         abstract void finish(boolean natural);
         String where() { return ""; }
-    }
-
-    // =====================================================================================================
-    //  AURORA
-    // =====================================================================================================
-    final class Aurora extends Event {
-        /** Each player's own ribbons: only they see them (everyone else's would hang in their sky too). */
-        final Map<UUID, List<ItemDisplay>> ribbons = new HashMap<>();
-        Aurora(World w) { super("aurora", w, 14); }
-
-        @Override void begin() {
-            for (Player p : world.getPlayers()) {
-                p.sendMessage(ChatColor.GREEN + "" + ChatColor.BOLD + "✦ An aurora lights up the night sky! " + ChatColor.GRAY + "Experience is doubled and enchanting is cheaper until dawn.");
-                p.playSound(p.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_RESONATE, SoundCategory.AMBIENT, 1f, 0.6f);
-            }
-        }
-
-        ItemDisplay ribbon(Player owner, Location at) {
-            ItemDisplay d = world.spawn(at, ItemDisplay.class, e -> {
-                e.setVisibleByDefault(false);
-                e.setItemStack(WildRig.model("aurora"));
-                e.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.NONE);
-                e.setBrightness(new Display.Brightness(15, 15));
-                e.setViewRange(4f);
-                e.setTeleportDuration(20);
-                e.setInterpolationDuration(20);
-                e.setPersistent(false);
-                e.addScoreboardTag(TAG);
-                e.addScoreboardTag("faultline_no_bedrock_fx");
-            });
-            owner.showEntity(plugin, d);
-            return d;
-        }
-
-        @Override boolean tick() {
-            t++;
-            long time = world.getTime();
-            if (t > 200 && (time >= 23000 || time < 12500)) return true;
-            if (t % 10 != 0) return false;
-            Set<UUID> here = new HashSet<>();
-            double size = Math.max(0.3, Math.min(3, cfg("aurora.size", 1.2)));
-            double up = Math.max(20, Math.min(80, cfg("aurora.height", 38)));
-            double[] meta = WildParts.of("aurora");
-            for (Player p : world.getPlayers()) {
-                here.add(p.getUniqueId());
-                if (bedrock(p)) { // Bedrock can't draw the ribbons: a curtain of coloured dust across the northern sky
-                    Color[] cols = {Color.fromRGB(60, 255, 150), Color.fromRGB(120, 160, 255), Color.fromRGB(190, 110, 255)};
-                    for (int i = 0; i < 40; i++) {
-                        double x = (i - 20) * 1.2;
-                        double y = 22 + Math.sin(i * 0.35 + t * 0.05) * 2 + (i % 3);
-                        p.spawnParticle(Particle.DUST, p.getLocation().add(x, y, -18), 1, 0.2, 0.4, 0.2, 0, new Particle.DustOptions(cols[i % 3], 2.4f));
-                    }
-                    continue;
-                }
-                List<ItemDisplay> rs = ribbons.computeIfAbsent(p.getUniqueId(), k -> new ArrayList<>());
-                rs.removeIf(d -> !d.isValid());
-                Location eye = p.getLocation();
-                double top = Math.max(eye.getY(), world.getHighestBlockYAt(eye, HeightMap.MOTION_BLOCKING_NO_LEAVES));
-                for (int i = 0; i < 3; i++) {
-                    // three curtains across the northern sky, 45-60 blocks out, slowly swaying
-                    double ang = Math.toRadians(-40 + i * 40) + Math.sin(t * 0.004 + i) * 0.15;
-                    double dist = 48 + i * 6;
-                    double dx = Math.sin(ang) * dist, dz = -Math.cos(ang) * dist;
-                    Location l = new Location(world, eye.getX() + dx, top + up + i * 4, eye.getZ() + dz);
-                    if (rs.size() <= i) rs.add(ribbon(p, l));
-                    ItemDisplay d = rs.get(i);
-                    if (!d.getWorld().equals(world)) continue;
-                    d.teleport(l);
-                    // face the player (the ribbon's flat side toward them), tilted back a little
-                    float face = (float) Math.atan2(-dx, -dz);
-                    Quaternionf rot = new Quaternionf().rotationY(face).rotateX((float) Math.toRadians(-15)).rotateZ((float) (Math.sin(t * 0.006 + i * 2) * 0.08));
-                    float sc = (float) (meta[0] * size);
-                    Vector3f off = new Vector3f((float) (meta[1] * size), (float) (meta[2] * size), (float) (meta[3] * size));
-                    rot.transform(off);
-                    d.setInterpolationDelay(0);
-                    d.setTransformation(new Transformation(off, rot, new Vector3f(sc, sc, sc), new Quaternionf()));
-                }
-            }
-            for (Iterator<Map.Entry<UUID, List<ItemDisplay>>> it = ribbons.entrySet().iterator(); it.hasNext(); ) {
-                var e = it.next();
-                if (here.contains(e.getKey())) continue;
-                for (ItemDisplay d : e.getValue()) if (d.isValid()) d.remove();
-                it.remove();
-            }
-            return false;
-        }
-
-        @Override void finish(boolean natural) {
-            for (List<ItemDisplay> l : ribbons.values()) for (ItemDisplay d : l) if (d.isValid()) d.remove();
-            ribbons.clear();
-            if (natural) for (Player p : world.getPlayers()) p.sendMessage(ChatColor.GRAY + "The aurora fades with the dawn.");
-        }
-    }
-
-    @EventHandler(ignoreCancelled = true)
-    public void onExp(PlayerExpChangeEvent e) {
-        Event a = active.get("aurora");
-        if (a != null && e.getPlayer().getWorld().equals(a.world) && e.getAmount() > 0) e.setAmount((int) Math.round(e.getAmount() * cfg("aurora.xp-multiplier", 2.0)));
-    }
-
-    @EventHandler(ignoreCancelled = true)
-    public void onPrepareEnchant(PrepareItemEnchantEvent e) {
-        Event a = active.get("aurora");
-        if (a == null || !e.getEnchanter().getWorld().equals(a.world)) return;
-        double k = cfg("aurora.enchant-cost-multiplier", 0.7);
-        for (var offer : e.getOffers()) if (offer != null) offer.setCost(Math.max(1, (int) Math.round(offer.getCost() * k)));
-    }
-
-    @EventHandler(ignoreCancelled = true)
-    public void onEnchant(EnchantItemEvent e) {
-        Event a = active.get("aurora");
-        if (a == null || !e.getEnchanter().getWorld().equals(a.world)) return;
-        e.setExpLevelCost(Math.max(1, (int) Math.round(e.getExpLevelCost() * cfg("aurora.enchant-cost-multiplier", 0.7))));
     }
 
     // =====================================================================================================
@@ -634,138 +477,15 @@ final class Weather implements Listener, CommandExecutor, org.bukkit.command.Tab
         }
     }
 
-    // =====================================================================================================
-    //  LOCUSTS
-    // =====================================================================================================
-    final class Locusts extends Event {
-        final Location farm;
-        final List<Swarmer> swarm = new ArrayList<>();
-        final Set<UUID> defenders = new HashSet<>();
-        int eaten;
-        Locusts(Location at) { super("locusts", at.getWorld(), Weather.this.cfg("locusts.minutes", 4)); farm = at.clone(); }
-
-        @Override String where() { return " at X " + farm.getBlockX() + ", Z " + farm.getBlockZ(); }
-
-        final class Swarmer {
-            final Vex body;
-            final ItemDisplay model;
-            final ArmorStand stand;
-            Swarmer(Location at) {
-                body = world.spawn(at, Vex.class, v -> {
-                    v.addScoreboardTag(TAG); v.addScoreboardTag(LOCUST_TAG);
-                    v.setCustomName(ChatColor.YELLOW + "Locust");
-                    v.setCustomNameVisible(false);
-                    v.setPersistent(false);
-                    v.setSilent(true);
-                    v.setInvisible(true);
-                    v.getEquipment().setItemInMainHand(null);
-                    v.setBound(farm);
-                    AttributeInstance mh = v.getAttribute(Attribute.MAX_HEALTH);
-                    if (mh != null) { mh.setBaseValue(cfg("locusts.health", 6)); v.setHealth(cfg("locusts.health", 6)); }
-                });
-                model = WildRig.display(world, at, "locust", TAG);
-                stand = WildRig.stand(plugin, world, at, "locust", 1.0, TAG);
-                StandGuard.forward(stand, body);
-            }
-            boolean alive() { return body.isValid() && !body.isDead(); }
-            void follow() {
-                Location l = body.getLocation().add(0, 0.3, 0);
-                WildRig.pose(model, stand, "locust", 1.0, l, l.getYaw(), null);
-            }
-            void remove() { if (body.isValid()) body.remove(); if (model.isValid()) model.remove(); StandGuard.forget(stand); if (stand.isValid()) stand.remove(); }
-        }
-
-        @Override void begin() {
-            int n = (int) cfg("locusts.count", 12);
-            for (int i = 0; i < n; i++) swarm.add(new Swarmer(farm.clone().add(random.nextGaussian() * 4, 2 + random.nextDouble() * 3, random.nextGaussian() * 4)));
-            for (Player p : world.getPlayers()) if (p.getLocation().distanceSquared(farm) < sq(48)) {
-                p.showTitle(net.kyori.adventure.title.Title.title(Meteor.legacy(ChatColor.YELLOW + "" + ChatColor.BOLD + "LOCUST SWARM"),
-                        Meteor.legacy(ChatColor.GRAY + "They're eating your crops! Swat them!")));
-            }
-            Bukkit.broadcastMessage(ChatColor.YELLOW + "" + ChatColor.BOLD + "A locust swarm descends on a farm" + where() + ChatColor.GRAY + " (drive it off before it eats everything)");
-        }
-
-        @Override boolean tick() {
-            t++;
-            swarm.removeIf(s -> { if (!s.alive()) { s.remove(); return true; } return false; });
-            if (swarm.isEmpty()) {
-                for (UUID u : defenders) {
-                    Player p = Bukkit.getPlayer(u);
-                    if (p == null) continue;
-                    for (String line : plugin.getConfig().getStringList("weather.locusts.rewards")) { ItemStack it = parse(line); if (it != null) p.getWorld().dropItemNaturally(p.getLocation(), it); }
-                    if (plugin.getConfig().getStringList("weather.locusts.rewards").isEmpty()) {
-                        p.getWorld().dropItemNaturally(p.getLocation(), new ItemStack(Material.EMERALD, 3 + random.nextInt(4)));
-                        p.getWorld().dropItemNaturally(p.getLocation(), new ItemStack(Material.BONE_MEAL, 16));
-                    }
-                    Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "index stat " + p.getName() + " locust_swarms 1");
-                }
-                Bukkit.broadcastMessage(ChatColor.YELLOW + "The locust swarm is driven off!" + ChatColor.GRAY + " (" + eaten + " crops lost)");
-                return true;
-            }
-            if (System.currentTimeMillis() > endsAt) {
-                Bukkit.broadcastMessage(ChatColor.YELLOW + "The locust swarm moves on, full..." + ChatColor.GRAY + " (" + eaten + " crops lost)");
-                return true;
-            }
-            for (Swarmer s : swarm) s.follow();
-            if (t % 15 == 0) world.playSound(farm, Sound.ENTITY_BEE_LOOP_AGGRESSIVE, SoundCategory.HOSTILE, 2f, 1.6f);
-            if (t % 40 == 0) for (Swarmer s : swarm) {
-                Block crop = cropNear(s.body.getLocation(), 6);
-                if (crop == null) crop = cropNear(farm, 14);
-                if (crop == null || !(crop.getBlockData() instanceof Ageable a)) continue;
-                if (a.getAge() == 0) continue;
-                a.setAge(0);
-                crop.setBlockData(a, false);
-                eaten++;
-                world.spawnParticle(Particle.BLOCK, crop.getLocation().add(0.5, 0.4, 0.5), 8, 0.3, 0.2, 0.3, 0, Material.HAY_BLOCK.createBlockData());
-                world.playSound(crop.getLocation(), Sound.BLOCK_CROP_BREAK, SoundCategory.HOSTILE, 0.7f, 1.3f);
-            }
-            return false;
-        }
-
-        Block cropNear(Location l, int r) {
-            for (int i = 0; i < 12; i++) {
-                Block b = l.getWorld().getBlockAt(l.getBlockX() + random.nextInt(r * 2 + 1) - r, l.getBlockY() - 1 + random.nextInt(4) - 2, l.getBlockZ() + random.nextInt(r * 2 + 1) - r);
-                if (CROPS.contains(b.getType()) && b.getBlockData() instanceof Ageable a && a.getAge() > 0) return b;
-            }
-            return null;
-        }
-
-        @Override void finish(boolean natural) { for (Swarmer s : swarm) s.remove(); swarm.clear(); }
-    }
-
-    @EventHandler(ignoreCancelled = true)
-    public void onLocustTarget(EntityTargetEvent e) {
-        if (e.getEntity().getScoreboardTags().contains(LOCUST_TAG)) e.setCancelled(true); // they want the crops, not you
-    }
-
-    @EventHandler(ignoreCancelled = true)
-    public void onLocustHit(EntityDamageByEntityEvent e) {
-        if (!e.getEntity().getScoreboardTags().contains(LOCUST_TAG)) return;
-        Player p = e.getDamager() instanceof Player pl ? pl : e.getDamager() instanceof org.bukkit.entity.Projectile pr && pr.getShooter() instanceof Player s ? s : null;
-        if (p != null && active.get("locusts") instanceof Locusts l) l.defenders.add(p.getUniqueId());
-    }
-
-    @EventHandler
-    public void onWeatherMobDeath(EntityDeathEvent e) {
-        Set<String> t = e.getEntity().getScoreboardTags();
-        if (t.contains(LOCUST_TAG)) {
-            e.getDrops().clear();
-            e.setDroppedExp(3);
-            if (random.nextDouble() < 0.3) e.getDrops().add(new ItemStack(Material.BONE_MEAL, 1 + random.nextInt(3)));
-            e.getEntity().getWorld().spawnParticle(Particle.ITEM, e.getEntity().getLocation(), 8, 0.2, 0.2, 0.2, 0.05, new ItemStack(Material.WHEAT_SEEDS));
-        }
-    }
-
     @EventHandler(ignoreCancelled = true)
     public void onBurn(EntityCombustEvent e) { // storm mobs don't burn in the (dark) day
         Set<String> t = e.getEntity().getScoreboardTags();
-        if (t.contains(HUSK_TAG) || t.contains(STRAY_TAG) || t.contains(LOCUST_TAG)) e.setCancelled(true);
+        if (t.contains(HUSK_TAG) || t.contains(STRAY_TAG)) e.setCancelled(true);
     }
 
     @EventHandler
     public void onJoin(PlayerJoinEvent e) {
         Player p = e.getPlayer();
-        if (active.get("locusts") instanceof Locusts l) for (Locusts.Swarmer s : l.swarm) if (s.stand.isValid()) { if (bedrock(p)) p.showEntity(plugin, s.stand); else p.hideEntity(plugin, s.stand); }
         if (active.get("eclipse") instanceof Eclipse ec && ec.bar != null && p.getWorld().equals(ec.world)) ec.darken(p);
     }
 
@@ -865,14 +585,10 @@ final class Weather implements Listener, CommandExecutor, org.bukkit.command.Tab
             sender.sendMessage(ChatColor.GREEN + "Stopped.");
             return true;
         }
-        if (!KINDS.contains(sub)) { sender.sendMessage(ChatColor.YELLOW + "/fweather <aurora|sandstorm|blizzard|eclipse|locusts|stop [kind]|status>"); return true; }
+        if (!KINDS.contains(sub)) { sender.sendMessage(ChatColor.YELLOW + "/fweather <sandstorm|blizzard|eclipse|stop [kind]|status>"); return true; }
         if (active.containsKey(sub)) { sender.sendMessage(ChatColor.RED + "That's already happening (/fweather stop " + sub + ")."); return true; }
         World w = p != null ? p.getWorld() : Bukkit.getWorlds().get(0);
         Location at = p != null ? p.getLocation() : null;
-        if (sub.equals("locusts") && p != null) {
-            Location farm = farmNear(p.getLocation(), 16, 1);
-            at = farm != null ? farm : p.getLocation();
-        }
         Event e = start(sub, w, at);
         sender.sendMessage(e != null ? ChatColor.GREEN + "Started: " + sub : ChatColor.RED + "Couldn't start that here (stand where it should happen).");
         return true;

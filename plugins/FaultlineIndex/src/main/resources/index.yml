@@ -732,8 +732,6 @@ entries:
   - {chapter: enemies, id: mimic, name: "Mimic", icon: mimic, detect-tag: faultline_mimic,
      where: "1% of the loot chests you find (dungeons, temples, mineshafts...) bite back.",
      does: "The chest grows teeth and legs and comes after you, lid snapping. 60 health.", drops: ["Everything the chest held|100%", "2-6 Gold Ingots|100%", "1-2 Diamonds|35%"]}
-  - {chapter: enemies, id: locust, name: "Locust", icon: locust, detect-tag: faultline_locust,
-     where: "A locust swarm sometimes finds a farm by day.", does: "They eat your crops back to seedlings until the swarm is driven off. Drive it off for emeralds and bone meal."}
   - {chapter: enemies, id: skeleton_knight, name: "Skeleton Knight", icon: skeleton_knight, detect-tag: faultline_skeleton_knight,
      where: "Patrols ride out at night on skeleton horses (a captain and his knights). They ride off at dawn.",
      does: "Armoured skeletons with swords and shields, in great helms that keep the sun off.", drops: ["Knight's Helm|6%", "Iron Nuggets|100%", "2-5 Emeralds (the captain)|100%"]}
@@ -1362,8 +1360,6 @@ achievements:
      found-creatures: 40, reward: {items: ["DIAMOND:16"], xp: 800}}
   - {id: ghostbuster, name: "Ghostbuster", icon: ghost_captain, desc: "Lay Captain Hollow to rest on the Ghost Ship.",
      stat: ghost_ships, count: 1, reward: {items: ["DIAMOND:8", "ECHO_SHARD:2"], xp: 800}}
-  - {id: pest_control, name: "Pest Control", icon: locust, desc: "Drive off a locust swarm.",
-     stat: locust_swarms, count: 1, reward: {items: ["EMERALD:12", "BONE_MEAL:32"], xp: 300}}
   - {id: mimic_hunter, name: "It Had Teeth", icon: mimic, desc: "Kill 5 Mimics.",
      stat: mimics, count: 5, reward: {items: ["DIAMOND:6", "GOLD_BLOCK:2"], xp: 500}}
   # ---- the Dark Ocean (1.6.31)

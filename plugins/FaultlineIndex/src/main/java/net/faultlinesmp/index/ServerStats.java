@@ -12,8 +12,8 @@ import java.util.*;
 
 /**
  * /serverstats: the whole server in numbers (for players, and for video stats): how many have joined, total playtime,
- * player kills, deaths, mobs killed, bosses defeated (Index credit), meteors claimed, skeleton ships sunk, locust swarms
- * driven off, Mimics killed, Ghost Ships beaten, achievements earned; and the top 3 for kills, boss defeats, playtime
+ * player kills, deaths, mobs killed, bosses defeated (Index credit), meteors claimed, skeleton ships sunk,
+ * Mimics killed, Ghost Ships beaten, achievements earned; and the top 3 for kills, boss defeats, playtime
  * and meteors. Worked out at most once every 5 minutes (every player who ever joined is counted). Offline players' vanilla
  * stats are read from world/stats/<uuid>.json off the main thread (OfflinePlayer#getStatistic reads that file on the main
  * thread for each call: with hundreds of players /serverstats froze the server).
@@ -41,7 +41,7 @@ final class ServerStats implements CommandExecutor {
             if (p.isOnline()) r.vanilla = new long[]{stat(p, Statistic.PLAY_ONE_MINUTE), stat(p, Statistic.PLAYER_KILLS), stat(p, Statistic.DEATHS), stat(p, Statistic.MOB_KILLS)};
             rows.add(r);
         }
-        long ships = sum("skeleton_ships"), swarms = sum("locust_swarms"), mimics = sum("mimics"), ghosts = sum("ghost_ships"), trades = sum("caravan_trades");
+        long ships = sum("skeleton_ships"), mimics = sum("mimics"), ghosts = sum("ghost_ships"), trades = sum("caravan_trades");
         long ach = index.achievements.achieved.values().stream().mapToLong(Set::size).sum();
         // 26.x keeps them in players/stats, older versions in stats
         java.io.File dir = null;
@@ -53,7 +53,7 @@ final class ServerStats implements CommandExecutor {
         java.io.File statsDir = dir;
         Bukkit.getScheduler().runTaskAsynchronously(index, () -> {
             for (Row r : rows) if (r.vanilla == null) r.vanilla = statsDir == null ? new long[4] : readStats(new java.io.File(statsDir, r.id + ".json"));
-            List<String> out = build(rows, new long[]{ships, swarms, mimics, ghosts, trades, ach});
+            List<String> out = build(rows, new long[]{ships, mimics, ghosts, trades, ach});
             Bukkit.getScheduler().runTask(index, () -> {
                 cached = out; cachedAt = System.currentTimeMillis();
                 List<CommandSender> to = waiting; waiting = null;
@@ -104,7 +104,7 @@ final class ServerStats implements CommandExecutor {
         }
         long bossTotal = bosses.values().stream().mapToLong(Long::longValue).sum();
         long meteorTotal = meteors.values().stream().mapToLong(Long::longValue).sum();
-        long ships = extra[0], swarms = extra[1], mimics = extra[2], ghosts = extra[3], trades = extra[4], ach = extra[5];
+        long ships = extra[0], mimics = extra[1], ghosts = extra[2], trades = extra[3], ach = extra[4];
         List<String> out = new ArrayList<>();
         String bar = ChatColor.DARK_GRAY + "" + ChatColor.STRIKETHROUGH + "                                        ";
         out.add(bar);
@@ -113,7 +113,7 @@ final class ServerStats implements CommandExecutor {
         out.add(line("Player kills", pk) + "   " + line("Deaths", deaths));
         out.add(line("Mobs killed", mobs) + "   " + line("Bosses defeated", bossTotal));
         out.add(line("Meteors claimed", meteorTotal) + "   " + line("Skeleton ships sunk", ships));
-        out.add(line("Locust swarms", swarms) + "   " + line("Mimics", mimics) + "   " + line("Ghost Ships", ghosts));
+        out.add(line("Mimics", mimics) + "   " + line("Ghost Ships", ghosts));
         out.add(line("Caravan trades", trades) + "   " + line("Achievements", ach));
         out.add(ChatColor.GOLD + "  Top killers: " + top(kills, ""));
         out.add(ChatColor.GOLD + "  Top boss hunters: " + top(bosses, ""));

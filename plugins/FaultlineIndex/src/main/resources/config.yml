@@ -46,7 +46,7 @@ discord:
     ignore-commands: [login, l, log, register, reg, changepassword, changepass, cp]   # never logged (passwords)
   # announcements matching any of these (Java regexes) are posted
   forward: ["(?i)has been defeated", "(?i)has fallen", "(?i)has been laid to rest", "(?i)meteor", "(?i)caravan", "(?i)achievement",
-            "(?i)is the first to", "(?i)aurora", "(?i)sandstorm", "(?i)blizzard", "(?i)eclipse", "(?i)locust", "(?i)ghost ship|wailing mary",
+            "(?i)is the first to", "(?i)sandstorm", "(?i)blizzard", "(?i)eclipse", "(?i)ghost ship|wailing mary",
             "(?i)invasion"]
 
 # Watch (1.6.15): catches x-rayers, cheaters, dupers and griefers. Daily log files in plugins/FaultlineIndex/logs/,

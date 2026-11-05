@@ -1607,6 +1607,11 @@ Notes:
   `weather.locusts` / `event-packs.aurora` left the default config (old keys in a server's config are ignored). Index: the
   Locust entry and the Pest Control achievement removed (342 entries), the Discord forward regexes, the guide's weather line
   and `/serverstats` (no "Locust swarms") updated. Tested (`mb/Smoke.java`).
+- **Deep 1.14.1 (the sunken anchor)**: `Details.anchor` floated apart in game: the ring sat diagonally off the shank, the
+  rotted stock left loose bits beside it, and the chain was a staircase of single links hanging in mid-water. Now the shank
+  runs to b+11 with a closed ring on it (b+12..14), the stock is one piece (one side rotted short), and the chain runs out
+  through the ring, hangs straight down past the flukes and lies along the real floor (`g.upperFloor` per column, vertical
+  links where the floor steps). Already-generated anchors don't change. Preview: scratch `mb/prev` `AnchorPreview`.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Skills → Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

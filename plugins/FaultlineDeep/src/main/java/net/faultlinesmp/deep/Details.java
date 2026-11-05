@@ -81,7 +81,7 @@ final class Details {
                 if (type == LIGHTHOUSE) clearing(p, f.wx(0, 13), f.wz(0, 13), b, 26);
                 else clearing(p, x, z, b, 16);
                 switch (type) {
-                    case ANCHOR -> anchor(f, b, h);
+                    case ANCHOR -> anchor(g, n, f, b, h);
                     case BOAT -> boat(g, n, f, b, h);
                     case LIGHTHOUSE -> lighthouse(f, b, h);
                     case SHELL -> shell(f, b, h);
@@ -102,19 +102,33 @@ final class Details {
         }
     }
 
-    /** A great iron anchor stood on its crown, half its stock rotted away, the chain trailing off over the sand. */
-    static void anchor(Paint.Frame f, int b, long h) {
-        for (int y = b; y <= b + 10; y++) f.set(0, y, 0, "iron_block");                       // the shank
+    /**
+     * A great iron anchor stood on its crown, half its stock rotted away, the chain trailing off over the sand.
+     * 1.14.1: every piece touches the next (the ring and the rotted stock used to float beside the shank), and the chain
+     * hangs straight down from the ring and then lies along the real sea floor (it used to hang in mid-water as a staircase
+     * of loose links). The floor under the chain is read from the generator, so a chain crossing chunks lies the same in each.
+     */
+    static void anchor(DeepGenerator g, DeepGenerator.Noise n, Paint.Frame f, int b, long h) {
+        for (int y = b; y <= b + 11; y++) f.set(0, y, 0, "iron_block");                       // the shank
         int[][] arm = {{1, 1}, {2, 1}, {3, 2}, {3, 3}, {4, 4}};                                 // the arms (crown at b)
         for (int[] a : arm) { f.set(a[0], b + a[1], 0, "iron_block"); f.set(-a[0], b + a[1], 0, "iron_block"); }
         f.set(4, b + 5, 0, "iron_bars"); f.set(-4, b + 5, 0, "iron_bars");                     // the flukes' tips
         f.set(3, b + 4, 0, "heavy_weighted_pressure_plate"); f.set(-3, b + 4, 0, "heavy_weighted_pressure_plate");
-        for (int z = -3; z <= 3; z++) if (u(h, 10 + z) > 0.3) f.set(0, b + 8, z, "stripped_dark_oak_log[axis=z]"); // the stock
-        for (int k : new int[]{-1, 1}) { f.set(k, b + 11, 0, "iron_block"); f.set(k, b + 13, 0, "iron_block"); } // the ring
-        f.set(0, b + 13, 0, "iron_block");
-        for (int x = 2; x <= 16; x++) {                                                         // the chain, sagging down
-            int y = Math.max(b + 1, b + 12 - (int) Math.round((x - 1) * (x - 1) / 14.0));
-            f.set(x, y, 0, y > b + 1 ? "iron_chain[axis=x]" : "iron_chain[axis=z]");
+        int keep = 1 + (int) (u(h, 10) * 3);                                                   // the stock: one side rotted short
+        for (int z = -keep; z <= 3; z++) if (z != 0) f.set(0, b + 9, z, "stripped_dark_oak_log[axis=z]");
+        // the ring on top: a closed loop of iron round a hole, sitting on the shank
+        for (int k : new int[]{-1, 1}) { f.set(k, b + 12, 0, "iron_block"); f.set(k, b + 13, 0, "iron_block"); }
+        f.set(0, b + 14, 0, "iron_block");
+        // the chain: through the ring, out past the flukes, down to the sand, then along the floor
+        for (int x = 2; x <= 5; x++) f.set(x, b + 13, 0, "iron_chain[axis=x]");
+        int lie = 0;
+        for (int x = 6; x <= 16; x++) {
+            int fl = g.upperFloor(n, f.wx(x, 0), f.wz(x, 0)) + 1;                             // first water over the sand there
+            if (x == 6) for (int y = b + 13; y > fl; y--) put(f, x, y, 0, "iron_chain[axis=y]");
+            else if (fl < lie) for (int y = fl + 1; y <= lie; y++) put(f, x, y, 0, "iron_chain[axis=y]");      // steps down: hangs here
+            else for (int y = lie + 1; y <= fl; y++) put(f, x - 1, y, 0, "iron_chain[axis=y]");                // steps up: climbs there
+            put(f, x, fl, 0, "iron_chain[axis=x]");
+            lie = fl;
         }
         for (int i = 0; i < 6; i++) if (u(h, 20 + i) < 0.6) put(f, (int) (u(h, 30 + i) * 7) - 3, b + 1, (int) (u(h, 40 + i) * 5) - 2, i % 2 == 0 ? "sea_pickle[pickles=2]" : "tube_coral");
     }

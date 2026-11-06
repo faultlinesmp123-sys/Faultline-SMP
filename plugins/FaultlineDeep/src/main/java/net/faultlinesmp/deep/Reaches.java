@@ -233,6 +233,55 @@ final class Reaches {
         };
     }
 
+    /**
+     * 1.14.2: the lantern trees and lumen domes are drawn by EVERY Reaches column they cover, not just the columns of their
+     * own biome, up to their own top (not the column's floor + a fixed reach). Before, a tree near a biome edge or over lower
+     * ground was cut off: orbs sliced in half, stalks in floating pieces. Each one is only grown from a site of its own kind.
+     */
+    static Material tall(DeepGenerator g, DeepGenerator.Noise n, int x, int y, int z) {
+        Material m = bulb(g, n, x, y, z);
+        return m != null ? m : dome(g, n, x, y, z);
+    }
+
+    /** The highest block any lantern tree / lumen dome over this column reaches, or Integer.MIN_VALUE. */
+    static int tallTop(DeepGenerator g, DeepGenerator.Noise n, int x, int z) {
+        long seed = n.seed;
+        int top = Integer.MIN_VALUE;
+        int gx = Math.floorDiv(x, 22), gz = Math.floorDiv(z, 22);
+        for (int i = -1; i <= 1; i++) for (int j = -1; j <= 1; j++) {
+            if (DeepGenerator.unit(DeepGenerator.hash(seed, gx + i, gz + j, 421)) > 0.6) continue;
+            int sx = (gx + i) * 22 + 4 + (int) (DeepGenerator.unit(DeepGenerator.hash(seed, gx + i, gz + j, 422)) * 14);
+            int sz = (gz + j) * 22 + 4 + (int) (DeepGenerator.unit(DeepGenerator.hash(seed, gx + i, gz + j, 423)) * 14);
+            if (Math.abs(x - sx) > 9 || Math.abs(z - sz) > 9 || siteKind(seed, sx, sz) != Kind.BULB) continue;
+            double height = 14 + DeepGenerator.unit(DeepGenerator.hash(seed, gx + i, gz + j, 424)) * 30;
+            double R = 3 + DeepGenerator.unit(DeepGenerator.hash(seed, gx + i, gz + j, 425)) * 3.8;
+            top = Math.max(top, (int) Math.ceil(siteFloor(g, n, sx, sz) + height + R + 1));
+        }
+        gx = Math.floorDiv(x, 20); gz = Math.floorDiv(z, 20);
+        for (int i = -1; i <= 1; i++) for (int j = -1; j <= 1; j++) {
+            if (DeepGenerator.unit(DeepGenerator.hash(seed, gx + i, gz + j, 431)) > 0.62) continue;
+            int sx = (gx + i) * 20 + 4 + (int) (DeepGenerator.unit(DeepGenerator.hash(seed, gx + i, gz + j, 432)) * 12);
+            int sz = (gz + j) * 20 + 4 + (int) (DeepGenerator.unit(DeepGenerator.hash(seed, gx + i, gz + j, 433)) * 12);
+            double R = 3.5 + DeepGenerator.unit(DeepGenerator.hash(seed, gx + i, gz + j, 434)) * 6;
+            if (Math.abs(x - sx) > R + 1 || Math.abs(z - sz) > R + 1 || siteKind(seed, sx, sz) != Kind.GLOW) continue;
+            double stem = 4 + DeepGenerator.unit(DeepGenerator.hash(seed, gx + i, gz + j, 435)) * 12;
+            top = Math.max(top, (int) Math.ceil(siteFloor(g, n, sx, sz) + stem + R * 0.7 + 1));
+        }
+        return top;
+    }
+
+    private static final ThreadLocal<java.util.HashMap<Long, Kind>> SITE_KIND = ThreadLocal.withInitial(java.util.HashMap::new);
+
+    /** The biome a feature's site stands in (cached per thread). */
+    static Kind siteKind(long seed, int sx, int sz) {
+        java.util.HashMap<Long, Kind> c = SITE_KIND.get();
+        if (c.size() > 8192) c.clear();
+        long key = ((long) sx << 32) ^ (sz & 0xffffffffL) ^ (seed * 31);
+        Kind v = c.get(key);
+        if (v == null) { v = at(seed, sx, sz); c.put(key, v); }
+        return v;
+    }
+
     /** How high this kind's features can reach above the floor (the generator scans that far). */
     static int reach(Kind k) {
         return switch (k) { case BULB -> 52; case GLOW -> 30; case CRAGS -> 90; default -> 0; };
@@ -259,7 +308,7 @@ final class Reaches {
             if (DeepGenerator.unit(h) > 0.6) continue;
             int sx = (gx + i) * 22 + 4 + (int) (DeepGenerator.unit(DeepGenerator.hash(seed, gx + i, gz + j, 422)) * 14);
             int sz = (gz + j) * 22 + 4 + (int) (DeepGenerator.unit(DeepGenerator.hash(seed, gx + i, gz + j, 423)) * 14);
-            if (Math.abs(x - sx) > 9 || Math.abs(z - sz) > 9) continue;
+            if (Math.abs(x - sx) > 9 || Math.abs(z - sz) > 9 || siteKind(seed, sx, sz) != Kind.BULB) continue;
             double height = 14 + DeepGenerator.unit(DeepGenerator.hash(seed, gx + i, gz + j, 424)) * 30;
             double R = 3 + DeepGenerator.unit(DeepGenerator.hash(seed, gx + i, gz + j, 425)) * 3.8;
             double lean = (DeepGenerator.unit(DeepGenerator.hash(seed, gx + i, gz + j, 426)) - 0.5) * 0.25;
@@ -298,7 +347,7 @@ final class Reaches {
             int sx = (gx + i) * 20 + 4 + (int) (DeepGenerator.unit(DeepGenerator.hash(seed, gx + i, gz + j, 432)) * 12);
             int sz = (gz + j) * 20 + 4 + (int) (DeepGenerator.unit(DeepGenerator.hash(seed, gx + i, gz + j, 433)) * 12);
             double R = 3.5 + DeepGenerator.unit(DeepGenerator.hash(seed, gx + i, gz + j, 434)) * 6;
-            if (Math.abs(x - sx) > R + 1 || Math.abs(z - sz) > R + 1) continue;
+            if (Math.abs(x - sx) > R + 1 || Math.abs(z - sz) > R + 1 || siteKind(seed, sx, sz) != Kind.GLOW) continue;
             double stem = 4 + DeepGenerator.unit(DeepGenerator.hash(seed, gx + i, gz + j, 435)) * 12;
             int up = siteFloor(g, n, sx, sz);
             double cy = up + stem;
@@ -374,30 +423,143 @@ final class Reaches {
         return (y + x) % 5 == 0 ? Material.ANDESITE : Material.STONE;
     }
 
-    /** The Sulphur Sea's mushroom forest: giant sulphur caps on pale stems. Grid 24. */
+    /**
+     * The Sulphur Sea's mushroom forest: giant sulphur caps on pale stems. Grid 24.
+     * 1.14.2: three kinds of cap, picked per mushroom: a DOME (the old squashed dome, now spotted), an OPEN cap (a wide flat
+     * disc with its rim turned up, its glowing gills in rays underneath) and a BELL (a tall rounded cap with a lacy veil of
+     * roots hanging round the stem). Every stem has a swollen, rooted foot and a ring (annulus) round it under the cap.
+     * Only sites well inside the Sulphur Sea grow one, and every column under one draws it up to its real top
+     * (`mushroomTop`), so a cap over lower ground or at the edge is never cut off.
+     */
+    record Shroom(int sx, int sz, int style, double R, double sr, double cy, int up, long h) { }
+
+    static Shroom shroom(DeepGenerator g, DeepGenerator.Noise n, int gx, int gz) {
+        long seed = n.seed;
+        long h = DeepGenerator.hash(seed, gx, gz, 461);
+        if (DeepGenerator.unit(h) > 0.55) return null;
+        int sx = gx * 24 + 5 + (int) (DeepGenerator.unit(DeepGenerator.hash(seed, gx, gz, 462)) * 14);
+        int sz = gz * 24 + 5 + (int) (DeepGenerator.unit(DeepGenerator.hash(seed, gx, gz, 463)) * 14);
+        int style = (int) (DeepGenerator.unit(DeepGenerator.hash(seed, gx, gz, 466)) * 3);
+        double R = 4 + DeepGenerator.unit(DeepGenerator.hash(seed, gx, gz, 464)) * 6;
+        if (style == 1) R *= 1.25;                   // open caps spread wider
+        if (style == 2) R *= 0.8;                    // bells are narrower
+        double stem = 8 + DeepGenerator.unit(DeepGenerator.hash(seed, gx, gz, 465)) * 22;
+        int up = siteFloor(g, n, sx, sz);
+        double cy = Math.min(316 - R * (style == 2 ? 1.3 : 0.6), up + stem);
+        return new Shroom(sx, sz, style, R, 1.1 + R * 0.12, cy, up, h);
+    }
+
+    private static final ThreadLocal<java.util.HashMap<Long, Boolean>> SULPHUR_SITE = ThreadLocal.withInitial(java.util.HashMap::new);
+
+    /** A mushroom grows only from a site well inside the Sulphur Sea (cached per thread). */
+    static boolean sulphurSite(DeepGenerator.Noise n, int sx, int sz) {
+        java.util.HashMap<Long, Boolean> c = SULPHUR_SITE.get();
+        if (c.size() > 8192) c.clear();
+        long key = ((long) sx << 32) ^ (sz & 0xffffffffL) ^ (n.seed * 31);
+        Boolean v = c.get(key);
+        if (v == null) { v = Sulphur.weight(n, sx, sz) > 0.5; c.put(key, v); }
+        return v;
+    }
+
+    /** The highest block any mushroom over this column reaches, or Integer.MIN_VALUE. */
+    static int mushroomTop(DeepGenerator g, DeepGenerator.Noise n, int x, int z) {
+        int top = Integer.MIN_VALUE;
+        int gx = Math.floorDiv(x, 24), gz = Math.floorDiv(z, 24);
+        for (int i = -1; i <= 1; i++) for (int j = -1; j <= 1; j++) {
+            Shroom m = shroom(g, n, gx + i, gz + j);
+            if (m == null || Math.abs(x - m.sx) > m.R + 1 || Math.abs(z - m.sz) > m.R + 1 || !sulphurSite(n, m.sx, m.sz)) continue;
+            top = Math.max(top, (int) Math.ceil(m.cy + m.R * (m.style == 2 ? 1.3 : m.style == 1 ? 0.5 : 0.6) + 1));
+        }
+        return Math.min(318, top);
+    }
+
     static Material mushroom(DeepGenerator g, DeepGenerator.Noise n, int x, int y, int z) {
         long seed = n.seed;
         int gx = Math.floorDiv(x, 24), gz = Math.floorDiv(z, 24);
         for (int i = -1; i <= 1; i++) for (int j = -1; j <= 1; j++) {
-            long h = DeepGenerator.hash(seed, gx + i, gz + j, 461);
-            if (DeepGenerator.unit(h) > 0.55) continue;
-            int sx = (gx + i) * 24 + 5 + (int) (DeepGenerator.unit(DeepGenerator.hash(seed, gx + i, gz + j, 462)) * 14);
-            int sz = (gz + j) * 24 + 5 + (int) (DeepGenerator.unit(DeepGenerator.hash(seed, gx + i, gz + j, 463)) * 14);
-            double R = 4 + DeepGenerator.unit(DeepGenerator.hash(seed, gx + i, gz + j, 464)) * 6;
-            if (Math.abs(x - sx) > R + 1 || Math.abs(z - sz) > R + 1) continue;
-            double stem = 8 + DeepGenerator.unit(DeepGenerator.hash(seed, gx + i, gz + j, 465)) * 22;
-            int up = siteFloor(g, n, sx, sz);
-            double cy = Math.min(318 - R * 0.6, up + stem);
-            double dx = x - sx, dz = z - sz, flat = Math.hypot(dx, dz);
-            double sr = 1.1 + R * 0.12;
-            if (y > up && y < cy && flat <= sr) return Material.MUSHROOM_STEM;
-            // the cap: a squashed dome; its underside gills a ring of stem-coloured blocks
-            double dy = (y - cy) / 0.55, d = Math.sqrt(dx * dx + dy * dy + dz * dz);
-            if (y >= cy && d <= R && d > R - 1.3) {
-                long sp = DeepGenerator.hash(seed, x * 7 + y, z, (int) h);
-                return DeepGenerator.unit(sp) < 0.16 ? Material.VERDANT_FROGLIGHT : (DeepGenerator.unit(sp) < 0.5 ? Material.YELLOW_TERRACOTTA : Material.LIME_TERRACOTTA);
+            Shroom m = shroom(g, n, gx + i, gz + j);
+            if (m == null || Math.abs(x - m.sx) > m.R + 1 || Math.abs(z - m.sz) > m.R + 1 || !sulphurSite(n, m.sx, m.sz)) continue;
+            double R = m.R, cy = m.cy, sr = m.sr;
+            double dx = x - m.sx, dz = z - m.sz, flat = Math.hypot(dx, dz), ang = Math.atan2(dz, dx);
+            long sp = DeepGenerator.hash(seed, x * 7 + y, z, (int) m.h);
+            double u = DeepGenerator.unit(sp);
+            // the stem: a swollen foot with roots spreading over the ground, a ring under the cap
+            if (y > m.up && y < cy) {
+                double foot = y < m.up + 4 ? (m.up + 4 - y) * 0.55 : 0;
+                if (flat <= sr + foot) return foot > 0 && flat > sr + 0.3 ? (u < 0.5 ? Material.MUSHROOM_STEM : Material.MUD) : Material.MUSHROOM_STEM;
+                if (y <= m.up + 1 && flat <= sr + 3.2 && Math.abs(Math.sin(ang * 3 + m.h)) < 0.18) return Material.MANGROVE_ROOTS; // roots
+                int ring = (int) Math.floor(m.up + (cy - m.up) * 0.68);
+                if (y == ring && flat <= sr + 1.3) return Material.MUSHROOM_STEM;                    // the ring
+                if (y == ring - 1 && flat > sr + 0.4 && flat <= sr + 1.3 && u < 0.45) return Material.MUSHROOM_STEM; // its torn skirt
             }
-            if ((int) Math.floor(cy) == y && flat < R - 1 && flat > sr) return Material.OCHRE_FROGLIGHT; // gills: glowing from below
+            switch (m.style) {
+                case 1 -> { // OPEN: a wide flat disc, the rim turned up, gills in rays underneath
+                    double lift = flat > R * 0.65 ? (flat - R * 0.65) / (R * 0.35) * 1.6 : 0;
+                    int capY = (int) Math.floor(cy + lift);
+                    if (flat <= R && y == capY) return cap(u, flat, R);
+                    if (flat <= R && y == capY + 1 && lift > 0.8) return cap(u, flat, R);
+                    if ((int) Math.floor(cy) - 1 == y && flat > sr && flat < R * 0.9)
+                        return Math.abs(Math.sin(ang * Math.max(8, (int) (R * 2.2)))) < 0.35 ? Material.OCHRE_FROGLIGHT : Material.BROWN_MUSHROOM_BLOCK;
+                }
+                case 2 -> { // BELL: tall and round, a lacy veil hanging round the stem
+                    double H = R * 1.3, dy = (y - cy) / H;
+                    if (y >= cy) {
+                        double rr = R * Math.sqrt(Math.max(0, 1 - dy * dy));
+                        if (dy <= 1 && flat <= rr && flat > rr - 1.4) return cap(u, flat / Math.max(0.1, rr) * R, R);
+                        if (dy <= 1 && flat <= rr - 1.4 && y == (int) Math.floor(cy)) return Material.OCHRE_FROGLIGHT; // the glow inside
+                    } else if (y >= cy - R * 0.9) {
+                        double vr = R * 0.75 - (cy - y) * 0.12;
+                        if (Math.abs(flat - vr) < 0.55 && ((Math.floorMod(y, 2) == 0) || Math.abs(Math.sin(ang * 6)) < 0.3)) return Material.MANGROVE_ROOTS;
+                        if ((int) Math.floor(cy) - 1 == y && flat > sr && flat < R - 0.6) return Material.OCHRE_FROGLIGHT;
+                    }
+                }
+                default -> { // DOME: the squashed dome, spotted, its gills glowing underneath
+                    double dy = (y - cy) / 0.55, d = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                    if (y >= cy && d <= R && d > R - 1.3) return cap(u, d, R);
+                    if ((int) Math.floor(cy) == y && flat < R - 1 && flat > sr)
+                        return Math.abs(Math.sin(ang * Math.max(6, (int) (R * 1.8)))) < 0.4 ? Material.OCHRE_FROGLIGHT : Material.BROWN_MUSHROOM_BLOCK;
+                }
+            }
+        }
+        return null;
+    }
+
+    /** A cap block: sulphur yellow and lime, pale spots, a glowing edge. */
+    static Material cap(double u, double d, double R) {
+        if (d > R - 0.9 && u < 0.35) return Material.VERDANT_FROGLIGHT;  // the glowing rim
+        if (u < 0.12) return Material.BONE_BLOCK;                         // pale spots
+        if (u < 0.2) return Material.VERDANT_FROGLIGHT;
+        return u < 0.6 ? Material.YELLOW_TERRACOTTA : Material.LIME_TERRACOTTA;
+    }
+
+    /**
+     * BRACKET MUSHROOMS on the Sulphur Sea's cliffs (1.14.2): half-disc shelves sticking out of the rock, in tiers. Pure:
+     * decided from the floor heights round a column (`floors` = a 24x24 heightmap from 4 blocks outside the chunk), so a
+     * shelf crossing a chunk edge is the same in both. Called per water/air block above the floor.
+     */
+    static Material bracket(long seed, int[][] floors, int lx, int lz, int x, int y, int z) {
+        int up = floors[lx + 4][lz + 4];
+        if (y <= up + 1) return null;
+        int[][] dirs = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+        for (int di = 0; di < 4; di++) {
+            int ddx = dirs[di][0], ddz = dirs[di][1];
+            int k = 0;
+            for (int t = 1; t <= 4; t++) if (floors[lx + 4 + ddx * t][lz + 4 + ddz * t] >= y + 1) { k = t; break; }
+            if (k == 0) continue;
+            int along = ddx != 0 ? z : x, face = ddx != 0 ? x + ddx * k : z + ddz * k;
+            int cell = Math.floorDiv(along, 7);
+            int tier = Math.floorDiv(y + (int) (DeepGenerator.unit(DeepGenerator.hash(seed, cell, face, 470 + di)) * 9), 9);
+            long h = DeepGenerator.hash(seed, cell * 31 + di, face, tier * 13 + 471);
+            if (DeepGenerator.unit(h) > 0.4) continue;
+            int shelfY = tier * 9 - (int) (DeepGenerator.unit(DeepGenerator.hash(seed, cell, face, 470 + di)) * 9) + 4;
+            double c = cell * 7 + 3.5, R = 1.8 + DeepGenerator.unit(DeepGenerator.hash(seed, cell, face * 7 + di, tier)) * 2.2;
+            double dist = Math.hypot(k - 0.5, along - c);
+            if (dist > R) continue;
+            long sp = DeepGenerator.hash(seed, x * 3 + y, z, (int) h);
+            double u = DeepGenerator.unit(sp);
+            if (y == shelfY) return dist > R - 0.8 ? (u < 0.5 ? Material.VERDANT_FROGLIGHT : Material.LIME_TERRACOTTA) : u < 0.12 ? Material.BONE_BLOCK : Material.YELLOW_TERRACOTTA;
+            if (y == shelfY - 1 && dist < R - 0.6) return u < 0.4 ? Material.OCHRE_FROGLIGHT : Material.BROWN_MUSHROOM_BLOCK; // gills
+            if (y == shelfY + 1 && dist < R * 0.55) return Material.YELLOW_TERRACOTTA;                                     // a humped top
         }
         return null;
     }

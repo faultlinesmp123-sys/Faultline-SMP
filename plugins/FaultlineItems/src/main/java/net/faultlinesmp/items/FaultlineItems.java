@@ -473,9 +473,7 @@ public final class FaultlineItems extends JavaPlugin {
         darkLoot = new DarkLoot(this); // 1.2.41: the Dark Ocean's treasure (FaultlineDeep)
         getServer().getPluginManager().registerEvents(darkLoot, this);
         getCommand("darkloot").setExecutor(darkLoot);
-        meteor = new Meteor(this);
-        getServer().getPluginManager().registerEvents(meteor, this);
-        getCommand("meteor").setExecutor(meteor);
+        Meteor.cleanUp(this); // 1.2.68: meteors are removed (leftover guards / a crater from a crash are cleaned up)
         caravan = new Caravan(this);
         getServer().getPluginManager().registerEvents(caravan, this);
         getCommand("caravan").setExecutor(caravan);
@@ -615,7 +613,6 @@ public final class FaultlineItems extends JavaPlugin {
     @Override
     public void onDisable() {
         if (caveTrader != null) caveTrader.removeAll();
-        if (meteor != null) meteor.shutdown();
         if (weather != null) weather.shutdown();
         if (bloodMoonSky != null) bloodMoonSky.shutdown();
         if (creatures != null) creatures.shutdown();
@@ -872,10 +869,9 @@ public final class FaultlineItems extends JavaPlugin {
 
     private DivingGear divingGear;
     private CaveTrader caveTrader;
-    Meteor meteor;
     DarkLoot darkLoot;
 
-    /** An ordinary Overworld (meteors, the Caravan, weather, patrols): not the Nether/End, nor the Dark Ocean (or the old void). */
+    /** An ordinary Overworld (the Caravan, weather, patrols): not the Nether/End, nor the Dark Ocean (or the old void). */
     static boolean surfaceWorld(World w) {
         if (w == null || w.getEnvironment() != World.Environment.NORMAL) return false;
         String n = w.getName();

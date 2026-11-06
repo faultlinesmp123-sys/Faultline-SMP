@@ -34,6 +34,7 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
     static FaultlineDeep instance;
     World world;
     final DeepGenerator generator = new DeepGenerator();
+    CaveCaches caves;
     DeepMobs mobs;
     Journey journey;
     Ocean ocean;
@@ -85,6 +86,8 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
             return true;
         });
         getServer().getPluginManager().registerEvents(outer, this);
+        caves = new CaveCaches(this);
+        getServer().getPluginManager().registerEvents(caves, this);
         if (getCommand("den") != null) getCommand("den").setExecutor(rep::command);
         if (getCommand("dome") != null) {
             getCommand("dome").setExecutor((sender, cmd, label, args) -> habitat.command(sender, args));
@@ -351,12 +354,13 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
                     case "dome_small" -> habitat.kit(6);
                     case "dome_large" -> habitat.kit(10);
                     case "vault_key" -> outer.vaultKey(n);
+                    case "cache_key", "key" -> caves.key(n);
                     case "fossil" -> outer.fossil(n);
                     case "chart", "map" -> chart.item();
                     case "glimmer", "pearl", "glimmer_pearl" -> glimmer.pearl(n);
                     default -> null;
                 };
-                if (it == null || to == null) { sender.sendMessage(ChatColor.YELLOW + "/deep give <coral|dome_small|dome_large|vault_key|fossil|chart|glimmer> [amount] [player]"); return true; }
+                if (it == null || to == null) { sender.sendMessage(ChatColor.YELLOW + "/deep give <coral|dome_small|dome_large|vault_key|cache_key|fossil|chart|glimmer> [amount] [player]"); return true; }
                 Player dest = to;
                 dest.getInventory().addItem(it).values().forEach(x -> dest.getWorld().dropItemNaturally(dest.getLocation(), x));
                 sender.sendMessage(ChatColor.GREEN + "Gave " + dest.getName() + " " + what + ".");
@@ -396,7 +400,7 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
         List<String> out = new ArrayList<>();
         if (args.length == 1) out.addAll(List.of("info", "set", "tp", "town", "sulphur", "trench", "spawn", "egg", "event", "acidrain", "den", "bloom", "migration", "sub", "lucki", "eclipse", "redtide", "frenzy", "volcano", "domes", "give", "region", "season"));
         else if (args.length == 2 && args[0].equalsIgnoreCase("season")) out.addAll(List.of("start", "stop", "auto", "shoal"));
-        else if (args.length == 2 && args[0].equalsIgnoreCase("give")) out.addAll(List.of("coral", "dome_small", "dome_large", "vault_key", "fossil", "chart", "glimmer"));
+        else if (args.length == 2 && args[0].equalsIgnoreCase("give")) out.addAll(List.of("coral", "dome_small", "dome_large", "vault_key", "cache_key", "fossil", "chart", "glimmer"));
         else if (args.length == 2 && args[0].equalsIgnoreCase("region")) out.addAll(List.of("frozen", "city", "glass", "bones"));
         else if (args.length == 2 && args[0].equalsIgnoreCase("volcano")) out.addAll(List.of("where", "start", "here", "cool", "heal"));
         else if (args.length == 2 && args[0].equalsIgnoreCase("set")) out.addAll(List.of("kingdom", "lucki", "whirlpool"));

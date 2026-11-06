@@ -1,5 +1,5 @@
 name: FaultlineItems
-version: 1.2.67
+version: 1.2.68
 main: net.faultlinesmp.items.FaultlineItems
 api-version: '1.21'
 softdepend: [floodgate, Geyser-Spigot]
@@ -105,9 +105,6 @@ commands:
     description: Spawn a Queen Spider (admin)
     usage: /queenspider spawn [<world> <x> <y> <z>]
     permission: items.queenspider
-  meteor:
-    description: When the next meteor falls (admins - now, here, target, at, check, stop, egg)
-    usage: /meteor [now|here|target|at <x> <z> [world]|check|stop|egg <husk|crawler|sentinel>]
   caravan:
     description: Where the Caravan Merchant is, or when he's back (admins - now, here, stop, reroll)
     usage: /caravan [now|here|stop|reroll]
@@ -243,9 +240,6 @@ permissions:
     default: op
   items.queenspider:
     description: Allows spawning the Queen Spider
-    default: op
-  items.meteor:
-    description: Allows starting and stopping meteor strikes
     default: op
   items.caravan:
     description: Allows calling and sending away the Caravan

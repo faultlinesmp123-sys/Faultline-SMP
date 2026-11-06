@@ -141,6 +141,74 @@ final class DeepGenerator extends ChunkGenerator {
         return (int) Math.round(h);
     }
 
+    // =========================================================================================== the crust's caves
+    /**
+     * Is (x, y, z) cave water in the crust? Pure (the plugin asks it too, for the cave caches).
+     * 1.14.2: caves were "just open": caverns at c3 > 0.64 on a 60x26 scale were halls a hundred blocks long, roofs only
+     * 3 blocks thick, and under the Reaches' raised floors their walls were the cliffs' terracotta. Now: tunnels as before;
+     * caverns rarer and smaller (0.72, 46x22), broken up by ROCK PILLARS (a 9-block grid, 45%, floor to ceiling), and at
+     * least 7 blocks of rock over every cave (no thin roofs letting the sea light in).
+     * (No caves near an island's surface: their water would spill out; and none in a raised plateau above y 100.)
+     */
+    boolean crustCave(Noise n, int x, int y, int z, int up, int ceil, double sw, double mw) {
+        if (y <= ceil + 1 || y >= up - 7 || (sw > 0 || mw > 0) && (y > SEA - 14 || y > 70) || up > 110 && y > 100) return false;
+        double a = n.c1.noise(x / 44.0, y / 22.0, z / 44.0), b = n.c2.noise(x / 44.0, y / 22.0, z / 44.0);
+        if (Math.abs(a) < 0.1 && Math.abs(b) < 0.1) return true;                                   // winding tunnels
+        if (n.c3.noise(x / 46.0, y / 22.0, z / 46.0) <= 0.72) return false;                        // caverns
+        return !cavePillar(n.seed, x, z);
+    }
+
+    /** A rock pillar standing from floor to ceiling in a cavern (grid 9, 45%, radius 1.2-2.4, a little wobble). */
+    static boolean cavePillar(long seed, int x, int z) {
+        int gx = Math.floorDiv(x, 9), gz = Math.floorDiv(z, 9);
+        long h = hash(seed, gx, gz, 951);
+        if (unit(h) > 0.45) return false;
+        double px = gx * 9 + 2 + unit(hash(seed, gx, gz, 952)) * 5, pz = gz * 9 + 2 + unit(hash(seed, gx, gz, 953)) * 5;
+        double r = 1.2 + unit(hash(seed, gx, gz, 954)) * 1.2;
+        return Math.hypot(x - px, z - pz) <= r;
+    }
+
+    /** The crust cave at (x, y, z), the column worked out from scratch (for the plugin and the cache spots). */
+    boolean crustCaveAt(Noise n, int x, int y, int z) {
+        int up = upperFloor(n, x, z), ceil = abyssCeiling(n, x, z);
+        if (up - ceil < 14) ceil = up - 14;
+        return crustCave(n, x, y, z, up, ceil, Sulphur.weight(n, x, z), MermaidDen.weight(x, z));
+    }
+
+    /**
+     * THE CAVE CACHE of a chunk (1.14.2), or null: {x, y, z, locked (1/0)}. CACHE_CHANCE of chunks have one, on a crust cave's
+     * floor with rock overhead (never by a chimney, in the Trench, over the build area). LOCKED_SHARE of them are locked
+     * (a Deep Cache Key opens one). Pure: FaultlineDeep finds them again by position.
+     */
+    static final double CACHE_CHANCE = 0.025, LOCKED_SHARE = 0.4;
+
+    int[] cacheSpot(long seed, int chunkX, int chunkZ) {
+        long h = hash(seed, chunkX, chunkZ, 961);
+        if (unit(h) >= CACHE_CHANCE) return null;
+        Noise n = noiseFor(seed);
+        Random r = new Random(h);
+        for (int t = 0; t < 60; t++) {
+            int lx = 1 + r.nextInt(14), lz = 1 + r.nextInt(14), x = (chunkX << 4) + lx, z = (chunkZ << 4) + lz;
+            if (flatWeight(x, z) > 0 || Trench.near(x, z, 12)) return null;
+            int up = upperFloor(n, x, z), ceil = abyssCeiling(n, x, z);
+            if (up - ceil < 14) ceil = up - 14;
+            if (up - ceil < 20) continue;
+            double sw = Sulphur.weight(n, x, z), mw = MermaidDen.weight(x, z);
+            int y = ceil + 3 + r.nextInt(up - ceil - 12);
+            // walk down to the cave's floor
+            if (!crustCave(n, x, y, z, up, ceil, sw, mw)) continue;
+            while (y > ceil + 2 && crustCave(n, x, y - 1, z, up, ceil, sw, mw)) y--;
+            if (!crustCave(n, x, y, z, up, ceil, sw, mw) || crustCave(n, x, y - 1, z, up, ceil, sw, mw) || y - 1 <= ceil) continue;
+            boolean roof = false;
+            for (int i = 2; i <= 8 && !roof; i++) roof = !crustCave(n, x, y + i, z, up, ceil, sw, mw);
+            if (!roof) continue;
+            java.util.List<int[]> ch = chimneysNear(seed, x, z);
+            if (!ch.isEmpty() && chimneyDist(n, ch, x, y, z) < 8) continue;
+            return new int[]{x, y, z, unit(hash(seed, x, y * 31 + z, 962)) < LOCKED_SHARE ? 1 : 0};
+        }
+        return null;
+    }
+
     /** The underside of the crust (the abyss's ceiling). */
     int abyssCeiling(Noise n, int x, int z) {
         double c = 12 + n.n2(n.ceil, x, z) * 7;
@@ -326,6 +394,7 @@ final class DeepGenerator extends ChunkGenerator {
     private static BlockData bd(String s) { return Bukkit.createBlockData(s); }
 
     private volatile BlockData chest;
+    private BlockData lantern, soulLantern, dripUpTip, dripUpFrustum, amethyst, wetSlab, wetStair, coralFan, glowLichenWall, glowLichenCeil, bubbleDown;
     private BlockData glowLichenFloor, dripTip, dripFrustum, pickles, bubble, kelpTop, tallGrassLow, tallGrassHigh;
 
     /**
@@ -351,6 +420,17 @@ final class DeepGenerator extends ChunkGenerator {
         kelpTop = bd("minecraft:kelp[age=25]");
         tallGrassLow = bd("minecraft:tall_seagrass[half=lower]");
         tallGrassHigh = bd("minecraft:tall_seagrass[half=upper]");
+        lantern = bd("minecraft:lantern[hanging=false,waterlogged=true]");
+        soulLantern = bd("minecraft:soul_lantern[hanging=false,waterlogged=true]");
+        dripUpTip = bd("minecraft:pointed_dripstone[vertical_direction=up,thickness=tip,waterlogged=true]");
+        dripUpFrustum = bd("minecraft:pointed_dripstone[vertical_direction=up,thickness=frustum,waterlogged=true]");
+        amethyst = bd("minecraft:amethyst_cluster[facing=up,waterlogged=true]");
+        wetSlab = bd("minecraft:cobbled_deepslate_slab[type=bottom,waterlogged=true]");
+        wetStair = bd("minecraft:tuff_stairs[waterlogged=true]");
+        coralFan = bd("minecraft:dead_brain_coral_fan[waterlogged=true]");
+        glowLichenWall = bd("minecraft:glow_lichen[north=true,waterlogged=true]");
+        glowLichenCeil = bd("minecraft:glow_lichen[up=true,waterlogged=true]");
+        bubbleDown = bd("minecraft:bubble_column[drag=true]");
         chest = c;
     }
 
@@ -365,6 +445,7 @@ final class DeepGenerator extends ChunkGenerator {
             column(n, data, rnd, minY, lx, lz, x, z);
         }
         chests(n, data, rnd, chunkX, chunkZ, minY);
+        if (Sulphur.near((chunkX << 4) + 8, (chunkZ << 4) + 8, 12)) brackets(n, data, chunkX, chunkZ);
         Paint p = new Paint(data, chunkX, chunkZ);
         Ruins.paint(this, n, p);  // abandoned ruins over the whole ocean floor
         Sulphur.paint(this, n, p); // the Sulphur Sea's columns, wrecks, ribcages, trees, fumaroles, pools and the Works
@@ -375,6 +456,25 @@ final class DeepGenerator extends ChunkGenerator {
         GlassReef.paint(this, n, p);   // the Glass Reef: glass trees, prism spires, terrariums, arches, the Prism Spire
         BoneFields.paint(this, n, p);  // the Bone Fields: the leviathan skeletons and vertebra columns
         Details.paint(this, n, p);     // 1.10.0: landmarks over the open sea, the Abyss, the Trench, the Sulphur Sea and the Den
+    }
+
+    /** Bracket mushrooms on the Sulphur Sea's cliffs (Reaches.bracket), from a heightmap reaching 4 blocks past the chunk. */
+    private void brackets(Noise n, ChunkData d, int chunkX, int chunkZ) {
+        int x0 = chunkX << 4, z0 = chunkZ << 4;
+        int[][] fl = new int[24][24];
+        for (int i = 0; i < 24; i++) for (int j = 0; j < 24; j++) fl[i][j] = upperFloor(n, x0 - 4 + i, z0 - 4 + j);
+        for (int lx = 0; lx < 16; lx++) for (int lz = 0; lz < 16; lz++) {
+            int x = x0 + lx, z = z0 + lz;
+            if (Sulphur.weight(n, x, z) <= 0.35 || Trench.near(x, z, 0)) continue;
+            int up = fl[lx + 4][lz + 4], hi = up;
+            for (int[] o : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) for (int t = 1; t <= 4; t++) hi = Math.max(hi, fl[lx + 4 + o[0] * t][lz + 4 + o[1] * t]);
+            for (int y = up + 2; y <= Math.min(316, hi); y++) {
+                Material at = d.getType(lx, y, lz);
+                if (at != Material.WATER && !at.isAir()) continue;
+                Material f = Reaches.bracket(n.seed, fl, lx, lz, x, y, z);
+                if (f != null) d.setBlock(lx, y, lz, f);
+            }
+        }
     }
 
     private void column(Noise n, ChunkData d, Random rnd, int minY, int lx, int lz, int x, int z) {
@@ -416,14 +516,7 @@ final class DeepGenerator extends ChunkGenerator {
         java.util.List<int[]> chims = chimneysNear(n.seed, x, z);
         int band = (int) (n.dunes.noise(x, z, 0.5, 0.5) * 3);
         for (int y = ceil; y <= up; y++) {
-            boolean cave = false;
-            // (no caves near an island's surface: their water would spill out; 1.5.2: and none in the raised Sulphur plateau above
-            // the old crust band, which made its chunks cost 3x to generate: 3 noise lookups a block, 250 blocks a column)
-            if (y > ceil + 1 && y < up - 3 && !((sw > 0 || mw > 0) && (y > SEA - 14 || y > 70)) && !(up > 110 && y > 100)) {
-                double a = n.c1.noise(x / 44.0, y / 22.0, z / 44.0), b = n.c2.noise(x / 44.0, y / 22.0, z / 44.0);
-                cave = Math.abs(a) < 0.1 && Math.abs(b) < 0.1;                                     // winding tunnels
-                if (!cave) cave = n.c3.noise(x / 60.0, y / 26.0, z / 60.0) > 0.64;                  // caverns
-            }
+            boolean cave = crustCave(n, x, y, z, up, ceil, sw, mw);
             // the chimneys: from just under the sea floor all the way down into the abyss
             double cd = chims.isEmpty() ? 1e9 : chimneyDist(n, chims, x, y, z);
             double cr = 3.6 + (y > up - 8 ? (y - (up - 8)) * 0.6 : 0); // the mouth opens wider (a blue hole)
@@ -471,10 +564,13 @@ final class DeepGenerator extends ChunkGenerator {
         }
         // 1.14.0: the Reaches' tall features (lantern trees, lumen domes, crag needles, hanging isles) and the Sulphur Sea's mushrooms
         if (!mouth && kind != null) {
-            int reach = Reaches.reach(kind);
-            for (int y = up + 1; reach > 0 && y <= Math.min(SEA - 3, up + reach); y++) {
+            // 1.14.2: lantern trees / lumen domes from any nearby site of their kind (Reaches.tall), up to their real top;
+            // crag needles still follow this column's own floor
+            int top = Math.max(kind == Reaches.Kind.CRAGS ? up + Reaches.reach(kind) : up, Reaches.tallTop(this, n, x, z));
+            for (int y = up + 1; y <= Math.min(SEA - 3, top); y++) {
                 if (d.getType(lx, y, lz) != Material.WATER) continue;
-                Material f = Reaches.feature(this, n, kind, x, y, z, up);
+                Material f = kind == Reaches.Kind.CRAGS ? Reaches.needle(n, x, y, z, up) : null;
+                if (f == null) f = Reaches.tall(this, n, x, y, z);
                 if (f != null) d.setBlock(lx, y, lz, f);
             }
             if (kind == Reaches.Kind.ISLES) {
@@ -485,11 +581,14 @@ final class DeepGenerator extends ChunkGenerator {
                 }
             }
         }
-        if (sulphur && !mouth) for (int y = up + 1; y <= Math.min(318, up + 40); y++) {
-            Material at = d.getType(lx, y, lz);
-            if (at != Material.WATER && !at.isAir()) continue;
-            Material f = Reaches.mushroom(this, n, x, y, z);
-            if (f != null) d.setBlock(lx, y, lz, f);
+        if (sw > 0.2 && !mouth) { // 1.14.2: up to each mushroom's real top (caps over lower ground were cut off)
+            int top = Reaches.mushroomTop(this, n, x, z);
+            for (int y = up + 1; y <= top; y++) {
+                Material at = d.getType(lx, y, lz);
+                if (at != Material.WATER && !at.isAir()) continue;
+                Material f = Reaches.mushroom(this, n, x, y, z);
+                if (f != null) d.setBlock(lx, y, lz, f);
+            }
         }
         if (sulphur) Sulphur.decorate(this, n, d, rnd, lx, lz, x, z, up);
         else if (den) MermaidDen.decorate(this, n, d, rnd, lx, lz, x, z, up);
@@ -502,7 +601,7 @@ final class DeepGenerator extends ChunkGenerator {
                 decorateUpper(n, d, rnd, lx, lz, x, z, up, sunken, warm);
         }
         if (fw > 0) FrozenShelf.cap(n, d, rnd, lx, lz, x, z, up, fw); // the ice over the Frozen Shelf
-        decorateCrust(n, d, rnd, lx, lz, ceil, up);
+        decorateCrust(n, d, rnd, lx, lz, x, z, ceil, up);
         decorateAbyss(n, d, rnd, lx, lz, x, z, floorTop, ceil);
         if (ts != null || mouth) Trench.carve(this, n, d, rnd, lx, lz, x, z, up, minY); // last: the rift cuts through all of it
     }
@@ -562,20 +661,60 @@ final class DeepGenerator extends ChunkGenerator {
         else if (r == 23 && !sunken && warm) d.setBlock(lx, y, lz, pickles);
     }
 
-    private void decorateCrust(Noise n, ChunkData d, Random rnd, int lx, int lz, int ceil, int up) {
+    /**
+     * The crust caves' floors, walls and ceilings. 1.14.2: much more on the ground: patches of gravel, clay, moss, magma
+     * cracks with bubbles, cobbled rubble and boulders, stalagmites, amethyst, bone, dead coral, exposed ore, puddles of
+     * pickles and lichen; stalactites and lichen overhead.
+     */
+    private void decorateCrust(Noise n, ChunkData d, Random rnd, int lx, int lz, int x, int z, int ceil, int up) {
         for (int y = ceil + 2; y < up - 3; y++) {
             if (d.getType(lx, y, lz) != Material.WATER) continue;
             Material below = d.getType(lx, y - 1, lz), above = d.getType(lx, y + 1, lz);
-            if (below.isSolid() && below != Material.CHEST) {
+            if (below.isSolid() && below != Material.CHEST && below != Material.CHISELED_DEEPSLATE && below != Material.POLISHED_DEEPSLATE) {
+                // the ground itself: patches by noise
+                double patch = n.c3.noise(x / 9.0 + 300, y / 6.0, z / 9.0);
+                int r = rnd.nextInt(1000);
+                if (below == Material.TUFF || below == Material.DEEPSLATE || below == Material.CALCITE) {
+                    if (patch > 0.45) d.setBlock(lx, y - 1, lz, rnd.nextInt(4) == 0 ? Material.CLAY : Material.GRAVEL);
+                    else if (patch < -0.5) d.setBlock(lx, y - 1, lz, rnd.nextInt(3) == 0 ? Material.MOSSY_COBBLESTONE : Material.MOSS_BLOCK);
+                    else if (r < 12) d.setBlock(lx, y - 1, lz, rnd.nextBoolean() ? Material.COBBLED_DEEPSLATE : Material.DEEPSLATE_TILES);
+                    else if (r < 16) d.setBlock(lx, y - 1, lz, ore(rnd));
+                    else if (r < 19) { d.setBlock(lx, y - 1, lz, Material.MAGMA_BLOCK);              // a hot crack, bubbles pulling down
+                        for (int k = 0; k < 4 && d.getType(lx, y + k, lz) == Material.WATER; k++) d.setBlock(lx, y + k, lz, bubbleDown); continue; }
+                }
+                if (r < 70) d.setBlock(lx, y, lz, glowLichenFloor);
+                else if (r < 86) d.setBlock(lx, y, lz, pickles);
+                else if (r < 100) d.setBlock(lx, y, lz, Material.SEAGRASS);
+                else if (r < 118 && d.getType(lx, y + 1, lz) == Material.WATER) {                  // a stalagmite
+                    int len = 1 + rnd.nextInt(3);
+                    for (int k = 0; k < len; k++) {
+                        if (d.getType(lx, y + k, lz) != Material.WATER || d.getType(lx, y + k + 1, lz) != Material.WATER) { len = k; break; }
+                        d.setBlock(lx, y + k, lz, k == len - 1 ? dripUpTip : dripUpFrustum);
+                    }
+                } else if (r < 128) d.setBlock(lx, y, lz, wetSlab);                                  // loose rubble
+                else if (r < 133) d.setBlock(lx, y, lz, wetStair);
+                else if (r < 139 && d.getType(lx, y + 1, lz) == Material.WATER) {                  // a boulder
+                    d.setBlock(lx, y, lz, rnd.nextBoolean() ? Material.COBBLED_DEEPSLATE : Material.TUFF);
+                    if (rnd.nextBoolean()) d.setBlock(lx, y + 1, lz, wetSlab);
+                } else if (r < 146) d.setBlock(lx, y, lz, amethyst);
+                else if (r < 152) d.setBlock(lx, y, lz, coralFan);
+                else if (r < 156) d.setBlock(lx, y, lz, Material.BONE_BLOCK);
+            } else if (above.isSolid() && d.getType(lx, y - 1, lz) == Material.WATER) {
                 int r = rnd.nextInt(100);
-                if (r < 9) d.setBlock(lx, y, lz, glowLichenFloor);
-                else if (r < 11) d.setBlock(lx, y, lz, pickles);
-                else if (r < 12) d.setBlock(lx, y, lz, Material.SEAGRASS);
-            } else if (above.isSolid() && rnd.nextInt(14) == 0 && d.getType(lx, y - 1, lz) == Material.WATER) {
-                d.setBlock(lx, y, lz, dripFrustum);
-                d.setBlock(lx, y - 1, lz, dripTip);
+                if (r < 8) {                                                                          // stalactites, 1-3 long
+                    int len = 1 + rnd.nextInt(3);
+                    for (int k = 0; k < len; k++) {
+                        if (d.getType(lx, y - k, lz) != Material.WATER || d.getType(lx, y - k - 1, lz) != Material.WATER) break;
+                        d.setBlock(lx, y - k, lz, k == len - 1 ? dripTip : dripFrustum);
+                    }
+                } else if (r < 14) d.setBlock(lx, y, lz, glowLichenCeil);
             }
         }
+    }
+
+    private Material ore(Random rnd) {
+        int r = rnd.nextInt(20);
+        return r < 8 ? Material.DEEPSLATE_COAL_ORE : r < 14 ? Material.DEEPSLATE_COPPER_ORE : r < 18 ? Material.DEEPSLATE_IRON_ORE : r < 19 ? Material.DEEPSLATE_GOLD_ORE : Material.DEEPSLATE_LAPIS_ORE;
     }
 
     /** Hanging rock cones from the abyss ceiling: their lowest point here, or Integer.MAX_VALUE. */
@@ -655,13 +794,28 @@ final class DeepGenerator extends ChunkGenerator {
 
     /** Dark Loot chests in cave pockets (the crust's caves and the mounds' tunnels): FaultlineItems fills them on first open. */
     private void chests(Noise n, ChunkData d, Random rnd, int chunkX, int chunkZ, int minY) {
-        if (rnd.nextDouble() > 0.35) return;
+        int[] c = cacheSpot(n.seed, chunkX, chunkZ);
+        if (c != null) {
+            int lx = c[0] - (chunkX << 4), lz = c[2] - (chunkZ << 4), y = c[1];
+            if (!d.getType(lx, y, lz).isSolid() && d.getType(lx, y - 1, lz).isSolid()) { // (the cave's decoration may be there already)
+                d.setBlock(lx, y, lz, chest);
+                d.setBlock(lx, y - 1, lz, c[3] == 1 ? Material.CHISELED_DEEPSLATE : Material.POLISHED_DEEPSLATE); // a plinth
+                for (int[] o : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {                // a lantern (soul = locked) beside it
+                    int ax = lx + o[0], az = lz + o[1];
+                    if (ax < 0 || ax > 15 || az < 0 || az > 15 || d.getType(ax, y, az).isSolid() || !d.getType(ax, y - 1, az).isSolid()) continue;
+                    d.setBlock(ax, y, az, c[3] == 1 ? soulLantern : lantern);
+                    break;
+                }
+            }
+        }
+        // the abyss's mound tunnels keep their old Dark Loot chests (the crust's are the caches now)
+        if (rnd.nextDouble() > 0.175) return;
         for (int tries = 0; tries < 24; tries++) {
             int lx = 1 + rnd.nextInt(14), lz = 1 + rnd.nextInt(14);
             int x = (chunkX << 4) + lx, z = (chunkZ << 4) + lz;
             if (flatWeight(x, z) > 0) continue;
             int up = upperFloor(n, x, z), ceil = abyssCeiling(n, x, z);
-            int y = rnd.nextBoolean() ? ceil + 2 + rnd.nextInt(Math.max(1, up - ceil - 6)) : FLOOR + 2 + rnd.nextInt(18);
+            int y = FLOOR + 2 + rnd.nextInt(18);
             if (y <= minY + 4) continue;
             if (d.getType(lx, y, lz) != Material.WATER || !d.getType(lx, y - 1, lz).isSolid()) continue;
             // inside rock: something solid overhead within 6 blocks (a cave, not the open sea)

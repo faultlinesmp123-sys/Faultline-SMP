@@ -4,6 +4,12 @@ border-radius: 3000          # the world border: -3000..3000 (1.7.0: 2000; 1.9.0
 
 # The Black Market (the Bubble's plot) and the Pit: players without faultlinedeep.market can't break / build / empty
 # buckets there or open its shulker boxes, barrels..., and nobody can break the Bubble's glass (the sea would pour in).
+# 1.14.2: cave caches (DeepGenerator puts one in 2.5% of chunks, in the crust's caves; 40% are locked: soul lantern + chiseled
+# plinth, opened with a Deep Cache Key). Their loot is Dark Loot with this shot at a rare (normal chests 0.1%).
+caves:
+  rare-chance: 0.01
+  key-drop-chance: 0.03     # Dark Ocean creatures killed by a player in the caves or the Abyss drop a Deep Cache Key
+
 market:
   protect: true
 

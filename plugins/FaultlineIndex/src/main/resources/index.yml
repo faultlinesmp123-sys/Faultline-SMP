@@ -615,16 +615,7 @@ entries:
      where: "Some skeleton ship crews, and the Skeleton Captain's ghost crew (4 rise when he drops below half health). 34 health.",
      does: "A drowned sailor's ghost: you only see its glowing outline and its cutlass, trailing souls. It drifts down slowly instead of falling, and its blade withers you.", drops: ["1-3 Bones|100%", "2-6 Gold Nuggets|30%", "1-3 Cannonballs|20%"]}
 
-  # ---------------------------------------------------------------- 1.5: meteors, the Caravan, seasons
-  - {chapter: enemies, name: "Molten Husk", icon: molten_husk, detect-tag: faultline_meteor_husk,
-     where: "Guards a fallen meteor (every 4 hours, 1000 blocks from someone). 40 health.", does: "A burning husk with a magma head and a Fire Aspect II golden sword.",
-     drops: ["3-8 Gold Nuggets|100%", "1-2 Magma Cream|30%"]}
-  - {chapter: enemies, name: "Meteor Crawler", icon: meteor_crawler, detect-tag: faultline_meteor_crawler,
-     where: "Crawls out of a fallen meteor. 12 health.", does: "Small, fast and bitey, in a pack of four. Pops in embers when it dies.",
-     drops: ["2-5 Iron Nuggets|50%"]}
-  - {chapter: enemies, name: "Star Sentinel", icon: star_sentinel, detect-tag: faultline_star_sentinel,
-     where: "Floats over a fallen meteor. 80 health.", does: "A big glowing blaze that throws fireballs at anyone going for the meteor's core.",
-     drops: ["2-4 Blaze Rods|100%", "1-2 Diamonds|40%"]}
+  # ---------------------------------------------------------------- 1.5: the Caravan, seasons (meteors removed in 1.8.3)
   - {chapter: enemies, name: "Looter Zombie", icon: looter_zombie, detect-tag: faultline_looter,
      where: "A mutant: 2% of zombies, husks, drowned and zombie villagers that spawn naturally (5% in raid waves) mutate, each into one of the mutations its kind can have. /zraid mutant lists them all.",
      does: "Its hits can STEAL a stack from your backpack (never your hotbar or armor), up to 3. It keeps what it took, even through restarts, and runs faster for a bit. Kill it and you get everything back.",
@@ -1274,6 +1265,9 @@ entries:
   - {chapter: weapons, name: "Glimmer Pearl", icon: glimmer_pearl, detect: "faultlinedeep:glimmer_pearl",
      how: "Only during the Glimmertide (the Dark Ocean's season: the first two weeks of November, February, May and August). Dark Ocean creatures drop 1-2 (15%), bosses 8-12, and glimmer shoals (glowing orbs drifting through the water) give one per orb you swim through.",
      does: "The Glimmertide's currency. Spend them at the Glimmer Shop (/glimmer, open during the season): Dark Loot Bags, Air Coral, Dome Kits, the Abyssal Chart, a Submersible, Hearts of the Sea, a Conduit, a Trident, Mythic Goodie Bags, a Bait Worm for the Abyssal Kraken... They keep between seasons. /glimmer top: this season's best collectors."}
+  - {chapter: consumables, name: "Deep Cache Key", icon: drowned_vault_key, detect: "faultlinedeep:cache_key",
+     how: "3% from Dark Ocean creatures killed in the caves under the sea floor or in the Abyss.",
+     does: "Opens one LOCKED cave cache: the chests in the Dark Ocean's caves on a chiseled deepslate plinth with a soul lantern beside them (the ones with a plain lantern are open). Cave caches are rare (about 1 chunk in 40) and hold Dark Loot with a 1% shot at a rare (an ordinary Dark Loot chest has 0.1%)."}
   - {chapter: consumables, name: "Drowned Vault Key", icon: drowned_vault_key, detect: "faultlinedeep:vault_key",
      how: "8% from Drowned Guards, 5% from Drowned Priests, 3 from the Drowned King.",
      does: "Opens one of the Drowned City's 10 VAULTS (in the palace treasury and the bank vault). A vault opens once: gold blocks, diamonds, emerald blocks, golden apples, netherite scrap, maybe a netherite ingot, a trident, an enchanted golden apple, two Dark Loot Bags."}
@@ -1334,10 +1328,6 @@ achievements:
   - {id: slayer_of_faultline, name: "Slayer of Faultline", icon: slayer_crown, desc: "Defeat every big boss: the Queen Spider, Diamond Jacob, the Abyssal Kraken, the Brine Scourge, the Umbral Leviathan, Coralia and the Abyssal Titan.",
      defeat: [queen_spider, diamond_jacob, the_abyssal_kraken, brine_scourge, umbral_leviathan, coralia, abyssal_titan],
      need: all, reward: {cosmetic: slayer_crown, items: ["NETHERITE_INGOT:2"], xp: 2000}}
-  - {id: stargazer, name: "Stargazer", icon: meteorite, desc: "Claim a meteor: be the first to break its core after it lands.",
-     stat: meteors, count: 1, reward: {items: ["EMERALD:8"], xp: 200}}
-  - {id: star_collector, name: "Star Collector", icon: meteor_pendant, desc: "Claim 10 meteors.",
-     stat: meteors, count: 10, reward: {cosmetic: meteor_pendant, items: ["DIAMOND:10"], xp: 1000}}
   - {id: mutant_hunter, name: "Mutant Hunter", icon: twin_zombie, desc: "Kill 25 mutants (Plague Zombies, Storm Creepers, Broodmothers...).",
      stat: mutants, count: 25, reward: {items: ["DIAMOND:3", "GOLDEN_APPLE:2"], xp: 500}}
   - {id: mutant_slayer, name: "Mutant Slayer", icon: broodmother, desc: "Kill 250 mutants.",

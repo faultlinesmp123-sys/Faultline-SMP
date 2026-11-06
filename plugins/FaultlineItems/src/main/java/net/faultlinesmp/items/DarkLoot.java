@@ -7,6 +7,7 @@ import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
+import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
 import org.bukkit.block.Chest;
@@ -129,7 +130,10 @@ final class DarkLoot implements Listener, CommandExecutor {
             {Enchantment.AQUA_AFFINITY, 1}, {Enchantment.POWER, 5}, {Enchantment.LOOTING, 3}, {Enchantment.FORTUNE, 3},
             {Enchantment.SILK_TOUCH, 1}, {Enchantment.RIPTIDE, 3}, {Enchantment.LOYALTY, 3}, {Enchantment.IMPALING, 5}};
 
-    List<ItemStack> roll() {
+    List<ItemStack> roll() { return roll(cfg("rare-chance", 0.001)); }
+
+    /** A roll with its own shot at a RARE (1.2.68: the Dark Ocean's cave caches get 1%). */
+    List<ItemStack> roll(double rareChance) {
         List<ItemStack> out = new ArrayList<>();
         // accessories
         int acc = random.nextDouble() < cfg("accessory-chance", 0.35) ? 1 + (random.nextDouble() < 0.2 ? 1 : 0) : 0;
@@ -153,7 +157,7 @@ final class DarkLoot implements Listener, CommandExecutor {
         if (random.nextDouble() < 0.2) out.add(new ItemStack(Material.NAUTILUS_SHELL, 1 + random.nextInt(2)));
         if (random.nextDouble() < 0.2) out.add(new ItemStack(Material.GOLDEN_APPLE, 1 + random.nextInt(2)));
         if (random.nextDouble() < 0.03) out.add(new ItemStack(Material.HEART_OF_THE_SEA, 1));
-        if (random.nextDouble() < cfg("rare-chance", 0.001)) out.addAll(rare(RARES.get(random.nextInt(RARES.size()))));
+        if (random.nextDouble() < rareChance) out.addAll(rare(RARES.get(random.nextInt(RARES.size()))));
         if (out.isEmpty()) out.add(new ItemStack(Material.PRISMARINE_SHARD, 3 + random.nextInt(6)));
         return out;
     }
@@ -276,8 +280,9 @@ final class DarkLoot implements Listener, CommandExecutor {
         }
     }
 
-    void fill(Inventory inv) {
-        List<ItemStack> loot = roll();
+    void fill(Inventory inv) { fill(inv, roll()); }
+
+    void fill(Inventory inv, List<ItemStack> loot) {
         List<Integer> free = new ArrayList<>();
         for (int i = 0; i < inv.getSize(); i++) if (inv.getItem(i) == null) free.add(i);
         java.util.Collections.shuffle(free, random);
@@ -322,6 +327,24 @@ final class DarkLoot implements Listener, CommandExecutor {
                 Player dest = to;
                 for (ItemStack it : rare(which)) dest.getInventory().addItem(it).values().forEach(l -> dest.getWorld().dropItemNaturally(dest.getLocation(), l));
             }
+            case "fill" -> { // /darkloot fill <world> <x> <y> <z> [rare chance] [player]: FaultlineDeep's cave caches (1.2.68)
+                if (args.length < 5) { sender.sendMessage(ChatColor.YELLOW + "/darkloot fill <world> <x> <y> <z> [rare chance] [player]"); return true; }
+                World w = Bukkit.getWorld(args[1]);
+                if (w == null) return true;
+                Block b;
+                try { b = w.getBlockAt(Integer.parseInt(args[2]), Integer.parseInt(args[3]), Integer.parseInt(args[4])); } catch (NumberFormatException ex) { return true; }
+                if (!(b.getState() instanceof Chest c) || has(b, placedKey) || has(b, doneKey)) return true;
+                double chance = cfg("rare-chance", 0.001);
+                if (args.length > 5) try { chance = Double.parseDouble(args[5]); } catch (NumberFormatException ignored) { }
+                Player who = args.length > 6 ? Bukkit.getPlayerExact(args[6]) : null;
+                List<ItemStack> loot = roll(0);
+                boolean rare = random.nextDouble() < chance;
+                List<ItemStack> extra = rare ? rare(RARES.get(random.nextInt(RARES.size()))) : List.of();
+                loot.addAll(extra);
+                mark(b, doneKey);
+                fill(b.getState() instanceof Chest fresh ? fresh.getBlockInventory() : c.getBlockInventory(), loot);
+                if (rare && who != null) Bukkit.broadcastMessage(ChatColor.DARK_AQUA + "" + ChatColor.BOLD + "✦ " + who.getName() + ChatColor.AQUA + " found a rare in a cave cache: " + ChatColor.GOLD + describe(extra));
+            }
             case "roll" -> {
                 Player to = args.length > 1 ? Bukkit.getPlayerExact(args[1]) : self;
                 if (to == null) return false;
@@ -330,7 +353,7 @@ final class DarkLoot implements Listener, CommandExecutor {
                 for (ItemStack it : got) dest.getInventory().addItem(it).values().forEach(l -> dest.getWorld().dropItemNaturally(dest.getLocation(), l));
                 sender.sendMessage(ChatColor.DARK_AQUA + "Rolled: " + ChatColor.GRAY + describe(got));
             }
-            default -> sender.sendMessage(ChatColor.YELLOW + "/darkloot <bag [amount] [player]|rare <player> [chance]|give <rare> [player]|roll [player]>");
+            default -> sender.sendMessage(ChatColor.YELLOW + "/darkloot <bag [amount] [player]|rare <player> [chance]|give <rare> [player]|roll [player]|fill <world> <x> <y> <z> [rare] [player]>");
         }
         return true;
     }

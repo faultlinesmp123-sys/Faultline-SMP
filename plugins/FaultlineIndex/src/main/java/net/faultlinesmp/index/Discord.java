@@ -46,7 +46,7 @@ import java.util.regex.Pattern;
 /**
  * THE DISCORD BRIDGE (config discord: in the Index's config.yml), two webhooks:
  *  - PUBLIC (discord.webhook-url): chat, joins/leaves, deaths (player kills too), and every server-wide announcement that
- *    matches discord.forward (boss defeats, achievements, firsts, meteors, the Caravan, weather, invasions...).
+ *    matches discord.forward (boss defeats, achievements, firsts, the Caravan, weather, invasions...).
  *  - LOGS (discord.logs-webhook-url, staff only): everything the public channel gets, plus who placed / lit TNT (and the
  *    other discord.logs.blocks: TNT minecarts, end crystals...) with name, place, date and time, whispers (/msg /tell /w
  *    /r ...), commands run by admins (op or faultlineindex.logged) and the console.
@@ -58,7 +58,7 @@ import java.util.regex.Pattern;
 final class Discord implements Listener {
 
     static final List<String> DEFAULT_FORWARD = List.of(
-            "(?i)has been defeated", "(?i)has fallen", "(?i)has been laid to rest", "(?i)defeated", "(?i)meteor", "(?i)caravan",
+            "(?i)has been defeated", "(?i)has fallen", "(?i)has been laid to rest", "(?i)defeated", "(?i)caravan",
             "(?i)achievement", "(?i)is the first to", "(?i)sandstorm", "(?i)blizzard", "(?i)eclipse",
             "(?i)ghost ship|wailing mary", "(?i)invasion", "(?i)boss rush");
     static final List<String> DEFAULT_WHISPERS = List.of("msg", "tell", "w", "whisper", "r", "reply", "m", "t", "pm", "dm",

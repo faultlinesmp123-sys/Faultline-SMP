@@ -12,9 +12,9 @@ import java.util.*;
 
 /**
  * /serverstats: the whole server in numbers (for players, and for video stats): how many have joined, total playtime,
- * player kills, deaths, mobs killed, bosses defeated (Index credit), meteors claimed, skeleton ships sunk,
- * Mimics killed, Ghost Ships beaten, achievements earned; and the top 3 for kills, boss defeats, playtime
- * and meteors. Worked out at most once every 5 minutes (every player who ever joined is counted). Offline players' vanilla
+ * player kills, deaths, mobs killed, bosses defeated (Index credit), skeleton ships sunk,
+ * Mimics killed, Ghost Ships beaten, achievements earned; and the top 3 for kills, boss defeats and playtime.
+ * Worked out at most once every 5 minutes (every player who ever joined is counted). Offline players' vanilla
  * stats are read from world/stats/<uuid>.json off the main thread (OfflinePlayer#getStatistic reads that file on the main
  * thread for each call: with hundreds of players /serverstats froze the server).
  */
@@ -112,13 +112,12 @@ final class ServerStats implements CommandExecutor {
         out.add(line("Players", rows.size()) + "   " + line("Playtime", ticks / 72000) + ChatColor.GRAY + " h");
         out.add(line("Player kills", pk) + "   " + line("Deaths", deaths));
         out.add(line("Mobs killed", mobs) + "   " + line("Bosses defeated", bossTotal));
-        out.add(line("Meteors claimed", meteorTotal) + "   " + line("Skeleton ships sunk", ships));
+        out.add(line("Skeleton ships sunk", ships));
         out.add(line("Mimics", mimics) + "   " + line("Ghost Ships", ghosts));
         out.add(line("Caravan trades", trades) + "   " + line("Achievements", ach));
         out.add(ChatColor.GOLD + "  Top killers: " + top(kills, ""));
         out.add(ChatColor.GOLD + "  Top boss hunters: " + top(bosses, ""));
         out.add(ChatColor.GOLD + "  Most played: " + top(time, "h"));
-        out.add(ChatColor.GOLD + "  Star collectors: " + top(meteors, ""));
         out.add(bar);
         return out;
     }

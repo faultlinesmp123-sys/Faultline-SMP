@@ -1719,6 +1719,14 @@ Notes:
   is assumed to match 1.21.8's. Previews: `release/previews/emote_*_bendy.mp4` (scratch `vid/render_rig.py` draws the
   dumped transforms). Tested (scratch `et/EmoteTest`: 81 checks incl. 11 parts in their 1024 bands, finite transforms,
   hidden without the pack, shown once it loads, view classic/rig, hitbox hit forwarding, duo = 22 parts, cleanup).
+- **The Griddy, 1:1 (Items 1.2.73)**: keyed to the real dance. Both bodies share the timing (`GRIDDY_STEP` 6 ticks a tap = ~100 BPM
+  in eighths, `GRIDDY_BAR` 16 steps: 12 traveling heel taps (`griddyTravel`: 0.85 forward), then 4 steps of goggles while it
+  skips back to the start so the loop lines up). `griddyRig`: hop-skip (`up` lands on each tap, lifts between), the tapping
+  leg kicks out nearly straight on its heel (thigh 42) while the support knee bends (18 / -38), loose slightly bent arms
+  swing opposite the legs and cross low in front of the hips, chest counter-twists, torso leans in, head watches the feet;
+  GOGGLES: elbows up and out, forearms upright beside the face, hands on the eyes (angles SOLVED: scratch `vid/ik.py` =
+  the rig's FK in Python, a grid search for the hand on the eye + forearm-upright penalty: R_ARM limb(120, 60, 50),
+  R_FORE limb(50, -30, 20), mirrored). Previews `release/previews/emote_griddy_bendy.mp4` + `emote_griddy_front.mp4`.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Skills → Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

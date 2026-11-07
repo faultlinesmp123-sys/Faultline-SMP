@@ -884,23 +884,30 @@ final class Emotes implements Listener, CommandExecutor, TabCompleter {
     }
 
     /** Griddy: 16-step loop (a step = 4 ticks): heel taps, arm pumps, a forward strut, the goggles on the last 4. */
+    /** Griddy timing (both bodies): a tap every GRIDDY_STEP ticks (~100 BPM in eighths), 16 to a bar: 12 traveling heel
+     *  taps, then 4 steps of goggles while it skips back to where it started (so the loop lines up). */
+    static final int GRIDDY_STEP = 6, GRIDDY_BAR = GRIDDY_STEP * 16, GRIDDY_TAPS = GRIDDY_STEP * 12;
+
+    static double griddyTravel(int t) {
+        int b = t % GRIDDY_BAR;
+        return b < GRIDDY_TAPS ? 0.85 * ((double) b / GRIDDY_TAPS) : 0.85 * (1 - sm((b - GRIDDY_TAPS) / (double) (GRIDDY_BAR - GRIDDY_TAPS)));
+    }
+
     void griddy(Run r) {
-        int t = r.t, step = t / 4, s = step % 16, sub = t % 4;
+        int t = r.t, step = t / GRIDDY_STEP, s = step % 16, sub = t % GRIDDY_STEP;
         boolean goggles = s >= 12;
-        double strut = Math.min(step % 32, 32 - step % 32) / 16.0; // walks out and back
-        r.fwd = 0.9 * ease(strut);
+        r.fwd = griddyTravel(t);
         if (goggles) {
             r.hold = "goggles";
-            r.pitch = -8;
-            r.yaw = (float) (Math.sin((s - 12) * Math.PI / 2) * 30);
-            r.pose = s % 2 == 0 && sub < 2 ? Pose.SNEAKING : Pose.STANDING;
+            r.pitch = -6;
+            r.lift = 0.06 * Math.abs(Math.sin(Math.PI * t / GRIDDY_STEP));
             if (s == 12 && sub == 0) { sound(r, Sound.ITEM_SPYGLASS_USE, 0.8f, 1.2f); floatText(r, ChatColor.YELLOW + "" + ChatColor.BOLD + "GRIDDY", 2.3); }
         } else {
-            r.pitch = 18; // eyes on the feet
-            r.yaw = (float) ((s % 2 == 0 ? 1 : -1) * 22);
+            r.pitch = 20; // eyes on the feet
+            r.yaw = (float) ((s % 2 == 0 ? 1 : -1) * 10);
             r.pose = sub < 2 ? Pose.SNEAKING : Pose.STANDING; // the heel tap
-            r.lift = sub == 2 ? 0.08 : 0;
-            if (sub == 0) swing(r, s % 2 == 0);
+            r.lift = sub == 3 ? 0.07 : 0;
+            if (sub == 0) swing(r, s % 2 == 1);
             if (sub == 0) groundPuff(r, 4);
         }
         if (sub == 0) {
@@ -1349,40 +1356,45 @@ final class Emotes implements Listener, CommandExecutor, TabCompleter {
     }
 
     /**
-     * Griddy: a 16-step bar (4 ticks a step). Alternating heel taps (the tapping leg kicks out nearly straight, the other
-     * knee bends and the hips dip), both arms bent about 85 degrees at the elbow pumping opposite the legs, the chest
-     * twisting into each tap, the head nodding at the feet; steps 12-15 = the goggles: both hands up, thumb-and-finger
-     * rings round the eyes, still bouncing.
+     * Griddy, keyed to the real dance: a hop-skip on every tap (~100 BPM). The tapping leg kicks out nearly straight on its
+     * HEEL while the support knee bends under a little bounce; loose, slightly bent arms swing opposite the legs and cross
+     * low in front of the hips, the shoulders counter-twisting; the torso leans in and the head watches the feet. After 12
+     * taps: the GOGGLES, elbows flared out wide at shoulder height and both hands ringed over the eyes, still bouncing,
+     * while it skips back to the start of the loop.
      */
     EmoteRig.Pose griddyRig(Run r, EmoteRig.Pose base) {
         int t = r.t;
-        double ph = t / 8.0 * 2 * Math.PI;                 // one tap each 4 ticks: right, left, right...
-        double a = Math.sin(ph), bounce = Math.cos(2 * ph);
+        double ph = Math.PI * t / GRIDDY_STEP;             // right tap on +, left tap on -
+        double a = Math.sin(ph), aa = Math.abs(a);
         double tr = Math.max(0, a), tl = Math.max(0, -a);
         EmoteRig.Pose q = new EmoteRig.Pose();
-        q.fwd = base.fwd; q.right = base.right; q.yaw = base.yaw * 0.4f;
-        q.up = -0.06 + 0.045 * bounce;
-        // legs: kick out on the heel, the other knee bends under the dip
-        q.limb(EmoteRig.Part.R_LEG, 50 * tr - 12 * tl, 4, 0).limb(EmoteRig.Part.R_SHIN, -4 * tr - 48 * tl, 0, 0);
-        q.limb(EmoteRig.Part.L_LEG, 50 * tl - 12 * tr, 4, 0).limb(EmoteRig.Part.L_SHIN, -4 * tl - 48 * tr, 0, 0);
-        // arms: elbows locked ~85, the arm on the tapping side drives back
-        q.limb(EmoteRig.Part.R_ARM, 12 - 38 * a, 14, 0).limb(EmoteRig.Part.R_FORE, 82 + 12 * Math.abs(a), -10, 0);
-        q.limb(EmoteRig.Part.L_ARM, 12 + 38 * a, 14, 0).limb(EmoteRig.Part.L_FORE, 82 + 12 * Math.abs(a), -10, 0);
-        q.lean(EmoteRig.Part.WAIST, -4 + 3 * bounce, 7 * a, 0);
-        q.lean(EmoteRig.Part.CHEST, 6, -16 * a, 4 * a);
-        q.lean(EmoteRig.Part.HEAD, 16 + 7 * bounce, 9 * a, 0);
-        // the goggles, eased in over the last quarter of the bar
-        int s = (t / 4) % 16;
-        double gk = s < 12 ? 0 : sm(((t % 64) - 48) / 3.0) * sm((64 - (t % 64)) / 2.5);
+        q.fwd = griddyTravel(t); q.right = 0; q.yaw = 0;
+        q.up = -0.045 * aa + 0.035 * (1 - aa);              // lands on the tap, hops between taps
+        // legs: the tapping leg straight out on the heel, the support knee bent under the body
+        q.limb(EmoteRig.Part.R_LEG, 42 * tr + 18 * tl, 3, 0).limb(EmoteRig.Part.R_SHIN, -3 * tr - 38 * tl, 0, 0);
+        q.limb(EmoteRig.Part.L_LEG, 42 * tl + 18 * tr, 3, 0).limb(EmoteRig.Part.L_SHIN, -3 * tl - 38 * tr, 0, 0);
+        // arms swing opposite the legs: the forward one crosses low in front of the hips, the other swings back
+        double rf = Math.max(0, -a), rb = Math.max(0, a);   // right arm forward on a LEFT tap
+        double lf = Math.max(0, a), lb = Math.max(0, -a);
+        q.limb(EmoteRig.Part.R_ARM, 38 * rf - 30 * rb, 8 - 26 * rf, 0).limb(EmoteRig.Part.R_FORE, 22 + 18 * rf, -14 * rf, 0);
+        q.limb(EmoteRig.Part.L_ARM, 38 * lf - 30 * lb, 8 - 26 * lf, 0).limb(EmoteRig.Part.L_FORE, 22 + 18 * lf, -14 * lf, 0);
+        q.lean(EmoteRig.Part.WAIST, 8, 6 * a, 0);
+        q.lean(EmoteRig.Part.CHEST, 8, -12 * a, 3 * a);
+        q.lean(EmoteRig.Part.HEAD, 6 + 5 * aa, 8 * a, 0);
+        // the goggles, eased in and out
+        int b = t % GRIDDY_BAR;
+        double gk = b < GRIDDY_TAPS ? 0 : sm((b - GRIDDY_TAPS) / 4.0) * sm((GRIDDY_BAR - b) / 4.0);
         if (gk > 0) {
             EmoteRig.Pose g = new EmoteRig.Pose();
-            g.fwd = q.fwd; g.right = q.right; g.yaw = q.yaw; g.up = q.up;
+            g.fwd = q.fwd; g.yaw = q.yaw; g.up = q.up;
             System.arraycopy(q.j, 0, g.j, 0, q.j.length);
-            double wob = Math.sin(t * 0.8);
-            g.limb(EmoteRig.Part.R_ARM, 66 + 4 * wob, -14, 0).limb(EmoteRig.Part.R_FORE, 130, 6, 10);
-            g.limb(EmoteRig.Part.L_ARM, 66 - 4 * wob, -14, 0).limb(EmoteRig.Part.L_FORE, 130, 6, 10);
-            g.lean(EmoteRig.Part.CHEST, -2, -6 * a, 0);
-            g.lean(EmoteRig.Part.HEAD, -4 + 5 * bounce, 12 * wob, 0);
+            double wob = Math.sin(ph);
+            // elbows up and out, forearms folded in: each hand rings its eye (angles solved for the hand on the eye, tools: ik)
+            g.limb(EmoteRig.Part.R_ARM, 120, 60 + 3 * wob, 50).limb(EmoteRig.Part.R_FORE, 50, -30, 20);
+            g.limb(EmoteRig.Part.L_ARM, 120, 60 - 3 * wob, 50).limb(EmoteRig.Part.L_FORE, 50, -30, 20);
+            g.lean(EmoteRig.Part.WAIST, 2, 0, 0);
+            g.lean(EmoteRig.Part.CHEST, 0, 4 * wob, 0);
+            g.lean(EmoteRig.Part.HEAD, -4 + 3 * aa, 6 * wob, 0);
             q = EmoteRig.Pose.lerp(q, g, (float) gk);
         }
         return q;

@@ -255,10 +255,14 @@ final class LandCannons implements Listener {
         return null;
     }
 
-    /** The model points at +z; pitch tips it about its trunnions (the model's centre), so the carriage stays on the block. */
+    /**
+     * The model points at +z; pitch tips it about its trunnions (the model's centre), so the carriage stays on the block.
+     * 1.6.11: an ItemDisplay draws its item turned 180 degrees round Y (the ship's cannons make up for it with FLIP), so the
+     * land cannon's barrel pointed backwards: the turn is undone here first, then the pitch.
+     */
     static Transformation transform(float pitch) {
         float s = 1.0f;
-        Quaternionf q = new Quaternionf().rotateX((float) Math.toRadians(pitch));
+        Quaternionf q = new Quaternionf().rotateX((float) Math.toRadians(pitch)).rotateY((float) Math.PI);
         return new Transformation(new Vector3f(0, 0, 0), q, new Vector3f(s, s, s), new Quaternionf());
     }
 

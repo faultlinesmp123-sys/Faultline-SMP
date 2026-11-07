@@ -1655,6 +1655,10 @@ Notes:
   cooling down is denied (`pearlReady`, kept over relogs and re-applied on join). Survival/adventure only. Tested (`mb/Smoke.java`:
   4 pops work, the 5th doesn't + the warning, a fall pop at 4/4 still works, holding warns, set 2, death reset, limit off,
   140-tick pearl cooldown, early throw refused, works again after 7 s).
+- **Ships 1.6.11 (land cannons pointed backwards)**: an ItemDisplay draws its item turned 180 degrees round Y (ship cannons
+  already make up for it: the `facing=south` ones get `FLIP`), but `LandCannons.transform` didn't, so on Java the barrel
+  pointed behind the cannon while it fired forwards. Now `rotateX(pitch).rotateY(PI)` (checked: muzzle = the cannon's
+  facing, aiming up lifts it). The Bedrock stand model was right and is unchanged.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Skills → Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

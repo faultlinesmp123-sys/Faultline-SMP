@@ -1659,6 +1659,33 @@ Notes:
   already make up for it: the `facing=south` ones get `FLIP`), but `LandCannons.transform` didn't, so on Java the barrel
   pointed behind the cannon while it fired forwards. Now `rotateX(pitch).rotateY(PI)` (checked: muzzle = the cannon's
   facing, aiming up lifts it). The Bedrock stand model was right and is unchanged.
+- **Emotes (Items 1.2.70, Index 1.8.4 = guide line)**: `Items/Emotes.java` (`emotes:`, crash data `emotes.yml`, perm
+  `faultline.emote` default true). `/emote` (`/emotes`, `/em`) = a chest menu (Bedrock: a form); `/emote <id>|stop|list|camera
+  on|off|join <player>`. The body is a MANNEQUIN (`EntityType.MANNEQUIN`, spawned by type; tag `faultline_emote`, non-persistent,
+  no gravity, immovable) wearing the player's skin (`ResolvableProfile` of their profile), name and armour COPIES (drop chance 0,
+  death drops cleared). Animation = per-tick keyframes (`frame()` writes wants: fwd/side/lift offsets, yaw, head pitch, pose
+  STANDING/SNEAKING/FALL_FLYING, a pose item, riptide, scale; `apply()` puts them on, never into a wall: `lastGood`) + swings,
+  beat-synced note-block music (`beat()`: 16-step kick/snare/hat/bass), particles, floating TextDisplays (`floatAt`, props).
+  Arm poses come from invisible items (`poseItem`: model `faultline:gui/blank`, a CONSUMABLE component with an
+  `ItemUseAnimation`, used via `startUsingItem`): `crossbow` (charged crossbow = both arms out), `goggles` (SPYGLASS),
+  `handout` (BRUSH), `raise` (TRIDENT), `chest` (BLOCK), `mouth` (TOOT_HORN). The client derives a living entity's BODY yaw
+  (no packet): it follows the head only past 75 degrees or on a swing, and turns toward movement. Emotes: griddy, aura (Aura
+  Farming), sturdy (Get Sturdy), birdbrain (loop up to `max-seconds` 60), and DUOS dap (72 ticks) / hug (96): the host WAITS
+  (hand/arms out, a TextDisplay prompt, nearby Java players get a [JOIN] chat button, Bedrock within `duo-range` a form) for
+  `duo-wait-seconds` 20; joining = right-click the mannequin, [JOIN] (`/emote join <host>`), or picking the same duo emote
+  within `duo-range` 6. The partner's body goes `stand()` 1.6 from the host toward them (else the host's front/sides), both
+  face each other, `leader` plays the shared effects. CAMERA (Java, `emotes.camera` + per-player PDC `faultlineitems:emote_camera`):
+  spectator + `setSpectatorTarget` an ItemDisplay (tag `faultline_emote_cam`, teleport duration 3) flying `shot()` per emote
+  (orbit, Aura's low push-in, Sturdy's low fast orbit, Birdbrain's high angle, duo two-shots from both sides), pulled in
+  before any solid block; sneak (PlayerStopSpectatingEntityEvent) stops. Bedrock or camera off = stays put in their mode,
+  hidden (`hidePlayer`), moving / using / dropping stops it. ANTI-GLITCH: any damage to the mannequin is cancelled, ends the
+  emote (both, for a duo) and lands on the player (`p.damage(amount, DamageSource)`, `Camera.noteFight` for both sides);
+  damage to the player ends it; refused in combat (`Camera.refuse`), in the air / water / riding / gliding / vanished / in
+  /camera / racing / without headroom / on cooldown (server ticks); spectator hotbar teleports and spectating anything else
+  are blocked; another teleport ends it then still happens (next tick); game mode changed by staff ends it without moving
+  them; world change, quit, shutdown, a crash (emotes.yml on join) put them back exactly where they stood in their old
+  mode; a move error ends the emote with "[Emotes] <id> broke at tick N: <error> at <method>:<line>". Tested (scratch
+  `et/EmoteTest`: all 6, hit forwarding, combat refuse, sneak, tp, quit, armour drops, camera off, dap + hug joins, timeout).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Skills → Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

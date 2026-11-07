@@ -1,5 +1,5 @@
 name: FaultlineItems
-version: 1.2.69
+version: 1.2.70
 main: net.faultlinesmp.items.FaultlineItems
 api-version: '1.21'
 softdepend: [floodgate, Geyser-Spigot]
@@ -164,6 +164,11 @@ commands:
     description: "Where you last died, and how far it is from you"
     usage: /lastdeath
     aliases: [deathpos, deathcoords]
+  emote:
+    description: "Emotes: /emote opens the menu, /emote <griddy|aura|sturdy|birdbrain|dap|hug>, /emote stop, /emote camera on|off"
+    usage: /emote [name|stop|list|camera <on|off>|join <player>]
+    aliases: [emotes, em]
+    permission: faultline.emote
   camera:
     description: "Free camera for recording: fly around invisible, /camera again to come back (/camera speed 1-10)"
     usage: /camera [speed <1-10>]
@@ -187,6 +192,9 @@ commands:
     usage: /givedisc <id|random> [player]
     permission: items.fgear
 permissions:
+  faultline.emote:
+    description: Use emotes (/emote)
+    default: true
   items.fenchant:
     description: Give boss enchant books
     default: op

@@ -222,6 +222,9 @@ final class Camera implements Listener, CommandExecutor {
 
     // ---------------------------------------------------------------- combat (can't hop into the camera to escape a fight)
 
+    /** Another feature saw a fight (an emote's mannequin hit): counts like being hit. */
+    void noteFight(UUID id) { lastFight.put(id, System.currentTimeMillis()); }
+
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onHit(EntityDamageByEntityEvent e) {
         boolean mobs = plugin.getConfig().getBoolean("camera.combat-includes-mobs", true);

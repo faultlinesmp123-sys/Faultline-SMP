@@ -403,6 +403,9 @@ public final class FaultlineItems extends JavaPlugin {
         totemLimit = new TotemLimit(this); // 1.2.69: totems popped by players count, 4 max (per life)
         getServer().getPluginManager().registerEvents(totemLimit, this);
         if (getCommand("totems") != null) { getCommand("totems").setExecutor(totemLimit); getCommand("totems").setTabCompleter(totemLimit); }
+        emotes = new Emotes(this); // 1.2.70: emotes (solo + duo), mannequin bodies, cinematic camera
+        getServer().getPluginManager().registerEvents(emotes, this);
+        if (getCommand("emote") != null) { getCommand("emote").setExecutor(emotes); getCommand("emote").setTabCompleter(emotes); }
         balloons = new Balloons(this); // 1.2.24: hot air balloons
         if (getCommand("balloon") != null) getCommand("balloon").setExecutor(balloons); // 1.2.36: /balloon list|remove
         getServer().getPluginManager().registerEvents(balloons, this);
@@ -624,6 +627,7 @@ public final class FaultlineItems extends JavaPlugin {
         if (rangerGear != null) try { rangerGear.shutdown(); } catch (RuntimeException ignored) { }
         if (trinkets != null) try { trinkets.shutdown(); } catch (RuntimeException ignored) { }
         if (sit != null) try { sit.shutdown(); } catch (RuntimeException ignored) { }
+        if (emotes != null) try { emotes.shutdown(); } catch (RuntimeException ignored) { }
         if (camera != null) try { camera.shutdown(); } catch (RuntimeException ignored) { }
         if (where != null) try { where.shutdown(); } catch (RuntimeException ignored) { }
         if (balloons != null) try { balloons.shutdown(); } catch (RuntimeException ignored) { }
@@ -905,6 +909,7 @@ public final class FaultlineItems extends JavaPlugin {
     Sit sit;
     Vanish vanish;
     Camera camera;
+    Emotes emotes;
     Where where;
     CropSeasons cropSeasons;
     Balloons balloons;

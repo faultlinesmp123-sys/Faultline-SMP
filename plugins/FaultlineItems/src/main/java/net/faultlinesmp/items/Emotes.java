@@ -135,6 +135,10 @@ final class Emotes implements Listener, CommandExecutor, TabCompleter {
         double fwd, side, lift, scale; float yaw, pitch; Pose pose; String hold; boolean riptide;
         // what's on it now
         Pose curPose = Pose.STANDING; String curHold = ""; boolean curRip; double curScale = 1;
+        // the bendy body (1.2.72): seen by Java players with the emote pack; everyone else sees the mannequin
+        EmoteRig rig; org.bukkit.entity.Interaction hit; TextDisplay tag;
+        final Set<UUID> rigSees = new HashSet<>();
+        int swM = -1, swO = -1;
         Run(Player p, Kind k) { this.p = p; this.id = p.getUniqueId(); this.kind = k; }
         Vector facing() { return dir(baseYaw); }
         Location at(double up) { return base.clone().add(0, up, 0); }
@@ -146,16 +150,21 @@ final class Emotes implements Listener, CommandExecutor, TabCompleter {
     private final File file;
     final Map<UUID, Run> runs = new HashMap<>();
     private final Map<UUID, Run> byMannequin = new HashMap<>();
+    private final Map<UUID, Run> byHitbox = new HashMap<>();   // the rig's Interaction (rig viewers can't see the mannequin)
+    final Set<UUID> packLoaded = new HashSet<>();             // FaultlineEmotes.zip loaded in their game
+    static final UUID PACK_ID = UUID.fromString("7a3e9c51-2b84-4f0d-9e6a-c1d58f2b7e40");
+    static final String DEFAULT_PACK_URL = "https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/main/FaultlineEmotes.zip";
     private final Map<UUID, Long> cooldown = new HashMap<>();
     private final List<Prop> props = new ArrayList<>();
     private final Set<UUID> moving = new HashSet<>();     // our own teleports / spectate changes
-    private final NamespacedKey camPref;
+    private final NamespacedKey camPref, viewPref;
     private long now;                                    // server ticks (cooldowns)
 
     Emotes(FaultlineItems plugin) {
         this.plugin = plugin;
         this.file = new File(plugin.getDataFolder(), "emotes.yml");
         this.camPref = new NamespacedKey(plugin, "emote_camera");
+        this.viewPref = new NamespacedKey(plugin, "emote_view");
         // leftovers from before (never saved, but a crash mid-chunk-save can't hurt): one sweep at startup
         for (World w : Bukkit.getWorlds()) for (Entity e : w.getEntities()) if (ours(e)) e.remove();
         Bukkit.getScheduler().runTaskTimer(plugin, this::tick, 1L, 1L);
@@ -164,7 +173,7 @@ final class Emotes implements Listener, CommandExecutor, TabCompleter {
     private double cfg(String path, double def) { return plugin.getConfig().getDouble("emotes." + path, def); }
     static boolean ours(Entity e) {
         Set<String> t = e.getScoreboardTags();
-        return t.contains(TAG) || t.contains(CAM_TAG) || t.contains(PROP_TAG);
+        return t.contains(TAG) || t.contains(CAM_TAG) || t.contains(PROP_TAG) || t.contains(EmoteRig.TAG);
     }
     boolean emoting(Player p) { return runs.containsKey(p.getUniqueId()); }
 
@@ -187,6 +196,13 @@ final class Emotes implements Listener, CommandExecutor, TabCompleter {
                 p.getPersistentDataContainer().set(camPref, PersistentDataType.BYTE, (byte) (on ? 1 : 0));
                 p.sendMessage(ChatColor.AQUA + "Emote camera " + (on ? "on" : "off") + ChatColor.GRAY
                         + (on ? " (sneak to stop an emote)." : " (you stay in first person; moving stops the emote)."));
+                return true;
+            }
+            case "view" -> {
+                boolean classic = args.length > 1 ? args[1].equalsIgnoreCase("classic") : !viewClassic(p);
+                p.getPersistentDataContainer().set(viewPref, PersistentDataType.BYTE, (byte) (classic ? 1 : 0));
+                p.sendMessage(ChatColor.AQUA + "You see emotes " + (classic ? "the classic way (no bending)." : "with the bendy body (needs the emote pack)."));
+                for (Run r : runs.values()) viewers(r);
                 return true;
             }
             case "join" -> {
@@ -218,10 +234,12 @@ final class Emotes implements Listener, CommandExecutor, TabCompleter {
         List<String> out = new ArrayList<>();
         if (args.length == 1) {
             List<String> all = new ArrayList<>(ids());
-            all.addAll(List.of("stop", "list", "camera", "join"));
+            all.addAll(List.of("stop", "list", "camera", "view", "join"));
             for (String x : all) if (x.startsWith(args[0].toLowerCase(Locale.ROOT))) out.add(x);
         } else if (args.length == 2 && args[0].equalsIgnoreCase("camera")) {
             out.addAll(List.of("on", "off"));
+        } else if (args.length == 2 && args[0].equalsIgnoreCase("view")) {
+            out.addAll(List.of("rig", "classic"));
         } else if (args.length == 2 && args[0].equalsIgnoreCase("join")) {
             for (Run r : runs.values()) if (r.waiting) out.add(r.p.getName());
         }
@@ -401,6 +419,10 @@ final class Emotes implements Listener, CommandExecutor, TabCompleter {
         r.m = m;
         runs.put(r.id, r);
         byMannequin.put(m.getUniqueId(), r);
+        if (plugin.getConfig().getBoolean("emotes.rig", true)) {
+            try { spawnRig(r); }
+            catch (RuntimeException | LinkageError ex) { plugin.getLogger().warning("[Emotes] couldn't build the emote body: " + ex + " " + where(ex)); removeRig(r); }
+        }
         if (r.camera) {
             save();
             moving.add(r.id);
@@ -529,6 +551,7 @@ final class Emotes implements Listener, CommandExecutor, TabCompleter {
     @EventHandler(priority = EventPriority.LOW)
     public void onClickMannequin(PlayerInteractEntityEvent e) {
         Run r = byMannequin.get(e.getRightClicked().getUniqueId());
+        if (r == null) r = byHitbox.get(e.getRightClicked().getUniqueId());
         if (r == null) return;
         e.setCancelled(true);
         if (e.getHand() != EquipmentSlot.HAND) return;
@@ -548,6 +571,7 @@ final class Emotes implements Listener, CommandExecutor, TabCompleter {
         if (runs.get(r.id) != r) return;
         runs.remove(r.id);
         if (r.m != null) { byMannequin.remove(r.m.getUniqueId()); r.m.remove(); }
+        removeRig(r);
         removeLabel(r);
         Player p = r.p;
         if (r.camera) {
@@ -586,13 +610,17 @@ final class Emotes implements Listener, CommandExecutor, TabCompleter {
         if (e.getCause() == EntityDamageEvent.DamageCause.SUFFOCATION || e.getCause() == EntityDamageEvent.DamageCause.CRAMMING
                 || e.getCause() == EntityDamageEvent.DamageCause.FALL || e.getCause() == EntityDamageEvent.DamageCause.KILL
                 || e.getCause() == EntityDamageEvent.DamageCause.WORLD_BORDER) return;
+        Entity by = e instanceof org.bukkit.event.entity.EntityDamageByEntityEvent x ? x.getDamager() : null;
+        hitLands(r, e.getDamage(), e.getDamageSource(), by);
+    }
+
+    /** The emote ends and the hit lands on the real player (same source: knockback, kill credit); both count as a fight. */
+    void hitLands(Run r, double dmg, org.bukkit.damage.DamageSource src, Entity by) {
         Player p = r.p;
-        double dmg = e.getDamage();
-        var src = e.getDamageSource();
         end(r, false);
         if (!p.isOnline() || p.isDead()) return;
-        if (plugin.camera != null && e instanceof org.bukkit.event.entity.EntityDamageByEntityEvent by) {
-            Entity d = by.getDamager();
+        if (plugin.camera != null && by != null) {
+            Entity d = by;
             if (d instanceof org.bukkit.entity.Projectile pr && pr.getShooter() instanceof Entity sh) d = sh;
             plugin.camera.noteFight(p.getUniqueId());
             if (d instanceof Player a) plugin.camera.noteFight(a.getUniqueId());
@@ -709,7 +737,10 @@ final class Emotes implements Listener, CommandExecutor, TabCompleter {
     public void onEntitiesLoad(EntitiesLoadEvent e) {
         for (Entity x : e.getEntities()) if (ours(x) && !byMannequin.containsKey(x.getUniqueId())) {
             boolean live = false;
-            for (Run r : runs.values()) if (x.equals(r.cam) || x.equals(r.label)) live = true;
+            for (Run r : runs.values()) {
+                if (x.equals(r.cam) || x.equals(r.label) || x.equals(r.hit) || x.equals(r.tag)) live = true;
+                if (r.rig != null) for (ItemDisplay d : r.rig.parts) if (x.equals(d)) live = true;
+            }
             if (!live) x.remove();
         }
     }
@@ -745,6 +776,13 @@ final class Emotes implements Listener, CommandExecutor, TabCompleter {
             try {
                 frame(r);
                 apply(r);
+                if (r.rig != null) {
+                    r.rig.apply(rigPose(r), r.base, r.baseYaw);
+                    if (r.tag != null) r.tag.teleport(r.base.clone().add(r.facing().multiply(r.fwd)).add(0, 2.2 + r.lift, 0));
+                    if (r.t % 10 == 0) viewers(r);
+                }
+                if (r.swM >= 0 && ++r.swM >= 6) r.swM = -1;
+                if (r.swO >= 0 && ++r.swO >= 6) r.swO = -1;
                 if (r.camera) camera(r);
                 if (r.label != null) r.label.teleport(r.at(2.45 + 0.06 * Math.sin(r.t * 0.15)));
             } catch (RuntimeException ex) {
@@ -1001,6 +1039,7 @@ final class Emotes implements Listener, CommandExecutor, TabCompleter {
     static double ease(double k) { k = Math.max(0, Math.min(1, k)); return k * k * (3 - 2 * k); }
 
     void swing(Run r, boolean main) {
+        if (main) r.swM = 0; else r.swO = 0;
         try { if (main) r.m.swingMainHand(); else r.m.swingOffHand(); } catch (RuntimeException ignored) { }
     }
 
@@ -1113,6 +1152,294 @@ final class Emotes implements Listener, CommandExecutor, TabCompleter {
             if (!p.d().isValid() || age > p.life()) { p.d().remove(); it.remove(); continue; }
             if (age % 2 == 0) p.d().teleport(p.d().getLocation().add(p.vel().clone().multiply(2)));
             if (age == p.life() - 8 && p.d() instanceof TextDisplay td) td.setTextOpacity((byte) 60);
+        }
+    }
+
+    // ================================================================ the bendy body (1.2.72)
+
+    @SuppressWarnings("deprecation")
+    void spawnRig(Run r) {
+        Player p = r.p;
+        r.rig = new EmoteRig(p, r.base, EmoteRig.slim(p));
+        org.bukkit.entity.Interaction hit = (org.bukkit.entity.Interaction) r.base.getWorld().spawnEntity(r.base, EntityType.INTERACTION, false);
+        hit.addScoreboardTag(PROP_TAG);
+        q(() -> hit.setPersistent(false));
+        q(() -> hit.setVisibleByDefault(false));
+        q(() -> hit.setInteractionWidth(0.7f));
+        q(() -> hit.setInteractionHeight(1.9f));
+        q(() -> hit.setResponsive(true));
+        r.hit = hit;
+        byHitbox.put(hit.getUniqueId(), r);
+        TextDisplay tag = (TextDisplay) r.base.getWorld().spawnEntity(r.base.clone().add(0, 2.2, 0), EntityType.TEXT_DISPLAY, false);
+        tag.addScoreboardTag(PROP_TAG);
+        q(() -> tag.setPersistent(false));
+        q(() -> tag.setVisibleByDefault(false));
+        q(() -> tag.setText(p.getName()));
+        q(() -> tag.setBillboard(Display.Billboard.CENTER));
+        q(() -> tag.setTeleportDuration(2));
+        r.tag = tag;
+        r.rig.apply(rigPose(r), r.base, r.baseYaw);
+        // invisible by default; also hidden by hand from everyone here now (belt and braces)
+        for (Player v : r.base.getWorld().getPlayers()) {
+            for (ItemDisplay d : r.rig.parts) v.hideEntity(plugin, d);
+            v.hideEntity(plugin, hit); v.hideEntity(plugin, tag);
+        }
+        viewers(r);
+    }
+
+    void removeRig(Run r) {
+        for (UUID v : r.rigSees) { Player o = Bukkit.getPlayer(v); if (o != null && r.m != null) o.showEntity(plugin, r.m); }
+        r.rigSees.clear();
+        if (r.rig != null) { r.rig.remove(); r.rig = null; }
+        if (r.hit != null) { byHitbox.remove(r.hit.getUniqueId()); r.hit.remove(); r.hit = null; }
+        if (r.tag != null) { r.tag.remove(); r.tag = null; }
+    }
+
+    boolean viewClassic(Player p) {
+        Byte b = p.getPersistentDataContainer().get(viewPref, PersistentDataType.BYTE);
+        return b != null && b == 1;
+    }
+
+    /** Sees the bendy body: Java, the emote pack loaded, a game version the shader was made for, and not opted out. */
+    boolean rigViewer(Player v) {
+        if (!plugin.getConfig().getBoolean("emotes.rig", true) || Edition.bedrock(v) || viewClassic(v)) return false;
+        if (!packLoaded.contains(v.getUniqueId())) return false;
+        return protocolOk(v);
+    }
+
+    boolean protocolOk(Player v) {
+        int proto = EmoteRig.protocol(v);
+        if (proto < 0) return true;
+        List<Integer> ok = plugin.getConfig().getIntegerList("emotes.rig-protocols");
+        return (ok.isEmpty() ? List.of(776) : ok).contains(proto);
+    }
+
+    /** Who sees the rig and who sees the mannequin: rechecked every 10 ticks (new arrivals, packs that just loaded). */
+    void viewers(Run r) {
+        if (r.rig == null) return;
+        World w = r.base.getWorld();
+        for (Player v : w.getPlayers()) {
+            boolean near = v.getLocation().distanceSquared(r.base) < 160 * 160;
+            boolean want = near && rigViewer(v);
+            boolean has = r.rigSees.contains(v.getUniqueId());
+            if (want == has) continue;
+            if (want) {
+                for (ItemDisplay d : r.rig.parts) v.showEntity(plugin, d);
+                if (r.hit != null) v.showEntity(plugin, r.hit);
+                if (r.tag != null) v.showEntity(plugin, r.tag);
+                v.hideEntity(plugin, r.m);
+                r.rigSees.add(v.getUniqueId());
+            } else {
+                for (ItemDisplay d : r.rig.parts) v.hideEntity(plugin, d);
+                if (r.hit != null) v.hideEntity(plugin, r.hit);
+                if (r.tag != null) v.hideEntity(plugin, r.tag);
+                v.showEntity(plugin, r.m);
+                r.rigSees.remove(v.getUniqueId());
+            }
+        }
+        r.rigSees.removeIf(id -> { Player o = Bukkit.getPlayer(id); return o == null || !o.getWorld().equals(w); });
+    }
+
+    /** Rig viewers can't see the mannequin: hitting the rig's hitbox is a real attack on it (then the usual forwarding). */
+    @EventHandler(priority = EventPriority.LOW)
+    public void onHitRig(io.papermc.paper.event.player.PrePlayerAttackEntityEvent e) {
+        Run r = byHitbox.get(e.getAttacked().getUniqueId());
+        if (r == null) return;
+        e.setCancelled(true);
+        if (e.getPlayer().equals(r.p) || r.m == null) return;
+        Player a = e.getPlayer();
+        Mannequin m = r.m;
+        // a melee hit like the game's: their attack damage (weapon included) scaled by how charged the swing was
+        AttributeInstance dmg = a.getAttribute(Attribute.ATTACK_DAMAGE);
+        double charge = 1;
+        try { float c = a.getAttackCooldown(); charge = 0.2 + 0.8 * c * c; } catch (RuntimeException ignored) { }
+        double amount = Math.max(0.5, (dmg == null ? 1 : dmg.getValue()) * charge);
+        org.bukkit.damage.DamageSource src = org.bukkit.damage.DamageSource.builder(org.bukkit.damage.DamageType.PLAYER_ATTACK)
+                .withCausingEntity(a).withDirectEntity(a).build();
+        hitLands(r, amount, src, a);
+    }
+
+    // ---------------------------------------------------------------- the emote pack
+
+    /** FaultlineEmotes.zip beside the main pack (only to games on a version the shader was ported to). */
+    void sendPack(Player p) {
+        if (!plugin.getConfig().getBoolean("emotes.rig", true) || Edition.bedrock(p) || !protocolOk(p)) return;
+        String url = plugin.getConfig().getString("item-textures.emotes-url", DEFAULT_PACK_URL);
+        if (url == null || url.isBlank()) return;
+        String hex = PackHash.pick(url, plugin.getConfig().getString("item-textures.emotes-hash", ""), "emotes-hash", plugin.getLogger());
+        if (!hex.isEmpty() && !hex.matches("[0-9a-fA-F]{40}")) { plugin.getLogger().warning("[Resource pack] emote pack not sent: item-textures.emotes-hash isn't a SHA-1"); return; }
+        try { p.addResourcePack(PACK_ID, url, hex.isEmpty() ? new byte[0] : java.util.HexFormat.of().parseHex(hex), null, false); }
+        catch (Exception ex) { plugin.getLogger().warning("[Resource pack] couldn't send the emote pack to " + p.getName() + ": " + ex); }
+    }
+
+    @EventHandler
+    public void onPackStatus(org.bukkit.event.player.PlayerResourcePackStatusEvent e) {
+        if (!PACK_ID.equals(e.getID())) return;
+        switch (e.getStatus()) {
+            case SUCCESSFULLY_LOADED -> packLoaded.add(e.getPlayer().getUniqueId());
+            case ACCEPTED, DOWNLOADED -> { }
+            default -> {
+                packLoaded.remove(e.getPlayer().getUniqueId());
+                plugin.getLogger().info("[Resource pack] " + e.getPlayer().getName() + " (emote pack): " + e.getStatus() + " (they see the classic emotes)");
+            }
+        }
+        for (Run r : runs.values()) viewers(r);
+    }
+
+    @EventHandler
+    public void onQuitPack(PlayerQuitEvent e) { packLoaded.remove(e.getPlayer().getUniqueId()); }
+
+    // ---------------------------------------------------------------- rig poses
+
+    static double sm(double k) { k = Math.max(0, Math.min(1, k)); return k * k * (3 - 2 * k); }
+
+    /** The rig's pose this tick: the frame's wants (offsets, yaw, crouch, arm poses, swings) + each emote's own bends. */
+    EmoteRig.Pose rigPose(Run r) {
+        EmoteRig.Pose q = new EmoteRig.Pose();
+        q.fwd = r.fwd; q.right = r.side; q.up = r.lift; q.yaw = -r.yaw;
+        q.lean(EmoteRig.Part.HEAD, r.pitch, 0, 0);
+        // relaxed: arms a little out, elbows a little bent, breathing
+        double br = Math.sin(r.t * 0.08);
+        q.limb(EmoteRig.Part.R_ARM, 2 + br, 5, 0).limb(EmoteRig.Part.L_ARM, 2 - br, 5, 0);
+        q.limb(EmoteRig.Part.R_FORE, 10, 0, 0).limb(EmoteRig.Part.L_FORE, 10, 0, 0);
+        q.lean(EmoteRig.Part.CHEST, br * 1.2, 0, 0);
+        if (r.pose == Pose.SNEAKING) crouch(q, 1);
+        if (r.pose == Pose.FALL_FLYING) { q.pelvis[0] = -55; q.lean(EmoteRig.Part.HEAD, -40, 0, 0); q.limb(EmoteRig.Part.R_ARM, 0, 80, 0).limb(EmoteRig.Part.L_ARM, 0, 80, 0); }
+        String hold = r.hold == null ? "" : r.hold;
+        switch (hold) {
+            case "crossbow" -> q.limb(EmoteRig.Part.R_ARM, 85, 0, 12).limb(EmoteRig.Part.L_ARM, 85, 0, 12).limb(EmoteRig.Part.R_FORE, 10, -10, 0).limb(EmoteRig.Part.L_FORE, 10, -10, 0);
+            case "goggles" -> q.limb(EmoteRig.Part.R_ARM, 62, -25, 0).limb(EmoteRig.Part.R_FORE, 125, 0, 0);
+            case "handout" -> q.limb(EmoteRig.Part.R_ARM, 55, 6, 0).limb(EmoteRig.Part.R_FORE, 25, -8, 0);
+            case "chest" -> q.limb(EmoteRig.Part.R_ARM, 30, -10, 0).limb(EmoteRig.Part.R_FORE, 95, -35, 0);
+            case "raise" -> q.limb(EmoteRig.Part.R_ARM, 165, 10, 0).limb(EmoteRig.Part.R_FORE, 15, 0, 0);
+            case "mouth" -> q.limb(EmoteRig.Part.R_ARM, 60, -22, 0).limb(EmoteRig.Part.R_FORE, 120, 0, 0);
+            default -> { }
+        }
+        swingRig(q, r.swM, true);
+        swingRig(q, r.swO, false);
+        switch (r.kind) {
+            case GRIDDY -> { if (!r.waiting) return griddyRig(r, q); }
+            case AURA -> auraRig(r, q);
+            case STURDY -> sturdyRig(r, q);
+            case BIRD -> birdRig(r, q);
+            case DAP -> dapRig(r, q);
+            case HUG -> hugRig(r, q);
+        }
+        return q;
+    }
+
+    /** Knees bend, hips drop and go back so the feet stay put, the back leans in. */
+    static void crouch(EmoteRig.Pose q, double k) {
+        q.up -= 0.13 * k; q.fwd -= 0.12 * k;
+        q.add(EmoteRig.Part.WAIST, -18 * k, 0, 0).add(EmoteRig.Part.CHEST, -12 * k, 0, 0).add(EmoteRig.Part.HEAD, 22 * k, 0, 0);
+        q.add(EmoteRig.Part.R_LEG, 48 * k, 0, 0).add(EmoteRig.Part.L_LEG, 48 * k, 0, 0);
+        q.add(EmoteRig.Part.R_SHIN, -70 * k, 0, 0).add(EmoteRig.Part.L_SHIN, -70 * k, 0, 0);
+        q.add(EmoteRig.Part.R_ARM, 18 * k, 0, 0).add(EmoteRig.Part.L_ARM, 18 * k, 0, 0);
+        q.add(EmoteRig.Part.R_FORE, 20 * k, 0, 0).add(EmoteRig.Part.L_FORE, 20 * k, 0, 0);
+    }
+
+    /** A swing: shoulder whips forward with the elbow snapping open, the chest turns into it. */
+    static void swingRig(EmoteRig.Pose q, int tick, boolean main) {
+        if (tick < 0) return;
+        double at = tick / 6.0, f = 1 - Math.pow(1 - at, 4);
+        double up = Math.sin(f * Math.PI) * 75, elbow = Math.sin(at * Math.PI) * 45;
+        double turn = Math.sin(Math.sqrt(at) * 2 * Math.PI) * 14 * (main ? -1 : 1);
+        EmoteRig.Part arm = main ? EmoteRig.Part.R_ARM : EmoteRig.Part.L_ARM, fore = main ? EmoteRig.Part.R_FORE : EmoteRig.Part.L_FORE;
+        q.add(arm, up, 0, 0).add(fore, elbow, 0, 0).add(EmoteRig.Part.CHEST, 0, turn, 0);
+    }
+
+    /**
+     * Griddy: a 16-step bar (4 ticks a step). Alternating heel taps (the tapping leg kicks out nearly straight, the other
+     * knee bends and the hips dip), both arms bent about 85 degrees at the elbow pumping opposite the legs, the chest
+     * twisting into each tap, the head nodding at the feet; steps 12-15 = the goggles: both hands up, thumb-and-finger
+     * rings round the eyes, still bouncing.
+     */
+    EmoteRig.Pose griddyRig(Run r, EmoteRig.Pose base) {
+        int t = r.t;
+        double ph = t / 8.0 * 2 * Math.PI;                 // one tap each 4 ticks: right, left, right...
+        double a = Math.sin(ph), bounce = Math.cos(2 * ph);
+        double tr = Math.max(0, a), tl = Math.max(0, -a);
+        EmoteRig.Pose q = new EmoteRig.Pose();
+        q.fwd = base.fwd; q.right = base.right; q.yaw = base.yaw * 0.4f;
+        q.up = -0.06 + 0.045 * bounce;
+        // legs: kick out on the heel, the other knee bends under the dip
+        q.limb(EmoteRig.Part.R_LEG, 50 * tr - 12 * tl, 4, 0).limb(EmoteRig.Part.R_SHIN, -4 * tr - 48 * tl, 0, 0);
+        q.limb(EmoteRig.Part.L_LEG, 50 * tl - 12 * tr, 4, 0).limb(EmoteRig.Part.L_SHIN, -4 * tl - 48 * tr, 0, 0);
+        // arms: elbows locked ~85, the arm on the tapping side drives back
+        q.limb(EmoteRig.Part.R_ARM, 12 - 38 * a, 14, 0).limb(EmoteRig.Part.R_FORE, 82 + 12 * Math.abs(a), -10, 0);
+        q.limb(EmoteRig.Part.L_ARM, 12 + 38 * a, 14, 0).limb(EmoteRig.Part.L_FORE, 82 + 12 * Math.abs(a), -10, 0);
+        q.lean(EmoteRig.Part.WAIST, -4 + 3 * bounce, 7 * a, 0);
+        q.lean(EmoteRig.Part.CHEST, 6, -16 * a, 4 * a);
+        q.lean(EmoteRig.Part.HEAD, 16 + 7 * bounce, 9 * a, 0);
+        // the goggles, eased in over the last quarter of the bar
+        int s = (t / 4) % 16;
+        double gk = s < 12 ? 0 : sm(((t % 64) - 48) / 3.0) * sm((64 - (t % 64)) / 2.5);
+        if (gk > 0) {
+            EmoteRig.Pose g = new EmoteRig.Pose();
+            g.fwd = q.fwd; g.right = q.right; g.yaw = q.yaw; g.up = q.up;
+            System.arraycopy(q.j, 0, g.j, 0, q.j.length);
+            double wob = Math.sin(t * 0.8);
+            g.limb(EmoteRig.Part.R_ARM, 66 + 4 * wob, -14, 0).limb(EmoteRig.Part.R_FORE, 130, 6, 10);
+            g.limb(EmoteRig.Part.L_ARM, 66 - 4 * wob, -14, 0).limb(EmoteRig.Part.L_FORE, 130, 6, 10);
+            g.lean(EmoteRig.Part.CHEST, -2, -6 * a, 0);
+            g.lean(EmoteRig.Part.HEAD, -4 + 5 * bounce, 12 * wob, 0);
+            q = EmoteRig.Pose.lerp(q, g, (float) gk);
+        }
+        return q;
+    }
+
+    /** Aura Farming: the body stays square, the head turns away to the horizon, one hand drifts up and flows. */
+    void auraRig(Run r, EmoteRig.Pose q) {
+        q.yaw = -r.yaw * 0.35f;
+        q.add(EmoteRig.Part.HEAD, 0, -r.yaw * 0.65f, 0);
+        double flow = Math.sin(r.t * 0.045);
+        q.limb(EmoteRig.Part.R_ARM, 28 + 14 * flow, 12, -10).limb(EmoteRig.Part.R_FORE, 60 + 25 * flow, -15, 0);
+        q.limb(EmoteRig.Part.L_ARM, -6, 7, 0).limb(EmoteRig.Part.L_FORE, 22, 0, 0);
+        q.limb(EmoteRig.Part.R_LEG, 0, 6, 0).limb(EmoteRig.Part.L_LEG, 4, 8, 0).limb(EmoteRig.Part.L_SHIN, -8, 0, 0);
+        q.lean(EmoteRig.Part.CHEST, -4, 0, 2 * flow);
+    }
+
+    /** Get Sturdy: always low (knees bent), arms pumping bent, the knee lifts high before each stomp. */
+    void sturdyRig(Run r, EmoteRig.Pose q) {
+        if (r.pose != Pose.SNEAKING) crouch(q, 0.45);
+        int step = r.t / 5, s = step % 16, sub = r.t % 5;
+        double pump = Math.sin(r.t / 10.0 * 2 * Math.PI);
+        q.limb(EmoteRig.Part.R_ARM, 30 + 30 * pump, 18, 0).limb(EmoteRig.Part.L_ARM, 30 - 30 * pump, 18, 0);
+        q.limb(EmoteRig.Part.R_FORE, 95, -15, 0).limb(EmoteRig.Part.L_FORE, 95, -15, 0);
+        if (s == 6 || s == 14) { double k = sm(sub / 4.0); q.limb(EmoteRig.Part.R_LEG, 30 + 55 * k, 6, 0).limb(EmoteRig.Part.R_SHIN, -40 - 50 * k, 0, 0); }
+        if (s == 7 || s == 15) { double k = 1 - sm(sub / 3.0); q.limb(EmoteRig.Part.R_LEG, 85 * k, 6, 0).limb(EmoteRig.Part.R_SHIN, -90 * k, 0, 0);
+            if (sub >= 3) { q.limb(EmoteRig.Part.R_ARM, -20, 35, 0).limb(EmoteRig.Part.L_ARM, -20, 35, 0); } }
+        q.lean(EmoteRig.Part.CHEST, 8, 10 * pump, 0);
+    }
+
+    /** Birdbrain: chicken wings (hands tucked at the chest, elbows flapping out), head pecking. */
+    void birdRig(Run r, EmoteRig.Pose q) {
+        if (r.pose == Pose.FALL_FLYING) { q.limb(EmoteRig.Part.R_FORE, 0, 0, 0).limb(EmoteRig.Part.L_FORE, 0, 0, 0); return; }
+        double flap = Math.abs(Math.sin(r.t * 0.8));
+        q.limb(EmoteRig.Part.R_ARM, 8, 25 + 45 * flap, 0).limb(EmoteRig.Part.L_ARM, 8, 25 + 45 * flap, 0);
+        q.limb(EmoteRig.Part.R_FORE, 125, -40, 0).limb(EmoteRig.Part.L_FORE, 125, -40, 0);
+        q.limb(EmoteRig.Part.R_LEG, 0, 5, 0).limb(EmoteRig.Part.L_LEG, 0, 5, 0);
+        q.add(EmoteRig.Part.HEAD, 0, 0, 0);
+        q.lean(EmoteRig.Part.CHEST, 6 + 6 * flap, 0, 0);
+    }
+
+    /** Dap Up: the hand-out arm bent and ready, the bro hug wraps the right arm round their back. */
+    void dapRig(Run r, EmoteRig.Pose q) {
+        if ("crossbow".equals(r.hold)) {
+            q.limb(EmoteRig.Part.R_ARM, 70, 20, 25).limb(EmoteRig.Part.R_FORE, 30, -75, 0);
+            q.limb(EmoteRig.Part.L_ARM, 40, 10, 0).limb(EmoteRig.Part.L_FORE, 70, -30, 0);
+            q.lean(EmoteRig.Part.CHEST, 10, r.leader ? 10 : -10, 0);
+        }
+    }
+
+    /** Hug: both arms wrap round, forearms curling in, the head rests to the side. */
+    void hugRig(Run r, EmoteRig.Pose q) {
+        if ("crossbow".equals(r.hold)) {
+            double sway = Math.sin(r.t * 0.18);
+            q.limb(EmoteRig.Part.R_ARM, 78, 18, 15).limb(EmoteRig.Part.L_ARM, 78, 18, 15);
+            q.limb(EmoteRig.Part.R_FORE, 15, -80, 0).limb(EmoteRig.Part.L_FORE, 15, -80, 0);
+            q.lean(EmoteRig.Part.CHEST, 8, 0, 4 * sway);
+            q.lean(EmoteRig.Part.HEAD, 6, r.leader ? 25 : -25, 8);
         }
     }
 

@@ -3415,6 +3415,7 @@ public final class FaultlineItems extends JavaPlugin {
                 player.addResourcePack(PACK_ID, url, hashBytes, null, false);
                 plugin.getLogger().info("[Resource pack] sent to " + player.getName() + " (hash " + (hex.isEmpty() ? "none" : hex) + ")");
                 sendMusic(player);
+                if (plugin.emotes != null) plugin.emotes.sendPack(player); // 1.2.72: the bendy emote body
                 return "sent (hash " + (hex.isEmpty() ? "none" : hex) + ")";
             } catch (Exception e) {
                 plugin.getLogger().log(Level.WARNING, "Failed to send item texture pack to " + player.getName(), e);

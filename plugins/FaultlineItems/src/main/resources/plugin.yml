@@ -1,5 +1,5 @@
 name: FaultlineItems
-version: 1.2.71
+version: 1.2.72
 main: net.faultlinesmp.items.FaultlineItems
 api-version: '1.21'
 softdepend: [floodgate, Geyser-Spigot]
@@ -166,7 +166,7 @@ commands:
     aliases: [deathpos, deathcoords]
   emote:
     description: "Emotes: /emote opens the menu, /emote <griddy|aura|sturdy|birdbrain|dap|hug>, /emote stop, /emote camera on|off"
-    usage: /emote [name|stop|list|camera <on|off>|join <player>]
+    usage: /emote [name|stop|list|camera <on|off>|view <rig|classic>|join <player>]
     aliases: [emotes, em]
     permission: faultline.emote
   camera:

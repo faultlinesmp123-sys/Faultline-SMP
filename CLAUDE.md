@@ -1690,6 +1690,35 @@ Notes:
   still saying 1.2.70's 60 reads as 0): Dap Up repeats its 72-tick sequence (`t % 72`), Hug holds and sways the embrace
   (ticks 14..73 looped). One partner stopping (sneak, /emote stop, a hit) ends both. Elbows can't bend: the body is a vanilla
   mannequin (one-piece arms); bendy limbs with the player's skin need a client mod or a resource-pack core shader rig.
+- **The bendy emote body (Items 1.2.72)**: `Items/EmoteRig.java` + `FaultlineEmotes.zip` (built by `python3 tools/emote_pack.py <repo>
+  --check <dir with 26.2's shaders/include/*.glsl>`; `--check` compiles all 128 define combos of both stages with glslangValidator).
+  Technique, part ids and UV tables from Stable Player Display by bradleyq (CC0; credited in the pack's CREDITS.txt), ported from
+  1.21.8's to 26.2's `core/entity.vsh/.fsh` (pack format 88; 26.2's vanilla shaders: misode/mcmeta `26.2-assets` on GitHub). Each
+  body part is an item display (THIRDPERSON_RIGHTHAND) holding the player's PLAYER_HEAD (their profile) with item model
+  `faultline:emote/<part>` (`slim/` variant via custom_model_data string "slim", from `PlayerTextures.SkinModel`); its
+  translation is lowered by 1024 x part id (0 head, 1 r arm, 2 l arm, 3 chest, 4 r leg, 5 l leg, 6 r forearm, 7 l forearm,
+  8 waist, 9 r shin, 10 l shin) and the shader moves it back and paints that part of the skin (inner + outer layer). Part
+  cubes hang DOWN from the display (head sits on it), x/z centred; limbs/torso scaled 0.9375 on Y. Rig frame: x = right,
+  y = up, -z = front; `face = rotY(PI - yaw)`. FK in `solve()`: pelvis -> waist -> chest -> head / upper arms (shoulder 2 px
+  under the arm top) -> forearms; pelvis -> thighs -> shins. `Pose`: root offset, body yaw, pelvis + per-joint euler
+  (`limb()` = forward / outward / twist, mirrored for the left side; `lean()` for upright parts). Updated every tick with
+  interpolation 2. `Emotes.rigPose()` builds every emote's pose from the frame's wants (crouch with knees, swings with elbows,
+  the arm-pose items) + its own bends: `griddyRig` (hand-keyed: heel kicks, bent knee under the dip, elbows ~85 pumping,
+  chest twist, head nods, the two-handed goggles), `auraRig`, `sturdyRig` (knee lift before each stomp), `birdRig` (chicken
+  wings), `dapRig` (arm round the back), `hugRig` (forearms curl round). WHO SEES WHAT (`viewers()`, every 10 ticks):
+  `rigViewer` = Java + FaultlineEmotes.zip loaded (`packLoaded`, PlayerResourcePackStatusEvent for `Emotes.PACK_ID`) +
+  client protocol in `emotes.rig-protocols` [776 = 26.2] (ViaVersion by reflection, none = native) + not `/emote view
+  classic` (PDC `faultlineitems:emote_view`): they see the rig (+ a name TextDisplay + an Interaction hitbox, since the
+  mannequin is hidden from them); everyone else sees the mannequin. Rig parts are `setVisibleByDefault(false)` AND hidden by
+  hand from everyone present at spawn. Hitting the hitbox (PrePlayerAttackEntityEvent) = `hitLands()` with their attack
+  damage x swing charge (the mannequin's damage path uses the same method). The pack is sent from `applyTextures` (after the
+  music pack) only to rig-capable games: `item-textures.emotes-url` (code default = raw main FaultlineEmotes.zip),
+  `emotes-hash` (empty = PackHash works it out). Iris/OptiFine shaders or another version = they just see the mannequin
+  (their client still loads the pack; `/emote view classic` if the bodies look broken). UNTESTED IN A REAL CLIENT: the
+  shader compiles and links for every variant, but the vertex order / render type of a skull in an item display in 26.2
+  is assumed to match 1.21.8's. Previews: `release/previews/emote_*_bendy.mp4` (scratch `vid/render_rig.py` draws the
+  dumped transforms). Tested (scratch `et/EmoteTest`: 81 checks incl. 11 parts in their 1024 bands, finite transforms,
+  hidden without the pack, shown once it loads, view classic/rig, hitbox hit forwarding, duo = 22 parts, cleanup).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Skills → Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.
@@ -1713,6 +1742,7 @@ Notes:
 | `FaultlineEclipse.zip`, `FaultlineAurora.zip` | Eclipse / Aurora sky packs (`tools/event_packs.py`, sent by EventPacks during those events) |
 | `FaultlineBosses.zip` | Very old zip of the FaultlineBosses source (Demon Eye only). Ignore it; the live copy is `plugins/FaultlineBosses/` |
 | `plugins/` | Source code for all ten custom plugins (edit these) |
+| `FaultlineEmotes.zip` | Third Java pack: the bendy emote body (26.2 core shader + body part models, `tools/emote_pack.py`; sent to 26.2 games beside FaultlineSMP.zip) |
 | `FaultlineDeepMusic.zip` | Second Java pack: the Dark Ocean's three music tracks (sunken, abyss, acid; sent beside FaultlineSMP.zip) |
 | `bedrock/` | Bedrock (Geyser) packs + custom item mappings: cosmetics (`tools/cosmetics_assets.py`), ships (`tools/ship_assets.py --bedrock`), wild models (`tools/wild_assets.py`) |
 

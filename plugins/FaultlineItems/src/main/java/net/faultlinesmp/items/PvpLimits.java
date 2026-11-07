@@ -25,12 +25,15 @@ import java.util.UUID;
  *    hits, you just don't fly forward) and the action bar says when it's back. Paper's EntityLungeEvent only exists in
  *    the 26.x API, and the release jars are built against 1.21.11, so it's registered by name at startup.
  *  - COBWEBS: one placed every cobweb-place-cooldown-ms (250) per player (web spam in fights).
+ *  - ENDER PEARLS (1.2.69): one thrown every ender-pearl-cooldown-seconds (7) per player. The game's own item cooldown is
+ *    set to it (the pearl greys out, Java and Bedrock), and a throw that still gets through early is cancelled. The time
+ *    left is kept over a relog.
  * Creative and spectator players are never limited.
  */
 final class PvpLimits implements Listener {
 
     private final FaultlineItems plugin;
-    private final Map<UUID, Long> lungeReady = new HashMap<>(), webReady = new HashMap<>();
+    private final Map<UUID, Long> lungeReady = new HashMap<>(), webReady = new HashMap<>(), pearlReady = new HashMap<>();
     boolean lungeHooked;
 
     PvpLimits(FaultlineItems plugin) {
@@ -75,6 +78,43 @@ final class PvpLimits implements Listener {
         Long ready = webReady.get(id);
         if (ready != null && ready > now) { e.setCancelled(true); return; }
         webReady.put(id, now + cd);
+    }
+
+    long pearlMs() { return (long) (plugin.getConfig().getDouble("pvp-limits.ender-pearl-cooldown-seconds", 7) * 1000); }
+
+    /** A throw while the pearl is still cooling down (the client's cooldown can be dodged): cancelled. */
+    @EventHandler(priority = EventPriority.LOW)
+    public void onPearlUse(org.bukkit.event.player.PlayerInteractEvent e) {
+        if (e.getItem() == null || e.getItem().getType() != Material.ENDER_PEARL || !e.getAction().isRightClick() || !limited(e.getPlayer())) return;
+        Long ready = pearlReady.get(e.getPlayer().getUniqueId());
+        long now = System.currentTimeMillis();
+        if (ready == null || ready <= now || pearlMs() <= 0) return;
+        e.setUseItemInHand(Event.Result.DENY);
+        e.setCancelled(true);
+        e.getPlayer().setCooldown(Material.ENDER_PEARL, (int) Math.ceil((ready - now) / 50.0));
+        e.getPlayer().sendActionBar(Meteor.legacy(ChatColor.RED + "Ender Pearl ready in " + String.format("%.1f", (ready - now) / 1000.0) + " s"));
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onPearlThrow(org.bukkit.event.entity.ProjectileLaunchEvent e) {
+        if (!(e.getEntity() instanceof org.bukkit.entity.EnderPearl pearl) || !(pearl.getShooter() instanceof Player p) || !limited(p)) return;
+        long cd = pearlMs();
+        if (cd <= 0) return;
+        pearlReady.put(p.getUniqueId(), System.currentTimeMillis() + cd);
+        int ticks = (int) Math.ceil(cd / 50.0);
+        // the game puts its own 1 s cooldown on after this event: ours goes on the next tick
+        Bukkit.getScheduler().runTask(plugin, () -> { if (p.isOnline()) p.setCooldown(Material.ENDER_PEARL, ticks); });
+    }
+
+    /** Back on: a pearl still cooling down when they left greys out again. */
+    @EventHandler
+    public void onJoin(org.bukkit.event.player.PlayerJoinEvent e) {
+        Long ready = pearlReady.get(e.getPlayer().getUniqueId());
+        long now = System.currentTimeMillis();
+        if (ready == null) return;
+        if (ready <= now) { pearlReady.remove(e.getPlayer().getUniqueId()); return; }
+        Player p = e.getPlayer();
+        Bukkit.getScheduler().runTaskLater(plugin, () -> { if (p.isOnline()) p.setCooldown(Material.ENDER_PEARL, (int) Math.ceil((ready - System.currentTimeMillis()) / 50.0)); }, 5L);
     }
 
     @EventHandler

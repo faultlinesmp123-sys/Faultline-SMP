@@ -565,6 +565,15 @@ vanish:
 pvp-limits:
   lunge-cooldown-seconds: 5        # spear Lunge: once every 5 s (on cooldown the jab still hits, without the lunge). 0 = off
   cobweb-place-cooldown-ms: 250    # one cobweb every 0.25 s per player. 0 = off
+  ender-pearl-cooldown-seconds: 7  # 1.2.69: one ender pearl every 7 s per player (survival/adventure). 0 = the game's own 1 s
+
+# 1.2.69: a totem popped by ANOTHER PLAYER counts (1/4, 2/4...). After `max` of them, the next totem doesn't save you from a
+# player ("4/4 Totems has been popped, this totem wont work"); it still works against mobs, falls, lava... The count goes
+# back to 0 when you die (reset-on-death). Admins: /totems <player> | set <player> <n> | reset <player|all> | limit <n|off>
+totem-limit:
+  enabled: true
+  max: 4
+  reset-on-death: true
 
 balloon:
   speed: 0.35              # blocks a tick (sprint = x1.6)

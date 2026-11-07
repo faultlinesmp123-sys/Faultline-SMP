@@ -400,6 +400,9 @@ public final class FaultlineItems extends JavaPlugin {
         getCommand("camera").setExecutor(camera);
         pvpLimits = new PvpLimits(this); // 1.2.37: spear lunge cooldown, cobweb place rate
         getServer().getPluginManager().registerEvents(pvpLimits, this);
+        totemLimit = new TotemLimit(this); // 1.2.69: totems popped by players count, 4 max (per life)
+        getServer().getPluginManager().registerEvents(totemLimit, this);
+        if (getCommand("totems") != null) { getCommand("totems").setExecutor(totemLimit); getCommand("totems").setTabCompleter(totemLimit); }
         balloons = new Balloons(this); // 1.2.24: hot air balloons
         if (getCommand("balloon") != null) getCommand("balloon").setExecutor(balloons); // 1.2.36: /balloon list|remove
         getServer().getPluginManager().registerEvents(balloons, this);
@@ -886,6 +889,7 @@ public final class FaultlineItems extends JavaPlugin {
     DiveHelmets diveHelmets;
     Gear getGear() { return gear; }
     PvpLimits pvpLimits;
+    TotemLimit totemLimit;
     LifeJellyListener getLifeJellyListener() { return lifeJellyListener; }
 
     DivingGear getDivingGear() { return divingGear; }

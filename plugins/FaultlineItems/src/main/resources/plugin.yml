@@ -1,5 +1,5 @@
 name: FaultlineItems
-version: 1.2.68
+version: 1.2.69
 main: net.faultlinesmp.items.FaultlineItems
 api-version: '1.21'
 softdepend: [floodgate, Geyser-Spigot]
@@ -105,6 +105,9 @@ commands:
     description: Spawn a Queen Spider (admin)
     usage: /queenspider spawn [<world> <x> <y> <z>]
     permission: items.queenspider
+  totems:
+    description: Totems popped by players (admins - set, reset, change or turn off the limit)
+    usage: /totems [<player>|set <player> <n>|reset <player|all>|limit <n|off>|on|off]
   caravan:
     description: Where the Caravan Merchant is, or when he's back (admins - now, here, stop, reroll)
     usage: /caravan [now|here|stop|reroll]
@@ -240,6 +243,9 @@ permissions:
     default: op
   items.queenspider:
     description: Allows spawning the Queen Spider
+    default: op
+  items.totems:
+    description: Allows seeing and changing anyone's totem count and the totem limit
     default: op
   items.caravan:
     description: Allows calling and sending away the Caravan

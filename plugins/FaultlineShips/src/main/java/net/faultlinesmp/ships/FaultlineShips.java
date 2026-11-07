@@ -23,6 +23,7 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.Display;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Interaction;
@@ -104,6 +105,7 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
     boolean dirty;
     Pirates pirates;
     LandCannons landCannons;
+    Gunnery gunnery;
     TreasureMaps treasure;
     /** Ship upgrades: id -> {title, max level, colour, vanilla model, what it does}. */
     static final java.util.LinkedHashMap<String, String[]> UPGRADES = new java.util.LinkedHashMap<>();
@@ -139,6 +141,8 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(pirates.ghost, this);
         landCannons = new LandCannons(this);
         getServer().getPluginManager().registerEvents(landCannons, this);
+        gunnery = new Gunnery(this); // 1.6.12: man a gun, lay it with the keys
+        getServer().getPluginManager().registerEvents(gunnery, this);
         treasure = new TreasureMaps(this);
         getServer().getPluginManager().registerEvents(treasure, this);
         for (World w : Bukkit.getWorlds()) for (var ch : w.getLoadedChunks()) { cleanup(ch.getEntities()); cleanDeck(ch); }
@@ -149,6 +153,7 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
 
     @Override
     public void onDisable() {
+        if (gunnery != null) try { gunnery.leaveAll(); } catch (RuntimeException ignored) { }
         if (pirates != null) pirates.shutdown();
         if (landCannons != null) try { landCannons.shutdown(); } catch (RuntimeException ignored) { }
         for (Ship s : ships.values()) {
@@ -807,6 +812,8 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
         if (isBall(hand)) {
             event.setCancelled(true);
             if (used(p)) return;
+            if (gunnery.manning(p)) { gunnery.fire(p); return; }
+            if (p.isSneaking() && gunnery.man(p)) return;
             fire(p);
             return;
         }
@@ -878,7 +885,11 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
         ItemStack hand = p.getInventory().getItemInMainHand();
         if (isHammer(hand)) { hammer(p, s); return; }
         if (used(p)) return;
-        if (isBall(hand)) { fire(p); return; }
+        if (isBall(hand)) {
+            if (gunnery.manning(p)) { gunnery.fire(p); return; }
+            if (p.isSneaking() && gunnery.man(p)) return;
+            fire(p); return;
+        }
         String upg = upgradeOf(hand);
         if (upg != null) { fitUpgrade(p, s, hand, upg); return; }
         if (!s.building && paintable(p, hand)) { paint(p, s, hand); return; }
@@ -958,28 +969,57 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
             p.sendActionBar(Component.text(anyOnSide ? "Reloading..." : "No cannon on that side.", NamedTextColor.YELLOW));
             return;
         }
-        if (p.getGameMode() != GameMode.CREATIVE) {
-            ItemStack hand = p.getInventory().getItemInMainHand();
-            hand.setAmount(hand.getAmount() - 1);
-        }
-        s.cannonReady.put(best, t + (long) (cfg("cannon.reload-seconds", 3) * 20 * Math.max(0.2, 1 - s.upgrade("loaders") * cfg("upgrades.loaders.per-level", 0.2))));
-        Location mz = s.muzzle(best);
+        if (gunnery.manned(s, best) && !gunnery.manning(p, s, best)) { p.sendActionBar(Component.text("Someone's manning that gun.", NamedTextColor.YELLOW)); return; }
+        // quick fire: the gun swings to where you look (within its traverse and elevation) and fires
         Vector out = s.outward(best);
-        // aim: where you look, but no more than 35 degrees off straight out, and not below the water
-        Vector aim = look.clone();
-        Vector flat = new Vector(aim.getX(), 0, aim.getZ());
+        Vector flat = new Vector(look.getX(), 0, look.getZ());
         if (flat.lengthSquared() < 1e-6) flat = out.clone();
         flat.normalize();
-        double ang = Math.acos(Math.max(-1, Math.min(1, flat.dot(out))));
-        double max = Math.toRadians(35);
-        if (ang > max) {
-            double cross = out.getX() * flat.getZ() - out.getZ() * flat.getX();
-            double a = Math.signum(cross) * max, c = Math.cos(a), sn = Math.sin(a);
-            flat = new Vector(out.getX() * c - out.getZ() * sn, 0, out.getX() * sn + out.getZ() * c);
+        double trav = Math.toDegrees(Math.atan2(out.getZ() * flat.getX() - out.getX() * flat.getZ(), out.dot(flat)));
+        double elev = Math.toDegrees(Math.asin(Math.max(-1, Math.min(1, look.getY()))));
+        layGun(s, best, (float) trav, (float) elev, 4);
+        fireGun(p, s, best, 1, 1);
+    }
+
+    double maxTraverse() { return cfg("cannon.traverse", 35); }
+    double minElevation() { return cfg("cannon.min-elevation", -10); }
+    double maxElevation() { return cfg("cannon.max-elevation", 40); }
+
+    /** Lays a ship's gun (clamped to its traverse / elevation) and turns the barrel, eased over `ticks`. */
+    void layGun(Ship s, int i, float trav, float elev, int ticks) {
+        trav = (float) Math.max(-maxTraverse(), Math.min(maxTraverse(), trav));
+        elev = (float) Math.max(minElevation(), Math.min(maxElevation(), elev));
+        float[] old = s.aim.get(i);
+        if (old != null && Math.abs(old[0] - trav) < 0.05 && Math.abs(old[1] - elev) < 0.05) return;
+        s.aim.put(i, new float[]{trav, elev});
+        if (s.displays != null && s.displays[i] != null && s.displays[i].isValid()) {
+            Display d = s.displays[i];
+            d.setInterpolationDelay(0);
+            d.setInterpolationDuration(ticks);
+            d.setTransformation(s.transform(i));
         }
-        double pitch = Math.max(Math.toRadians(-8), Math.min(Math.toRadians(30), Math.asin(Math.max(-1, Math.min(1, look.getY())))));
-        Vector dir = flat.multiply(Math.cos(pitch)).setY(Math.sin(pitch)).normalize().multiply(cfg("cannon.speed", 2.4));
-        launch(s, mz, dir, p);
+    }
+
+    /** Takes one Cannonball: the main hand first, then anywhere in the inventory (creative: free). */
+    boolean takeBall(Player p) {
+        if (p.getGameMode() == GameMode.CREATIVE) return true;
+        ItemStack hand = p.getInventory().getItemInMainHand();
+        if (isBall(hand)) { hand.setAmount(hand.getAmount() - 1); return true; }
+        ItemStack[] inv = p.getInventory().getStorageContents();
+        for (int k = 0; k < inv.length; k++) {
+            if (inv[k] != null && isBall(inv[k])) { inv[k].setAmount(inv[k].getAmount() - 1); p.getInventory().setStorageContents(inv); return true; }
+        }
+        return false;
+    }
+
+    /** Fires one of a ship's guns where it's laid. speed / reload x the powder charge. */
+    boolean fireGun(Player p, Ship s, int i, double speedMult, double reloadMult) {
+        if (s.building || s.wrecked || s.blocks[i] == null) { p.sendActionBar(Component.text("That gun can't fire right now.", NamedTextColor.RED)); return false; }
+        if (s.cannonReady.getOrDefault(i, 0L) > now) { p.sendActionBar(Component.text("Reloading...", NamedTextColor.YELLOW)); return false; }
+        if (!takeBall(p)) { p.sendActionBar(Component.text("You need a Cannonball.", NamedTextColor.RED)); return false; }
+        s.cannonReady.put(i, now + (long) (cfg("cannon.reload-seconds", 3) * 20 * reloadMult * Math.max(0.2, 1 - s.upgrade("loaders") * cfg("upgrades.loaders.per-level", 0.2))));
+        launch(s, s.gunMuzzle(i), s.gunDir(i).multiply(cfg("cannon.speed", 2.4) * speedMult), p);
+        return true;
     }
 
     /** A cannonball out of a ship's muzzle (players' and skeletons' alike). */

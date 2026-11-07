@@ -93,7 +93,7 @@ final class LandCannons implements Listener {
         Bukkit.getScheduler().runTaskTimer(pl, () -> { if (dirty) save(); }, 200L, 200L);
     }
 
-    private double cfg(String k, double d) { return pl.getConfig().getDouble("land-cannon." + k, d); }
+    double cfg(String k, double d) { return pl.getConfig().getDouble("land-cannon." + k, d); }
 
     // ---------------------------------------------------------------- saving
 
@@ -266,8 +266,12 @@ final class LandCannons implements Listener {
         return new Transformation(new Vector3f(0, 0, 0), q, new Vector3f(s, s, s), new Quaternionf());
     }
 
-    void turn(Cannon c, float yaw, float pitch) {
-        if (Math.abs(c.yaw - yaw) < 0.5 && Math.abs(c.pitch - pitch) < 0.5) return;
+    void turn(Cannon c, float yaw, float pitch) { turn(c, yaw, pitch, 0.5f); }
+
+    /** eps: the smallest change worth a packet (a gunner's fine steps are 0.35 degrees). */
+    void turn(Cannon c, float yaw, float pitch, float eps) {
+        if (Math.abs(c.yaw - yaw) < eps && Math.abs(c.pitch - pitch) < eps) return;
+        if (eps < 0.5f && c.display != null && c.display.isValid()) c.display.setInterpolationDuration(2);
         c.yaw = yaw; c.pitch = pitch;
         if (c.display != null && c.display.isValid()) {
             c.display.setRotation(yaw, 0);
@@ -322,16 +326,21 @@ final class LandCannons implements Listener {
         Cannon c = aiming.get(p.getUniqueId());
         if (c == null || !byBlock.containsValue(c)) c = nearest(p);
         if (c == null) return false;
-        long now = pl.now;
-        if (c.readyAt > now) { p.sendActionBar(Component.text("Reloading...", NamedTextColor.YELLOW)); return true; }
+        if (pl.gunnery != null && pl.gunnery.manned(c) && !pl.gunnery.manning(p, c)) { p.sendActionBar(Component.text("Someone's manning that gun.", NamedTextColor.YELLOW)); return true; }
+        if (c.readyAt > pl.now) { p.sendActionBar(Component.text("Reloading...", NamedTextColor.YELLOW)); return true; }
         float[] a = aimFor(p);
         turn(c, a[0], a[1]);
-        if (p.getGameMode() != GameMode.CREATIVE) {
-            ItemStack hand = p.getInventory().getItemInMainHand();
-            hand.setAmount(hand.getAmount() - 1);
-        }
-        c.readyAt = now + (long) (cfg("reload-seconds", 4) * 20);
-        pl.launchTagged("land:" + c.id, muzzle(c), dirOf(c.yaw, c.pitch).multiply(cfg("speed", 2.6)), p);
+        fireAt(p, c, 1, 1);
+        return true;
+    }
+
+    /** Fires a land cannon where it's laid now (its yaw and pitch). speed / reload x the powder charge. */
+    boolean fireAt(Player p, Cannon c, double speedMult, double reloadMult) {
+        long now = pl.now;
+        if (c.readyAt > now) { p.sendActionBar(Component.text("Reloading...", NamedTextColor.YELLOW)); return false; }
+        if (!pl.takeBall(p)) { p.sendActionBar(Component.text("You need a Cannonball.", NamedTextColor.RED)); return false; }
+        c.readyAt = now + (long) (cfg("reload-seconds", 4) * 20 * reloadMult);
+        pl.launchTagged("land:" + c.id, muzzle(c), dirOf(c.yaw, c.pitch).multiply(cfg("speed", 2.6) * speedMult), p);
         if (c.display != null && c.display.isValid()) { // recoil
             ItemDisplay d = c.display;
             Cannon fired = c;
@@ -349,8 +358,9 @@ final class LandCannons implements Listener {
         for (Player p : Bukkit.getOnlinePlayers()) {
             if (!pl.isBall(p.getInventory().getItemInMainHand()) || p.getGameMode() == GameMode.SPECTATOR) continue;
             if (pl.ridingOn(p) != null) continue;
+            if (pl.gunnery != null && pl.gunnery.manning(p)) continue; // a gunner lays their gun with the keys
             Cannon c = nearest(p);
-            if (c == null) continue;
+            if (c == null || pl.gunnery != null && pl.gunnery.manned(c)) continue;
             aiming.put(p.getUniqueId(), c);
             float[] a = aimFor(p);
             turn(c, a[0], a[1]);

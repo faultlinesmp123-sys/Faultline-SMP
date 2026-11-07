@@ -109,6 +109,7 @@ final class Ship {
     Pirates.Brain ai;                              // a skeleton ship: steered by the plugin, crewed by skeletons, never saved
     Ship lastBlockShip;                            // ...if that was another ship
     final java.util.Map<Integer, Long> cannonReady = new java.util.HashMap<>();
+    final java.util.Map<Integer, float[]> aim = new java.util.HashMap<>(); // 1.6.12: each gun's {traverse, elevation} in degrees
     final java.util.Map<String, Integer> upgrades = new java.util.LinkedHashMap<>(); // Upgrades: hull, sails, loaders, ram
     // ---- the deck you can walk on while it sails (player ships) ----
     final java.util.Map<Long, Block> deck = new java.util.HashMap<>(); // barriers that follow the ship, by block position
@@ -405,6 +406,10 @@ final class Ship {
         float s = scaleOf(i);
         if (c.need() == ShipType.Need.CANNON) { // the cannon model points at +z; port-side ones turn round
             Quaternionf q = new Quaternionf(Q0).mul(c.props().contains("south") ? FLIP : new Quaternionf());
+            float[] a = aim.get(i);
+            if (a != null) { // traverse round the vertical, then the barrel (visually the model's -z) tipped up about its trunnions
+                q = new Quaternionf().rotateY((float) Math.toRadians(a[0])).mul(q).rotateX((float) Math.toRadians(a[1]));
+            }
             Vector3f t = new Vector3f(c.x(), c.y() + 0.5f * s, c.z());
             Q0.transform(t);
             return new Transformation(t, q, new Vector3f(s, s, s), new Quaternionf());
@@ -498,6 +503,26 @@ final class Ship {
         double[] w = toWorld(x, z, yaw, c.x(), c.z() + sideOf(i) * 0.9);
         return new Location(world(), w[0], y + c.y() + 0.55 + visualY(), w[1]);
     }
+
+    /** 1.6.12: where a gun is laid: straight out of its side, turned by its traverse, raised by its elevation. */
+    org.bukkit.util.Vector gunDir(int i) {
+        org.bukkit.util.Vector out = outward(i);
+        float[] a = aim.get(i);
+        double tr = a == null ? 0 : Math.toRadians(a[0]), el = a == null ? 0 : Math.toRadians(a[1]);
+        double c = Math.cos(tr), sn = Math.sin(tr);
+        double hx = out.getX() * c + out.getZ() * sn, hz = -out.getX() * sn + out.getZ() * c; // same turn as the model's rotateY
+        return new org.bukkit.util.Vector(hx * Math.cos(el), Math.sin(el), hz * Math.cos(el)).normalize();
+    }
+
+    /** The gun's trunnions (what it turns about), in the world. */
+    Location gunCenter(int i) {
+        ShipType.Cell c = type.cells.get(i);
+        double[] w = toWorld(x, z, yaw, c.x(), c.z());
+        return new Location(world(), w[0], y + c.y() + 0.55 + visualY(), w[1]);
+    }
+
+    /** The end of the barrel where the gun is laid now. */
+    Location gunMuzzle(int i) { return gunCenter(i).add(gunDir(i).multiply(0.9)); }
 
     /** Straight out of the cannon's side of the ship. */
     org.bukkit.util.Vector outward(int i) {

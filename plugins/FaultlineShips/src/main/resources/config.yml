@@ -55,6 +55,22 @@ cannon:
   hit-damage: 10        # extra damage to a mob or player it hits directly
   ship-damage: 45       # to a ship it lands on (less further away, up to ship-radius blocks)
   ship-radius: 4
+  traverse: 35          # 1.6.12: how far a ship's gun swings left/right of straight out (degrees)
+  min-elevation: -10    # lowest a ship's barrel goes (degrees)
+  max-elevation: 40     # highest
+
+# Manning a gun (1.6.12): sneak + right-click with a Cannonball next to a ship's cannon or a land cannon. W/S raise and
+# lower the barrel, A/D swing it, Sprint = fine steps, scroll the hotbar = powder charge (Light / Standard / Heavy),
+# Jump or right-click = fire, Sneak = leave. Only the gunner sees the arc and the landing marker.
+gunnery:
+  enabled: true
+  reach: 2.8              # stand this close to take a gun
+  leave-distance: 4.5     # pushed farther than this = you let go
+  step: 1.4               # degrees a tick while holding a key
+  fine-step: 0.35         # with Sprint held
+  land-min-elevation: -20
+  land-max-elevation: 45
+  arc-ticks: 160          # how far ahead the arc is drawn
 
 # How fast a ship at 0 health sinks (blocks a tick). Players' ships settle with the deck awash (repair raises them);
 # skeleton ships go all the way down.

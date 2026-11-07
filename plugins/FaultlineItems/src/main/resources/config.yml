@@ -604,15 +604,12 @@ camera:
 # Emotes (1.2.70): /emote. A mannequin wearing your skin does the moves; Java players watch from a cinematic camera.
 emotes:
   enabled: true
-  camera: true                # false = nobody gets the camera (everyone stays in first person, hidden)
-  camera-distance: 4.2
-  camera-speed: 0.6           # orbit degrees per tick
   cooldown-seconds: 2
-  max-seconds: 0              # 0 = every emote loops until you stop it (sneak, /emote stop, moving); else a limit
+  max-seconds: 0              # 0 = every emote loops until you stop it (sneak, /emote stop); else a limit
   duo-range: 6                # how close you must be to join a duo emote
   duo-wait-seconds: 20        # how long a duo emote waits for someone
   disabled: []                # emote ids to turn off: griddy, aura, sturdy, birdbrain, dap, hug
-  rig: true                   # 1.2.72: Java players with FaultlineEmotes.zip see a body that bends (elbows, knees); others see the mannequin
+  bendy-body: false           # 1.2.72's shader body (FaultlineEmotes.zip); off since 1.2.74 (it drew as loose cubes in game). Everyone sees the mannequin, armour and all
   rig-protocols: [776]        # client protocols the shader was made for (776 = 26.2); other versions see the mannequin
 
 # Fishing (1.2.18): every fish has a weight; all-time records per species; tournaments (/fishing start [minutes]).

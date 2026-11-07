@@ -1727,6 +1727,14 @@ Notes:
   GOGGLES: elbows up and out, forearms upright beside the face, hands on the eyes (angles SOLVED: scratch `vid/ik.py` =
   the rig's FK in Python, a grid search for the hand on the eye + forearm-upright penalty: R_ARM limb(120, 60, 50),
   R_FORE limb(50, -30, 20), mirrored). Previews `release/previews/emote_griddy_bendy.mp4` + `emote_griddy_front.mp4`.
+- **Emotes walk with you (Items 1.2.74)**: the shader body drew as loose cubes in a real 26.2 game (owner's screenshot) and
+  never showed armour, so it's OFF: new key `emotes.bendy-body` (default false; `bendy()`; the old `emotes.rig` key is
+  ignored so a server config still saying `rig: true` can't turn it back on) and FaultlineEmotes.zip is no longer sent while
+  it's off. Everyone sees the MANNEQUIN (skin + armour copies). The CAMERA IS GONE (`cameraPref` always false, the menu
+  slot is a help sign, `/emote camera` says it was removed). SOLO emotes WALK WITH YOU (`walks(r)`, `follow(r)`: each tick
+  the base = the player's spot and look yaw, the real player stays hidden, F5 to watch); SNEAK stops (`onSneak`); swimming,
+  gliding, riding, flying or water ends it. Duos still stay on their spot (walking off cancels). Bendy limbs with armour on
+  vanilla clients are impossible server-side: Essential does it with a CLIENT MOD. Tested (scratch `et/WalkTest`).
 - **Gunnery (Ships 1.6.12, `Ships/Gunnery.java`, `gunnery:` + `cannon.traverse/min-elevation/max-elevation`)**: every
   cannon aims up and down now. SHIP GUNS have a laid aim per cell (`Ship.aim` = {traverse +left, elevation +up} degrees;
   `Ship.transform` turns the barrel `rotY(trav) * q0 * rotX(elev)`; `gunDir/gunCenter/gunMuzzle`). Quick fire (right-click a

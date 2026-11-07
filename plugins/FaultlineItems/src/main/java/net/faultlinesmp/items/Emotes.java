@@ -192,10 +192,7 @@ final class Emotes implements Listener, CommandExecutor, TabCompleter {
                 return true;
             }
             case "camera" -> {
-                boolean on = args.length > 1 ? args[1].equalsIgnoreCase("on") : !cameraPref(p);
-                p.getPersistentDataContainer().set(camPref, PersistentDataType.BYTE, (byte) (on ? 1 : 0));
-                p.sendMessage(ChatColor.AQUA + "Emote camera " + (on ? "on" : "off") + ChatColor.GRAY
-                        + (on ? " (sneak to stop an emote)." : " (you stay in first person; moving stops the emote)."));
+                p.sendMessage(ChatColor.GRAY + "The emote camera was removed: you can walk around while you emote (F5 to watch yourself, sneak to stop).");
                 return true;
             }
             case "view" -> {
@@ -246,7 +243,12 @@ final class Emotes implements Listener, CommandExecutor, TabCompleter {
         return out;
     }
 
+    /** 1.2.74: the shader body is OFF by default (it drew as loose cubes in a real 26.2 game and hid the armour).
+     *  New key, so a server config still saying 1.2.72's `rig: true` doesn't turn it back on. */
+    boolean bendy() { return plugin.getConfig().getBoolean("emotes.bendy-body", false); }
+
     boolean cameraPref(Player p) {
+        if (true) return false; // 1.2.74: the emote camera was removed (the owner wants to walk around while emoting)
         Byte b = p.getPersistentDataContainer().get(camPref, PersistentDataType.BYTE);
         return b == null ? plugin.getConfig().getBoolean("emotes.camera", true) : b == 1;
     }
@@ -301,11 +303,10 @@ final class Emotes implements Listener, CommandExecutor, TabCompleter {
         ItemStack stop = new ItemStack(Material.BARRIER);
         ItemMeta sm = stop.getItemMeta(); sm.setDisplayName(ChatColor.RED + "Stop emoting"); stop.setItemMeta(sm);
         inv.setItem(STOP_SLOT, stop);
-        boolean cam = cameraPref(p);
-        ItemStack c = new ItemStack(cam ? Material.ENDER_EYE : Material.ENDER_PEARL);
+        ItemStack c = new ItemStack(Material.OAK_SIGN);
         ItemMeta cm = c.getItemMeta();
-        cm.setDisplayName(ChatColor.GOLD + "Emote camera: " + (cam ? ChatColor.GREEN + "ON" : ChatColor.RED + "OFF"));
-        cm.setLore(List.of(ChatColor.GRAY + "On: watch yourself from a cinematic camera", ChatColor.GRAY + "(sneak to stop). Off: stay in first person."));
+        cm.setDisplayName(ChatColor.GOLD + "How it works");
+        cm.setLore(List.of(ChatColor.GRAY + "Walk around while you emote.", ChatColor.GRAY + "F5 to watch yourself. Sneak to stop."));
         c.setItemMeta(cm);
         inv.setItem(CAM_SLOT, c);
         p.openInventory(inv);
@@ -320,10 +321,7 @@ final class Emotes implements Listener, CommandExecutor, TabCompleter {
         Kind k = h.slots.get(s);
         if (k != null) { p.closeInventory(); play(p, k); }
         else if (s == STOP_SLOT) { p.closeInventory(); stop(p, true); }
-        else if (s == CAM_SLOT) {
-            p.getPersistentDataContainer().set(camPref, PersistentDataType.BYTE, (byte) (cameraPref(p) ? 0 : 1));
-            menu(p);
-        }
+        else if (s == CAM_SLOT) { /* just the help sign */ }
     }
 
     @EventHandler(priority = EventPriority.LOW)
@@ -419,7 +417,7 @@ final class Emotes implements Listener, CommandExecutor, TabCompleter {
         r.m = m;
         runs.put(r.id, r);
         byMannequin.put(m.getUniqueId(), r);
-        if (plugin.getConfig().getBoolean("emotes.rig", true)) {
+        if (bendy()) {
             try { spawnRig(r); }
             catch (RuntimeException | LinkageError ex) { plugin.getLogger().warning("[Emotes] couldn't build the emote body: " + ex + " " + where(ex)); removeRig(r); }
         }
@@ -642,11 +640,28 @@ final class Emotes implements Listener, CommandExecutor, TabCompleter {
         if (r != null) end(r, false);
     }
 
-    /** First person (no camera): walking away is how you stop. */
+    /** 1.2.74: solo emotes walk with you (the body follows wherever you go); duos stay on their spot. */
+    boolean walks(Run r) { return !r.camera && !r.kind.duo && r.partner == null; }
+
+    void follow(Run r) {
+        Location l = r.p.getLocation();
+        float yaw = l.getYaw();
+        r.base = l.clone(); r.base.setPitch(0); r.base.setYaw(yaw); r.baseYaw = yaw;
+        if (r.lastGood == null || !r.lastGood.getWorld().equals(l.getWorld()) || r.lastGood.distanceSquared(l) > 9) r.lastGood = r.base.clone();
+    }
+
+    /** Sneak stops an emote you're walking with. */
+    @EventHandler(ignoreCancelled = true)
+    public void onSneak(org.bukkit.event.player.PlayerToggleSneakEvent e) {
+        Run r = runs.get(e.getPlayer().getUniqueId());
+        if (r != null && e.isSneaking() && !r.camera) stop(e.getPlayer(), true);
+    }
+
+    /** First person (no camera): walking away is how you stop (duos). */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onMove(PlayerMoveEvent e) {
         Run r = runs.get(e.getPlayer().getUniqueId());
-        if (r == null || r.camera) return;
+        if (r == null || r.camera || walks(r)) return;
         Location f = e.getFrom(), t = e.getTo();
         if (t != null && (Math.abs(f.getX() - t.getX()) > 0.02 || Math.abs(f.getZ() - t.getZ()) > 0.02 || t.getY() - f.getY() > 0.05)) stop(e.getPlayer(), false);
     }
@@ -773,6 +788,10 @@ final class Emotes implements Listener, CommandExecutor, TabCompleter {
             if (r.waiting && r.t > wait) { end(r, false); p.sendActionBar(ChatColor.GRAY + "Nobody joined."); continue; }
             if (r.partner == null && !r.waiting && r.kind.duo) { end(r, false); continue; }
             if (r.kind.loops && r.t > max) { end(r, true); continue; }
+            if (walks(r)) {
+                if (p.isSwimming() || p.isGliding() || p.isInsideVehicle() || p.isFlying() || p.getLocation().getBlock().isLiquid()) { end(r, false); continue; }
+                follow(r);
+            }
             try {
                 frame(r);
                 apply(r);
@@ -1209,7 +1228,7 @@ final class Emotes implements Listener, CommandExecutor, TabCompleter {
 
     /** Sees the bendy body: Java, the emote pack loaded, a game version the shader was made for, and not opted out. */
     boolean rigViewer(Player v) {
-        if (!plugin.getConfig().getBoolean("emotes.rig", true) || Edition.bedrock(v) || viewClassic(v)) return false;
+        if (!bendy() || Edition.bedrock(v) || viewClassic(v)) return false;
         if (!packLoaded.contains(v.getUniqueId())) return false;
         return protocolOk(v);
     }
@@ -1270,7 +1289,7 @@ final class Emotes implements Listener, CommandExecutor, TabCompleter {
 
     /** FaultlineEmotes.zip beside the main pack (only to games on a version the shader was ported to). */
     void sendPack(Player p) {
-        if (!plugin.getConfig().getBoolean("emotes.rig", true) || Edition.bedrock(p) || !protocolOk(p)) return;
+        if (!bendy() || Edition.bedrock(p) || !protocolOk(p)) return;
         String url = plugin.getConfig().getString("item-textures.emotes-url", DEFAULT_PACK_URL);
         if (url == null || url.isBlank()) return;
         String hex = PackHash.pick(url, plugin.getConfig().getString("item-textures.emotes-hash", ""), "emotes-hash", plugin.getLogger());

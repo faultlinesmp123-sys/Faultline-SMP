@@ -1686,6 +1686,10 @@ Notes:
   them; world change, quit, shutdown, a crash (emotes.yml on join) put them back exactly where they stood in their old
   mode; a move error ends the emote with "[Emotes] <id> broke at tick N: <error> at <method>:<line>". Tested (scratch
   `et/EmoteTest`: all 6, hit forwarding, combat refuse, sneak, tp, quit, armour drops, camera off, dap + hug joins, timeout).
+- **Emotes loop (Items 1.2.71)**: every emote loops until you stop it (`emotes.max-seconds` 0 = no limit; a server config
+  still saying 1.2.70's 60 reads as 0): Dap Up repeats its 72-tick sequence (`t % 72`), Hug holds and sways the embrace
+  (ticks 14..73 looped). One partner stopping (sneak, /emote stop, a hit) ends both. Elbows can't bend: the body is a vanilla
+  mannequin (one-piece arms); bendy limbs with the player's skin need a client mod or a resource-pack core shader rig.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Skills → Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

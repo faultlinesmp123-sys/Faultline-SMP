@@ -605,7 +605,7 @@ emotes:
   camera-distance: 4.2
   camera-speed: 0.6           # orbit degrees per tick
   cooldown-seconds: 2
-  max-seconds: 60             # looping emotes stop after this
+  max-seconds: 0              # 0 = every emote loops until you stop it (sneak, /emote stop, moving); else a limit
   duo-range: 6                # how close you must be to join a duo emote
   duo-wait-seconds: 20        # how long a duo emote waits for someone
   disabled: []                # emote ids to turn off: griddy, aura, sturdy, birdbrain, dap, hug

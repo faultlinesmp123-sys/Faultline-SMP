@@ -102,8 +102,8 @@ final class Emotes implements Listener, CommandExecutor, TabCompleter {
         AURA("aura", "Aura Farming", Material.NETHER_STAR, false, true, "Calm. Unbothered. The aura does the talking."),
         STURDY("sturdy", "Get Sturdy", Material.ANVIL, false, true, "Low bounce, side slide, ground-shaking stomps."),
         BIRD("birdbrain", "Birdbrain", Material.FEATHER, false, true, "Head bobs, wing flaps, pecks and hops."),
-        DAP("dap", "Dap Up", Material.GOLD_INGOT, true, false, "DUO: hold your hand out and wait for someone to dap you up."),
-        HUG("hug", "Hug", Material.POPPY, true, false, "DUO: arms out, wait for someone to hug.");
+        DAP("dap", "Dap Up", Material.GOLD_INGOT, true, true, "DUO: hold your hand out and wait for someone to dap you up."),
+        HUG("hug", "Hug", Material.POPPY, true, true, "DUO: arms out, wait for someone to hug.");
 
         final String id, title, desc; final Material icon; final boolean duo, loops;
         Kind(String id, String title, Material icon, boolean duo, boolean loops, String desc) {
@@ -271,7 +271,8 @@ final class Emotes implements Listener, CommandExecutor, TabCompleter {
             if (k.duo) {
                 lore.add(ChatColor.DARK_GRAY + "You wait; someone right-clicks you,");
                 lore.add(ChatColor.DARK_GRAY + "clicks [JOIN], or picks it near you.");
-            } else lore.add(ChatColor.DARK_GRAY + "Loops until you stop or move.");
+            }
+            lore.add(ChatColor.DARK_GRAY + "Loops until you stop (sneak / /emote stop).");
             lore.add(ChatColor.YELLOW + "/emote " + k.id);
             m.setLore(lore);
             m.setEnchantmentGlintOverride(emoting(p) && runs.get(p.getUniqueId()).kind == k);
@@ -729,7 +730,9 @@ final class Emotes implements Listener, CommandExecutor, TabCompleter {
         now++;
         if (!props.isEmpty()) tickProps();
         if (runs.isEmpty()) return;
-        int max = (int) (cfg("max-seconds", 60) * 20);
+        double ms = cfg("max-seconds", 0);
+        if (ms == 60) ms = 0;                                  // 1.2.70's default: emotes loop until you stop now
+        int max = ms <= 0 ? Integer.MAX_VALUE : (int) (ms * 20);
         int wait = (int) (cfg("duo-wait-seconds", 20) * 20);
         for (Run r : new ArrayList<>(runs.values())) {
             if (runs.get(r.id) != r) continue;
@@ -750,11 +753,9 @@ final class Emotes implements Listener, CommandExecutor, TabCompleter {
                 continue;
             }
             r.t++;
-            if (!r.kind.loops && !r.waiting && r.t >= length(r.kind)) end(r, false);
         }
     }
 
-    static int length(Kind k) { return switch (k) { case DAP -> 72; case HUG -> 96; default -> Integer.MAX_VALUE; }; }
 
     /** Puts the frame's wants on the mannequin. */
     void apply(Run r) {
@@ -948,7 +949,7 @@ final class Emotes implements Listener, CommandExecutor, TabCompleter {
 
     /** Dap Up (duo): step in, slap, grip, pull in for the half hug with two pats, step back, nod, fist bump. */
     void dap(Run r) {
-        int t = r.t;
+        int t = r.t % 72;                                      // loops: dap, dap, dap...
         double inK = t < 8 ? ease(t / 8.0) : t < 34 ? 1 : t < 42 ? 1 - ease((t - 34) / 8.0) * 0.6 : 0.4;
         r.fwd = 0.25 * inK + (t >= 18 && t < 32 ? 0.25 * Math.sin((t - 18) / 14.0 * Math.PI) : 0);
         r.pitch = 5;
@@ -975,7 +976,7 @@ final class Emotes implements Listener, CommandExecutor, TabCompleter {
 
     /** Hug (duo): close in, arms around, a sway and back pats, hearts, then let go. */
     void hug(Run r) {
-        int t = r.t;
+        int t = r.t < 74 ? r.t : 14 + (r.t - 14) % 60;         // loops the embrace until someone stops
         double close = t < 14 ? ease(t / 14.0) : t < 74 ? 1 : 1 - ease(Math.min(1, (t - 74) / 14.0));
         r.fwd = 0.55 * close;
         r.pitch = 10;

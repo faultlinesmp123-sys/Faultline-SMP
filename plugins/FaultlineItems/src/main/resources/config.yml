@@ -328,7 +328,7 @@ wardrobe:
 item-textures:
   enabled: true
   url: "https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/main/FaultlineSMP.zip"
-  hash: "37deea354f4bc896844f90eeff889371270132f5"
+  hash: "c4cb8bb7e55f8b3170bc5900b3dd8440ef3b2af4"
   # The Dark Ocean's music, a second pack sent beside the main one (empty url = not sent)
   music-url: "https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/main/FaultlineDeepMusic.zip"
   music-hash: "e9e6ed1623ab28d2d2af74286259157caf2dc299"
@@ -747,3 +747,5 @@ blue-obsidian:
   world: ""                   # the Overworld to send people to ("" = the server's main overworld)
   max-portal-cells: 441       # the biggest inside a frame may be (21 x 21)
   min-portal-cells: 2
+  travel-ticks: 30            # how long you stand in it before it pulls you through (creative: at once)
+  portal-light: 11            # the light the open portal gives off (0-15)

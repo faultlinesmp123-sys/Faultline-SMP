@@ -1780,6 +1780,25 @@ Notes:
   blue_obsidian*` + font providers \ue443/\ue843 (glyphs.yml `blue_obsidian`). Index entry (Weapons & Tools). Not in the
   Bedrock mappings yet. Tested (scratch `bt/BlueTest`: recipe, ring, overlays, lighting in the End only, plain crying obsidian
   ignored, travel within 500 on solid ground with no portal built, physics, self-heal, outer vs frame block breaks, saving).
+- **The blue portal + its summoning (Items 1.2.76, FaultlineSMP.zip)**: the purple NETHER_PORTAL fill is gone. A portal's cells
+  are LIGHT blocks (`portal-light` 11, invisible, walk-through) + one non-persistent ItemDisplay per cell (`sheet`, tag
+  `faultline_blue_portal`, PAPER with model `faultline:blue_portal`: a 1-px-thick plane with an ANIMATED translucent swirl
+  `textures/block/blue_portal.png` 32 frames, tileable; brightness 15; turned 90 degrees for Z-axis portals). PAPER base, not
+  the crying obsidian item, so the texture stays translucent. An open portal's frame GLOWS (`lit` per world, `setLit`: overlay
+  -> `faultline:blue_obsidian_lit`, pulsing cyan veins, 8 frames, brightness 15; dark again on close). Overlays/sheets are
+  shown through `model(id)`. SUMMONING (`summon`, a BukkitRunnable; the cells are claimed at once, `ready` false until the
+  burst): the click flares (flint, anchor charge, soul flames), a charge runs round the frame both ways in 26-neighbour layers
+  from the clicked block (`frameLayers`, 2 ticks a layer, sparks + amethyst chimes rising in pitch), 12 ticks of light
+  pouring from the frame to the middle (END_ROD aimed in, beacon activate), the sheet grows out from the middle (each cell
+  scales 0 -> 1 over 7 ticks, LIGHT placed), then the BURST (end portal spawn + beacon + a soft boom, fireworks, reverse
+  portal, a shockwave ring in the portal's plane growing 14 ticks: `ring`). `ambient` every 5 ticks with a player within 48
+  (motes, frame sparks, beacon hum). TRAVEL is our own now (`travelTick`, every 2 ticks): feet or eyes in a ready cell charges
+  `travel-ticks` 30 (creative at once; whoosh + particles), then `send`. Close: the sheets shrink away, LIGHT removed, frame
+  dark, beacon deactivate. 1.2.75 portals (nether portal cells) turn into blue ones by `upkeep`. Bedrock sees the particles only
+  (no displays). Preview `release/previews/blue_portal_summon.mp4` (scratch `bo/anim.py`). Tested (scratch `bt/BlueTest`, 34
+  checks: charge progress mid-summon, no travel mid-summon, ready, LIGHT + sheet per cell, full size/brightness, whole frame
+  lit, stand-in travel after 1.5 s, self-heal of light and sheets, shrink + dark on close). MockBukkit quirk met again:
+  `Block.getLocation()` is the block's OWN Location (adding to it moved the block): build `new Location(...)` instead.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Skills → Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

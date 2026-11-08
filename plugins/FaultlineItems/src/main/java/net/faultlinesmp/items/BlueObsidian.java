@@ -88,6 +88,9 @@ final class BlueObsidian implements Listener {
     static final class Portal {
         final UUID id; final String world; final Axis axis;
         final Set<Long> inside = new HashSet<>(), frame = new HashSet<>();
+        /** 1.2.76: the glowing blue sheet in each cell (Java), spawned with its chunk. */
+        final Map<Long, ItemDisplay> sheets = new HashMap<>();
+        boolean ready = true;          // false while the summoning animation plays
         Portal(UUID id, String world, Axis axis) { this.id = id; this.world = world; this.axis = axis; }
     }
 
@@ -102,9 +105,11 @@ final class BlueObsidian implements Listener {
         r.setIngredient('O', Material.OBSIDIAN);
         r.setIngredient('L', Material.LAPIS_LAZULI);
         try { Bukkit.addRecipe(r); } catch (IllegalStateException ignored) { } // a /reload
+        load(); // first, so frames of open portals spawn lit
         for (World w : Bukkit.getWorlds()) for (Chunk c : w.getLoadedChunks()) chunkIn(c);
-        load();
         Bukkit.getScheduler().runTaskTimer(plugin, this::upkeep, 40L, 40L);
+        Bukkit.getScheduler().runTaskTimer(plugin, this::travelTick, 2L, 2L);
+        Bukkit.getScheduler().runTaskTimer(plugin, this::ambient, 5L, 5L);
     }
 
     boolean enabled() { return plugin.getConfig().getBoolean("blue-obsidian.enabled", true); }
@@ -211,12 +216,13 @@ final class BlueObsidian implements Listener {
         Map<Long, ItemDisplay> m = overlays.computeIfAbsent(b.getWorld().getName(), w -> new HashMap<>());
         ItemDisplay old = m.get(key(b));
         if (old != null && old.isValid()) return;
-        Location at = b.getLocation().add(0.5, 0.5, 0.5);
+        Location at = new Location(b.getWorld(), b.getX() + 0.5, b.getY() + 0.5, b.getZ() + 0.5);
         ItemDisplay d = (ItemDisplay) b.getWorld().spawnEntity(at, EntityType.ITEM_DISPLAY, false);
         d.addScoreboardTag(DISPLAY_TAG);
         d.addScoreboardTag("faultline_no_bedrock_fx"); // Bedrock sees the real block
         d.setPersistent(false);
-        d.setItemStack(item(1));
+        boolean lit = isLit(b.getWorld().getName(), key(b));
+        d.setItemStack(model(lit ? "blue_obsidian_lit" : "blue_obsidian"));
         try { d.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.NONE); } catch (RuntimeException ignored) { }
         float s = 1.004f;
         d.setTransformation(new Transformation(new Vector3f(), new Quaternionf(), new Vector3f(s, s, s), new Quaternionf()));
@@ -227,8 +233,40 @@ final class BlueObsidian implements Listener {
             try { bl = Math.max(bl, n.getLightFromBlocks()); sl = Math.max(sl, n.getLightFromSky()); } catch (RuntimeException ignored) { }
         }
         int fb = bl, fs = sl;
-        try { d.setBrightness(new Display.Brightness(Math.max(fb, 4), fs)); } catch (RuntimeException ignored) { }
+        d.setInterpolationDuration(3);
+        try { d.setBrightness(lit ? new Display.Brightness(15, 15) : new Display.Brightness(Math.max(fb, 4), fs)); } catch (RuntimeException ignored) { }
+        darkLight.put(key(b), Math.max(fb, 4) * 16 + fs);
         m.put(key(b), d);
+    }
+
+    private final Map<Long, Integer> darkLight = new HashMap<>();
+    /** world -> frame blocks of open portals (they glow). */
+    private final Map<String, Set<Long>> lit = new HashMap<>();
+
+    boolean isLit(String world, long k) {
+        Set<Long> s = lit.get(world);
+        return s != null && s.contains(k);
+    }
+
+    /** A frame block lights up (glowing veins, full brightness) or goes dark again. */
+    void setLit(String world, long k, boolean on) {
+        Set<Long> s = lit.computeIfAbsent(world, w -> new HashSet<>());
+        if (on ? !s.add(k) : !s.remove(k)) return;
+        Map<Long, ItemDisplay> m = overlays.get(world);
+        ItemDisplay d = m == null ? null : m.get(k);
+        if (d == null || !d.isValid()) return;
+        d.setItemStack(model(on ? "blue_obsidian_lit" : "blue_obsidian"));
+        int dl = darkLight.getOrDefault(k, 4 * 16);
+        try { d.setBrightness(on ? new Display.Brightness(15, 15) : new Display.Brightness(dl / 16, dl % 16)); } catch (RuntimeException ignored) { }
+    }
+
+    /** What a display shows: an item with one of our models (PAPER, so translucent textures stay translucent). */
+    static ItemStack model(String id) {
+        ItemStack it = new ItemStack(Material.PAPER);
+        ItemMeta m = it.getItemMeta();
+        m.setItemModel(new NamespacedKey("faultline", id));
+        it.setItemMeta(m);
+        return it;
     }
 
     private void unoverlay(String world, long k) {
@@ -284,6 +322,7 @@ final class BlueObsidian implements Listener {
             return;
         }
         Block start = clicked.getRelative(e.getBlockFace());
+        if (cellOwner(start) != null) return; // already open (or opening)
         Portal made = null;
         for (Axis axis : new Axis[]{Axis.X, Axis.Z}) {
             made = fill(start, axis);
@@ -293,15 +332,11 @@ final class BlueObsidian implements Listener {
             p.sendActionBar(Component.text("That isn't a closed Blue Obsidian frame (light it from the inside).", NamedTextColor.RED));
             return;
         }
-        open(made);
         if (p.getGameMode() != GameMode.CREATIVE) {
             if (hand.getType() == Material.FIRE_CHARGE) hand.setAmount(hand.getAmount() - 1);
             else p.damageItemStack(EquipmentSlot.HAND, 1);
         }
-        World w = clicked.getWorld();
-        Location c = centre(made, w);
-        w.playSound(c, Sound.BLOCK_END_PORTAL_SPAWN, SoundCategory.BLOCKS, 0.8f, 1.4f);
-        w.spawnParticle(Particle.REVERSE_PORTAL, c, 80, 1.2, 1.2, 1.2, 0.05);
+        summon(made, clicked);
     }
 
     /** The air enclosed by Blue Obsidian in one vertical plane, flood-filled from start; null if it leaks or is too big. */
@@ -335,7 +370,7 @@ final class BlueObsidian implements Listener {
 
     private static boolean fillable(Block b) {
         Material m = b.getType();
-        return m.isAir() || m == Material.FIRE || m == Material.SOUL_FIRE || m == Material.LIGHT;
+        return m.isAir() || m == Material.FIRE || m == Material.SOUL_FIRE || m == Material.LIGHT || m == Material.NETHER_PORTAL;
     }
 
     Portal cellOwner(Block b) {
@@ -343,22 +378,160 @@ final class BlueObsidian implements Listener {
         return m == null ? null : m.get(key(b));
     }
 
-    void open(Portal p) {
+    static final org.bukkit.Color CYAN = org.bukkit.Color.fromRGB(90, 210, 255), DEEP = org.bukkit.Color.fromRGB(40, 80, 255),
+            WHITE = org.bukkit.Color.fromRGB(220, 245, 255);
+
+    Location at(World w, long k) { return new Location(w, kx(k) + 0.5, ky(k) + 0.5, kz(k) + 0.5); }
+
+    /** Claims the cells at once (nobody lights it twice), then plays the summoning; it works once that's done. */
+    void summon(Portal p, Block clicked) {
+        p.ready = false;
         portals.put(p.id, p);
         Map<Long, Portal> m = cells.computeIfAbsent(p.world, w -> new HashMap<>());
         for (long k : p.inside) m.put(k, p);
-        World w = Bukkit.getWorld(p.world);
-        if (w != null) for (long k : p.inside) setPortalBlock(w.getBlockAt(kx(k), ky(k), kz(k)), p.axis);
         save();
+        World w = clicked.getWorld();
+        Location c = centre(p, w);
+        // the frame lights up as a charge runs round it both ways from where it was lit
+        List<List<Long>> layers = frameLayers(p, key(clicked));
+        // the inside appears from the middle out
+        List<Long> order = new ArrayList<>(p.inside);
+        order.sort(Comparator.comparingDouble(k -> at(w, k).distanceSquared(c)));
+        double radius = Math.sqrt(order.isEmpty() ? 1 : at(w, order.get(order.size() - 1)).distanceSquared(c)) + 0.5;
+        int frameTicks = layers.size() * 2, gather = 12, fillTicks = Math.max(8, Math.min(24, order.size() / 3)), burst = 14;
+        Location lit0 = new Location(clicked.getWorld(), clicked.getX() + 0.5, clicked.getY() + 0.5, clicked.getZ() + 0.5);
+        w.playSound(lit0, Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.BLOCKS, 1f, 0.8f);
+        w.playSound(lit0, Sound.BLOCK_RESPAWN_ANCHOR_CHARGE, SoundCategory.BLOCKS, 1f, 1.3f);
+        w.spawnParticle(Particle.SOUL_FIRE_FLAME, lit0, 25, 0.3, 0.3, 0.3, 0.08);
+        w.spawnParticle(Particle.DUST, lit0, 20, 0.4, 0.4, 0.4, 0, new Particle.DustOptions(CYAN, 1.6f));
+        new org.bukkit.scheduler.BukkitRunnable() {
+            int t = 0, filled = 0;
+            @Override public void run() {
+                if (portals.get(p.id) != p) { cancel(); return; } // broken while it opened
+                if (t < frameTicks) {                       // 1) the charge runs round the frame
+                    if (t % 2 == 0) {
+                        int li = t / 2;
+                        float prog = layers.isEmpty() ? 1 : (float) li / layers.size();
+                        for (long k : layers.get(li)) {
+                            setLit(p.world, k, true);
+                            Location l = at(w, k);
+                            w.spawnParticle(Particle.ELECTRIC_SPARK, l, 6, 0.35, 0.35, 0.35, 0.05);
+                            w.spawnParticle(Particle.DUST, l, 5, 0.3, 0.3, 0.3, 0, new Particle.DustOptions(CYAN, 1.3f));
+                            w.spawnParticle(Particle.END_ROD, l, 1, 0.2, 0.2, 0.2, 0.01);
+                        }
+                        Location l = at(w, layers.get(li).get(0));
+                        w.playSound(l, Sound.BLOCK_AMETHYST_BLOCK_CHIME, SoundCategory.BLOCKS, 1.2f, 0.6f + 1.3f * prog);
+                        if (li % 3 == 0) w.playSound(l, Sound.BLOCK_RESPAWN_ANCHOR_CHARGE, SoundCategory.BLOCKS, 0.5f, 1.0f + prog);
+                    }
+                } else if (t < frameTicks + gather) {       // 2) light pours from the frame into the middle
+                    int g = t - frameTicks;
+                    if (g == 0) {
+                        w.playSound(c, Sound.BLOCK_BEACON_ACTIVATE, SoundCategory.BLOCKS, 1.5f, 0.7f);
+                        w.playSound(c, Sound.BLOCK_PORTAL_TRIGGER, SoundCategory.BLOCKS, 0.6f, 1.6f);
+                    }
+                    for (long k : p.frame) {
+                        if (ThreadLocalRandom.current().nextInt(3) != 0) continue;
+                        Location l = at(w, k);
+                        org.bukkit.util.Vector v = c.toVector().subtract(l.toVector());
+                        w.spawnParticle(Particle.END_ROD, l, 0, v.getX(), v.getY(), v.getZ(), 0.07);
+                    }
+                    w.spawnParticle(Particle.DUST, c, 6 + g, 0.15 * g / 4.0, 0.15 * g / 4.0, 0.15 * g / 4.0, 0, new Particle.DustOptions(WHITE, 2f));
+                } else if (t < frameTicks + gather + fillTicks) { // 3) the sheet grows out from the middle
+                    int f = t - frameTicks - gather;
+                    int want = (int) Math.ceil(order.size() * (f + 1) / (double) fillTicks);
+                    for (; filled < want && filled < order.size(); filled++) {
+                        long k = order.get(filled);
+                        Block b = w.getBlockAt(kx(k), ky(k), kz(k));
+                        light(b);
+                        sheet(p, w, k, true);
+                        if (filled % 3 == 0) w.spawnParticle(Particle.DUST, at(w, k), 3, 0.3, 0.3, 0.3, 0, new Particle.DustOptions(DEEP, 1.4f));
+                    }
+                    if (f % 4 == 0) w.playSound(c, Sound.BLOCK_AMETHYST_CLUSTER_BREAK, SoundCategory.BLOCKS, 0.8f, 0.8f + f / (float) fillTicks);
+                } else if (t < frameTicks + gather + fillTicks + burst) { // 4) the burst
+                    int bt = t - frameTicks - gather - fillTicks;
+                    if (bt == 0) {
+                        p.ready = true;
+                        w.playSound(c, Sound.BLOCK_END_PORTAL_SPAWN, SoundCategory.BLOCKS, 1.2f, 1.25f);
+                        w.playSound(c, Sound.BLOCK_BEACON_POWER_SELECT, SoundCategory.BLOCKS, 1.5f, 1.4f);
+                        w.playSound(c, Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.BLOCKS, 0.35f, 1.9f);
+                        w.spawnParticle(Particle.FIREWORK, c, 60, radius * 0.3, radius * 0.3, radius * 0.3, 0.25);
+                        w.spawnParticle(Particle.REVERSE_PORTAL, c, 120, radius * 0.4, radius * 0.4, radius * 0.4, 0.4);
+                        for (long k : p.frame) w.spawnParticle(Particle.END_ROD, at(w, k), 2, 0.2, 0.2, 0.2, 0.06);
+                    }
+                    ring(p, w, c, radius + bt * 0.6, bt < 7 ? CYAN : DEEP); // a shockwave ring in the portal's plane
+                } else { cancel(); }
+                t++;
+            }
+        }.runTaskTimer(plugin, 1L, 1L);
     }
 
-    private void setPortalBlock(Block b, Axis axis) {
-        if (!b.getWorld().isChunkLoaded(b.getX() >> 4, b.getZ() >> 4)) return;
-        b.setType(Material.NETHER_PORTAL, false);
-        if (b.getBlockData() instanceof Orientable o) {
-            o.setAxis(axis);
-            b.setBlockData(o, false);
+    /** Frame blocks in rings of distance (26-neighbour steps) from where it was lit. */
+    List<List<Long>> frameLayers(Portal p, long from) {
+        List<List<Long>> out = new ArrayList<>();
+        Set<Long> seen = new HashSet<>();
+        List<Long> cur = new ArrayList<>();
+        long s0 = p.frame.contains(from) ? from : p.frame.iterator().next();
+        cur.add(s0); seen.add(s0);
+        while (!cur.isEmpty()) {
+            out.add(cur);
+            List<Long> next = new ArrayList<>();
+            for (long k : cur) for (int dx = -1; dx <= 1; dx++) for (int dy = -1; dy <= 1; dy++) for (int dz = -1; dz <= 1; dz++) {
+                long n = key(kx(k) + dx, ky(k) + dy, kz(k) + dz);
+                if (p.frame.contains(n) && seen.add(n)) next.add(n);
+            }
+            cur = next;
         }
+        List<Long> rest = new ArrayList<>(); // frame bits not touching the rest (shouldn't happen)
+        for (long k : p.frame) if (!seen.contains(k)) rest.add(k);
+        if (!rest.isEmpty()) out.add(rest);
+        return out;
+    }
+
+    /** A ring of light in the portal's plane round c. */
+    void ring(Portal p, World w, Location c, double r, org.bukkit.Color col) {
+        int n = (int) Math.max(16, r * 7);
+        Particle.DustOptions o = new Particle.DustOptions(col, 1.5f);
+        for (int i = 0; i < n; i++) {
+            double a = Math.PI * 2 * i / n, u = Math.cos(a) * r, v = Math.sin(a) * r;
+            Location l = p.axis == Axis.X ? c.clone().add(u, v, 0) : c.clone().add(0, v, u);
+            w.spawnParticle(Particle.DUST, l, 1, 0, 0, 0, 0, o);
+        }
+    }
+
+    /** An invisible light in the cell, so the portal lights its surroundings. */
+    private void light(Block b) {
+        if (!b.getWorld().isChunkLoaded(b.getX() >> 4, b.getZ() >> 4) || !fillable(b)) return;
+        b.setType(Material.LIGHT, false);
+        if (b.getBlockData() instanceof org.bukkit.block.data.Levelled lv) {
+            lv.setLevel(Math.min(lv.getMaximumLevel(), plugin.getConfig().getInt("blue-obsidian.portal-light", 11)));
+            b.setBlockData(lv, false);
+        }
+    }
+
+    /** The glowing blue sheet in one cell: grows from nothing when `grow`, else appears at full size (chunk loads). */
+    void sheet(Portal p, World w, long k, boolean grow) {
+        ItemDisplay old = p.sheets.get(k);
+        if (old != null && old.isValid()) return;
+        ItemDisplay d = (ItemDisplay) w.spawnEntity(at(w, k), EntityType.ITEM_DISPLAY, false);
+        d.addScoreboardTag(DISPLAY_TAG);
+        d.addScoreboardTag("faultline_blue_portal");
+        d.addScoreboardTag("faultline_no_bedrock_fx");
+        d.setPersistent(false);
+        d.setItemStack(model("blue_portal"));
+        try { d.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.NONE); } catch (RuntimeException ignored) { }
+        try { d.setBrightness(new Display.Brightness(15, 15)); } catch (RuntimeException ignored) { }
+        Quaternionf q = p.axis == Axis.X ? new Quaternionf() : new Quaternionf().rotateY((float) (Math.PI / 2));
+        float full = 1.001f;
+        if (grow) {
+            d.setTransformation(new Transformation(new Vector3f(), q, new Vector3f(0.01f, 0.01f, 0.01f), new Quaternionf()));
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (!d.isValid()) return;
+                d.setInterpolationDelay(0);
+                d.setInterpolationDuration(7);
+                d.setTransformation(new Transformation(new Vector3f(), q, new Vector3f(full, full, full), new Quaternionf()));
+            }, 2L);
+        } else d.setTransformation(new Transformation(new Vector3f(), q, new Vector3f(full, full, full), new Quaternionf()));
+        p.sheets.put(k, d);
     }
 
     void close(Portal p, boolean effects) {
@@ -369,9 +542,26 @@ final class BlueObsidian implements Listener {
             if (m != null) m.remove(k);
             if (w == null || !w.isChunkLoaded(kx(k) >> 4, kz(k) >> 4)) continue;
             Block b = w.getBlockAt(kx(k), ky(k), kz(k));
-            if (b.getType() == Material.NETHER_PORTAL) b.setType(Material.AIR, false);
+            if (b.getType() == Material.LIGHT || b.getType() == Material.NETHER_PORTAL) b.setType(Material.AIR, false);
         }
-        if (effects && w != null) w.playSound(centre(p, w), Sound.BLOCK_GLASS_BREAK, SoundCategory.BLOCKS, 1f, 0.6f);
+        // the sheet shrinks away, the frame goes dark
+        for (ItemDisplay d : p.sheets.values()) {
+            if (!d.isValid()) continue;
+            Transformation tr = d.getTransformation();
+            d.setInterpolationDelay(0);
+            d.setInterpolationDuration(6);
+            d.setTransformation(new Transformation(tr.getTranslation(), tr.getLeftRotation(), new Vector3f(0.01f, 0.01f, 0.01f), tr.getRightRotation()));
+            Bukkit.getScheduler().runTaskLater(plugin, () -> { if (d.isValid()) d.remove(); }, 7L);
+        }
+        p.sheets.clear();
+        for (long k : p.frame) setLit(p.world, k, false);
+        if (effects && w != null) {
+            Location c = centre(p, w);
+            w.playSound(c, Sound.BLOCK_BEACON_DEACTIVATE, SoundCategory.BLOCKS, 1.2f, 0.8f);
+            w.playSound(c, Sound.BLOCK_GLASS_BREAK, SoundCategory.BLOCKS, 1f, 0.6f);
+            w.spawnParticle(Particle.DUST, c, 40, 1.2, 1.2, 1.2, 0, new Particle.DustOptions(DEEP, 1.5f));
+            w.spawnParticle(Particle.REVERSE_PORTAL, c, 60, 1, 1, 1, 0.2);
+        }
         save();
     }
 
@@ -382,20 +572,10 @@ final class BlueObsidian implements Listener {
         return new Location(w, x / n + 0.5, y / n + 0.5, z / n + 0.5);
     }
 
-    /** Our portal blocks don't break when something next to them changes (they have no vanilla obsidian frame). */
-    @EventHandler(priority = EventPriority.LOWEST)
-    public void onPhysics(BlockPhysicsEvent e) {
-        Block b = e.getBlock();
-        if (b.getType() == Material.NETHER_PORTAL && cellOwner(b) != null) e.setCancelled(true);
-    }
-
-    /** Vanilla never builds a nether portal inside our frame (and a frame lit "the vanilla way" isn't ours). */
-    @EventHandler(ignoreCancelled = true)
-    public void onPortalCreate(PortalCreateEvent e) {
-        for (org.bukkit.block.BlockState s : e.getBlocks()) if (cellOwner(s.getBlock()) != null) { e.setCancelled(true); return; }
-    }
-
-    /** Every 2 s: a frame with a block gone closes; a portal block knocked out (a frame still whole) comes back. */
+    /**
+     * Every 2 s: a frame with a block gone closes; light knocked out of a cell (a frame still whole) comes back, and so do the
+     * sheets of a chunk that loaded again. 1.2.75's purple portal blocks turn into the new blue portal.
+     */
     void upkeep() {
         for (Portal p : new ArrayList<>(portals.values())) {
             World w = Bukkit.getWorld(p.world);
@@ -406,16 +586,38 @@ final class BlueObsidian implements Listener {
                 if (!isBlue(w.getBlockAt(kx(k), ky(k), kz(k)))) { broken = true; break; }
             }
             if (broken) { close(p, true); continue; }
+            if (!p.ready) continue;
+            for (long k : p.frame) setLit(p.world, k, true);
             for (long k : p.inside) {
                 if (!w.isChunkLoaded(kx(k) >> 4, kz(k) >> 4)) continue;
                 Block b = w.getBlockAt(kx(k), ky(k), kz(k));
-                if (b.getType() != Material.NETHER_PORTAL && fillable(b)) setPortalBlock(b, p.axis);
+                if (b.getType() != Material.LIGHT && fillable(b)) light(b);
+                sheet(p, w, k, false);
             }
-            if (ThreadLocalRandom.current().nextInt(3) == 0) {
-                Location c = centre(p, w);
-                if (w.isChunkLoaded(c.getBlockX() >> 4, c.getBlockZ() >> 4))
-                    w.spawnParticle(Particle.DUST, c, 12, 1, 1, 1, 0, new Particle.DustOptions(org.bukkit.Color.fromRGB(70, 110, 255), 1.2f));
+        }
+    }
+
+    /** Every 5 ticks round open portals: drifting blue motes, sparks on the frame, a low hum now and then. */
+    void ambient() {
+        ThreadLocalRandom r = ThreadLocalRandom.current();
+        for (Portal p : portals.values()) {
+            if (!p.ready) continue;
+            World w = Bukkit.getWorld(p.world);
+            if (w == null) continue;
+            Location c = centre(p, w);
+            if (!w.isChunkLoaded(c.getBlockX() >> 4, c.getBlockZ() >> 4)) continue;
+            boolean watched = false;
+            for (Player pl : w.getPlayers()) if (pl.getLocation().distanceSquared(c) < 48 * 48) { watched = true; break; }
+            if (!watched) continue;
+            List<Long> in = new ArrayList<>(p.inside);
+            for (int i = 0; i < Math.min(4, in.size()); i++) {
+                Location l = at(w, in.get(r.nextInt(in.size())));
+                w.spawnParticle(Particle.DUST, l, 1, 0.4, 0.4, 0.4, 0, new Particle.DustOptions(r.nextBoolean() ? CYAN : DEEP, 1.1f));
+                if (r.nextInt(3) == 0) w.spawnParticle(Particle.REVERSE_PORTAL, l, 1, 0.3, 0.3, 0.3, 0.02);
             }
+            List<Long> fr = new ArrayList<>(p.frame);
+            if (!fr.isEmpty() && r.nextInt(2) == 0) w.spawnParticle(Particle.ELECTRIC_SPARK, at(w, fr.get(r.nextInt(fr.size()))), 1, 0.4, 0.4, 0.4, 0.02);
+            if (r.nextInt(16) == 0) w.playSound(c, Sound.BLOCK_BEACON_AMBIENT, SoundCategory.BLOCKS, 0.6f, 1.3f);
         }
     }
 
@@ -425,19 +627,41 @@ final class BlueObsidian implements Listener {
         Block b = l.getBlock();
         Portal p = cellOwner(b);
         if (p == null) p = cellOwner(b.getRelative(BlockFace.UP));
-        if (p == null) p = cellOwner(b.getRelative(BlockFace.DOWN));
         return p;
     }
 
-    @EventHandler(priority = EventPriority.HIGHEST)
-    public void onPlayerPortal(PlayerPortalEvent e) {
-        Player p = e.getPlayer();
-        if (portalAt(e.getFrom()) == null) return;
-        e.setCancelled(true);
-        send(p);
+    private final Map<UUID, Integer> charge = new HashMap<>();
+
+    /** Every 2 ticks: standing in an open portal charges up (creative: at once), then you're pulled through. */
+    void travelTick() {
+        if (portals.isEmpty()) { charge.clear(); return; }
+        int need = Math.max(2, plugin.getConfig().getInt("blue-obsidian.travel-ticks", 30));
+        for (Player pl : Bukkit.getOnlinePlayers()) {
+            if (!cells.containsKey(pl.getWorld().getName()) || pl.getGameMode() == GameMode.SPECTATOR || pl.isDead()) { charge.remove(pl.getUniqueId()); continue; }
+            Portal p = cellOwner(pl.getLocation().getBlock());
+            if (p == null) p = cellOwner(pl.getEyeLocation().getBlock());
+            if (p == null || !p.ready || travelling.contains(pl.getUniqueId())) { charge.remove(pl.getUniqueId()); continue; }
+            int c = charge.merge(pl.getUniqueId(), 2, Integer::sum);
+            Location l = pl.getLocation().add(0, 1, 0);
+            if (c == 2) pl.playSound(l, Sound.BLOCK_PORTAL_TRIGGER, SoundCategory.PLAYERS, 0.5f, 1.6f);
+            pl.getWorld().spawnParticle(Particle.DUST, l, 4, 0.4, 0.8, 0.4, 0, new Particle.DustOptions(CYAN, 1.2f));
+            pl.getWorld().spawnParticle(Particle.REVERSE_PORTAL, l, 3, 0.3, 0.6, 0.3, 0.05);
+            if (c >= need || pl.getGameMode() == GameMode.CREATIVE) {
+                charge.remove(pl.getUniqueId());
+                pl.getWorld().spawnParticle(Particle.FIREWORK, l, 20, 0.3, 0.6, 0.3, 0.15);
+                pl.getWorld().playSound(l, Sound.ENTITY_ENDERMAN_TELEPORT, SoundCategory.PLAYERS, 1f, 0.7f);
+                send(pl);
+            }
+        }
     }
 
-    /** Items, mobs and minecarts don't go through (vanilla would carry them to the Nether). */
+    /** 1.2.75's purple portal blocks are gone, but just in case vanilla ever asks about one of our cells. */
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onPlayerPortal(PlayerPortalEvent e) {
+        if (portalAt(e.getFrom()) == null) return;
+        e.setCancelled(true);
+    }
+
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onEntityPortal(EntityPortalEvent e) {
         if (portalAt(e.getFrom()) != null) e.setCancelled(true);
@@ -531,6 +755,7 @@ final class BlueObsidian implements Listener {
                 for (Object o : s.getList(id + ".frame", List.of())) p.frame.add(((Number) o).longValue());
                 if (p.world == null || p.inside.isEmpty()) continue;
                 portals.put(p.id, p);
+                lit.computeIfAbsent(p.world, w -> new HashSet<>()).addAll(p.frame);
                 Map<Long, Portal> m = cells.computeIfAbsent(p.world, w -> new HashMap<>());
                 for (long k : p.inside) m.put(k, p);
             } catch (RuntimeException ex) { plugin.getLogger().warning("[Blue Obsidian] bad portal " + id + " in blue_portals.yml: " + ex); }
@@ -538,6 +763,7 @@ final class BlueObsidian implements Listener {
     }
 
     void shutdown() {
+        for (Portal p : portals.values()) { for (ItemDisplay d : p.sheets.values()) if (d.isValid()) d.remove(); p.sheets.clear(); }
         for (Map<Long, ItemDisplay> m : overlays.values()) for (ItemDisplay d : m.values()) if (d.isValid()) d.remove();
         overlays.clear();
     }

@@ -786,6 +786,9 @@ mimic-player:
   elytra-pvp: false     # true = with an elytra + rockets in their gear it flies after you, elytra swaps, dives, rockets away
   kit-when-bare: true   # a player with no armour anywhere = it wears the kit's armour
   world-techs: true     # UHC techs that place blocks (lava, webs, water, pillars); everything is put back
+  explosives: true      # crystals, respawn anchors, TNT, fire charges from their inventory (never breaks terrain)
+  dig: true             # walled off from you: mines through with their pickaxe / axe / shovel
+  dig-restore-seconds: 60  # mined blocks come back after this (0 = they stay mined)
 
 # 1.2.78 HAUNTED VILLAGES (Halloween): spirits rise over a village at night; beat the Lantern Wraith for Candy.
 haunted-villages:

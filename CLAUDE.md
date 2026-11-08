@@ -1900,6 +1900,29 @@ Notes:
   crossbow / trident (+-35 degrees) or from far off (+-15). TURNS ON whoever hits it (60%, half its reaction time). IDLE with
   nobody around: looks around and wanders a few steps (`idle`, `idleYaw`). Tested (scratch `nt/NewTest`: a stone floor under
   the mock world, the lava pool walk-round, turning on Ana, elytra test turns the key on).
+- **The mimic, every tech (Items 1.2.82)**: `tier(m)` = easy 1 / normal 2 / hard 3 / godlike 4 gates the techs (easy: sprint/crit
+  hits, eating, potting, blocking, bow; normal+: pot runs, debuff pots, snowballs, UHC techs, TNT, fire charges, spear lunge,
+  trident throws, crossbow, towering, digging; hard+: crystals, anchors, riptide, spear-mace; godlike: double crystal, surround).
+  GEAR now also counts END_CRYSTAL, OBSIDIAN, RESPAWN_ANCHOR, GLOWSTONE, TNT, FIRE_CHARGE, a spear (`*_SPEAR`), trident,
+  crossbow, pickaxe, shovel (saved in mimic_gear.yml). EVERY drinkable potion is its buff (fire res, turtle master...),
+  splashes with a good effect too. STYLES: spearmace, mace, crystal, nethpot / pot (healing-pot kits), nethop / diamond,
+  trident, spear, bow, uhc, axe, sword. POT RUN (`potRun`, request): low with heal pots and close = sprints away 6/8/11 ticks
+  (looking away), throws the Healing pot down ahead of its own run (it runs into the splash), then `rushUntil` 30 ticks:
+  straight back in, +10% speed, no zig-zag, no buffing, spacing 2.5. BOOM (`boomStart`/`boomTick`, `boomSpot` = a cell
+  beside them, 3.6+ from itself; `mimic-player.explosives`): CRYSTAL (obsidian TempBlock unless there's obsidian/bedrock
+  already, EnderCrystal tagged `faultline_player_mimic`, punched = removed + `createExplosion(6, no fire, no blocks, source
+  brain)`; godlike 50% DOUBLE CRYSTAL), ANCHOR (not in the Nether: anchor TempBlock, glowstone charge, then click = power 5),
+  TNT (TempBlock, lit with flint / fire charge = TNTPrimed 30 fuse, tagged: `onOurBoom` clears block damage), FIRE CHARGE at
+  their feet. Step gap 1/2/4 ticks by tier. SURROUND (godlike): their crystals / anchor in hand = obsidian on 4 sides of its
+  feet. SPEAR: LUNGE (dash 0.75+0.2xLunge, jab when in reach, +speed damage), SPEAR MACE (lunge up, slam = maceTech swaps to the
+  mace). TRIDENT: throw with lead (Loyalty back after 34-6xlvl ticks, none = gone), RIPTIDE (in water/rain, `riptideTick`,
+  SPIN_ATTACK pose), Impaling vs wet targets, Channeling lightning in storms. CROSSBOW: Quick Charge load, Multishot 3,
+  Piercing. DIG (`startDig`/`digTick`/`mine`, `mimic-player.dig`, `dig-restore-seconds` 60): walled off while chasing =
+  mines the head then feet block with the right tool (pickaxe / axe / shovel tags) at vanilla speed (ceil(hardness x 30 /
+  tool speed)), never block entities or hardness > 10; mined blocks are TempBlocks (placed AIR) put back later. TOWER UP
+  (`towerUp`): they're 2.5+ up within 4 = jump-places blocks under itself. Tested (scratch `nt/NewTest`: styles, drinkables,
+  fire res, pot run, crystal + punch, easy never crystals, anchor, trident + Loyalty, spear lunge, dig + restore, tower; the
+  test's physics stand-in floors on blocks and slows in webs).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Skills → Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

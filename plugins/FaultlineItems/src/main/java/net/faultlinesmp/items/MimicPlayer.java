@@ -30,6 +30,7 @@ import org.bukkit.util.Vector;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
+import org.bukkit.Tag;
 import java.util.*;
 
 /**
@@ -108,6 +109,14 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         Player target;
         int t, strafeDir = 1, strafeFlip, lastHit = -100, lastHurt = -100, reactAt;
         int webTicks, chaseStuck, flyTicks, nextRocket, flyCooldown, idleAt;
+        int crystals, obsidian, anchors, glowstone, tnt, fireCharges;
+        ItemStack trident; // its trident (null while thrown away without Loyalty)
+        int boomStep, boomWait, boomReady, surroundReady, spearReady, lungeUntil, tridentReady, riptideUntil, crossUntil, crossReady;
+        int potRunUntil, rushUntil, digTicks, digNeed;
+        boolean riptideHit, tridentOut;
+        String boomKind;
+        Block boomAt, digBlock;
+        EnderCrystal crystal;
         float aimJx, aimJy, idleYaw;
         boolean idleWalk;
         boolean flying;
@@ -136,6 +145,8 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         int gaps, egaps, pearls, pots, totems, wind, lava, water, webs, blocks, rockets;
         boolean rod, flint, elytra;
         int arrows, throwables;
+        int crystals, obsidian, anchors, glowstone, tnt, fireCharges;
+        ItemStack spear, trident, crossbow, pickaxe, shovel;
         final List<ItemStack> buffs = new ArrayList<>(), debuffs = new ArrayList<>(); // one entry per potion they carry
         Material block = Material.COBBLESTONE;
         double maxHealth = 20;
@@ -199,13 +210,25 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
                     boolean bad = fx.stream().anyMatch(e -> BAD.contains(e.getType())), good = fx.stream().anyMatch(e -> GOOD.contains(e.getType()));
                     for (int i = 0; i < it.getAmount(); i++) {
                         ItemStack one = it.clone(); one.setAmount(1);
-                        if (bad && m != Material.POTION) g.debuffs.add(one); else if (good && !bad) g.buffs.add(one);
+                        if (m == Material.POTION) { if (good || !bad) { if (!fx.isEmpty()) g.buffs.add(one); } } // anything drinkable is for itself
+                        else if (good) g.buffs.add(one); else if (bad) g.debuffs.add(one);
                     }
                 }
                 case ARROW, SPECTRAL_ARROW, TIPPED_ARROW -> g.arrows += it.getAmount();
+                case END_CRYSTAL -> g.crystals += it.getAmount();
+                case OBSIDIAN -> g.obsidian += it.getAmount();
+                case RESPAWN_ANCHOR -> g.anchors += it.getAmount();
+                case GLOWSTONE -> g.glowstone += it.getAmount();
+                case TNT -> g.tnt += it.getAmount();
+                case FIRE_CHARGE -> g.fireCharges += it.getAmount();
+                case TRIDENT -> { if (g.trident == null || score(it) + level(it, "impaling") + 2 * level(it, "loyalty") > score(g.trident) + level(g.trident, "impaling") + 2 * level(g.trident, "loyalty")) g.trident = it.clone(); }
+                case CROSSBOW -> { if (g.crossbow == null || level(it, "quick_charge") + level(it, "multishot") > level(g.crossbow, "quick_charge") + level(g.crossbow, "multishot")) g.crossbow = it.clone(); }
                 case SNOWBALL, EGG -> g.throwables += it.getAmount();
                 default -> {
-                    if (m.name().endsWith("_AXE")) { if (score(it) > score(g.axe)) g.axe = it.clone(); }
+                    if (m.name().endsWith("_SPEAR")) { if (score(it) > score(g.spear)) g.spear = it.clone(); }
+                    else if (m.name().endsWith("_PICKAXE")) { if (toolSpeed(it) > toolSpeed(g.pickaxe)) g.pickaxe = it.clone(); }
+                    else if (m.name().endsWith("_SHOVEL")) { if (toolSpeed(it) > toolSpeed(g.shovel)) g.shovel = it.clone(); }
+                    else if (m.name().endsWith("_AXE")) { if (score(it) > score(g.axe)) g.axe = it.clone(); }
                     else if (weapon(m) && score(it) > score(g.weapon)) g.weapon = it.clone();
                     else if (m.isBlock() && m.isSolid() && !m.hasGravity() && !m.isInteractable() && m.isOccluding() && it.getAmount() > g.blocks) { g.blocks = it.getAmount(); g.block = m; }
                 }
@@ -220,8 +243,8 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             else if (n.endsWith("_LEGGINGS") && armourScore(it) > armourScore(g.legs) && inv.getLeggings() == null) g.legs = it.clone();
             else if (n.endsWith("_BOOTS") && armourScore(it) > armourScore(g.boots) && inv.getBoots() == null) g.boots = it.clone();
         }
-        if (held != null && weapon(held.getType()) && !held.getType().name().endsWith("_AXE")) g.weapon = held.clone(); // what they're holding right now wins
-        if (g.weapon == null && g.axe != null) { g.weapon = g.axe; }
+        if (held != null && weapon(held.getType()) && !held.getType().name().endsWith("_AXE") && !held.getType().name().endsWith("_SPEAR") && held.getType() != Material.TRIDENT) g.weapon = held.clone(); // what they're holding right now wins
+        if (g.weapon == null) g.weapon = g.axe != null ? g.axe : g.trident != null ? g.trident : g.spear;
         if (g.chest != null && g.chest.getType() == Material.ELYTRA) g.elytra = true;
         try { g.maxHealth = p.getAttribute(Attribute.MAX_HEALTH).getValue(); } catch (RuntimeException e) { g.maxHealth = 20; }
         return g;
@@ -288,6 +311,10 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
                 g.blocks = c.getInt("blocks"); g.rockets = c.getInt("rockets");
                 g.rod = c.getBoolean("rod"); g.flint = c.getBoolean("flint"); g.elytra = c.getBoolean("elytra");
                 g.arrows = c.getInt("arrows"); g.throwables = c.getInt("throwables");
+                g.crystals = c.getInt("crystals"); g.obsidian = c.getInt("obsidian"); g.anchors = c.getInt("anchors"); g.glowstone = c.getInt("glowstone");
+                g.tnt = c.getInt("tnt"); g.fireCharges = c.getInt("fire-charges");
+                g.spear = c.getItemStack("spear"); g.trident = c.getItemStack("trident"); g.crossbow = c.getItemStack("crossbow");
+                g.pickaxe = c.getItemStack("pickaxe"); g.shovel = c.getItemStack("shovel");
                 for (Object o : c.getList("buffs", List.of())) if (o instanceof ItemStack is) g.buffs.add(is);
                 for (Object o : c.getList("debuffs", List.of())) if (o instanceof ItemStack is) g.debuffs.add(is);
                 Material bm = Material.matchMaterial(c.getString("block", "COBBLESTONE"));
@@ -311,6 +338,9 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             y.set(k + "wind", g.wind); y.set(k + "lava", g.lava); y.set(k + "water", g.water); y.set(k + "webs", g.webs);
             y.set(k + "blocks", g.blocks); y.set(k + "rockets", g.rockets);
             y.set(k + "arrows", g.arrows); y.set(k + "throwables", g.throwables);
+            y.set(k + "crystals", g.crystals); y.set(k + "obsidian", g.obsidian); y.set(k + "anchors", g.anchors); y.set(k + "glowstone", g.glowstone);
+            y.set(k + "tnt", g.tnt); y.set(k + "fire-charges", g.fireCharges);
+            y.set(k + "spear", g.spear); y.set(k + "trident", g.trident); y.set(k + "crossbow", g.crossbow); y.set(k + "pickaxe", g.pickaxe); y.set(k + "shovel", g.shovel);
             y.set(k + "buffs", new ArrayList<>(g.buffs)); y.set(k + "debuffs", new ArrayList<>(g.debuffs));
             y.set(k + "rod", g.rod); y.set(k + "flint", g.flint); y.set(k + "elytra", g.elytra); y.set(k + "block", g.block.name());
         }
@@ -392,6 +422,9 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         }
         m.apples = m.gear.gaps; m.gapples = m.gear.egaps; m.pots = m.gear.pots; m.pearlsLeft = m.gear.pearls; m.totems = m.gear.totems;
         m.arrows = m.gear.arrows; m.throwables = m.gear.throwables;
+        m.crystals = m.gear.crystals; m.obsidian = m.gear.obsidian; m.anchors = m.gear.anchors; m.glowstone = m.gear.glowstone;
+        m.tnt = m.gear.tnt; m.fireCharges = m.gear.fireCharges;
+        m.trident = m.gear.trident == null ? null : m.gear.trident.clone();
         m.buffs.addAll(m.gear.buffs); m.debuffs.addAll(m.gear.debuffs);
         m.style = style(m.gear);
         m.wind = m.gear.wind; m.lava = m.gear.lava; m.water = m.gear.water; m.webs = m.gear.webs; m.blocks = m.gear.blocks; m.rockets = m.gear.rockets;
@@ -509,19 +542,38 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             case "flint" -> new ItemStack(Material.FLINT_AND_STEEL);
             case "block" -> new ItemStack(g.block);
             case "rocket" -> new ItemStack(Material.FIREWORK_ROCKET);
+            case "crystal" -> new ItemStack(Material.END_CRYSTAL);
+            case "obsidian" -> new ItemStack(Material.OBSIDIAN);
+            case "anchor" -> new ItemStack(Material.RESPAWN_ANCHOR);
+            case "glowstone" -> new ItemStack(Material.GLOWSTONE);
+            case "tnt" -> new ItemStack(Material.TNT);
+            case "firecharge" -> new ItemStack(Material.FIRE_CHARGE);
+            case "spear" -> g.spear;
+            case "trident" -> m.trident;
+            case "crossbow" -> g.crossbow;
+            case "pickaxe" -> g.pickaxe;
+            case "shovel" -> g.shovel;
             default -> g.weapon;
         };
         return it == null ? null : it.clone();
     }
 
-    ItemStack weaponHeld(Mimic m) { return m.held.equals("axe") ? m.gear.axe : m.held.equals("mace") ? m.gear.mace : m.gear.weapon; }
+    ItemStack weaponHeld(Mimic m) {
+        return switch (m.held) { case "axe" -> m.gear.axe; case "mace" -> m.gear.mace; case "spear" -> m.gear.spear; case "trident" -> m.trident; default -> m.gear.weapon; };
+    }
 
     /** What kind of fighter their inventory says they are (mace / nethop / diamond / uhc / axe / sword). */
     static String style(Gear g) {
+        if (g.mace != null && g.spear != null) return "spearmace";
         if (g.mace != null) return "mace";
+        if (g.crystals > 0 && (g.obsidian > 0 || g.anchors > 0)) return "crystal";
         boolean neth = g.chest != null && g.chest.getType().name().startsWith("NETHERITE");
         boolean potions = g.buffs.size() + g.pots + g.debuffs.size() >= 3;
-        if (potions) return neth ? "nethop" : "diamond";
+        if (potions && g.pots >= 3) return neth ? "nethpot" : "pot"; // healing-pot kits
+        if (potions || neth && g.gaps + g.egaps > 0 && g.totems > 0) return neth ? "nethop" : "diamond";
+        if (g.trident != null && (g.weapon == null || g.weapon.getType() == Material.TRIDENT)) return "trident";
+        if (g.spear != null && (g.weapon == null || g.weapon.getType().name().endsWith("_SPEAR"))) return "spear";
+        if ((g.bow != null || g.crossbow != null) && g.arrows >= 32 && score(g.weapon) < 6) return "bow";
         if (g.lava > 0 || g.webs > 0 || g.rod || g.blocks >= 16) return "uhc";
         if (g.axe != null && g.offhand != null && g.offhand.getType() == Material.SHIELD) return "axe";
         return "sword";
@@ -694,7 +746,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         }
         Player tg = m.target;
         double hp = v.getHealth() / maxHp(v);
-        boolean busy = m.eatUntil > m.t || m.drinkUntil > m.t || m.drawUntil > m.t || m.potUntil > m.t;
+        boolean busy = m.eatUntil > m.t || m.drinkUntil > m.t || m.drawUntil > m.t || m.potUntil > m.t || m.crossUntil > m.t;
         // natural regen like a fed player, out of combat
         if (m.t - m.lastHurt > 120 && m.t % 10 == 0 && v.getHealth() < maxHp(v)) v.setHealth(Math.min(maxHp(v), v.getHealth() + 1));
 
@@ -709,17 +761,27 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         }
         if (busy) { busyTick(m, tg); follow(m); return; }
         if (webEscape(m, tg)) { follow(m); return; }
+        if (tg != null && boomTick(m, tg)) { follow(m); return; }
+        if (tg != null && riptideTick(m, tg)) { follow(m); return; }
+        if (tg != null && m.digBlock != null && digTick(m)) { follow(m); return; }
         if (tg == null) { hold(m, "sword"); idle(m); follow(m); return; }
         double dist = tg.getLocation().distance(v.getLocation());
         boolean sees = sees(v, tg);
 
         // ---- POT PvP: keep its buffs up (Strength, Speed, Fire Res... whatever it carries), debuff you, snowball you
         if (selfExtinguish(m)) { follow(m); return; }
-        if (dist < 24 && m.t >= m.buffReady && (dist > 3.6 || m.wtapUntil > m.t || charge(m) < 0.5) && buff(m)) { follow(m); return; }
-        if (dist > 2.5 && dist < 8 && sees && m.t >= m.debuffReady && debuff(m, tg)) { follow(m); return; }
-        if (m.throwables > 0 && dist > 3.5 && dist < 10 && sees && m.t >= m.throwReady && tg.isSprinting() && random.nextDouble() < 0.15) { snowball(m, tg); follow(m); return; }
+        if (m.potRunUntil > m.t) { potRun(m, tg); follow(m); return; }
+        if (surround(m, tg)) { follow(m); return; }
+        if (m.rushUntil <= m.t && dist < 24 && m.t >= m.buffReady && (dist > 3.6 || m.wtapUntil > m.t || charge(m) < 0.5) && buff(m)) { follow(m); return; }
+        if (tier(m) >= 2 && m.rushUntil <= m.t && dist > 2.5 && dist < 8 && sees && m.t >= m.debuffReady && debuff(m, tg)) { follow(m); return; }
+        if (tier(m) >= 2 && m.throwables > 0 && dist > 3.5 && dist < 10 && sees && m.t >= m.throwReady && tg.isSprinting() && random.nextDouble() < 0.15) { snowball(m, tg); follow(m); return; }
         // ---- heal up
-        if (hp < cfg("potion-below", 0.45) && m.pots > 0 && m.t - m.lastHit > 4) { drink(m); follow(m); return; }
+        if (hp < cfg("potion-below", 0.45) && m.pots > 0 && m.t - m.lastHit > 4) {
+            // POT RUN (normal+): sprint off, throw the pot down on the run, turn and come straight back in. Easy just pots.
+            if (tier(m) >= 2 && dist < 8) { m.potRunUntil = m.t + switch (tier(m)) { case 4 -> 6; case 3 -> 8; default -> 11; }; hold(m, "potion"); potRun(m, tg); }
+            else drink(m);
+            follow(m); return;
+        }
         boolean food = m.apples > 0 || m.gapples > 0;
         if (hp < cfg("eat-below", 0.4) && food && (dist > 5 || m.fleeUntil > m.t || m.eatAfterPearl)) { m.eatAfterPearl = false; eat(m); follow(m); return; }
         // low, close, with gaps: pearl away to get room to eat (like a real player)
@@ -735,6 +797,8 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         // ---- far: pearl in, or chase
         if (elytraPvp(m, tg, dist, sees)) { follow(m); return; }
         if (dist > 14 && dist < 60 && m.pearlsLeft > 0 && m.t >= m.pearlReady && sees && m.t >= m.reactAt) { pearl(m, tg); follow(m); return; }
+        // ---- mid: trident, crossbow
+        if (ranged(m, tg, dist, sees)) { follow(m); return; }
         // ---- mid: bow
         if (m.gear.bow != null && (m.arrows > 0 || level(m.gear.bow, "infinity") > 0) && dist > 8 && dist < 22 && sees && m.t >= m.bowReady && random.nextDouble() < m.skill.bow() * 0.05) {
             m.bowReady = m.t + 80 + random.nextInt(60);
@@ -744,6 +808,8 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             follow(m);
             return;
         }
+        // ---- they pillared up: it builds up after them (normal+)
+        if (towerUp(m, tg)) { follow(m); return; }
         // ---- close: the fight
         if (m.t >= m.reactAt) melee(m, tg, dist, sees);
         follow(m);
@@ -751,7 +817,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
 
     private void busyTick(Mimic m, Player tg) {
         Vindicator v = m.brain;
-        if (tg != null && tg.getWorld() == v.getWorld() && (m.eatUntil > m.t || m.drawUntil > m.t || m.potUntil > m.t)) {
+        if (tg != null && tg.getWorld() == v.getWorld() && (m.eatUntil > m.t || m.drawUntil > m.t || m.potUntil > m.t || m.crossUntil > m.t)) {
             // using an item slows a player to a crawl, but they keep moving: backs off and strafes while eating / drawing
             Vector away = v.getLocation().toVector().subtract(tg.getLocation().toVector()).setY(0);
             if (away.lengthSquared() < 1e-4) away = new Vector(1, 0, 0);
@@ -789,6 +855,8 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
                 m.potting = null;
                 hold(m, "sword");
             }
+        } else if (m.crossUntil > m.t) {
+            if (m.crossUntil - m.t == 1) { if (tg != null) fireCrossbow(m, tg); Emotes.q(() -> m.body.clearActiveItem()); hold(m, "sword"); }
         } else if (m.drawUntil > m.t) {
             if (m.drawUntil - m.t == 1) { if (tg != null) shoot(m, tg); Emotes.q(() -> m.body.clearActiveItem()); hold(m, "sword"); }
         }
@@ -957,6 +1025,433 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         return true;
     }
 
+    // ================================================================ 1.2.82 techs
+
+    /** How far up the tech ladder it goes: easy 1 (the basics), normal 2, hard 3, godlike 4 (everything). */
+    int tier(Mimic m) { return switch (m.skill.id()) { case "easy" -> 1; case "hard" -> 3; case "godlike" -> 4; default -> 2; }; }
+
+    /** Wet for Impaling: in water or out in the rain. */
+    static boolean wet(Entity e) {
+        try { if (e.isInWaterOrRain()) return true; } catch (Throwable ignored) { }
+        return e.getLocation().getBlock().getType() == Material.WATER;
+    }
+
+    // ---- POT RUN: sprint away, throw the Healing pot down on the run (it lands where it's going), then rush straight back in
+
+    private void potRun(Mimic m, Player tg) {
+        Vindicator v = m.brain;
+        Vector away = tg == null ? v.getLocation().getDirection().setY(0) : v.getLocation().toVector().subtract(tg.getLocation().toVector()).setY(0);
+        if (away.lengthSquared() < 1e-4) away = new Vector(1, 0, 0);
+        away.normalize().add(new Vector(-away.getZ(), 0, away.getX()).multiply(0.25 * m.strafeDir)).normalize();
+        move(m, away, m.skill.speed() * 0.95, false, true);
+        if (m.potRunUntil - m.t == 1) {
+            m.pots--;
+            m.lookDownUntil = m.t + 4;
+            Location at = v.getLocation().add(0, 1.4, 0);
+            ThrownPotion tp = v.getWorld().spawn(at, ThrownPotion.class, e -> { e.setItem(healingPotion()); e.setShooter(v); });
+            Vector cur = v.getVelocity();
+            Safe.vel(tp, new Vector(cur.getX() * 1.1, -0.45, cur.getZ() * 1.1)); // thrown down ahead of its own run: it runs into the splash
+            potions.add(tp.getUniqueId());
+            Emotes.q(() -> m.body.swingMainHand());
+            v.getWorld().playSound(at, Sound.ENTITY_SPLASH_POTION_THROW, 1, 1);
+            m.rushUntil = m.t + 30; // then straight back in, fast, no zig-zag
+            m.reactAt = m.t;
+            Bukkit.getScheduler().runTaskLater(plugin, () -> { if (m.body.isValid()) hold(m, "sword"); }, 3L);
+        }
+    }
+
+    // ---- SURROUND (godlike): their crystals / anchors out = obsidian round its feet
+
+    private boolean surround(Mimic m, Player tg) {
+        Vindicator v = m.brain;
+        if (tier(m) < 4 || m.obsidian < 4 || m.t < m.surroundReady || !worldTechs() || !v.isOnGround()) return false;
+        Material h = tg.getInventory().getItemInMainHand().getType(), o = tg.getInventory().getItemInOffHand().getType();
+        if (h != Material.END_CRYSTAL && h != Material.RESPAWN_ANCHOR && o != Material.END_CRYSTAL) return false;
+        if (tg.getLocation().distance(v.getLocation()) > 7) return false;
+        m.surroundReady = m.t + 400;
+        Block feet = v.getLocation().getBlock();
+        hold(m, "obsidian");
+        int n = 0;
+        for (org.bukkit.block.BlockFace f : new org.bukkit.block.BlockFace[]{org.bukkit.block.BlockFace.NORTH, org.bukkit.block.BlockFace.SOUTH, org.bukkit.block.BlockFace.EAST, org.bukkit.block.BlockFace.WEST}) {
+            Block b = feet.getRelative(f);
+            if (b.getRelative(org.bukkit.block.BlockFace.DOWN).getType().isSolid() && place(b, Material.OBSIDIAN, 240)) { m.obsidian--; n++; }
+        }
+        if (n == 0) { hold(m, "sword"); return false; }
+        Emotes.q(() -> m.body.swingMainHand());
+        v.getWorld().playSound(feet.getLocation(), Sound.BLOCK_STONE_PLACE, 1, 0.8f);
+        Bukkit.getScheduler().runTaskLater(plugin, () -> { if (m.body.isValid()) hold(m, "sword"); }, 3L);
+        return true;
+    }
+
+    // ---- BOOM: crystals (obsidian + crystal + punch), respawn anchors (anchor + glowstone + click), TNT (place + light), fire charges
+
+    /** A cell beside them to blow up: air with solid ground, room above, close to them, and far enough from itself. */
+    private Block boomSpot(Mimic m, Player tg, boolean crystal) {
+        Vindicator v = m.brain;
+        Block best = null; double bestScore = -1;
+        Block feet = tg.getLocation().getBlock();
+        for (int dx = -2; dx <= 2; dx++) for (int dz = -2; dz <= 2; dz++) for (int dy = -1; dy <= 0; dy++) {
+            if (dx == 0 && dz == 0) continue;
+            Block c = feet.getRelative(dx, dy, dz);
+            Block below = c.getRelative(org.bukkit.block.BlockFace.DOWN);
+            boolean onObby = crystal && (below.getType() == Material.OBSIDIAN || below.getType() == Material.BEDROCK);
+            if (!c.getType().isAir() || !c.getRelative(org.bukkit.block.BlockFace.UP).getType().isAir()) continue;
+            if (crystal && !onObby && (m.obsidian <= 0 || !below.getType().isSolid())) continue;
+            if (!crystal && !below.getType().isSolid()) continue;
+            if (crystal && !onObby && !c.getRelative(0, 2, 0).getType().isAir()) continue;
+            Location center = c.getLocation().clone().add(0.5, crystal && !onObby ? 1 : 0.5, 0.5);
+            double toThem = center.distance(tg.getLocation()), toMe = center.distance(v.getLocation());
+            if (toThem > 2.6 || toMe < 3.6) continue; // never blows itself up
+            double sc = toMe - toThem + (onObby ? 2 : 0);
+            if (sc > bestScore) { bestScore = sc; best = onObby ? below : c; }
+        }
+        return best;
+    }
+
+    private boolean boomStart(Mimic m, Player tg, double dist, boolean sees) {
+        Vindicator v = m.brain;
+        if (!worldTechs() || m.boomStep > 0 || m.t < m.boomReady || !sees || dist < 3 || dist > 6.5 || !plugin.getConfig().getBoolean("mimic-player.explosives", true)) return false;
+        int tr = tier(m);
+        double roll = random.nextDouble();
+        // crystals (hard+)
+        if (tr >= 3 && m.crystals > 0 && roll < 0.35) {
+            Block spot = boomSpot(m, tg, true);
+            if (spot != null) {
+                if (spot.getType() != Material.OBSIDIAN && spot.getType() != Material.BEDROCK) { // place the obsidian first
+                    if (!place(spot, Material.OBSIDIAN, 120)) return false;
+                    m.obsidian--;
+                    hold(m, "obsidian");
+                    Emotes.q(() -> m.body.swingMainHand());
+                    v.getWorld().playSound(spot.getLocation(), Sound.BLOCK_STONE_PLACE, 1, 1);
+                }
+                m.boomKind = "crystal"; m.boomAt = spot; m.boomStep = 1; m.boomWait = m.t + boomGap(m);
+                return true;
+            }
+        }
+        // respawn anchors (hard+, not in the Nether)
+        if (tr >= 3 && m.anchors > 0 && m.glowstone > 0 && v.getWorld().getEnvironment() != World.Environment.NETHER && roll < 0.55) {
+            Block spot = boomSpot(m, tg, false);
+            if (spot != null && place(spot, Material.RESPAWN_ANCHOR, 80)) {
+                m.anchors--;
+                hold(m, "anchor");
+                Emotes.q(() -> m.body.swingMainHand());
+                v.getWorld().playSound(spot.getLocation(), Sound.BLOCK_STONE_PLACE, 1, 1);
+                m.boomKind = "anchor"; m.boomAt = spot; m.boomStep = 1; m.boomWait = m.t + boomGap(m);
+                return true;
+            }
+        }
+        // TNT (normal+), lit with flint and steel or a fire charge
+        if (tr >= 2 && m.tnt > 0 && (m.gear.flint || m.fireCharges > 0) && roll < 0.7 && tg.isOnGround()) {
+            Block spot = boomSpot(m, tg, false);
+            if (spot != null && place(spot, Material.TNT, 80)) {
+                m.tnt--;
+                hold(m, "tnt");
+                Emotes.q(() -> m.body.swingMainHand());
+                m.boomKind = "tnt"; m.boomAt = spot; m.boomStep = 1; m.boomWait = m.t + boomGap(m);
+                return true;
+            }
+        }
+        // fire charge at their feet (normal+)
+        if (tr >= 2 && m.fireCharges > 0 && dist < 5 && tg.isOnGround() && !tg.hasPotionEffect(PotionEffectType.FIRE_RESISTANCE) && roll < 0.8) {
+            Block feet = tg.getLocation().getBlock();
+            if (feet.getRelative(org.bukkit.block.BlockFace.DOWN).getType().isSolid() && place(feet, Material.FIRE, 60)) {
+                m.fireCharges--;
+                hold(m, "firecharge");
+                Emotes.q(() -> m.body.swingMainHand());
+                v.getWorld().playSound(feet.getLocation(), Sound.ITEM_FIRECHARGE_USE, 1, 1);
+                m.boomReady = m.t + 60;
+                Bukkit.getScheduler().runTaskLater(plugin, () -> { if (m.body.isValid()) hold(m, "sword"); }, 4L);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Ticks between the steps of a boom: a godlike player places, crystals and hits in a blink. */
+    int boomGap(Mimic m) { return switch (tier(m)) { case 4 -> 1; case 3 -> 2; default -> 4; }; }
+
+    private boolean boomTick(Mimic m, Player tg) {
+        if (m.boomStep == 0) return false;
+        Vindicator v = m.brain;
+        if (m.boomAt == null || m.boomAt.getWorld() != v.getWorld()) { m.boomStep = 0; return false; }
+        if (m.t < m.boomWait) return true;
+        Location top = m.boomAt.getLocation().clone().add(0.5, 1, 0.5), mid = m.boomAt.getLocation().clone().add(0.5, 0.5, 0.5);
+        switch (m.boomKind) {
+            case "crystal" -> {
+                if (m.boomStep == 1) {
+                    if (!top.getBlock().getType().isAir() || m.crystals <= 0) { m.boomStep = 0; return false; }
+                    m.crystals--;
+                    hold(m, "crystal");
+                    Emotes.q(() -> m.body.swingMainHand());
+                    m.crystal = v.getWorld().spawn(top, EnderCrystal.class, e -> { e.setShowingBottom(false); e.addScoreboardTag(TAG); e.setPersistent(false); });
+                    v.getWorld().playSound(top, Sound.BLOCK_GLASS_PLACE, 1, 1);
+                    m.boomStep = 2; m.boomWait = m.t + boomGap(m);
+                } else {
+                    hold(m, "sword");
+                    Emotes.q(() -> m.body.swingMainHand());
+                    Location at = m.crystal != null && m.crystal.isValid() ? m.crystal.getLocation() : top;
+                    if (m.crystal != null && m.crystal.isValid()) m.crystal.remove();
+                    m.crystal = null;
+                    if (at.distance(v.getLocation()) >= 3) Emotes.q(() -> v.getWorld().createExplosion(at, 6f, false, false, v)); // a crystal's blast, no terrain damage
+                    // godlike: DOUBLE CRYSTAL (another on the same obsidian right away)
+                    if (tier(m) >= 4 && m.crystals > 0 && random.nextDouble() < 0.5 && m.boomAt.getType() == Material.OBSIDIAN) { m.boomStep = 1; m.boomWait = m.t + 2; return true; }
+                    m.boomStep = 0; m.boomReady = m.t + switch (tier(m)) { case 4 -> 12; case 3 -> 25; default -> 40; };
+                }
+            }
+            case "anchor" -> {
+                if (m.boomAt.getType() != Material.RESPAWN_ANCHOR) { m.boomStep = 0; return false; }
+                if (m.boomStep == 1) {
+                    m.glowstone--;
+                    hold(m, "glowstone");
+                    Emotes.q(() -> m.body.swingMainHand());
+                    if (m.boomAt.getBlockData() instanceof org.bukkit.block.data.type.RespawnAnchor ra) { ra.setCharges(1); m.boomAt.setBlockData(ra, false); }
+                    v.getWorld().playSound(mid, Sound.BLOCK_RESPAWN_ANCHOR_CHARGE, 1, 1);
+                    m.boomStep = 2; m.boomWait = m.t + boomGap(m);
+                } else {
+                    hold(m, "sword");
+                    Emotes.q(() -> m.body.swingMainHand());
+                    temp.remove(m.boomAt);
+                    m.boomAt.setType(Material.AIR, false);
+                    if (mid.distance(v.getLocation()) >= 3) Emotes.q(() -> v.getWorld().createExplosion(mid, 5f, false, false, v));
+                    m.boomStep = 0; m.boomReady = m.t + switch (tier(m)) { case 4 -> 15; case 3 -> 30; default -> 40; };
+                }
+            }
+            default -> { // tnt
+                if (m.boomAt.getType() != Material.TNT) { m.boomStep = 0; return false; }
+                boolean charge = !m.gear.flint;
+                if (charge) m.fireCharges--;
+                hold(m, charge ? "firecharge" : "flint");
+                Emotes.q(() -> m.body.swingMainHand());
+                temp.remove(m.boomAt);
+                m.boomAt.setType(Material.AIR, false);
+                TNTPrimed tnt = v.getWorld().spawn(mid.clone().add(0, -0.5, 0), TNTPrimed.class, e -> { e.setFuseTicks(30); e.setSource(v); e.addScoreboardTag(TAG); });
+                v.getWorld().playSound(mid, Sound.ENTITY_TNT_PRIMED, 1, 1);
+                m.boomStep = 0; m.boomReady = m.t + 80;
+                Bukkit.getScheduler().runTaskLater(plugin, () -> { if (m.body.isValid()) hold(m, "sword"); }, 4L);
+            }
+        }
+        return true;
+    }
+
+    /** Its TNT and crystals never break the world (the blast still hurts). */
+    @EventHandler(ignoreCancelled = true)
+    public void onOurBoom(EntityExplodeEvent e) {
+        if (e.getEntity().getScoreboardTags().contains(TAG)) e.blockList().clear();
+    }
+
+    // ---- SPEAR: lunge in and jab (normal+); SPEAR MACE (hard+): lunge UP, swap to the mace, smash on the way down
+
+    private boolean spearTech(Mimic m, Player tg, double dist, boolean sees) {
+        Vindicator v = m.brain;
+        if (m.gear.spear == null || tier(m) < 2 || !v.isOnGround() || !sees || m.t < m.spearReady) return false;
+        Vector to = tg.getLocation().toVector().subtract(v.getLocation().toVector()).setY(0);
+        if (to.lengthSquared() < 1e-4) return false;
+        to.normalize();
+        int lunge = Math.max(1, level(m.gear.spear, "lunge"));
+        if (m.gear.mace != null && tier(m) >= 3 && dist > 2.5 && dist < 6.5 && m.t >= m.maceReady && random.nextDouble() < 0.12) { // SPEAR MACE
+            hold(m, "spear");
+            Emotes.q(() -> m.body.swingMainHand());
+            v.getWorld().playSound(v.getLocation(), Sound.ITEM_TRIDENT_RIPTIDE_1, 1, 1.3f);
+            Safe.vel(v, to.clone().multiply(0.45 + 0.1 * lunge).setY(1.0 + 0.08 * lunge));
+            m.slam = true; m.dive = false; m.stunSlam = tg.isBlocking() && m.gear.axe != null;
+            m.maceReady = m.t + 60; m.spearReady = m.t + 50;
+            return true;
+        }
+        if (dist > 3.4 && dist < 4.5 + lunge * 1.5 && charge(m) >= m.skill.hitSelect() && safePath(v, to, 4) && random.nextDouble() < 0.25) { // LUNGE
+            hold(m, "spear");
+            Emotes.q(() -> m.body.swingMainHand());
+            v.getWorld().playSound(v.getLocation(), Sound.ITEM_TRIDENT_THROW, 0.8f, 1.4f);
+            Safe.vel(v, to.clone().multiply(0.75 + 0.2 * lunge).setY(0.12));
+            m.lungeUntil = m.t + 8; m.spearReady = m.t + 50;
+            return true;
+        }
+        return false;
+    }
+
+    private boolean spearLungeHit(Mimic m, Player tg) {
+        if (reachTo(m.brain, tg) > cfg("reach", 3.0) + 0.5) return false;
+        m.lungeUntil = 0;
+        m.sprintHit = true;
+        if (!whiff(m, tg)) strike(m, tg, Math.max(0.9, charge(m)));
+        Bukkit.getScheduler().runTaskLater(plugin, () -> { if (m.body.isValid()) hold(m, "sword"); }, 4L);
+        return true;
+    }
+
+    // ---- TRIDENT (throws with lead, Loyalty brings it back, Riptide launches it at you in water / rain, Channeling in storms)
+    // ---- CROSSBOW (Quick Charge, Multishot, Piercing)
+
+    private boolean ranged(Mimic m, Player tg, double dist, boolean sees) {
+        Vindicator v = m.brain;
+        int tr = tier(m);
+        if (m.trident != null && !m.tridentOut && sees && m.t >= m.tridentReady) {
+            int riptide = level(m.trident, "riptide");
+            if (riptide > 0 && tr >= 3 && wet(v) && dist > 4 && dist < 22) { // RIPTIDE
+                Vector to = tg.getEyeLocation().toVector().subtract(v.getLocation().toVector());
+                Safe.vel(v, to.normalize().multiply(1.1 + 0.6 * riptide).add(new Vector(0, 0.2, 0)));
+                hold(m, "trident");
+                m.riptideUntil = m.t + 14; m.riptideHit = false; m.tridentReady = m.t + 50;
+                v.getWorld().playSound(v.getLocation(), riptide >= 3 ? Sound.ITEM_TRIDENT_RIPTIDE_3 : Sound.ITEM_TRIDENT_RIPTIDE_1, 1, 1);
+                return true;
+            }
+            if (riptide == 0 && tr >= 2 && dist > 6 && dist < 26 && random.nextDouble() < 0.05 + 0.03 * tr) { // THROW
+                Location eye = eye(m);
+                double d = eye.distance(tg.getLocation());
+                Vector aim = tg.getLocation().add(0, 1.1, 0).toVector().add(tg.getVelocity().clone().setY(0).multiply(d / 2.5)).subtract(eye.toVector());
+                aim.setY(aim.getY() + d * 0.04);
+                ItemStack tri = m.trident.clone();
+                hold(m, "trident");
+                Emotes.q(() -> m.body.swingMainHand());
+                Trident t = v.getWorld().spawn(eye.clone().add(aim.clone().normalize().multiply(0.8)), Trident.class, e -> {
+                    e.setShooter(v);
+                    Emotes.q(() -> e.setItemStack(tri));
+                    e.setPickupStatus(AbstractArrow.PickupStatus.DISALLOWED);
+                    e.setDamage(8 + (wet(tg) ? 2.5 * level(tri, "impaling") : 0));
+                    e.addScoreboardTag(TAG);
+                });
+                Safe.vel(t, aim.normalize().multiply(2.5));
+                v.getWorld().playSound(eye, Sound.ITEM_TRIDENT_THROW, 1, 1);
+                m.tridentOut = true; m.tridentReady = m.t + 40;
+                int loyalty = level(tri, "loyalty");
+                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    if (t.isValid()) t.remove();
+                    if (!byBrain.containsKey(v.getUniqueId())) return;
+                    if (loyalty > 0) { m.tridentOut = false; v.getWorld().playSound(v.getLocation(), Sound.ITEM_TRIDENT_RETURN, 1, 1); }
+                    else { m.trident = null; m.tridentOut = false; } // no Loyalty: that one's gone
+                    hold(m, "sword");
+                }, loyalty > 0 ? Math.max(14, 34 - 6 * loyalty) : 30L);
+                return true;
+            }
+        }
+        if (m.gear.crossbow != null && tr >= 2 && m.arrows > 0 && dist > 6 && dist < 24 && sees && m.t >= m.crossReady && random.nextDouble() < 0.04 + 0.02 * tr) {
+            m.crossUntil = m.t + Math.max(5, 25 - 5 * level(m.gear.crossbow, "quick_charge"));
+            m.crossReady = m.t + 60 + random.nextInt(40);
+            hold(m, "crossbow");
+            Emotes.q(() -> m.body.startUsingItem(EquipmentSlot.HAND));
+            return true;
+        }
+        return false;
+    }
+
+    private void fireCrossbow(Mimic m, Player tg) {
+        Vindicator v = m.brain;
+        ItemStack cb = m.gear.crossbow;
+        Location eye = eye(m);
+        double d = eye.distance(tg.getLocation());
+        Vector aim = tg.getLocation().add(0, 1.1, 0).toVector().add(tg.getVelocity().clone().setY(0).multiply(d / 3.1)).subtract(eye.toVector());
+        aim.setY(aim.getY() + d * 0.04);
+        int multi = level(cb, "multishot") > 0 ? 3 : 1, pierce = level(cb, "piercing");
+        m.arrows--;
+        for (int i = 0; i < multi; i++) {
+            double ang = Math.toRadians((i - (multi - 1) / 2.0) * 10), c = Math.cos(ang), sn = Math.sin(ang);
+            Vector dir = new Vector(aim.getX() * c - aim.getZ() * sn, aim.getY(), aim.getX() * sn + aim.getZ() * c).normalize();
+            Arrow a = v.getWorld().spawnArrow(eye.clone().add(dir.clone().multiply(0.8)), dir, 3.15f, (float) m.skill.spread());
+            a.setShooter(v);
+            a.setDamage(2.5);
+            a.setPierceLevel(pierce);
+            if (i != (multi - 1) / 2) a.setPickupStatus(AbstractArrow.PickupStatus.CREATIVE_ONLY);
+        }
+        v.getWorld().playSound(eye, Sound.ITEM_CROSSBOW_SHOOT, 1, 1);
+    }
+
+    private boolean riptideTick(Mimic m, Player tg) {
+        if (m.riptideUntil <= m.t) return false;
+        Vindicator v = m.brain;
+        if (!m.riptideHit && v.getLocation().distance(tg.getLocation()) < 2.2) {
+            m.riptideHit = true;
+            double dmg = (8 + (wet(tg) ? 2.5 * level(m.trident, "impaling") : 0)) * cfg("damage-multiplier", 1.0);
+            striking = true;
+            try { tg.damage(dmg, v); } finally { striking = false; }
+            Vector push = tg.getLocation().toVector().subtract(v.getLocation().toVector()).setY(0);
+            if (push.lengthSquared() > 1e-4) Safe.vel(tg, tg.getVelocity().add(push.normalize().multiply(0.6).setY(0.2)));
+            if (level(m.trident, "channeling") > 0 && v.getWorld().isThundering()) {
+                Emotes.q(() -> tg.getWorld().strikeLightningEffect(tg.getLocation()));
+                striking = true;
+                try { tg.damage(5, v); } finally { striking = false; }
+            }
+        }
+        return true;
+    }
+
+    // ---- DIGGING: walled off from you, it mines through (pickaxe for stone, axe for wood, shovel for dirt), at real speed
+
+    static double toolSpeed(ItemStack it) {
+        if (it == null) return 0;
+        String n = it.getType().name();
+        double s = n.startsWith("NETHERITE") ? 9 : n.startsWith("DIAMOND") ? 8 : n.startsWith("IRON") ? 6 : n.startsWith("GOLDEN") ? 12 : n.startsWith("STONE") ? 4 : n.startsWith("WOODEN") ? 2 : 4;
+        int eff = level(it, "efficiency");
+        return s + (eff > 0 ? eff * eff + 1 : 0);
+    }
+
+    /** The right tool it carries for this block, or null. */
+    ItemStack toolFor(Mimic m, Block b) {
+        if (Tag.MINEABLE_PICKAXE.isTagged(b.getType())) return m.gear.pickaxe;
+        if (Tag.MINEABLE_AXE.isTagged(b.getType())) return m.gear.axe;
+        if (Tag.MINEABLE_SHOVEL.isTagged(b.getType())) return m.gear.shovel;
+        return null;
+    }
+
+    private boolean startDig(Mimic m, Player tg, Block ahead) {
+        if (!worldTechs() || !plugin.getConfig().getBoolean("mimic-player.dig", true)) return false;
+        Block head = ahead.getRelative(org.bukkit.block.BlockFace.UP);
+        Block b = head.getType().isSolid() ? head : ahead.getType().isSolid() ? ahead : null;
+        if (b == null || !diggable(b)) return false;
+        ItemStack tool = toolFor(m, b);
+        if (tool == null) return false;
+        float hard = b.getType().getHardness();
+        m.digBlock = b;
+        m.digTicks = 0;
+        m.digNeed = (int) Math.ceil(hard * 30 / toolSpeed(tool));
+        hold(m, tool == m.gear.pickaxe ? "pickaxe" : tool == m.gear.axe ? "axe" : "shovel");
+        return true;
+    }
+
+    static boolean diggable(Block b) {
+        Material t = b.getType();
+        float h = t.getHardness();
+        if (h < 0 || h > 10) return false; // bedrock, obsidian, reinforced deepslate...
+        if (b.getState() instanceof org.bukkit.block.TileState) return false; // never a chest, furnace, sign, spawner...
+        return t.isSolid();
+    }
+
+    private boolean digTick(Mimic m) {
+        Block b = m.digBlock;
+        Vindicator v = m.brain;
+        if (!b.getType().isSolid() || b.getWorld() != v.getWorld() || b.getLocation().clone().add(0.5, 0.5, 0.5).distance(v.getLocation()) > 3.5) { m.digBlock = null; return false; }
+        m.digTicks++;
+        Vector look = b.getLocation().clone().add(0.5, 0.5, 0.5).toVector().subtract(v.getEyeLocation().toVector());
+        m.yaw = (float) Math.toDegrees(Math.atan2(-look.getX(), look.getZ()));
+        if (m.digTicks % 4 == 0) {
+            Emotes.q(() -> m.body.swingMainHand());
+            Emotes.q(() -> b.getWorld().playSound(b.getLocation(), b.getBlockData().getSoundGroup().getHitSound(), 0.6f, 0.8f));
+            b.getWorld().spawnParticle(Particle.BLOCK, b.getLocation().clone().add(0.5, 0.5, 0.5), 6, 0.3, 0.3, 0.3, b.getBlockData());
+        }
+        if (m.digTicks >= m.digNeed) {
+            mine(b);
+            m.digBlock = null;
+            m.chaseStuck = 0;
+            // the feet block too, if that's in the way
+            Block feet = b.getRelative(org.bukkit.block.BlockFace.DOWN);
+            Block at = v.getLocation().getBlock();
+            if (feet.getY() == at.getY() && feet.getType().isSolid() && diggable(feet) && toolFor(m, feet) != null) {
+                m.digBlock = feet; m.digTicks = 0; m.digNeed = (int) Math.ceil(feet.getType().getHardness() * 30 / toolSpeed(toolFor(m, feet)));
+            } else hold(m, "sword");
+        }
+        return true;
+    }
+
+    /** Mined: gone like a player broke it (no drops), put back after `dig-restore-seconds` (60; 0 = left mined). */
+    void mine(Block b) {
+        Emotes.q(() -> b.getWorld().playSound(b.getLocation(), b.getBlockData().getSoundGroup().getBreakSound(), 1, 1));
+        b.getWorld().spawnParticle(Particle.BLOCK, b.getLocation().clone().add(0.5, 0.5, 0.5), 20, 0.3, 0.3, 0.3, b.getBlockData());
+        int secs = plugin.getConfig().getInt("mimic-player.dig-restore-seconds", 60);
+        if (secs > 0 && !temp.containsKey(b)) {
+            TempBlock t = new TempBlock();
+            t.block = b; t.before = b.getBlockData().clone(); t.placed = Material.AIR; t.until = clock + secs * 20;
+            temp.put(b, t);
+        } else temp.remove(b);
+        b.setType(Material.AIR, false);
+    }
+
     // ---- cobwebs
 
     /**
@@ -1012,8 +1507,11 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     private void melee(Mimic m, Player tg, double dist, boolean sees) {
         Vindicator v = m.brain;
         Skill s = m.skill;
+        if (m.lungeUntil > m.t && spearLungeHit(m, tg)) return;
         if (m.gear.mace != null && maceTech(m, tg, dist, sees)) return;
-        if (uhcTech(m, tg, dist, sees)) return;
+        if (spearTech(m, tg, dist, sees)) return;
+        if (boomStart(m, tg, dist, sees)) return;
+        if (tier(m) >= 2 && uhcTech(m, tg, dist, sees)) return;
         double reach = reachTo(v, tg);
         double ch = charge(m);
         boolean theyBlock = tg.isBlocking();
@@ -1081,7 +1579,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             if (!safeStep(v, new Vector(-to.getZ(), 0, to.getX()).multiply(m.strafeDir))) { m.strafeDir = -m.strafeDir; m.strafeFlip = 20; } // never strafes into lava / off a ledge
             Vector side = new Vector(-to.getZ(), 0, to.getX()).multiply(safeStep(v, new Vector(-to.getZ(), 0, to.getX()).multiply(m.strafeDir)) ? s.strafe() * m.strafeDir : 0);
             // SPACING: sit just outside their reach while our hit charges, step in the moment it's ready
-            double keep = ch >= s.hitSelect() - 0.1 ? 2.5 : (m.style.equals("sword") || m.style.equals("nethop") || m.style.equals("diamond") ? 3.35 : 2.8);
+            double keep = ch >= s.hitSelect() - 0.1 ? 2.5 : (m.rushUntil > m.t ? 2.5 : m.style.equals("sword") || m.style.startsWith("neth") || m.style.equals("diamond") || m.style.equals("pot") ? 3.35 : 2.8);
             Vector fw = to.clone().multiply(dist > keep + 0.3 ? (safeStep(v, to) ? 0.1 : 0) : dist < keep - 0.3 ? (safeStep(v, to.clone().multiply(-1)) ? -0.08 : 0) : 0);
             if (v.isOnGround()) Safe.vel(v, new Vector(cur.getX() * 0.55 + side.getX() + fw.getX(), cur.getY(), cur.getZ() * 0.55 + side.getZ() + fw.getZ()));
             m.sprintHit = false;
@@ -1104,12 +1602,14 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         Block ahead = v.getLocation().clone().add(to.getX() * 0.8, 0, to.getZ() * 0.8).getBlock();
         boolean wall = ahead.getType().isSolid(), tall = ahead.getRelative(0, 1, 0).getType().isSolid();
         if (wall && tall) m.chaseStuck++; else m.chaseStuck = Math.max(0, m.chaseStuck - 1);
+        if (m.rushUntil > m.t) sp *= 1.1;
+        if (m.chaseStuck > 4 && startDig(m, tg, ahead)) return; // walled off: mines through with their pickaxe / axe / shovel
         if (m.chaseStuck > 10) { Emotes.q(() -> v.getPathfinder().moveTo(tg, 1.4)); return; }
         // ZIG-ZAG in like a player dodging arrows when they hold a bow / crossbow / trident, or from far off
         double d = tg.getLocation().distance(v.getLocation());
         Material held = tg.getInventory().getItemInMainHand().getType();
         boolean ranged = held == Material.BOW || held == Material.CROSSBOW || held == Material.TRIDENT || tg.getInventory().getItemInOffHand().getType() == Material.CROSSBOW;
-        if (d > 5 && (ranged || d > 12)) {
+        if (m.rushUntil <= m.t && d > 5 && (ranged || d > 12)) {
             double a = Math.toRadians(Math.sin(m.t * 0.22 + m.strafeDir) * (ranged ? 35 : 15));
             double c = Math.cos(a), sn = Math.sin(a);
             to = new Vector(to.getX() * c - to.getZ() * sn, 0, to.getX() * sn + to.getZ() * c);
@@ -1191,6 +1691,8 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         base += (str == null ? 0 : 3 * (str.getAmplifier() + 1)) - (weak == null ? 0 : 4 * (weak.getAmplifier() + 1));
         base = Math.max(0.5, base);
         double dmg = (base * (0.2 + 0.8 * charge * charge) + (sharp > 0 ? 0.5 * sharp + 0.5 : 0) * charge) * (crit ? 1.5 : 1);
+        if (m.held.equals("spear")) dmg += Math.min(6, Math.hypot(v.getVelocity().getX(), v.getVelocity().getZ()) * 6) * charge; // a spear hits harder the faster you're going
+        if (m.held.equals("trident") && wet(tg)) dmg += 2.5 * level(w, "impaling");
         dmg *= cfg("damage-multiplier", 1.0);
         Emotes.q(() -> m.body.swingMainHand());
         boolean axeOnShield = m.held.equals("axe") && tg.isBlocking() && facing(tg, v);
@@ -1363,7 +1865,10 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         }
     }
 
-    void restoreAll() { for (TempBlock t : new ArrayList<>(temp.values())) restore(t); }
+    void restoreAll() {
+        for (TempBlock t : new ArrayList<>(temp.values())) restore(t);
+        for (Mimic m : byBrain.values()) if (m.crystal != null && m.crystal.isValid()) m.crystal.remove();
+    }
 
     boolean nearTemp(Block b, Material mat, int r) {
         for (TempBlock t : temp.values()) if (t.placed == mat && t.block.getWorld() == b.getWorld()
@@ -1475,6 +1980,25 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
                 Emotes.q(() -> m.body.swingMainHand());
                 b.getWorld().playSound(b.getLocation(), Sound.BLOCK_STONE_PLACE, 1, 1);
                 if (++m.pillarCount >= 3) { m.pillarReady = m.t + 300; m.pillarCount = 0; }
+            }
+        }
+        return true;
+    }
+
+    /** They're up on a pillar / ledge over it: jump-places blocks under itself until it's level, like a player towering up. */
+    private boolean towerUp(Mimic m, Player tg) {
+        Vindicator v = m.brain;
+        double up = tg.getLocation().getY() - v.getLocation().getY();
+        double flat = Math.hypot(tg.getLocation().getX() - v.getLocation().getX(), tg.getLocation().getZ() - v.getLocation().getZ());
+        if (tier(m) < 2 || m.blocks <= 0 || !worldTechs() || up < 2.5 || flat > 4 || !tg.getLocation().clone().add(0, -0.1, 0).getBlock().getType().isSolid()) return false;
+        if (v.getLocation().getBlock().getRelative(0, 2, 0).getType().isSolid()) return false; // a ceiling: can't
+        if (v.isOnGround()) { Safe.vel(v, new Vector(0, 0.42, 0)); hold(m, "block"); return true; }
+        if (v.getVelocity().getY() < 0.1) {
+            Block b = v.getLocation().getBlock().getRelative(org.bukkit.block.BlockFace.DOWN);
+            if (place(b, m.gear.block, 600)) {
+                m.blocks--;
+                Emotes.q(() -> m.body.swingMainHand());
+                b.getWorld().playSound(b.getLocation(), Sound.BLOCK_STONE_PLACE, 1, 1);
             }
         }
         return true;
@@ -1646,7 +2170,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
                 wantYaw = (float) Math.toDegrees(Math.atan2(-d.getX(), d.getZ())) + m.aimJx;
                 pitch = (float) -Math.toDegrees(Math.atan2(d.getY(), Math.hypot(d.getX(), d.getZ()))) + m.aimJy;
             }
-            if (m.fleeUntil > m.t) wantYaw += 180;
+            if (m.fleeUntil > m.t || m.potRunUntil - m.t > 1) wantYaw += 180;
         } else { wantYaw = m.idleYaw; pitch = (float) (Math.sin(m.t * 0.03) * 12); }
         if (m.drinkUntil > m.t || m.lookDownUntil > m.t) pitch = 88;
         float diff = ((wantYaw - m.yaw) % 360 + 540) % 360 - 180;
@@ -1662,7 +2186,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         float yaw = m.yaw, p = pitch;
         Emotes.q(() -> m.body.setRotation(yaw, p));
         Emotes.q(() -> m.body.setBodyYaw(yaw));
-        Pose want = m.flying || m.dive && m.slam ? Pose.FALL_FLYING : m.blockUntil > m.t && m.shieldOffUntil <= m.t ? Pose.SNEAKING : Pose.STANDING;
+        Pose want = m.riptideUntil > m.t ? Pose.SPIN_ATTACK : m.flying || m.dive && m.slam ? Pose.FALL_FLYING : m.blockUntil > m.t && m.shieldOffUntil <= m.t ? Pose.SNEAKING : Pose.STANDING;
         Emotes.q(() -> { if (m.body.getPose() != want) m.body.setPose(want, true); });
         if (m.tag != null && m.tag.isValid()) m.tag.teleport(tagSpot(l).add(0, want == Pose.SNEAKING ? -0.3 : 0, 0));
     }

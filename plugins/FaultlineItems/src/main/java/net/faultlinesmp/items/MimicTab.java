@@ -23,7 +23,10 @@ final class MimicTab {
     private MimicTab() { }
 
     /** Adds the entry for these viewers (a random UUID, the copied name and skin). */
-    static void add(Collection<? extends Player> viewers, UUID id, String name, PlayerProfile skin) {
+    static void add(Collection<? extends Player> viewers, UUID id, String name, PlayerProfile skin) { add(viewers, id, name, skin, null); }
+
+    /** `tabName` = what the tab list shows (e.g. "[Kingdom 1] Cloud" like the real players), or null for the plain name. */
+    static void add(Collection<? extends Player> viewers, UUID id, String name, PlayerProfile skin, net.kyori.adventure.text.Component tabName) {
         if (broken || viewers.isEmpty()) return;
         try {
             PlayerProfile pp = Bukkit.createProfile(id, name);
@@ -32,8 +35,12 @@ final class MimicTab {
             Class<?> pkt = Class.forName("net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket");
             Class<?> actC = Class.forName("net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket$Action");
             Class<?> entryC = Class.forName("net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket$Entry");
-            EnumSet<?> acts = actions(actC, "ADD_PLAYER", "UPDATE_LISTED", "UPDATE_LATENCY", "UPDATE_GAME_MODE");
-            Object entry = entry(entryC, id, gameProfile);
+            Object nmsName = null;
+            if (tabName != null) try { nmsName = Class.forName("io.papermc.paper.adventure.PaperAdventure").getMethod("asVanilla", net.kyori.adventure.text.Component.class).invoke(null, tabName); }
+            catch (ReflectiveOperationException | RuntimeException | LinkageError ignored) { }
+            EnumSet<?> acts = nmsName != null ? actions(actC, "ADD_PLAYER", "UPDATE_LISTED", "UPDATE_LATENCY", "UPDATE_GAME_MODE", "UPDATE_DISPLAY_NAME")
+                    : actions(actC, "ADD_PLAYER", "UPDATE_LISTED", "UPDATE_LATENCY", "UPDATE_GAME_MODE");
+            Object entry = entry(entryC, id, gameProfile, nmsName);
             Object packet = packet(pkt, acts, List.of(entry));
             for (Player p : viewers) send(p, packet);
         } catch (ReflectiveOperationException | RuntimeException | LinkageError e) {
@@ -73,7 +80,7 @@ final class MimicTab {
 
     /** The Entry record, filled by type (its fields changed between versions): listed / hat on, a believable ping. */
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private static Object entry(Class<?> entryC, UUID id, Object profile) throws ReflectiveOperationException {
+    private static Object entry(Class<?> entryC, UUID id, Object profile, Object displayName) throws ReflectiveOperationException {
         RecordComponent[] rc = entryC.getRecordComponents();
         Class<?>[] types = new Class<?>[rc.length];
         Object[] args = new Object[rc.length];
@@ -83,6 +90,7 @@ final class MimicTab {
             types[i] = t;
             if (t == UUID.class) args[i] = id;
             else if (t.isInstance(profile)) args[i] = profile;
+            else if (displayName != null && t.isInstance(displayName)) args[i] = displayName;
             else if (t == boolean.class) args[i] = true;
             else if (t == int.class) args[i] = ints++ == 0 ? 25 + random.nextInt(70) : 0;
             else if (t.isEnum()) args[i] = Enum.valueOf((Class<Enum>) t, "SURVIVAL");

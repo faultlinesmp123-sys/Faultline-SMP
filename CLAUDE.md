@@ -2045,6 +2045,50 @@ Notes:
   WindCharge entity; knocks them off a pillar), the ROD (hook, 8 ticks later reel: + 0.1 x the gap), the BOW, snowballs.
   Tested (scratch `nt/NewTest`: 3-wide parkour gap with nothing to bridge, a 6-wide gap bridged (3 blocks, then a jump), wind
   charges + rod at Ben up a 10-high pillar; 8/8 runs).
+- **Mimic 1.2.90 (Items): combo techs, pearls, ladders, cover-up, the hunt**: COMBO (`comboTech`, before the normal swing):
+  D-TAP (hard+: they're <= 7 hearts holding a totem, spear + mace/sword: spear hit, 2 ticks later the other with their
+  i-frames reset), SPEAR STUN SLAM (shield up, in `spearReach()` = `mimic-player.spear-reach` 4.5: shield on cooldown 100, then
+  windJump slam / axe), BACKSTAB (shield up, 2.5-7, Lunge spear: lunges to 1.3 behind them), WIND CHARGE CANCEL (they're
+  dropping on it / jumping in for a crit: `windAt` their feet), GRAPPLE (rod + mace: reel 0.1 x gap, then windJump slam), SPEAR
+  REACH SWAP (3.0-4.5: spear out, hard+ swaps to the sword/axe for the hit). SPEAR DASH (`spearDash`, long clear run 7-30) +
+  LUNGE SWAP (`lungeSwap`; `lungeTicks` = the server's `pvp-limits.lunge-cooldown-seconds`, min 10 / 50 below hard). TRIPLE SWAP
+  (godlike + spear: slam reach = spear reach). WIND AIR (`windAir`): MOMENTUM BREAK (falling past its safe height, ground
+  within 2, no water: charge at the ground, vy 0.55, fall reset) + WIND RESET (godlike, far target: back up toward them).
+  WIND CHARGE BLOCK (`dodge`: a charge knocks an incoming projectile back). SWEEP (vanilla, only when someone's within 1 of
+  its target: standing, not sprinting, charge > 0.848, sword; 1 + dmg x Sweeping Edge ratio; `sweepTargets`; the old
+  "no sweeps" rule is gone). S-TAP (hard+ backs off; W-tap below), S-CRIT (`scritAt`: hit = hops back, crits them coming in),
+  UPPERCUT (hits at its jump peak). ELYTRA DIVE BOMB (`mimic-player.elytra-mace` false: `startBomb`/`bombTick`). PEARLS:
+  `solvePearl` = vanilla projectile physics (move, x0.99, -0.03) simulated per pitch -45..80 with block hits (`pearlLands`);
+  chasing throws only land within 2.5 (`throwPearl(m, to, exact)`); cooldown = `pvp-limits.ender-pearl-cooldown-seconds`
+  (`pearlTicks`, was 15 s); PEARL FOLLOW for normal+ (`followPearl`, early in think, waits up to 3 s for its pearl, skips
+  walkable ones). LADDERS: full steering on climbables (was weak air control = stuck at the top), CLIMB steps off toward
+  the next step, hits while climbing / in water. STUCK / TRAPPED (`escape`): pearl to them (seen) > mine out toward them
+  (`navDig`, a staircase if they're above) > pearl out to open ground; trapped (`trapped`: < 8 walkable cells 4 round) and
+  hit = `escapeAt`. SWIMMING FIGHT (`swimAt`: 3D at their chest 0.2, space up / dive down, climbs onto the bank). STUCK SWING
+  POSE: `follow` restores the real item when a pose item outlives `poseUntil`. SWINGS: the pose item goes in hand, the use
+  starts a tick later (the client used the OLD item when both came in one tick) and is held longer (7 ticks). RUNNING
+  (`runTricks`): BLOCK TRAIL (blocks behind it, feet then head, never in a body: `occupied`), WIND DASH (hard+). COVER UP
+  (`startCover`/`coverTick`/`openCover`: low with food, them within 6, blocks: 4 sides x 2 + roof, their side first; eats
+  inside; opens their side when healed / breached). HEAL RUN (`healRun`: food but nothing to make room: runs until 6+ off,
+  then eats). TAB + TAG: the tab line has "[Kingdom n] Name" / "Outlaw Name" like FaultlineKingdoms (`tabName`, the
+  UPDATE_DISPLAY_NAME action through `PaperAdventure.asVanilla`); the skin arrives later for uncached offline profiles, so the
+  entry is re-sent once `update()` completes; the head tag is rebuilt every 2 s if gone and its text refreshed; a failure to
+  read FaultlineKingdoms is logged once ("[Mimic] couldn't read FaultlineKingdoms..."). THE HUNT (`/mimicplayer hunt <player>
+  [mimic]`, `hunt` alone = where players hang out, `hunt stop`): `MimicHunt.java` (data `mimic_world.yml`) samples every
+  minute each survival player's world + 64-block cell (decays 0.999 a minute; `favouriteWorld`, `hotspot`) and records every
+  `PlayerPortalEvent` (the portal block + where they came out; `portalTo`, `anyPortalTo`); `findEndPortal` = locateNearestStructure
+  STRONGHOLD + async chunk snapshots for an END_PORTAL_FRAME (cached). Hunting: any range/world; within 64 = the normal
+  fight; else `travel`: other world = `toWorld` (a recorded portal; the End's stronghold portal: `endPortalInside` fills
+  empty frames with its Eyes of Ender (`eyesLeft`, counted from ENDER_EYE) and lights it; the End's exit fountain; walks in,
+  60 ticks in the portal with no vanilla trip = teleported to where players came out, the End's platform built if missing);
+  same world: elytra (`flyTo`: cruise ~30 over the ground, rockets only above `hunt.keep-rockets` 4) over `hunt.fly-over` 150,
+  else 40-block legs on the walker (`navGoTo`, pearls over blockers only above `hunt.keep-pearls` 4); underground = `digDown`
+  (centred, mines below, a block over its head each drop, never into lava/water). Plugin chunk tickets 7x7 round it
+  (`keepLoaded`, `hunt.load-radius` 3) so it ticks with no one near, released on stop/remove/death. digTick runs while
+  travelling too. Tested (scratch `nt/NewTest`: pearl solver flat / pillar / over a wall, normal pearl follow, ladder, boxed-in
+  mining out, reach swap vs none, D-tap, wind block, sweep, momentum break, spear dash, dive bomb, cover up + eat, block
+  trail, heal run, swimming up, hunt at 300, activity world, recorded portal to another world, dig down to a buried end
+  portal + sealing + into the End, elytra travel keeping 4 rockets; 8/8 runs).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Skills → Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

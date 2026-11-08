@@ -1,5 +1,5 @@
 name: FaultlineItems
-version: 1.2.89
+version: 1.2.90
 main: net.faultlinesmp.items.FaultlineItems
 api-version: '1.21'
 softdepend: [floodgate, Geyser-Spigot, DonutCombat]
@@ -155,7 +155,7 @@ commands:
     aliases: [creatormode, streamermode]
   mimicplayer:
     description: "Admin: spawn an NPC that looks and fights like a player"
-    usage: /mimicplayer [random|<player>|clear|list] [count]
+    usage: /mimicplayer [random|<player>|clear|list|hunt <player>|hunt stop] [count] [skill]
     aliases: [mimic]
     permission: items.mimicplayer
   holiday:

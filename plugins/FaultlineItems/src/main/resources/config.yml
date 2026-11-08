@@ -517,6 +517,11 @@ spawn-protection:
 enchants:
   boss-drops-enabled: true
   anvil-levels-per-level: 6
+  # 1.2.92: how many DIFFERENT boss enchants one item can hold (0 = no limit). Weapons = swords, axes, tridents, bows,
+  # pickaxes. Gear over the cap is trimmed (highest levels kept) and the owner gets a Dark Loot Bag per enchant removed.
+  max-per-weapon: 2
+  max-per-armor: 1
+  enforce-caps: true
   # 1.2.53: ALL boss enchants nerfed; 1.2.65 tuned the weak ones back up (a server config still holding an old default reads as the new value)
   lifesteal: {per-level: 0.05, max-per-hit: 2, pvp-every-hits: 5}   # 1.2.52: on PLAYERS it heals only every 5th hit (mobs: every hit)
   # 1.2.52 enchants

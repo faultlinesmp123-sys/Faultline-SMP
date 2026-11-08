@@ -2095,6 +2095,13 @@ Notes:
   (`undoDifficulty`; `mimic-player.player-damage` true). `/mimicplayer debug` (per admin, `hitLog`): every mimic hit on a
   player in chat: the raw number, the scaling undone, how it was made (`lastHitInfo`: weapon base, Strength, charge, crit,
   Sharpness, sprint hit, reach; mace: fall, Density, Breach) and what they lost after armour. Tested (scratch `nt/NewTest`).
+- **Boss enchant caps (Items 1.2.92, Index 1.9.1)**: an item holds at most `enchants.max-per-weapon` 2 different boss
+  enchants (swords, axes, tridents, bows, pickaxes) and `enchants.max-per-armor` 1 (helmets, chestplates, leggings, boots);
+  0 = no limit. `Enchants.combine` refuses a NEW enchant past the cap (upgrading one it has still works; the anvil shows
+  "already has n/n" in the action bar). Gear over the cap (`trim`: keeps the highest levels, stable order) is fixed by
+  `sweep` 2 s after join, every 5 s, and when any inventory opens (+ the opened real container / ender chest, bags to the
+  opener): one Dark Loot Bag (`DarkLoot.bag()`) per enchant removed (x stack size), a chat line, "[Enchants] trimmed"
+  in the log. `enchants.enforce-caps: false` turns the sweep off. Tested (scratch `nt/NewTest`).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Skills → Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

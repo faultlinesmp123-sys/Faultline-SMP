@@ -220,6 +220,7 @@ final class Enchants implements Listener, CommandExecutor, TabCompleter {
         if (left.getAmount() != 1 || !fits(left.getType(), d.kind)) return null;
         Map<String, Integer> have = read(left, false);
         int now = have.getOrDefault(d.id, 0);
+        if (now == 0 && have.size() >= cap(left.getType())) return null; // 1.2.92: 2 a weapon, 1 an armour piece
         int to = now == b.getValue() ? Math.min(d.max, now + 1) : Math.max(now, b.getValue());
         if (to <= now) return null; // nothing to gain
         have.put(d.id, to);
@@ -241,6 +242,82 @@ final class Enchants implements Listener, CommandExecutor, TabCompleter {
         it.setItemMeta(m);
     }
 
+    // ---------------------------------------------------------------- caps (1.2.92)
+
+    static boolean armour(Material m) {
+        String n = m.name();
+        return n.endsWith("_HELMET") || n.endsWith("_CHESTPLATE") || n.endsWith("_LEGGINGS") || n.endsWith("_BOOTS");
+    }
+
+    /** How many different boss enchants this item may hold: `max-per-weapon` 2 (swords, axes, tridents, bows, pickaxes), `max-per-armor` 1. */
+    int cap(Material m) {
+        int c = (int) cfg(armour(m) ? "max-per-armor" : "max-per-weapon", armour(m) ? 1 : 2);
+        return c <= 0 ? Integer.MAX_VALUE : c;
+    }
+
+    /** Takes the boss enchants past the cap off this item (keeps the highest levels); returns how many went. */
+    int trim(ItemStack it) {
+        if (it == null || it.getType().isAir() || it.getType() == Material.ENCHANTED_BOOK) return 0;
+        if (!it.getPersistentDataContainer().has(itemKey)) return 0; // read-only view: no meta copy
+        Map<String, Integer> have = read(it, false);
+        int cap = cap(it.getType());
+        if (have.size() <= cap) return 0;
+        List<Map.Entry<String, Integer>> list = new ArrayList<>(have.entrySet());
+        list.sort((a, b) -> b.getValue() - a.getValue()); // stable: equal levels keep their order
+        Map<String, Integer> keep = new LinkedHashMap<>();
+        for (var en : list.subList(0, cap)) keep.put(en.getKey(), en.getValue());
+        Map<String, Integer> ordered = new LinkedHashMap<>();
+        for (var en : have.entrySet()) if (keep.containsKey(en.getKey())) ordered.put(en.getKey(), en.getValue());
+        write(it, ordered);
+        return (have.size() - cap) * Math.max(1, it.getAmount());
+    }
+
+    /** Trims every item in this inventory; the bags go to `owner`. */
+    int trimAll(org.bukkit.inventory.Inventory inv) {
+        int n = 0;
+        ItemStack[] c = inv.getContents();
+        for (int i = 0; i < c.length; i++) {
+            int r = trim(c[i]);
+            if (r > 0) { inv.setItem(i, c[i]); n += r; }
+        }
+        return n;
+    }
+
+    /** A player's inventory, armour, off hand and cursor (+ an open container): extras off, a Dark Loot Bag each. */
+    void sweep(Player p, org.bukkit.inventory.Inventory extra) {
+        if (!plugin.getConfig().getBoolean("enchants.enforce-caps", true)) return;
+        int n = trimAll(p.getInventory());
+        ItemStack cur = p.getItemOnCursor();
+        int rc = trim(cur);
+        if (rc > 0) { p.setItemOnCursor(cur); n += rc; }
+        if (extra != null && extra != p.getInventory()) n += trimAll(extra);
+        if (n <= 0) return;
+        for (int i = 0; i < n; i++) {
+            ItemStack bag = plugin.darkLoot != null ? plugin.darkLoot.bag() : null;
+            if (bag == null) break;
+            for (ItemStack left : p.getInventory().addItem(bag).values()) p.getWorld().dropItem(p.getLocation(), left);
+        }
+        p.sendMessage(ChatColor.LIGHT_PURPLE + "Boss enchants are capped now: 2 on a weapon, 1 on armour. "
+                + ChatColor.GRAY + n + " extra enchant" + (n == 1 ? " was" : "s were") + " taken off your gear (the highest levels were kept), and you got "
+                + n + " Dark Loot Bag" + (n == 1 ? "" : "s") + " for " + (n == 1 ? "it" : "them") + ".");
+        plugin.getLogger().info("[Enchants] trimmed " + n + " boss enchant(s) from " + p.getName() + "'s gear (" + n + " Dark Loot Bags)");
+    }
+
+    @EventHandler public void onJoinCaps(org.bukkit.event.player.PlayerJoinEvent e) {
+        Player p = e.getPlayer();
+        Bukkit.getScheduler().runTaskLater(plugin, () -> { if (p.isOnline()) sweep(p, null); }, 40L);
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onOpenCaps(org.bukkit.event.inventory.InventoryOpenEvent e) {
+        if (!(e.getPlayer() instanceof Player p)) return;
+        org.bukkit.inventory.Inventory top = e.getView().getTopInventory();
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            if (!p.isOnline()) return;
+            sweep(p, top != null && (AccessoryStacks.realStorage(top) || top.getType() == org.bukkit.event.inventory.InventoryType.ENDER_CHEST) ? top : null);
+        });
+    }
+
     private static boolean ours(String loreLine) {
         String s = ChatColor.stripColor(loreLine);
         if (!s.startsWith("✦ ")) return false;
@@ -256,7 +333,15 @@ final class Enchants implements Listener, CommandExecutor, TabCompleter {
         if (read(right, true).isEmpty()) return;
         ItemStack out = combine(left, right);
         e.setResult(out);
-        if (out == null) return;
+        if (out == null) {
+            if (left != null && !left.getType().isAir() && read(left, true).isEmpty()) {
+                Map<String, Integer> have = read(left, false), book = read(right, true);
+                if (!have.containsKey(book.keySet().iterator().next()) && have.size() >= cap(left.getType()))
+                    for (org.bukkit.entity.HumanEntity h : e.getViewers()) if (h instanceof Player pl)
+                        pl.sendActionBar(net.kyori.adventure.text.Component.text("This item already has " + have.size() + "/" + cap(left.getType()) + " boss enchants.", net.kyori.adventure.text.format.NamedTextColor.RED));
+            }
+            return;
+        }
         int lvl = read(right, true).values().iterator().next();
         e.getView().setRepairCost((int) cfg("anvil-levels-per-level", 6) * lvl + (read(left, true).isEmpty() ? 0 : 2));
         e.getView().setRepairItemCountCost(1);
@@ -471,8 +556,12 @@ final class Enchants implements Listener, CommandExecutor, TabCompleter {
         vitality(e.getPlayer(), 0); swift(e.getPlayer(), 0);
     }
 
+    private int sweepClock;
+
     private void tick() {
+        boolean sweepNow = ++sweepClock % 5 == 0; // 1.2.92: caps, every 5 s
         for (Player p : Bukkit.getOnlinePlayers()) {
+            if (sweepNow) try { sweep(p, null); } catch (RuntimeException ex) { plugin.getLogger().warning("[Enchants] cap sweep: " + ex); }
             vitality(p, level(p.getInventory().getChestplate(), "vitality"));
             ItemStack boots = p.getInventory().getBoots();
             swift(p, level(boots, "swiftstride"));

@@ -1942,6 +1942,24 @@ Notes:
   (godlike): a fake jump in while its hit charges. FLANK (normal+, `flank`): several mimics on one player come in at +-40/80
   degrees. `webEscape` and the test's web physics use the whole hitbox (`underNow`). Tested (scratch `nt/NewTest`: i-frames
   wait + hit after, combo break, pearl follow, pre-gap, flank angle; 8/8 runs).
+- **Mimic swings, doors, dodging (Items 1.2.85)**: ARM SWINGS: vanilla only plays the swing animation back for mobs / players
+  (`updateSwingTime` lives in Mob/Player `aiStep`), so a MANNEQUIN never shows `swingMainHand()` (the owner: "the M1 animation
+  doesn't work at all, same for the pickaxe"). `swing(m)` (every old `swingMainHand` call) also draws it with item-use poses
+  on a COPY of what it holds (PDC `faultlineitems:mimic_pose`, a CONSUMABLE component): TRIDENT (arm up) 2 ticks, SPEAR
+  (thrust) 2 ticks, then the real item back; skipped while eating / drinking / drawing / loading / shielding (`usingSomething`);
+  empty hand = an invisible `faultline:gui/blank` paper; `mimic-player.arm-animations`. DOORS (`mimic-player.doors`):
+  `openAhead` (in `move`) opens wooden doors (both halves), trapdoors and fence gates in its way like a right-click (swing +
+  sound; iron ones left alone), `tickDoors` shuts them 2.5 s later when nobody's in them; walled off (`chaseStuck` > 3) it
+  `findDoor`s within 8 and walks to it before digging; `blocks(b)` = solid and not an open door; `diggable` never mines an
+  Openable. DODGING (`dodge`, `incoming` from `onShot` = its target's projectiles, not pearls): closest approach < 1.4 in 14
+  ticks = shield up (normal+, with a shield) or a sidestep (hard+). TOTEM SWAP (hard+, `totemSwap`, first thing each tick):
+  under 35% with a shield off hand = totem in the off hand (`totemHand`: no shield), back at 65%. A shield anywhere in their
+  inventory counts as their off hand when it's empty. CUT-OFF (`intercept`, normal half lead): chases where they're going from
+  its own tracked `tgVel` (a player's server velocity is mostly 0). MEMORY (`Profile`, `learn`, `mimic_memory.yml` with the
+  gear save): shield / bow / eat rates per player: shields a lot -> axe out first (hard+), bows a lot -> always zig-zags in.
+  Godlike circle-strafes longer. Tests (scratch `nt/NewTest`; its physics stand-in now does per-axis wall sliding with a
+  0.6-wide body, open doors passable, gravity even at zero speed): dodge, shield an arrow, totem swap, cut-off angle, memory,
+  door open/through/shut/never chopped, swing poses; 6/6 runs.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Skills → Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

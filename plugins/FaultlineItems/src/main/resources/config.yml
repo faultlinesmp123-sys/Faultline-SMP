@@ -789,6 +789,8 @@ mimic-player:
   explosives: true      # TNT and fire charges from their inventory (never breaks terrain). No crystal, anchor or cart PvP, ever
   dig: true             # walled off from you: mines through with their pickaxe / axe / shovel
   dig-restore-seconds: 60  # mined blocks come back after this (0 = they stay mined)
+  doors: true           # opens wooden doors / trapdoors / fence gates in its way (and looks for one when walled off), shuts them behind it
+  arm-animations: true  # draws its M1 / mining swings with arm poses (a mannequin can't play the vanilla swing)
 
 # 1.2.78 HAUNTED VILLAGES (Halloween): spirits rise over a village at night; beat the Lantern Wraith for Candy.
 haunted-villages:

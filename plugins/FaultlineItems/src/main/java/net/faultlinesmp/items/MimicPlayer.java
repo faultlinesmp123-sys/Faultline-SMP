@@ -20,6 +20,7 @@ import org.bukkit.event.entity.*;
 import org.bukkit.inventory.EntityEquipment;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.PotionMeta;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
@@ -113,8 +114,12 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         ItemStack trident; // its trident (null while thrown away without Loyalty)
         int boomStep, boomWait, boomReady, spearReady, lungeUntil, tridentReady, riptideUntil, crossUntil, crossReady;
         int potRunUntil, rushUntil, digTicks, digNeed, detourDeg, detourUntil;
-        int comboTaken, comboGiven, breakUntil, followT, baitReady;
-        Location followAt;
+        int comboTaken, comboGiven, breakUntil, followT, baitReady, dodgeReady;
+        Location followAt, tgPrev;
+        Vector tgVel = new Vector();
+        boolean totemHand;
+        int swingId, doorUntil;
+        Block doorGoal;
         boolean riptideHit, tridentOut;
         String boomKind;
         Block boomAt, digBlock;
@@ -243,6 +248,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         if (held != null && weapon(held.getType()) && !held.getType().name().endsWith("_AXE") && !held.getType().name().endsWith("_SPEAR") && held.getType() != Material.TRIDENT) g.weapon = held.clone(); // what they're holding right now wins
         if (g.weapon == null) g.weapon = g.axe != null ? g.axe : g.trident != null ? g.trident : g.spear;
         if (g.chest != null && g.chest.getType() == Material.ELYTRA) g.elytra = true;
+        if (g.offhand == null) for (ItemStack it : inv.getStorageContents()) if (it != null && it.getType() == Material.SHIELD) { g.offhand = it.clone(); break; } // they'd swap it on
         try { g.maxHealth = p.getAttribute(Attribute.MAX_HEALTH).getValue(); } catch (RuntimeException e) { g.maxHealth = 20; }
         return g;
     }
@@ -291,6 +297,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     }
 
     void loadGear() {
+        try { loadMemory(); } catch (RuntimeException ignored) { }
         gearFile = new java.io.File(plugin.getDataFolder(), "mimic_gear.yml");
         if (!gearFile.exists()) return;
         var y = org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(gearFile);
@@ -321,6 +328,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     }
 
     void saveGear() {
+        try { saveMemory(); } catch (RuntimeException ignored) { }
         if (gearFile == null) return;
         var y = new org.bukkit.configuration.file.YamlConfiguration();
         for (var e : snapshots.entrySet()) {
@@ -568,7 +576,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         return "sword";
     }
 
-    boolean hasShield(Mimic m) { return m.gear.offhand != null && m.gear.offhand.getType() == Material.SHIELD; }
+    boolean hasShield(Mimic m) { return !m.totemHand && m.gear.offhand != null && m.gear.offhand.getType() == Material.SHIELD; }
 
     static ItemStack healingPotion() {
         ItemStack it = new ItemStack(Material.SPLASH_POTION);
@@ -590,7 +598,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     /** A swing that misses (players miss): the arm swings, the cooldown resets, nothing lands. */
     private boolean whiff(Mimic m, Player tg) {
         if (random.nextDouble() >= missChance(m)) return false;
-        Emotes.q(() -> m.body.swingMainHand());
+        swing(m);
         m.brain.getWorld().playSound(m.brain.getLocation(), Sound.ENTITY_PLAYER_ATTACK_NODAMAGE, 0.8f, 1);
         m.lastHit = m.t;
         m.sprintHit = false;
@@ -735,6 +743,15 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         }
         Player tg = m.target;
         double hp = v.getHealth() / maxHp(v);
+        if (tg != null) { // its own read of where they're heading (a player's server velocity is mostly 0)
+            Location now = tg.getLocation();
+            if (m.tgPrev != null && m.tgPrev.getWorld() == now.getWorld() && m.tgPrev.distanceSquared(now) < 25) {
+                Vector step = now.toVector().subtract(m.tgPrev.toVector()).setY(0);
+                m.tgVel = m.tgVel.multiply(0.6).add(step.multiply(0.4));
+            } else m.tgVel = new Vector();
+            m.tgPrev = now.clone();
+            learn(m, tg);
+        }
         boolean busy = m.eatUntil > m.t || m.drinkUntil > m.t || m.drawUntil > m.t || m.potUntil > m.t || m.crossUntil > m.t;
         // natural regen like a fed player, out of combat
         if (m.t - m.lastHurt > 120 && m.t % 10 == 0 && v.getHealth() < maxHp(v)) v.setHealth(Math.min(maxHp(v), v.getHealth() + 1));
@@ -749,6 +766,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             Safe.vel(v, new Vector(cur.getX() * 0.45, 0.42, cur.getZ() * 0.45));
         }
         if (busy) { busyTick(m, tg); follow(m); return; }
+        totemSwap(m, hp);
         if (webEscape(m, tg)) { follow(m); return; }
         if (tg != null && boomTick(m, tg)) { follow(m); return; }
         if (tg != null && riptideTick(m, tg)) { follow(m); return; }
@@ -797,6 +815,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             return;
         }
         // ---- reading them (the advanced bits)
+        if (dodge(m)) { follow(m); return; }
         if (read(m, tg, dist, sees, hp)) { follow(m); return; }
         // ---- they pillared up: it builds up after them (normal+)
         if (towerUp(m, tg)) { follow(m); return; }
@@ -875,7 +894,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         ThrownPotion p = v.getWorld().spawn(at, ThrownPotion.class, e -> { e.setItem(healingPotion()); e.setShooter(v); });
         Safe.vel(p, new Vector(0, -0.5, 0));
         potions.add(p.getUniqueId());
-        Emotes.q(() -> m.body.swingMainHand());
+        swing(m);
         v.getWorld().playSound(at, Sound.ENTITY_SPLASH_POTION_THROW, 1, 1);
     }
 
@@ -927,7 +946,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         if (m.rockets <= 0) return;
         m.rockets--;
         hold(m, "rocket");
-        Emotes.q(() -> m.body.swingMainHand());
+        swing(m);
         v.getWorld().playSound(v.getLocation(), Sound.ENTITY_FIREWORK_ROCKET_LAUNCH, 1, 1);
         v.getWorld().spawnParticle(Particle.FIREWORK, v.getLocation(), 16, 0.2, 0.2, 0.2, 0.05);
         Vector dir = tg == null ? v.getLocation().getDirection() : tg.getEyeLocation().toVector().subtract(v.getLocation().toVector());
@@ -1042,7 +1061,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             Vector cur = v.getVelocity();
             Safe.vel(tp, new Vector(cur.getX() * 1.1, -0.45, cur.getZ() * 1.1)); // thrown down ahead of its own run: it runs into the splash
             potions.add(tp.getUniqueId());
-            Emotes.q(() -> m.body.swingMainHand());
+            swing(m);
             v.getWorld().playSound(at, Sound.ENTITY_SPLASH_POTION_THROW, 1, 1);
             m.rushUntil = m.t + 30; // then straight back in, fast, no zig-zag
             m.reactAt = m.t;
@@ -1081,7 +1100,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             if (spot != null && place(spot, Material.TNT, 80)) {
                 m.tnt--;
                 hold(m, "tnt");
-                Emotes.q(() -> m.body.swingMainHand());
+                swing(m);
                 m.boomKind = "tnt"; m.boomAt = spot; m.boomStep = 1; m.boomWait = m.t + boomGap(m);
                 return true;
             }
@@ -1092,7 +1111,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             if (feet.getRelative(org.bukkit.block.BlockFace.DOWN).getType().isSolid() && place(feet, Material.FIRE, 60)) {
                 m.fireCharges--;
                 hold(m, "firecharge");
-                Emotes.q(() -> m.body.swingMainHand());
+                swing(m);
                 v.getWorld().playSound(feet.getLocation(), Sound.ITEM_FIRECHARGE_USE, 1, 1);
                 m.boomReady = m.t + 60;
                 Bukkit.getScheduler().runTaskLater(plugin, () -> { if (m.body.isValid()) hold(m, "sword"); }, 4L);
@@ -1117,7 +1136,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
                 boolean charge = !m.gear.flint;
                 if (charge) m.fireCharges--;
                 hold(m, charge ? "firecharge" : "flint");
-                Emotes.q(() -> m.body.swingMainHand());
+                swing(m);
                 temp.remove(m.boomAt);
                 m.boomAt.setType(Material.AIR, false);
                 TNTPrimed tnt = v.getWorld().spawn(mid.clone().add(0, -0.5, 0), TNTPrimed.class, e -> { e.setFuseTicks(30); e.setSource(v); e.addScoreboardTag(TAG); });
@@ -1146,7 +1165,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         int lunge = Math.max(1, level(m.gear.spear, "lunge"));
         if (m.gear.mace != null && tier(m) >= 3 && dist > 2.5 && dist < 6.5 && m.t >= m.maceReady && random.nextDouble() < 0.12) { // SPEAR MACE
             hold(m, "spear");
-            Emotes.q(() -> m.body.swingMainHand());
+            swing(m);
             v.getWorld().playSound(v.getLocation(), Sound.ITEM_TRIDENT_RIPTIDE_1, 1, 1.3f);
             Safe.vel(v, to.clone().multiply(0.45 + 0.1 * lunge).setY(1.0 + 0.08 * lunge));
             m.slam = true; m.dive = false; m.stunSlam = tg.isBlocking() && m.gear.axe != null;
@@ -1155,7 +1174,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         }
         if (dist > 3.4 && dist < 4.5 + lunge * 1.5 && charge(m) >= m.skill.hitSelect() && safePath(v, to, 4) && random.nextDouble() < 0.25) { // LUNGE
             hold(m, "spear");
-            Emotes.q(() -> m.body.swingMainHand());
+            swing(m);
             v.getWorld().playSound(v.getLocation(), Sound.ITEM_TRIDENT_THROW, 0.8f, 1.4f);
             Safe.vel(v, to.clone().multiply(0.75 + 0.2 * lunge).setY(0.12));
             m.lungeUntil = m.t + 8; m.spearReady = m.t + 50;
@@ -1196,7 +1215,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
                 aim.setY(aim.getY() + d * 0.04);
                 ItemStack tri = m.trident.clone();
                 hold(m, "trident");
-                Emotes.q(() -> m.body.swingMainHand());
+                swing(m);
                 Trident t = v.getWorld().spawn(eye.clone().add(aim.clone().normalize().multiply(0.8)), Trident.class, e -> {
                     e.setShooter(v);
                     Emotes.q(() -> e.setItemStack(tri));
@@ -1306,6 +1325,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         float h = t.getHardness();
         if (h < 0 || h > 10) return false; // bedrock, obsidian, reinforced deepslate...
         if (b.getState() instanceof org.bukkit.block.TileState) return false; // never a chest, furnace, sign, spawner...
+        if (b.getBlockData() instanceof org.bukkit.block.data.Openable) return false; // doors / trapdoors / gates get OPENED
         return t.isSolid();
     }
 
@@ -1317,7 +1337,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         Vector look = b.getLocation().clone().add(0.5, 0.5, 0.5).toVector().subtract(v.getEyeLocation().toVector());
         m.yaw = (float) Math.toDegrees(Math.atan2(-look.getX(), look.getZ()));
         if (m.digTicks % 4 == 0) {
-            Emotes.q(() -> m.body.swingMainHand());
+            swing(m);
             Emotes.q(() -> b.getWorld().playSound(b.getLocation(), b.getBlockData().getSoundGroup().getHitSound(), 0.6f, 0.8f));
             b.getWorld().spawnParticle(Particle.BLOCK, b.getLocation().clone().add(0.5, 0.5, 0.5), 6, 0.3, 0.3, 0.3, b.getBlockData());
         }
@@ -1386,6 +1406,266 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         return false;
     }
 
+    /**
+     * CUT THEM OFF (normal+): it runs to where they're GOING (their tracked movement x the time to get there), not where they
+     * are, so a player running away gets caught and one running sideways gets met. Half the lead on normal.
+     */
+    private Vector intercept(Mimic m, Player tg, Vector to, double dist) {
+        int tr = tier(m);
+        if (tr < 2 || m.tgVel.lengthSquared() < 0.0025) return to;
+        double ticks = Math.min(20, dist / Math.max(0.2, m.skill.speed() * 0.9)) * (tr == 2 ? 0.5 : 1);
+        Vector aim = tg.getLocation().toVector().add(m.tgVel.clone().multiply(ticks)).subtract(m.brain.getLocation().toVector()).setY(0);
+        return aim.lengthSquared() > 1e-4 ? aim.normalize() : to;
+    }
+
+    // ---- ARM SWINGS: a mannequin never plays the arm-swing animation (the game only plays it back for mobs and players), so
+    // every M1 / mining chop is drawn with item-use poses on a copy of what it holds: arm UP (trident pose) for 2 ticks, then
+    // THRUST forward (spear pose) for 2, then back. The swing packet is still sent too.
+
+    static final NamespacedKey POSE_KEY = new NamespacedKey("faultlineitems", "mimic_pose");
+
+    void swing(Mimic m) {
+        Emotes.q(() -> m.body.swingMainHand());
+        if (!plugin.getConfig().getBoolean("mimic-player.arm-animations", true)) return;
+        if (usingSomething(m)) return;
+        ItemStack held = m.body.getEquipment().getItemInMainHand();
+        if (held != null && held.getPersistentDataContainer().has(POSE_KEY)) held = unposed(m);
+        ItemStack base = held == null || held.getType().isAir() ? null : held.clone();
+        int id = ++m.swingId;
+        if (!pose(m, base, io.papermc.paper.datacomponent.item.consumable.ItemUseAnimation.TRIDENT)) return;
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (m.swingId != id || !m.body.isValid() || usingSomething(m)) return;
+            pose(m, base, io.papermc.paper.datacomponent.item.consumable.ItemUseAnimation.SPEAR);
+        }, 2L);
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (m.swingId != id || !m.body.isValid() || usingSomething(m)) return;
+            Emotes.q(() -> m.body.clearActiveItem());
+            ItemStack now = m.body.getEquipment().getItemInMainHand();
+            if (now != null && now.getPersistentDataContainer().has(POSE_KEY)) m.body.getEquipment().setItemInMainHand(base);
+        }, 4L);
+    }
+
+    /** Eating, drinking, drawing, loading or shielding: those are their own arm poses, a swing pose would cut them off. */
+    boolean usingSomething(Mimic m) {
+        return m.eatUntil > m.t || m.drinkUntil > m.t || m.potUntil > m.t || m.drawUntil > m.t || m.crossUntil > m.t
+                || m.blockUntil > m.t && m.shieldOffUntil <= m.t;
+    }
+
+    /** What it held before a swing pose (the pose copy minus its marker), or what hold() says it holds. */
+    ItemStack unposed(Mimic m) { return hotbar(m, m.held); }
+
+    private boolean pose(Mimic m, ItemStack base, io.papermc.paper.datacomponent.item.consumable.ItemUseAnimation anim) {
+        try {
+            ItemStack it;
+            if (base == null) { // empty hand: an invisible item
+                it = new ItemStack(Material.PAPER);
+                ItemMeta im = it.getItemMeta();
+                im.setItemModel(new NamespacedKey("faultline", "gui/blank"));
+                it.setItemMeta(im);
+            } else it = base.clone();
+            it.editPersistentDataContainer(pdc -> pdc.set(POSE_KEY, org.bukkit.persistence.PersistentDataType.BYTE, (byte) 1));
+            it.setData(io.papermc.paper.datacomponent.DataComponentTypes.CONSUMABLE, io.papermc.paper.datacomponent.item.Consumable.consumable()
+                    .consumeSeconds(3600).animation(anim).sound(net.kyori.adventure.key.Key.key("minecraft:intentionally_empty")).hasConsumeParticles(false).build());
+            m.body.getEquipment().setItemInMainHand(it);
+            Emotes.q(() -> m.body.startUsingItem(EquipmentSlot.HAND));
+            return true;
+        } catch (RuntimeException | LinkageError e) { return false; }
+    }
+
+    // ---- DOORS: wooden doors, trapdoors and fence gates in its way are opened like a player would (right-click, arm swing,
+    // the sound), and shut again behind it a couple of seconds later. Iron ones need redstone: left alone.
+
+    final Map<Block, Integer> opened = new HashMap<>();
+
+    /** The nearest door / fence gate within 8 blocks it can use to get at them (wooden: iron ones need redstone). */
+    Block findDoor(Mimic m, Player tg) {
+        if (!plugin.getConfig().getBoolean("mimic-player.doors", true)) return null;
+        Location at = m.brain.getLocation();
+        Block feet = at.getBlock(), best = null;
+        double bestScore = Double.MAX_VALUE;
+        for (int dx = -8; dx <= 8; dx++) for (int dz = -8; dz <= 8; dz++) for (int dy = -1; dy <= 1; dy++) {
+            Block b = feet.getRelative(dx, dy, dz);
+            Material t = b.getType();
+            String n = t.name();
+            if (!(n.endsWith("_DOOR") || n.endsWith("_FENCE_GATE")) || t == Material.IRON_DOOR) continue;
+            if (b.getBlockData() instanceof org.bukkit.block.data.type.Door d && d.getHalf() == org.bukkit.block.data.Bisected.Half.TOP) continue;
+            double sc = b.getLocation().clone().add(0.5, 0, 0.5).distance(at) + b.getLocation().clone().add(0.5, 0, 0.5).distance(tg.getLocation());
+            if (sc < bestScore) { bestScore = sc; best = b; }
+        }
+        return best;
+    }
+
+    /** Solid in the way (an OPEN door / trapdoor / gate isn't: you walk through). */
+    static boolean blocks(Block b) {
+        if (b.getBlockData() instanceof org.bukkit.block.data.Openable o && o.isOpen()) return false;
+        return b.getType().isSolid();
+    }
+
+    static boolean openable(Block b) {
+        if (!(b.getBlockData() instanceof org.bukkit.block.data.Openable o) || o.isOpen()) return false;
+        Material t = b.getType();
+        return t != Material.IRON_DOOR && t != Material.IRON_TRAPDOOR;
+    }
+
+    private boolean openAhead(Mimic m, Vector dir) {
+        if (!plugin.getConfig().getBoolean("mimic-player.doors", true)) return false;
+        Vindicator v = m.brain;
+        Vector h = new Vector(dir.getX(), 0, dir.getZ());
+        if (h.lengthSquared() < 1e-4) return false;
+        h.normalize();
+        for (double d : new double[]{0.6, 1.2}) {
+            Block feet = v.getLocation().clone().add(h.getX() * d, 0.01, h.getZ() * d).getBlock();
+            for (Block b : new Block[]{feet, feet.getRelative(org.bukkit.block.BlockFace.UP), feet.getRelative(org.bukkit.block.BlockFace.DOWN)}) {
+                if (b == feet.getRelative(org.bukkit.block.BlockFace.DOWN) && !(b.getBlockData() instanceof org.bukkit.block.data.type.TrapDoor)) continue;
+                if (!openable(b)) continue;
+                setOpen(b, true);
+                swing(m);
+                Vector look = b.getLocation().clone().add(0.5, 0.5, 0.5).toVector().subtract(v.getEyeLocation().toVector());
+                m.yaw = (float) Math.toDegrees(Math.atan2(-look.getX(), look.getZ()));
+                opened.put(b, clock + 50);
+                Safe.vel(v, new Vector(0, v.getVelocity().getY(), 0)); // a beat to open it
+                return true;
+            }
+        }
+        return false;
+    }
+
+    void setOpen(Block b, boolean open) {
+        if (!(b.getBlockData() instanceof org.bukkit.block.data.Openable o)) return;
+        o.setOpen(open);
+        b.setBlockData(o, false);
+        if (o instanceof org.bukkit.block.data.type.Door d) { // the other half of a door too
+            Block other = d.getHalf() == org.bukkit.block.data.Bisected.Half.BOTTOM ? b.getRelative(org.bukkit.block.BlockFace.UP) : b.getRelative(org.bukkit.block.BlockFace.DOWN);
+            if (other.getBlockData() instanceof org.bukkit.block.data.type.Door od) { od.setOpen(open); other.setBlockData(od, false); }
+        }
+        String n = b.getType().name();
+        Sound snd = n.endsWith("_TRAPDOOR") ? (open ? Sound.BLOCK_WOODEN_TRAPDOOR_OPEN : Sound.BLOCK_WOODEN_TRAPDOOR_CLOSE)
+                : n.endsWith("_FENCE_GATE") ? (open ? Sound.BLOCK_FENCE_GATE_OPEN : Sound.BLOCK_FENCE_GATE_CLOSE)
+                : (open ? Sound.BLOCK_WOODEN_DOOR_OPEN : Sound.BLOCK_WOODEN_DOOR_CLOSE);
+        b.getWorld().playSound(b.getLocation().clone().add(0.5, 0.5, 0.5), snd, 1, 1);
+    }
+
+    /** Shuts the doors it opened once it's through (nobody standing in them). */
+    void tickDoors() {
+        if (opened.isEmpty()) return;
+        for (Iterator<Map.Entry<Block, Integer>> it = opened.entrySet().iterator(); it.hasNext(); ) {
+            var e = it.next();
+            if (clock < e.getValue()) continue;
+            Block b = e.getKey();
+            it.remove();
+            if (!(b.getBlockData() instanceof org.bukkit.block.data.Openable o) || !o.isOpen()) continue;
+            boolean busy = false;
+            for (Entity en : b.getWorld().getNearbyEntities(b.getLocation().clone().add(0.5, 0.5, 0.5), 0.9, 1.2, 0.9)) if (en instanceof LivingEntity) { busy = true; break; }
+            if (busy) { opened.put(b, clock + 20); return; } // someone's in it: later
+            setOpen(b, false);
+        }
+    }
+
+    // ---- PROJECTILE DODGING (hard+; with a shield normal+): arrows / tridents / pearls... their shots coming at it
+
+    final Map<UUID, Projectile> incoming = new HashMap<>();
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onShot(org.bukkit.event.entity.ProjectileLaunchEvent e) {
+        if (byBrain.isEmpty() || !(e.getEntity().getShooter() instanceof Player p)) return;
+        if (e.getEntity() instanceof EnderPearl) return;
+        for (Mimic m : byBrain.values()) if (m.target == p) { incoming.put(e.getEntity().getUniqueId(), e.getEntity()); return; }
+    }
+
+    private boolean dodge(Mimic m) {
+        if (incoming.isEmpty() || tier(m) < 2 || m.t < m.dodgeReady) return false;
+        Vindicator v = m.brain;
+        incoming.values().removeIf(pr -> !pr.isValid() || pr.isOnGround() || pr.getTicksLived() > 100);
+        Vector me = v.getLocation().toVector().add(new Vector(0, 1, 0));
+        for (Projectile pr : incoming.values()) {
+            if (pr.getWorld() != v.getWorld()) continue;
+            Vector p = pr.getLocation().toVector().subtract(me), u = pr.getVelocity();
+            double uu = u.lengthSquared();
+            if (uu < 0.04) continue;
+            double tc = -p.dot(u) / uu;
+            if (tc < 0 || tc > 14) continue;
+            Vector miss = p.clone().add(u.clone().multiply(tc));
+            if (miss.length() > 1.4) continue; // it'll miss anyway
+            m.dodgeReady = m.t + 10;
+            if (hasShield(m) && tc > 2 && m.shieldOffUntil <= m.t) { // shield it
+                m.blockUntil = m.t + 10;
+                Emotes.q(() -> m.body.startUsingItem(EquipmentSlot.OFF_HAND));
+                return false; // keeps doing whatever it was, shield up
+            }
+            if (tier(m) < 3 || !v.isOnGround()) return false;
+            Vector side = new Vector(miss.getX(), 0, miss.getZ());
+            if (side.lengthSquared() < 0.01) side = new Vector(-u.getZ(), 0, u.getX()); // dead on: either side
+            side.normalize();
+            if (!safeStep(v, side)) side.multiply(-1);
+            if (!safeStep(v, side)) return false;
+            walk(v, side.multiply(0.42).setY(v.getVelocity().getY()), 3); // a sidestep out of its line
+            return true;
+        }
+        return false;
+    }
+
+    // ---- TOTEM SWAP (hard+): low with a shield in the off hand and a totem to spare = totem in the off hand (no shield then)
+
+    private void totemSwap(Mimic m, double hp) {
+        if (tier(m) < 3 || m.totems <= 0 || m.gear.offhand == null || m.gear.offhand.getType() != Material.SHIELD) return;
+        if (!m.totemHand && hp < 0.35) {
+            m.totemHand = true; m.blockUntil = 0;
+            Emotes.q(() -> m.body.clearActiveItem());
+            m.body.getEquipment().setItemInOffHand(new ItemStack(Material.TOTEM_OF_UNDYING));
+        } else if (m.totemHand && hp > 0.65) {
+            m.totemHand = false;
+            m.body.getEquipment().setItemInOffHand(m.gear.offhand.clone());
+        }
+    }
+
+    // ---- MEMORY: what each player tends to do (shield, bow, eat), kept across fights (mimic_memory.yml)
+
+    static final class Profile {
+        long ticks, shield, bow, eat;
+        double shieldRate() { return ticks < 100 ? 0 : shield / (double) ticks; }
+        double bowRate() { return ticks < 100 ? 0 : bow / (double) ticks; }
+    }
+
+    final Map<UUID, Profile> memory = new HashMap<>();
+
+    Profile profile(Player p) { return memory.computeIfAbsent(p.getUniqueId(), k -> new Profile()); }
+
+    private void learn(Mimic m, Player tg) {
+        if (tg.getLocation().distanceSquared(m.brain.getLocation()) > 30 * 30) return;
+        Profile pr = profile(tg);
+        pr.ticks++;
+        if (tg.isBlocking()) pr.shield++;
+        try {
+            if (tg.isHandRaised()) {
+                Material u = tg.getActiveItem().getType();
+                if (u == Material.BOW || u == Material.CROSSBOW) pr.bow++;
+                else if (u.isEdible()) pr.eat++;
+            }
+        } catch (Throwable ignored) { }
+    }
+
+    void saveMemory() {
+        var y = new org.bukkit.configuration.file.YamlConfiguration();
+        for (var e : memory.entrySet()) {
+            String k = e.getKey() + ".";
+            y.set(k + "ticks", e.getValue().ticks); y.set(k + "shield", e.getValue().shield); y.set(k + "bow", e.getValue().bow); y.set(k + "eat", e.getValue().eat);
+        }
+        try { y.save(new java.io.File(plugin.getDataFolder(), "mimic_memory.yml")); } catch (java.io.IOException ignored) { }
+    }
+
+    void loadMemory() {
+        java.io.File f = new java.io.File(plugin.getDataFolder(), "mimic_memory.yml");
+        if (!f.exists()) return;
+        var y = org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(f);
+        for (String k : y.getKeys(false)) {
+            try {
+                Profile pr = new Profile();
+                pr.ticks = y.getLong(k + ".ticks"); pr.shield = y.getLong(k + ".shield"); pr.bow = y.getLong(k + ".bow"); pr.eat = y.getLong(k + ".eat");
+                memory.put(UUID.fromString(k), pr);
+            } catch (RuntimeException ignored) { }
+        }
+    }
+
     /** Several mimics on one player come in from different sides (a flank), not in a line behind each other. */
     private Vector flank(Mimic m, Player tg, Vector to, double dist) {
         if (tier(m) < 2 || dist < 2.5 || dist > 16) return to;
@@ -1434,7 +1714,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             m.water--;
             hold(m, "water");
             m.lookDownUntil = m.t + 8;
-            Emotes.q(() -> m.body.swingMainHand());
+            swing(m);
             for (Block b : new Block[]{feet, head}) {
                 if (b.getType() != Material.COBWEB) continue;
                 temp.remove(b); // one it placed itself: the water takes it
@@ -1457,7 +1737,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         }
         // cut it with the sword (a sword breaks a web fast)
         hold(m, "sword");
-        if (m.webTicks % 4 == 0) Emotes.q(() -> m.body.swingMainHand());
+        if (m.webTicks % 4 == 0) swing(m);
         if (m.webTicks >= 2 + m.skill.reaction() / 3 + 8) {
             temp.remove(web);
             web.setType(Material.AIR, false);
@@ -1482,9 +1762,23 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         boolean theyBlock = tg.isBlocking();
         // their shield up: out with the axe
         if (theyBlock && dist < 4.5 && m.axeUntil < m.t && m.gear.axe != null) { m.axeUntil = m.t + 30; m.lastHit = Math.min(m.lastHit, m.t - 20); }
+        // a player who shields a LOT (it remembers): the axe comes out first
+        if (m.gear.axe != null && tier(m) >= 3 && profile(tg).shieldRate() > 0.25 && dist < 5 && m.axeUntil < m.t && theyBlock) m.axeUntil = m.t + 40;
         String want = m.axeUntil > m.t ? "axe" : "sword";
         if (!want.equals(m.held)) hold(m, want);
         boolean shielding = m.blockUntil > m.t && m.shieldOffUntil <= m.t;
+        // SHIELD UP, NO AXE (hard+): hitting a raised shield does nothing, so it circles round to their side / back instead
+        if (theyBlock && m.axeUntil <= m.t && tier(m) >= 3 && dist < 5 && facing(tg, v)) {
+            Vector toS = tg.getLocation().toVector().subtract(v.getLocation().toVector()).setY(0);
+            if (toS.lengthSquared() > 1e-4) {
+                toS.normalize();
+                Vector side = new Vector(-toS.getZ(), 0, toS.getX()).multiply(m.strafeDir);
+                if (!safeStep(v, side)) { m.strafeDir = -m.strafeDir; side.multiply(-1); }
+                Vector fw = toS.clone().multiply(dist > 2.8 ? 0.06 : -0.04);
+                if (v.isOnGround()) walk(v, side.multiply(0.3).add(fw).setY(v.getVelocity().getY()), 3);
+                return;
+            }
+        }
         // swing when charged enough and in reach (lower the shield first). EVERY hit is a CRIT (falling onto them after a
         // jump) or a SPRINT hit (a lunge in): never a plain standing hit, never a sweep.
         // COMBO BREAK (normal+): taking hits without hitting back = cuts out of the line, hard to the side, jumps the knockback
@@ -1550,7 +1844,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             return;
         }
         if (dist < 4.5) {
-            if (--m.strafeFlip <= 0) { m.strafeDir = -m.strafeDir; m.strafeFlip = 12 + random.nextInt(30); }
+            if (--m.strafeFlip <= 0) { m.strafeDir = -m.strafeDir; m.strafeFlip = tier(m) >= 4 ? 25 + random.nextInt(40) : 12 + random.nextInt(30); } // godlike circles longer
             // BACK TO A HAZARD (hard+): their knockback would put it in lava / off a ledge: circles round so its back is clear
             if (tier(m) >= 3 && !cellSafe(v.getLocation().clone().add(-to.getX() * 2.2, 0.01, -to.getZ() * 2.2).getBlock())) {
                 Vector l = new Vector(-to.getZ(), 0, to.getX());
@@ -1570,7 +1864,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             if (v.isOnGround()) walk(v, new Vector(cur.getX() * 0.55 + side.getX() + fw.getX(), cur.getY(), cur.getZ() * 0.55 + side.getZ() + fw.getZ()), 3);
             m.sprintHit = false;
         } else {
-            chase(m, tg, flank(m, tg, to, dist));
+            chase(m, tg, flank(m, tg, intercept(m, tg, to, dist), dist));
             m.sprintHit = true; // running in = a sprint hit
         }
     }
@@ -1586,15 +1880,27 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         if (speed != null) sp *= 1 + 0.2 * (speed.getAmplifier() + 1);
         Vector cur = v.getVelocity();
         Block ahead = v.getLocation().clone().add(to.getX() * 0.8, 0, to.getZ() * 0.8).getBlock();
-        boolean wall = ahead.getType().isSolid(), tall = ahead.getRelative(0, 1, 0).getType().isSolid();
+        boolean wall = blocks(ahead), tall = blocks(ahead.getRelative(0, 1, 0));
         if (wall && tall) m.chaseStuck++; else m.chaseStuck = Math.max(0, m.chaseStuck - 1);
         if (m.rushUntil > m.t) sp *= 1.1;
-        if (m.chaseStuck > 4 && startDig(m, tg, ahead)) return; // walled off: mines through with their pickaxe / axe / shovel
+        // walled off: a door / gate nearby first (a player uses the door), else mines through with their pickaxe / axe / shovel
+        if (m.doorGoal != null && (m.t > m.doorUntil || m.doorGoal.getWorld() != v.getWorld())) m.doorGoal = null;
+        if (m.doorGoal == null && m.chaseStuck > 3) { m.doorGoal = findDoor(m, tg); m.doorUntil = m.t + 120; }
+        if (m.doorGoal != null) {
+            Location dc = m.doorGoal.getLocation().clone().add(0.5, 0, 0.5);
+            Vector toDoor = dc.toVector().subtract(v.getLocation().toVector()).setY(0);
+            if (toDoor.lengthSquared() < 0.25) { m.doorGoal = null; m.chaseStuck = 0; move(m, to, sp, false, false); return; } // in the doorway: on through
+            m.chaseStuck = 0;
+            move(m, toDoor.normalize(), sp, false, false);
+            return;
+        }
+        if (m.chaseStuck > 4 && startDig(m, tg, ahead)) return;
         if (m.chaseStuck > 10) { Emotes.q(() -> v.getPathfinder().moveTo(tg, 1.4)); return; }
         // ZIG-ZAG in like a player dodging arrows when they hold a bow / crossbow / trident, or from far off
         double d = tg.getLocation().distance(v.getLocation());
         Material held = tg.getInventory().getItemInMainHand().getType();
         boolean ranged = held == Material.BOW || held == Material.CROSSBOW || held == Material.TRIDENT || tg.getInventory().getItemInOffHand().getType() == Material.CROSSBOW;
+        if (tier(m) >= 2 && profile(tg).bowRate() > 0.05) ranged = true; // it remembers they bow a lot
         if (m.rushUntil <= m.t && d > 5 && (ranged || d > 12)) {
             double a = Math.toRadians(Math.sin(m.t * 0.22 + m.strafeDir) * (ranged ? 35 : 15));
             double c = Math.cos(a), sn = Math.sin(a);
@@ -1614,6 +1920,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             Safe.vel(v, new Vector(cur.getX() * 0.8 + dir.getX() * 0.06, Math.min(0.12, cur.getY() + 0.04), cur.getZ() * 0.8 + dir.getZ() * 0.06));
             return;
         }
+        if (openAhead(m, dir)) return;
         if (v.isOnGround()) {
             // never walks into lava / fire / off a cliff: the way it wants, else 45 / 90 / 135 degrees aside (its strafe side
             // first), the first one whose real next steps are clear; nothing clear = stops
@@ -1743,7 +2050,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         if (m.held.equals("spear")) dmg += Math.min(6, Math.hypot(v.getVelocity().getX(), v.getVelocity().getZ()) * 6) * charge; // a spear hits harder the faster you're going
         if (m.held.equals("trident") && wet(tg)) dmg += 2.5 * level(w, "impaling");
         dmg *= cfg("damage-multiplier", 1.0);
-        Emotes.q(() -> m.body.swingMainHand());
+        swing(m);
         boolean axeOnShield = m.held.equals("axe") && tg.isBlocking() && facing(tg, v);
         striking = true;
         try { tg.damage(dmg, v); } finally { striking = false; }
@@ -1812,7 +2119,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         if (ground && dist <= 5.5 && m.wind > 0 && random.nextDouble() < 0.08 + m.skill.jumpCrit() * 0.1) {
             m.wind--;
             hold(m, "wind");
-            Emotes.q(() -> m.body.swingMainHand());
+            swing(m);
             Location feet = v.getLocation();
             v.getWorld().spawnParticle(Particle.GUST_EMITTER_SMALL, feet, 1);
             v.getWorld().playSound(feet, Sound.ENTITY_WIND_CHARGE_WIND_BURST, 1, 1);
@@ -1828,7 +2135,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         if (ground && dist > 10 && dist < 26 && m.gear.elytra && m.rockets > 0 && random.nextDouble() < 0.04) {
             m.rockets--;
             hold(m, "rocket");
-            Emotes.q(() -> m.body.swingMainHand());
+            swing(m);
             v.getWorld().playSound(v.getLocation(), Sound.ENTITY_FIREWORK_ROCKET_LAUNCH, 1, 1);
             v.getWorld().spawnParticle(Particle.FIREWORK, v.getLocation(), 20, 0.2, 0.2, 0.2, 0.05);
             Vector to = tg.getLocation().toVector().subtract(v.getLocation().toVector()).setY(0).normalize().multiply(0.6);
@@ -1858,7 +2165,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         int breach = level(mace, "breach");
         if (breach > 0) dmg *= 1 + 0.12 * breach; // armour counts for less
         dmg *= cfg("damage-multiplier", 1.0);
-        Emotes.q(() -> m.body.swingMainHand());
+        swing(m);
         striking = true;
         try { tg.damage(dmg, v); } finally { striking = false; }
         Location at = tg.getLocation();
@@ -1907,6 +2214,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
 
     void tickTemp() {
         clock++;
+        try { tickDoors(); } catch (RuntimeException ignored) { }
         if (temp.isEmpty()) return;
         for (TempBlock t : new ArrayList<>(temp.values())) if (clock >= t.until) {
             restore(t);
@@ -1941,7 +2249,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         if (m.gear.rod && dist > 4 && dist < 9 && m.t >= m.rodReady && random.nextDouble() < 0.06) {
             m.rodReady = m.t + 50;
             hold(m, "rod");
-            Emotes.q(() -> m.body.swingMainHand());
+            swing(m);
             Location a = eye(m), b = tg.getLocation().add(0, 1.2, 0);
             Vector step = b.toVector().subtract(a.toVector());
             double len = step.length();
@@ -1963,7 +2271,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             if (place(feet, Material.LAVA, 30)) {
                 m.lavaReady = m.t + 200;
                 hold(m, "lava");
-                Emotes.q(() -> m.body.swingMainHand());
+                swing(m);
                 feet.getWorld().playSound(feet.getLocation().clone().add(0.5, 0.5, 0.5), Sound.ITEM_BUCKET_EMPTY_LAVA, 1, 1);
                 Bukkit.getScheduler().runTaskLater(plugin, () -> { if (m.body.isValid()) hold(m, "sword"); }, 30L);
                 return true;
@@ -1976,7 +2284,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
                 m.webReady = m.t + 160;
                 if (m.lava > 0 && !fireproof) m.lavaReady = Math.min(m.lavaReady, m.t + 6); // WEB + LAVA combo
                 hold(m, "web");
-                Emotes.q(() -> m.body.swingMainHand());
+                swing(m);
                 feet.getWorld().playSound(feet.getLocation(), Sound.BLOCK_COBWEB_PLACE, 1, 1);
                 Bukkit.getScheduler().runTaskLater(plugin, () -> { if (m.body.isValid()) hold(m, "sword"); }, 6L);
                 return true;
@@ -1987,7 +2295,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             if (place(feet, Material.FIRE, 60)) {
                 m.fireReady = m.t + 240;
                 hold(m, "flint");
-                Emotes.q(() -> m.body.swingMainHand());
+                swing(m);
                 feet.getWorld().playSound(feet.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, 1, 1);
                 Bukkit.getScheduler().runTaskLater(plugin, () -> { if (m.body.isValid()) hold(m, "sword"); }, 6L);
                 return true;
@@ -2007,7 +2315,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
                 if (place(below, Material.WATER, 12)) {
                     m.clutchUntil = m.t + 20;
                     hold(m, "water");
-                    Emotes.q(() -> m.body.swingMainHand());
+                    swing(m);
                     below.getWorld().playSound(below.getLocation(), Sound.ITEM_BUCKET_EMPTY, 1, 1);
                     Bukkit.getScheduler().runTaskLater(plugin, () -> { if (m.body.isValid()) hold(m, "sword"); }, 12L);
                 }
@@ -2026,7 +2334,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             Block b = v.getLocation().getBlock().getRelative(org.bukkit.block.BlockFace.DOWN);
             if (place(b, m.gear.block, 200)) {
                 m.blocks--;
-                Emotes.q(() -> m.body.swingMainHand());
+                swing(m);
                 b.getWorld().playSound(b.getLocation(), Sound.BLOCK_STONE_PLACE, 1, 1);
                 if (++m.pillarCount >= 3) { m.pillarReady = m.t + 300; m.pillarCount = 0; }
             }
@@ -2046,7 +2354,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             Block b = v.getLocation().getBlock().getRelative(org.bukkit.block.BlockFace.DOWN);
             if (place(b, m.gear.block, 600)) {
                 m.blocks--;
-                Emotes.q(() -> m.body.swingMainHand());
+                swing(m);
                 b.getWorld().playSound(b.getLocation(), Sound.BLOCK_STONE_PLACE, 1, 1);
             }
         }
@@ -2110,7 +2418,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
                 Location at = v.getLocation().add(0, 1.2, 0);
                 ThrownPotion tp = v.getWorld().spawn(at, ThrownPotion.class, e -> { e.setItem(pot.clone()); e.setShooter(v); });
                 Safe.vel(tp, new Vector(0, -0.5, 0));
-                Emotes.q(() -> m.body.swingMainHand());
+                swing(m);
                 v.getWorld().playSound(at, Sound.ENTITY_SPLASH_POTION_THROW, 1, 1);
             }
             return true;
@@ -2137,7 +2445,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             m.body.getEquipment().setItemInMainHand(pot.clone());
             ThrownPotion tp = v.getWorld().spawn(eye, ThrownPotion.class, e -> { e.setItem(pot.clone()); e.setShooter(v); });
             Safe.vel(tp, vel);
-            Emotes.q(() -> m.body.swingMainHand());
+            swing(m);
             v.getWorld().playSound(eye, Sound.ENTITY_SPLASH_POTION_THROW, 1, 1);
             Bukkit.getScheduler().runTaskLater(plugin, () -> { if (m.body.isValid()) hold(m, "sword"); }, 5L);
             return true;
@@ -2155,7 +2463,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         aim.setY(aim.getY() + aim.length() * 0.04);
         Snowball sb = v.getWorld().spawn(eye, Snowball.class, e -> e.setShooter(v));
         Safe.vel(sb, aim.normalize().multiply(1.5));
-        Emotes.q(() -> m.body.swingMainHand());
+        swing(m);
         v.getWorld().playSound(eye, Sound.ENTITY_SNOWBALL_THROW, 1, 1);
     }
 
@@ -2166,7 +2474,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         Block feet = v.getLocation().getBlock();
         if (!place(feet, Material.WATER, 10)) return false;
         hold(m, "water");
-        Emotes.q(() -> m.body.swingMainHand());
+        swing(m);
         v.setFireTicks(0);
         v.getWorld().playSound(feet.getLocation(), Sound.ITEM_BUCKET_EMPTY, 1, 1);
         Bukkit.getScheduler().runTaskLater(plugin, () -> { if (m.body.isValid()) hold(m, "sword"); }, 8L);
@@ -2272,7 +2580,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         Safe.vel(p, vel);
         pearls.add(p.getUniqueId());
         hold(m, "pearl");
-        Emotes.q(() -> m.body.swingMainHand());
+        swing(m);
         v.getWorld().playSound(v.getLocation(), Sound.ENTITY_ENDER_PEARL_THROW, 1, 1);
         Bukkit.getScheduler().runTaskLater(plugin, () -> { if (m.body.isValid()) hold(m, "sword"); }, 6L);
     }

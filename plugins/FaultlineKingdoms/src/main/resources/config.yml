@@ -40,6 +40,7 @@ display:
   outlaw-color: "DARK_RED"
   tab-outlaw: true            # outlaws get "Outlaw" in the tab list too
   head-tag-scale: 0.85
+  head-tag-offset: 0.45       # 1.4.1: how far over the top of the hitbox (sits right on the name tag; an old 0.78 reads as 0.45)
   head-tag-view-range: 0.7    # x 64 blocks
 
 # DISCORD: who's in which kingdom comes from their roles in your Discord server.

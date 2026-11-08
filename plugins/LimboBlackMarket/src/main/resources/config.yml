@@ -57,6 +57,7 @@ streak-cosmetics:
   trail-at: 5
   crown-at: 10
   crown-scale: 0.55
+  crown-offset: 0.55     # 1.2.1: over the top of the hitbox (was 1.2: it floated high above the kingdom tag)
   crown-model: "faultline:cosmetic/slayer_crown"
 
 kill-streaks:

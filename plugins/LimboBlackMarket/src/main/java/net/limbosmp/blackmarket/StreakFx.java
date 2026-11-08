@@ -52,18 +52,21 @@ final class StreakFx implements Listener {
         return p.isDead() || p.getGameMode() == GameMode.SPECTATOR || p.hasPotionEffect(PotionEffectType.INVISIBILITY) || p.isInvisible() || p.hasMetadata("vanished");
     }
 
-    /** Above the kingdom head tag (Kingdoms puts it at hitbox top + 0.78). */
+    /** Just above the kingdom head tag (Kingdoms puts it at hitbox top + 0.45); the crown model sits ~0.3 over its anchor. */
+    static double offset = 0.55;
+
     static Location spot(Player p, int t) {
         double h = p.getBoundingBox().getHeight();
         if (!(h > 0) || h > 4) h = p.isSneaking() ? 1.5 : 1.8;
         Location l = p.getLocation();
-        Location at = new Location(l.getWorld(), l.getX(), l.getY() + h + 1.2 + Math.sin(t * 0.08) * 0.04, l.getZ());
+        Location at = new Location(l.getWorld(), l.getX(), l.getY() + h + offset + Math.sin(t * 0.08) * 0.03, l.getZ());
         at.setYaw((t * 3) % 360);
         return at;
     }
 
     void tick() {
         ticks++;
+        if (ticks % 100 == 1) offset = pl.getConfig().getDouble("streak-cosmetics.crown-offset", 0.55);
         if (!on()) { if (!crowns.isEmpty()) for (UUID id : new ArrayList<>(crowns.keySet())) remove(id); return; }
         int trail = trailAt(), crown = crownAt();
         for (Player p : Bukkit.getOnlinePlayers()) {

@@ -762,15 +762,24 @@ creator-mode:
   enabled: true
   mask-chat: true
 
-# 1.2.78 MIMIC PLAYER (admin only, /mimicplayer [random|<player>|clear|list] [count]): an NPC with a player's skin that
-# fights like a PvPer (strafes, crits, shield, golden apples, pearls, bow, one totem). Not saved over restarts.
+# 1.2.78 MIMIC PLAYER (admin only, /mimicplayer [random|<player>|clear|list] [count] [easy|normal|hard|godlike]): an NPC
+# with a player's skin, kingdom tag and REAL gear (online = what they have on now; offline = what they had at logout):
+# their armour + enchants, best sword/axe, bow, off hand, gaps / god apples / pearls / heal pots / totems, their max health.
+# Fights like a PvPer: hit timing, crits, jump crits, W-taps, strafing, shield, axe on your shield, pots, gaps (pearls away
+# to eat), pearls, bow. Not saved over restarts. kit = what a player with no snapshot gets.
 mimic-player:
-  health: 40
-  speed: 0.31
-  kit: diamond          # iron, diamond or netherite
-  block-chance: 0.03    # per tick in close range
+  health: 0             # 0 = the player's real max health (20)
+  skill: normal         # easy, normal, hard, godlike
+  kingdom-tag: true
+  reach: 3.0
+  damage-multiplier: 1.0
   eat-below: 0.4
-  bow-damage: 3
+  potion-below: 0.45
+  kit: diamond          # no snapshot: iron, diamond or netherite
+  sharpness: 2
+  golden-apples: 4
+  healing-potions: 3
+  ender-pearls: 8
   xp: 0
   drops: []             # e.g. ["DIAMOND:2"]
 

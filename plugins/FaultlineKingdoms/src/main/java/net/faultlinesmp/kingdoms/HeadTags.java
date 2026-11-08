@@ -59,12 +59,14 @@ final class HeadTags implements Listener {
         return c + pl.getConfig().getString("display.outlaw-name", "Outlaw");
     }
 
-    /** Where it floats: above the name tag, which sits about half a block over the top of the hitbox. */
+    /** Where it floats: just on top of the name tag (display.head-tag-offset over the hitbox; 1.3.0's 0.78 floated a line too high). */
+    static double offset = 0.45;
+
     static Location spot(Player p) {
         double h = p.getBoundingBox().getHeight();
         if (!(h > 0) || h > 4) h = p.isSneaking() ? 1.5 : 1.8;
         Location l = p.getLocation();
-        return new Location(l.getWorld(), l.getX(), l.getY() + h + 0.78, l.getZ());
+        return new Location(l.getWorld(), l.getX(), l.getY() + h + offset, l.getZ());
     }
 
     void refresh(Player p) {
@@ -131,6 +133,7 @@ final class HeadTags implements Listener {
     /** Every tick: follow everyone who moved; every 10 ticks: who may see it, and the text. */
     void tick() {
         ticks++;
+        if (ticks % 100 == 1) { double o = pl.getConfig().getDouble("display.head-tag-offset", 0.45); offset = Math.abs(o - 0.78) < 1e-9 ? 0.45 : o; }
         if (!on()) { if (!tags.isEmpty()) removeAll(); return; }
         for (Player p : Bukkit.getOnlinePlayers()) {
             TextDisplay d = tags.get(p.getUniqueId());

@@ -789,6 +789,8 @@ mimic-player:
   drops: []             # e.g. ["DIAMOND:2"]
   range: 160            # how far off it finds you (it keeps chasing its target out to 1.5x this)
   elytra-pvp: false     # true = with an elytra + rockets in their gear it flies after you, elytra swaps, dives, rockets away
+  player-body: true     # 1.2.95: drawn as a real player (real arm swings, sprinting, swimming, elytra glide); false = the old mannequin
+  player-body-range: 96 # how far players see that player body
   kit-when-bare: true   # a player with no armour anywhere = it wears the kit's armour
   world-techs: true     # UHC techs that place blocks (lava, webs, water, pillars); everything is put back
   explosives: true      # TNT and fire charges from their inventory (never breaks terrain). No crystal, anchor or cart PvP, ever

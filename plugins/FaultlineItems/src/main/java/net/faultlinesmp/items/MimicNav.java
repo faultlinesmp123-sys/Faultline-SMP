@@ -55,27 +55,62 @@ final class MimicNav {
 
     private final World w;
     private final Rules rules;
-    private final Map<Long, Byte> cache = new HashMap<>();
+    /**
+     * 1.2.95: cells are shared by every search in a world for half a second (`CELLS`, a primitive long -> byte table: the old
+     * Map<Long, Byte> boxed every lookup, and each search read every block again). `dirty(w)` drops a world's table when a
+     * mimic changes a block itself.
+     */
+    private final Cells cache;
+    private static final Map<World, Cells> CELLS = new HashMap<>();
+    static int clock;
+
+    static final class Cells {
+        long[] keys = new long[4096]; byte[] vals = new byte[4096]; boolean[] used = new boolean[4096]; int size, born = clock;
+        byte get(long k) { int m = keys.length - 1, i = mix(k) & m; while (used[i]) { if (keys[i] == k) return vals[i]; i = (i + 1) & m; } return -1; }
+        void put(long k, byte v) {
+            if (size * 2 >= keys.length) grow();
+            int m = keys.length - 1, i = mix(k) & m;
+            while (used[i]) { if (keys[i] == k) { vals[i] = v; return; } i = (i + 1) & m; }
+            used[i] = true; keys[i] = k; vals[i] = v; size++;
+        }
+        private void grow() {
+            long[] ok = keys; byte[] ov = vals; boolean[] ou = used;
+            keys = new long[ok.length * 2]; vals = new byte[ok.length * 2]; used = new boolean[ok.length * 2]; size = 0;
+            for (int i = 0; i < ok.length; i++) if (ou[i]) put(ok[i], ov[i]);
+        }
+        private static int mix(long k) { k ^= k >>> 33; k *= 0xff51afd7ed558ccdL; k ^= k >>> 33; return (int) k; }
+    }
+
+    static void dirty(World w) { CELLS.remove(w); }
+
+    private static Cells cellsFor(World w) {
+        Cells c = CELLS.get(w);
+        if (c == null || clock - c.born > 10 || c.size > 400_000) { c = new Cells(); CELLS.put(w, c); }
+        return c;
+    }
+
     private static final int[][] DIRS = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}, {1, 1}, {1, -1}, {-1, 1}, {-1, -1}};
 
-    MimicNav(World w, Rules rules) { this.w = w; this.rules = rules; }
+    MimicNav(World w, Rules rules) { this.w = w; this.rules = rules; this.cache = cellsFor(w); }
 
     // ---- cells. bits: 1 passable, 2 solid floor-able, 4 hazard, 8 water, 16 climbable, 32 closed door, 64 fence-like, 128 cobweb
     private byte cell(int x, int y, int z) {
         long k = key(x, y, z);
-        Byte c = cache.get(k);
-        if (c != null) return c;
+        byte c = cache.get(k);
+        if (c != -1) return c;
         byte v = 0;
         if (y < w.getMinHeight() || y >= w.getMaxHeight() || !w.isChunkLoaded(x >> 4, z >> 4)) v = 2; // out of the world / unloaded = a wall
         else {
             Block b = w.getBlockAt(x, y, z);
             Material t = b.getType();
+            boolean plain = t.isAir() || t == Material.STONE || t == Material.DIRT || t == Material.GRASS_BLOCK || t == Material.DEEPSLATE;
+            org.bukkit.block.data.BlockData bd = plain ? null : b.getBlockData(); // read once (it makes a copy on a real server)
             if (MimicPlayer.HAZARD.contains(t)) v |= 4;
-            if (t == Material.WATER || t == Material.BUBBLE_COLUMN || (b.getBlockData() instanceof org.bukkit.block.data.Waterlogged wl && wl.isWaterlogged() && !t.isSolid())) v |= 8 | 1;
+            if (t == Material.WATER || t == Material.BUBBLE_COLUMN || (bd instanceof org.bukkit.block.data.Waterlogged wl && wl.isWaterlogged() && !t.isSolid())) v |= 8 | 1;
             if (t == Material.LADDER || t == Material.VINE || t == Material.SCAFFOLDING || Tag.CLIMBABLE.isTagged(t)) v |= 16 | 1;
             if (t == Material.COBWEB) v |= (byte) (128 | 1);
             if (Tag.FENCES.isTagged(t) || Tag.WALLS.isTagged(t) || Tag.FENCE_GATES.isTagged(t)) v |= 64;
-            if (b.getBlockData() instanceof org.bukkit.block.data.Openable o && t != Material.IRON_DOOR && t != Material.IRON_TRAPDOOR && !(b.getBlockData() instanceof org.bukkit.block.data.type.TrapDoor)) {
+            if (bd instanceof org.bukkit.block.data.Openable o && t != Material.IRON_DOOR && t != Material.IRON_TRAPDOOR && !(bd instanceof org.bukkit.block.data.type.TrapDoor)) {
                 if (o.isOpen()) v |= 1; else v |= 32;
             } else if (!t.isSolid()) { if ((v & 4) == 0) v |= 1; }
             else v |= 2;

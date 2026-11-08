@@ -27,6 +27,11 @@ final class MimicTab {
 
     /** `tabName` = what the tab list shows (e.g. "[Kingdom 1] Cloud" like the real players), or null for the plain name. */
     static void add(Collection<? extends Player> viewers, UUID id, String name, PlayerProfile skin, net.kyori.adventure.text.Component tabName) {
+        add(viewers, id, name, skin, tabName, true);
+    }
+
+    /** `listed` false = an entry only so the game can draw a player entity with that skin (1.2.95: the mimic's body). */
+    static void add(Collection<? extends Player> viewers, UUID id, String name, PlayerProfile skin, net.kyori.adventure.text.Component tabName, boolean listed) {
         if (broken || viewers.isEmpty()) return;
         try {
             PlayerProfile pp = Bukkit.createProfile(id, name);
@@ -40,7 +45,7 @@ final class MimicTab {
             catch (ReflectiveOperationException | RuntimeException | LinkageError ignored) { }
             EnumSet<?> acts = nmsName != null ? actions(actC, "ADD_PLAYER", "UPDATE_LISTED", "UPDATE_LATENCY", "UPDATE_GAME_MODE", "UPDATE_DISPLAY_NAME")
                     : actions(actC, "ADD_PLAYER", "UPDATE_LISTED", "UPDATE_LATENCY", "UPDATE_GAME_MODE");
-            Object entry = entry(entryC, id, gameProfile, nmsName);
+            Object entry = entry(entryC, id, gameProfile, nmsName, listed);
             Object packet = packet(pkt, acts, List.of(entry));
             for (Player p : viewers) send(p, packet);
         } catch (ReflectiveOperationException | RuntimeException | LinkageError e) {
@@ -80,18 +85,18 @@ final class MimicTab {
 
     /** The Entry record, filled by type (its fields changed between versions): listed / hat on, a believable ping. */
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private static Object entry(Class<?> entryC, UUID id, Object profile, Object displayName) throws ReflectiveOperationException {
+    private static Object entry(Class<?> entryC, UUID id, Object profile, Object displayName, boolean listed) throws ReflectiveOperationException {
         RecordComponent[] rc = entryC.getRecordComponents();
         Class<?>[] types = new Class<?>[rc.length];
         Object[] args = new Object[rc.length];
-        int ints = 0;
+        int ints = 0, bools = 0;
         for (int i = 0; i < rc.length; i++) {
             Class<?> t = rc[i].getType();
             types[i] = t;
             if (t == UUID.class) args[i] = id;
             else if (t.isInstance(profile)) args[i] = profile;
             else if (displayName != null && t.isInstance(displayName)) args[i] = displayName;
-            else if (t == boolean.class) args[i] = true;
+            else if (t == boolean.class) args[i] = bools++ == 0 ? listed : true; // listed first, then the hat layer
             else if (t == int.class) args[i] = ints++ == 0 ? 25 + random.nextInt(70) : 0;
             else if (t.isEnum()) args[i] = Enum.valueOf((Class<Enum>) t, "SURVIVAL");
             else args[i] = null; // display name, chat session
@@ -114,17 +119,31 @@ final class MimicTab {
         throw new NoSuchFieldException("entries");
     }
 
-    private static void send(Player p, Object packet) throws ReflectiveOperationException {
-        Object handle = p.getClass().getMethod("getHandle").invoke(p);
-        Field cf = null;
-        for (Class<?> c = handle.getClass(); c != null && cf == null; c = c.getSuperclass())
-            try { cf = c.getDeclaredField("connection"); } catch (NoSuchFieldException ignored) { }
-        if (cf == null) throw new NoSuchFieldException("connection");
-        cf.setAccessible(true);
-        Object conn = cf.get(handle);
-        for (Class<?> c = conn.getClass(); c != null; c = c.getSuperclass())
-            for (Method m : c.getDeclaredMethods())
-                if (m.getName().equals("send") && m.getParameterCount() == 1 && m.getParameterTypes()[0].isInstance(packet)) { m.setAccessible(true); m.invoke(conn, packet); return; }
-        throw new NoSuchMethodException("send");
+    private static Method getHandle, sendM;
+    private static Field connF;
+
+    /** Sends a server packet to this player (the lookups are done once and kept: the mimic's body sends some every tick). */
+    static void send(Player p, Object packet) throws ReflectiveOperationException {
+        Object handle = (getHandle != null && getHandle.getDeclaringClass().isInstance(p) ? getHandle : (getHandle = p.getClass().getMethod("getHandle"))).invoke(p);
+        if (connF == null || !connF.getDeclaringClass().isInstance(handle)) {
+            Field cf = null;
+            for (Class<?> c = handle.getClass(); c != null && cf == null; c = c.getSuperclass())
+                try { cf = c.getDeclaredField("connection"); } catch (NoSuchFieldException ignored) { }
+            if (cf == null) throw new NoSuchFieldException("connection");
+            cf.setAccessible(true);
+            connF = cf;
+        }
+        Object conn = connF.get(handle);
+        if (conn == null) return; // still logging in
+        if (sendM == null || !sendM.getDeclaringClass().isInstance(conn)) {
+            Method found = null;
+            for (Class<?> c = conn.getClass(); c != null && found == null; c = c.getSuperclass())
+                for (Method m : c.getDeclaredMethods())
+                    if (m.getName().equals("send") && m.getParameterCount() == 1 && m.getParameterTypes()[0].isInterface() && m.getParameterTypes()[0].isInstance(packet)) { found = m; break; }
+            if (found == null) throw new NoSuchMethodException("send");
+            found.setAccessible(true);
+            sendM = found;
+        }
+        sendM.invoke(conn, packet);
     }
 }

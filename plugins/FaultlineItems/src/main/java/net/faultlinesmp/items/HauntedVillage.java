@@ -109,10 +109,10 @@ final class HauntedVillage implements Listener {
 
     private void tick0() {
         if (haunt != null) { run(haunt); return; }
-        if (!plugin.getConfig().getBoolean("haunted-villages.enabled", true) || !season()) return;
         long now = System.currentTimeMillis();
-        if (now < nextCheck) return;
+        if (now < nextCheck) return; // 1.2.95: the clock first
         nextCheck = now + (long) (cfg("check-minutes", 10) * 60_000);
+        if (!plugin.getConfig().getBoolean("haunted-villages.enabled", true) || !season()) return;
         List<Player> ps = new ArrayList<>();
         for (Player p : Bukkit.getOnlinePlayers())
             if (p.getGameMode() == GameMode.SURVIVAL && p.getWorld().getEnvironment() == World.Environment.NORMAL && FaultlineItems.surfaceWorld(p.getWorld()) && night(p.getWorld())) ps.add(p);

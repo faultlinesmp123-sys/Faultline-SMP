@@ -139,6 +139,13 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         int jukeReady, fleeWebReady; double digProgress;
         // 1.2.94 MIMIC FIGHTS: its team in a fight (0 = not in one; mimics fight every mimic of another team), who hit it last
         int team; String fightId; Mimic lastHitBy;
+        // 1.2.95 its body as a real player entity on viewers' screens (MimicBody): its own hidden player entry, who sees it
+        UUID bodyId = UUID.randomUUID(); boolean bodyOwnInfo = true; final Set<UUID> bodyViewers = new HashSet<>(); int bodyLookSig; String bodyEquipSig = "";
+        // 1.2.95 elytra flight like a player's: where it looks, the rocket burning, the speed it carries
+        float flyPitch, flyYaw; int boostTicks, takeoffAt, landT; Vector glide, glideAt;
+        boolean surfacing;
+        int leapTryAt, legAt, pearlSolveAt; Block legCached; // 1.2.95: a failed pearl hop isn't re-solved every tick, the leg goal is reused for 10 ticks
+        double swimToY = Double.NaN; int swimToT = -100;
         int eyesLeft, rods, craftReady, reachTechReady, climbTicks, hopUntil, stageUntil, gapUntil, farShotReady, fleePlanAt; Block climbWater, stageGoal, fleeGoal; MimicNav.Step gapStep;
         int apples, gapples, pots, pearlsLeft, totems = 1, wind, lava, water, webs, blocks, rockets, arrows, throwables;
         final List<ItemStack> buffs = new ArrayList<>(), debuffs = new ArrayList<>();
@@ -531,6 +538,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
                     if (!b.isValid()) return;
                     Emotes.q(() -> b.setProfile(ResolvableProfile.resolvableProfile(full)));
                     m.skin = full;
+                    MimicBody.remove(plugin, m); // its player body comes back next tick with the skin
                     if (m.tabId != null) { // the skin wasn't cached when it "joined": the tab line again, with it
                         MimicTab.remove(Bukkit.getOnlinePlayers(), m.tabId);
                         MimicTab.add(Bukkit.getOnlinePlayers(), m.tabId, m.name, m.skin, tabName(m));
@@ -782,6 +790,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     }
 
     void remove(Mimic m) {
+        MimicBody.remove(plugin, m);
         releaseTickets(m);
         leaveGame(m);
         byBrain.remove(m.brain.getUniqueId());
@@ -1329,6 +1338,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
 
     private void land(Mimic m) {
         m.flying = false;
+        m.glide = null; m.glideAt = null; m.boostTicks = 0;
         m.noFallUntil = m.t + 30;
         m.flyCooldown = m.t + 60;
         m.body.getEquipment().setChestplate(m.wear[1] == null || m.wear[1].getType() == Material.ELYTRA ? null : m.wear[1].clone()); // back to the chestplate
@@ -1755,6 +1765,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
 
     /** Mined: gone like a player broke it (no drops), put back after `dig-restore-seconds` (60; 0 = left mined). */
     void mine(Block b) {
+        MimicNav.dirty(b.getWorld());
         Emotes.q(() -> b.getWorld().playSound(b.getLocation(), b.getBlockData().getSoundGroup().getBreakSound(), 1, 1));
         b.getWorld().spawnParticle(Particle.BLOCK, b.getLocation().clone().add(0.5, 0.5, 0.5), 20, 0.3, 0.3, 0.3, b.getBlockData());
         int secs = plugin.getConfig().getInt("mimic-player.dig-restore-seconds", 60);
@@ -1928,6 +1939,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
 
     void swing(Mimic m) {
         Emotes.q(() -> m.body.swingMainHand());
+        if (MimicBody.active(plugin)) { MimicBody.swing(plugin, m, false); return; } // a real player swing (1.2.95), no pose tricks
         if (!plugin.getConfig().getBoolean("mimic-player.arm-animations", true)) return;
         if (usingSomething(m)) return;
         ItemStack held = m.body.getEquipment().getItemInMainHand();
@@ -2047,6 +2059,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         if (!(b.getBlockData() instanceof org.bukkit.block.data.Openable o)) return;
         o.setOpen(open);
         b.setBlockData(o, false);
+        MimicNav.dirty(b.getWorld());
         if (o instanceof org.bukkit.block.data.type.Door d) { // the other half of a door too
             Block other = d.getHalf() == org.bukkit.block.data.Bisected.Half.BOTTOM ? b.getRelative(org.bukkit.block.BlockFace.UP) : b.getRelative(org.bukkit.block.BlockFace.DOWN);
             if (other.getBlockData() instanceof org.bukkit.block.data.type.Door od) { od.setOpen(open); other.setBlockData(od, false); }
@@ -2560,6 +2573,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
      */
     void goLeg(Mimic m, Location dest, double flat) {
         Vindicator v = m.brain;
+        if (v.isInWater()) { m.swimToY = dest.getWorld() == v.getWorld() && flat < 64 ? dest.getY() : v.getLocation().getY(); m.swimToT = m.t; }
         if (flat < m.travelBest - 3) { m.travelBest = flat; m.travelBestAt = m.t; m.legTries = 0; }
         else if (m.t - m.travelBestAt > 160) { // stuck: another way
             m.travelBestAt = m.t; m.travelBest = flat;
@@ -2573,8 +2587,13 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         }
         if (m.t - m.travelBestAt > 100 && m.legBias != 0 && m.legTries > 5) m.legBias = 0;
         if (travelLeap(m, dest, flat)) return;
-        Block goal = flat <= 40 ? standNear(dest) : null;
-        if (goal == null) goal = legGoal(m, dest, flat <= 40 ? Math.max(4, flat) : 32);
+        Block goal;
+        if (m.legCached != null && m.legCached.getWorld() == v.getWorld() && m.t - m.legAt < 10 && m.path != null && m.pathIdx < m.path.size()) goal = m.legCached;
+        else {
+            goal = flat <= 40 ? standNear(dest) : null;
+            if (goal == null) goal = legGoal(m, dest, flat <= 40 ? Math.max(4, flat) : 32);
+            m.legCached = goal; m.legAt = m.t;
+        }
         if (goal == null) { move(m, new Vector(dest.getX() - v.getLocation().getX(), 0, dest.getZ() - v.getLocation().getZ()).normalize(), chaseSpeed(m), false, true); return; }
         if (m.pathGoal == null || m.pathGoal.getWorld() != goal.getWorld() || m.pathGoal.getLocation().distanceSquared(goal.getLocation()) > 64 || m.path == null || m.pathIdx >= m.path.size()) m.travelGoal = goal;
         navGoTo(m, m.travelGoal != null && m.travelGoal.getWorld() == v.getWorld() ? m.travelGoal : goal);
@@ -2588,7 +2607,8 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     private boolean travelLeap(Mimic m, Location dest, double flat) {
         Vindicator v = m.brain;
         if (!v.isOnGround() || flat < 30) return false;
-        if (m.pearlsLeft > keepPearls() + 2 && m.t >= m.pearlReady) {
+        if (m.pearlsLeft > keepPearls() + 2 && m.t >= m.pearlReady && m.t >= m.leapTryAt) {
+            m.leapTryAt = m.t + 30; // a throw that doesn't land there: tried again in 1.5 s, not every tick
             Block far = legGoal(m, dest, Math.min(34, flat - 4));
             if (far != null && far.getLocation().distance(v.getLocation()) > 22 && !far.getRelative(0, -1, 0).isLiquid()
                     && throwPearl(m, far.getLocation().clone().add(0.5, 0.1, 0.5), true)) { m.travelNote = "pearling toward " + (dest.getWorld() == v.getWorld() ? Math.round(flat) + " blocks off" : "its quarry"); m.path = null; return true; }
@@ -2646,6 +2666,30 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         if (to.lengthSquared() < 1e-4) return null;
         double base = Math.atan2(to.getZ(), to.getX()) + Math.toRadians(m.legBias);
         Block best = null; double bs = Double.MAX_VALUE;
+        boolean wet = m.brain.isInWater() || dest.getWorld() == me.getWorld() && wetAt(dest) && MimicHunt.flat(me, dest) < 160;
+        if (wet) {
+            // 1.2.95 UNDER WATER: the surface heightmap counts water as the top, so it used to aim for the surface over its quarry
+            // and bob there. Now: a spot at the depth it wants (water it can swim in, or a floor), working toward the goal's height
+            World w = me.getWorld();
+            MimicNav nav = new MimicNav(w, navRules(m));
+            double wantY = me.getY() + Math.max(-r * 0.8, Math.min(r * 0.8, dest.getY() - me.getY()));
+            for (int deg : new int[]{0, 25, -25, 50, -50, 80, -80}) {
+                double ang = base + Math.toRadians(deg);
+                int x = (int) Math.floor(me.getX() + Math.cos(ang) * r), z = (int) Math.floor(me.getZ() + Math.sin(ang) * r);
+                if (!w.isChunkLoaded(x >> 4, z >> 4)) continue;
+                Block c = null;
+                for (int dy = 0; dy <= 8 && c == null; dy++) for (int sg : new int[]{1, -1}) {
+                    int yy = (int) Math.floor(wantY) + dy * sg;
+                    if (yy <= w.getMinHeight() || yy >= w.getMaxHeight() - 2) continue;
+                    Block b = w.getBlockAt(x, yy, z);
+                    if (b.getType() == Material.WATER && !b.getRelative(0, 1, 0).getType().isSolid() || nav.standable(x, yy, z) && !hazardNear(b)) { c = b; break; }
+                }
+                if (c == null) continue;
+                double score = Math.hypot(x - dest.getX(), z - dest.getZ()) + Math.abs(c.getY() - dest.getY()) * 0.5 + Math.abs(deg) * 0.08;
+                if (score < bs) { bs = score; best = c; }
+            }
+            if (best != null) return best;
+        }
         if (underground(me) || dest.getWorld() == me.getWorld() && underground(dest) && MimicHunt.flat(me, dest) < 120 && me.getY() - dest.getY() > 8) {
             // 1.2.93 UNDERGROUND: stays at its level and works toward the goal's height (a tunnel, never a staircase up to the
             // surface and back down); a spot it can stand in near that height, else the cell itself (the walker digs to it)
@@ -2740,92 +2784,143 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     }
 
     /**
-     * ELYTRA TRAVEL: takes off with a rocket, cruises ~30 over the ground toward `dest`, boosts only when it's slowed down and
-     * has rockets over its reserve, glides down and lands within 40 (or when it's out of spare rockets and low).
+     * ELYTRA TRAVEL (1.2.95: real elytra physics). Takes off like a player: jumps, opens the elytra on the way down and fires a
+     * rocket (or a wind charge launches it and it glides). In the air it only steers where it LOOKS (pitch / yaw, turned like a
+     * mouse); the speed comes from vanilla's glide maths (`glideStep`): diving speeds it up, pulling up trades speed for height,
+     * a rocket pulls it along its look. Cruises ~26 over the ground ahead, boosts when slow (rockets over its reserve), lands
+     * on a dry spot near the end with a glide path and a flare.
      */
     boolean flyTo(Mimic m, Location dest) {
         Vindicator v = m.brain;
         Vector to = new Vector(dest.getX() - v.getLocation().getX(), 0, dest.getZ() - v.getLocation().getZ());
         double flat = to.length();
+        Vector dir = flat > 1e-3 ? to.clone().multiply(1 / flat) : new Vector(0, 0, 1);
+        float toYaw = (float) Math.toDegrees(Math.atan2(-dir.getX(), dir.getZ()));
         if (!m.travelFly) {
             if (!v.isOnGround() || !canFly(m)) return false;
-            m.travelFly = true; m.flying = true; m.landSpot = null;
+            m.travelFly = true; m.flying = true; m.landSpot = null; m.glide = null; m.glideAt = null; m.boostTicks = 0;
+            m.takeoffAt = m.t; m.flyYaw = toYaw; m.flyPitch = 0; m.yaw = toYaw; m.landT = 0;
             m.body.getEquipment().setChestplate(new ItemStack(Material.ELYTRA)); armourFor(m, true);
-            if (m.rockets > keepRockets()) {
-                m.rockets--; hold(m, "rocket"); swing(m); m.nextRocket = m.t + 40;
-                v.getWorld().playSound(v.getLocation(), Sound.ENTITY_FIREWORK_ROCKET_LAUNCH, 1, 1);
-                Safe.vel(v, to.clone().normalize().multiply(0.6).setY(1.3));
-            } else { // no spare rockets: a wind charge at its feet launches it, then it glides
+            if (m.rockets > keepRockets()) Safe.vel(v, dir.clone().multiply(0.28).setY(0.42)); // a sprint-jump
+            else { // no spare rockets: a wind charge at its feet launches it, then it glides
                 m.wind--; hold(m, "wind"); swing(m);
                 v.getWorld().spawnParticle(Particle.GUST_EMITTER_SMALL, v.getLocation(), 1);
                 v.getWorld().playSound(v.getLocation(), Sound.ENTITY_WIND_CHARGE_WIND_BURST, 1, 1);
-                Safe.vel(v, to.clone().normalize().multiply(0.5).setY(1.5));
-                m.nextRocket = m.t + 30; // the launch counts as a boost for the climb
+                Safe.vel(v, dir.clone().multiply(0.4).setY(1.3));
             }
             return true;
         }
         v.setFallDistance(0);
+        if (m.glide == null) { // still in the jump: opens the elytra as it starts to fall (a player's second space press)
+            if (v.isOnGround() && m.t - m.takeoffAt > 3) { m.travelFly = false; land(m); return false; }
+            if (v.getVelocity().getY() > 0.02 && m.t - m.takeoffAt < 30) return true;
+            m.glide = v.getVelocity().clone();
+            v.getWorld().playSound(v.getLocation(), Sound.ITEM_ARMOR_EQUIP_ELYTRA, 0.8f, 1);
+            if (m.rockets > keepRockets() || v.getWorld().getEnvironment() == World.Environment.THE_END && m.rockets > 0) { m.flyPitch = -30; elytraRocket(m); }
+        }
         Block ground = solidSurface(v.getLocation());
         boolean overVoid = ground == null;
-        double groundY = ground != null ? ground.getY() : Math.min(v.getLocation().getY() - 30, dest.getY() - 10);
-        Vector dir = to.clone().normalize();
-        // landing (1.2.93): a dry spot it can stand on near the end of the trip, picked once, glided down to
-        if (flat < 32) {
+        double y = v.getLocation().getY();
+        double groundY = ground != null ? ground.getY() : Math.min(y - 30, dest.getY() - 10);
+        double speed = Math.hypot(m.glide.getX(), m.glide.getZ());
+        // landing: a dry spot it can stand on near the end of the trip, picked once, glided down onto
+        if (flat < 32 + Math.max(0, y - groundY - 26)) {
             if (m.landSpot == null || m.landSpot.getWorld() != v.getWorld()) {
                 Block ls = standNear(dest);
                 if (ls == null || ls.getRelative(0, -1, 0).isLiquid()) { Block lg = legGoal(m, dest, Math.max(4, flat - 6)); if (lg != null) ls = lg; }
                 m.landSpot = ls != null ? ls.getLocation().clone().add(0.5, 0, 0.5) : dest.clone();
+                m.landT = m.t;
             }
             Vector toLand = m.landSpot.toVector().subtract(v.getLocation().toVector());
-            if (v.isOnGround() || v.getLocation().getY() - groundY < 1.5 || toLand.length() < 2.5) { m.travelFly = false; m.landSpot = null; land(m); return false; }
-            Vector h = toLand.clone().setY(0);
-            double hl = h.length();
-            double vy = Math.max(-0.9, Math.min(-0.15, toLand.getY() / Math.max(1, hl / 0.7))); // a glide path onto the spot
-            Safe.vel(v, (hl > 1e-3 ? h.multiply(Math.min(0.7, hl * 0.2 + 0.25) / hl) : h).setY(vy));
-            if (hl > 1e-3) m.yaw = (float) Math.toDegrees(Math.atan2(-toLand.getX(), toLand.getZ()));
+            double hl = Math.hypot(toLand.getX(), toLand.getZ()), above = y - groundY;
+            if (v.isOnGround() || above < 0.6 || toLand.length() < 1.5 && above < 2.5 || m.t - m.landT > 400) { m.travelFly = false; m.landSpot = null; land(m); return false; }
+            float wantYaw = hl > 1.5 ? (float) Math.toDegrees(Math.atan2(-toLand.getX(), toLand.getZ())) : m.flyYaw;
+            double slope = Math.toDegrees(Math.atan2(-toLand.getY(), Math.max(0.5, hl))); // how steeply the spot lies below
+            float wantPitch;
+            if (above < 3.5 || above < 8 && speed > 0.8) wantPitch = speed > 0.5 ? -25 : -8; // the flare: nose up, bleeds the speed off just over the ground
+            else if (hl < 6 && -toLand.getY() > hl) wantPitch = 50; // high over it: spirals down steep
+            else wantPitch = (float) Math.max(-10, Math.min(55, slope + (speed > 0.9 ? 6 : -6)));
+            glideStep(m, wantPitch, wantYaw);
             return true;
         }
         m.landSpot = null;
-        Vector cur = v.getVelocity();
-        double speed = Math.hypot(cur.getX(), cur.getZ());
-        boolean boosting = m.t < m.nextRocket - 10; // a rocket burns ~1.5 s
-        if (speed < 0.8 && m.rockets > keepRockets() && m.t >= m.nextRocket) { // boost
-            m.rockets--; m.nextRocket = m.t + 40;
-            hold(m, "rocket"); swing(m);
-            v.getWorld().playSound(v.getLocation(), Sound.ENTITY_FIREWORK_ROCKET_LAUNCH, 1, 1);
-            speed = 1.6; boosting = true;
-        }
-        // looks ahead (1.2.93): the highest ground over the next 48 blocks it flies over, so it climbs before a hill, not into it
+        // looks ahead: the highest ground over the next 48 blocks it flies over, so it climbs before a hill, not into it
         double ahead = overVoid ? -1e9 : groundY;
         for (int k = 8; k <= 48; k += 8) {
             Block s2 = solidSurface(v.getLocation().clone().add(dir.clone().multiply(k)));
             if (s2 != null) ahead = Math.max(ahead, s2.getY());
         }
         // over the void (the End): never below where it's going (+12) or below the islands ahead
-        double alt = ahead < -1e8 ? Math.max(v.getLocation().getY(), dest.getY() + 12) : Math.min(v.getWorld().getMaxHeight() - 8, Math.max(ahead + 26, overVoid ? dest.getY() + 12 : -1e9));
-        double y = v.getLocation().getY();
+        double alt = ahead < -1e8 ? Math.max(y, dest.getY() + 12) : Math.min(v.getWorld().getMaxHeight() - 8, Math.max(ahead + 26, overVoid ? dest.getY() + 12 : -1e9));
+        Vector hv = speed > 0.05 ? m.glide.clone().setY(0).multiply(1 / speed) : dir.clone();
         boolean wall = false;
-        for (int k = 1; k <= 6 && !wall; k++) { Block b2 = v.getLocation().clone().add(dir.clone().multiply(k * 1.5)).getBlock(); if (b2.getType().isSolid() || b2.getRelative(0, 1, 0).getType().isSolid()) wall = true; }
-        double vy;
-        if (boosting) vy = wall ? 0.8 : Math.max(-0.5, Math.min(0.5, (alt - y) * 0.06));
-        else { // GLIDING: no climbing without a rocket; trades height for speed (a dive speeds it up, levelling off slows it)
-            vy = wall ? 0.3 : Math.max(-0.5, Math.min(-0.04, (alt - y) * 0.03));
-            speed = Math.max(0.45, speed * 0.993 + (-vy) * 0.06);
-            if (wall) speed *= 0.85;
+        for (int k = 1; k <= 6 && !wall; k++) {
+            Block b2 = v.getLocation().clone().add(hv.clone().multiply(k * Math.max(1.5, speed * 2.2))).getBlock();
+            if (b2.getType().isSolid() || b2.getRelative(0, 1, 0).getType().isSolid()) wall = true;
         }
-        if (overVoid && !boosting && m.rockets > 0 && y < dest.getY() + 6 && m.t >= m.nextRocket) { // sinking over the void: a rocket whatever it keeps
-            m.rockets--; m.nextRocket = m.t + 40; hold(m, "rocket"); swing(m);
-            v.getWorld().playSound(v.getLocation(), Sound.ENTITY_FIREWORK_ROCKET_LAUNCH, 1, 1);
-            boosting = true; speed = 1.6; vy = 0.5;
+        double e = alt - y;
+        boolean spare = m.rockets > keepRockets();
+        if (m.boostTicks == 0 && m.t >= m.nextRocket && (spare && (speed < 0.9 || e > 18 || wall) || overVoid && m.rockets > 0 && y < dest.getY() + 6))
+            elytraRocket(m); // over the void sinking: a rocket whatever it keeps
+        float wantPitch;
+        if (wall) wantPitch = -50; // pull up hard
+        else if (m.boostTicks > 0) wantPitch = (float) Math.max(-40, Math.min(25, -e * 1.5));
+        else if (e > 3 && speed > 1.1) wantPitch = -22; // zooms up on the speed it carries
+        else if (e < -8) wantPitch = (float) Math.min(40, 8 + (-e - 8) * 0.8); // too high: dives
+        else wantPitch = speed < 0.7 ? 18 : 3; // a shallow glide; nose down to get the speed back
+        if (!overVoid && m.boostTicks == 0 && !spare && (y - groundY < 4 || speed < 0.35 && e < 6)) { // out of spare rockets and down low: lands, walks on
+            if (v.isOnGround() || y - groundY < 0.6) { m.travelFly = false; land(m); return false; }
+            wantPitch = y - groundY < 3 ? -15 : 20;
         }
-        if (!overVoid && !boosting && m.rockets <= keepRockets() && (y - groundY < 4 || speed < 0.5)) { // out of spare rockets and down low: lands, walks on
-            if (v.isOnGround() || y - groundY < 1.5) { m.travelFly = false; land(m); return false; }
-            vy = -0.4;
-        }
-        Vector h = dir.multiply(Math.min(boosting ? 1.7 : 1.5, Math.max(0.35, speed)));
-        Safe.vel(v, h.setY(vy));
-        m.yaw = (float) Math.toDegrees(Math.atan2(-h.getX(), h.getZ()));
+        glideStep(m, wantPitch, toYaw + (wall ? 25 * m.strafeDir : 0));
         return true;
+    }
+
+    /** A rocket in flight: hold it, use it; vanilla's boost lasts ~1.1-1.5 s (`glideStep` applies it). */
+    private void elytraRocket(Mimic m) {
+        if (m.rockets <= 0) return;
+        Vindicator v = m.brain;
+        m.rockets--; m.boostTicks = 22 + random.nextInt(9); m.nextRocket = m.t + m.boostTicks + 4;
+        hold(m, "rocket"); swing(m);
+        v.getWorld().playSound(v.getLocation(), Sound.ENTITY_FIREWORK_ROCKET_LAUNCH, 1, 1);
+        v.getWorld().spawnParticle(Particle.FIREWORK, v.getLocation(), 10, 0.2, 0.2, 0.2, 0.05);
+    }
+
+    /**
+     * One tick of vanilla elytra flight (LivingEntity's fall-flying maths + a firework's boost): eases its look toward the
+     * pitch / yaw it wants (a player's mouse, ~5 / 8 degrees a tick), then works the new speed out of the look and the old
+     * speed. Whatever the world stopped last tick (a wall, the ground) is taken off the speed.
+     */
+    private void glideStep(Mimic m, float wantPitch, float wantYaw) {
+        Vindicator v = m.brain;
+        Vector pos = v.getLocation().toVector();
+        Vector vel = m.glide;
+        if (m.glideAt != null) {
+            Vector moved = pos.clone().subtract(m.glideAt);
+            if (Math.abs(moved.getX()) < Math.abs(vel.getX()) * 0.5 - 0.02) vel.setX(moved.getX());
+            if (Math.abs(moved.getY()) < Math.abs(vel.getY()) * 0.5 - 0.02) vel.setY(moved.getY());
+            if (Math.abs(moved.getZ()) < Math.abs(vel.getZ()) * 0.5 - 0.02) vel.setZ(moved.getZ());
+        }
+        m.flyPitch += (float) Math.max(-5, Math.min(5, wantPitch - m.flyPitch));
+        float dYaw = ((wantYaw - m.flyYaw) % 360 + 540) % 360 - 180;
+        m.flyYaw += (float) Math.max(-8, Math.min(8, dYaw));
+        double pr = Math.toRadians(m.flyPitch), yr = Math.toRadians(m.flyYaw);
+        Vector look = new Vector(-Math.sin(yr) * Math.cos(pr), -Math.sin(pr), Math.cos(yr) * Math.cos(pr));
+        if (m.boostTicks > 0) { // the firework: vel += look * 0.1 + (look * 1.5 - vel) * 0.5
+            m.boostTicks--;
+            vel.add(look.clone().multiply(0.1)).add(look.clone().multiply(1.5).subtract(vel).multiply(0.5));
+            if (m.t % 2 == 0) v.getWorld().spawnParticle(Particle.FIREWORK, v.getLocation(), 1, 0, 0, 0, 0);
+        }
+        double hl = Math.hypot(look.getX(), look.getZ()), hs = Math.hypot(vel.getX(), vel.getZ());
+        double lift = Math.cos(pr); lift *= lift;
+        vel.setY(vel.getY() + 0.08 * (-1 + lift * 0.75));
+        if (vel.getY() < 0 && hl > 0) { double d = vel.getY() * -0.1 * lift; vel.add(new Vector(look.getX() * d / hl, d, look.getZ() * d / hl)); }
+        if (pr < 0 && hl > 0) { double d = hs * -Math.sin(pr) * 0.04; vel.add(new Vector(-look.getX() * d / hl, d * 3.2, -look.getZ() * d / hl)); }
+        if (hl > 0) vel.add(new Vector((look.getX() / hl * hs - vel.getX()) * 0.1, 0, (look.getZ() / hl * hs - vel.getZ()) * 0.1));
+        vel.multiply(new Vector(0.99, 0.98, 0.99));
+        m.glideAt = pos;
+        Safe.vel(v, vel.clone());
+        m.yaw = m.flyYaw;
     }
 
     /**
@@ -3238,6 +3333,42 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         m.path = null;
     }
 
+    /** Low on air (a third left): goes up until it's full again, like a player. */
+    boolean needAir(Mimic m) {
+        Vindicator v = m.brain;
+        int air = v.getRemainingAir(), max = Math.max(1, v.getMaximumAir());
+        if (v.hasPotionEffect(PotionEffectType.WATER_BREATHING) || v.hasPotionEffect(PotionEffectType.CONDUIT_POWER)) { m.surfacing = false; return false; }
+        if (air < max / 3) m.surfacing = true;
+        else if (air >= max - 10) m.surfacing = false;
+        return m.surfacing;
+    }
+
+    /**
+     * 1.2.95 swimming like a player: sprint-swims toward (dx, dz), dives or rises to `wantY` (NaN = up to the surface, as when
+     * holding space), and goes up for air when it's running out.
+     */
+    Vector swimVel(Mimic m, Vector cur, double dx, double dz, double wantY, double push) {
+        Vindicator v = m.brain;
+        double y = v.getLocation().getY(), vy;
+        if (needAir(m) || Double.isNaN(wantY)) vy = Math.min(0.14, cur.getY() + 0.05);
+        else {
+            double dy = wantY - y;
+            double want = Math.max(-0.22, Math.min(0.16, dy * 0.12)); // dives a bit faster than it climbs (a player's crouch + look down)
+            vy = cur.getY() * 0.6 + want * 0.4;
+            if (Math.abs(dy) < 0.3) vy *= 0.5;
+        }
+        double h = Math.hypot(dx, dz);
+        if (h > 1e-4) { dx /= h; dz /= h; }
+        return new Vector(cur.getX() * 0.7 + dx * push * 1.3, vy, cur.getZ() * 0.7 + dz * push * 1.3);
+    }
+
+    /** Under water there (a water column over it, or the block itself is water). */
+    boolean wetAt(Location l) {
+        if (!l.getWorld().isChunkLoaded(l.getBlockX() >> 4, l.getBlockZ() >> 4)) return false;
+        Block b = l.getBlock();
+        return b.getType() == Material.WATER || b.getRelative(0, 1, 0).getType() == Material.WATER || b.getRelative(0, 2, 0).getType() == Material.WATER;
+    }
+
     private void followPath(Mimic m, LivingEntity tg) {
         Vindicator v = m.brain;
         Location at = v.getLocation();
@@ -3340,15 +3471,16 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             case SWIM -> {
                 Vector d3 = new Vector(s.cx() - at.getX(), s.y + 0.1 - at.getY(), s.cz() - at.getZ());
                 if (d3.lengthSquared() > 1e-4) d3.normalize();
-                Safe.vel(v, cur.multiply(0.5).add(d3.multiply(0.2)).add(new Vector(0, 0.02, 0))); // sprint-swimming
+                if (needAir(m)) { Safe.vel(v, swimVel(m, cur, d3.getX(), d3.getZ(), Double.NaN, 0.12)); return; }
+                Safe.vel(v, cur.multiply(0.5).add(d3.multiply(0.2)).add(new Vector(0, 0.01, 0))); // sprint-swimming
                 return;
             }
             default -> { }
         }
-        if (wet) { // swimming toward a land step: head for it, hold space
+        if (wet) { // swimming toward a land step: head for it, up or DOWN to its height (1.2.95: it only ever rose)
             Vector d3 = new Vector(s.cx() - at.getX(), 0, s.cz() - at.getZ());
             if (d3.lengthSquared() > 1e-4) d3.normalize();
-            Safe.vel(v, new Vector(cur.getX() * 0.6 + d3.getX() * 0.12, Math.min(0.14, cur.getY() + 0.05), cur.getZ() * 0.6 + d3.getZ() * 0.12));
+            Safe.vel(v, swimVel(m, cur, d3.getX(), d3.getZ(), s.y + 0.1, 0.12));
             return;
         }
         // aim: the furthest of the next few level WALK steps it can walk straight to (smooth lines, no zig-zag on the grid)
@@ -4120,8 +4252,8 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     private void move(Mimic m, Vector dir, double sp, boolean stepUp, boolean sprintJump) {
         Vindicator v = m.brain;
         Vector cur = v.getVelocity();
-        if (v.isInWater()) { // swims like a player: holds space, swims toward where it's going
-            Safe.vel(v, new Vector(cur.getX() * 0.8 + dir.getX() * 0.06, Math.min(0.12, cur.getY() + 0.04), cur.getZ() * 0.8 + dir.getZ() * 0.06));
+        if (v.isInWater()) { // swims like a player: toward where it's going, DOWN too (1.2.95), up for air when it runs low
+            Safe.vel(v, swimVel(m, cur, dir.getX(), dir.getZ(), m.swimToT >= m.t - 2 ? m.swimToY : Double.NaN, 0.06));
             return;
         }
         if (openAhead(m, dir)) return;
@@ -4529,6 +4661,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
 
     boolean place(Block b, Material mat, int ticks) {
         if (!worldTechs() || temp.containsKey(b) || !(b.getType().isAir())) return false;
+        MimicNav.dirty(b.getWorld());
         TempBlock t = new TempBlock();
         t.block = b; t.before = b.getBlockData().clone(); t.placed = mat; t.until = clock + ticks;
         b.setType(mat, false);
@@ -4549,12 +4682,13 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     }
 
     void restore(TempBlock t) {
+        MimicNav.dirty(t.block.getWorld());
         if (t.block.getType() == t.placed) t.block.setBlockData(t.before, false);
         temp.remove(t.block);
     }
 
     void tickTemp() {
-        clock++;
+        clock++; MimicNav.clock = clock;
         try { tickDoors(); } catch (RuntimeException ignored) { }
         if (temp.isEmpty()) return;
         for (TempBlock t : new ArrayList<>(temp.values())) if (clock >= t.until) {
@@ -4974,6 +5108,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             Float run = runYaw(m);
             if (run != null) wantYaw = run;
             pitch = m.travelFly ? 10 : 4;
+            if (m.travelFly && m.glide != null) { wantYaw = m.flyYaw; pitch = m.flyPitch; } // 1.2.95: its body looks where it flies
         } else { wantYaw = m.idleYaw; pitch = (float) (Math.sin(m.t * 0.03) * 12); }
         if (m.digBlock != null && m.digBlock.getWorld() == m.brain.getWorld()) { // 1.2.93: looks at the block it's mining
             Vector look = m.digBlock.getLocation().clone().add(0.5, 0.5, 0.5).toVector().subtract(m.brain.getEyeLocation().toVector());
@@ -4999,6 +5134,27 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         Pose want = m.riptideUntil > m.t ? Pose.SPIN_ATTACK : m.flying || m.dive && m.slam ? Pose.FALL_FLYING : m.blockUntil > m.t && m.shieldOffUntil <= m.t ? Pose.SNEAKING : Pose.STANDING;
         Emotes.q(() -> { if (m.body.getPose() != want) m.body.setPose(want, true); });
         if (m.tag != null && m.tag.isValid()) m.tag.teleport(tagSpot(l).add(0, want == Pose.SNEAKING ? -0.3 : 0, 0));
+        bodyTick(m);
+    }
+
+    /** Its player body on viewers' screens (MimicBody): what a player's model would show for what it's doing. */
+    private void bodyTick(Mimic m) {
+        if (!MimicBody.active(plugin)) {
+            if (!m.bodyViewers.isEmpty()) { // switched off: the mannequin back for them
+                for (UUID u : m.bodyViewers) { Player p = Bukkit.getPlayer(u); if (p != null) p.showEntity(plugin, m.body); }
+                MimicBody.remove(plugin, m);
+            }
+            return;
+        }
+        Vindicator v = m.brain;
+        Vector vel = v.getVelocity();
+        double hs = Math.hypot(vel.getX(), vel.getZ());
+        boolean gliding = m.travelFly ? m.glide != null : m.flying || m.dive && m.slam;
+        boolean crouch = m.blockUntil > m.t && m.shieldOffUntil <= m.t;
+        boolean water = v.isInWater();
+        boolean swimming = water && !gliding && hs > 0.06 && v.getEyeLocation().getBlock().isLiquid();
+        boolean sprinting = !crouch && !gliding && !usingSomething(m) && (hs > 0.18 || swimming);
+        MimicBody.tick(plugin, m, new MimicBody.Look(sprinting, crouch, swimming, gliding, m.riptideUntil > m.t));
     }
 
     // ---- bow and pearls
@@ -5030,39 +5186,72 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
      * Where a pearl thrown with this velocity lands: vanilla's projectile physics (move, x0.99 drag, -0.03 gravity a tick),
      * stopping at the first solid block along the way (checked in quarter steps).
      */
-    static Location pearlLands(World w, Location from, Vector vel0, int maxTicks) {
-        Vector pos = from.toVector(), vel = vel0.clone();
+    static Location pearlLands(World w, Location from, Vector vel0, int maxTicks) { return pearlLands(w, from, vel0, maxTicks, -1e9); }
+
+    /** 1.2.95: stops once it's fallen below `floorY` (it can't come back up), and reads each block once. */
+    static Location pearlLands(World w, Location from, Vector vel0, int maxTicks, double floorY) {
+        double px = from.getX(), py = from.getY(), pz = from.getZ(), vx = vel0.getX(), vy = vel0.getY(), vz = vel0.getZ();
+        int lx = Integer.MIN_VALUE, ly = 0, lz = 0, lcx = Integer.MIN_VALUE, lcz = 0;
+        boolean lastSolid = false, lastWater = false;
+        int minY = w.getMinHeight(), maxY = w.getMaxHeight();
         for (int t = 0; t < maxTicks; t++) {
             for (int k = 1; k <= 4; k++) {
-                Vector q = pos.clone().add(vel.clone().multiply(k / 4.0));
-                int bx = (int) Math.floor(q.getX()), bz = (int) Math.floor(q.getZ());
-                if (!w.isChunkLoaded(bx >> 4, bz >> 4) || q.getY() < w.getMinHeight()) return null;
-                Block b = w.getBlockAt(bx, (int) Math.floor(q.getY()), bz);
-                if (b.getType().isSolid() && !(b.getBlockData() instanceof org.bukkit.block.data.Openable o && o.isOpen())) return pos.clone().add(vel.clone().multiply((k - 1) / 4.0)).toLocation(w);
-                if (b.getType() == Material.WATER && t > 2) return q.toLocation(w); // pearls stop in water
+                double qx = px + vx * k / 4.0, qy = py + vy * k / 4.0, qz = pz + vz * k / 4.0;
+                if (qy < minY || qy < floorY && vy < 0) return null;
+                int bx = (int) Math.floor(qx), by = (int) Math.floor(qy), bz = (int) Math.floor(qz);
+                if (bx != lx || by != ly || bz != lz) {
+                    lx = bx; ly = by; lz = bz;
+                    if (bx >> 4 != lcx || bz >> 4 != lcz) { if (!w.isChunkLoaded(bx >> 4, bz >> 4)) return null; lcx = bx >> 4; lcz = bz >> 4; }
+                    if (by >= maxY) { lastSolid = false; lastWater = false; }
+                    else {
+                        Block b = w.getBlockAt(bx, by, bz);
+                        Material mt = b.getType();
+                        lastSolid = mt.isSolid() && !(b.getBlockData() instanceof org.bukkit.block.data.Openable o && o.isOpen());
+                        lastWater = mt == Material.WATER;
+                    }
+                }
+                if (lastSolid) return new Location(w, px + vx * (k - 1) / 4.0, py + vy * (k - 1) / 4.0, pz + vz * (k - 1) / 4.0);
+                if (lastWater && t > 2) return new Location(w, qx, qy, qz); // pearls stop in water
             }
-            pos.add(vel);
-            vel.multiply(0.99);
-            vel.setY(vel.getY() - 0.03);
+            px += vx; py += vy; pz += vz;
+            vx *= 0.99; vy = vy * 0.99 - 0.03; vz *= 0.99;
         }
         return null;
     }
 
-    /** The throw (speed 1.5, a player's) that lands closest to `to`: every pitch from -45 to 80 degrees, straight at it. */
+    /**
+     * The throw (speed 1.5, a player's) that lands closest to `to`, straight at it. 1.2.95: every 5 degrees from -45 to 80, then
+     * every degree round the two best (it was all 126 pitches, every time).
+     */
     static Shot solvePearl(World w, Location from, Location to) {
         Vector flat = to.toVector().subtract(from.toVector()).setY(0);
         if (flat.lengthSquared() < 1e-4) flat = new Vector(0.001, 0, 0);
         flat.normalize();
-        Shot best = null;
-        for (double pitch = -45; pitch <= 80; pitch += 1) {
-            double r = Math.toRadians(pitch);
-            Vector vel = flat.clone().multiply(Math.cos(r) * 1.5).setY(Math.sin(r) * 1.5);
-            Location land = pearlLands(w, from, vel, 160);
-            if (land == null) continue;
-            double err = land.distance(to);
-            if (best == null || err < best.err - 0.05) best = new Shot(vel, land, err);
+        double floorY = Math.min(from.getY(), to.getY()) - 6;
+        Shot best = null, second = null;
+        double bestP = 0, secondP = 0;
+        for (double pitch = -45; pitch <= 80; pitch += 5) {
+            Shot sh = pearlShot(w, from, to, flat, pitch, floorY);
+            if (sh == null) continue;
+            if (best == null || sh.err() < best.err()) { second = best; secondP = bestP; best = sh; bestP = pitch; }
+            else if (second == null || sh.err() < second.err()) { second = sh; secondP = pitch; }
         }
-        return best;
+        if (best == null) return null;
+        Shot out = best;
+        for (double c : second != null ? new double[]{bestP, secondP} : new double[]{bestP})
+            for (double pitch = c - 4; pitch <= c + 4; pitch += 1) {
+                if (pitch == c || pitch < -45 || pitch > 80) continue;
+                Shot sh = pearlShot(w, from, to, flat, pitch, floorY);
+                if (sh != null && sh.err() < out.err() - 0.05) out = sh;
+            }
+        return out;
+    }
+
+    private static Shot pearlShot(World w, Location from, Location to, Vector flat, double pitch, double floorY) {
+        double r = Math.toRadians(pitch);
+        Vector vel = flat.clone().multiply(Math.cos(r) * 1.5).setY(Math.sin(r) * 1.5);
+        Location land = pearlLands(w, from, vel, 160, floorY);
+        return land == null ? null : new Shot(vel, land, land.distance(to));
     }
 
     private void throwPearl(Mimic m, Location target) { throwPearl(m, target, false); }
@@ -5071,8 +5260,9 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     private boolean throwPearl(Mimic m, Location target, boolean exact) {
         Vindicator v = m.brain;
         Location eye = eye(m);
+        if (exact && m.t < m.pearlSolveAt) return false; // 1.2.95: a throw that didn't land isn't solved again every tick
         Shot shot = solvePearl(v.getWorld(), eye, target);
-        if (exact && (shot == null || shot.err() > 2.5)) return false;
+        if (exact && (shot == null || shot.err() > 2.5)) { m.pearlSolveAt = m.t + 10; return false; }
         m.pearlsLeft--;
         m.pearlReady = m.t + pearlTicks();
         Vector aim = target.toVector().subtract(eye.toVector());
@@ -5130,6 +5320,53 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
 
     // ================================================================ damage
 
+    /**
+     * 1.2.95 safety net for the player body: it shares the hidden mannequin's entity id, so a click on it is a click on the
+     * mannequin. Should the server ever refuse that (an entity hidden from the clicker), a swing whose look ray hits the body
+     * with no real attack on a mimic that tick is turned into one (`Player#attack`, a full vanilla hit).
+     */
+    private final Map<UUID, Integer> attackedAt = new HashMap<>();
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onAttackPacket(io.papermc.paper.event.player.PrePlayerAttackEntityEvent e) {
+        UUID id = e.getAttacked().getUniqueId();
+        if (byBody.containsKey(id) || byBrain.containsKey(id)) attackedAt.put(e.getPlayer().getUniqueId(), clock);
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    public void onSwingAtBody(org.bukkit.event.player.PlayerAnimationEvent e) {
+        if (e.getAnimationType() != org.bukkit.event.player.PlayerAnimationType.ARM_SWING || byBrain.isEmpty() || !MimicBody.active(plugin)) return;
+        Player p = e.getPlayer();
+        Integer last = attackedAt.get(p.getUniqueId());
+        if (last != null && clock - last <= 1) return;
+        Location eye = p.getEyeLocation();
+        double reach = 3.0;
+        try { AttributeInstance ai = p.getAttribute(Attribute.ENTITY_INTERACTION_RANGE); if (ai != null) reach = ai.getValue(); } catch (Throwable ignored) { }
+        for (Mimic m : byBrain.values()) {
+            if (!m.bodyViewers.contains(p.getUniqueId()) || !m.body.isValid() || m.body.getWorld() != p.getWorld()) continue;
+            org.bukkit.util.RayTraceResult hit = m.body.getBoundingBox().clone().expand(0.1).rayTrace(eye.toVector(), eye.getDirection(), reach);
+            if (hit == null) continue;
+            double d = hit.getHitPosition().distance(eye.toVector());
+            if (p.rayTraceBlocks(d) != null) continue;
+            attackedAt.put(p.getUniqueId(), clock);
+            p.attack(m.body);
+            return;
+        }
+    }
+
+    // 1.2.95: the walker's shared cell cache forgets a world when its blocks change
+    private void blocksChanged(World w) { if (!byBrain.isEmpty()) MimicNav.dirty(w); }
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true) public void onNavPlace(org.bukkit.event.block.BlockPlaceEvent e) { blocksChanged(e.getBlock().getWorld()); }
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true) public void onNavBreak(org.bukkit.event.block.BlockBreakEvent e) { blocksChanged(e.getBlock().getWorld()); }
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true) public void onNavBucket(org.bukkit.event.player.PlayerBucketEmptyEvent e) { blocksChanged(e.getBlock().getWorld()); }
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true) public void onNavBoom(EntityExplodeEvent e) { blocksChanged(e.getLocation().getWorld()); }
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true) public void onNavBlockBoom(org.bukkit.event.block.BlockExplodeEvent e) { blocksChanged(e.getBlock().getWorld()); }
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true) public void onNavPush(org.bukkit.event.block.BlockPistonExtendEvent e) { blocksChanged(e.getBlock().getWorld()); }
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true) public void onNavPull(org.bukkit.event.block.BlockPistonRetractEvent e) { blocksChanged(e.getBlock().getWorld()); }
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true) public void onNavUse(org.bukkit.event.player.PlayerInteractEvent e) {
+        if (e.getClickedBlock() != null && e.getClickedBlock().getBlockData() instanceof org.bukkit.block.data.Openable) blocksChanged(e.getClickedBlock().getWorld());
+    }
+
     /** Hits on the body go to the brain (knockback, armour and all). */
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onBodyHit(EntityDamageEvent e) {
@@ -5182,6 +5419,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             else if (random.nextDouble() < m.skill.jumpCrit()) m.jumpReset = m.t + 1; // jump reset: less knockback
         }
         Emotes.q(() -> m.body.playHurtAnimation(0));
+        MimicBody.hurt(plugin, m);
         m.brain.getWorld().playSound(m.brain.getLocation(), Sound.ENTITY_PLAYER_HURT, 1, 1);
         if (m.team == 0 && TotemLimit.playerBehind(e.getDamager()) instanceof Player p && m.target != p && p.getLocation().distanceSquared(m.brain.getLocation()) < 400) m.target = p; // turns on whoever hits it
     }
@@ -5225,6 +5463,8 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     public void onDeath(EntityDeathEvent e) {
         Mimic m = byBrain.get(e.getEntity().getUniqueId());
         if (m == null) return;
+        MimicBody.hurt(plugin, m);
+        Bukkit.getScheduler().runTaskLater(plugin, () -> MimicBody.remove(plugin, m), 10L); // falls, then it's gone
         releaseTickets(m);
         if (m.tabId != null && plugin.getConfig().getBoolean("mimic-player.fake-join", true)) { // a player's death line, then they log off
             Player killer = e.getEntity().getKiller();

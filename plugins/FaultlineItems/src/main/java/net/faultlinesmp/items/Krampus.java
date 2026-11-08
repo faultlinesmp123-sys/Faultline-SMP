@@ -501,10 +501,10 @@ final class Krampus implements Listener {
     }
 
     private void natural() {
-        if (!plugin.getConfig().getBoolean("krampus.enabled", true) || !season()) return;
         long now = System.currentTimeMillis();
-        if (now < nextNatural) return;
+        if (now < nextNatural) return; // 1.2.95: the clock first (the date / config were read every tick)
         nextNatural = now + 5 * 60_000;
+        if (!plugin.getConfig().getBoolean("krampus.enabled", true) || !season()) return;
         for (Player p : Bukkit.getOnlinePlayers()) {
             if (p.getGameMode() != GameMode.SURVIVAL || p.getWorld().getEnvironment() != World.Environment.NORMAL || !FaultlineItems.surfaceWorld(p.getWorld())) continue;
             if (!HauntedVillage.night(p.getWorld()) || random.nextDouble() >= cfg("natural-chance", 0.003)) continue;

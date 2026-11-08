@@ -2145,6 +2145,34 @@ Notes:
   foes. Commands: `/mimicplayer duel <player> <player> [skill] [skill]` (spawns both 10 apart where you look),
   `fight <mimic> <mimic>`, `fight <a,b> vs <c,d>` (teams), `ffa` / `fight ffa` (every mimic within 64 of you), `fight stop`.
   Tested (scratch `nt/NewTest`: duel to the death, bystander untouched, ffa teams, stop).
+- **Mimic flies, swims and swings like a player (Items 1.2.95)**: PLAYER BODY (`MimicBody.java`, `mimic-player.player-body`
+  true, `player-body-range` 96): every viewer in range gets a real PLAYER entity (ClientboundAddEntityPacket by reflection,
+  Mojang names) that USES THE MANNEQUIN'S ENTITY ID, with its own unlisted player-info entry (`MimicTab.add(..., listed)`,
+  `m.bodyId`); the mannequin is `hideEntity`'d for them. Mirrored every tick: position (`ClientboundEntityPositionSyncPacket.of`),
+  head, equipment (every 4 ticks when changed), entity data = the mannequin's values limited to accessor ids of Entity /
+  LivingEntity / Avatar (a mannequin-only id would break the client) + shared flags / pose from `Look` (sprint, crouch =
+  shield, swim, elytra glide, riptide). `swing()` = the real animate packet (the trident/spear pose hack is skipped), hurt
+  flash on hits/death. Any reflection failure = one warning and mannequins again (`fail`). Hits: a click on it is a click on
+  the mannequin; SAFETY NET `onSwingAtBody` (an ARM_SWING by a viewer with no PrePlayerAttackEntityEvent on a mimic that tick,
+  look ray on the body's box within ENTITY_INTERACTION_RANGE, no block in front) = `Player#attack(body)`. UNTESTED ON A LIVE
+  SERVER (MockBukkit has no NMS: there it falls back). ELYTRA (`flyTo` rewritten): jump, opens the elytra falling, rocket;
+  in flight only pitch / yaw (`flyPitch`/`flyYaw`, eased 5 / 8 degrees a tick, the body looks that way) and vanilla's
+  fall-flying maths each tick (`glideStep`: lift cos^2, dive -> speed, pull-up -> height, x0.99/0.98, firework boost
+  `look*0.1 + (look*1.5 - v)*0.5` for 22-30 ticks, `elytraRocket`), blocked axes zeroed from the real movement; pilot: cruise
+  26 over the ground ahead, zoom-climb on speed, dive when high, rocket when slow (reserve kept), pull up at walls; landing =
+  glide slope onto `landSpot`, steep spiral when right over it, FLARE (-25) under 8 blocks when fast. WATER: `swimVel` swims
+  toward a depth (`swimToY` from goLeg / the path step) instead of always rising, `needAir` surfaces at a third of its air
+  (not with Water Breathing / Conduit Power); followPath's land-step swim goes up OR down; `legGoal` has an UNDER WATER branch
+  (the heightmap counts water as the top, so it aimed at the surface over its quarry: now water / floor cells at the depth it
+  wants, `wetAt`). LAG: `MimicNav` cells are one shared primitive long->byte table per world for 10 ticks (`Cells`, `CELLS`,
+  `dirty(w)` on its own block changes, doors and block place/break/bucket/explosion/piston events; was a boxed HashMap per
+  search, every block read again); `getBlockData` read once per cell; pearl solver coarse 5 degrees + 1-degree refine round the
+  two best, stops once below both ends - 6, one block read per cell (`pearlLands`), a failed exact throw isn't re-solved for
+  10 ticks (`pearlSolveAt`), a failed pearl hop for 30 (`leapTryAt`); goLeg reuses its leg goal for 10 ticks; Krampus /
+  Haunted Villages check their timer before the date. Profiled (scratch `nt/ProfMimic`, 6 mimics): pearl solving 50% -> 3%,
+  planning 40% -> ~18-35%, total ~1.35-1.74 -> ~0.9 ms/tick in MockBukkit. Tested (scratch `nt/NewTest`: jump takeoff, glide
+  physics, pitch range, speed changes, lands near Ben slowly, never in a block, dives in a tank toward a lower target; the
+  harness clears the cell cache every tick since setType fires no events; 6/6 runs).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Skills → Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

@@ -2089,6 +2089,12 @@ Notes:
   mining out, reach swap vs none, D-tap, wind block, sweep, momentum break, spear dash, dive bomb, cover up + eat, block
   trail, heal run, swimming up, hunt at 300, activity world, recorded portal to another world, dig down to a buried end
   portal + sealing + into the End, elytra travel keeping 4 rockets; 8/8 runs).
+- **Mimic hits like a player (Items 1.2.91)**: the game scales damage from MOBS by difficulty before plugins see it (x1.5 on
+  Hard, min(d/2 + 1, d) on Easy), so on Hard every mimic hit was 1.5x a player's ("his strength got buffed").
+  `onMimicHitsPlayer` (EntityDamageByEntityEvent LOWEST; damager = its brain, a projectile it shot, its TNT) undoes it
+  (`undoDifficulty`; `mimic-player.player-damage` true). `/mimicplayer debug` (per admin, `hitLog`): every mimic hit on a
+  player in chat: the raw number, the scaling undone, how it was made (`lastHitInfo`: weapon base, Strength, charge, crit,
+  Sharpness, sprint hit, reach; mace: fall, Density, Breach) and what they lost after armour. Tested (scratch `nt/NewTest`).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Skills → Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

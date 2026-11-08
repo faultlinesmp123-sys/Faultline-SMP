@@ -124,6 +124,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         Vector catchVel;
         final ItemStack[] wear = new ItemStack[4]; // ITS armour (own copies: they wear down, break, get mended)
         Block doorGoal;
+        String lastHitInfo; // for /mimicplayer debug: how its last strike's number was made
         boolean busyNow() { return eatUntil > t || drinkUntil > t || drawUntil > t || potUntil > t || crossUntil > t; }
         // the walker (MimicNav): its path, where it was planned to, and how it's getting on
         List<MimicNav.Step> path; int wallTicks, pathIdx, pathAt = -100, navStuck, navProgressAt, navVanillaUntil; double navBest = 1e9;
@@ -3048,6 +3049,43 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         m.sprintHit = false;
     }
 
+    // ---- damage the way a PLAYER's lands: the game scales damage from mobs by difficulty (x1.5 on Hard, halved + 1 on
+    // Easy) before plugins see it; a mimic's hits (melee, slams, arrows, its TNT) are a player's, so that's undone here
+    static double undoDifficulty(Difficulty d, double scaled) {
+        return switch (d) {
+            case HARD -> scaled / 1.5;
+            case EASY -> scaled <= 2 ? scaled : 2 * (scaled - 1);
+            default -> scaled;
+        };
+    }
+
+    final Set<UUID> hitLog = new HashSet<>(); // `/mimicplayer debug`: admins who see every hit's numbers
+
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
+    public void onMimicHitsPlayer(EntityDamageByEntityEvent e) {
+        if (!(e.getEntity() instanceof Player p) || byBrain.isEmpty()) return;
+        Entity d = e.getDamager();
+        if (d instanceof Projectile pr && pr.getShooter() instanceof Entity sh) d = sh;
+        if (d instanceof TNTPrimed t && t.getSource() != null) d = t.getSource();
+        Mimic m = byBrain.get(d.getUniqueId());
+        if (m == null) return;
+        double before = e.getDamage();
+        double fixed = plugin.getConfig().getBoolean("mimic-player.player-damage", true) ? undoDifficulty(p.getWorld().getDifficulty(), before) : before;
+        e.setDamage(fixed);
+        if (!hitLog.isEmpty()) {
+            double hp0 = p.getHealth() + p.getAbsorptionAmount();
+            String line = ChatColor.GRAY + "[Mimic hit] " + m.name + " -> " + p.getName() + ": " + String.format("%.2f", fixed) + " raw"
+                    + (fixed != before ? " (the game's " + p.getWorld().getDifficulty().name().toLowerCase(Locale.ROOT) + " scaling " + String.format("%.2f", before) + " undone)" : "")
+                    + " via " + e.getCause().name().toLowerCase(Locale.ROOT) + (m.lastHitInfo != null ? ", " + m.lastHitInfo : "");
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                double lost = hp0 - (p.getHealth() + p.getAbsorptionAmount());
+                String full = line + ChatColor.GRAY + " -> they lost " + String.format("%.2f", lost) + " after armour";
+                for (UUID id : hitLog) { Player a = Bukkit.getPlayer(id); if (a != null) a.sendMessage(full); }
+            });
+        }
+        m.lastHitInfo = null;
+    }
+
     /** Whoever's bunched up round its target (a sweep catches them): living, not it, not its own parts, within 1 of the target. */
     List<LivingEntity> sweepTargets(Mimic m, Player tg) {
         List<LivingEntity> out = new ArrayList<>();
@@ -3723,6 +3761,9 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         dmg *= cfg("damage-multiplier", 1.0);
         swing(m);
         boolean axeOnShield = m.held.equals("axe") && tg.isBlocking() && facing(tg, v);
+        if (!hitLog.isEmpty()) m.lastHitInfo = (w == null ? "fist" : w.getType().name().toLowerCase(Locale.ROOT)) + " base " + String.format("%.1f", base)
+                + (str != null ? " (Strength " + (str.getAmplifier() + 1) + ")" : "") + ", charge " + String.format("%.2f", charge) + (crit ? ", CRIT x1.5" : "")
+                + (sharp > 0 ? ", Sharpness " + (int) sharp : "") + (m.sprintHit ? ", sprint hit" : "") + ", reach " + String.format("%.2f", reachOf(m, tg));
         striking = true;
         try { tg.damage(dmg, v); } finally { striking = false; }
         combat(tg);
@@ -3954,6 +3995,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         dmg *= breachMult(tg, dmg, level(mace, "breach")); // Breach: their armour counts for less
         dmg *= cfg("damage-multiplier", 1.0);
         swing(m);
+        if (!hitLog.isEmpty()) m.lastHitInfo = "mace smash, fall " + String.format("%.1f", fall) + ", charge " + String.format("%.2f", c) + (level(mace, "density") > 0 ? ", Density " + level(mace, "density") : "") + (breachIt ? ", Breach mace" : "");
         striking = true;
         try { tg.damage(dmg, v); } finally { striking = false; }
         combat(tg);
@@ -4678,6 +4720,13 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
                 remove(m);
             }
             s.sendMessage(ChatColor.GREEN + "Removed " + gone.size() + " mimic" + (gone.size() == 1 ? "" : "s") + (a.length > 1 ? " of " + a[1] : "") + ".");
+            return true;
+        }
+        if (sub.equals("debug")) {
+            if (!(s instanceof Player p)) { s.sendMessage("In game only."); return true; }
+            boolean on = hitLog.add(p.getUniqueId());
+            if (!on) hitLog.remove(p.getUniqueId());
+            s.sendMessage(ChatColor.YELLOW + "Mimic hit numbers " + (on ? "ON: every mimic hit on a player is shown here." : "off."));
             return true;
         }
         if (sub.equals("hunt")) {

@@ -797,6 +797,7 @@ mimic-player:
   path-nodes: 2500      # how hard the walker looks for a way to you (doors, stairs, drops, digging); more = smarter round big builds, a bit more CPU
   path-budget-per-tick: 8000 # all mimics together look at no more than this many path nodes a tick (no lag spikes with lots of them)
   spear-reach: 4.5          # how far a spear jab reaches (the spear reach swap / stun / d-tap use it)
+  player-damage: true       # its hits land like a PLAYER's: undoes the game's difficulty scaling of mob damage (x1.5 on Hard)
   elytra-mace: false        # elytra dive bomb: rockets up on an elytra, swaps the chestplate back on and slams down with the mace
   hunt:                     # /mimicplayer hunt <player> [mimic] (any range, any world; through portals players use, the End's stronghold portal)
     keep-pearls: 4          # pearls it never spends travelling (kept for the fight)

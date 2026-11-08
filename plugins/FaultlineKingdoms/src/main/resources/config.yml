@@ -21,6 +21,12 @@ pvp:
 # Show the kingdom in the tab list and above heads ("[Kingdom 1] name")
 display:
   tab-prefix: true
+  head-tag: true              # 1.3.0: the kingdom above everyone's name tag (or the outlaw line with no kingdom)
+  outlaw-name: "Outlaw"       # shown for players in no kingdom
+  outlaw-color: "DARK_RED"
+  tab-outlaw: true            # outlaws get "Outlaw" in the tab list too
+  head-tag-scale: 0.85
+  head-tag-view-range: 0.7    # x 64 blocks
 
 # DISCORD: who's in which kingdom comes from their roles in your Discord server.
 # 1. https://discord.com/developers/applications > New Application > Bot > Reset Token > copy it into bot-token below.

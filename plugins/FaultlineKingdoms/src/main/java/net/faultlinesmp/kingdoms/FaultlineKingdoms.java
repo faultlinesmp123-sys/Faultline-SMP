@@ -68,6 +68,7 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
     DiscordLink discord;
     DiscordGateway gateway;
     final KingdomForms forms = new KingdomForms(this);
+    HeadTags headTags;
     private final Map<UUID, Long> warned = new HashMap<>();
 
     @Override
@@ -77,6 +78,8 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
         dataFile = new File(getDataFolder(), "data.yml");
         load();
         getServer().getPluginManager().registerEvents(this, this);
+        headTags = new HeadTags(this); // 1.3.0: the kingdom (or "Outlaw") above everyone's name
+        getServer().getPluginManager().registerEvents(headTags, this);
         discord = new DiscordLink(this);
         gateway = new DiscordGateway(this, discord);
         gateway.start();
@@ -87,6 +90,7 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
 
     @Override
     public void onDisable() {
+        if (headTags != null) try { headTags.removeAll(); } catch (RuntimeException ignored) { }
         if (gateway != null) gateway.stop();
         save();
     }
@@ -182,9 +186,12 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
     }
 
     void refreshName(Player p) {
+        if (headTags != null) try { headTags.refresh(p); } catch (RuntimeException ex) { getLogger().warning("head tag for " + p.getName() + ": " + ex); }
         if (!getConfig().getBoolean("display.tab-prefix", true)) return;
         int k = kingdomOf(p.getUniqueId());
-        try { p.setPlayerListName(k == 0 ? null : color(k) + "[" + name(k) + "] " + ChatColor.RESET + p.getName()); } catch (RuntimeException ignored) { }
+        String tab = k > 0 ? color(k) + "[" + name(k) + "] " + ChatColor.RESET + p.getName()
+                : getConfig().getBoolean("display.tab-outlaw", true) && headTags != null ? headTags.line(p.getUniqueId()) + " " + ChatColor.RESET + p.getName() : null;
+        try { p.setPlayerListName(tab); } catch (RuntimeException ignored) { }
     }
 
     // ================================================================= grace

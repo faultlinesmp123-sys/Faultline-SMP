@@ -1805,6 +1805,13 @@ Notes:
   white swirl. Particles: every REVERSE_PORTAL (purple) is GLOW now, the dust colours `CYAN` (150,228,255) / `DEEP`
   (105,195,255). A frame block that lights swells to 1.02 (eased over 4 ticks) with a puff of light-blue dust and snowflakes;
   open frames shed snowflakes (`ambient`). Made by scratch `bo/make3.py`; preview re-rendered.
+- **Kingdom head tags (Kingdoms 1.3.0, `Kingdoms/HeadTags.java`, `display.head-tag` / `outlaw-name` / `outlaw-color` /
+  `tab-outlaw` / `head-tag-scale` / `head-tag-view-range`)**: a line over every player's name tag = their kingdom in its
+  colour, or "Outlaw" (DARK_RED) with no kingdom. A non-persistent TextDisplay (tag `faultline_kingdom_tag`) that FOLLOWS the
+  player (teleported to hitbox top + 0.78 each tick they moved, teleport duration 2), not a passenger. Hidden by default,
+  shown per viewer every 10 ticks: never to the player themself, nor anyone who `canSee` says can't see them (vanish, emotes,
+  /camera), nor while they're invisible / spectating / dead. The tab list shows "Outlaw name" for no kingdom (`tab-outlaw`).
+  Bedrock (Geyser) has no text displays: Bedrock players don't see the tags. Tested (scratch `ht/TagTest`).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Skills → Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

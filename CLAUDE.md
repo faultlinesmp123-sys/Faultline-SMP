@@ -2133,6 +2133,18 @@ Notes:
   animation (`sendBlockDamage`), looks at the block, stands still; never mines next to lava / water (all 6 sides, live and in
   the planner); gravity blocks stacked over a cell add their cost; new DIG-DOWN-A-STEP move (stairs down, not pits).
   Tested (scratch `nt/NewTest`).
+- **Mimic fights (Items 1.2.94)**: a mimic's opponent is any `LivingEntity` now (`Mimic.target`, every `tg` param): a player or
+  another mimic's BRAIN. What it reads off a mimic foe goes through helpers that map the brain to its `Mimic` (`mimicOf`):
+  `blocking` (its shield up), `sprinting`, `mainHand`/`offHand` (the body's equipment), `usingNow` (eating / drinking /
+  drawing / loading), `breakShield` (an axe knocks a mimic's shield out: `shieldOffUntil`), `attackCharge`, `facing` (the body's
+  look), `nameOf`; `combat(LivingEntity)` only tags players; `learn`/`Profile` only remember real players. Teams: `Mimic.team`
+  (0 = not fighting) + `fightId`; `foeOrNearest` picks the nearest living mimic of another team in the same fight (players are
+  ignored, and a player hitting a fighter doesn't turn it), else ends the fight; `fightDeath` (from `onDeath`) / `endFight`
+  announce "[Mimic fight] X wins!" to admins + players within 96 and clear the teams. A mimic's death line names the mimic that
+  killed it (`lastHitBy`). Mimic foes' pearls are followed (`onPearl`), their shots dodged (`onShot`), `onTarget` allows mimic
+  foes. Commands: `/mimicplayer duel <player> <player> [skill] [skill]` (spawns both 10 apart where you look),
+  `fight <mimic> <mimic>`, `fight <a,b> vs <c,d>` (teams), `ffa` / `fight ffa` (every mimic within 64 of you), `fight stop`.
+  Tested (scratch `nt/NewTest`: duel to the death, bystander untouched, ffa teams, stop).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Skills → Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

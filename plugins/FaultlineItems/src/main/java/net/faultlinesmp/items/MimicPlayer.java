@@ -109,7 +109,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         UUID tabId; // its fake line in the tab list (an offline player 'joined')
         PlayerProfile skin;
         Skill skill;
-        Player target;
+        LivingEntity target;
         int t, strafeDir = 1, strafeFlip, lastHit = -100, lastHurt = -100, reactAt;
         int webTicks, chaseStuck, flyTicks, nextRocket, flyCooldown, idleAt;
         int tnt, fireCharges;
@@ -137,6 +137,8 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         boolean flying;
         int blockUntil, shieldOffUntil, eatUntil, drinkUntil, drawUntil, pearlReady, bowReady, wtapUntil, fleeUntil, axeUntil;
         int jukeReady, fleeWebReady; double digProgress;
+        // 1.2.94 MIMIC FIGHTS: its team in a fight (0 = not in one; mimics fight every mimic of another team), who hit it last
+        int team; String fightId; Mimic lastHitBy;
         int eyesLeft, rods, craftReady, reachTechReady, climbTicks, hopUntil, stageUntil, gapUntil, farShotReady, fleePlanAt; Block climbWater, stageGoal, fleeGoal; MimicNav.Step gapStep;
         int apples, gapples, pots, pearlsLeft, totems = 1, wind, lava, water, webs, blocks, rockets, arrows, throwables;
         final List<ItemStack> buffs = new ArrayList<>(), debuffs = new ArrayList<>();
@@ -661,7 +663,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     float turnRate(Mimic m) { return switch (m.skill.id()) { case "easy" -> 22f; case "hard" -> 50f; case "godlike" -> 65f; default -> 35f; }; }
 
     /** A swing that misses (players miss): the arm swings, the cooldown resets, nothing lands. */
-    private boolean whiff(Mimic m, Player tg) {
+    private boolean whiff(Mimic m, LivingEntity tg) {
         if (random.nextDouble() >= missChance(m)) return false;
         swing(m);
         m.brain.getWorld().playSound(m.brain.getLocation(), Sound.ENTITY_PLAYER_ATTACK_NODAMAGE, 0.8f, 1);
@@ -815,13 +817,13 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     private Player nearest(Mob z) { return nearest(z, null); }
 
     /** The nearest fighter within `range` (160); it keeps chasing the one it has out to 1.5x that. */
-    private Player nearest(Mob z, Player keep) {
-        if (keep != null && keep.isValid() && !keep.isDead() && keep.getWorld() == z.getWorld()
-                && (keep.getGameMode() == GameMode.SURVIVAL || keep.getGameMode() == GameMode.ADVENTURE) && !keep.hasMetadata("vanished")
+    private Player nearest(Mob z, LivingEntity keep) {
+        if (keep instanceof Player kp && kp.isValid() && !keep.isDead() && keep.getWorld() == z.getWorld()
+                && (kp.getGameMode() == GameMode.SURVIVAL || kp.getGameMode() == GameMode.ADVENTURE) && !kp.hasMetadata("vanished")
                 && keep.getLocation().distanceSquared(z.getLocation()) < Math.pow(range() * 1.5, 2)) {
             // stays on its target unless someone else is right on top of it
             Player other = nearest(z, null);
-            if (other == null || other == keep || other.getLocation().distanceSquared(z.getLocation()) > 9) return keep;
+            if (other == null || other == keep || other.getLocation().distanceSquared(z.getLocation()) > 9) return (Player) keep;
         }
         Player best = null;
         double bd = range() * range();
@@ -835,6 +837,120 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     }
 
     double maxHp(LivingEntity e) { return e.getAttribute(Attribute.MAX_HEALTH).getValue(); }
+
+    // ---- its opponent can be a player OR another mimic (1.2.94): what it reads off them, either way
+
+    Mimic mimicOf(Entity e) { return e == null ? null : byBrain.get(e.getUniqueId()); }
+
+    boolean blocking(LivingEntity e) {
+        if (e instanceof HumanEntity h) return h.isBlocking();
+        Mimic o = mimicOf(e);
+        return o != null && o.blockUntil > o.t && o.shieldOffUntil <= o.t;
+    }
+
+    static boolean sprinting(LivingEntity e) {
+        if (e instanceof Player p) return p.isSprinting();
+        Vector v = e.getVelocity();
+        return v.getX() * v.getX() + v.getZ() * v.getZ() > 0.04;
+    }
+
+    ItemStack mainHand(LivingEntity e) {
+        if (e instanceof Player p) return p.getInventory().getItemInMainHand();
+        Mimic o = mimicOf(e);
+        var eq = o != null ? o.body.getEquipment() : e.getEquipment();
+        ItemStack it = eq == null ? null : eq.getItemInMainHand();
+        return it == null ? new ItemStack(Material.AIR) : it;
+    }
+
+    ItemStack offHand(LivingEntity e) {
+        if (e instanceof Player p) return p.getInventory().getItemInOffHand();
+        Mimic o = mimicOf(e);
+        var eq = o != null ? o.body.getEquipment() : e.getEquipment();
+        ItemStack it = eq == null ? null : eq.getItemInOffHand();
+        return it == null ? new ItemStack(Material.AIR) : it;
+    }
+
+    float attackCharge(LivingEntity e) {
+        if (e instanceof Player p) return p.getAttackCooldown();
+        return 1f;
+    }
+
+    /** What they're using right now (eating, drawing a bow, drinking...), or null. */
+    ItemStack usingNow(LivingEntity e) {
+        Mimic o = mimicOf(e);
+        if (o != null) {
+            if (o.eatUntil > o.t) return new ItemStack(o.eatingGod ? Material.ENCHANTED_GOLDEN_APPLE : Material.GOLDEN_APPLE);
+            if (o.drinkUntil > o.t) return new ItemStack(Material.POTION);
+            if (o.drawUntil > o.t) return new ItemStack(Material.BOW);
+            if (o.crossUntil > o.t) return new ItemStack(Material.CROSSBOW);
+            return null;
+        }
+        return e.isHandRaised() ? e.getActiveItem() : null;
+    }
+
+    /** An axe knocked their shield out. */
+    void breakShield(LivingEntity e, int ticks) {
+        if (e instanceof Player p) { Emotes.q(() -> p.setCooldown(Material.SHIELD, ticks)); return; }
+        Mimic o = mimicOf(e);
+        if (o == null) return;
+        o.shieldOffUntil = o.t + ticks; o.blockUntil = 0;
+        Emotes.q(() -> o.body.clearActiveItem());
+    }
+
+    void combat(LivingEntity e) { if (e instanceof Player p) combat(p); }
+
+    String nameOf(LivingEntity e) { Mimic o = mimicOf(e); return o != null ? o.name : e.getName(); }
+
+    // ================================================================ mimic fights (1.2.94)
+
+    /** In a fight: the nearest living mimic of another team (players are left alone); else the nearest player. */
+    LivingEntity foeOrNearest(Mimic m) {
+        if (m.team != 0) {
+            LivingEntity best = null; double bd = Double.MAX_VALUE;
+            for (Mimic o : byBrain.values()) {
+                if (o == m || o.team == 0 || o.team == m.team || !java.util.Objects.equals(o.fightId, m.fightId) || !o.brain.isValid() || o.brain.isDead() || o.brain.getWorld() != m.brain.getWorld()) continue;
+                double d = o.brain.getLocation().distanceSquared(m.brain.getLocation());
+                if (m.target == o.brain) d *= 0.6; // sticks with who it's on
+                if (d < bd) { bd = d; best = o.brain; }
+            }
+            if (best != null) return best;
+            endFight(m.fightId, m); // nobody left on another team: it won
+        }
+        return nearest(m.brain, m.target);
+    }
+
+    /** Starts a fight between these mimics: one per team for "ffa", else the given teams. */
+    void startFight(List<List<Mimic>> teams) {
+        String id = Long.toString(System.nanoTime(), 36);
+        int t = 1;
+        for (List<Mimic> team : teams) {
+            for (Mimic m : team) { m.team = t; m.fightId = id; m.target = null; m.path = null; m.hunting = false; m.fleeUntil = 0; m.reactAt = m.t + m.skill.reaction(); }
+            t++;
+        }
+    }
+
+    /** A fighter died: the last team standing wins (announced to admins near / everyone in the fight's world). */
+    void fightDeath(Mimic dead) {
+        if (dead.team == 0) return;
+        String id = dead.fightId;
+        dead.team = 0;
+        Set<Integer> alive = new HashSet<>();
+        for (Mimic o : byBrain.values()) if (o != dead && o.team != 0 && id.equals(o.fightId) && o.brain.isValid() && !o.brain.isDead()) alive.add(o.team);
+        if (alive.size() <= 1) endFight(id, null);
+    }
+
+    void endFight(String id, Mimic hint) {
+        if (id == null) return;
+        List<Mimic> winners = new ArrayList<>();
+        for (Mimic o : byBrain.values()) if (id.equals(o.fightId) && o.brain.isValid() && !o.brain.isDead()) winners.add(o);
+        for (Mimic o : winners) { o.team = 0; o.fightId = null; o.target = null; }
+        if (winners.isEmpty()) return;
+        StringBuilder names = new StringBuilder();
+        for (Mimic o : winners) { if (names.length() > 0) names.append(", "); names.append(o.name).append(" (").append(Math.round(o.brain.getHealth())).append(" hp)"); }
+        String line = ChatColor.GOLD + "[Mimic fight] " + ChatColor.WHITE + names + ChatColor.GOLD + (winners.size() == 1 ? " wins!" : " win!");
+        for (Player p : winners.get(0).brain.getWorld().getPlayers()) if (p.hasPermission("items.mimicplayer") || p.getLocation().distanceSquared(winners.get(0).brain.getLocation()) < 96 * 96) p.sendMessage(line);
+        plugin.getLogger().info(ChatColor.stripColor(line));
+    }
 
     /** Attack cooldown in ticks of what it holds (sword 1.6 attacks/s, axe 1.0). */
     /** Ticks a full swing takes = 20 / the item's attack speed (vanilla). */
@@ -897,7 +1013,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             keepLoaded(m);
             Player q = m.huntId != null ? Bukkit.getPlayer(m.huntId) : null;
             boolean ok = q != null && !q.isDead() && (q.getGameMode() == GameMode.SURVIVAL || q.getGameMode() == GameMode.ADVENTURE) && !q.hasMetadata("vanished");
-            Player near = ok ? q : nearest(v, m.target);
+            LivingEntity near = ok ? q : nearest(v, m.target);
             if (near != null && near.getWorld() == v.getWorld() && near.getLocation().distance(v.getLocation()) < 64) {
                 if (m.target != near) { m.reactAt = m.t + m.skill.reaction(); m.target = near; v.setTarget(near); }
                 if (m.travelFly && m.brain.isOnGround()) { m.travelFly = false; land(m); }
@@ -911,12 +1027,12 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             }
         }
         if (!m.hunting && (m.t % 10 == 0 || m.target == null || !m.target.isValid() || m.target.isDead() || m.target.getWorld() != v.getWorld())) {
-            Player n = nearest(v, m.target);
+            LivingEntity n = foeOrNearest(m);
             if (n != m.target) m.reactAt = m.t + m.skill.reaction();
             m.target = n;
             if (n != null && v.getTarget() != n) v.setTarget(n);
         }
-        Player tg = m.target;
+        LivingEntity tg = m.target;
         double hp = v.getHealth() / maxHp(v);
         if (tg != null) { // its own read of where they're heading (a player's server velocity is mostly 0)
             Location now = tg.getLocation();
@@ -971,7 +1087,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         boolean space = dist >= 6 || tier(m) >= 3 && m.t - m.lastHit <= 4 && dist >= 4;
         if (m.rushUntil <= m.t && dist < 24 && m.t >= m.buffReady && space && buff(m, dist)) { follow(m); return; }
         if (tier(m) >= 2 && m.rushUntil <= m.t && dist > 2.5 && dist < 8 && sees && m.t >= m.debuffReady && debuff(m, tg)) { follow(m); return; }
-        if (tier(m) >= 2 && m.throwables > 0 && dist > 3.5 && dist < 10 && sees && m.t >= m.throwReady && tg.isSprinting() && random.nextDouble() < 0.15) { snowball(m, tg); follow(m); return; }
+        if (tier(m) >= 2 && m.throwables > 0 && dist > 3.5 && dist < 10 && sees && m.t >= m.throwReady && sprinting(tg) && random.nextDouble() < 0.15) { snowball(m, tg); follow(m); return; }
         // ---- heal up
         if (hp < cfg("potion-below", 0.45) && m.pots > 0 && m.t - m.lastHit > 4) {
             // POT RUN (normal+): sprint off, throw the pot down on the run, turn and come straight back in. Easy just pots.
@@ -1033,7 +1149,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         follow(m);
     }
 
-    private void busyTick(Mimic m, Player tg) {
+    private void busyTick(Mimic m, LivingEntity tg) {
         Vindicator v = m.brain;
         // 1.2.93: hit while eating (or they're right on it): stops eating (keeps the apple, like letting go of right-click)
         // and gets out: a pearl to somewhere safe, else runs
@@ -1141,7 +1257,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
      * you with lead, boosts with rockets when it slows, stays above you and dives in, sprint/crit hits you as it passes
      * (a mace lands as a smash), follows you up into the air, and lands to fight on the ground once it's close.
      */
-    private boolean elytraPvp(Mimic m, Player tg, double dist, boolean sees) {
+    private boolean elytraPvp(Mimic m, LivingEntity tg, double dist, boolean sees) {
         Vindicator v = m.brain;
         if (!elytraOn() || !m.gear.elytra) { if (m.flying) land(m); return false; }
         if (m.flying) { glide(m, tg, dist); return true; }
@@ -1154,7 +1270,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         return true;
     }
 
-    private void takeOff(Mimic m, Player tg) {
+    private void takeOff(Mimic m, LivingEntity tg) {
         Vindicator v = m.brain;
         m.flying = true; m.flyTicks = 0;
         m.body.getEquipment().setChestplate(new ItemStack(Material.ELYTRA)); // the elytra swap
@@ -1164,7 +1280,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         rocket(m, tg, 0.6);
     }
 
-    private void rocket(Mimic m, Player tg, double up) {
+    private void rocket(Mimic m, LivingEntity tg, double up) {
         Vindicator v = m.brain;
         if (m.rockets <= 0) return;
         m.rockets--;
@@ -1182,7 +1298,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     }
 
     /** One tick of gliding: steer, boost, hit, land. */
-    private void glide(Mimic m, Player tg, double dist) {
+    private void glide(Mimic m, LivingEntity tg, double dist) {
         Vindicator v = m.brain;
         m.flyTicks++;
         Emotes.q(() -> v.getPathfinder().stopPathfinding());
@@ -1233,7 +1349,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     }
 
     /** Losing with nothing left: rockets away into the sky instead of running. */
-    private boolean elytraEscape(Mimic m, Player tg) {
+    private boolean elytraEscape(Mimic m, LivingEntity tg) {
         Vindicator v = m.brain;
         if (!elytraOn() || !m.gear.elytra) return false;
         if (m.flying) {
@@ -1269,7 +1385,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
 
     // ---- POT RUN: sprint away, throw the Healing pot down on the run (it lands where it's going), then rush straight back in
 
-    private void potRun(Mimic m, Player tg) {
+    private void potRun(Mimic m, LivingEntity tg) {
         Vindicator v = m.brain;
         Vector away = tg == null ? v.getLocation().getDirection().setY(0) : v.getLocation().toVector().subtract(tg.getLocation().toVector()).setY(0);
         if (away.lengthSquared() < 1e-4) away = new Vector(1, 0, 0);
@@ -1294,7 +1410,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     // ---- BOOM: TNT (place + light) and fire charges. NO crystal, anchor or cart PvP on Faultline: never used.
 
     /** A cell beside them to blow up: air with solid ground, room above, close to them, and far enough from itself. */
-    private Block boomSpot(Mimic m, Player tg) {
+    private Block boomSpot(Mimic m, LivingEntity tg) {
         Vindicator v = m.brain;
         Block best = null; double bestScore = -1;
         Block feet = tg.getLocation().getBlock();
@@ -1311,7 +1427,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         return best;
     }
 
-    private boolean boomStart(Mimic m, Player tg, double dist, boolean sees) {
+    private boolean boomStart(Mimic m, LivingEntity tg, double dist, boolean sees) {
         Vindicator v = m.brain;
         if (!worldTechs() || m.boomStep > 0 || m.t < m.boomReady || !sees || dist < 3 || dist > 6.5 || !plugin.getConfig().getBoolean("mimic-player.explosives", true)) return false;
         int tr = tier(m);
@@ -1346,7 +1462,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     /** Ticks between placing and lighting: a godlike player does it in a blink. */
     int boomGap(Mimic m) { return switch (tier(m)) { case 4 -> 1; case 3 -> 2; default -> 4; }; }
 
-    private boolean boomTick(Mimic m, Player tg) {
+    private boolean boomTick(Mimic m, LivingEntity tg) {
         if (m.boomStep == 0) return false;
         Vindicator v = m.brain;
         if (m.boomAt == null || m.boomAt.getWorld() != v.getWorld()) { m.boomStep = 0; return false; }
@@ -1378,7 +1494,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
 
     // ---- SPEAR: lunge in and jab (normal+); SPEAR MACE (hard+): lunge UP, swap to the mace, smash on the way down
 
-    private boolean spearTech(Mimic m, Player tg, double dist, boolean sees) {
+    private boolean spearTech(Mimic m, LivingEntity tg, double dist, boolean sees) {
         Vindicator v = m.brain;
         if (m.gear.spear == null || tier(m) < 2 || !v.isOnGround() || !sees || m.t < m.spearReady) return false;
         Vector to = tg.getLocation().toVector().subtract(v.getLocation().toVector()).setY(0);
@@ -1390,7 +1506,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             swing(m);
             v.getWorld().playSound(v.getLocation(), Sound.ITEM_TRIDENT_RIPTIDE_1, 1, 1.3f);
             Safe.vel(v, to.clone().multiply(0.45 + 0.1 * lunge).setY(1.0 + 0.08 * lunge));
-            m.slam = true; m.dive = false; m.stunSlam = tg.isBlocking() && m.gear.axe != null;
+            m.slam = true; m.dive = false; m.stunSlam = blocking(tg) && m.gear.axe != null;
             m.maceReady = m.t + 60; m.spearReady = m.t + lungeTicks(m);
             return true;
         }
@@ -1405,7 +1521,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         return false;
     }
 
-    private boolean spearLungeHit(Mimic m, Player tg) {
+    private boolean spearLungeHit(Mimic m, LivingEntity tg) {
         if (reachOf(m, tg) > spearReach()) return false; // a spear reaches further than a sword
         m.lungeUntil = 0;
         m.sprintHit = true;
@@ -1417,7 +1533,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     // ---- TRIDENT (throws with lead, Loyalty brings it back, Riptide launches it at you in water / rain, Channeling in storms)
     // ---- CROSSBOW (Quick Charge, Multishot, Piercing)
 
-    private boolean ranged(Mimic m, Player tg, double dist, boolean sees) {
+    private boolean ranged(Mimic m, LivingEntity tg, double dist, boolean sees) {
         Vindicator v = m.brain;
         int tr = tier(m);
         if (m.trident != null && !m.tridentOut && sees && m.t >= m.tridentReady) {
@@ -1469,7 +1585,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         return false;
     }
 
-    private void fireCrossbow(Mimic m, Player tg) {
+    private void fireCrossbow(Mimic m, LivingEntity tg) {
         Vindicator v = m.brain;
         ItemStack cb = m.gear.crossbow;
         Location eye = eye(m);
@@ -1490,7 +1606,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         v.getWorld().playSound(eye, Sound.ITEM_CROSSBOW_SHOOT, 1, 1);
     }
 
-    private boolean riptideTick(Mimic m, Player tg) {
+    private boolean riptideTick(Mimic m, LivingEntity tg) {
         if (m.riptideUntil <= m.t) return false;
         Vindicator v = m.brain;
         if (!m.riptideHit && v.getLocation().distance(tg.getLocation()) < 2.2) {
@@ -1569,7 +1685,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         return null;
     }
 
-    private boolean startDig(Mimic m, Player tg, Block ahead) {
+    private boolean startDig(Mimic m, LivingEntity tg, Block ahead) {
         if (!worldTechs() || !plugin.getConfig().getBoolean("mimic-player.dig", true)) return false;
         Block head = ahead.getRelative(org.bukkit.block.BlockFace.UP);
         Block b = head.getType().isSolid() ? head : ahead.getType().isSolid() ? ahead : null;
@@ -1658,11 +1774,11 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
      * absorption's gone, it's hurt and they're out of reach = a gap now, before it needs one; PEARL FOLLOW (hard+): they
      * pearled away = it pearls after them; being COMBOED hard (godlike) = pearls out.
      */
-    private boolean read(Mimic m, Player tg, double dist, boolean sees, double hp) {
+    private boolean read(Mimic m, LivingEntity tg, double dist, boolean sees, double hp) {
         Vindicator v = m.brain;
         int tr = tier(m);
         ItemStack using = null;
-        try { if (tg.isHandRaised()) using = tg.getActiveItem(); } catch (Throwable ignored) { }
+        try { using = usingNow(tg); } catch (Throwable ignored) { }
         Material u = using == null ? Material.AIR : using.getType();
         // they're eating / drinking: punish it
         if (tr >= 2 && (u.isEdible() || u == Material.POTION) && dist < 14) { m.rushUntil = Math.max(m.rushUntil, m.t + 15); m.reactAt = Math.min(m.reactAt, m.t); }
@@ -1689,7 +1805,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
      * CUT THEM OFF (normal+): it runs to where they're GOING (their tracked movement x the time to get there), not where they
      * are, so a player running away gets caught and one running sideways gets met. Half the lead on normal.
      */
-    private Vector intercept(Mimic m, Player tg, Vector to, double dist) {
+    private Vector intercept(Mimic m, LivingEntity tg, Vector to, double dist) {
         int tr = tier(m);
         if (tr < 2 || m.tgVel.lengthSquared() < 0.0025) return to;
         double ticks = Math.min(20, dist / Math.max(0.2, m.skill.speed() * 0.9)) * (tr == 2 ? 0.5 : 1);
@@ -1875,7 +1991,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     final Map<Block, Integer> opened = new HashMap<>();
 
     /** The nearest door / fence gate within 8 blocks it can use to get at them (wooden: iron ones need redstone). */
-    Block findDoor(Mimic m, Player tg) {
+    Block findDoor(Mimic m, LivingEntity tg) {
         if (!plugin.getConfig().getBoolean("mimic-player.doors", true)) return null;
         Location at = m.brain.getLocation();
         Block feet = at.getBlock(), best = null;
@@ -1964,7 +2080,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onShot(org.bukkit.event.entity.ProjectileLaunchEvent e) {
-        if (byBrain.isEmpty() || !(e.getEntity().getShooter() instanceof Player p)) return;
+        if (byBrain.isEmpty() || !(e.getEntity().getShooter() instanceof LivingEntity p) || !(p instanceof Player || byBrain.containsKey(p.getUniqueId()))) return;
         if (e.getEntity() instanceof EnderPearl) return;
         for (Mimic m : byBrain.values()) if (m.target == p) { incoming.put(e.getEntity().getUniqueId(), e.getEntity()); return; }
     }
@@ -2040,13 +2156,13 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
 
     final Map<UUID, Profile> memory = new HashMap<>();
 
-    Profile profile(Player p) { return memory.computeIfAbsent(p.getUniqueId(), k -> new Profile()); }
+    Profile profile(LivingEntity p) { return memory.computeIfAbsent(p.getUniqueId(), k -> new Profile()); }
 
-    private void learn(Mimic m, Player tg) {
-        if (tg.getLocation().distanceSquared(m.brain.getLocation()) > 30 * 30) return;
+    private void learn(Mimic m, LivingEntity tg) {
+        if (!(tg instanceof Player) || tg.getLocation().distanceSquared(m.brain.getLocation()) > 30 * 30) return; // only real players are remembered
         Profile pr = profile(tg);
         pr.ticks++;
-        if (tg.isBlocking()) pr.shield++;
+        if (blocking(tg)) pr.shield++;
         try {
             if (tg.isHandRaised()) {
                 Material u = tg.getActiveItem().getType();
@@ -2079,7 +2195,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     }
 
     /** Several mimics on one player come in from different sides (a flank), not in a line behind each other. */
-    private Vector flank(Mimic m, Player tg, Vector to, double dist) {
+    private Vector flank(Mimic m, LivingEntity tg, Vector to, double dist) {
         if (tier(m) < 2 || dist < 2.5 || dist > 16) return to;
         int idx = 0, n = 0;
         for (Mimic o : byBrain.values()) {
@@ -2108,7 +2224,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
      * PEARL FOLLOW (normal+): they pearled = it pearls after them, to where they landed (a solved, exact throw), as soon as its
      * own pearl's ready (it waits up to 3 s for that). Skipped only when they're close enough to just walk to.
      */
-    boolean followPearl(Mimic m, Player tg) {
+    boolean followPearl(Mimic m, LivingEntity tg) {
         if (m.followAt == null || m.t < m.followT) return false;
         Vindicator v = m.brain;
         Location at = m.followAt;
@@ -2130,7 +2246,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
      * Stuck in a COBWEB: a real player gets out by pouring a WATER BUCKET on it (the web washes away, the water is picked back
      * up), else pearls out, else cuts it with the sword.
      */
-    private boolean webEscape(Mimic m, Player tg) {
+    private boolean webEscape(Mimic m, LivingEntity tg) {
         Vindicator v = m.brain;
         Block feet = v.getLocation().getBlock(), head = feet.getRelative(org.bukkit.block.BlockFace.UP);
         Block web = feet.getType() == Material.COBWEB ? feet : head.getType() == Material.COBWEB ? head : null;
@@ -2176,7 +2292,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
 
     // ---- melee
 
-    private void melee(Mimic m, Player tg, double dist, boolean sees) {
+    private void melee(Mimic m, LivingEntity tg, double dist, boolean sees) {
         Vindicator v = m.brain;
         Skill s = m.skill;
         if (m.lungeUntil > m.t && spearLungeHit(m, tg)) return;
@@ -2186,7 +2302,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         if (tier(m) >= 2 && uhcTech(m, tg, dist, sees)) return;
         double reach = reachOf(m, tg);
         double ch = charge(m);
-        boolean theyBlock = tg.isBlocking();
+        boolean theyBlock = blocking(tg);
         // their shield up: out with the axe
         if (theyBlock && dist < 4.5 && m.axeUntil < m.t && m.gear.axe != null) { m.axeUntil = m.t + 30; m.lastHit = Math.min(m.lastHit, m.t - 20); }
         // a player who shields a LOT (it remembers): the axe comes out first
@@ -2264,7 +2380,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         }
         // raise the shield: close, facing us, our hit not ready
         float theirs;
-        try { theirs = tg.getAttackCooldown(); } catch (RuntimeException ex) { theirs = 1f; }
+        try { theirs = attackCharge(tg); } catch (RuntimeException ex) { theirs = 1f; }
         boolean theyReady = theirs > 0.9f && reachTo(tg, v) < 3.3 && facing(tg, v);
         // SHIELD TIMING: up right when their swing is charged and we can't hit yet (axe players), else the odd block
         if (!shielding && hasShield(m) && m.shieldOffUntil <= m.t && dist < 4 && ch < 0.7 && facing(tg, v)
@@ -2322,7 +2438,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
      * Runs at them like a sprinting player: steers its own velocity straight in (hops a block in the way), with the
      * pathfinder only as a backup when it can't get closer that way (round walls).
      */
-    private void chase(Mimic m, Player tg, Vector to) {
+    private void chase(Mimic m, LivingEntity tg, Vector to) {
         Vindicator v = m.brain;
         double sp = m.skill.speed() * 0.9;
         PotionEffect speed = v.getPotionEffect(PotionEffectType.SPEED);
@@ -2349,8 +2465,8 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         }
         // ZIG-ZAG in like a player dodging arrows when they hold a bow / crossbow / trident, or from far off
         double d = tg.getLocation().distance(v.getLocation());
-        Material held = tg.getInventory().getItemInMainHand().getType();
-        boolean ranged = held == Material.BOW || held == Material.CROSSBOW || held == Material.TRIDENT || tg.getInventory().getItemInOffHand().getType() == Material.CROSSBOW;
+        Material held = mainHand(tg).getType();
+        boolean ranged = held == Material.BOW || held == Material.CROSSBOW || held == Material.TRIDENT || offHand(tg).getType() == Material.CROSSBOW;
         if (tier(m) >= 2 && profile(tg).bowRate() > 0.05) ranged = true; // it remembers they bow a lot
         if (m.rushUntil <= m.t && d > 5 && (ranged || d > 12)) {
             double a = Math.toRadians(Math.sin(m.t * 0.22 + m.strafeDir) * (ranged ? 35 : 15));
@@ -2866,7 +2982,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     }
 
     /** It can fight them right here: about level with them and a clear walk in (or already in their face). */
-    boolean direct(Mimic m, Player tg) {
+    boolean direct(Mimic m, LivingEntity tg) {
         Location a = m.brain.getLocation(), b = tg.getLocation();
         double dy = b.getY() - a.getY(), flat = Math.hypot(b.getX() - a.getX(), b.getZ() - a.getZ());
         if (Math.abs(dy) <= 1.3 && flat <= 3.2 && sees(m.brain, tg)) return true;
@@ -2898,7 +3014,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     }
 
     /** The cell they stand in (they're jumping / pillaring: the floor under them). */
-    static Block standBlock(Player tg) {
+    static Block standBlock(LivingEntity tg) {
         Block b = tg.getLocation().add(0, 0.01, 0).getBlock();
         if (blocks(b)) return b.getRelative(0, 1, 0);
         for (int i = 0; i < 5; i++) {
@@ -2963,7 +3079,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     }
 
     /** Goes and gets them along a planned path (replans as they move, when it's stuck, every 2 s). */
-    private void navChase(Mimic m, Player tg) {
+    private void navChase(Mimic m, LivingEntity tg) {
         Vindicator v = m.brain;
         if (m.navVanillaUntil > m.t) { Emotes.q(() -> v.getPathfinder().moveTo(tg, 1.4)); return; }
         if (m.stageUntil > m.t && m.stageGoal != null && feetCell(v).equals(m.stageGoal)) { m.stageUntil = 0; m.path = null; m.pathAt = -100; m.navReach = false; }
@@ -3003,7 +3119,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
      * charge at its feet), WATER CLIMB (a wall in the way: water on the wall, swims up it, picks it up and places it higher),
      * PEARL (it sees them), WIND CHARGE + PEARL (it doesn't, or it's far: the pearl rides the charge's burst).
      */
-    private boolean reachTech(Mimic m, Player tg) {
+    private boolean reachTech(Mimic m, LivingEntity tg) {
         Vindicator v = m.brain;
         if (m.t < m.reachTechReady || m.digBlock != null) return false;
         Location a = v.getLocation(), b = tg.getLocation();
@@ -3077,7 +3193,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     }
 
     /** WATER CLIMB: swims up the water it placed, and keeps moving the water up above its head until it's over the top. */
-    private void waterClimb(Mimic m, Player tg) {
+    private void waterClimb(Mimic m, LivingEntity tg) {
         Vindicator v = m.brain;
         Block w = m.climbWater;
         Location at = v.getLocation();
@@ -3122,7 +3238,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         m.path = null;
     }
 
-    private void followPath(Mimic m, Player tg) {
+    private void followPath(Mimic m, LivingEntity tg) {
         Vindicator v = m.brain;
         Location at = v.getLocation();
         boolean wet = v.isInWater();
@@ -3323,7 +3439,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     }
 
     /** SPEAR DASH: a long clear run at them = a Lunge forward to close the gap. */
-    private boolean spearDash(Mimic m, Player tg, Vector to) {
+    private boolean spearDash(Mimic m, LivingEntity tg, Vector to) {
         Vindicator v = m.brain;
         if (m.gear.spear == null || tier(m) < 2 || !v.isOnGround() || m.t < m.spearReady || m.t < m.dashReady) return false;
         int lunge = level(m.gear.spear, "lunge");
@@ -3339,7 +3455,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     }
 
     /** Swimming fight: straight at their chest in 3D (0.2 a tick, a player's sprint-swim), holding space to come up to them. */
-    private void swimAt(Mimic m, Player tg) {
+    private void swimAt(Mimic m, LivingEntity tg) {
         Vindicator v = m.brain;
         Vector to = tg.getLocation().add(0, 0.9, 0).toVector().subtract(v.getLocation().add(0, 0.9, 0).toVector());
         double d = to.length();
@@ -3394,7 +3510,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     }
 
     /** Whoever's bunched up round its target (a sweep catches them): living, not it, not its own parts, within 1 of the target. */
-    List<LivingEntity> sweepTargets(Mimic m, Player tg) {
+    List<LivingEntity> sweepTargets(Mimic m, LivingEntity tg) {
         List<LivingEntity> out = new ArrayList<>();
         for (Entity e : tg.getNearbyEntities(1.0, 0.25, 1.0)) {
             if (!(e instanceof LivingEntity le) || e == m.brain || e == m.body || byBody.containsKey(e.getUniqueId()) || byBrain.containsKey(e.getUniqueId())) continue;
@@ -3412,7 +3528,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
      * a crit: a charge at their feet), GRAPPLE (rod them in for a free mace slam), SPEAR REACH SWAP (just out of sword reach: the
      * spear's reach with the sword's hit).
      */
-    private boolean comboTech(Mimic m, Player tg, double dist, boolean sees, double reach, double ch) {
+    private boolean comboTech(Mimic m, LivingEntity tg, double dist, boolean sees, double reach, double ch) {
         Vindicator v = m.brain;
         int tr = tier(m);
         if (!sees) return false;
@@ -3421,7 +3537,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         to.normalize();
         boolean spear = m.gear.spear != null;
         // D-TAP / spearing
-        boolean totem = tg.getInventory().getItemInMainHand().getType() == Material.TOTEM_OF_UNDYING || tg.getInventory().getItemInOffHand().getType() == Material.TOTEM_OF_UNDYING;
+        boolean totem = mainHand(tg).getType() == Material.TOTEM_OF_UNDYING || offHand(tg).getType() == Material.TOTEM_OF_UNDYING;
         if (tr >= 3 && spear && totem && tg.getHealth() <= 14 && reach <= spearReach() && ch >= 0.9 && m.t >= m.dtapReady) {
             m.dtapReady = m.t + 60;
             hold(m, "spear"); m.sprintHit = true;
@@ -3440,10 +3556,10 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             return true;
         }
         // SPEAR STUN SLAM / SUN SLAM: their shield goes down from spear reach, then the slam or the axe
-        if (tr >= 3 && spear && tg.isBlocking() && facing(tg, v) && reach <= spearReach() && m.t >= m.stunReady) {
+        if (tr >= 3 && spear && blocking(tg) && facing(tg, v) && reach <= spearReach() && m.t >= m.stunReady) {
             m.stunReady = m.t + 80;
             hold(m, "spear"); swing(m);
-            Emotes.q(() -> tg.setCooldown(Material.SHIELD, 100));
+            breakShield(tg, 100);
             Emotes.q(() -> tg.clearActiveItem());
             tg.getWorld().playSound(tg.getLocation(), Sound.ITEM_SHIELD_BREAK, 1, 1);
             if (m.gear.mace != null && m.wind > 0 && v.isOnGround()) windJump(m, tg, null);
@@ -3452,7 +3568,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             return true;
         }
         // BACKSTAB: shield up, too far for the reach trick: a lunge round to their back
-        if (tr >= 3 && spear && tg.isBlocking() && facing(tg, v) && v.isOnGround() && m.t >= m.spearReady && dist > 2.5 && dist < 7 && level(m.gear.spear, "lunge") > 0) {
+        if (tr >= 3 && spear && blocking(tg) && facing(tg, v) && v.isOnGround() && m.t >= m.spearReady && dist > 2.5 && dist < 7 && level(m.gear.spear, "lunge") > 0) {
             Vector look = tg.getLocation().getDirection().setY(0);
             if (look.lengthSquared() > 1e-4) {
                 Location behind = tg.getLocation().subtract(look.normalize().multiply(1.3));
@@ -3495,7 +3611,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         // SPEAR REACH SWAP: out of sword reach, in spear reach: the spear's reach, then (hard+) the sword's damage on the hit tick
         if (spear && tr >= 2 && reach > cfg("reach", 3.0) && reach <= spearReach() && ch >= m.skill.hitSelect()) {
             hold(m, "spear"); m.sprintHit = true;
-            if (tr >= 3) hold(m, tg.isBlocking() && m.gear.axe != null ? "axe" : "sword");
+            if (tr >= 3) hold(m, blocking(tg) && m.gear.axe != null ? "axe" : "sword");
             if (!whiff(m, tg)) strike(m, tg, ch);
             Bukkit.getScheduler().runTaskLater(plugin, () -> { if (m.body.isValid() && !m.held.equals("sword")) hold(m, "sword"); }, 3L);
             return true;
@@ -3504,7 +3620,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     }
 
     /** A wind charge thrown at a spot (a real WindCharge entity; if the server can't spawn one, the burst's push itself). */
-    void windAt(Mimic m, Player tg, Location spot) {
+    void windAt(Mimic m, LivingEntity tg, Location spot) {
         Vindicator v = m.brain;
         Location eye = eye(m);
         Vector aim = spot.toVector().subtract(eye.toVector());
@@ -3522,7 +3638,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
      * Wind charges in the air: MOMENTUM BREAK (a big fall with no water to clutch: a charge at the ground just before it lands
      * kills the fall), WIND RESET (godlike: falling with them far off, a charge under it throws it back up and toward them).
      */
-    private boolean windAir(Mimic m, Player tg) {
+    private boolean windAir(Mimic m, LivingEntity tg) {
         Vindicator v = m.brain;
         if (m.wind <= 0 || v.isOnGround() || m.t < m.windBreakReady || tier(m) < 2) return false;
         Vector cur = v.getVelocity();
@@ -3562,7 +3678,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
      * ELYTRA MACE / DIVE BOMB (`mimic-player.elytra-mace`, off by default): rockets up on the elytra, swaps the chestplate back on
      * over them and drops onto them for the slam. Phase 1 climbs (rockets) toward a spot 18 above them, phase 2 dives.
      */
-    private boolean bombTick(Mimic m, Player tg) {
+    private boolean bombTick(Mimic m, LivingEntity tg) {
         Vindicator v = m.brain;
         if (m.t > m.bombUntil) { m.bombPhase = 0; land(m); return false; }
         Location aimAt = tg.getLocation().add(0, 18, 0);
@@ -3583,7 +3699,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         return false; // phase 2: maceTech's slam steers the dive
     }
 
-    private boolean startBomb(Mimic m, Player tg, double dist) {
+    private boolean startBomb(Mimic m, LivingEntity tg, double dist) {
         Vindicator v = m.brain;
         if (!plugin.getConfig().getBoolean("mimic-player.elytra-mace", false) || !m.gear.elytra || m.rockets <= 0 || m.gear.mace == null || tier(m) < 3) return false;
         if (!v.isOnGround() || dist < 10 || dist > 40 || m.t < m.maceReady || !openUp(v.getLocation().getBlock(), 12) || random.nextDouble() > 0.3) return false;
@@ -3597,7 +3713,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     }
 
     /** Where they'll be by the time it gets there on a long chase (it cuts them off), else where they stand. */
-    Block interceptBlock(Mimic m, Player tg) {
+    Block interceptBlock(Mimic m, LivingEntity tg) {
         Block now = standBlock(tg);
         double flat = Math.hypot(tg.getLocation().getX() - m.brain.getLocation().getX(), tg.getLocation().getZ() - m.brain.getLocation().getZ());
         if (flat < 12 || m.tgVel.lengthSquared() < 0.0025 || tier(m) < 2) return now;
@@ -3615,7 +3731,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
      * Can't get to them at all (up a pillar, over a moat...): it fights from where it is. A WIND CHARGE at them (knocks them off
      * their pillar), the ROD (hooks and reels them in), the BOW, snowballs; else it waits under them.
      */
-    private boolean farShot(Mimic m, Player tg) {
+    private boolean farShot(Mimic m, LivingEntity tg) {
         Vindicator v = m.brain;
         if (m.t < m.farShotReady || !sees(v, tg)) return false;
         double dist = tg.getLocation().distance(v.getLocation()), dy = tg.getLocation().getY() - v.getLocation().getY();
@@ -3668,7 +3784,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
      * chase) and keeping its last pick. The best ones are planned on the walker; a path that runs past them is thrown out.
      * Replanned every 1.5 s, when it gets there, or when they cut it off.
      */
-    private boolean navFlee(Mimic m, Player tg) {
+    private boolean navFlee(Mimic m, LivingEntity tg) {
         Vindicator v = m.brain;
         Location tl = tg.getLocation();
         boolean cutOff = m.fleeGoal != null && m.fleeGoal.getWorld() == tl.getWorld()
@@ -3698,7 +3814,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     }
 
     /** Places to run to, best first (see navFlee). */
-    List<Block> fleeSpots(Mimic m, Player tg) {
+    List<Block> fleeSpots(Mimic m, LivingEntity tg) {
         Vindicator v = m.brain;
         World w = v.getWorld();
         MimicNav nav = new MimicNav(w, navRules(m));
@@ -3784,7 +3900,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
      * While running from them: BLOCK TRAIL (blocks dropped in the gap behind it, feet then head: they have to go round or
      * break through) and WIND DASH (hard+: a charge behind it launches it forward and up).
      */
-    private void runTricks(Mimic m, Player tg, Vector away) {
+    private void runTricks(Mimic m, LivingEntity tg, Vector away) {
         Vindicator v = m.brain;
         double d = tg.getLocation().distance(v.getLocation());
         if (tier(m) >= 3 && m.wind > 0 && d < 6 && v.isOnGround() && m.t >= m.windRunReady && safePath(v, away, 5)) {
@@ -3817,7 +3933,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     }
 
     /** COVER UP: plans the box (4 sides x 2 + a roof; the side facing them first). Needs the blocks for most of it. */
-    private boolean startCover(Mimic m, Player tg) {
+    private boolean startCover(Mimic m, LivingEntity tg) {
         Vindicator v = m.brain;
         if (!worldTechs() || !v.isOnGround()) return false;
         Block f = feetCell(v);
@@ -3841,7 +3957,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     }
 
     /** One tick in the box: places the next block (1 a tick godlike / hard, every 2 below), heals, opens up toward them once healed. */
-    private void coverTick(Mimic m, Player tg, double hp, boolean food) {
+    private void coverTick(Mimic m, LivingEntity tg, double hp, boolean food) {
         Vindicator v = m.brain;
         Safe.vel(v, new Vector(0, v.getVelocity().getY(), 0));
         if (m.covering) {
@@ -3865,7 +3981,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     }
 
     /** Opens up: the blocks on their side (feet + head) go, the rest stay to be put back on their own. */
-    private void openCover(Mimic m, Player tg) {
+    private void openCover(Mimic m, LivingEntity tg) {
         m.covered = false; m.covering = false;
         Location at = m.brain.getLocation();
         for (Block b : m.coverPlaced) {
@@ -3906,7 +4022,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
      * Getting out (stuck, or boxed in and being hit): a PEARL to them if it can see them (a solved throw), else MINES OUT toward
      * them (pickaxe / axe / shovel, dirt by hand), else a PEARL OUT to the nearest open spot it can land a pearl on.
      */
-    boolean escape(Mimic m, Player tg) {
+    boolean escape(Mimic m, LivingEntity tg) {
         Vindicator v = m.brain;
         if (m.t < m.escapeReady) return false;
         m.escapeReady = m.t + 30;
@@ -4125,7 +4241,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     }
 
     /** One hit, the way a player's would land. */
-    private void strike(Mimic m, Player tg, double charge) {
+    private void strike(Mimic m, LivingEntity tg, double charge) {
         Vindicator v = m.brain;
         ItemStack w = weaponHeld(m);
         boolean full = charge > 0.9; // vanilla: crits and sprint knockback both need a 90% swing
@@ -4142,7 +4258,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         dmg *= breachMult(tg, dmg, level(w, "breach")); // a Breach mace's ground hit: their armour counts for less
         dmg *= cfg("damage-multiplier", 1.0);
         swing(m);
-        boolean axeOnShield = m.held.equals("axe") && tg.isBlocking() && facing(tg, v);
+        boolean axeOnShield = m.held.equals("axe") && blocking(tg) && facing(tg, v);
         if (!hitLog.isEmpty()) m.lastHitInfo = (w == null ? "fist" : w.getType().name().toLowerCase(Locale.ROOT)) + " base " + String.format("%.1f", base)
                 + (str != null ? " (Strength " + (str.getAmplifier() + 1) + ")" : "") + ", charge " + String.format("%.2f", charge) + (crit ? ", CRIT x1.5" : "")
                 + (sharp > 0 ? ", Sharpness " + (int) sharp : "") + (m.sprintHit ? ", sprint hit" : "") + ", reach " + String.format("%.2f", reachOf(m, tg));
@@ -4150,7 +4266,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         try { tg.damage(dmg, v); } finally { striking = false; }
         combat(tg);
         if (axeOnShield) {
-            Emotes.q(() -> tg.setCooldown(Material.SHIELD, 100));
+            breakShield(tg, 100);
             Emotes.q(() -> tg.clearActiveItem());
             tg.getWorld().playSound(tg.getLocation(), Sound.ITEM_SHIELD_BREAK, 1, 1);
             m.axeUntil = m.t + 4;
@@ -4214,7 +4330,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
      * sideways, mid-air), ATTRIBUTE SWAP (hard+: the sword's charge, the mace's hit), DENSITY / BREACH SWAP, AXE/SWORD TO MACE
      * SWAP (falling into reach). No elytra mace (off on Faultline).
      */
-    private boolean maceTech(Mimic m, Player tg, double dist, boolean sees) {
+    private boolean maceTech(Mimic m, LivingEntity tg, double dist, boolean sees) {
         Vindicator v = m.brain;
         boolean ground = v.isOnGround();
         if (m.slam) {
@@ -4222,7 +4338,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             if (m.catchAt == m.t) { pearlCatch(m, m.catchVel, true); return true; } // DOUBLE HEIGHT: the pearl catch on the way up
             // air control toward the target (a player steering a slam); BACKSLAM (normal+): shield up / facing it = it lands BEHIND them
             Location aimAt = tg.getLocation();
-            if (tier(m) >= 2 && (tg.isBlocking() && m.gear.axe == null || tier(m) >= 3 && facing(tg, v))) {
+            if (tier(m) >= 2 && (blocking(tg) && m.gear.axe == null || tier(m) >= 3 && facing(tg, v))) {
                 Vector back = tg.getLocation().getDirection().setY(0);
                 if (back.lengthSquared() > 1e-4) aimAt = tg.getLocation().clone().subtract(back.normalize().multiply(1.4));
             }
@@ -4275,7 +4391,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
      * GROUND BREACH SWAP (hard+): into heavy armour (15+ points) with a Breach mace, the hit swaps from the sword to the
      * mace on its last tick: the sword's charge, the mace's Breach. The sword's back 2 ticks later.
      */
-    private void breachSwap(Mimic m, Player tg) {
+    private void breachSwap(Mimic m, LivingEntity tg) {
         ItemStack b = m.gear.breachMace;
         if (b == null && m.gear.mace != null && level(m.gear.mace, "breach") > 0) b = m.gear.mace;
         if (b == null || tier(m) < 3 || armourPoints(tg) < 15 || !m.held.equals("sword")) return;
@@ -4284,7 +4400,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     }
 
     /** Look straight down, jump, wind charge at the feet: ~7-8 blocks up, straight into a slam. */
-    private void windJump(Mimic m, Player tg, Vector drift) {
+    private void windJump(Mimic m, LivingEntity tg, Vector drift) {
         Vindicator v = m.brain;
         {
             m.wind--;
@@ -4299,7 +4415,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             Safe.vel(v, out.setY(v.isOnGround() ? 1.4 : 1.25)); // jump + the charge at its feet
             v.setFallDistance(0); // a wind charge's knockback resets the fall it counts from
             m.slam = true; m.dive = false;
-            m.stunSlam = tg.isBlocking() && m.gear.axe != null;
+            m.stunSlam = blocking(tg) && m.gear.axe != null;
             m.maceReady = m.t + 60;
         }
     }
@@ -4345,7 +4461,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
      * MID-AIR PEARL CATCH (hard+): falling fast from a failed dive / a knock off a ledge and not about to land a hit = a pearl
      * straight up + a wind charge: back up into the sky, fall reset, ready to drop again.
      */
-    private boolean airCatch(Mimic m, Player tg) {
+    private boolean airCatch(Mimic m, LivingEntity tg) {
         Vindicator v = m.brain;
         if (tier(m) < 3 || v.isOnGround() || v.getVelocity().getY() > -0.8 || v.getFallDistance() < 10 || m.pearlsLeft <= 0 || m.wind <= 0 || m.t < m.pearlReady || m.t < m.catchReady) return false;
         if (tg != null && m.gear.mace != null && reachTo(v, tg) < 5 && tg.getLocation().getY() < v.getLocation().getY()) return false; // about to land the slam: let it
@@ -4354,16 +4470,16 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         return true;
     }
 
-    private void smash(Mimic m, Player tg) {
+    private void smash(Mimic m, LivingEntity tg) {
         Vindicator v = m.brain;
         double fall = v.getFallDistance();
         // DENSITY / BREACH SWAP: a high slam (7+) = the Density mace; a low one into heavy armour = the Breach mace
         boolean breachIt = m.gear.breachMace != null && tier(m) >= 2 && (fall < 7 || level(m.gear.mace, "density") == 0) && armourPoints(tg) >= 15;
         ItemStack mace = breachIt ? m.gear.breachMace : m.gear.mace;
         // STUN SLAM: shield up? the axe breaks it first
-        if ((m.stunSlam || tg.isBlocking()) && m.gear.axe != null && tg.isBlocking()) {
+        if ((m.stunSlam || blocking(tg)) && m.gear.axe != null && blocking(tg)) {
             hold(m, "axe");
-            Emotes.q(() -> tg.setCooldown(Material.SHIELD, 100));
+            breakShield(tg, 100);
             Emotes.q(() -> tg.clearActiveItem());
             tg.getWorld().playSound(tg.getLocation(), Sound.ITEM_SHIELD_BREAK, 1, 1);
             hold(m, "mace");
@@ -4468,7 +4584,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
      * FLINT & STEEL at your feet, WATER CLUTCH on its own long falls, BLOCK PILLAR to escape when it's losing.
      * Only with world-techs on, only into air, and every block is put back (flows, fire spread and bucket pick-ups are blocked).
      */
-    private boolean uhcTech(Mimic m, Player tg, double dist, boolean sees) {
+    private boolean uhcTech(Mimic m, LivingEntity tg, double dist, boolean sees) {
         Vindicator v = m.brain;
         if (!sees || !v.isOnGround()) return false;
         Block feet = tg.getLocation().getBlock();
@@ -4572,7 +4688,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     }
 
     /** They're up on a pillar / ledge over it: jump-places blocks under itself until it's level, like a player towering up. */
-    private boolean towerUp(Mimic m, Player tg) {
+    private boolean towerUp(Mimic m, LivingEntity tg) {
         Vindicator v = m.brain;
         double up = tg.getLocation().getY() - v.getLocation().getY();
         double flat = Math.hypot(tg.getLocation().getX() - v.getLocation().getX(), tg.getLocation().getZ() - v.getLocation().getZ());
@@ -4668,7 +4784,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     }
 
     /** Slowness / Weakness / Poison / Harming... thrown AT you (leading your movement), if it carries any and you don't have it yet. */
-    private boolean debuff(Mimic m, Player tg) {
+    private boolean debuff(Mimic m, LivingEntity tg) {
         for (Iterator<ItemStack> it = m.debuffs.iterator(); it.hasNext(); ) {
             ItemStack pot = it.next();
             boolean useful = false;
@@ -4695,7 +4811,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     }
 
     /** Snowballs / eggs at a sprinting enemy: breaks their sprint (and their combo). */
-    private void snowball(Mimic m, Player tg) {
+    private void snowball(Mimic m, LivingEntity tg) {
         Vindicator v = m.brain;
         m.throwables--;
         m.throwReady = m.t + 15;
@@ -4722,7 +4838,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         return true;
     }
 
-    private void flee(Mimic m, Player tg) {
+    private void flee(Mimic m, LivingEntity tg) {
         Vindicator v = m.brain;
         Vector away = v.getLocation().toVector().subtract(tg.getLocation().toVector()).setY(0);
         if (away.lengthSquared() < 1e-4) away = new Vector(1, 0, 0);
@@ -4760,9 +4876,9 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
      * JUKES (hard+: a sudden cut to one side when they're right behind it), a COBWEB behind it (normal+), and it never
      * looks back while sprinting off.
      */
-    private void fleeTricks(Mimic m, Player tg, Vector away, double d) {
+    private void fleeTricks(Mimic m, LivingEntity tg, Vector away, double d) {
         Vindicator v = m.brain;
-        if (d < 3.2 && m.pearlsLeft > 0 && m.t >= m.pearlReady && (m.t - m.lastHurt < 15 || tg.isSprinting())) {
+        if (d < 3.2 && m.pearlsLeft > 0 && m.t >= m.pearlReady && (m.t - m.lastHurt < 15 || sprinting(tg))) {
             boolean ok = false;
             if (m.fleeGoal != null && m.fleeGoal.getLocation().distance(v.getLocation()) > 9) ok = throwPearl(m, m.fleeGoal.getLocation().clone().add(0.5, 0, 0.5), true);
             if (!ok) pearlOut(m, tg);
@@ -4783,7 +4899,9 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         }
     }
 
-    static boolean facing(LivingEntity who, Entity at) {
+    boolean facing(LivingEntity who, Entity at) {
+        Mimic o = mimicOf(who);
+        if (o != null && o.body.isValid()) who = o.body; // another mimic: its body shows where it looks
         Vector look = who.getLocation().getDirection().setY(0);
         Vector to = at.getLocation().toVector().subtract(who.getLocation().toVector()).setY(0);
         return look.lengthSquared() > 1e-4 && to.lengthSquared() > 1e-4 && look.normalize().dot(to.normalize()) > 0.6;
@@ -4808,7 +4926,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         if (m.fleeUntil > m.t) return m.healRun ? "running off to heal" : "running away";
         if (m.climbWater != null) return "water-climbing";
         if (m.digBlock != null) return "digging";
-        if (m.target != null) return "fighting " + m.target.getName() + " (" + Math.round(m.target.getLocation().distance(m.brain.getLocation())) + "m)";
+        if (m.target != null) return (m.team != 0 ? "mimic fight vs " : "fighting ") + nameOf(m.target) + " (" + Math.round(m.target.getLocation().distance(m.brain.getLocation())) + "m)";
         return "idle";
     }
 
@@ -4885,7 +5003,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
 
     // ---- bow and pearls
 
-    private void shoot(Mimic m, Player tg) {
+    private void shoot(Mimic m, LivingEntity tg) {
         Vindicator v = m.brain;
         Location eye = eye(m);
         double d = eye.distance(tg.getLocation());
@@ -4973,10 +5091,10 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         return true;
     }
 
-    private void pearl(Mimic m, Player tg) { throwPearl(m, tg.getLocation(), true); }
+    private void pearl(Mimic m, LivingEntity tg) { throwPearl(m, tg.getLocation(), true); }
 
     /** 1.2.93: a pearl to the best place to run to (out of their sight, away from them, not a dead end), else straight away. */
-    private void pearlOut(Mimic m, Player tg) {
+    private void pearlOut(Mimic m, LivingEntity tg) {
         try {
             for (Block b : fleeSpots(m, tg)) {
                 if (b.getLocation().distance(m.brain.getLocation()) < 12) continue;
@@ -4986,7 +5104,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         pearlAway(m, tg);
     }
 
-    private void pearlAway(Mimic m, Player tg) {
+    private void pearlAway(Mimic m, LivingEntity tg) {
         Vector away = m.brain.getLocation().toVector().subtract(tg.getLocation().toVector()).setY(0);
         if (away.lengthSquared() < 1e-4) away = new Vector(1, 0, 0);
         throwPearl(m, m.brain.getLocation().add(away.normalize().multiply(20)));
@@ -4998,6 +5116,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         if (!(p.getShooter() instanceof Vindicator v) || !byBrain.containsKey(v.getUniqueId())) return;
         Location at = p.getLocation();
         at.setYaw(v.getLocation().getYaw());
+        for (Mimic o : byBrain.values()) if (o.target == v && tier(o) >= 2) { o.followAt = at.clone(); o.followT = o.t + o.skill.reaction() + 2; } // a mimic foe pearled
         Bukkit.getScheduler().runTask(plugin, () -> {
             if (!v.isValid()) return;
             v.teleport(at);
@@ -5038,7 +5157,8 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             Vector from = e.getDamager().getLocation().toVector().subtract(m.brain.getLocation().toVector()).setY(0);
             if (face.lengthSquared() > 1e-4 && from.lengthSquared() > 1e-4 && face.normalize().dot(from.normalize()) > 0.2) {
                 Player by = TotemLimit.playerBehind(e.getDamager());
-                if (by != null && !(e.getDamager() instanceof Projectile) && by.getInventory().getItemInMainHand().getType().name().endsWith("_AXE")) {
+                boolean axe = by != null && by.getInventory().getItemInMainHand().getType().name().endsWith("_AXE") || att != null && att.held.equals("axe");
+                if (!(e.getDamager() instanceof Projectile) && axe) {
                     m.shieldOffUntil = m.t + 100;
                     m.blockUntil = 0;
                     Emotes.q(() -> m.body.clearActiveItem());
@@ -5049,10 +5169,12 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             }
         }
         m.lastHurt = m.t;
+        Mimic shooterMimic = e.getDamager() instanceof Projectile pj && pj.getShooter() instanceof LivingEntity sh ? byBrain.get(sh.getUniqueId()) : null;
+        if (att != null) m.lastHitBy = att; else if (shooterMimic != null) m.lastHitBy = shooterMimic;
         { Player hitter = TotemLimit.playerBehind(e.getDamager()); if (hitter != null) combat(hitter); } // hitting a mimic puts YOU in combat too
         if (!(e.getDamager() instanceof Projectile)) { m.comboTaken++; m.comboGiven = 0; }
         Player by = TotemLimit.playerBehind(e.getDamager()); // someone else hit it: it turns on them, like a player would
-        if (by != null && by != m.target && (by.getGameMode() == GameMode.SURVIVAL || by.getGameMode() == GameMode.ADVENTURE)
+        if (m.team == 0 && by != null && by != m.target && (by.getGameMode() == GameMode.SURVIVAL || by.getGameMode() == GameMode.ADVENTURE)
                 && (m.target == null || random.nextDouble() < 0.6)) { m.target = by; m.reactAt = m.t + Math.max(1, m.skill.reaction() / 2); }
         if (TotemLimit.playerBehind(e.getDamager()) != null && m.t >= m.escapeReady && !m.covered && !m.covering && trapped(m)) m.escapeAt = m.t + 1; // boxed in and getting hit: out
         if (!(e.getDamager() instanceof Projectile) && m.brain.isOnGround()) {
@@ -5061,7 +5183,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         }
         Emotes.q(() -> m.body.playHurtAnimation(0));
         m.brain.getWorld().playSound(m.brain.getLocation(), Sound.ENTITY_PLAYER_HURT, 1, 1);
-        if (TotemLimit.playerBehind(e.getDamager()) instanceof Player p && m.target != p && p.getLocation().distanceSquared(m.brain.getLocation()) < 400) m.target = p; // turns on whoever hits it
+        if (m.team == 0 && TotemLimit.playerBehind(e.getDamager()) instanceof Player p && m.target != p && p.getLocation().distanceSquared(m.brain.getLocation()) < 400) m.target = p; // turns on whoever hits it
     }
 
     @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
@@ -5106,8 +5228,10 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         releaseTickets(m);
         if (m.tabId != null && plugin.getConfig().getBoolean("mimic-player.fake-join", true)) { // a player's death line, then they log off
             Player killer = e.getEntity().getKiller();
+            Mimic mk = killer == null && m.lastHitBy != null && m.t - m.lastHurt < 100 ? m.lastHitBy : null;
             announce(killer != null
                     ? Component.translatable("death.attack.player", Component.text(m.name), killer.displayName())
+                    : mk != null ? Component.translatable("death.attack.player", Component.text(m.name), Component.text(mk.name))
                     : Component.translatable("death.attack.generic", Component.text(m.name)));
             Bukkit.getScheduler().runTaskLater(plugin, () -> leaveGame(m), 40L);
         }
@@ -5121,6 +5245,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             try { String[] p = s.split(":"); e.getDrops().add(new ItemStack(Material.valueOf(p[0].toUpperCase(Locale.ROOT)), p.length > 1 ? Integer.parseInt(p[1]) : 1)); }
             catch (RuntimeException ignored) { }
         }
+        fightDeath(m);
         m.body.getWorld().playSound(m.body.getLocation(), Sound.ENTITY_PLAYER_DEATH, 1, 1);
         m.body.getWorld().spawnParticle(Particle.POOF, m.body.getLocation().add(0, 1, 0), 20, 0.3, 0.6, 0.3, 0.02);
         byBrain.remove(m.brain.getUniqueId());
@@ -5158,7 +5283,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
 
     @EventHandler(ignoreCancelled = true)
     public void onTarget(EntityTargetEvent e) {
-        if (byBrain.containsKey(e.getEntity().getUniqueId()) && e.getTarget() != null && !(e.getTarget() instanceof Player)) e.setCancelled(true); // players only
+        if (byBrain.containsKey(e.getEntity().getUniqueId()) && e.getTarget() != null && !(e.getTarget() instanceof Player) && !byBrain.containsKey(e.getTarget().getUniqueId())) e.setCancelled(true); // players (and mimic foes) only
     }
 
     @EventHandler(ignoreCancelled = true)
@@ -5200,6 +5325,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             s.sendMessage(ChatColor.GREEN + "Removed " + gone.size() + " mimic" + (gone.size() == 1 ? "" : "s") + (a.length > 1 ? " of " + a[1] : "") + ".");
             return true;
         }
+        if (sub.equals("fight") || sub.equals("duel") || sub.equals("ffa")) return fightCommand(s, sub, a);
         if (sub.equals("spectate") || sub.equals("watch") || sub.equals("spec")) {
             if (!(s instanceof Player p)) { s.sendMessage("In game only."); return true; }
             watch.command(p, a.length > 1 ? a[1] : null);
@@ -5271,6 +5397,81 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         return true;
     }
 
+    /**
+     * 1.2.94 MIMIC FIGHTS. `/mimicplayer duel <player> <player> [skill]` spawns both where you look and they fight;
+     * `/mimicplayer fight <mimic> <mimic>` sets two that are out on each other; `/mimicplayer fight ffa` (or `/mimicplayer ffa`)
+     * = every mimic out (within 64 of you, in game) for itself; `/mimicplayer fight <a,b> vs <c,d>` = teams; `fight stop`.
+     * Fighters leave players alone (being hit by one doesn't turn them) until the fight's over; the last team standing is announced.
+     */
+    private boolean fightCommand(CommandSender s, String sub, String[] a) {
+        List<String> args = new ArrayList<>(Arrays.asList(a).subList(1, a.length));
+        if (sub.equals("ffa")) args.add(0, "ffa");
+        if (!args.isEmpty() && args.get(0).equalsIgnoreCase("stop")) {
+            Set<String> ids = new HashSet<>();
+            for (Mimic m : byBrain.values()) if (m.fightId != null) ids.add(m.fightId);
+            for (Mimic m : byBrain.values()) { m.team = 0; m.fightId = null; m.target = null; }
+            s.sendMessage(ChatColor.GREEN + (ids.isEmpty() ? "No mimic fight going on." : "Stopped " + ids.size() + " mimic fight" + (ids.size() == 1 ? "" : "s") + "."));
+            return true;
+        }
+        if (sub.equals("duel")) {
+            if (!(s instanceof Player p)) { s.sendMessage("In game only (they spawn where you look)."); return true; }
+            if (args.size() < 2) { s.sendMessage(ChatColor.RED + "/mimicplayer duel <player> <player> [easy|normal|hard|godlike] [easy|normal|hard|godlike]"); return true; }
+            Skill def = SKILLS.getOrDefault(plugin.getConfig().getString("mimic-player.skill", "normal").toLowerCase(Locale.ROOT), SKILLS.get("normal"));
+            Skill s1 = args.size() > 2 ? SKILLS.getOrDefault(args.get(2).toLowerCase(Locale.ROOT), def) : def;
+            Skill s2 = args.size() > 3 ? SKILLS.getOrDefault(args.get(3).toLowerCase(Locale.ROOT), s1) : s1;
+            org.bukkit.block.Block hit;
+            try { hit = p.getTargetBlockExact(30); } catch (RuntimeException ex) { hit = null; }
+            Location mid = hit != null ? hit.getLocation().add(0.5, 1, 0.5) : p.getLocation().add(p.getLocation().getDirection().setY(0).normalize().multiply(8));
+            Vector side = p.getLocation().getDirection().setY(0);
+            side = side.lengthSquared() < 1e-4 ? new Vector(1, 0, 0) : new Vector(-side.getZ(), 0, side.getX()).normalize();
+            Location l1 = mid.clone().add(side.clone().multiply(5)), l2 = mid.clone().subtract(side.clone().multiply(5));
+            l1.setDirection(l2.toVector().subtract(l1.toVector())); l2.setDirection(l1.toVector().subtract(l2.toVector()));
+            Mimic m1 = spawn(l1, playerNamed(args.get(0)), s1), m2 = spawn(l2, playerNamed(args.get(1)), s2);
+            startFight(List.of(List.of(m1), List.of(m2)));
+            s.sendMessage(ChatColor.GREEN + "Duel: " + ChatColor.WHITE + m1.name + ChatColor.GRAY + " (" + s1.id() + ")" + ChatColor.GREEN + " vs "
+                    + ChatColor.WHITE + m2.name + ChatColor.GRAY + " (" + s2.id() + ")" + ChatColor.GREEN + ". /mimicplayer spectate to watch, fight stop to end it.");
+            return true;
+        }
+        List<List<Mimic>> teams = new ArrayList<>();
+        if (args.isEmpty() || args.get(0).equalsIgnoreCase("ffa") || args.get(0).equalsIgnoreCase("all")) { // every mimic near you for itself
+            for (Mimic m : byBrain.values()) {
+                if (s instanceof Player p && (m.brain.getWorld() != p.getWorld() || m.brain.getLocation().distanceSquared(p.getLocation()) > 64 * 64)) continue;
+                teams.add(List.of(m));
+            }
+        } else {
+            int vs = args.indexOf("vs");
+            List<String> sides = vs < 0 ? args : List.of(String.join(",", args.subList(0, vs)), String.join(",", args.subList(vs + 1, args.size())));
+            for (String side : sides) {
+                List<Mimic> team = new ArrayList<>();
+                for (String name : side.split(",")) {
+                    if (name.isBlank()) continue;
+                    Mimic found = null;
+                    for (Mimic m : byBrain.values()) if (m.name.equalsIgnoreCase(name.trim()) && !inTeams(teams, m) && !team.contains(m)) { found = m; break; }
+                    if (found == null) { s.sendMessage(ChatColor.RED + "No mimic of " + name.trim() + " out (or it's already on a side). /mimicplayer list"); return true; }
+                    team.add(found);
+                }
+                if (!team.isEmpty()) teams.add(team);
+            }
+        }
+        if (teams.size() < 2) { s.sendMessage(ChatColor.RED + "Needs at least two mimics on different sides. /mimicplayer fight <mimic> <mimic>, fight <a,b> vs <c,d>, fight ffa, or /mimicplayer duel <player> <player>."); return true; }
+        startFight(teams);
+        StringBuilder line = new StringBuilder();
+        for (List<Mimic> team : teams) {
+            if (line.length() > 0) line.append(ChatColor.GREEN).append(" vs ");
+            line.append(ChatColor.WHITE);
+            for (int i = 0; i < team.size(); i++) line.append(i > 0 ? " + " : "").append(team.get(i).name);
+        }
+        s.sendMessage(ChatColor.GREEN + "Mimic fight: " + line + ChatColor.GREEN + ". /mimicplayer spectate to watch, fight stop to end it.");
+        return true;
+    }
+
+    private static boolean inTeams(List<List<Mimic>> teams, Mimic m) { for (List<Mimic> t : teams) if (t.contains(m)) return true; return false; }
+
+    private OfflinePlayer playerNamed(String name) {
+        Player online = Bukkit.getPlayerExact(name);
+        return online != null ? online : Bukkit.getOfflinePlayer(name);
+    }
+
     private OfflinePlayer randomPlayer(Player not) {
         OfflinePlayer[] all = Bukkit.getOfflinePlayers();
         List<OfflinePlayer> pick = new ArrayList<>();
@@ -5282,13 +5483,26 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     @Override
     public List<String> onTabComplete(CommandSender s, Command c, String l, String[] a) {
         if (a.length == 1) {
-            List<String> out = new ArrayList<>(List.of("random", "remove", "clear", "list", "hunt", "spectate", "debug"));
+            List<String> out = new ArrayList<>(List.of("random", "remove", "clear", "list", "hunt", "spectate", "debug", "fight", "duel", "ffa"));
             for (Player p : Bukkit.getOnlinePlayers()) out.add(p.getName());
             return out;
         }
         if (a.length == 2 && (a[0].equalsIgnoreCase("spectate") || a[0].equalsIgnoreCase("watch"))) {
             List<String> out = new ArrayList<>(List.of("next", "stop"));
             for (Mimic m : byBrain.values()) if (!out.contains(m.name)) out.add(m.name);
+            return out;
+        }
+        if (a[0].equalsIgnoreCase("fight")) {
+            List<String> out = new ArrayList<>();
+            if (a.length == 2) { out.add("ffa"); out.add("stop"); }
+            out.add("vs");
+            for (Mimic m : byBrain.values()) if (!out.contains(m.name)) out.add(m.name);
+            return out;
+        }
+        if (a[0].equalsIgnoreCase("duel")) {
+            List<String> out = new ArrayList<>();
+            if (a.length <= 3) for (Player p : Bukkit.getOnlinePlayers()) out.add(p.getName());
+            else out.addAll(SKILLS.keySet());
             return out;
         }
         if (a[0].equalsIgnoreCase("hunt")) {

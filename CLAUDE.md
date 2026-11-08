@@ -2102,6 +2102,37 @@ Notes:
   `sweep` 2 s after join, every 5 s, and when any inventory opens (+ the opened real container / ender chest, bags to the
   opener): one Dark Loot Bag (`DarkLoot.bag()`) per enchant removed (x stack size), a chat line, "[Enchants] trimmed"
   in the log. `enchants.enforce-caps: false` turns the sweep off. Tested (scratch `nt/NewTest`).
+- **Mimic: running, spectating, travel, mining (Items 1.2.93)**: RUNNING AWAY (`navFlee`/`fleeSpots`): 16 ways x 14/22 out,
+  standable spots scored by distance from them (never toward / past them), out of their sight there (`clearSight`, a block
+  walk: +12), openness (`openness`, 7x7 standable columns; < 14 = dead end -25), lower ground, keeping its pick; top 3
+  planned, a path passing within 2.5 of them thrown out; replanned every 1.5 s / when cut off. Cornered (wall, nowhere
+  open, them within 3.5) = turns and fights. `fleeTricks`: pearl out when they catch up (`pearlOut` = a pearl that really
+  lands on the best flee spot 12+ off, else straight away), jukes (hard+), a cobweb behind (normal+). Faces where it runs
+  (`runYaw`) with a glance back every 2 s. EATING: only with room (9+ off, or 6+ out of sight, not hit for 1 s); low with
+  food and pearls within 9 = pearl out first; HIT WHILE EATING (or them within 2.8, normal+) = stops (keeps the apple) and
+  pearls out / runs. TRAVEL faces its way (`runYaw`; it used to look at random `idleYaw`s) and never `idle()`s mid-trip.
+  ELYTRA: `hunt.fly-over` 48 (old 150 reads 48), `keep-rockets` 2 (old 4 reads 2), takes off with a wind charge and glides
+  when it has no spare rockets (not in the End: needs a rocket), looks 48 ahead for terrain (`solidSurface`, climbs before
+  a hill, pulls up at a wall), glides without rockets (no climbing, trades height for speed), lands on a dry spot picked once
+  (`landSpot`) within 32; over the VOID (End) never below its destination + 12 and spends a reserve rocket rather than sink;
+  in a fight it flies to anyone 32+ off or across a void (`voidBetween`). The Nether: no elytra. Walking: `goLeg`/`legGoal`
+  (9 headings 32 out: dry, no lava, under trees (`MOTION_BLOCKING_NO_LEAVES`), climb costs; stuck 8 s = legs turned
+  60/-60/120/-120 + a pearl ahead); UNDERGROUND (`underground` = 7+ blocks over it) legs stay at its level working toward the
+  goal's height (a tunnel, not a staircase to the surface); `travelLeap` = pearl hops (pearls > keep + 2) and wind leaps
+  (charges > 2). PORTALS: `toWorld(m, world, dest)` takes the portal its quarry last used (`MimicHunt.lastUsed`), else
+  `bestPortal` (walk to it + walk from its exit to dest); NETHER SHORTCUT: an Overworld trip over `hunt.nether-over` 500
+  goes via recorded portals when that's 30%+ shorter (`viaNether`). STRONGHOLDS: `findEndPortal` scans 11x11 chunks
+  (`scanAround`), heads to the located stronghold (`strongholdCenter`) while searching and rescans round itself within 80.
+  `/mimicplayer hunt <target> <mimic> [skill]` SPAWNS that mimic when none is out (the owner hit "No mimic of X out").
+  SPECTATE (`MimicWatch.java`): `/mimicplayer spectate [name|#n|next|stop]` = spectator camera on its body (re-attached /
+  teleported when it goes far or to another world; sneak = free cam kept within 64), action bar = name, skill, health,
+  `doing(m)`, world/xyz; stop / quit / last mimic gone = back where you were in your old mode (PDC `faultlineitems:mimic_watch`,
+  restored on join after a crash); changing game mode yourself ends it in place. MINING: `breakTicks` = vanilla (tool speed +
+  Efficiency, Haste, Fatigue, /5 underwater without Aqua Affinity, /5 in the air; /100 rule = no tool for stone = can't),
+  recomputed every tick as `digProgress`; reach 4.6 from the eyes (was 3.5 from the feet: it gave up on head blocks); crack
+  animation (`sendBlockDamage`), looks at the block, stands still; never mines next to lava / water (all 6 sides, live and in
+  the planner); gravity blocks stacked over a cell add their cost; new DIG-DOWN-A-STEP move (stairs down, not pits).
+  Tested (scratch `nt/NewTest`).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Skills → Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

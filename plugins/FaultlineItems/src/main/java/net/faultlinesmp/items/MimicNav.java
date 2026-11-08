@@ -106,12 +106,22 @@ final class MimicNav {
         Block b = w.getBlockAt(x, y, z);
         int t = rules.mineTicks(b);
         if (t < 0) return -1;
-        // never opens a hole into lava or water
-        for (int[] d : new int[][]{{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, 0, 1}, {0, 0, -1}}) {
+        // never opens a hole into lava or water (1.2.93: below too: mining a floor over lava)
+        for (int[] d : new int[][]{{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, 0, 1}, {0, 0, -1}, {0, -1, 0}}) {
+            if (y + d[1] < w.getMinHeight() || y + d[1] >= w.getMaxHeight()) continue;
             Material n = w.getBlockAt(x + d[0], y + d[1], z + d[2]).getType();
             if (n == Material.LAVA || n == Material.WATER) return -1;
         }
-        return 1 + t / 4.0 * (natural(b.getType()) ? 1 : 4) + (natural(b.getType()) ? 0 : 6); // it'd rather use the door than tear a house open
+        // sand / gravel stacked over it falls in: each one has to be dug too (1.2.93)
+        double extra = 0;
+        for (int k = 1; k <= 6 && y + k < w.getMaxHeight(); k++) {
+            Block up = w.getBlockAt(x, y + k, z);
+            if (!up.getType().hasGravity()) break;
+            int ut = rules.mineTicks(up);
+            if (ut < 0) return -1;
+            extra += 1 + ut / 4.0;
+        }
+        return 1 + t / 4.0 * (natural(b.getType()) ? 1 : 4) + (natural(b.getType()) ? 0 : 6) + extra; // it'd rather use the door than tear a house open
     }
 
     static boolean natural(Material t) {
@@ -281,6 +291,20 @@ final class MimicNav {
                     out.add(node(c, nx, y + 1, nz, base + 0.6 + o + a + b, Type.STEP, d, null, gx, gy, gz));
                 }
             }
+        }
+        // 1.2.93 DIG DOWN A STEP: a staircase down through rock (head, feet, then the block it steps down onto), never a pit
+        for (int i = 0; i < DIRS.length; i++) {
+            int dx = DIRS[i][0], dz = DIRS[i][1];
+            if (dx != 0 && dz != 0) continue;
+            int nx = x + dx, nz = z + dz;
+            if (!floor(nx, y - 2, nz) || hazard(nx, y - 2, nz)) continue;
+            double h = clearCost(nx, y + 1, nz), a = clearCost(nx, y, nz), b = clearCost(nx, y - 1, nz);
+            if (h < 0 || a < 0 || b < 0 || h + a + b == 0) continue;
+            List<Block> d = new ArrayList<>(3);
+            if (h > 0) d.add(w.getBlockAt(nx, y + 1, nz));
+            if (a > 0) d.add(w.getBlockAt(nx, y, nz));
+            if (b > 0) d.add(w.getBlockAt(nx, y - 1, nz));
+            out.add(node(c, nx, y - 1, nz, 1.3 + h + a + b, Type.DIG, d, null, gx, gy, gz));
         }
         // DIGDOWN: mines the floor and drops into the hole
         if (!water(x, y - 1, z) && floor(x, y - 1, z)) {

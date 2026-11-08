@@ -136,6 +136,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         boolean idleWalk;
         boolean flying;
         int blockUntil, shieldOffUntil, eatUntil, drinkUntil, drawUntil, pearlReady, bowReady, wtapUntil, fleeUntil, axeUntil;
+        int jukeReady, fleeWebReady; double digProgress;
         int eyesLeft, rods, craftReady, reachTechReady, climbTicks, hopUntil, stageUntil, gapUntil, farShotReady, fleePlanAt; Block climbWater, stageGoal, fleeGoal; MimicNav.Step gapStep;
         int apples, gapples, pots, pearlsLeft, totems = 1, wind, lava, water, webs, blocks, rockets, arrows, throwables;
         final List<ItemStack> buffs = new ArrayList<>(), debuffs = new ArrayList<>();
@@ -147,6 +148,9 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         // HUNT (`/mimicplayer hunt`): its quarry (null = wherever players hang out), chunks it keeps loaded, travel state
         boolean hunting, travelFly; UUID huntId; final Set<Long> tickets = new HashSet<>(); World ticketWorld; int ticketAt, portalTicks, frameSearchAt, lastDigY = Integer.MIN_VALUE;
         Location endFrame; Block travelGoal;
+        // 1.2.93 travel: the Nether shortcut, the leg it's on, how it's getting on, what it's doing (shown to spectators)
+        boolean viaNether; World netherWorld; Location netherDest; int routeAt = -1000, travelBestAt, legBias, legTries; double travelBest = 1e18;
+        String travelNote; Location landSpot;
         int escapeAt = -1, escapeReady, coverIdx, coverUntil, coverReady, trailReady, windRunReady; boolean covering, covered, healRun;
         List<Block> coverPlan = new ArrayList<>(), coverPlaced = new ArrayList<>();
         int windBreakReady, cancelReady, grappleReady, dtapReady, stunReady, scritAt = -1, bombPhase, bombUntil, dashReady;
@@ -432,9 +436,11 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     }
 
     MimicHunt hunt;
+    MimicWatch watch;
 
     MimicPlayer(FaultlineItems plugin) {
         this.plugin = plugin;
+        watch = new MimicWatch(plugin, this);
         try { hunt = new MimicHunt(plugin); } catch (RuntimeException | LinkageError e) { plugin.getLogger().warning("[Mimic] hunt tracking off: " + e); }
         Bukkit.getScheduler().runTaskTimer(plugin, this::tick, 1L, 1L);
         loadGear();
@@ -788,7 +794,8 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         for (Mimic m : new ArrayList<>(byBrain.values())) remove(m);
         for (World w : Bukkit.getWorlds()) for (Entity e : w.getEntitiesByClass(org.bukkit.entity.Projectile.class)) // pearls still in the air (a one-off, on the command)
             if (e.getScoreboardTags().contains(TAG)) e.remove();
-        restoreAll(); try { saveGear(); } catch (RuntimeException ignored) { } }
+        restoreAll(); try { saveGear(); } catch (RuntimeException ignored) { }
+        if (watch != null) watch.stopAll(); }
 
     // ================================================================ the brain
 
@@ -893,7 +900,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             Player near = ok ? q : nearest(v, m.target);
             if (near != null && near.getWorld() == v.getWorld() && near.getLocation().distance(v.getLocation()) < 64) {
                 if (m.target != near) { m.reactAt = m.t + m.skill.reaction(); m.target = near; v.setTarget(near); }
-                if (m.travelFly) { m.travelFly = false; land(m); }
+                if (m.travelFly && m.brain.isOnGround()) { m.travelFly = false; land(m); }
             } else {
                 m.target = null;
                 if (m.busyNow()) { busyTick(m, null); follow(m); return; }
@@ -976,13 +983,16 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         // ---- boxed up to heal (or opening back up once healed)
         if (m.covering || m.covered) { coverTick(m, tg, hp, food); follow(m); return; }
         boolean needHeal = hp < cfg("eat-below", 0.4) && food;
-        if (needHeal && m.healRun && dist > 6) { m.healRun = false; m.fleeUntil = 0; } // got its room: eats now
-        if (needHeal && (dist > 5 || m.fleeUntil > m.t && !m.healRun || m.eatAfterPearl)) { m.eatAfterPearl = false; eat(m); follow(m); return; }
+        // 1.2.93: eats only with real ROOM (a sprinting player closes 5 blocks before a 1.6 s eat is done): 9+ off, or 6+ out
+        // of their sight, and not hit in the last second
+        boolean room = (dist > 9 || dist > 6 && !sees) && (m.t - m.lastHurt > 20 || dist > 14);
+        if (needHeal && m.healRun && room) { m.healRun = false; m.fleeUntil = 0; } // got its room: eats now
+        if (needHeal && (room || m.eatAfterPearl && dist > 7 && m.t - m.lastHurt > 10)) { m.eatAfterPearl = false; eat(m); follow(m); return; }
         // COVER UP (normal+): close, low, food and blocks on it: boxes itself in (their side first), eats inside
         if (needHeal && dist <= 6 && tier(m) >= 2 && m.t >= m.coverReady && startCover(m, tg)) { follow(m); return; }
         // low, close, with gaps: pearl away to get room to eat (like a real player)
-        if (hp < cfg("eat-below", 0.4) && food && dist <= 5 && m.pearlsLeft > 0 && m.t >= m.pearlReady && m.pots == 0) {
-            m.eatAfterPearl = true; pearlAway(m, tg); follow(m); return;
+        if (hp < cfg("eat-below", 0.4) && food && dist <= 9 && m.pearlsLeft > 0 && m.t >= m.pearlReady && m.pots == 0) {
+            m.eatAfterPearl = true; pearlOut(m, tg); m.fleeUntil = m.t + 80; m.healRun = true; follow(m); return;
         }
         // HEAL RUN: food but no blocks / pearls to make room: runs (trail of blocks, wind dash) until it has room to eat
         if (needHeal && dist <= 5 && m.fleeUntil <= m.t) { m.fleeUntil = m.t + 80; m.healRun = true; }
@@ -993,6 +1003,10 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         }
         if (m.fleeUntil > m.t) { if (!elytraEscape(m, tg) && !pillar(m)) flee(m, tg); follow(m); return; }
         // ---- far: pearl in, or chase
+        // 1.2.93: its elytra to get to them (a void / a big gap between, or 32+ away): flies over and glides down beside them
+        if (m.travelFly || dist > 12 && (dist > 32 || voidBetween(v.getLocation(), tg.getLocation())) && v.isOnGround() && canFly(m)) {
+            if (flyTo(m, tg.getLocation())) { m.travelNote = "flying to " + tg.getName(); follow(m); return; }
+        }
         if (elytraPvp(m, tg, dist, sees)) { follow(m); return; }
         if (dist > 14 && dist < 60 && m.pearlsLeft > 0 && m.t >= m.pearlReady && sees && m.t >= m.reactAt) { pearl(m, tg); follow(m); return; }
         // ---- mid: trident, crossbow
@@ -1021,6 +1035,20 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
 
     private void busyTick(Mimic m, Player tg) {
         Vindicator v = m.brain;
+        // 1.2.93: hit while eating (or they're right on it): stops eating (keeps the apple, like letting go of right-click)
+        // and gets out: a pearl to somewhere safe, else runs
+        if (m.eatUntil > m.t + 1 && tg != null && tg.getWorld() == v.getWorld()) {
+            double d0 = tg.getLocation().distance(v.getLocation());
+            if (m.t - m.lastHurt <= 1 && d0 < 5 || tier(m) >= 2 && d0 < 2.8) {
+                if (m.eatingGod) m.gapples++; else m.apples++;
+                m.eatUntil = m.t;
+                Emotes.q(() -> m.body.clearActiveItem());
+                hold(m, "sword");
+                if (m.pearlsLeft > 0 && m.t >= m.pearlReady) { m.eatAfterPearl = true; pearlOut(m, tg); }
+                m.fleeUntil = m.t + 80; m.healRun = true;
+                return;
+            }
+        }
         if (tg != null && tg.getWorld() == v.getWorld() && (m.eatUntil > m.t || m.drawUntil > m.t || m.potUntil > m.t || m.crossUntil > m.t)) {
             // using an item slows a player to a crawl, but they keep moving: backs off and strafes while eating / drawing
             Vector away = v.getLocation().toVector().subtract(tg.getLocation().toVector()).setY(0);
@@ -1493,6 +1521,46 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         return s + (eff > 0 ? eff * eff + 1 : 0);
     }
 
+    /**
+     * 1.2.93: ticks to break this block RIGHT NOW, by vanilla's rule: speed = the right tool's (with Efficiency) else 1,
+     * x Haste / Mining Fatigue, /5 in water without Aqua Affinity, /5 off the ground; damage a tick = speed / hardness / 30
+     * (or /100 when the block needs a tool it hasn't got); -1 = it can't (no tool for stone, too hard).
+     */
+    int breakTicks(Mimic m, Block b) { return breakTicks(m, b, false); }
+
+    /** `planning` = as if standing on the ground (the planner's view of a dig later on). */
+    int breakTicks(Mimic m, Block b, boolean planning) {
+        float h = b.getType().getHardness();
+        if (h < 0) return -1;
+        if (h == 0) return 1;
+        ItemStack tool = toolFor(m, b);
+        boolean needsTool = Tag.MINEABLE_PICKAXE.isTagged(b.getType()) || b.getType() == Material.COBWEB;
+        if (tool == null && needsTool) return -1;
+        double speed = tool != null ? toolSpeed(tool) : 1;
+        Vindicator v = m.brain;
+        PotionEffect haste = v.getPotionEffect(PotionEffectType.HASTE), fatigue = v.getPotionEffect(PotionEffectType.MINING_FATIGUE);
+        if (haste != null) speed *= 1 + 0.2 * (haste.getAmplifier() + 1);
+        if (fatigue != null) speed *= Math.pow(0.3, Math.min(4, fatigue.getAmplifier() + 1));
+        if (v.isInWater() && level(m.wear[0], "aqua_affinity") == 0) speed /= 5;
+        if (!planning && !v.isOnGround() && !v.isInWater() && !onClimbable(v)) speed /= 5;
+        double perTick = speed / h / 30.0;
+        if (perTick >= 1) return 1;
+        return (int) Math.ceil(1 / perTick);
+    }
+
+    static boolean onClimbable(LivingEntity v) { return Tag.CLIMBABLE.isTagged(v.getLocation().getBlock().getType()); }
+
+    /** Lava or water touching this block (mining it would let it in). */
+    static boolean liquidNext(Block b) {
+        for (org.bukkit.block.BlockFace f : new org.bukkit.block.BlockFace[]{org.bukkit.block.BlockFace.UP, org.bukkit.block.BlockFace.NORTH, org.bukkit.block.BlockFace.SOUTH, org.bukkit.block.BlockFace.EAST, org.bukkit.block.BlockFace.WEST, org.bukkit.block.BlockFace.DOWN}) {
+            int y = b.getY() + f.getModY();
+            if (y < b.getWorld().getMinHeight() || y >= b.getWorld().getMaxHeight()) continue;
+            Material t = b.getRelative(f).getType();
+            if (t == Material.LAVA || t == Material.WATER) return true;
+        }
+        return false;
+    }
+
     /** The right tool it carries for this block, or null. */
     ItemStack toolFor(Mimic m, Block b) {
         if (Tag.MINEABLE_PICKAXE.isTagged(b.getType())) return m.gear.pickaxe;
@@ -1507,11 +1575,10 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         Block b = head.getType().isSolid() ? head : ahead.getType().isSolid() ? ahead : null;
         if (b == null || !diggable(b)) return false;
         ItemStack tool = toolFor(m, b);
-        if (tool == null) return false;
-        float hard = b.getType().getHardness();
+        if (tool == null || liquidNext(b) || breakTicks(m, b) < 0) return false;
         m.digBlock = b;
-        m.digTicks = 0;
-        m.digNeed = (int) Math.ceil(hard * 30 / toolSpeed(tool));
+        m.digTicks = 0; m.digProgress = 0;
+        m.digNeed = breakTicks(m, b);
         hold(m, tool == m.gear.pickaxe ? "pickaxe" : tool == m.gear.axe ? "axe" : "shovel");
         return true;
     }
@@ -1528,28 +1595,46 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     private boolean digTick(Mimic m) {
         Block b = m.digBlock;
         Vindicator v = m.brain;
-        if (!b.getType().isSolid() || b.getWorld() != v.getWorld() || b.getLocation().clone().add(0.5, 0.5, 0.5).distance(v.getLocation()) > 3.5) { m.digBlock = null; return false; }
+        // 1.2.93: a player's reach (4.5 from the eyes, not 3.5 from the feet: it kept giving up on the block over its head)
+        if (!b.getType().isSolid() || b.getWorld() != v.getWorld() || b.getLocation().clone().add(0.5, 0.5, 0.5).distance(v.getEyeLocation()) > 4.6) {
+            crack(m, b, 0); m.digBlock = null; return false;
+        }
+        if (liquidNext(b)) { crack(m, b, 0); m.digBlock = null; m.path = null; return false; } // lava / water showed up beside it: leaves it
         m.digTicks++;
         m.navProgressAt = m.t;
-        Vector look = b.getLocation().clone().add(0.5, 0.5, 0.5).toVector().subtract(v.getEyeLocation().toVector());
-        m.yaw = (float) Math.toDegrees(Math.atan2(-look.getX(), look.getZ()));
-        if (m.digTicks % 4 == 0) {
+        int now = breakTicks(m, b); // its speed this tick (it fell, got in water, got Haste...)
+        if (now < 0) { crack(m, b, 0); m.digBlock = null; return false; }
+        m.digProgress += 1.0 / now;
+        Safe.vel(v, new Vector(0, v.getVelocity().getY(), 0)); // stands still to mine, like a player holding the button
+        if (m.digTicks % 4 == 1) {
             swing(m);
             Emotes.q(() -> b.getWorld().playSound(b.getLocation(), b.getBlockData().getSoundGroup().getHitSound(), 0.6f, 0.8f));
             b.getWorld().spawnParticle(Particle.BLOCK, b.getLocation().clone().add(0.5, 0.5, 0.5), 6, 0.3, 0.3, 0.3, b.getBlockData());
         }
-        if (m.digTicks >= m.digNeed) {
+        crack(m, b, (float) Math.min(0.99, m.digProgress));
+        if (m.digProgress >= 1) {
+            crack(m, b, 0);
             mine(b);
             m.digBlock = null;
             m.chaseStuck = 0;
             // the feet block too, if that's in the way
             Block feet = b.getRelative(org.bukkit.block.BlockFace.DOWN);
             Block at = v.getLocation().getBlock();
-            if (feet.getY() == at.getY() && feet.getType().isSolid() && diggable(feet) && toolFor(m, feet) != null) {
-                m.digBlock = feet; m.digTicks = 0; m.digNeed = (int) Math.ceil(feet.getType().getHardness() * 30 / toolSpeed(toolFor(m, feet)));
+            if (feet.getY() == at.getY() && feet.getType().isSolid() && diggable(feet) && !liquidNext(feet) && breakTicks(m, feet) > 0) {
+                m.digBlock = feet; m.digTicks = 0; m.digProgress = 0; m.digNeed = breakTicks(m, feet);
             } else hold(m, "sword");
         }
         return true;
+    }
+
+    /** The crack on a block it's mining, shown to everyone near (0 = none). */
+    private void crack(Mimic m, Block b, float progress) {
+        if (b == null) return;
+        Location l = b.getLocation();
+        for (Player p : b.getWorld().getPlayers()) {
+            if (p.getLocation().distanceSquared(l) > 48 * 48) continue;
+            try { p.sendBlockDamage(l, progress, m.brain.getEntityId()); } catch (RuntimeException | LinkageError ignored) { }
+        }
     }
 
     /** Mined: gone like a player broke it (no drops), put back after `dig-restore-seconds` (60; 0 = left mined). */
@@ -2278,7 +2363,10 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     // ================================================================ the hunt (1.2.90)
 
     int keepPearls() { return (int) cfg("hunt.keep-pearls", 4); }
-    int keepRockets() { return (int) cfg("hunt.keep-rockets", 4); }
+    /** 1.2.93: 2 kept for the fight (an old config's 4 reads as 2: it walked everywhere). */
+    int keepRockets() { return (int) Balance.num(plugin, "mimic-player.hunt.keep-rockets", 4, 2); }
+    /** 1.2.93: flies anything over 48 blocks (an old config's 150 reads as 48). */
+    double flyOver() { return Balance.num(plugin, "mimic-player.hunt.fly-over", 150, 48); }
 
     /** Keeps the chunks round it loaded (a plugin chunk ticket, 3 round = 7x7) while it hunts, so it moves with no one near. */
     void keepLoaded(Mimic m) {
@@ -2312,21 +2400,175 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         World dw; Location dest;
         if (q != null) { dw = q.getWorld(); dest = q.getLocation(); }
         else {
-            if (hunt == null || (dw = hunt.favouriteWorld()) == null) { idle(m); return; }
+            if (hunt == null || (dw = hunt.favouriteWorld()) == null) { m.travelNote = "waiting (nobody to hunt)"; return; }
             dest = hunt.hotspot(dw);
         }
-        if (dw != here) { toWorld(m, dw); return; }
+        String who = q != null ? q.getName() : "where players hang out";
+        // the Nether shortcut (1.2.93): a long Overworld trip through recorded portals (8x shorter in there)
+        if (dw == here && here.getEnvironment() == World.Environment.NORMAL && !m.travelFly && m.t - m.routeAt > 200) {
+            m.routeAt = m.t;
+            m.viaNether = false;
+            double flat0 = MimicHunt.flat(dest, v.getLocation());
+            if (hunt != null && flat0 > cfg("hunt.nether-over", 500) && !(canFly(m) && flat0 > flyOver())) {
+                for (World nw : Bukkit.getWorlds()) {
+                    if (nw.getEnvironment() != World.Environment.NETHER) continue;
+                    MimicHunt.Portal in = hunt.bestPortal(here, nw, v.getLocation(), null);
+                    if (in == null) continue;
+                    MimicHunt.Portal out = hunt.bestPortal(nw, here, in.to(), dest);
+                    if (out == null) continue;
+                    double cost = MimicHunt.flat(in.from(), v.getLocation()) + MimicHunt.flat(in.to(), out.from()) * 1.3 + MimicHunt.flat(out.to(), dest) + 60;
+                    if (cost < flat0 * 0.7) { m.viaNether = true; m.netherWorld = nw; m.netherDest = out.from(); break; }
+                }
+            }
+        }
+        if (m.viaNether && here.getEnvironment() == World.Environment.NORMAL && m.netherWorld != null) {
+            m.travelNote = "heading for the Nether shortcut (to " + who + ")";
+            toWorld(m, m.netherWorld, m.netherDest); return;
+        }
+        if (here.getEnvironment() == World.Environment.NETHER) m.viaNether = false;
+        if (dw != here) { toWorld(m, dw, dest); return; }
         m.portalTicks = 0;
         double flat = Math.hypot(dest.getX() - v.getLocation().getX(), dest.getZ() - v.getLocation().getZ());
-        if (q == null && flat < 24) { idle(m); return; } // there: waits for someone to come by
-        if (m.travelFly || flat > cfg("hunt.fly-over", 150) && canFly(m)) { if (flyTo(m, dest)) return; }
+        if (q == null && flat < 24) { m.travelNote = "waiting where players hang out"; idle(m); return; } // (here idle is right: it's waiting around) // there: waits for someone to come by
+        m.travelNote = (m.travelFly ? "flying" : "travelling") + " to " + who + " (" + Math.round(flat) + " blocks)";
+        if (m.travelFly || flat > flyOver() && canFly(m)) { if (flyTo(m, dest)) return; }
         // its quarry's below it (a base, a stronghold): straight down when it's right above
-        if (flat < 3 && dest.getY() < v.getLocation().getY() - 3 && digDown(m, dest)) return;
-        Location wp = flat <= 40 ? dest : v.getLocation().add(new Vector(dest.getX() - v.getLocation().getX(), 0, dest.getZ() - v.getLocation().getZ()).normalize().multiply(40));
-        Block goal = flat <= 40 ? standNear(dest) : surfaceAt(wp);
-        if (goal == null) goal = surfaceAt(wp);
+        if (flat < 3 && dest.getY() < v.getLocation().getY() - 3 && digDown(m, dest)) { m.travelNote = "digging down to " + who; return; }
+        goLeg(m, dest, flat);
+    }
+
+    /**
+     * One leg of a walk (1.2.93): within 40 it goes straight for the spot; further, it looks at 9 headings 32 out (dry,
+     * standable ground; water, lava and treetops cost, a big climb costs) and walks to the best on the walker. Not getting
+     * closer for 8 s = it turns its legs aside (60, -60, 120, -120 degrees), pearls ahead above its reserve, then tries again.
+     */
+    void goLeg(Mimic m, Location dest, double flat) {
+        Vindicator v = m.brain;
+        if (flat < m.travelBest - 3) { m.travelBest = flat; m.travelBestAt = m.t; m.legTries = 0; }
+        else if (m.t - m.travelBestAt > 160) { // stuck: another way
+            m.travelBestAt = m.t; m.travelBest = flat;
+            int[] turns = {60, -60, 120, -120, 0};
+            m.legBias = turns[m.legTries++ % turns.length];
+            m.path = null;
+            if (m.legTries % 2 == 0 && m.pearlsLeft > keepPearls() && m.t >= m.pearlReady) {
+                Block far = legGoal(m, dest, 24);
+                if (far != null && throwPearl(m, far.getLocation().clone().add(0.5, 0, 0.5), true)) return;
+            }
+        }
+        if (m.t - m.travelBestAt > 100 && m.legBias != 0 && m.legTries > 5) m.legBias = 0;
+        if (travelLeap(m, dest, flat)) return;
+        Block goal = flat <= 40 ? standNear(dest) : null;
+        if (goal == null) goal = legGoal(m, dest, flat <= 40 ? Math.max(4, flat) : 32);
         if (goal == null) { move(m, new Vector(dest.getX() - v.getLocation().getX(), 0, dest.getZ() - v.getLocation().getZ()).normalize(), chaseSpeed(m), false, true); return; }
-        navGoTo(m, goal);
+        if (m.pathGoal == null || m.pathGoal.getWorld() != goal.getWorld() || m.pathGoal.getLocation().distanceSquared(goal.getLocation()) > 64 || m.path == null || m.pathIdx >= m.path.size()) m.travelGoal = goal;
+        navGoTo(m, m.travelGoal != null && m.travelGoal.getWorld() == v.getWorld() ? m.travelGoal : goal);
+    }
+
+    /**
+     * 1.2.93: uses its stuff to get there faster, keeping what the fight needs: PEARL HOPS (more pearls than it keeps + 2: a
+     * long throw onto good ground 25-35 ahead, when the throw really lands there) and WIND LEAPS (more than 2 charges: one
+     * behind it on open flat ground = a long jump forward).
+     */
+    private boolean travelLeap(Mimic m, Location dest, double flat) {
+        Vindicator v = m.brain;
+        if (!v.isOnGround() || flat < 30) return false;
+        if (m.pearlsLeft > keepPearls() + 2 && m.t >= m.pearlReady) {
+            Block far = legGoal(m, dest, Math.min(34, flat - 4));
+            if (far != null && far.getLocation().distance(v.getLocation()) > 22 && !far.getRelative(0, -1, 0).isLiquid()
+                    && throwPearl(m, far.getLocation().clone().add(0.5, 0.1, 0.5), true)) { m.travelNote = "pearling toward " + (dest.getWorld() == v.getWorld() ? Math.round(flat) + " blocks off" : "its quarry"); m.path = null; return true; }
+        }
+        if (m.wind > 2 && m.t >= m.windRunReady) {
+            Vector dir = new Vector(dest.getX() - v.getLocation().getX(), 0, dest.getZ() - v.getLocation().getZ()).normalize();
+            if (safePath(v, dir, 8) && walkLine(v, v.getLocation().add(dir.clone().multiply(8)))) {
+                m.wind--; m.windRunReady = m.t + 50;
+                hold(m, "wind"); swing(m);
+                v.getWorld().spawnParticle(Particle.GUST_EMITTER_SMALL, v.getLocation(), 1);
+                v.getWorld().playSound(v.getLocation(), Sound.ENTITY_WIND_CHARGE_WIND_BURST, 1, 1);
+                Safe.vel(v, dir.multiply(1.0).setY(0.6));
+                v.setFallDistance(0); m.noFallUntil = m.t + 40;
+                m.path = null;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** The top solid block's air above it at that x/z, or null over the void / an unloaded chunk. */
+    Block solidSurface(Location l) {
+        Block s = surfaceAt(l);
+        if (s == null || s.getY() <= l.getWorld().getMinHeight() + 1 || !s.getRelative(0, -1, 0).getType().isSolid() && !s.getRelative(0, -1, 0).isLiquid()) return null;
+        return s;
+    }
+
+    /** Open void (nothing to stand on within 40 below) on the straight line between it and them. */
+    boolean voidBetween(Location a, Location b) {
+        Vector d = b.toVector().subtract(a.toVector()).setY(0);
+        double len = d.length();
+        if (len < 1) return false;
+        d.multiply(1 / len);
+        for (double t = 2; t < len - 1; t += 2) {
+            Location p = a.clone().add(d.clone().multiply(t));
+            if (!p.getWorld().isChunkLoaded(p.getBlockX() >> 4, p.getBlockZ() >> 4)) continue;
+            boolean floor = false;
+            for (int dy = 0; dy < 40 && !floor; dy++) if (p.getWorld().getBlockAt(p.getBlockX(), Math.min(a.getBlockY(), b.getBlockY()) - dy, p.getBlockZ()).getType().isSolid()) floor = true;
+            if (!floor) return true;
+        }
+        return false;
+    }
+
+    /** Under ground: 7+ blocks of something over it (Overworld only; the Nether / End have no "surface" to aim for). */
+    boolean underground(Location l) {
+        if (l.getWorld().getEnvironment() != World.Environment.NORMAL || !l.getWorld().isChunkLoaded(l.getBlockX() >> 4, l.getBlockZ() >> 4)) return false;
+        return l.getWorld().getHighestBlockYAt(l.getBlockX(), l.getBlockZ(), org.bukkit.HeightMap.MOTION_BLOCKING_NO_LEAVES) - l.getY() > 7;
+    }
+
+    /** The best spot `r` out toward dest (see goLeg). */
+    Block legGoal(Mimic m, Location dest, double r) {
+        Vindicator v = m.brain;
+        Location me = v.getLocation();
+        Vector to = new Vector(dest.getX() - me.getX(), 0, dest.getZ() - me.getZ());
+        if (to.lengthSquared() < 1e-4) return null;
+        double base = Math.atan2(to.getZ(), to.getX()) + Math.toRadians(m.legBias);
+        Block best = null; double bs = Double.MAX_VALUE;
+        if (underground(me) || dest.getWorld() == me.getWorld() && underground(dest) && MimicHunt.flat(me, dest) < 120 && me.getY() - dest.getY() > 8) {
+            // 1.2.93 UNDERGROUND: stays at its level and works toward the goal's height (a tunnel, never a staircase up to the
+            // surface and back down); a spot it can stand in near that height, else the cell itself (the walker digs to it)
+            World w = me.getWorld();
+            MimicNav nav = new MimicNav(w, navRules(m));
+            double wantY = me.getY() + Math.max(-r * 0.5, Math.min(r * 0.5, dest.getY() - me.getY()));
+            for (int deg : new int[]{0, 25, -25, 50, -50}) {
+                double ang = base + Math.toRadians(deg);
+                int x = (int) Math.floor(me.getX() + Math.cos(ang) * r), z = (int) Math.floor(me.getZ() + Math.sin(ang) * r);
+                if (!w.isChunkLoaded(x >> 4, z >> 4)) continue;
+                Block c = null;
+                for (int dy = 0; dy <= 5 && c == null; dy++) for (int sg : new int[]{1, -1}) {
+                    int y = (int) Math.floor(wantY) + dy * sg;
+                    if (nav.standable(x, y, z) && !hazardNear(w.getBlockAt(x, y, z))) { c = w.getBlockAt(x, y, z); break; }
+                }
+                double score = Math.hypot(x - dest.getX(), z - dest.getZ()) + Math.abs(deg) * 0.08 + (c == null ? 8 : 0);
+                if (c == null) {
+                    Block cell = w.getBlockAt(x, (int) Math.floor(wantY), z);
+                    if (HAZARD.contains(cell.getType()) || cell.isLiquid() || hazardNear(cell)) continue;
+                    c = cell;
+                }
+                if (score < bs) { bs = score; best = c; }
+            }
+            if (best != null) return best;
+        }
+        for (int deg : new int[]{0, 20, -20, 40, -40, 60, -60, 80, -80}) {
+            double ang = base + Math.toRadians(deg);
+            Location l = me.clone().add(Math.cos(ang) * r, 0, Math.sin(ang) * r);
+            Block s = surfaceAt(l);
+            if (s == null) continue;
+            Block under = s.getRelative(0, -1, 0);
+            Material um = under.getType();
+            if (um == Material.LAVA || HAZARD.contains(um)) continue;
+            double score = MimicHunt.flat(l, dest) + Math.abs(s.getY() - me.getY()) * 2.5 + Math.abs(deg) * 0.05;
+            if (um == Material.WATER || under.isLiquid()) score += 30; // swimming is slow
+            if (Tag.LEAVES.isTagged(um)) score += 12;
+            if (score < bs) { bs = score; best = s; }
+        }
+        return best;
     }
 
     /** The surface (the first air over a solid block, from the top) at that x/z, in a loaded chunk; null if it isn't loaded. */
@@ -2343,7 +2585,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             }
             return null;
         }
-        y = w.getHighestBlockYAt(l.getBlockX(), l.getBlockZ());
+        y = w.getHighestBlockYAt(l.getBlockX(), l.getBlockZ(), org.bukkit.HeightMap.MOTION_BLOCKING_NO_LEAVES); // under the trees, not on them
         return w.getBlockAt(l.getBlockX(), y + 1, l.getBlockZ());
     }
 
@@ -2375,7 +2617,11 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     }
 
     /** Elytra + more rockets than it keeps for the fight. */
-    boolean canFly(Mimic m) { return m.gear.elytra && m.rockets > keepRockets() + 1 && openUp(m.brain.getLocation().getBlock(), 10); }
+    boolean canFly(Mimic m) {
+        if (!m.gear.elytra || m.brain.getWorld().getEnvironment() == World.Environment.NETHER || !openUp(m.brain.getLocation().getBlock(), 10)) return false;
+        if (m.brain.getWorld().getEnvironment() == World.Environment.THE_END) return m.rockets > Math.min(keepRockets(), 1); // over the void a glide isn't enough
+        return m.rockets > keepRockets() || m.wind > 2; // rockets to spare, or a wind charge to launch and glide on
+    }
 
     /**
      * ELYTRA TRAVEL: takes off with a rocket, cruises ~30 over the ground toward `dest`, boosts only when it's slowed down and
@@ -2387,35 +2633,80 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         double flat = to.length();
         if (!m.travelFly) {
             if (!v.isOnGround() || !canFly(m)) return false;
-            m.travelFly = true; m.flying = true;
+            m.travelFly = true; m.flying = true; m.landSpot = null;
             m.body.getEquipment().setChestplate(new ItemStack(Material.ELYTRA)); armourFor(m, true);
-            m.rockets--; hold(m, "rocket"); swing(m);
-            v.getWorld().playSound(v.getLocation(), Sound.ENTITY_FIREWORK_ROCKET_LAUNCH, 1, 1);
-            Safe.vel(v, to.clone().normalize().multiply(0.6).setY(1.3));
+            if (m.rockets > keepRockets()) {
+                m.rockets--; hold(m, "rocket"); swing(m); m.nextRocket = m.t + 40;
+                v.getWorld().playSound(v.getLocation(), Sound.ENTITY_FIREWORK_ROCKET_LAUNCH, 1, 1);
+                Safe.vel(v, to.clone().normalize().multiply(0.6).setY(1.3));
+            } else { // no spare rockets: a wind charge at its feet launches it, then it glides
+                m.wind--; hold(m, "wind"); swing(m);
+                v.getWorld().spawnParticle(Particle.GUST_EMITTER_SMALL, v.getLocation(), 1);
+                v.getWorld().playSound(v.getLocation(), Sound.ENTITY_WIND_CHARGE_WIND_BURST, 1, 1);
+                Safe.vel(v, to.clone().normalize().multiply(0.5).setY(1.5));
+                m.nextRocket = m.t + 30; // the launch counts as a boost for the climb
+            }
             return true;
         }
         v.setFallDistance(0);
-        Block ground = surfaceAt(v.getLocation());
-        double groundY = ground != null ? ground.getY() : v.getLocation().getY() - 30;
-        if (flat < 40 || v.isOnGround() && m.t % 10 == 0 && flat < 80) { // there: down and walk the rest
-            if (v.isOnGround() || v.getLocation().getY() - groundY < 2) { m.travelFly = false; land(m); return false; }
-            Safe.vel(v, to.clone().normalize().multiply(0.6).setY(-0.6));
+        Block ground = solidSurface(v.getLocation());
+        boolean overVoid = ground == null;
+        double groundY = ground != null ? ground.getY() : Math.min(v.getLocation().getY() - 30, dest.getY() - 10);
+        Vector dir = to.clone().normalize();
+        // landing (1.2.93): a dry spot it can stand on near the end of the trip, picked once, glided down to
+        if (flat < 32) {
+            if (m.landSpot == null || m.landSpot.getWorld() != v.getWorld()) {
+                Block ls = standNear(dest);
+                if (ls == null || ls.getRelative(0, -1, 0).isLiquid()) { Block lg = legGoal(m, dest, Math.max(4, flat - 6)); if (lg != null) ls = lg; }
+                m.landSpot = ls != null ? ls.getLocation().clone().add(0.5, 0, 0.5) : dest.clone();
+            }
+            Vector toLand = m.landSpot.toVector().subtract(v.getLocation().toVector());
+            if (v.isOnGround() || v.getLocation().getY() - groundY < 1.5 || toLand.length() < 2.5) { m.travelFly = false; m.landSpot = null; land(m); return false; }
+            Vector h = toLand.clone().setY(0);
+            double hl = h.length();
+            double vy = Math.max(-0.9, Math.min(-0.15, toLand.getY() / Math.max(1, hl / 0.7))); // a glide path onto the spot
+            Safe.vel(v, (hl > 1e-3 ? h.multiply(Math.min(0.7, hl * 0.2 + 0.25) / hl) : h).setY(vy));
+            if (hl > 1e-3) m.yaw = (float) Math.toDegrees(Math.atan2(-toLand.getX(), toLand.getZ()));
             return true;
         }
+        m.landSpot = null;
         Vector cur = v.getVelocity();
         double speed = Math.hypot(cur.getX(), cur.getZ());
+        boolean boosting = m.t < m.nextRocket - 10; // a rocket burns ~1.5 s
         if (speed < 0.8 && m.rockets > keepRockets() && m.t >= m.nextRocket) { // boost
             m.rockets--; m.nextRocket = m.t + 40;
             hold(m, "rocket"); swing(m);
             v.getWorld().playSound(v.getLocation(), Sound.ENTITY_FIREWORK_ROCKET_LAUNCH, 1, 1);
-            speed = 1.6;
+            speed = 1.6; boosting = true;
         }
-        if (m.rockets <= keepRockets() && speed < 0.5) { // out of spare rockets: glides down, walks the rest
-            if (v.isOnGround()) { m.travelFly = false; land(m); return false; }
+        // looks ahead (1.2.93): the highest ground over the next 48 blocks it flies over, so it climbs before a hill, not into it
+        double ahead = overVoid ? -1e9 : groundY;
+        for (int k = 8; k <= 48; k += 8) {
+            Block s2 = solidSurface(v.getLocation().clone().add(dir.clone().multiply(k)));
+            if (s2 != null) ahead = Math.max(ahead, s2.getY());
         }
-        double alt = groundY + 30;
-        double vy = Math.max(-0.5, Math.min(0.35, (alt - v.getLocation().getY()) * 0.05));
-        Vector h = to.normalize().multiply(Math.max(0.35, speed * 0.995));
+        // over the void (the End): never below where it's going (+12) or below the islands ahead
+        double alt = ahead < -1e8 ? Math.max(v.getLocation().getY(), dest.getY() + 12) : Math.min(v.getWorld().getMaxHeight() - 8, Math.max(ahead + 26, overVoid ? dest.getY() + 12 : -1e9));
+        double y = v.getLocation().getY();
+        boolean wall = false;
+        for (int k = 1; k <= 6 && !wall; k++) { Block b2 = v.getLocation().clone().add(dir.clone().multiply(k * 1.5)).getBlock(); if (b2.getType().isSolid() || b2.getRelative(0, 1, 0).getType().isSolid()) wall = true; }
+        double vy;
+        if (boosting) vy = wall ? 0.8 : Math.max(-0.5, Math.min(0.5, (alt - y) * 0.06));
+        else { // GLIDING: no climbing without a rocket; trades height for speed (a dive speeds it up, levelling off slows it)
+            vy = wall ? 0.3 : Math.max(-0.5, Math.min(-0.04, (alt - y) * 0.03));
+            speed = Math.max(0.45, speed * 0.993 + (-vy) * 0.06);
+            if (wall) speed *= 0.85;
+        }
+        if (overVoid && !boosting && m.rockets > 0 && y < dest.getY() + 6 && m.t >= m.nextRocket) { // sinking over the void: a rocket whatever it keeps
+            m.rockets--; m.nextRocket = m.t + 40; hold(m, "rocket"); swing(m);
+            v.getWorld().playSound(v.getLocation(), Sound.ENTITY_FIREWORK_ROCKET_LAUNCH, 1, 1);
+            boosting = true; speed = 1.6; vy = 0.5;
+        }
+        if (!overVoid && !boosting && m.rockets <= keepRockets() && (y - groundY < 4 || speed < 0.5)) { // out of spare rockets and down low: lands, walks on
+            if (v.isOnGround() || y - groundY < 1.5) { m.travelFly = false; land(m); return false; }
+            vy = -0.4;
+        }
+        Vector h = dir.multiply(Math.min(boosting ? 1.7 : 1.5, Math.max(0.35, speed)));
         Safe.vel(v, h.setY(vy));
         m.yaw = (float) Math.toDegrees(Math.atan2(-h.getX(), h.getZ()));
         return true;
@@ -2448,27 +2739,43 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
      * Into another world: a portal players have used from here to there (walks in; vanilla takes it through, or after 3 s
      * standing in it, it's put where they came out), else for the End the stronghold's portal, else back to the Overworld first.
      */
-    void toWorld(Mimic m, World dw) {
+    void toWorld(Mimic m, World dw, Location dest) {
         Vindicator v = m.brain;
         World here = v.getWorld();
-        MimicHunt.Portal p = hunt == null ? null : hunt.portalTo(here, dw, v.getLocation());
+        MimicHunt.Portal p = null;
+        if (hunt != null && m.huntId != null) { // the very portal its quarry just took (1.2.93)
+            MimicHunt.Portal last = hunt.lastUsed.get(m.huntId);
+            if (last != null && last.from().getWorld() == here && last.to().getWorld() == dw && MimicHunt.flat(last.from(), v.getLocation()) < 3000) p = last;
+        }
+        if (p == null && hunt != null) p = hunt.bestPortal(here, dw, v.getLocation(), dest);
+        if (m.travelNote == null || !m.travelNote.startsWith("heading for the Nether")) m.travelNote = "going to " + dw.getName();
         if (p == null && hunt != null && dw.getEnvironment() != World.Environment.NORMAL && here.getEnvironment() != World.Environment.NORMAL)
             p = hunt.anyPortalTo(here, World.Environment.NORMAL, v.getLocation()); // via the Overworld
         Location portal = p != null ? p.from() : null, out = p != null ? p.to() : null;
         if (portal == null && here.getEnvironment() == World.Environment.NORMAL && dw.getEnvironment() == World.Environment.THE_END) {
             if (m.endFrame == null) {
-                if (hunt != null && m.t >= m.frameSearchAt) { m.frameSearchAt = m.t + 1200; hunt.findEndPortal(here, v.getLocation(), f -> m.endFrame = f); }
-                idle(m); return;
+                Location center = hunt == null ? null : hunt.strongholdCenter(here);
+                if (hunt != null && m.t >= m.frameSearchAt) {
+                    m.frameSearchAt = m.t + (center == null ? 400 : 200);
+                    if (center != null && MimicHunt.flat(center, v.getLocation()) < 80) hunt.scanAround(here, v.getLocation(), 4, f -> { if (f != null) m.endFrame = f; }); // there: looks round itself
+                    else hunt.findEndPortal(here, v.getLocation(), f -> { if (f != null) m.endFrame = f; });
+                }
+                if (center == null) { m.travelNote = "looking for a stronghold"; return; }
+                m.travelNote = "heading to a stronghold (" + Math.round(MimicHunt.flat(center, v.getLocation())) + " blocks)";
+                double fc = MimicHunt.flat(center, v.getLocation());
+                if (fc > flyOver() && (m.travelFly || canFly(m)) && flyTo(m, center)) return;
+                if (fc > 6) goLeg(m, new Location(here, center.getX(), Math.min(center.getY(), 30), center.getZ()), fc);
+                return;
             }
             portal = endPortalInside(m, m.endFrame);
-            if (portal == null) { m.endFrame = null; idle(m); return; } // no portal, no eyes to light one
+            if (portal == null) { m.endFrame = null; m.travelNote = "no way into the End (not enough Eyes of Ender)"; return; } // no portal, no eyes to light one
             out = new Location(dw, 100.5, 49, 0.5); // the End's obsidian platform
         }
         if (portal == null && here.getEnvironment() == World.Environment.THE_END) { // the exit fountain in the middle
             Block exit = findPortalNear(new Location(here, 0, 64, 0), 8);
             if (exit != null) { portal = exit.getLocation().add(0.5, 0, 0.5); out = dw.getSpawnLocation(); }
         }
-        if (portal == null) { idle(m); return; }
+        if (portal == null) { m.travelNote = "no known way to " + dw.getName(); return; }
         Location at = v.getLocation();
         double flat = Math.hypot(portal.getX() - at.getX(), portal.getZ() - at.getZ());
         Block pb = portal.getBlock();
@@ -2493,11 +2800,13 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         m.portalTicks = 0;
         // end portals are down in a stronghold: dig to them when right above
         if (flat < 3 && portal.getBlockY() < feetCell(v).getY() - 1 && digDown(m, portal)) return;
-        if (flat > cfg("hunt.fly-over", 150) && (m.travelFly || canFly(m)) && flyTo(m, portal)) return;
-        Location wp = flat <= 40 ? portal : at.clone().add(new Vector(portal.getX() - at.getX(), 0, portal.getZ() - at.getZ()).normalize().multiply(40));
-        Block goal = flat <= 40 ? (pb.getType() == Material.END_PORTAL ? standNear(portal.clone().add(1, 1, 0)) : pb) : surfaceAt(wp);
-        if (flat <= 6 && portal.getY() < at.getY() - 3) goal = surfaceAt(portal); // over it first
-        if (goal == null) goal = surfaceAt(wp);
+        if (flat > flyOver() && (m.travelFly || canFly(m)) && flyTo(m, portal)) return;
+        m.travelNote = (m.travelNote != null && m.travelNote.startsWith("heading for the Nether") ? m.travelNote : "going to " + dw.getName()) + " (portal " + Math.round(flat) + " blocks)";
+        Block goal = null;
+        if (flat <= 40) goal = pb.getType() == Material.END_PORTAL ? standNear(portal.clone().add(1, 1, 0)) : standNear(portal);
+        if (goal == null && flat <= 40) goal = pb;
+        if (flat <= 6 && portal.getY() < at.getY() - 3 && !underground(at)) goal = surfaceAt(portal); // over it first, then digs down
+        if (flat > 40) { goLeg(m, portal, flat); return; }
         if (goal == null) return;
         navGoTo(m, goal);
     }
@@ -2604,11 +2913,9 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         return new MimicNav.Rules() {
             public int mineTicks(Block b) {
                 if (!worldTechs() || !plugin.getConfig().getBoolean("mimic-player.dig", true) || !diggable(b)) return -1;
-                ItemStack tool = toolFor(m, b);
-                float h = b.getType().getHardness();
-                if (tool != null) return (int) Math.ceil(h * 30 / toolSpeed(tool));
-                if (h <= 1.0f && !Tag.MINEABLE_PICKAXE.isTagged(b.getType())) return (int) Math.ceil(h * 30); // dirt, sand, leaves by hand
-                return -1;
+                int t = breakTicks(m, b, true);
+                if (t < 0 || t > 200) return -1; // no tool for it / far too slow (an obsidian wall by hand)
+                return t;
             }
             public int maxDrop() {
                 Vindicator v = m.brain;
@@ -3354,42 +3661,117 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     }
 
     /** Runs away along a real path (round walls, through doors, down off ledges) to a spot ~18 blocks from them. */
+    /**
+     * 1.2.93 RUNNING AWAY: picks where to run like a player would. 16 ways x 2 distances, each a spot it can stand on,
+     * scored by how far from THEM it ends up (never past them or toward them), whether they lose sight of it there (round a
+     * corner, behind a hill: a big plus), how open it is (a dead end / a pit is a big minus), lower ground (drops break a
+     * chase) and keeping its last pick. The best ones are planned on the walker; a path that runs past them is thrown out.
+     * Replanned every 1.5 s, when it gets there, or when they cut it off.
+     */
     private boolean navFlee(Mimic m, Player tg) {
         Vindicator v = m.brain;
-        if (m.fleeGoal == null || m.t - m.fleePlanAt > 40 || m.fleeGoal.getWorld() != v.getWorld()) {
-            Vector away = v.getLocation().toVector().subtract(tg.getLocation().toVector()).setY(0);
-            if (away.lengthSquared() < 1e-4) away = new Vector(1, 0, 0);
-            away.normalize();
-            MimicNav nav = new MimicNav(v.getWorld(), navRules(m));
-            Block pick = null;
-            for (int turn : new int[]{0, 30, -30, 60, -60, 90, -90}) {
-                double r = Math.toRadians(turn), c = Math.cos(r), sn = Math.sin(r);
-                Vector d = new Vector(away.getX() * c - away.getZ() * sn, 0, away.getX() * sn + away.getZ() * c).multiply(18);
-                Location to = v.getLocation().add(d);
-                for (int dy = 0; dy <= 6 && pick == null; dy++) for (int sgn : new int[]{1, -1}) {
-                    int y = to.getBlockY() + dy * sgn;
-                    if (nav.standable(to.getBlockX(), y, to.getBlockZ())) { pick = v.getWorld().getBlockAt(to.getBlockX(), y, to.getBlockZ()); break; }
+        Location tl = tg.getLocation();
+        boolean cutOff = m.fleeGoal != null && m.fleeGoal.getWorld() == tl.getWorld()
+                && m.fleeGoal.getLocation().clone().add(0.5, 0, 0.5).distanceSquared(tl) < m.fleeGoal.getLocation().clone().add(0.5, 0, 0.5).distanceSquared(v.getLocation());
+        boolean done = m.path == null || m.pathIdx >= m.path.size();
+        if (m.fleeGoal == null || m.t - m.fleePlanAt > 30 || cutOff || done || m.fleeGoal.getWorld() != v.getWorld()) {
+            if (m.t - m.fleePlanAt < 6 && m.fleeGoal != null && !done) { followPath(m, tg); return true; }
+            m.fleePlanAt = m.t;
+            List<Block> picks = fleeSpots(m, tg);
+            Block chosen = null;
+            for (int i = 0; i < Math.min(3, picks.size()) && chosen == null; i++) {
+                plan(m, picks.get(i));
+                if (m.path == null || m.path.isEmpty() || !m.navReach) continue;
+                boolean safe = true;
+                for (int k = 2; k < m.path.size() && safe; k++) {
+                    MimicNav.Step st = m.path.get(k);
+                    if (tl.distanceSquared(new Location(v.getWorld(), st.x + 0.5, st.y, st.z + 0.5)) < 6.25) safe = false; // runs past them
                 }
-                if (pick != null) break;
+                if (safe) chosen = picks.get(i);
             }
-            if (pick == null) return false;
-            m.fleeGoal = pick; m.fleePlanAt = m.t;
-            plan(m, pick);
+            if (chosen == null) { m.fleeGoal = null; m.path = null; return false; }
+            m.fleeGoal = chosen;
         }
         if (m.path == null || m.pathIdx >= m.path.size()) { m.fleeGoal = null; return false; }
         followPath(m, tg);
         return true;
     }
 
+    /** Places to run to, best first (see navFlee). */
+    List<Block> fleeSpots(Mimic m, Player tg) {
+        Vindicator v = m.brain;
+        World w = v.getWorld();
+        MimicNav nav = new MimicNav(w, navRules(m));
+        Location me = v.getLocation(), them = tg.getLocation(), eye = tg.getEyeLocation();
+        Vector toThem = them.toVector().subtract(me.toVector()).setY(0);
+        if (toThem.lengthSquared() < 1e-4) toThem = new Vector(-1, 0, 0);
+        toThem.normalize();
+        List<Block> out = new ArrayList<>();
+        Map<Block, Double> score = new HashMap<>();
+        for (int i = 0; i < 16; i++) {
+            double ang = Math.PI * 2 * i / 16;
+            Vector dir = new Vector(Math.cos(ang), 0, Math.sin(ang));
+            if (dir.dot(toThem) > 0.35) continue; // not toward them
+            for (int r : new int[]{14, 22}) {
+                int x = (int) Math.floor(me.getX() + dir.getX() * r), z = (int) Math.floor(me.getZ() + dir.getZ() * r);
+                if (!w.isChunkLoaded(x >> 4, z >> 4)) continue;
+                Block c = null;
+                for (int dy = 6; dy >= -10 && c == null; dy--) if (nav.standable(x, me.getBlockY() + dy, z)) c = w.getBlockAt(x, me.getBlockY() + dy, z);
+                if (c == null || hazardNear(c)) continue;
+                Location cl = c.getLocation().clone().add(0.5, 0, 0.5);
+                double dMe = cl.distance(me), dThem = cl.distance(them);
+                if (dThem < dMe + 3) continue; // they're closer to it than it is
+                double sc = dThem - 0.5 * dMe;
+                if (!clearSight(eye, cl.clone().add(0, 1.6, 0))) sc += 12; // out of their sight there
+                int open = openness(nav, c);
+                sc += open < 14 ? -25 : Math.min(open, 35) * 0.2;
+                if (c.getY() < me.getY() - 2) sc += 2;
+                if (m.fleeGoal != null && m.fleeGoal.getWorld() == w && m.fleeGoal.getLocation().distanceSquared(c.getLocation()) < 49) sc += 4;
+                score.put(c, sc); out.add(c);
+            }
+        }
+        out.sort(Comparator.comparingDouble(b -> -score.get(b)));
+        return out;
+    }
+
+    /** Lava, fire, cactus, magma beside it. */
+    static boolean hazardNear(Block c) {
+        for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) for (int dy = -1; dy <= 1; dy++)
+            if (HAZARD.contains(c.getRelative(dx, dy, dz).getType())) return true;
+        return false;
+    }
+
+    /** Nothing that blocks sight on the straight line between two points (a block walk; no ray tracing needed). */
+    static boolean clearSight(Location a, Location b) {
+        Vector d = b.toVector().subtract(a.toVector());
+        double len = d.length();
+        if (len < 1e-3) return true;
+        d.multiply(1 / len);
+        for (double t = 0.5; t < len - 0.3; t += 0.4) {
+            Block x = a.getWorld().getBlockAt((int) Math.floor(a.getX() + d.getX() * t), (int) Math.floor(a.getY() + d.getY() * t), (int) Math.floor(a.getZ() + d.getZ() * t));
+            if (x.getType().isOccluding()) return false;
+        }
+        return true;
+    }
+
+    /** How many of the 7x7 columns round a spot it could stand in (about its height): small = a dead end / a hole. */
+    static int openness(MimicNav nav, Block c) {
+        int n = 0;
+        for (int dx = -3; dx <= 3; dx++) for (int dz = -3; dz <= 3; dz++)
+            for (int dy = -1; dy <= 1; dy++) if (nav.standable(c.getX() + dx, c.getY() + dy, c.getZ() + dz)) { n++; break; }
+        return n;
+    }
+
     /** Mines one block in its path (the right tool, or a hand for dirt / sand / leaves), at a player's speed. */
     private boolean navDig(Mimic m, Block b) {
-        if (!diggable(b)) return false;
+        if (!diggable(b) || liquidNext(b)) return false; // 1.2.93: never lets lava / water into its tunnel
         ItemStack tool = toolFor(m, b);
-        float h = b.getType().getHardness();
-        if (tool == null && (h > 1.0f || Tag.MINEABLE_PICKAXE.isTagged(b.getType()))) return false;
+        int bt = breakTicks(m, b);
+        if (bt < 0) return false;
+        if (m.digBlock != null && !m.digBlock.equals(b)) crack(m, m.digBlock, 0);
         m.digBlock = b;
-        m.digTicks = 0;
-        m.digNeed = Math.max(1, (int) Math.ceil(h * 30 / (tool == null ? 1 : toolSpeed(tool))));
+        m.digTicks = 0; m.digProgress = 0;
+        m.digNeed = Math.max(1, bt);
         hold(m, tool == null ? "sword" : tool == m.gear.pickaxe ? "pickaxe" : tool == m.gear.axe ? "axe" : "shovel");
         Safe.vel(m.brain, new Vector(0, m.brain.getVelocity().getY(), 0));
         m.navProgressAt = m.t;
@@ -4345,13 +4727,60 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         Vector away = v.getLocation().toVector().subtract(tg.getLocation().toVector()).setY(0);
         if (away.lengthSquared() < 1e-4) away = new Vector(1, 0, 0);
         away.normalize();
-        Block ahead = v.getLocation().clone().add(away.getX() * 0.8, 0, away.getZ() * 0.8).getBlock();
-        boolean wall = ahead.getType().isSolid(), tall = ahead.getRelative(0, 1, 0).getType().isSolid();
-        if (wall && tall || !walkLine(v, v.getLocation().add(away.clone().multiply(6)))) { if (!navFlee(m, tg)) move(m, away, m.skill.speed() * 0.9, wall, true); }
-        else { m.fleeGoal = null; move(m, away, m.skill.speed() * 0.9, wall, true); }
+        double d = tg.getLocation().distance(v.getLocation());
+        // 1.2.93: a planned run (round corners, out of sight, never into a dead end); straight away only when nothing plans
+        if (!navFlee(m, tg)) {
+            Block ahead = v.getLocation().clone().add(away.getX() * 0.8, 0, away.getZ() * 0.8).getBlock();
+            boolean wall = ahead.getType().isSolid(), tall = ahead.getRelative(0, 1, 0).getType().isSolid();
+            // CORNERED: nowhere to run and they're on it: turns and fights (a player doesn't run into a wall)
+            if (wall && tall && d < 3.5 && !openOut(m)) { m.fleeUntil = 0; m.healRun = false; m.reactAt = m.t; return; }
+            move(m, away, m.skill.speed() * 0.9, wall, true);
+        } else if (m.path != null && m.pathIdx < m.path.size()) {
+            MimicNav.Step st = m.path.get(Math.min(m.path.size() - 1, m.pathIdx + 1));
+            Vector run = new Vector(st.x + 0.5 - v.getLocation().getX(), 0, st.z + 0.5 - v.getLocation().getZ());
+            if (run.lengthSquared() > 1e-4) away = run.normalize(); // the trail / dash go the way it's really running
+        }
         runTricks(m, tg, away);
-        if (!m.held.equals("block") && !m.held.equals("wind")) hold(m, "sword");
+        fleeTricks(m, tg, away, d);
+        if (!m.held.equals("block") && !m.held.equals("wind") && !m.held.equals("web") && !m.held.equals("pearl")) hold(m, "sword");
         if (m.fleeUntil - m.t < 2 || v.getHealth() / maxHp(v) > 0.7) { m.fleeUntil = 0; m.healRun = false; }
+    }
+
+    /** Any open way out (a standable cell 3 off in some direction). */
+    private boolean openOut(Mimic m) {
+        MimicNav nav = new MimicNav(m.brain.getWorld(), navRules(m));
+        Block f = feetCell(m.brain);
+        for (int[] dd : new int[][]{{3, 0}, {-3, 0}, {0, 3}, {0, -3}, {2, 2}, {-2, 2}, {2, -2}, {-2, -2}})
+            for (int dy = -2; dy <= 1; dy++) if (nav.standable(f.getX() + dd[0], f.getY() + dy, f.getZ() + dd[1])) return true;
+        return false;
+    }
+
+    /**
+     * 1.2.93 tricks on the run: a PEARL out when they catch up (to where it was running, if the throw lands there),
+     * JUKES (hard+: a sudden cut to one side when they're right behind it), a COBWEB behind it (normal+), and it never
+     * looks back while sprinting off.
+     */
+    private void fleeTricks(Mimic m, Player tg, Vector away, double d) {
+        Vindicator v = m.brain;
+        if (d < 3.2 && m.pearlsLeft > 0 && m.t >= m.pearlReady && (m.t - m.lastHurt < 15 || tg.isSprinting())) {
+            boolean ok = false;
+            if (m.fleeGoal != null && m.fleeGoal.getLocation().distance(v.getLocation()) > 9) ok = throwPearl(m, m.fleeGoal.getLocation().clone().add(0.5, 0, 0.5), true);
+            if (!ok) pearlOut(m, tg);
+            m.fleeGoal = null; m.path = null;
+            return;
+        }
+        if (tier(m) >= 3 && d < 4 && v.isOnGround() && m.t >= m.jukeReady && random.nextDouble() < 0.12) {
+            Vector side = new Vector(-away.getZ(), 0, away.getX()).multiply(random.nextBoolean() ? 1 : -1);
+            if (safePath(v, side, 2)) { Safe.vel(v, side.multiply(0.42).add(away.clone().multiply(0.1)).setY(0.2)); m.jukeReady = m.t + 30; }
+        }
+        if (tier(m) >= 2 && m.webs > 0 && d < 5 && d > 1.5 && v.isOnGround() && m.t >= m.fleeWebReady && worldTechs()) {
+            Block behind = v.getLocation().clone().subtract(away.clone().multiply(1.4)).add(0, 0.2, 0).getBlock();
+            if (behind.getType().isAir() && !occupied(behind, tg) && !occupied(behind, v) && place(behind, Material.COBWEB, 100)) {
+                m.webs--; m.fleeWebReady = m.t + 80;
+                hold(m, "web"); swing(m);
+                behind.getWorld().playSound(behind.getLocation(), Sound.BLOCK_COBWEB_PLACE, 1, 1);
+            }
+        }
     }
 
     static boolean facing(LivingEntity who, Entity at) {
@@ -4368,6 +4797,31 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     /** The body's eye (a mannequin's), or the brain's when that isn't available. */
     Location eye(Mimic m) {
         try { return m.body.getEyeLocation(); } catch (RuntimeException e) { return m.brain.getEyeLocation(); }
+    }
+
+    /** What it's up to, in a few words (shown to admins spectating it). */
+    String doing(Mimic m) {
+        if (m.hunting && m.target == null) return m.travelNote != null ? m.travelNote : "travelling";
+        if (m.covering || m.covered) return "boxed in, healing";
+        if (m.eatUntil > m.t) return "eating";
+        if (m.drinkUntil > m.t || m.potUntil > m.t) return "potting";
+        if (m.fleeUntil > m.t) return m.healRun ? "running off to heal" : "running away";
+        if (m.climbWater != null) return "water-climbing";
+        if (m.digBlock != null) return "digging";
+        if (m.target != null) return "fighting " + m.target.getName() + " (" + Math.round(m.target.getLocation().distance(m.brain.getLocation())) + "m)";
+        return "idle";
+    }
+
+    /** The way it's really moving (its velocity), or the next step of its path; null when it's standing still. */
+    private Float runYaw(Mimic m) {
+        Vector vel = m.brain.getVelocity();
+        if (vel.getX() * vel.getX() + vel.getZ() * vel.getZ() > 0.0025) return (float) Math.toDegrees(Math.atan2(-vel.getX(), vel.getZ()));
+        if (m.path != null && m.pathIdx < m.path.size()) {
+            MimicNav.Step st = m.path.get(m.pathIdx);
+            double dx = st.x + 0.5 - m.brain.getLocation().getX(), dz = st.z + 0.5 - m.brain.getLocation().getZ();
+            if (dx * dx + dz * dz > 0.04) return (float) Math.toDegrees(Math.atan2(-dx, dz));
+        }
+        return null;
     }
 
     private void follow(Mimic m) {
@@ -4395,8 +4849,21 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
                 wantYaw = (float) Math.toDegrees(Math.atan2(-d.getX(), d.getZ())) + m.aimJx;
                 pitch = (float) -Math.toDegrees(Math.atan2(d.getY(), Math.hypot(d.getX(), d.getZ()))) + m.aimJy;
             }
-            if (m.fleeUntil > m.t || m.potRunUntil - m.t > 1) wantYaw += 180;
+            boolean glance = m.t % 40 < 6; // 1.2.93: running off it looks where it runs, with a glance back now and then
+            if (m.fleeUntil > m.t && !glance) { Float run = runYaw(m); wantYaw = run != null ? run : wantYaw + 180; pitch = 5; }
+            else if (m.potRunUntil - m.t > 1) wantYaw += 180;
+        } else if (m.hunting || m.travelFly) { // 1.2.93: travelling = faces the way it's going (it used to keep looking round at random)
+            Float run = runYaw(m);
+            if (run != null) wantYaw = run;
+            pitch = m.travelFly ? 10 : 4;
         } else { wantYaw = m.idleYaw; pitch = (float) (Math.sin(m.t * 0.03) * 12); }
+        if (m.digBlock != null && m.digBlock.getWorld() == m.brain.getWorld()) { // 1.2.93: looks at the block it's mining
+            Vector look = m.digBlock.getLocation().clone().add(0.5, 0.5, 0.5).toVector().subtract(m.brain.getEyeLocation().toVector());
+            if (look.lengthSquared() > 1e-4) {
+                wantYaw = (float) Math.toDegrees(Math.atan2(-look.getX(), look.getZ()));
+                pitch = (float) -Math.toDegrees(Math.atan2(look.getY(), Math.hypot(look.getX(), look.getZ())));
+            }
+        }
         if (m.drinkUntil > m.t || m.lookDownUntil > m.t) pitch = 88;
         float diff = ((wantYaw - m.yaw) % 360 + 540) % 360 - 180;
         float rate = turnRate(m);
@@ -4507,6 +4974,17 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     }
 
     private void pearl(Mimic m, Player tg) { throwPearl(m, tg.getLocation(), true); }
+
+    /** 1.2.93: a pearl to the best place to run to (out of their sight, away from them, not a dead end), else straight away. */
+    private void pearlOut(Mimic m, Player tg) {
+        try {
+            for (Block b : fleeSpots(m, tg)) {
+                if (b.getLocation().distance(m.brain.getLocation()) < 12) continue;
+                if (throwPearl(m, b.getLocation().clone().add(0.5, 0.1, 0.5), true)) { m.fleeGoal = null; m.path = null; return; }
+            }
+        } catch (RuntimeException ignored) { }
+        pearlAway(m, tg);
+    }
 
     private void pearlAway(Mimic m, Player tg) {
         Vector away = m.brain.getLocation().toVector().subtract(tg.getLocation().toVector()).setY(0);
@@ -4722,6 +5200,11 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             s.sendMessage(ChatColor.GREEN + "Removed " + gone.size() + " mimic" + (gone.size() == 1 ? "" : "s") + (a.length > 1 ? " of " + a[1] : "") + ".");
             return true;
         }
+        if (sub.equals("spectate") || sub.equals("watch") || sub.equals("spec")) {
+            if (!(s instanceof Player p)) { s.sendMessage("In game only."); return true; }
+            watch.command(p, a.length > 1 ? a[1] : null);
+            return true;
+        }
         if (sub.equals("debug")) {
             if (!(s instanceof Player p)) { s.sendMessage("In game only."); return true; }
             boolean on = hitLog.add(p.getUniqueId());
@@ -4748,7 +5231,17 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
                 if (a.length > 2 && !m.name.equalsIgnoreCase(a[2])) continue;
                 m.hunting = true; m.huntId = who; m.path = null; n++;
             }
-            if (n == 0) { s.sendMessage(ChatColor.RED + "No mimic" + (a.length > 2 ? " of " + a[2] : "s") + " out. Spawn one with /mimicplayer <player> first."); return true; }
+            if (n == 0 && a.length > 2) { // 1.2.93: no mimic of that player out = spawns one (next to you, or at the main world's spawn) and sends it
+                OfflinePlayer of = Bukkit.getPlayerExact(a[2]) != null ? Bukkit.getPlayerExact(a[2]) : Bukkit.getOfflinePlayer(a[2]);
+                Skill sk = SKILLS.getOrDefault(a.length > 3 ? a[3].toLowerCase(Locale.ROOT) : plugin.getConfig().getString("mimic-player.skill", "normal").toLowerCase(Locale.ROOT), SKILLS.get("normal"));
+                Location at;
+                if (s instanceof Player sp) { at = sp.getLocation().add(sp.getLocation().getDirection().setY(0).normalize().multiply(3)); at.setYaw(sp.getLocation().getYaw() + 180); }
+                else at = Bukkit.getWorlds().get(0).getSpawnLocation().add(0.5, 0, 0.5);
+                Mimic m = spawn(at, of, sk);
+                m.hunting = true; m.huntId = who; m.path = null; n = 1;
+                s.sendMessage(ChatColor.GREEN + "No mimic of " + a[2] + " was out: spawned one (" + sk.id() + ").");
+            }
+            if (n == 0) { s.sendMessage(ChatColor.RED + "No mimics out. /mimicplayer hunt <target> <player to mimic> [skill] spawns one and sends it."); return true; }
             s.sendMessage(ChatColor.GREEN + "" + n + " mimic" + (n == 1 ? "" : "s") + " hunting " + whoName + " (any range, any world; /mimicplayer hunt stop).");
             return true;
         }
@@ -4789,8 +5282,20 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     @Override
     public List<String> onTabComplete(CommandSender s, Command c, String l, String[] a) {
         if (a.length == 1) {
-            List<String> out = new ArrayList<>(List.of("random", "remove", "clear", "list"));
+            List<String> out = new ArrayList<>(List.of("random", "remove", "clear", "list", "hunt", "spectate", "debug"));
             for (Player p : Bukkit.getOnlinePlayers()) out.add(p.getName());
+            return out;
+        }
+        if (a.length == 2 && (a[0].equalsIgnoreCase("spectate") || a[0].equalsIgnoreCase("watch"))) {
+            List<String> out = new ArrayList<>(List.of("next", "stop"));
+            for (Mimic m : byBrain.values()) if (!out.contains(m.name)) out.add(m.name);
+            return out;
+        }
+        if (a[0].equalsIgnoreCase("hunt")) {
+            List<String> out = new ArrayList<>();
+            if (a.length == 2) { out.add("stop"); out.add("any"); }
+            if (a.length <= 3) { for (Player p : Bukkit.getOnlinePlayers()) out.add(p.getName()); for (Mimic m : byBrain.values()) if (!out.contains(m.name)) out.add(m.name); }
+            if (a.length == 4) out.addAll(SKILLS.keySet());
             return out;
         }
         if (a.length == 2 && (a[0].equalsIgnoreCase("remove") || a[0].equalsIgnoreCase("kill"))) {

@@ -806,8 +806,9 @@ mimic-player:
   elytra-mace: false        # elytra dive bomb: rockets up on an elytra, swaps the chestplate back on and slams down with the mace
   hunt:                     # /mimicplayer hunt <player> [mimic] (any range, any world; through portals players use, the End's stronghold portal)
     keep-pearls: 4          # pearls it never spends travelling (kept for the fight)
-    keep-rockets: 4         # rockets it never spends flying there
-    fly-over: 150           # flies its elytra for trips longer than this (if it has one and spare rockets)
+    keep-rockets: 2         # rockets it never spends flying there (1.2.93: was 4; an old 4 reads as 2)
+    fly-over: 48            # flies its elytra for trips longer than this (rockets to spare, or a wind charge to launch and glide; 1.2.93: was 150)
+    nether-over: 500        # a longer Overworld trip goes through the Nether when recorded portals make that 30%+ shorter
     load-radius: 3          # chunks kept loaded round a hunting mimic (3 = 7x7), so it keeps moving with nobody near
   combat-tag:           # it hitting you / you hitting it = in combat. With DonutCombat installed its own tag is used (its duration, blocked commands, combat-log kill)
     enabled: true

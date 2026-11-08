@@ -28,6 +28,9 @@ final class MimicHunt implements Listener {
     final List<Portal> portals = new ArrayList<>();
     private final Map<String, Location> strongholds = new HashMap<>(); // world -> an end portal frame found there
     private final Set<String> searching = new HashSet<>();
+    private final Map<String, Location> centers = new HashMap<>(); // world -> its nearest stronghold (located)
+    /** 1.2.93: the last portal each player took (a mimic hunting them takes the same one). */
+    final Map<UUID, Portal> lastUsed = new HashMap<>();
 
     record Portal(Location from, Location to, Material type) { }
 
@@ -83,7 +86,24 @@ final class MimicHunt implements Listener {
         Block b = portalBlock(from);
         if (b == null) return;
         record(b.getLocation().add(0.5, 0, 0.5), to.clone(), b.getType());
+        lastUsed.put(e.getPlayer().getUniqueId(), new Portal(b.getLocation().add(0.5, 0, 0.5), to.clone(), b.getType()));
     }
+
+    /**
+     * 1.2.93: the best recorded portal from this world into that one for a trip from `me` to `dest` (in `to`): the walk to it
+     * plus the walk from where it comes out to `dest`. No dest = the nearest.
+     */
+    Portal bestPortal(World from, World to, Location me, Location dest) {
+        Portal best = null; double bd = Double.MAX_VALUE;
+        for (Portal p : portals) {
+            if (p.from.getWorld() != from || p.to.getWorld() != to) continue;
+            double d = flat(p.from, me) + (dest != null && dest.getWorld() == to ? flat(p.to, dest) : 0);
+            if (d < bd) { bd = d; best = p; }
+        }
+        return best;
+    }
+
+    static double flat(Location a, Location b) { return Math.hypot(a.getX() - b.getX(), a.getZ() - b.getZ()); }
 
     void record(Location from, Location to, Material type) {
         portals.removeIf(p -> p.from.getWorld() == from.getWorld() && p.to.getWorld() == to.getWorld() && p.from.distanceSquared(from) < 16);
@@ -130,17 +150,26 @@ final class MimicHunt implements Listener {
     void findEndPortal(World w, Location near, Consumer<Location> done) {
         Location cached = strongholds.get(w.getName());
         if (cached != null) { done.accept(cached); return; }
-        if (!searching.add(w.getName())) { done.accept(null); return; }
         Location c;
         try {
             var r = w.locateNearestStructure(near, org.bukkit.generator.structure.StructureType.STRONGHOLD, 100, false);
             c = r == null ? null : r.getLocation();
         } catch (RuntimeException | LinkageError ex) { c = null; }
-        if (c == null) { searching.remove(w.getName()); done.accept(null); return; }
+        if (c == null) { done.accept(null); return; }
+        centers.put(w.getName(), c);
+        scanAround(w, c, 5, done); // 1.2.93: 11x11 chunks (3 round missed portal rooms far off the stronghold's start)
+    }
+
+    /** 1.2.93: where the nearest stronghold is (known once it's been looked up), to head there while the portal room is found. */
+    Location strongholdCenter(World w) { return centers.get(w.getName()); }
+
+    /** Looks for an END_PORTAL_FRAME in chunk snapshots round `c` (r chunks round), off the main thread. */
+    void scanAround(World w, Location c, int r, Consumer<Location> done) {
+        if (!searching.add(w.getName())) { done.accept(null); return; }
         int cx = c.getBlockX() >> 4, cz = c.getBlockZ() >> 4;
         List<ChunkSnapshot> snaps = Collections.synchronizedList(new ArrayList<>());
-        int[] left = {49};
-        for (int dx = -3; dx <= 3; dx++) for (int dz = -3; dz <= 3; dz++) {
+        int[] left = {(2 * r + 1) * (2 * r + 1)};
+        for (int dx = -r; dx <= r; dx++) for (int dz = -r; dz <= r; dz++) {
             w.getChunkAtAsync(cx + dx, cz + dz, true).thenAccept(ch -> {
                 snaps.add(ch.getChunkSnapshot(false, false, false));
                 if (--left[0] == 0) scan(w, snaps, done);
@@ -153,7 +182,7 @@ final class MimicHunt implements Listener {
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             Location found = null;
             outer:
-            for (ChunkSnapshot s : new ArrayList<>(snaps)) for (int x = 0; x < 16; x++) for (int z = 0; z < 16; z++) for (int y = min; y < 64; y++) {
+            for (ChunkSnapshot s : new ArrayList<>(snaps)) for (int x = 0; x < 16; x++) for (int z = 0; z < 16; z++) for (int y = min; y < 90; y++) {
                 if (s.getBlockType(x, y, z) == Material.END_PORTAL_FRAME) { found = new Location(w, s.getX() * 16 + x + 0.5, y, s.getZ() * 16 + z + 0.5); break outer; }
             }
             Location f = found;

@@ -1761,6 +1761,25 @@ Notes:
   squid 8, and display packets every 2nd tick (interpolated over 2) and none with nobody within 128/200 (`send()`; the hitbox
   still moves every tick). Tested (scratch `kt/KrakenWallTest`, MockBukkit gaps stubbed with ByteBuddy `kt/Patch.java`: old jar
   had his head buried 461 of 650 ticks, new 0).
+- **Blue Obsidian + End portals (Items 1.2.75, Index 1.8.5, FaultlineSMP.zip)**: `Items/BlueObsidian.java` (`blue-obsidian:`,
+  data `blue_portals.yml`). Recipe OOO/OLO/OOO (8 Obsidian + Lapis Lazuli, key `faultlineitems:blue_obsidian`) = Blue Obsidian
+  (CRYING_OBSIDIAN item, model `faultline:blue_obsidian`, PDC `faultlineitems:blue_obsidian`; never in vanilla recipes:
+  `onCraft`). Placed = a real CRYING_OBSIDIAN (hard, blast-proof, immovable) recorded in the chunk PDC (`faultlineitems:
+  blue_obsidian`, int array of packed local positions; `blocks` per world for loaded chunks) + a non-persistent ItemDisplay
+  overlay (tag `faultline_blue_obsidian` + `faultline_no_bedrock_fx`, scale 1.004, brightness from the air beside it) for Java;
+  Bedrock sees crying obsidian. Broken = drops Blue Obsidian (`onDrop` swaps the crying obsidian drop, tool rules kept). A
+  closed frame of it, ANY shape (a ring), lit from the inside with Flint and Steel / a Fire Charge, ONLY in THE_END (`onLight`;
+  elsewhere an action bar): flood fill of the air in the X or Z vertical plane (`fill`, 4-connected, every border must be Blue
+  Obsidian, `max-portal-cells` 441, `min-portal-cells` 2) -> NETHER_PORTAL blocks with that axis, physics off (`onPhysics`
+  cancels neighbour updates on our cells; `upkeep` every 2 s puts knocked-out cells back and closes a portal whose frame lost a
+  block). Through it (`PlayerPortalEvent` from one of our cells, cancelled): the Overworld (`world` or the main NORMAL world),
+  a random x/z in [-max-xz, max-xz] (500), surface (`surface`: not liquid/lava/magma/cactus/fire/powder snow, 2 air above),
+  async chunk load (`tryAt`, 15 tries, else world spawn); NOTHING is built on that side (no way back). Entities can't use
+  them (`onEntityPortal`); vanilla never builds into our cells (`onPortalCreate`). `/giveblueobsidian [amount] [player]`
+  (`items.giveblueobsidian`), /itemsmenu. Pack: `assets/faultline/{items,models/block,textures/block,textures/index}/
+  blue_obsidian*` + font providers \ue443/\ue843 (glyphs.yml `blue_obsidian`). Index entry (Weapons & Tools). Not in the
+  Bedrock mappings yet. Tested (scratch `bt/BlueTest`: recipe, ring, overlays, lighting in the End only, plain crying obsidian
+  ignored, travel within 500 on solid ground with no portal built, physics, self-heal, outer vs frame block breaks, saving).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Skills → Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

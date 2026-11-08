@@ -1,5 +1,5 @@
 name: FaultlineItems
-version: 1.2.74
+version: 1.2.75
 main: net.faultlinesmp.items.FaultlineItems
 api-version: '1.21'
 softdepend: [floodgate, Geyser-Spigot]
@@ -145,6 +145,10 @@ commands:
     description: "Admin / other plugins: Dark Loot (the Dark Ocean's treasure): bags, rare rolls"
     usage: /darkloot <bag [amount] [player]|rare <player> [chance]|give <suit|elytra|totems|invisibility|godset> [player]|roll [player]>
     permission: items.darkloot
+  giveblueobsidian:
+    description: "Admin: give Blue Obsidian"
+    usage: /giveblueobsidian [amount] [player]
+    permission: items.giveblueobsidian
   giveballoon:
     description: "Admin: give a Hot Air Balloon"
     usage: /giveballoon [amount] [player]
@@ -200,6 +204,9 @@ permissions:
     default: op
   faultline.vanish:
     description: Use /vanish
+    default: op
+  items.giveblueobsidian:
+    description: /giveblueobsidian
     default: op
   items.giveballoon:
     description: /giveballoon

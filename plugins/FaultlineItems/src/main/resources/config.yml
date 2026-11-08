@@ -328,7 +328,7 @@ wardrobe:
 item-textures:
   enabled: true
   url: "https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/main/FaultlineSMP.zip"
-  hash: "2878a39f7bb9d807eed03dac449f81b0a79a0ab1"
+  hash: "37deea354f4bc896844f90eeff889371270132f5"
   # The Dark Ocean's music, a second pack sent beside the main one (empty url = not sent)
   music-url: "https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/main/FaultlineDeepMusic.zip"
   music-hash: "e9e6ed1623ab28d2d2af74286259157caf2dc299"
@@ -737,3 +737,13 @@ blood-moon-sky:
   enabled: true
   distance: 60
   size: 1.08
+
+# Blue Obsidian (1.2.75): 8 Obsidian around a Lapis Lazuli. A closed frame of it (any shape) lit with Flint and Steel or a
+# Fire Charge opens a portal, ONLY in the End. Through it: the Overworld, a random surface spot within max-xz of 0, 0.
+# Nothing is built on the Overworld side (no way back).
+blue-obsidian:
+  enabled: true
+  max-xz: 500                 # x and z each between -500 and 500
+  world: ""                   # the Overworld to send people to ("" = the server's main overworld)
+  max-portal-cells: 441       # the biggest inside a frame may be (21 x 21)
+  min-portal-cells: 2

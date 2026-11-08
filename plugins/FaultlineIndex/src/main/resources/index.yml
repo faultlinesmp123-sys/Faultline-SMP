@@ -139,6 +139,9 @@ entries:
   - {chapter: weapons, name: "Hot Air Balloon", icon: hot_air_balloon, detect: "faultlineitems:balloon_item",
      how: "Craft it: 5 wool across the top and sides, a Campfire in the middle, String, a Barrel, String along the bottom.",
      does: "A balloon you can fly. Right-click the ground to set it up, step into the basket and right-click to board. Jump rises, Sneak sinks (and gets you out once it's on the ground), W A S D move the way you look, Sprint goes faster. The burner burns fuel while you're in the air: Coal or Charcoal 60 s, a Blaze Rod 150 s, a Coal Block 10 minutes (right-click with it). Out of fuel, it slowly sinks. A dye recolours it. Sneak + punch in the basket to pack it up, or hit it 4 times (an axe: 2) to knock it down: it drops as an item, fuel and colour kept. Only its owner can. /balloon list shows yours, /balloon remove takes the nearest one down."}
+  - {chapter: weapons, name: "Blue Obsidian", icon: blue_obsidian, detect: "faultlineitems:blue_obsidian",
+     how: "Craft it: 8 Obsidian around a Lapis Lazuli.",
+     does: "A block for portals out of the End. Build a closed frame of it in the End (any shape: a ring works), then light the inside with Flint and Steel or a Fire Charge. Step through and you come out on the surface of the Overworld at a random spot within 500 blocks of 0, 0. Nothing is built where you land, so there's no portal back. It only lights in the End."}
   - {chapter: weapons, name: "Rotbeard's Grappling Hook", icon: grappling_hook, detect: "faultlineitems:grappling_hook",
      how: "10% from Captain Rotbeard.",
      does: "Cast it at a wall, ceiling, or ledge, then reel in to launch yourself there. No fall damage from the landing. Never breaks."}

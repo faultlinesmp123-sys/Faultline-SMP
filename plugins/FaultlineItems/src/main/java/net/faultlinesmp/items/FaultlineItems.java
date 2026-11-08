@@ -411,6 +411,10 @@ public final class FaultlineItems extends JavaPlugin {
         getServer().getPluginManager().registerEvents(balloons, this);
         getCommand("giveballoon").setExecutor(new GiveItemCommand(this, "items.giveballoon",
                 "/giveballoon [amount] [player]", ItemCatalog.single(pl -> pl.balloons.item(null, 0))));
+        blueObsidian = new BlueObsidian(this); // 1.2.75: Blue Obsidian + End -> Overworld portals
+        getServer().getPluginManager().registerEvents(blueObsidian, this);
+        if (getCommand("giveblueobsidian") != null) getCommand("giveblueobsidian").setExecutor(new GiveItemCommand(this, "items.giveblueobsidian",
+                "/giveblueobsidian [amount] [player]", ItemCatalog.single(pl -> pl.blueObsidian.item(1))));
         where = new Where(this); // 1.2.24: /ping, /coords (Bedrock has no F3)
         getServer().getPluginManager().registerEvents(where, this);
         for (String c : List.of("ping", "coords")) { getCommand(c).setExecutor(where); getCommand(c).setTabCompleter(where); }
@@ -618,6 +622,7 @@ public final class FaultlineItems extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (blueObsidian != null) try { blueObsidian.shutdown(); } catch (RuntimeException ignored) { }
         if (caveTrader != null) caveTrader.removeAll();
         if (weather != null) weather.shutdown();
         if (bloodMoonSky != null) bloodMoonSky.shutdown();
@@ -894,6 +899,7 @@ public final class FaultlineItems extends JavaPlugin {
     Gear getGear() { return gear; }
     PvpLimits pvpLimits;
     TotemLimit totemLimit;
+    BlueObsidian blueObsidian;
     LifeJellyListener getLifeJellyListener() { return lifeJellyListener; }
 
     DivingGear getDivingGear() { return divingGear; }
@@ -6985,6 +6991,7 @@ public final class FaultlineItems extends JavaPlugin {
                 pl -> pl.getMirrorGear().item(),
                 pl -> pl.darkLoot.bag(), // 1.2.41
                 pl -> pl.balloons.item(null, 0), // 1.2.24
+                pl -> pl.blueObsidian.item(16), // 1.2.75
                 // ranger gear (1.2.27)
                 pl -> pl.getRangerGear().item(RangerGear.Piece.MONOCLE),
                 pl -> pl.getRangerGear().item(RangerGear.Piece.QUICKDRAW),

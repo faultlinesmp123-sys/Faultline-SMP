@@ -1799,6 +1799,12 @@ Notes:
   checks: charge progress mid-summon, no travel mid-summon, ready, LIGHT + sheet per cell, full size/brightness, whole frame
   lit, stand-in travel after 1.5 s, self-heal of light and sheets, shrink + dark on close). MockBukkit quirk met again:
   `Block.getLocation()` is the block's OWN Location (adding to it moved the block): build `new Location(...)` instead.
+- **Light blue (Items 1.2.77, FaultlineSMP.zip)**: no purple anywhere. `blue_obsidian.png` is icy steel-blue with pale cyan
+  glints (also the Index icon); `blue_obsidian_lit.png` is its own look: a paler ice-blue block with white-hot cracks and a
+  bright band of energy flowing diagonally through it (16 frames, frametime 2, tileable); `blue_portal.png` is a sky-blue /
+  white swirl. Particles: every REVERSE_PORTAL (purple) is GLOW now, the dust colours `CYAN` (150,228,255) / `DEEP`
+  (105,195,255). A frame block that lights swells to 1.02 (eased over 4 ticks) with a puff of light-blue dust and snowflakes;
+  open frames shed snowflakes (`ambient`). Made by scratch `bo/make3.py`; preview re-rendered.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Skills → Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

@@ -224,7 +224,7 @@ final class BlueObsidian implements Listener {
         boolean lit = isLit(b.getWorld().getName(), key(b));
         d.setItemStack(model(lit ? "blue_obsidian_lit" : "blue_obsidian"));
         try { d.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.NONE); } catch (RuntimeException ignored) { }
-        float s = 1.004f;
+        float s = lit ? 1.02f : 1.004f;
         d.setTransformation(new Transformation(new Vector3f(), new Quaternionf(), new Vector3f(s, s, s), new Quaternionf()));
         int bl = 0, sl = 0;
         for (BlockFace f : new BlockFace[]{BlockFace.UP, BlockFace.DOWN, BlockFace.NORTH, BlockFace.SOUTH, BlockFace.EAST, BlockFace.WEST}) {
@@ -256,6 +256,15 @@ final class BlueObsidian implements Listener {
         ItemDisplay d = m == null ? null : m.get(k);
         if (d == null || !d.isValid()) return;
         d.setItemStack(model(on ? "blue_obsidian_lit" : "blue_obsidian"));
+        float sc = on ? 1.02f : 1.004f;               // lit: a hair bigger, like the block swells with light
+        d.setInterpolationDelay(0);
+        d.setInterpolationDuration(4);
+        d.setTransformation(new Transformation(new Vector3f(), new Quaternionf(), new Vector3f(sc, sc, sc), new Quaternionf()));
+        if (on) {
+            Location l = d.getLocation();
+            d.getWorld().spawnParticle(Particle.DUST, l, 6, 0.35, 0.35, 0.35, 0, new Particle.DustOptions(CYAN, 1.1f));
+            d.getWorld().spawnParticle(Particle.SNOWFLAKE, l, 3, 0.3, 0.3, 0.3, 0.01);
+        }
         int dl = darkLight.getOrDefault(k, 4 * 16);
         try { d.setBrightness(on ? new Display.Brightness(15, 15) : new Display.Brightness(dl / 16, dl % 16)); } catch (RuntimeException ignored) { }
     }
@@ -378,7 +387,7 @@ final class BlueObsidian implements Listener {
         return m == null ? null : m.get(key(b));
     }
 
-    static final org.bukkit.Color CYAN = org.bukkit.Color.fromRGB(90, 210, 255), DEEP = org.bukkit.Color.fromRGB(40, 80, 255),
+    static final org.bukkit.Color CYAN = org.bukkit.Color.fromRGB(150, 228, 255), DEEP = org.bukkit.Color.fromRGB(105, 195, 255),
             WHITE = org.bukkit.Color.fromRGB(220, 245, 255);
 
     Location at(World w, long k) { return new Location(w, kx(k) + 0.5, ky(k) + 0.5, kz(k) + 0.5); }
@@ -455,7 +464,7 @@ final class BlueObsidian implements Listener {
                         w.playSound(c, Sound.BLOCK_BEACON_POWER_SELECT, SoundCategory.BLOCKS, 1.5f, 1.4f);
                         w.playSound(c, Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.BLOCKS, 0.35f, 1.9f);
                         w.spawnParticle(Particle.FIREWORK, c, 60, radius * 0.3, radius * 0.3, radius * 0.3, 0.25);
-                        w.spawnParticle(Particle.REVERSE_PORTAL, c, 120, radius * 0.4, radius * 0.4, radius * 0.4, 0.4);
+                        w.spawnParticle(Particle.GLOW, c, 120, radius * 0.4, radius * 0.4, radius * 0.4, 0.4);
                         for (long k : p.frame) w.spawnParticle(Particle.END_ROD, at(w, k), 2, 0.2, 0.2, 0.2, 0.06);
                     }
                     ring(p, w, c, radius + bt * 0.6, bt < 7 ? CYAN : DEEP); // a shockwave ring in the portal's plane
@@ -560,7 +569,7 @@ final class BlueObsidian implements Listener {
             w.playSound(c, Sound.BLOCK_BEACON_DEACTIVATE, SoundCategory.BLOCKS, 1.2f, 0.8f);
             w.playSound(c, Sound.BLOCK_GLASS_BREAK, SoundCategory.BLOCKS, 1f, 0.6f);
             w.spawnParticle(Particle.DUST, c, 40, 1.2, 1.2, 1.2, 0, new Particle.DustOptions(DEEP, 1.5f));
-            w.spawnParticle(Particle.REVERSE_PORTAL, c, 60, 1, 1, 1, 0.2);
+            w.spawnParticle(Particle.GLOW, c, 60, 1, 1, 1, 0.2);
         }
         save();
     }
@@ -613,10 +622,11 @@ final class BlueObsidian implements Listener {
             for (int i = 0; i < Math.min(4, in.size()); i++) {
                 Location l = at(w, in.get(r.nextInt(in.size())));
                 w.spawnParticle(Particle.DUST, l, 1, 0.4, 0.4, 0.4, 0, new Particle.DustOptions(r.nextBoolean() ? CYAN : DEEP, 1.1f));
-                if (r.nextInt(3) == 0) w.spawnParticle(Particle.REVERSE_PORTAL, l, 1, 0.3, 0.3, 0.3, 0.02);
+                if (r.nextInt(3) == 0) w.spawnParticle(Particle.GLOW, l, 1, 0.3, 0.3, 0.3, 0.02);
             }
             List<Long> fr = new ArrayList<>(p.frame);
             if (!fr.isEmpty() && r.nextInt(2) == 0) w.spawnParticle(Particle.ELECTRIC_SPARK, at(w, fr.get(r.nextInt(fr.size()))), 1, 0.4, 0.4, 0.4, 0.02);
+            if (!fr.isEmpty()) w.spawnParticle(Particle.SNOWFLAKE, at(w, fr.get(r.nextInt(fr.size()))), 1, 0.4, 0.4, 0.4, 0.01);
             if (r.nextInt(16) == 0) w.playSound(c, Sound.BLOCK_BEACON_AMBIENT, SoundCategory.BLOCKS, 0.6f, 1.3f);
         }
     }
@@ -645,7 +655,7 @@ final class BlueObsidian implements Listener {
             Location l = pl.getLocation().add(0, 1, 0);
             if (c == 2) pl.playSound(l, Sound.BLOCK_PORTAL_TRIGGER, SoundCategory.PLAYERS, 0.5f, 1.6f);
             pl.getWorld().spawnParticle(Particle.DUST, l, 4, 0.4, 0.8, 0.4, 0, new Particle.DustOptions(CYAN, 1.2f));
-            pl.getWorld().spawnParticle(Particle.REVERSE_PORTAL, l, 3, 0.3, 0.6, 0.3, 0.05);
+            pl.getWorld().spawnParticle(Particle.GLOW, l, 3, 0.3, 0.6, 0.3, 0.05);
             if (c >= need || pl.getGameMode() == GameMode.CREATIVE) {
                 charge.remove(pl.getUniqueId());
                 pl.getWorld().spawnParticle(Particle.FIREWORK, l, 20, 0.3, 0.6, 0.3, 0.15);

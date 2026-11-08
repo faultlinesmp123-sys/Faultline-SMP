@@ -1132,7 +1132,7 @@ public final class FaultlineItems extends JavaPlugin {
             // event fires AFTER this and would re-save the items as still equipped,
             // even though they were just dropped. Wipe the open menu's slots first
             // so the close event saves them as empty.
-            if (player.getOpenInventory().getTopInventory().getHolder() instanceof AccessoryGuiHolder h && h.live()) {
+            if (player.getOpenInventory().getTopInventory() != null && player.getOpenInventory().getTopInventory().getHolder() instanceof AccessoryGuiHolder h && h.live()) {
                 var top = player.getOpenInventory().getTopInventory();
                 ItemStack[] live = new ItemStack[AccessoryManager.SLOT_COUNT];
                 for (int i = 0; i < AccessoryGuiHolder.SLOTS.length; i++) {

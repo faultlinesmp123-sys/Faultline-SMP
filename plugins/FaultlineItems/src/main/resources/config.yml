@@ -782,6 +782,10 @@ mimic-player:
   ender-pearls: 8
   xp: 0
   drops: []             # e.g. ["DIAMOND:2"]
+  range: 160            # how far off it finds you (it keeps chasing its target out to 1.5x this)
+  elytra-pvp: true      # with an elytra + rockets in their gear: flies after you, elytra swaps, dives, rockets away when losing
+  kit-when-bare: true   # a player with no armour anywhere = it wears the kit's armour
+  world-techs: true     # UHC techs that place blocks (lava, webs, water, pillars); everything is put back
 
 # 1.2.78 HAUNTED VILLAGES (Halloween): spirits rise over a village at night; beat the Lantern Wraith for Candy.
 haunted-villages:

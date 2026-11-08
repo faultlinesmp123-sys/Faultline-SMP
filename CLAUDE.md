@@ -1874,6 +1874,21 @@ Notes:
   as 0.45); the streak crown `streak-cosmetics.crown-offset` 0.55 (was 1.2 = high in the sky). Tested (scratch `nt/NewTest`:
   bare brain, his Prot IV / sword / off hand / counts, EPF 32%, vanilla melee off, 2 totems, mace damage, temp lava back, a
   30 s fight that really hurts him).
+- **The mimic, round 2 (Items 1.2.80)**: `MimicPlayer` brain has NO vanilla goals (`Bukkit.getMobGoals().removeAllGoals`):
+  every move is ours. `move()` = player movement (sprint speed `skill.speed` x0.9 + Speed, SPRINT-JUMPS on open ground with the
+  +0.2 boost, steps up blocks, keeps momentum in the air); `chase()` runs straight at you (pathfinder only when a 2-high wall
+  blocks it 10 ticks); `flee` uses it too. The BODY is moved by velocity (= the gap to the brain), teleported only when > 1.2
+  behind, so the client animates its legs (it used to be teleported every tick; `setImmovable` removed). Hits: EVERY hit is a
+  CRIT (jumps when charged and in reach, swings on the way down) or a SPRINT hit (lunges in + sprint knockback); NO sweeps
+  (block removed). After eating it goes straight back in (`fleeUntil`/`eatAfterPearl` cleared). Range `mimic-player.range` 160
+  (sticks to its target out to 1.5x; FOLLOW_RANGE = range; pearls in from 14-60). COBWEBS (`webEscape`): a real WATER BUCKET
+  poured on the web (TempBlock water, the web gone, bucket back after 11 ticks), else a pearl out, else the sword cuts it.
+  ARMOUR: worn, else the best spare of that slot in the inventory (`armourScore`); none anywhere = the kit's
+  (`kit-when-bare`). ELYTRA PvP (`elytra-pvp`, needs an elytra + rockets): takes off after anyone 22+ away / flying / 8+ above,
+  ELYTRA SWAP (body chestplate -> elytra, armour points drop while flying, `armourFor`), glides with lead, rockets when slow,
+  stays ~6 above then dives, hits as it passes (mace = smash), lands near a grounded target; when losing it rockets away
+  (`elytraEscape`). `eye(m)` falls back to the brain's eye. `/mimicplayer clear` also removes its pearls in flight. Style
+  counts debuff pots. Tested (scratch `nt/NewTest`, with a tiny gravity/ground sim since MockBukkit has no entity physics).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Skills → Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

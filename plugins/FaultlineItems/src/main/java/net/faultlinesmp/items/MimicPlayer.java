@@ -63,13 +63,20 @@ import java.util.*;
  *    room (stands, eats 1.6 s), natural regen out of combat; one TOTEM pop;
  *  - ENDER PEARLS to chase anyone 14+ blocks off, and to escape when low with no heals left (then runs and regens);
  *  - BOW at 8-20 blocks with sight: draws, leads its shot by your speed;
- *  - plays player sounds (hurt, death, crit, sweep, eat, burp, splash).
+ *  - plays player sounds (hurt, death, crit, eat, burp, splash).
  * TECHS (1.2.79, all from what the player really carries): MACE (wind-charge slams with air steering, Wind Burst pogo
  * chains, stun slams = axe breaks your shield then the mace lands, elytra + rocket dives, sword/axe-to-mace swap when
  * falling into reach; real mace damage by fall height, Density, Breach), SWORD (hit-select, crit chains, W-tap/S-tap,
- * sprint hits, sweeps), AXE (shield breaks, axe crits), UHC (lava at your feet, cobwebs, rod combos, flint and steel, water
+ * sprint hits; every hit is a crit or a sprint hit, never a sweep), AXE (shield breaks, axe crits), UHC (lava at your feet, cobwebs, rod combos, flint and steel, water
  * clutches, block pillars to escape). World techs put every block back and stop flows / fire spread / bucket pickups
  * (`mimic-player.world-techs`).
+ * 1.2.80 STYLES from the inventory (`style`): mace / nethop / diamond (3+ potions) / uhc / axe / sword. POT PvP: keeps its
+ * buffs up from the potions it really carries (Strength, Speed, Fire Res, Turtle Master... splash at its feet or drunk),
+ * throws its Slowness / Weakness / Poison / Harming splashes AT you with lead, re-totems its off hand. SWORD: spacing (sits
+ * just outside your reach while its hit charges, steps in when it's ready), JUMP RESETS (jumps as your hit lands = less
+ * knockback), snowballs / eggs at you when you sprint in. AXE: shield timing on YOUR charged swing. UHC: web + lava combo,
+ * water on itself when it's burning, arrows counted (Infinity = no limit). Strength / Weakness change its damage.
+ * Removing: /mimicplayer remove (the one you look at / nearest), remove <name>, remove all / clear.
  * Drops nothing (mimic-player.drops), no XP unless set. Non-persistent: /mimicplayer clear or a restart removes them.
  * `/mimicplayer [random|<player>] [count] [skill]`, `clear`, `list`. Bedrock may not draw the mannequin.
  */
@@ -100,8 +107,14 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         Skill skill;
         Player target;
         int t, strafeDir = 1, strafeFlip, lastHit = -100, lastHurt = -100, reactAt;
+        int webTicks, chaseStuck, flyTicks, nextRocket, flyCooldown;
+        boolean flying;
         int blockUntil, shieldOffUntil, eatUntil, drinkUntil, drawUntil, pearlReady, bowReady, wtapUntil, fleeUntil, axeUntil;
-        int apples, gapples, pots, pearlsLeft, totems = 1, wind, lava, water, webs, blocks, rockets;
+        int apples, gapples, pots, pearlsLeft, totems = 1, wind, lava, water, webs, blocks, rockets, arrows, throwables;
+        final List<ItemStack> buffs = new ArrayList<>(), debuffs = new ArrayList<>();
+        int buffReady, debuffReady, throwReady, jumpReset = -1, potUntil, lookDownUntil;
+        ItemStack potting;
+        String style = "sword";
         Gear gear;
         boolean sprintHit, eatAfterPearl, eatingGod, slam, dive, stunSlam;
         int maceReady, lavaReady, webReady, rodReady, fireReady, pillarReady, pillarCount, jumpAt = -1, clutchUntil, noFallUntil;
@@ -120,6 +133,8 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         ItemStack helmet, chest, legs, boots, weapon, axe, bow, offhand, mace;
         int gaps, egaps, pearls, pots, totems, wind, lava, water, webs, blocks, rockets;
         boolean rod, flint, elytra;
+        int arrows, throwables;
+        final List<ItemStack> buffs = new ArrayList<>(), debuffs = new ArrayList<>(); // one entry per potion they carry
         Material block = Material.COBBLESTONE;
         double maxHealth = 20;
     }
@@ -176,7 +191,17 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
                 case FIREWORK_ROCKET -> g.rockets += it.getAmount();
                 case ELYTRA -> g.elytra = true;
                 case BOW -> { if (g.bow == null || level(it, "power") > level(g.bow, "power")) g.bow = it.clone(); }
-                case SPLASH_POTION -> { if (healing(it)) g.pots += it.getAmount(); }
+                case SPLASH_POTION, POTION, LINGERING_POTION -> {
+                    if (m == Material.SPLASH_POTION && healing(it)) { g.pots += it.getAmount(); break; }
+                    List<PotionEffect> fx = effects(it);
+                    boolean bad = fx.stream().anyMatch(e -> BAD.contains(e.getType())), good = fx.stream().anyMatch(e -> GOOD.contains(e.getType()));
+                    for (int i = 0; i < it.getAmount(); i++) {
+                        ItemStack one = it.clone(); one.setAmount(1);
+                        if (bad && m != Material.POTION) g.debuffs.add(one); else if (good && !bad) g.buffs.add(one);
+                    }
+                }
+                case ARROW, SPECTRAL_ARROW, TIPPED_ARROW -> g.arrows += it.getAmount();
+                case SNOWBALL, EGG -> g.throwables += it.getAmount();
                 default -> {
                     if (m.name().endsWith("_AXE")) { if (score(it) > score(g.axe)) g.axe = it.clone(); }
                     else if (weapon(m) && score(it) > score(g.weapon)) g.weapon = it.clone();
@@ -184,11 +209,41 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
                 }
             }
         }
+        // armour: what they wear, else the best spare piece of that slot in their inventory
+        for (ItemStack it : inv.getStorageContents()) {
+            if (it == null || it.getType().isAir()) continue;
+            String n = it.getType().name();
+            if (n.endsWith("_HELMET") && armourScore(it) > armourScore(g.helmet) && inv.getHelmet() == null) g.helmet = it.clone();
+            else if (n.endsWith("_CHESTPLATE") && armourScore(it) > armourScore(g.chest) && inv.getChestplate() == null) g.chest = it.clone();
+            else if (n.endsWith("_LEGGINGS") && armourScore(it) > armourScore(g.legs) && inv.getLeggings() == null) g.legs = it.clone();
+            else if (n.endsWith("_BOOTS") && armourScore(it) > armourScore(g.boots) && inv.getBoots() == null) g.boots = it.clone();
+        }
         if (held != null && weapon(held.getType()) && !held.getType().name().endsWith("_AXE")) g.weapon = held.clone(); // what they're holding right now wins
         if (g.weapon == null && g.axe != null) { g.weapon = g.axe; }
         if (g.chest != null && g.chest.getType() == Material.ELYTRA) g.elytra = true;
         try { g.maxHealth = p.getAttribute(Attribute.MAX_HEALTH).getValue(); } catch (RuntimeException e) { g.maxHealth = 20; }
         return g;
+    }
+
+    static final Set<PotionEffectType> GOOD = Set.of(PotionEffectType.SPEED, PotionEffectType.STRENGTH, PotionEffectType.FIRE_RESISTANCE,
+            PotionEffectType.REGENERATION, PotionEffectType.RESISTANCE, PotionEffectType.ABSORPTION, PotionEffectType.INSTANT_HEALTH,
+            PotionEffectType.JUMP_BOOST, PotionEffectType.INVISIBILITY, PotionEffectType.WATER_BREATHING, PotionEffectType.SLOW_FALLING, PotionEffectType.HEALTH_BOOST);
+    static final Set<PotionEffectType> BAD = Set.of(PotionEffectType.SLOWNESS, PotionEffectType.WEAKNESS, PotionEffectType.POISON,
+            PotionEffectType.INSTANT_DAMAGE, PotionEffectType.WITHER, PotionEffectType.BLINDNESS, PotionEffectType.MINING_FATIGUE, PotionEffectType.NAUSEA);
+
+    /** Every effect a potion item gives (its base type + custom effects). */
+    static List<PotionEffect> effects(ItemStack it) {
+        List<PotionEffect> out = new ArrayList<>();
+        if (!(it.getItemMeta() instanceof PotionMeta pm)) return out;
+        try { if (pm.getBasePotionType() != null) out.addAll(pm.getBasePotionType().getPotionEffects()); } catch (RuntimeException ignored) { }
+        out.addAll(pm.getCustomEffects());
+        return out;
+    }
+
+    static double armourScore(ItemStack it) {
+        if (it == null) return -1;
+        double[] a = armorOf(it);
+        return a[0] * 10 + a[1] * 3 + level(it, "protection") * 2 + level(it, "blast_protection") + level(it, "projectile_protection");
     }
 
     static int maceScore(ItemStack it) { return level(it, "density") + level(it, "breach") + 2 * level(it, "wind_burst"); }
@@ -230,6 +285,9 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
                 g.wind = c.getInt("wind"); g.lava = c.getInt("lava"); g.water = c.getInt("water"); g.webs = c.getInt("webs");
                 g.blocks = c.getInt("blocks"); g.rockets = c.getInt("rockets");
                 g.rod = c.getBoolean("rod"); g.flint = c.getBoolean("flint"); g.elytra = c.getBoolean("elytra");
+                g.arrows = c.getInt("arrows"); g.throwables = c.getInt("throwables");
+                for (Object o : c.getList("buffs", List.of())) if (o instanceof ItemStack is) g.buffs.add(is);
+                for (Object o : c.getList("debuffs", List.of())) if (o instanceof ItemStack is) g.debuffs.add(is);
                 Material bm = Material.matchMaterial(c.getString("block", "COBBLESTONE"));
                 if (bm != null) g.block = bm;
                 snapshots.put(UUID.fromString(k), g);
@@ -250,6 +308,8 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             y.set(k + "mace", g.mace);
             y.set(k + "wind", g.wind); y.set(k + "lava", g.lava); y.set(k + "water", g.water); y.set(k + "webs", g.webs);
             y.set(k + "blocks", g.blocks); y.set(k + "rockets", g.rockets);
+            y.set(k + "arrows", g.arrows); y.set(k + "throwables", g.throwables);
+            y.set(k + "buffs", new ArrayList<>(g.buffs)); y.set(k + "debuffs", new ArrayList<>(g.debuffs));
             y.set(k + "rod", g.rod); y.set(k + "flint", g.flint); y.set(k + "elytra", g.elytra); y.set(k + "block", g.block.name());
         }
         try { y.save(gearFile); } catch (java.io.IOException ex) { plugin.getLogger().warning("[MimicPlayer] couldn't save mimic_gear.yml: " + ex.getMessage()); }
@@ -323,7 +383,15 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         m.skill = skill;
         m.gear = gearFor(who);
         if (m.gear == null) m.gear = kitGear();
+        else if (plugin.getConfig().getBoolean("mimic-player.kit-when-bare", true)) { // no armour at all: the kit's pieces
+            Gear k = null;
+            if (m.gear.helmet == null && m.gear.chest == null && m.gear.legs == null && m.gear.boots == null) k = kitGear();
+            if (k != null) { m.gear.helmet = k.helmet; m.gear.chest = k.chest; m.gear.legs = k.legs; m.gear.boots = k.boots; }
+        }
         m.apples = m.gear.gaps; m.gapples = m.gear.egaps; m.pots = m.gear.pots; m.pearlsLeft = m.gear.pearls; m.totems = m.gear.totems;
+        m.arrows = m.gear.arrows; m.throwables = m.gear.throwables;
+        m.buffs.addAll(m.gear.buffs); m.debuffs.addAll(m.gear.debuffs);
+        m.style = style(m.gear);
         m.wind = m.gear.wind; m.lava = m.gear.lava; m.water = m.gear.water; m.webs = m.gear.webs; m.blocks = m.gear.blocks; m.rockets = m.gear.rockets;
         Vindicator v = (Vindicator) w.spawnEntity(at, EntityType.VINDICATOR, false);
         v.addScoreboardTag(TAG);
@@ -335,6 +403,8 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         Emotes.q(() -> v.setPatrolLeader(false));
         v.customName(Component.text(m.name));
         v.setCustomNameVisible(false);
+        // no vanilla mob AI (wandering, its own walk-to-you-and-swing): only our player-like movement moves it
+        Emotes.q(() -> Bukkit.getMobGoals().removeAllGoals(v));
         v.getEquipment().clear(); // NOTHING on the brain: an invisible mob still draws its gear
         for (EquipmentSlot s : EquipmentSlot.values()) try { v.getEquipment().setDropChance(s, 0f); } catch (RuntimeException ignored) { }
         v.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, PotionEffect.INFINITE_DURATION, 0, false, false, false));
@@ -342,7 +412,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         attr(v, Attribute.MAX_HEALTH, hp);
         v.setHealth(hp);
         attr(v, Attribute.MOVEMENT_SPEED, skill.speed());
-        attr(v, Attribute.FOLLOW_RANGE, 48);
+        attr(v, Attribute.FOLLOW_RANGE, Math.min(2048, range()));
         attr(v, Attribute.ATTACK_DAMAGE, 0);
         // their armour's protection, since the brain wears nothing: armour points, toughness, knockback resistance
         double ar = 0, tough = 0, kb = 0;
@@ -354,7 +424,6 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         b.addScoreboardTag(BODY_TAG);
         Emotes.q(() -> b.setPersistent(false));
         Emotes.q(() -> b.setGravity(false));
-        Emotes.q(() -> b.setImmovable(true));
         Emotes.q(() -> b.setCollidable(false));
         Emotes.q(() -> b.setDescription(null));
         Emotes.q(() -> b.customName(Component.text(m.name)));
@@ -411,7 +480,12 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         g.bow = new ItemStack(Material.BOW);
         g.offhand = new ItemStack(Material.SHIELD);
         g.gaps = (int) cfg("golden-apples", 4); g.pots = (int) cfg("healing-potions", 3); g.pearls = (int) cfg("ender-pearls", 8); g.totems = 1;
-        g.water = 1; g.webs = 4; g.blocks = 32; g.rod = true;
+        g.water = 1; g.webs = 4; g.blocks = 32; g.rod = true; g.arrows = 32;
+        for (PotionType pt : new PotionType[]{PotionType.STRONG_STRENGTH, PotionType.STRONG_SWIFTNESS, PotionType.LONG_FIRE_RESISTANCE}) {
+            ItemStack b = new ItemStack(Material.SPLASH_POTION);
+            if (b.getItemMeta() instanceof PotionMeta pm) { try { pm.setBasePotionType(pt); } catch (RuntimeException ignored) { } b.setItemMeta(pm); }
+            g.buffs.add(b);
+        }
         return g;
     }
 
@@ -439,6 +513,17 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     }
 
     ItemStack weaponHeld(Mimic m) { return m.held.equals("axe") ? m.gear.axe : m.held.equals("mace") ? m.gear.mace : m.gear.weapon; }
+
+    /** What kind of fighter their inventory says they are (mace / nethop / diamond / uhc / axe / sword). */
+    static String style(Gear g) {
+        if (g.mace != null) return "mace";
+        boolean neth = g.chest != null && g.chest.getType().name().startsWith("NETHERITE");
+        boolean potions = g.buffs.size() + g.pots + g.debuffs.size() >= 3;
+        if (potions) return neth ? "nethop" : "diamond";
+        if (g.lava > 0 || g.webs > 0 || g.rod || g.blocks >= 16) return "uhc";
+        if (g.axe != null && g.offhand != null && g.offhand.getType() == Material.SHIELD) return "axe";
+        return "sword";
+    }
 
     boolean hasShield(Mimic m) { return m.gear.offhand != null && m.gear.offhand.getType() == Material.SHIELD; }
 
@@ -493,12 +578,16 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     void remove(Mimic m) {
         byBrain.remove(m.brain.getUniqueId());
         byBody.remove(m.body.getUniqueId());
-        if (m.brain.isValid()) m.brain.remove();
-        if (m.body.isValid()) m.body.remove();
+        try { m.brain.remove(); } catch (RuntimeException ignored) { }
+        try { m.body.remove(); } catch (RuntimeException ignored) { }
         if (m.tag != null && m.tag.isValid()) m.tag.remove();
     }
 
-    void removeAll() { for (Mimic m : new ArrayList<>(byBrain.values())) remove(m); restoreAll(); try { saveGear(); } catch (RuntimeException ignored) { } }
+    void removeAll() {
+        for (Mimic m : new ArrayList<>(byBrain.values())) remove(m);
+        for (World w : Bukkit.getWorlds()) for (Entity e : w.getEntitiesByClass(org.bukkit.entity.Projectile.class)) // pearls still in the air (a one-off, on the command)
+            if (e.getScoreboardTags().contains(TAG)) e.remove();
+        restoreAll(); try { saveGear(); } catch (RuntimeException ignored) { } }
 
     // ================================================================ the brain
 
@@ -513,9 +602,21 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         }
     }
 
-    private Player nearest(Mob z) {
+    double range() { return Math.max(16, cfg("range", 160)); }
+
+    private Player nearest(Mob z) { return nearest(z, null); }
+
+    /** The nearest fighter within `range` (160); it keeps chasing the one it has out to 1.5x that. */
+    private Player nearest(Mob z, Player keep) {
+        if (keep != null && keep.isValid() && !keep.isDead() && keep.getWorld() == z.getWorld()
+                && (keep.getGameMode() == GameMode.SURVIVAL || keep.getGameMode() == GameMode.ADVENTURE) && !keep.hasMetadata("vanished")
+                && keep.getLocation().distanceSquared(z.getLocation()) < Math.pow(range() * 1.5, 2)) {
+            // stays on its target unless someone else is right on top of it
+            Player other = nearest(z, null);
+            if (other == null || other == keep || other.getLocation().distanceSquared(z.getLocation()) > 9) return keep;
+        }
         Player best = null;
-        double bd = 40 * 40;
+        double bd = range() * range();
         for (Player p : z.getWorld().getPlayers()) {
             if (p.getGameMode() != GameMode.SURVIVAL && p.getGameMode() != GameMode.ADVENTURE) continue;
             if (p.isDead() || p.hasMetadata("vanished")) continue;
@@ -555,14 +656,14 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         if (!v.isValid() || !m.body.isValid()) { remove(m); return; }
         m.t++;
         if (m.t % 10 == 0 || m.target == null || !m.target.isValid() || m.target.isDead() || m.target.getWorld() != v.getWorld()) {
-            Player n = nearest(v);
+            Player n = nearest(v, m.target);
             if (n != m.target) m.reactAt = m.t + m.skill.reaction();
             m.target = n;
             if (n != null && v.getTarget() != n) v.setTarget(n);
         }
         Player tg = m.target;
         double hp = v.getHealth() / maxHp(v);
-        boolean busy = m.eatUntil > m.t || m.drinkUntil > m.t || m.drawUntil > m.t;
+        boolean busy = m.eatUntil > m.t || m.drinkUntil > m.t || m.drawUntil > m.t || m.potUntil > m.t;
         // natural regen like a fed player, out of combat
         if (m.t - m.lastHurt > 120 && m.t % 10 == 0 && v.getHealth() < maxHp(v)) v.setHealth(Math.min(maxHp(v), v.getHealth() + 1));
 
@@ -571,11 +672,21 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             Vector to = tg.getLocation().toVector().subtract(v.getLocation().toVector()).setY(0);
             if (to.lengthSquared() > 1e-4) Safe.vel(v, to.normalize().multiply(0.25).setY(0.42));
         }
+        if (m.jumpReset == m.t && v.isOnGround()) { // JUMP RESET: jumping as the hit lands takes the knockback down
+            Vector cur = v.getVelocity();
+            Safe.vel(v, new Vector(cur.getX() * 0.45, 0.42, cur.getZ() * 0.45));
+        }
         if (busy) { busyTick(m, tg); follow(m); return; }
+        if (webEscape(m, tg)) { follow(m); return; }
         if (tg == null) { hold(m, "sword"); follow(m); return; }
         double dist = tg.getLocation().distance(v.getLocation());
         boolean sees = sees(v, tg);
 
+        // ---- POT PvP: keep its buffs up (Strength, Speed, Fire Res... whatever it carries), debuff you, snowball you
+        if (selfExtinguish(m)) { follow(m); return; }
+        if (dist < 24 && m.t >= m.buffReady && (dist > 3.6 || m.wtapUntil > m.t || charge(m) < 0.5) && buff(m)) { follow(m); return; }
+        if (dist > 2.5 && dist < 8 && sees && m.t >= m.debuffReady && debuff(m, tg)) { follow(m); return; }
+        if (m.throwables > 0 && dist > 3.5 && dist < 10 && sees && m.t >= m.throwReady && tg.isSprinting() && random.nextDouble() < 0.15) { snowball(m, tg); follow(m); return; }
         // ---- heal up
         if (hp < cfg("potion-below", 0.45) && m.pots > 0 && m.t - m.lastHit > 4) { drink(m); follow(m); return; }
         boolean food = m.apples > 0 || m.gapples > 0;
@@ -589,11 +700,12 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             m.fleeUntil = m.t + 160;
             if (m.pearlsLeft > 0 && m.t >= m.pearlReady) pearlAway(m, tg);
         }
-        if (m.fleeUntil > m.t) { if (!pillar(m)) flee(m, tg); follow(m); return; }
+        if (m.fleeUntil > m.t) { if (!elytraEscape(m, tg) && !pillar(m)) flee(m, tg); follow(m); return; }
         // ---- far: pearl in, or chase
-        if (dist > 14 && dist < 45 && m.pearlsLeft > 0 && m.t >= m.pearlReady && sees && m.t >= m.reactAt) { pearl(m, tg); follow(m); return; }
+        if (elytraPvp(m, tg, dist, sees)) { follow(m); return; }
+        if (dist > 14 && dist < 60 && m.pearlsLeft > 0 && m.t >= m.pearlReady && sees && m.t >= m.reactAt) { pearl(m, tg); follow(m); return; }
         // ---- mid: bow
-        if (m.gear.bow != null && dist > 8 && dist < 22 && sees && m.t >= m.bowReady && random.nextDouble() < m.skill.bow() * 0.05) {
+        if (m.gear.bow != null && (m.arrows > 0 || level(m.gear.bow, "infinity") > 0) && dist > 8 && dist < 22 && sees && m.t >= m.bowReady && random.nextDouble() < m.skill.bow() * 0.05) {
             m.bowReady = m.t + 80 + random.nextInt(60);
             m.drawUntil = m.t + 20 + random.nextInt(8);
             hold(m, "bow");
@@ -623,10 +735,19 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
                 v.getWorld().playSound(v.getLocation(), Sound.ENTITY_PLAYER_BURP, 1, 1);
                 Emotes.q(() -> m.body.clearActiveItem());
                 hold(m, "sword");
+                if (v.getHealth() / maxHp(v) > 0.3 || v.getAbsorptionAmount() > 0) { m.fleeUntil = 0; m.eatAfterPearl = false; m.reactAt = m.t; } // healed: run back in
             } else if (m.t % 4 == 0) v.getWorld().playSound(v.getLocation(), Sound.ENTITY_GENERIC_EAT, 0.8f, 0.9f + random.nextFloat() * 0.2f);
         } else if (m.drinkUntil > m.t) {
             if (m.drinkUntil - m.t == 3) splashSelf(m);
             if (m.drinkUntil - m.t == 1) hold(m, "sword");
+        } else if (m.potUntil > m.t) {
+            if (m.potUntil - m.t == 1 && m.potting != null) {
+                for (PotionEffect pe : effects(m.potting)) v.addPotionEffect(pe);
+                v.getWorld().playSound(v.getLocation(), Sound.ENTITY_GENERIC_DRINK, 1, 1);
+                Emotes.q(() -> m.body.clearActiveItem());
+                m.potting = null;
+                hold(m, "sword");
+            }
         } else if (m.drawUntil > m.t) {
             if (m.drawUntil - m.t == 1) { if (tg != null) shoot(m, tg); Emotes.q(() -> m.body.clearActiveItem()); hold(m, "sword"); }
         }
@@ -669,6 +790,182 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         }
     }
 
+    // ---- elytra PvP
+
+    boolean elytraOn() { return plugin.getConfig().getBoolean("mimic-player.elytra-pvp", true); }
+
+    /**
+     * ELYTRA PvP (it needs an elytra + rockets in their gear): takes off with a rocket to chase anyone far off or anyone
+     * flying, swaps its chestplate for the elytra in the air (and back on landing: the elytra swap), steers its glide at
+     * you with lead, boosts with rockets when it slows, stays above you and dives in, sprint/crit hits you as it passes
+     * (a mace lands as a smash), follows you up into the air, and lands to fight on the ground once it's close.
+     */
+    private boolean elytraPvp(Mimic m, Player tg, double dist, boolean sees) {
+        Vindicator v = m.brain;
+        if (!elytraOn() || !m.gear.elytra) { if (m.flying) land(m); return false; }
+        if (m.flying) { glide(m, tg, dist); return true; }
+        if (m.rockets <= 0 || m.t < m.flyCooldown || !v.isOnGround()) return false;
+        boolean theyFly = tg.isGliding() && dist > 6;
+        boolean far = dist > 22 && (m.pearlsLeft == 0 || dist > 60 || random.nextDouble() < 0.5);
+        boolean above = tg.getLocation().getY() - v.getLocation().getY() > 8 && dist > 8;
+        if (!(theyFly || far || above)) return false;
+        takeOff(m, tg);
+        return true;
+    }
+
+    private void takeOff(Mimic m, Player tg) {
+        Vindicator v = m.brain;
+        m.flying = true; m.flyTicks = 0;
+        m.body.getEquipment().setChestplate(new ItemStack(Material.ELYTRA)); // the elytra swap
+        armourFor(m, true);
+        Emotes.q(() -> v.getPathfinder().stopPathfinding());
+        Safe.vel(v, new Vector(0, 0.75, 0));
+        rocket(m, tg, 0.6);
+    }
+
+    private void rocket(Mimic m, Player tg, double up) {
+        Vindicator v = m.brain;
+        if (m.rockets <= 0) return;
+        m.rockets--;
+        hold(m, "rocket");
+        Emotes.q(() -> m.body.swingMainHand());
+        v.getWorld().playSound(v.getLocation(), Sound.ENTITY_FIREWORK_ROCKET_LAUNCH, 1, 1);
+        v.getWorld().spawnParticle(Particle.FIREWORK, v.getLocation(), 16, 0.2, 0.2, 0.2, 0.05);
+        Vector dir = tg == null ? v.getLocation().getDirection() : tg.getEyeLocation().toVector().subtract(v.getLocation().toVector());
+        if (dir.lengthSquared() < 1e-4) dir = new Vector(0, 1, 0);
+        dir.normalize();
+        Vector cur = v.getVelocity();
+        Safe.vel(v, cur.multiply(0.5).add(dir.multiply(1.5)).add(new Vector(0, up, 0)));
+        m.nextRocket = m.t + 30 + random.nextInt(20);
+        Bukkit.getScheduler().runTaskLater(plugin, () -> { if (m.body.isValid() && m.flying) hold(m, m.gear.mace != null ? "mace" : "sword"); }, 3L);
+    }
+
+    /** One tick of gliding: steer, boost, hit, land. */
+    private void glide(Mimic m, Player tg, double dist) {
+        Vindicator v = m.brain;
+        m.flyTicks++;
+        Emotes.q(() -> v.getPathfinder().stopPathfinding());
+        Vector cur = v.getVelocity();
+        double speed = cur.length();
+        // where to: their eyes + where they're going; from far off it stays ~6 above them, then dives in
+        Vector aim = tg.getEyeLocation().toVector().add(tg.getVelocity().clone().multiply(Math.min(12, dist / Math.max(0.6, speed))));
+        if (dist > 14) aim.add(new Vector(0, 6, 0));
+        Vector dir = aim.subtract(v.getLocation().toVector());
+        if (dir.lengthSquared() < 1e-4) dir = new Vector(0, -1, 0);
+        dir.normalize();
+        // glide physics: turn the velocity toward the aim, lift from speed, gravity, air drag
+        Vector nv = cur.clone().multiply(0.92).add(dir.clone().multiply(0.16));
+        nv.setY(nv.getY() + Math.min(0.07, speed * 0.05) - 0.04);
+        if (nv.length() > 2.2) nv.normalize().multiply(2.2);
+        Safe.vel(v, nv);
+        if (m.flyTicks > 4 && speed < 0.9 && m.t >= m.nextRocket && m.rockets > 0 && dist > 6) rocket(m, tg, 0.1);
+        // hit as it passes (falling = a crit; flying in fast = a sprint hit; a mace smashes)
+        if (reachTo(v, tg) <= cfg("reach", 3.0) && charge(m) >= m.skill.hitSelect() && sees(v, tg)) {
+            if (m.gear.mace != null && cur.getY() < -0.5) { hold(m, "mace"); smash(m, tg); land(m); return; }
+            hold(m, "sword");
+            m.sprintHit = speed > 0.5;
+            strike(m, tg, charge(m));
+        }
+        // land: close to someone on the ground, ran into the ground, or out of rockets and slow
+        boolean ground = v.isOnGround() && m.flyTicks > 6;
+        if (ground || (dist < 5 && !tg.isGliding() && tg.isOnGround() && cur.getY() <= 0) || (m.rockets == 0 && speed < 0.25 && m.flyTicks > 40) || m.flyTicks > 20 * 90) land(m);
+    }
+
+    private void land(Mimic m) {
+        m.flying = false;
+        m.noFallUntil = m.t + 30;
+        m.flyCooldown = m.t + 60;
+        m.body.getEquipment().setChestplate(m.gear.chest == null || m.gear.chest.getType() == Material.ELYTRA ? null : m.gear.chest.clone()); // back to the chestplate
+        armourFor(m, false);
+        hold(m, "sword");
+    }
+
+    /** Armour points while flying: the chestplate is off (the elytra's on). */
+    private void armourFor(Mimic m, boolean elytra) {
+        double ar = 0, tough = 0, kb = 0;
+        for (ItemStack it : armour(m)) {
+            if (elytra && it == m.gear.chest) continue;
+            double[] a = armorOf(it); ar += a[0]; tough += a[1]; kb += a[2];
+        }
+        attr(m.brain, Attribute.ARMOR, ar);
+        attr(m.brain, Attribute.ARMOR_TOUGHNESS, tough);
+        attr(m.brain, Attribute.KNOCKBACK_RESISTANCE, kb);
+    }
+
+    /** Losing with nothing left: rockets away into the sky instead of running. */
+    private boolean elytraEscape(Mimic m, Player tg) {
+        Vindicator v = m.brain;
+        if (!elytraOn() || !m.gear.elytra) return false;
+        if (m.flying) {
+            m.flyTicks++;
+            Vector away = v.getLocation().toVector().subtract(tg.getLocation().toVector()).setY(0);
+            if (away.lengthSquared() < 1e-4) away = new Vector(1, 0, 0);
+            Vector nv = v.getVelocity().multiply(0.92).add(away.normalize().multiply(0.14));
+            nv.setY(nv.getY() + 0.03);
+            Safe.vel(v, nv);
+            if (m.t >= m.nextRocket && m.rockets > 0 && v.getVelocity().length() < 1) rocket(m, null, 0.4);
+            if ((v.isOnGround() && m.flyTicks > 6) || m.fleeUntil - m.t < 2) land(m);
+            return true;
+        }
+        if (m.rockets <= 0 || !v.isOnGround() || m.t < m.flyCooldown) return false;
+        m.flying = true; m.flyTicks = 0;
+        m.body.getEquipment().setChestplate(new ItemStack(Material.ELYTRA));
+        armourFor(m, true);
+        Safe.vel(v, new Vector(0, 0.8, 0));
+        rocket(m, null, 0.9);
+        return true;
+    }
+
+    // ---- cobwebs
+
+    /**
+     * Stuck in a COBWEB: a real player gets out by pouring a WATER BUCKET on it (the web washes away, the water is picked back
+     * up), else pearls out, else cuts it with the sword.
+     */
+    private boolean webEscape(Mimic m, Player tg) {
+        Vindicator v = m.brain;
+        Block feet = v.getLocation().getBlock(), head = feet.getRelative(org.bukkit.block.BlockFace.UP);
+        Block web = feet.getType() == Material.COBWEB ? feet : head.getType() == Material.COBWEB ? head : null;
+        if (web == null) { m.webTicks = 0; return false; }
+        m.webTicks++;
+        if (m.webTicks < 2 + m.skill.reaction() / 3) return false; // a moment to notice
+        if (m.water > 0 && worldTechs()) {
+            m.water--;
+            hold(m, "water");
+            m.lookDownUntil = m.t + 8;
+            Emotes.q(() -> m.body.swingMainHand());
+            for (Block b : new Block[]{feet, head}) {
+                if (b.getType() != Material.COBWEB) continue;
+                temp.remove(b); // one it placed itself: the water takes it
+                b.setType(Material.AIR, false);
+            }
+            if (place(feet, Material.WATER, 10)) feet.getWorld().playSound(feet.getLocation().clone().add(0.5, 0.5, 0.5), Sound.ITEM_BUCKET_EMPTY, 1, 1);
+            Bukkit.getScheduler().runTaskLater(plugin, () -> { // bucket back
+                if (!m.body.isValid()) return;
+                m.water++;
+                hold(m, "sword");
+            }, 11L);
+            m.webTicks = 0;
+            return true;
+        }
+        if (m.pearlsLeft > 0 && m.t >= m.pearlReady) {
+            if (tg != null && tg.getLocation().distance(v.getLocation()) > 6) pearl(m, tg); else if (tg != null) pearlAway(m, tg);
+            else return false;
+            m.webTicks = 0;
+            return true;
+        }
+        // cut it with the sword (a sword breaks a web fast)
+        hold(m, "sword");
+        if (m.webTicks % 4 == 0) Emotes.q(() -> m.body.swingMainHand());
+        if (m.webTicks >= 2 + m.skill.reaction() / 3 + 8) {
+            temp.remove(web);
+            web.setType(Material.AIR, false);
+            web.getWorld().playSound(web.getLocation().clone().add(0.5, 0.5, 0.5), Sound.BLOCK_WOOL_BREAK, 1, 1);
+            m.webTicks = 0;
+        }
+        return true;
+    }
+
     // ---- melee
 
     private void melee(Mimic m, Player tg, double dist, boolean sees) {
@@ -684,14 +981,44 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         String want = m.axeUntil > m.t ? "axe" : "sword";
         if (!want.equals(m.held)) hold(m, want);
         boolean shielding = m.blockUntil > m.t && m.shieldOffUntil <= m.t;
-        // swing when charged enough and in reach (lower the shield first)
-        if (reach <= cfg("reach", 3.0) && sees && ch >= s.hitSelect() && !(shielding && random.nextDouble() < 0.5)) {
-            if (shielding) { m.blockUntil = m.t; Emotes.q(() -> m.body.clearActiveItem()); }
-            strike(m, tg, ch);
-            return;
+        // swing when charged enough and in reach (lower the shield first). EVERY hit is a CRIT (falling onto them after a
+        // jump) or a SPRINT hit (a lunge in): never a plain standing hit, never a sweep.
+        if (reach <= cfg("reach", 3.0) + 0.6 && sees && ch >= s.hitSelect() - 0.1 && !(shielding && random.nextDouble() < 0.5)) {
+            boolean falling = !v.isOnGround() && v.getVelocity().getY() < -0.05;
+            boolean rising = !v.isOnGround() && !falling;
+            boolean inReach = reach <= cfg("reach", 3.0);
+            if (falling && inReach && ch >= s.hitSelect()) { // the crit lands
+                if (shielding) { m.blockUntil = m.t; Emotes.q(() -> m.body.clearActiveItem()); }
+                m.sprintHit = false;
+                strike(m, tg, ch);
+                return;
+            }
+            if (rising) return; // on the way up: wait for the fall
+            if (v.isOnGround() && inReach && ch >= s.hitSelect()) {
+                if (shielding) { m.blockUntil = m.t; Emotes.q(() -> m.body.clearActiveItem()); }
+                Vector to0 = tg.getLocation().toVector().subtract(v.getLocation().toVector()).setY(0);
+                if (to0.lengthSquared() > 1e-4) to0.normalize();
+                boolean room = !v.getLocation().getBlock().getRelative(0, 2, 0).getType().isSolid();
+                boolean critStyle = m.style.equals("axe") || m.style.equals("uhc") || m.style.equals("mace");
+                if (room && m.wtapUntil <= m.t && random.nextDouble() < (critStyle ? Math.max(0.6, s.jumpCrit()) : s.jumpCrit() * 0.8)) {
+                    // CRIT: jump now, hit on the way down (stays close so they're still in reach)
+                    Safe.vel(v, to0.clone().multiply(0.12).setY(0.42));
+                    return;
+                }
+                // SPRINT HIT: lunge in (sprinting) and hit
+                Safe.vel(v, new Vector(to0.getX() * 0.42, v.getVelocity().getY(), to0.getZ() * 0.42));
+                m.sprintHit = true;
+                strike(m, tg, ch);
+                return;
+            }
         }
         // raise the shield: close, facing us, our hit not ready
-        if (!shielding && hasShield(m) && m.shieldOffUntil <= m.t && dist < 4 && ch < 0.7 && facing(tg, v) && random.nextDouble() < s.block()) {
+        float theirs;
+        try { theirs = tg.getAttackCooldown(); } catch (RuntimeException ex) { theirs = 1f; }
+        boolean theyReady = theirs > 0.9f && reachTo(tg, v) < 3.3 && facing(tg, v);
+        // SHIELD TIMING: up right when their swing is charged and we can't hit yet (axe players), else the odd block
+        if (!shielding && hasShield(m) && m.shieldOffUntil <= m.t && dist < 4 && ch < 0.7 && facing(tg, v)
+                && (theyReady && m.style.equals("axe") ? random.nextDouble() < 0.5 : random.nextDouble() < s.block())) {
             m.blockUntil = m.t + 10 + random.nextInt(12);
             Emotes.q(() -> m.body.startUsingItem(EquipmentSlot.OFF_HAND));
         } else if (shielding && m.blockUntil - m.t == 1) Emotes.q(() -> m.body.clearActiveItem());
@@ -711,12 +1038,54 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         if (dist < 4.5) {
             if (--m.strafeFlip <= 0) { m.strafeDir = -m.strafeDir; m.strafeFlip = 12 + random.nextInt(30); }
             Vector side = new Vector(-to.getZ(), 0, to.getX()).multiply(s.strafe() * m.strafeDir);
-            Vector fw = to.clone().multiply(dist > 3.0 ? 0.08 : dist < 2.2 ? -0.06 : 0);
+            // SPACING: sit just outside their reach while our hit charges, step in the moment it's ready
+            double keep = ch >= s.hitSelect() - 0.1 ? 2.5 : (m.style.equals("sword") || m.style.equals("nethop") || m.style.equals("diamond") ? 3.35 : 2.8);
+            Vector fw = to.clone().multiply(dist > keep + 0.3 ? 0.1 : dist < keep - 0.3 ? -0.08 : 0);
             if (v.isOnGround()) Safe.vel(v, new Vector(cur.getX() * 0.55 + side.getX() + fw.getX(), cur.getY(), cur.getZ() * 0.55 + side.getZ() + fw.getZ()));
             m.sprintHit = false;
         } else {
-            Emotes.q(() -> v.getPathfinder().moveTo(tg, 1.3));
+            chase(m, tg, to);
             m.sprintHit = true; // running in = a sprint hit
+        }
+    }
+
+    /**
+     * Runs at them like a sprinting player: steers its own velocity straight in (hops a block in the way), with the
+     * pathfinder only as a backup when it can't get closer that way (round walls).
+     */
+    private void chase(Mimic m, Player tg, Vector to) {
+        Vindicator v = m.brain;
+        double sp = m.skill.speed() * 0.9;
+        PotionEffect speed = v.getPotionEffect(PotionEffectType.SPEED);
+        if (speed != null) sp *= 1 + 0.2 * (speed.getAmplifier() + 1);
+        Vector cur = v.getVelocity();
+        Block ahead = v.getLocation().clone().add(to.getX() * 0.8, 0, to.getZ() * 0.8).getBlock();
+        boolean wall = ahead.getType().isSolid(), tall = ahead.getRelative(0, 1, 0).getType().isSolid();
+        if (wall && tall) m.chaseStuck++; else m.chaseStuck = Math.max(0, m.chaseStuck - 1);
+        if (m.chaseStuck > 10) { Emotes.q(() -> v.getPathfinder().moveTo(tg, 1.4)); return; }
+        move(m, to, sp, wall && !tall, true);
+    }
+
+    /**
+     * Moves like a player: sprint speed on the ground (0.28 b/t + Speed), SPRINT-JUMPS across open ground (a jump with
+     * the sprint boost, keeping its speed through the air), jumps up single blocks, only small corrections in the air.
+     */
+    private void move(Mimic m, Vector dir, double sp, boolean stepUp, boolean sprintJump) {
+        Vindicator v = m.brain;
+        Vector cur = v.getVelocity();
+        if (v.isOnGround()) {
+            Block ahead = v.getLocation().clone().add(dir.getX() * 1.6, 0, dir.getZ() * 1.6).getBlock();
+            boolean open = !ahead.getType().isSolid() && !ahead.getRelative(0, 1, 0).getType().isSolid() && ahead.getRelative(0, -1, 0).getType().isSolid()
+                    && !v.getLocation().getBlock().getRelative(0, 2, 0).getType().isSolid();
+            if (stepUp) { Safe.vel(v, new Vector(dir.getX() * sp, 0.42, dir.getZ() * sp)); return; }
+            if (sprintJump && open && random.nextDouble() < 0.6) { // sprint-jump: +0.2 forward on take-off
+                Safe.vel(v, new Vector(dir.getX() * (sp + 0.2), 0.42, dir.getZ() * (sp + 0.2)));
+                return;
+            }
+            Safe.vel(v, new Vector(cur.getX() * 0.4 + dir.getX() * sp * 0.9, cur.getY(), cur.getZ() * 0.4 + dir.getZ() * sp * 0.9));
+        } else {
+            // air: keeps its momentum (a player can't turn much mid-jump), a little steering
+            Safe.vel(v, new Vector(cur.getX() * 0.98 + dir.getX() * 0.02, cur.getY(), cur.getZ() * 0.98 + dir.getZ() * 0.02));
         }
     }
 
@@ -727,6 +1096,9 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         ItemStack w = weaponHeld(m);
         double base = w == null ? 1 : baseDamage(w.getType());
         double sharp = level(w, "sharpness");
+        PotionEffect str = v.getPotionEffect(PotionEffectType.STRENGTH), weak = v.getPotionEffect(PotionEffectType.WEAKNESS);
+        base += (str == null ? 0 : 3 * (str.getAmplifier() + 1)) - (weak == null ? 0 : 4 * (weak.getAmplifier() + 1));
+        base = Math.max(0.5, base);
         double dmg = (base * (0.2 + 0.8 * charge * charge) + (sharp > 0 ? 0.5 * sharp + 0.5 : 0) * charge) * (crit ? 1.5 : 1);
         dmg *= cfg("damage-multiplier", 1.0);
         Emotes.q(() -> m.body.swingMainHand());
@@ -749,17 +1121,6 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         if (crit) { tg.getWorld().spawnParticle(Particle.CRIT, l, 14, 0.3, 0.4, 0.3, 0.25); tg.getWorld().playSound(l, Sound.ENTITY_PLAYER_ATTACK_CRIT, 1, 1); }
         else if (charge > 0.9) tg.getWorld().playSound(l, m.sprintHit ? Sound.ENTITY_PLAYER_ATTACK_KNOCKBACK : Sound.ENTITY_PLAYER_ATTACK_STRONG, 1, 1);
         else tg.getWorld().playSound(l, Sound.ENTITY_PLAYER_ATTACK_WEAK, 1, 1);
-        // SWEEP: a full, grounded, non-sprint, non-crit sword hit also cuts everything right beside the target
-        if (!crit && !m.sprintHit && charge > 0.9 && v.isOnGround() && w != null && w.getType().name().endsWith("_SWORD")) {
-            double sweep = 1 + dmg * (level(w, "sweeping_edge") / (level(w, "sweeping_edge") + 1.0));
-            for (Entity e : tg.getNearbyEntities(1, 0.25, 1)) {
-                if (!(e instanceof LivingEntity le) || e == v || byBody.containsKey(e.getUniqueId()) || e instanceof ArmorStand) continue;
-                striking = true;
-                try { le.damage(sweep, v); } finally { striking = false; }
-            }
-            tg.getWorld().spawnParticle(Particle.SWEEP_ATTACK, l, 1);
-            tg.getWorld().playSound(l, Sound.ENTITY_PLAYER_ATTACK_SWEEP, 1, 1);
-        }
         m.lastHit = m.t;
         if (crit && random.nextDouble() < m.skill.jumpCrit()) m.jumpAt = m.t + 2 + random.nextInt(2); // crit chain
         if (m.sprintHit && random.nextDouble() < m.skill.wtap()) m.wtapUntil = m.t + 3 + random.nextInt(3);
@@ -936,7 +1297,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             m.rodReady = m.t + 50;
             hold(m, "rod");
             Emotes.q(() -> m.body.swingMainHand());
-            Location a = m.body.getEyeLocation(), b = tg.getLocation().add(0, 1.2, 0);
+            Location a = eye(m), b = tg.getLocation().add(0, 1.2, 0);
             Vector step = b.toVector().subtract(a.toVector());
             double len = step.length();
             step.normalize().multiply(0.6);
@@ -968,6 +1329,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             if (place(feet, Material.COBWEB, 100)) {
                 m.webs--;
                 m.webReady = m.t + 160;
+                if (m.lava > 0 && !fireproof) m.lavaReady = Math.min(m.lavaReady, m.t + 6); // WEB + LAVA combo
                 hold(m, "web");
                 Emotes.q(() -> m.body.swingMainHand());
                 feet.getWorld().playSound(feet.getLocation(), Sound.BLOCK_COBWEB_PLACE, 1, 1);
@@ -1054,12 +1416,108 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     @EventHandler(ignoreCancelled = true)
     public void onTempExplode(EntityExplodeEvent e) { if (!temp.isEmpty()) e.blockList().removeIf(temp::containsKey); }
 
+    // ---- pot PvP (Diamond SMP / Neth OP): their own potions
+
+    /** A buff it's missing (or about to lose) from a potion it really carries: splash = at its feet, drinkable = 1.6 s. */
+    private boolean buff(Mimic m) {
+        Vindicator v = m.brain;
+        for (Iterator<ItemStack> it = m.buffs.iterator(); it.hasNext(); ) {
+            ItemStack pot = it.next();
+            boolean need = false;
+            for (PotionEffect pe : effects(pot)) {
+                if (pe.getType().equals(PotionEffectType.INSTANT_HEALTH)) { need = v.getHealth() / maxHp(v) < 0.5; continue; }
+                PotionEffect has = v.getPotionEffect(pe.getType());
+                if (has == null || has.getDuration() < 100 || has.getAmplifier() < pe.getAmplifier()) need = true;
+            }
+            if (!need) continue;
+            it.remove();
+            m.buffReady = m.t + 20;
+            if (pot.getType() == Material.POTION) { // drink it
+                m.potting = pot;
+                m.potUntil = m.t + 32;
+                m.held = "?";
+                m.body.getEquipment().setItemInMainHand(pot.clone());
+                Emotes.q(() -> m.body.startUsingItem(EquipmentSlot.HAND));
+            } else { // splash it down at its feet
+                m.held = "?";
+                m.body.getEquipment().setItemInMainHand(pot.clone());
+                m.lookDownUntil = m.t + 6; // looks down
+                Bukkit.getScheduler().runTaskLater(plugin, () -> { if (m.body.isValid()) hold(m, "sword"); }, 6L);
+                Location at = v.getLocation().add(0, 1.2, 0);
+                ThrownPotion tp = v.getWorld().spawn(at, ThrownPotion.class, e -> { e.setItem(pot.clone()); e.setShooter(v); });
+                Safe.vel(tp, new Vector(0, -0.5, 0));
+                Emotes.q(() -> m.body.swingMainHand());
+                v.getWorld().playSound(at, Sound.ENTITY_SPLASH_POTION_THROW, 1, 1);
+            }
+            return true;
+        }
+        return false;
+    }
+
+    /** Slowness / Weakness / Poison / Harming... thrown AT you (leading your movement), if it carries any and you don't have it yet. */
+    private boolean debuff(Mimic m, Player tg) {
+        for (Iterator<ItemStack> it = m.debuffs.iterator(); it.hasNext(); ) {
+            ItemStack pot = it.next();
+            boolean useful = false;
+            for (PotionEffect pe : effects(pot)) if (pe.getType().equals(PotionEffectType.INSTANT_DAMAGE) || !tg.hasPotionEffect(pe.getType())) useful = true;
+            if (!useful) continue;
+            it.remove();
+            m.debuffReady = m.t + 80 + random.nextInt(40);
+            Vindicator v = m.brain;
+            Location eye = eye(m);
+            Vector lead = tg.getVelocity().clone().setY(0).multiply(6);
+            Vector aim = tg.getLocation().toVector().add(lead).subtract(eye.toVector());
+            double d = Math.hypot(aim.getX(), aim.getZ());
+            Vector vel = aim.clone().setY(0).normalize().multiply(Math.min(1.0, 0.11 * d + 0.15)).setY(0.18 + d * 0.02);
+            m.held = "?";
+            m.body.getEquipment().setItemInMainHand(pot.clone());
+            ThrownPotion tp = v.getWorld().spawn(eye, ThrownPotion.class, e -> { e.setItem(pot.clone()); e.setShooter(v); });
+            Safe.vel(tp, vel);
+            Emotes.q(() -> m.body.swingMainHand());
+            v.getWorld().playSound(eye, Sound.ENTITY_SPLASH_POTION_THROW, 1, 1);
+            Bukkit.getScheduler().runTaskLater(plugin, () -> { if (m.body.isValid()) hold(m, "sword"); }, 5L);
+            return true;
+        }
+        return false;
+    }
+
+    /** Snowballs / eggs at a sprinting enemy: breaks their sprint (and their combo). */
+    private void snowball(Mimic m, Player tg) {
+        Vindicator v = m.brain;
+        m.throwables--;
+        m.throwReady = m.t + 15;
+        Location eye = eye(m);
+        Vector aim = tg.getEyeLocation().toVector().add(tg.getVelocity().clone().multiply(3)).subtract(eye.toVector());
+        aim.setY(aim.getY() + aim.length() * 0.04);
+        Snowball sb = v.getWorld().spawn(eye, Snowball.class, e -> e.setShooter(v));
+        Safe.vel(sb, aim.normalize().multiply(1.5));
+        Emotes.q(() -> m.body.swingMainHand());
+        v.getWorld().playSound(eye, Sound.ENTITY_SNOWBALL_THROW, 1, 1);
+    }
+
+    /** UHC: on fire without Fire Resistance = water at its own feet. */
+    private boolean selfExtinguish(Mimic m) {
+        Vindicator v = m.brain;
+        if (v.getFireTicks() <= 20 || m.water <= 0 || v.hasPotionEffect(PotionEffectType.FIRE_RESISTANCE) || !v.isOnGround()) return false;
+        Block feet = v.getLocation().getBlock();
+        if (!place(feet, Material.WATER, 10)) return false;
+        hold(m, "water");
+        Emotes.q(() -> m.body.swingMainHand());
+        v.setFireTicks(0);
+        v.getWorld().playSound(feet.getLocation(), Sound.ITEM_BUCKET_EMPTY, 1, 1);
+        Bukkit.getScheduler().runTaskLater(plugin, () -> { if (m.body.isValid()) hold(m, "sword"); }, 8L);
+        return true;
+    }
+
     private void flee(Mimic m, Player tg) {
         Vindicator v = m.brain;
         Vector away = v.getLocation().toVector().subtract(tg.getLocation().toVector()).setY(0);
         if (away.lengthSquared() < 1e-4) away = new Vector(1, 0, 0);
-        Location to = v.getLocation().add(away.normalize().multiply(8));
-        Emotes.q(() -> v.getPathfinder().moveTo(to, 1.4));
+        away.normalize();
+        Block ahead = v.getLocation().clone().add(away.getX() * 0.8, 0, away.getZ() * 0.8).getBlock();
+        boolean wall = ahead.getType().isSolid(), tall = ahead.getRelative(0, 1, 0).getType().isSolid();
+        if (wall && tall) { Location to = v.getLocation().add(away.multiply(8)); Emotes.q(() -> v.getPathfinder().moveTo(to, 1.4)); }
+        else move(m, away, m.skill.speed() * 0.9, wall, true);
         hold(m, "sword");
         if (m.fleeUntil - m.t < 2 || v.getHealth() / maxHp(v) > 0.7) m.fleeUntil = 0;
     }
@@ -1075,6 +1533,11 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     }
 
     /** The body stands where the brain is, faces its target (head + body), crouches behind its shield, looks down to splash. */
+    /** The body's eye (a mannequin's), or the brain's when that isn't available. */
+    Location eye(Mimic m) {
+        try { return m.body.getEyeLocation(); } catch (RuntimeException e) { return m.brain.getEyeLocation(); }
+    }
+
     private void follow(Mimic m) {
         Location l = m.brain.getLocation();
         Location to = l.clone();
@@ -1088,16 +1551,20 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             }
             if (m.fleeUntil > m.t) wantYaw += 180;
         }
-        if (m.drinkUntil > m.t) pitch = 88;
+        if (m.drinkUntil > m.t || m.lookDownUntil > m.t) pitch = 88;
         float diff = ((wantYaw - m.yaw) % 360 + 540) % 360 - 180;
         m.yaw += Math.max(-40, Math.min(40, diff)); // a quick but not instant turn
         to.setYaw(m.yaw);
         to.setPitch(pitch);
-        m.body.teleport(to);
+        // MOVE the body (velocity = the gap to the brain) instead of teleporting it every tick: the game only animates a
+        // body's legs / arms from real movement. A teleport only when it's fallen behind (corners, pearls, other world).
+        Location bl = m.body.getLocation();
+        if (bl.getWorld() != l.getWorld() || bl.distanceSquared(l) > 1.2 * 1.2) m.body.teleport(to);
+        else Safe.vel(m.body, l.toVector().subtract(bl.toVector()));
         float yaw = m.yaw, p = pitch;
         Emotes.q(() -> m.body.setRotation(yaw, p));
         Emotes.q(() -> m.body.setBodyYaw(yaw));
-        Pose want = m.dive && m.slam ? Pose.FALL_FLYING : m.blockUntil > m.t && m.shieldOffUntil <= m.t ? Pose.SNEAKING : Pose.STANDING;
+        Pose want = m.flying || m.dive && m.slam ? Pose.FALL_FLYING : m.blockUntil > m.t && m.shieldOffUntil <= m.t ? Pose.SNEAKING : Pose.STANDING;
         Emotes.q(() -> { if (m.body.getPose() != want) m.body.setPose(want, true); });
         if (m.tag != null && m.tag.isValid()) m.tag.teleport(tagSpot(l).add(0, want == Pose.SNEAKING ? -0.3 : 0, 0));
     }
@@ -1106,11 +1573,12 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
 
     private void shoot(Mimic m, Player tg) {
         Vindicator v = m.brain;
-        Location eye = m.body.getEyeLocation();
+        Location eye = eye(m);
         double d = eye.distance(tg.getLocation());
         Vector lead = tg.getVelocity().clone().setY(0).multiply(d / 2.6);
         Vector aim = tg.getLocation().add(0, 1.1, 0).toVector().add(lead).subtract(eye.toVector());
         aim.setY(aim.getY() + d * 0.055);
+        if (level(m.gear.bow, "infinity") == 0) m.arrows--;
         Arrow a = v.getWorld().spawnArrow(eye.add(aim.clone().normalize().multiply(0.8)), aim.normalize(), 2.8f, (float) m.skill.spread());
         a.setShooter(v);
         int power = level(m.gear.bow, "power");
@@ -1125,7 +1593,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         Vindicator v = m.brain;
         m.pearlsLeft--;
         m.pearlReady = m.t + 300;
-        Location eye = m.body.getEyeLocation();
+        Location eye = eye(m);
         Vector aim = target.toVector().subtract(eye.toVector());
         double d = Math.hypot(aim.getX(), aim.getZ());
         Vector vel = aim.clone().setY(0).normalize().multiply(Math.min(1.6, 0.05 * d + 0.6)).setY(Math.min(0.9, 0.2 + d * 0.022));
@@ -1203,6 +1671,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             }
         }
         m.lastHurt = m.t;
+        if (!(e.getDamager() instanceof Projectile) && m.brain.isOnGround() && random.nextDouble() < m.skill.jumpCrit()) m.jumpReset = m.t + 1;
         Emotes.q(() -> m.body.playHurtAnimation(0));
         m.brain.getWorld().playSound(m.brain.getLocation(), Sound.ENTITY_PLAYER_HURT, 1, 1);
         if (TotemLimit.playerBehind(e.getDamager()) instanceof Player p && m.target != p && p.getLocation().distanceSquared(m.brain.getLocation()) < 400) m.target = p; // turns on whoever hits it
@@ -1231,6 +1700,8 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         Mimic m = byBrain.get(e.getEntity().getUniqueId());
         if (m == null || e.getFinalDamage() < m.brain.getHealth() + m.brain.getAbsorptionAmount() || m.totems <= 0) return;
         m.totems--;
+        if (m.totems > 0 && !hasShield(m)) Bukkit.getScheduler().runTaskLater(plugin, () -> { if (m.body.isValid()) m.body.getEquipment().setItemInOffHand(new ItemStack(Material.TOTEM_OF_UNDYING)); }, 3L); // re-totem
+        else if (m.totems == 0 && m.gear.offhand != null && m.gear.offhand.getType() == Material.TOTEM_OF_UNDYING) m.body.getEquipment().setItemInOffHand(null);
         e.setCancelled(true);
         m.brain.setHealth(1);
         m.brain.addPotionEffect(new PotionEffect(PotionEffectType.REGENERATION, 900, 1));
@@ -1255,7 +1726,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         m.body.getWorld().spawnParticle(Particle.POOF, m.body.getLocation().add(0, 1, 0), 20, 0.3, 0.6, 0.3, 0.02);
         byBrain.remove(m.brain.getUniqueId());
         byBody.remove(m.body.getUniqueId());
-        if (m.body.isValid()) m.body.remove();
+        try { m.body.remove(); } catch (RuntimeException ignored) { }
         if (m.tag != null && m.tag.isValid()) m.tag.remove();
     }
 
@@ -1273,16 +1744,40 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     public boolean onCommand(CommandSender s, Command c, String l, String[] a) {
         if (!s.hasPermission("items.mimicplayer")) { s.sendMessage(ChatColor.RED + "Admins only."); return true; }
         String sub = a.length == 0 ? "random" : a[0].toLowerCase(Locale.ROOT);
-        if (sub.equals("clear") || sub.equals("remove")) {
+        if (sub.equals("clear") || (sub.equals("remove") || sub.equals("kill") || sub.equals("delete")) && a.length > 1 && a[1].equalsIgnoreCase("all")) {
             int n = byBrain.size();
             removeAll();
             s.sendMessage(ChatColor.GREEN + "Removed " + n + " mimic" + (n == 1 ? "" : "s") + ".");
             return true;
         }
+        if (sub.equals("remove") || sub.equals("kill") || sub.equals("delete")) {
+            List<Mimic> gone = new ArrayList<>();
+            if (a.length > 1) { // by name
+                for (Mimic m : byBrain.values()) if (m.name.equalsIgnoreCase(a[1])) gone.add(m);
+            } else if (s instanceof Player p) { // the one you're looking at, else the nearest within 32
+                Mimic best = null; double bd = 32 * 32;
+                for (Mimic m : byBrain.values()) {
+                    if (m.brain.getWorld() != p.getWorld()) continue;
+                    Vector to = m.brain.getLocation().add(0, 1, 0).toVector().subtract(p.getEyeLocation().toVector());
+                    double d = to.lengthSquared();
+                    double look = to.lengthSquared() > 1e-4 ? p.getEyeLocation().getDirection().dot(to.clone().normalize()) : 1;
+                    double score = look > 0.97 ? d * 0.25 : d; // looked at counts most
+                    if (score < bd) { bd = score; best = m; }
+                }
+                if (best != null) gone.add(best);
+            }
+            if (gone.isEmpty()) { s.sendMessage(ChatColor.RED + (a.length > 1 ? "No mimic of " + a[1] + "." : "No mimic near you. /mimicplayer remove <name|all>")); return true; }
+            for (Mimic m : gone) {
+                m.body.getWorld().spawnParticle(Particle.POOF, m.body.getLocation().add(0, 1, 0), 20, 0.3, 0.6, 0.3, 0.02);
+                remove(m);
+            }
+            s.sendMessage(ChatColor.GREEN + "Removed " + gone.size() + " mimic" + (gone.size() == 1 ? "" : "s") + (a.length > 1 ? " of " + a[1] : "") + ".");
+            return true;
+        }
         if (sub.equals("list")) {
             s.sendMessage(ChatColor.GOLD + "Mimics (" + byBrain.size() + "):");
             for (Mimic m : byBrain.values()) s.sendMessage(ChatColor.GRAY + " " + m.name + " (" + m.skill.id() + ") at " + Where.spot(m.brain.getLocation()) + ", "
-                    + Math.round(m.brain.getHealth()) + " hp, " + m.apples + " gaps, " + m.gapples + " god apples, " + m.pots + " pots, " + m.pearlsLeft + " pearls, " + m.totems + " totems");
+                    + Math.round(m.brain.getHealth()) + " hp, " + m.style + ", " + m.buffs.size() + " buff pots, " + m.debuffs.size() + " debuff pots, " + m.apples + " gaps, " + m.gapples + " god apples, " + m.pots + " pots, " + m.pearlsLeft + " pearls, " + m.totems + " totems");
             return true;
         }
         if (!(s instanceof Player p)) { s.sendMessage("Run it in game (it spawns where you look)."); return true; }
@@ -1316,8 +1811,13 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     @Override
     public List<String> onTabComplete(CommandSender s, Command c, String l, String[] a) {
         if (a.length == 1) {
-            List<String> out = new ArrayList<>(List.of("random", "clear", "list"));
+            List<String> out = new ArrayList<>(List.of("random", "remove", "clear", "list"));
             for (Player p : Bukkit.getOnlinePlayers()) out.add(p.getName());
+            return out;
+        }
+        if (a.length == 2 && (a[0].equalsIgnoreCase("remove") || a[0].equalsIgnoreCase("kill"))) {
+            List<String> out = new ArrayList<>(List.of("all"));
+            for (Mimic m : byBrain.values()) if (!out.contains(m.name)) out.add(m.name);
             return out;
         }
         if (a.length == 2) return List.of("1", "3", "5", "easy", "normal", "hard", "godlike");

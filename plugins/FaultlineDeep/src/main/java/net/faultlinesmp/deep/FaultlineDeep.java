@@ -51,6 +51,9 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
     Habitat habitat;
     AbyssMap chart;
     Glimmertide glimmer;
+    DenFestival festival;   // 1.15.0
+    CoralFarm coralFarm;    // 1.15.0
+    Lighthouse lighthouse;  // 1.15.0
 
     @Override
     public void onEnable() {
@@ -78,8 +81,13 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(glimmer, this);
         if (getCommand("glimmer") != null) {
             getCommand("glimmer").setExecutor((sender, cmd, label, args) -> glimmer.command(sender, args));
-            getCommand("glimmer").setTabCompleter((sender, cmd, label, args) -> args.length == 1 ? List.of("top") : List.of());
+            getCommand("glimmer").setTabCompleter((sender, cmd, label, args) -> args.length == 1 ? List.of("top", "sell") : List.of());
         }
+        festival = new DenFestival(this); // 1.15.0: the Den's monthly festival
+        coralFarm = new CoralFarm(this);  // 1.15.0: Air Coral blooms, fragments, selling
+        getServer().getPluginManager().registerEvents(coralFarm, this);
+        lighthouse = new Lighthouse(this); // 1.15.0: lighthouses light the dark for good
+        getServer().getPluginManager().registerEvents(lighthouse, this);
         getServer().getPluginManager().registerEvents(chart, this);
         if (getCommand("chart") != null) getCommand("chart").setExecutor((sender, cmd, label, args) -> {
             if (sender instanceof Player p) sender.sendMessage(chart.status(p)); else sender.sendMessage("Players only.");
@@ -123,6 +131,8 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
         if (volcano != null) volcano.shutdown();
         if (chart != null) chart.shutdown();
         if (glimmer != null) glimmer.shutdown();
+        if (festival != null) festival.shutdown();
+        if (lighthouse != null) lighthouse.save();
     }
 
     String worldName() { return getConfig().getString("world", DEFAULT_WORLD); }
@@ -298,6 +308,7 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
                         sender.sendMessage(den.startWar(self) ? ChatColor.GREEN + "The Den goes to war." : ChatColor.RED + "It's already at war (or the world isn't loaded).");
                     }
                     case "stop" -> { den.endWar(false); sender.sendMessage(ChatColor.GREEN + "Stopped the Den's war."); }
+                    case "festival" -> sender.sendMessage(festival.admin(args.length > 2 ? args[2].toLowerCase() : "")); // 1.15.0
                     case "reset" -> { den.reset(); sender.sendMessage(ChatColor.GREEN + "All ten mermaids are home again."); }
                     case "rise" -> { den.rise("Called by an admin."); sender.sendMessage(ChatColor.GREEN + "Coralia rises over her throne."); }
                     case "where" -> { for (String line : den.where()) sender.sendMessage(ChatColor.GRAY + line); }
@@ -358,9 +369,11 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
                     case "fossil" -> outer.fossil(n);
                     case "chart", "map" -> chart.item();
                     case "glimmer", "pearl", "glimmer_pearl" -> glimmer.pearl(n);
+                    case "fragment", "coral_fragment" -> coralFarm.fragment(n);
+                    case "lighthouse", "lamp" -> lighthouse.lamp(n);
                     default -> null;
                 };
-                if (it == null || to == null) { sender.sendMessage(ChatColor.YELLOW + "/deep give <coral|dome_small|dome_large|vault_key|cache_key|fossil|chart|glimmer> [amount] [player]"); return true; }
+                if (it == null || to == null) { sender.sendMessage(ChatColor.YELLOW + "/deep give <coral|dome_small|dome_large|vault_key|cache_key|fossil|chart|glimmer|fragment|lighthouse> [amount] [player]"); return true; }
                 Player dest = to;
                 dest.getInventory().addItem(it).values().forEach(x -> dest.getWorld().dropItemNaturally(dest.getLocation(), x));
                 sender.sendMessage(ChatColor.GREEN + "Gave " + dest.getName() + " " + what + ".");
@@ -400,7 +413,7 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
         List<String> out = new ArrayList<>();
         if (args.length == 1) out.addAll(List.of("info", "set", "tp", "town", "sulphur", "trench", "spawn", "egg", "event", "acidrain", "den", "bloom", "migration", "sub", "lucki", "eclipse", "redtide", "frenzy", "volcano", "domes", "give", "region", "season"));
         else if (args.length == 2 && args[0].equalsIgnoreCase("season")) out.addAll(List.of("start", "stop", "auto", "shoal"));
-        else if (args.length == 2 && args[0].equalsIgnoreCase("give")) out.addAll(List.of("coral", "dome_small", "dome_large", "vault_key", "cache_key", "fossil", "chart", "glimmer"));
+        else if (args.length == 2 && args[0].equalsIgnoreCase("give")) out.addAll(List.of("coral", "dome_small", "dome_large", "vault_key", "cache_key", "fossil", "chart", "glimmer", "fragment", "lighthouse"));
         else if (args.length == 2 && args[0].equalsIgnoreCase("region")) out.addAll(List.of("frozen", "city", "glass", "bones"));
         else if (args.length == 2 && args[0].equalsIgnoreCase("volcano")) out.addAll(List.of("where", "start", "here", "cool", "heal"));
         else if (args.length == 2 && args[0].equalsIgnoreCase("set")) out.addAll(List.of("kingdom", "lucki", "whirlpool"));

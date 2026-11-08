@@ -57,6 +57,7 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
         String discordId; // linked Discord account, or null
         boolean manual;   // set by an admin: role sync leaves it alone
         Boolean ffVote;   // their friendly-fire vote for their kingdom (null = none)
+        final Map<Integer, Boolean> allyVotes = new java.util.concurrent.ConcurrentHashMap<>(); // 1.4.0: their treaty vote per other kingdom
     }
 
     final Map<UUID, Member> members = new java.util.concurrent.ConcurrentHashMap<>(); // read by the Discord calls off the main thread
@@ -69,6 +70,12 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
     DiscordGateway gateway;
     final KingdomForms forms = new KingdomForms(this);
     HeadTags headTags;
+    KingdomChat chat;
+    /** 1.4.0 treaties: "1-2" -> forced on/off by staff (else the vote). */
+    final Map<String, Boolean> treatyForced = new LinkedHashMap<>();
+    /** Treaties in force now ("1-2", "1-3", "2-3"), and when one was broken (PvP stays off a few minutes after). */
+    final java.util.Set<String> treaties = new java.util.HashSet<>();
+    final Map<String, Long> brokenAt = new HashMap<>();
     private final Map<UUID, Long> warned = new HashMap<>();
 
     @Override
@@ -80,6 +87,9 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(this, this);
         headTags = new HeadTags(this); // 1.3.0: the kingdom (or "Outlaw") above everyone's name
         getServer().getPluginManager().registerEvents(headTags, this);
+        chat = new KingdomChat(this); // 1.4.0: /kc, /ac, kingdom Discord channels
+        getServer().getPluginManager().registerEvents(chat, this);
+        checkTreaties(false);
         discord = new DiscordLink(this);
         gateway = new DiscordGateway(this, discord);
         gateway.start();
@@ -92,13 +102,14 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
     public void onDisable() {
         if (headTags != null) try { headTags.removeAll(); } catch (RuntimeException ignored) { }
         if (gateway != null) gateway.stop();
+        if (chat != null) chat.stop();
         save();
     }
 
     // ================================================================= data
 
     void load() {
-        members.clear(); grace.clear(); ffForced.clear();
+        members.clear(); grace.clear(); ffForced.clear(); treatyForced.clear(); treaties.clear();
         if (!dataFile.exists()) return;
         YamlConfiguration y = YamlConfiguration.loadConfiguration(dataFile);
         ConfigurationSection ps = y.getConfigurationSection("players");
@@ -110,6 +121,8 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
                 m.discordId = ps.getString(id + ".discord");
                 m.manual = ps.getBoolean(id + ".manual", false);
                 if (ps.isBoolean(id + ".ff-vote")) m.ffVote = ps.getBoolean(id + ".ff-vote");
+                ConfigurationSection av = ps.getConfigurationSection(id + ".ally-votes");
+                if (av != null) for (String k : av.getKeys(false)) try { m.allyVotes.put(Integer.parseInt(k), av.getBoolean(k)); } catch (NumberFormatException ignored) { }
                 members.put(UUID.fromString(id), m);
             } catch (IllegalArgumentException ignored) { }
         }
@@ -117,6 +130,9 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
         if (g != null) for (String k : g.getKeys(false)) grace.put(k, g.getLong(k));
         ConfigurationSection ff = y.getConfigurationSection("ff-forced");
         if (ff != null) for (String k : ff.getKeys(false)) ffForced.put(k, ff.getBoolean(k));
+        ConfigurationSection tf = y.getConfigurationSection("treaty-forced");
+        if (tf != null) for (String k : tf.getKeys(false)) treatyForced.put(k, tf.getBoolean(k));
+        treaties.addAll(y.getStringList("treaties"));
     }
 
     synchronized void save() {
@@ -129,9 +145,12 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
             if (m.discordId != null) y.set(b + "discord", m.discordId);
             if (m.manual) y.set(b + "manual", true);
             if (m.ffVote != null) y.set(b + "ff-vote", m.ffVote);
+            for (var v : m.allyVotes.entrySet()) y.set(b + "ally-votes." + v.getKey(), v.getValue());
         }
         for (var e : grace.entrySet()) y.set("grace." + e.getKey(), e.getValue());
         for (var e : ffForced.entrySet()) y.set("ff-forced." + e.getKey(), e.getValue());
+        for (var e : treatyForced.entrySet()) y.set("treaty-forced." + e.getKey(), e.getValue());
+        y.set("treaties", new ArrayList<>(treaties));
         try { y.save(dataFile); } catch (IOException ex) { getLogger().warning("Couldn't save data.yml: " + ex.getMessage()); }
     }
 
@@ -169,7 +188,7 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
         boolean changed = m.kingdom != k;
         boolean ffBefore = k > 0 && friendlyFire(k), ffOldBefore = m.kingdom > 0 && friendlyFire(m.kingdom);
         int old = m.kingdom;
-        if (changed) m.ffVote = null; // a vote is for the kingdom you were in
+        if (changed) { m.ffVote = null; m.allyVotes.clear(); } // votes are for the kingdom you were in
         m.kingdom = k;
         m.manual = manual;
         Player p = Bukkit.getPlayer(id);
@@ -182,6 +201,7 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
         if (changed) getLogger().info((m.name == null ? id.toString() : m.name) + " -> " + name(k) + (why == null ? "" : " (" + why + ")"));
         if (changed && old > 0) ffChanged(old, ffOldBefore);
         if (changed && k > 0) ffChanged(k, ffBefore);
+        if (changed) checkTreaties(true);
         save();
     }
 
@@ -221,6 +241,7 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
 
     private void tick() {
         long now = System.currentTimeMillis();
+        if (now / 1000 % 10 == 0) checkTreaties(true);
         for (String key : new ArrayList<>(grace.keySet())) {
             long until = grace.get(key);
             if (until > 0 && until <= now) setGrace(key, 0, null);
@@ -323,6 +344,100 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
                 + (m.ffVote == null ? "none" : m.ffVote ? "on" : "off") + ChatColor.DARK_GRAY + " · /kingdom ff <on|off|clear>");
     }
 
+    // ================================================================= treaties (1.4.0)
+
+    static String pair(int a, int b) { return Math.min(a, b) + "-" + Math.max(a, b); }
+
+    /** Are kingdoms a and b allied right now? */
+    public boolean allied(int a, int b) { return a > 0 && b > 0 && a != b && treaties.contains(pair(a, b)); }
+
+    /** For other plugins: are these two players in allied kingdoms? */
+    public static boolean allies(UUID x, UUID y) { return instance != null && instance.allied(kingdomOf(x), kingdomOf(y)); }
+
+    /** How long PvP stays off after a treaty between a and b ended (treaties.break-grace-minutes). */
+    long treatyCooldown(int a, int b) {
+        if (a <= 0 || b <= 0 || a == b) return 0;
+        Long at = brokenAt.get(pair(a, b));
+        if (at == null) return 0;
+        long left = at + getConfig().getLong("treaties.break-grace-minutes", 5) * 60_000L - System.currentTimeMillis();
+        return Math.max(0, left);
+    }
+
+    /** [yes, no] votes in kingdom a about an alliance with b. */
+    int[] allyVotes(int a, int b) {
+        int yes = 0, no = 0;
+        for (Member m : members.values()) if (m.kingdom == a) { Boolean v = m.allyVotes.get(b); if (v != null) { if (v) yes++; else no++; } }
+        return new int[]{yes, no};
+    }
+
+    /** Does kingdom a want an alliance with b? At least treaties.min-votes voted and more yes than no. */
+    boolean wants(int a, int b) {
+        int[] v = allyVotes(a, b);
+        return v[0] + v[1] >= Math.max(1, getConfig().getInt("treaties.min-votes", 3)) && v[0] > v[1];
+    }
+
+    boolean treatyWanted(int a, int b) {
+        if (!getConfig().getBoolean("treaties.enabled", true)) return false;
+        Boolean forced = treatyForced.get(pair(a, b));
+        if (forced != null) return forced;
+        return wants(a, b) && wants(b, a);
+    }
+
+    String treatyWhy(int a, int b) {
+        if (treatyForced.containsKey(pair(a, b))) return "set by staff";
+        int[] x = allyVotes(a, b), y = allyVotes(b, a);
+        int min = Math.max(1, getConfig().getInt("treaties.min-votes", 3));
+        return name(a) + " " + x[0] + " yes / " + x[1] + " no, " + name(b) + " " + y[0] + " yes / " + y[1] + " no (" + min + "+ votes and a majority on both sides)";
+    }
+
+    /** Forms or ends treaties to match the votes; announced when told to. */
+    void checkTreaties(boolean announce) {
+        for (int a = 1; a <= 3; a++) for (int b = a + 1; b <= 3; b++) {
+            String key = pair(a, b);
+            boolean want = treatyWanted(a, b), have = treaties.contains(key);
+            if (want == have) continue;
+            if (want) { treaties.add(key); brokenAt.remove(key); }
+            else { treaties.remove(key); brokenAt.put(key, System.currentTimeMillis()); }
+            save();
+            if (!announce) continue;
+            String line = want
+                    ? ChatColor.GOLD + "🤝 " + label(a) + ChatColor.GOLD + " and " + label(b) + ChatColor.GOLD + " signed a treaty! They can't hurt each other while it lasts."
+                    : ChatColor.RED + "✂ The treaty between " + label(a) + ChatColor.RED + " and " + label(b) + ChatColor.RED + " is broken! PvP between them starts in "
+                    + getConfig().getLong("treaties.break-grace-minutes", 5) + " minutes.";
+            Bukkit.broadcastMessage(line);
+            if (chat != null) { chat.queue(a, ChatColor.stripColor(line)); chat.queue(b, ChatColor.stripColor(line)); }
+        }
+    }
+
+    /** /kingdom ally [k] [yes|no|clear] */
+    void allyCommand(Player p, String[] args) {
+        Member m = member(p);
+        int k = m.kingdom;
+        if (!getConfig().getBoolean("treaties.enabled", true)) { msg(p, ChatColor.RED + "Treaties are turned off."); return; }
+        if (k == 0) { msg(p, ChatColor.RED + "You're not in a kingdom."); return; }
+        if (args.length >= 2) {
+            int other = parseKingdom(args[1]);
+            if (other < 1 || other == k) { msg(p, ChatColor.RED + "/kingdom ally <the other kingdom: 1, 2 or 3> <yes|no|clear>"); return; }
+            String what = args.length > 2 ? args[2].toLowerCase(Locale.ROOT) : "yes";
+            Boolean v = switch (what) { case "yes", "on", "true" -> Boolean.TRUE; case "no", "off", "false" -> Boolean.FALSE; default -> null; };
+            if (v == null && !what.equals("clear")) { msg(p, ChatColor.RED + "/kingdom ally " + other + " <yes|no|clear>"); return; }
+            if (v == null) m.allyVotes.remove(other); else m.allyVotes.put(other, v);
+            save();
+            msg(p, v == null ? ChatColor.GRAY + "Your treaty vote for " + label(other) + ChatColor.GRAY + " is cleared."
+                    : ChatColor.GREEN + "You voted " + (v ? "FOR" : "AGAINST") + " a treaty with " + label(other) + ChatColor.GREEN + ".");
+            String note = ChatColor.GRAY + p.getName() + " voted " + (v == null ? "nothing" : v ? "for" : "against") + " a treaty with " + label(other) + ChatColor.GRAY + ".";
+            for (Player o : Bukkit.getOnlinePlayers()) if (o != p && kingdomOf(o.getUniqueId()) == k) o.sendMessage(note);
+            checkTreaties(true);
+        }
+        for (int o = 1; o <= 3; o++) {
+            if (o == k) continue;
+            Boolean mine = m.allyVotes.get(o);
+            msg(p, ChatColor.GOLD + "Treaty with " + label(o) + ChatColor.GOLD + ": " + (allied(k, o) ? ChatColor.GREEN + "IN FORCE" : ChatColor.RED + "none")
+                    + ChatColor.GRAY + " (" + treatyWhy(k, o) + ") · your vote: " + (mine == null ? "none" : mine ? "yes" : "no"));
+        }
+        msg(p, ChatColor.DARK_GRAY + "/kingdom ally <1|2|3> <yes|no|clear> · both kingdoms have to want it");
+    }
+
     // ================================================================= PvP
 
     /** The player really behind a hit: themselves, the shooter of an arrow/trident/potion, a TNT lighter, a pet's owner. */
@@ -344,6 +459,9 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
         if (aa > 0 && graceOn(String.valueOf(aa)) && !getConfig().getBoolean("grace.protected-can-attack", false))
             return "Your kingdom is under grace: you can't attack players.";
         if (aa > 0 && aa == va && !friendlyFire(aa)) return victim.getName() + " is in your kingdom (friendly fire is off).";
+        if (allied(aa, va)) return victim.getName() + " is in " + label(va) + ChatColor.RED + ", your ally (treaty).";
+        long left = treatyCooldown(aa, va);
+        if (left > 0) return "Your treaty with " + label(va) + ChatColor.RED + " just ended: PvP with them starts in " + duration(left) + ".";
         return null;
     }
 
@@ -397,6 +515,10 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (command.getName().equalsIgnoreCase("kingdoms")) return admin(sender, args);
+        if (command.getName().equalsIgnoreCase("kc") || command.getName().equalsIgnoreCase("ac")) {
+            if (!(sender instanceof Player pp)) return msg(sender, "Players only.");
+            return chat.command(pp, args, command.getName().equalsIgnoreCase("ac"));
+        }
         String sub = args.length == 0 ? "" : args[0].toLowerCase(Locale.ROOT);
         Player p = sender instanceof Player pl ? pl : null;
         switch (sub) {
@@ -422,6 +544,10 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
             case "ff", "friendlyfire" -> {
                 if (p == null) return msg(sender, "Players only.");
                 ffCommand(p, args.length > 1 ? args[1].toLowerCase(Locale.ROOT) : null);
+            }
+            case "ally", "treaty", "treaties", "alliance" -> {
+                if (p == null) return msg(sender, "Players only.");
+                allyCommand(p, args);
             }
             case "list" -> {
                 int k = args.length > 1 ? parseKingdom(args[1]) : -1;
@@ -458,6 +584,11 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
             counts.append(" ").append(label(k)).append(ChatColor.GRAY).append(" ").append(n).append(friendlyFire(k) ? "" : " (no friendly fire)");
         }
         s.sendMessage(counts.toString());
+        if (!treaties.isEmpty()) {
+            List<String> t = new ArrayList<>();
+            for (String key : treaties) { String[] ab = key.split("-"); t.add(label(Integer.parseInt(ab[0])) + ChatColor.GRAY + " + " + label(Integer.parseInt(ab[1]))); }
+            s.sendMessage(ChatColor.GOLD + "Treaties: " + String.join(ChatColor.GRAY + ", ", t));
+        }
         if (s.hasPermission("kingdoms.admin") && gateway != null) s.sendMessage(ChatColor.DARK_GRAY + "Discord /stats: " + gateway.status + ", chat bridge: " + gateway.bridgeStatus);
     }
 
@@ -533,6 +664,24 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
                 msg(sender, ChatColor.GREEN + name(k) + ": friendly fire " + (friendlyFire(k) ? "ON" : "OFF") + " (" + ffWhy(k) + ").");
                 ffChanged(k, before);
             }
+            case "treaty" -> { // /kingdoms treaty <a> <b> <on|off|vote>
+                int a = args.length > 3 ? parseKingdom(args[1]) : -1, b = args.length > 3 ? parseKingdom(args[2]) : -1;
+                if (a < 1 || b < 1 || a == b) return msg(sender, ChatColor.RED + "/kingdoms treaty <1|2|3> <1|2|3> <on|off|vote>");
+                switch (args[3].toLowerCase(Locale.ROOT)) {
+                    case "on" -> treatyForced.put(pair(a, b), true);
+                    case "off" -> treatyForced.put(pair(a, b), false);
+                    case "vote", "auto" -> treatyForced.remove(pair(a, b));
+                    default -> { return msg(sender, ChatColor.RED + "on, off or vote."); }
+                }
+                save();
+                checkTreaties(true);
+                msg(sender, ChatColor.GREEN + name(a) + " + " + name(b) + ": treaty " + (allied(a, b) ? "IN FORCE" : "none") + " (" + treatyWhy(a, b) + ").");
+            }
+            case "spy" -> {
+                if (!(sender instanceof Player sp)) return msg(sender, "Players only.");
+                if (!chat.spyOff.remove(sp.getUniqueId())) { chat.spyOff.add(sp.getUniqueId()); return msg(sender, ChatColor.GRAY + "Kingdom chat spy OFF."); }
+                return msg(sender, ChatColor.GREEN + "Kingdom chat spy ON: you see every kingdom's /kc.");
+            }
             case "reload" -> {
                 reloadConfig();
                 for (Player p : Bukkit.getOnlinePlayers()) refreshName(p);
@@ -543,7 +692,7 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
             }
             default -> {
                 status(sender);
-                msg(sender, ChatColor.DARK_GRAY + "/kingdoms grace <all|1|2|3> <on|off> [time] · set <player> <1|2|3|none|auto> · ff <1|2|3> <on|off|vote> · sync [player] · reload");
+                msg(sender, ChatColor.DARK_GRAY + "/kingdoms grace <all|1|2|3> <on|off> [time] · set <player> <1|2|3|none|auto> · ff <1|2|3> <on|off|vote> · treaty <a> <b> <on|off|vote> · spy · sync [player] · reload");
             }
         }
         return true;
@@ -554,7 +703,8 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (command.getName().equalsIgnoreCase("kingdoms")) {
-            if (args.length == 1) return List.of("grace", "set", "ff", "sync", "status", "reload");
+            if (args.length == 1) return List.of("grace", "set", "ff", "treaty", "spy", "sync", "status", "reload");
+            if (args[0].equalsIgnoreCase("treaty")) return args.length <= 3 ? List.of("1", "2", "3") : args.length == 4 ? List.of("on", "off", "vote") : List.of();
             if (args.length == 2 && args[0].equalsIgnoreCase("ff")) return List.of("1", "2", "3");
             if (args.length == 3 && args[0].equalsIgnoreCase("ff")) return List.of("on", "off", "vote");
             if (args.length == 2 && args[0].equalsIgnoreCase("grace")) return List.of("all", "1", "2", "3");
@@ -563,7 +713,10 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
             if (args.length == 3 && args[0].equalsIgnoreCase("set")) return List.of("1", "2", "3", "none", "auto");
             return null;
         }
-        if (args.length == 1) return List.of("link", "verify", "unlink", "list", "ff");
+        if (command.getName().equalsIgnoreCase("kc") || command.getName().equalsIgnoreCase("ac")) return null;
+        if (args.length == 1) return List.of("link", "verify", "unlink", "list", "ff", "ally");
+        if (args.length == 2 && args[0].equalsIgnoreCase("ally")) return List.of("1", "2", "3");
+        if (args.length == 3 && args[0].equalsIgnoreCase("ally")) return List.of("yes", "no", "clear");
         if (args.length == 2 && args[0].equalsIgnoreCase("ff")) return List.of("on", "off", "clear");
         if (args.length == 2 && args[0].equalsIgnoreCase("list")) return List.of("1", "2", "3");
         return List.of();

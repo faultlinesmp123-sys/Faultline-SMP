@@ -1186,3 +1186,36 @@ glimmer_pearl:
 blue_obsidian:
   large: 59459
   small: 58435
+backpack:
+  large: 59469
+  small: 58445
+air_coral_fragment:
+  large: 59470
+  small: 58446
+lighthouse_lamp:
+  large: 59471
+  small: 58447
+krampus:
+  large: 59472
+  small: 58448
+krampus_bell:
+  large: 59473
+  small: 58449
+krampus_imp:
+  large: 59474
+  small: 58450
+cursed_lantern:
+  large: 59475
+  small: 58451
+restless_spirit:
+  large: 59476
+  small: 58452
+haunted_villager:
+  large: 59477
+  small: 58453
+lantern_wraith:
+  large: 59478
+  small: 58454
+mimic_player:
+  large: 59479
+  small: 58455

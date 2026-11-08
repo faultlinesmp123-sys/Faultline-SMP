@@ -1,5 +1,5 @@
 name: FaultlineItems
-version: 1.2.77
+version: 1.2.78
 main: net.faultlinesmp.items.FaultlineItems
 api-version: '1.21'
 softdepend: [floodgate, Geyser-Spigot]
@@ -145,6 +145,23 @@ commands:
     description: "Admin / other plugins: Dark Loot (the Dark Ocean's treasure): bags, rare rolls"
     usage: /darkloot <bag [amount] [player]|rare <player> [chance]|give <suit|elytra|totems|invisibility|godset> [player]|roll [player]>
     permission: items.darkloot
+  backpack:
+    description: Open your Backpack (wear one in /accessories)
+    usage: /backpack
+    aliases: [bp]
+  creator:
+    description: "Creator mode: hides your coordinates and IP addresses on screen while you record"
+    usage: /creator [on|off]
+    aliases: [creatormode, streamermode]
+  mimicplayer:
+    description: "Admin: spawn an NPC that looks and fights like a player"
+    usage: /mimicplayer [random|<player>|clear|list] [count]
+    aliases: [mimic]
+    permission: items.mimicplayer
+  holiday:
+    description: "Admin: the holiday events (haunted villages, Krampus)"
+    usage: /holiday [status|haunt [player|stop]|krampus [player|kill]|bell [n] [player]|lantern [n] [player]]
+    permission: items.holiday
   giveblueobsidian:
     description: "Admin: give Blue Obsidian"
     usage: /giveblueobsidian [amount] [player]
@@ -204,6 +221,15 @@ permissions:
     default: op
   faultline.vanish:
     description: Use /vanish
+    default: op
+  faultline.creator:
+    description: /creator (creator mode)
+    default: true
+  items.mimicplayer:
+    description: /mimicplayer
+    default: op
+  items.holiday:
+    description: /holiday, and ringing Krampus' Bell / the Cursed Jack o'Lantern out of season
     default: op
   items.giveblueobsidian:
     description: /giveblueobsidian

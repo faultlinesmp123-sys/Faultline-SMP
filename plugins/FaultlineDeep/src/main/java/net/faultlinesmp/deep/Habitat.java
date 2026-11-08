@@ -219,7 +219,7 @@ final class Habitat implements Listener {
             addCoral(at);
             if (p.getGameMode() != GameMode.CREATIVE) hand.setAmount(hand.getAmount() - 1);
             at.getWorld().playSound(at.getLocation(), Sound.BLOCK_CORAL_BLOCK_PLACE, 1f, 1.2f);
-            at.getWorld().spawnParticle(Particle.BUBBLE_COLUMN_UP, at.getLocation().add(0.5, 1, 0.5), 20, 0.3, 0.5, 0.3, 0.1);
+            at.getWorld().spawnParticle(Particle.BUBBLE_COLUMN_UP, at.getLocation().clone().add(0.5, 1, 0.5), 20, 0.3, 0.5, 0.3, 0.1);
             pl.console("index discover " + p.getName() + " air_coral");
         }
     }

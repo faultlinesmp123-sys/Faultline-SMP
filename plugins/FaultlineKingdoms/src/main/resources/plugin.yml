@@ -1,5 +1,5 @@
 name: FaultlineKingdoms
-version: '1.3.0'
+version: '1.4.0'
 main: net.faultlinesmp.kingdoms.FaultlineKingdoms
 api-version: '1.21'
 author: FaultlineSMP
@@ -9,14 +9,25 @@ softdepend: [floodgate, Geyser-Spigot, FaultlineIndex, LimboBlackMarket]
 commands:
   kingdom:
     description: "Your kingdom and the grace periods; link your Discord: /kingdom link <discord name>, /kingdom verify <code>"
-    usage: /kingdom [link <discord name>|verify <code>|unlink|list <1|2|3>|ff <on|off|clear>]
+    usage: /kingdom [link <discord name>|verify <code>|unlink|list <1|2|3>|ff <on|off|clear>|ally <1|2|3> <yes|no|clear>]
     aliases: [k]
+  kc:
+    description: "Kingdom chat: /kc <message>, or /kc alone to talk only to your kingdom until /kc again"
+    usage: /kc [message]
+    aliases: [kchat, kingdomchat]
+  ac:
+    description: "Alliance chat: your kingdom + its allies (treaties). /ac alone toggles it"
+    usage: /ac [message]
+    aliases: [allychat]
   kingdoms:
     description: "Admin: /kingdoms grace <all|1|2|3> <on|off> [time], /kingdoms set <player> <1|2|3|none|auto>, sync, reload"
     usage: /kingdoms <grace|set|ff|sync|status|reload>
     permission: kingdoms.admin
 
 permissions:
+  kingdoms.spy:
+    description: See every kingdom's /kc and /ac (toggle with /kingdoms spy)
+    default: op
   kingdoms.admin:
     description: Grace periods and setting players' kingdoms
     default: op

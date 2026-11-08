@@ -415,6 +415,23 @@ public final class FaultlineItems extends JavaPlugin {
         getServer().getPluginManager().registerEvents(blueObsidian, this);
         if (getCommand("giveblueobsidian") != null) getCommand("giveblueobsidian").setExecutor(new GiveItemCommand(this, "items.giveblueobsidian",
                 "/giveblueobsidian [amount] [player]", ItemCatalog.single(pl -> pl.blueObsidian.item(1))));
+        // 1.2.78: the backpack, creator mode, the admin player mimic, haunted villages (Halloween), Krampus (Christmas)
+        backpack = new Backpack(this);
+        getServer().getPluginManager().registerEvents(backpack, this);
+        if (getCommand("backpack") != null) getCommand("backpack").setExecutor(backpack);
+        creatorMode = new CreatorMode(this);
+        getServer().getPluginManager().registerEvents(creatorMode, this);
+        if (getCommand("creator") != null) getCommand("creator").setExecutor(creatorMode);
+        mimics = new MimicPlayer(this);
+        getServer().getPluginManager().registerEvents(mimics, this);
+        if (getCommand("mimicplayer") != null) { getCommand("mimicplayer").setExecutor(mimics); getCommand("mimicplayer").setTabCompleter(mimics); }
+        haunted = new HauntedVillage(this);
+        getServer().getPluginManager().registerEvents(haunted, this);
+        krampus = new Krampus(this);
+        getServer().getPluginManager().registerEvents(krampus, this);
+        holidays = new Holidays(this);
+        getServer().getPluginManager().registerEvents(holidays, this);
+        if (getCommand("holiday") != null) { getCommand("holiday").setExecutor(holidays); getCommand("holiday").setTabCompleter(holidays); }
         where = new Where(this); // 1.2.24: /ping, /coords (Bedrock has no F3)
         getServer().getPluginManager().registerEvents(where, this);
         for (String c : List.of("ping", "coords")) { getCommand(c).setExecutor(where); getCommand(c).setTabCompleter(where); }
@@ -623,6 +640,9 @@ public final class FaultlineItems extends JavaPlugin {
     @Override
     public void onDisable() {
         if (blueObsidian != null) try { blueObsidian.shutdown(); } catch (RuntimeException ignored) { }
+        if (mimics != null) try { mimics.removeAll(); } catch (RuntimeException ignored) { }
+        if (haunted != null) try { haunted.shutdown(); } catch (RuntimeException ignored) { }
+        if (krampus != null) try { krampus.shutdown(); } catch (RuntimeException ignored) { }
         if (caveTrader != null) caveTrader.removeAll();
         if (weather != null) weather.shutdown();
         if (bloodMoonSky != null) bloodMoonSky.shutdown();
@@ -900,6 +920,12 @@ public final class FaultlineItems extends JavaPlugin {
     PvpLimits pvpLimits;
     TotemLimit totemLimit;
     BlueObsidian blueObsidian;
+    Backpack backpack;
+    CreatorMode creatorMode;
+    MimicPlayer mimics;
+    HauntedVillage haunted;
+    Krampus krampus;
+    Holidays holidays;
     LifeJellyListener getLifeJellyListener() { return lifeJellyListener; }
 
     DivingGear getDivingGear() { return divingGear; }
@@ -6894,6 +6920,7 @@ public final class FaultlineItems extends JavaPlugin {
             for (ImmunityCharms.Combo c : ImmunityCharms.Combo.values()) ACCESSORY_TYPES.put(c.command, p -> ImmunityCharms.combo(p, c));
             ACCESSORY_TYPES.put("ankhpiece", ImmunityCharms::ankhPiece); // the Ankh Shield's two boss pieces (given by FaultlineBosses)
             ACCESSORY_TYPES.put("cross", ImmunityCharms::cross);
+            ACCESSORY_TYPES.put("backpack", pl -> pl.backpack.item()); // 1.2.78
             // diving gear and the Kraken's counters (their objects are made in onEnable, so they're looked up when given)
             ACCESSORY_TYPES.put("divinghelmet", pl -> pl.getDivingGear().item(DivingGear.Piece.HELMET));
             ACCESSORY_TYPES.put("flipper", pl -> pl.getDivingGear().item(DivingGear.Piece.FLIPPER));
@@ -6992,6 +7019,9 @@ public final class FaultlineItems extends JavaPlugin {
                 pl -> pl.darkLoot.bag(), // 1.2.41
                 pl -> pl.balloons.item(null, 0), // 1.2.24
                 pl -> pl.blueObsidian.item(16), // 1.2.75
+                pl -> pl.backpack.item(), // 1.2.78
+                pl -> pl.krampus.bell(1), // 1.2.78: summons Krampus
+                pl -> pl.holidays.lantern(1), // 1.2.78: haunts the nearest village
                 // ranger gear (1.2.27)
                 pl -> pl.getRangerGear().item(RangerGear.Piece.MONOCLE),
                 pl -> pl.getRangerGear().item(RangerGear.Piece.QUICKDRAW),

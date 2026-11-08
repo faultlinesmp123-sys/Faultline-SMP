@@ -264,6 +264,7 @@ final class Ocean implements Listener {
     boolean darkZone(Location l) {
         if (Market.dry(l.getX(), l.getY(), l.getZ())) return false; // the Pit and the lift: lit rooms
         if (pl.habitat != null && pl.habitat.upgrades.lit(l)) return false; // 1.12.0: a dome's Floodlights
+        if (pl.lighthouse != null && pl.lighthouse.lit(l)) return false; // 1.15.0: a lighthouse
         if (pl.tides != null && pl.tides.eclipse()) return true; // 1.9.0: the Abyssal Eclipse darkens the whole sea
         DeepGenerator.Zone z = pl.zone(l);
         if (z == DeepGenerator.Zone.TRENCH) return true; // (1.8.0: always, whatever an older config's list says)

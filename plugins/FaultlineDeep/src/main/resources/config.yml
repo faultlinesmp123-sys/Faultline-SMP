@@ -138,6 +138,17 @@ outer:
 den:
   enabled: true
   restock-minutes: 30
+  # 1.15.0 THE DEN FESTIVAL: on these days each month every mermaid/guard gives each visitor one gift (right-click).
+  # Gifts are "MATERIAL:min:max:weight". /deep den festival [start|stop|auto].
+  festival:
+    enabled: true
+    days: [1, 2]
+    zone: "America/New_York"
+    pearls-min: 2
+    pearls-max: 5
+    rep: 5
+    bag-chance: 0.15
+    gifts: ["PRISMARINE_CRYSTALS:4:12:30", "SEA_LANTERN:2:6:20", "NAUTILUS_SHELL:1:2:15", "GLOW_INK_SAC:4:10:15", "DIAMOND:1:3:10", "HEART_OF_THE_SEA:1:1:2", "TRIDENT:1:1:2", "SPONGE:2:4:6"]
   guard-respawn-seconds: 120
   # 1.8.0: the Den's trust (den_rep.yml). Earn it defending the Den (kills near it) and with gifts to the mermaids;
   # FRIEND = mermaid trades, ALLY = guard trades + the guards fight beside you, HONORED = a house (/den home, respawn there).
@@ -209,6 +220,13 @@ habitat:
   coral:
     radius: 3.5
     refill: 60
+    # 1.15.0 CORAL FARMING: planted Air Coral blooms (up to max-blooms); right-click it with an empty hand = fragments.
+    # /glimmer sell (all year) = 1 Glimmer Pearl per sell-per-pearl fragments. Hydroponics within 16 = 50% faster.
+    farm:
+      enabled: true
+      grow-minutes: 8
+      max-blooms: 3
+      sell-per-pearl: 4
   domes:
     max-per-player: 3
     combine-gap: 12          # 1.11.0: two of your domes this close (glass to glass, floors within 6) can be joined by a hallway
@@ -242,3 +260,12 @@ habitat:
     turret-damage: 4
     dock-repair: 2           # hull % every 5 s
     home-cooldown-seconds: 300
+
+# 1.15.0 LIGHTHOUSES: a Lighthouse Lamp on top of a tower lights the Dark Ocean's dark for good within
+# base-radius + per-block x tower height (max max-radius). Craft: glass / sea lantern, Heart of the Sea, sea lantern / prismarine bricks.
+lighthouse:
+  enabled: true
+  base-radius: 10
+  per-block: 1.5
+  max-radius: 48
+  max-per-player: 3

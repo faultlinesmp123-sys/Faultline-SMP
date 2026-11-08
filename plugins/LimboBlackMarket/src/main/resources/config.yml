@@ -50,6 +50,15 @@ tiers:
 # player's consecutive-kills-without-dying count exactly hits one of these
 # numbers. Add/remove/edit entries freely; {player} and {streak} get
 # replaced automatically. A streak resets to 0 the instant that player dies.
+# 1.2.0 kill streak cosmetics: a fire trail where you walk at trail-at kills in a row, a golden crown over your name at
+# crown-at (above the kingdom head tag). Dying resets the streak (and takes them away).
+streak-cosmetics:
+  enabled: true
+  trail-at: 5
+  crown-at: 10
+  crown-scale: 0.55
+  crown-model: "faultline:cosmetic/slayer_crown"
+
 kill-streaks:
   "3": "&e%player% is on a killing spree! (%streak% kills)"
   "5": "&6%player% is dominating! (%streak% kills)"

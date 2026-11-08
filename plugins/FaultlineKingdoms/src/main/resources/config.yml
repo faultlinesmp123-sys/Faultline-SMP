@@ -18,6 +18,20 @@ pvp:
     enabled: true
     min-votes: 3
 
+# 1.4.0 TREATIES: /kingdom ally <1|2|3> <yes|no|clear>. Two kingdoms are allied while BOTH want it: at least min-votes of
+# each kingdom's members voted and more said yes than no. Allies can't hurt each other. When a treaty breaks, PvP between
+# them stays off for break-grace-minutes (no backstab mid-fight). Staff: /kingdoms treaty <a> <b> <on|off|vote>.
+treaties:
+  enabled: true
+  min-votes: 3
+  break-grace-minutes: 5
+
+# 1.4.0 KINGDOM CHAT: /kc <msg> (your kingdom), /ac <msg> (your kingdom + allies); alone they toggle. kingdoms.spy sees all.
+kingdom-chat:
+  enabled: true
+  max-length: 256
+  tags: {}    # short names for the chat tag, e.g. {1: "K1"} (default = the kingdom's name)
+
 # Show the kingdom in the tab list and above heads ("[Kingdom 1] name")
 display:
   tab-prefix: true
@@ -55,6 +69,16 @@ discord:
     channel-id: ""
     format: "&9[Discord] &f{name}&7: &f{message}"
     max-length: 256
+  # 1.4.0: each kingdom's own Discord channel. /kc messages are posted there by the bot, and what's typed there shows up
+  # in game for that kingdom only. Needs the Message Content intent (like the chat bridge) and the bot needs View Channel
+  # + Send Messages in those channels. Make the channels visible only to that kingdom's role in Discord.
+  kingdom-chat:
+    enabled: true
+    channels:
+      1: ""
+      2: ""
+      3: ""
+    format: "&9[Discord] {kingdom} &f{name}&7: {color}{message}"
 
 # Bedrock players get /kingdom as a menu (Floodgate/Geyser forms): link, verify, friendly fire, members.
 bedrock-forms: true

@@ -69,7 +69,9 @@ final class DiscordGateway {
 
     boolean bridge() { return bridgeChannel().matches("\\d{5,25}"); }
 
-    boolean wanted() { return link.on() && (slash() || bridge()); }
+    boolean kchat() { return pl.chat != null && pl.chat.anyChannel(); }
+
+    boolean wanted() { return link.on() && (slash() || bridge() || kchat()); }
 
     /** Discord refused the Message Content intent (4014): run without it (slash commands keep working). */
     private volatile boolean noContent;
@@ -191,7 +193,7 @@ final class DiscordGateway {
     }
 
     /** GUILD_MESSAGES (1 << 9) + MESSAGE_CONTENT (1 << 15) for the chat bridge, else none. */
-    int intents() { return bridge() && !noContent ? (1 << 9) | (1 << 15) : 0; }
+    int intents() { return (bridge() || kchat()) && !noContent ? (1 << 9) | (1 << 15) : 0; }
 
     /**
      * A message in the bridged channel: "[Discord] name: text" to everyone in game. Webhook posts (our own logs /
@@ -199,7 +201,10 @@ final class DiscordGateway {
      * colour codes stripped, long messages cut (chat-bridge.max-length).
      */
     void message(JsonObject d) {
-        if (d == null || !bridge() || !bridgeChannel().equals(str(d, "channel_id"))) return;
+        if (d == null) return;
+        String chan = str(d, "channel_id");
+        int kingdom = pl.chat == null ? 0 : pl.chat.kingdomOfChannel(chan); // 1.4.0: a kingdom's own channel
+        if (kingdom == 0 && (!bridge() || !bridgeChannel().equals(chan))) return;
         if (d.has("webhook_id") && !d.get("webhook_id").isJsonNull()) return;
         JsonObject author = d.has("author") && d.get("author").isJsonObject() ? d.getAsJsonObject("author") : null;
         if (author == null || (author.has("bot") && author.get("bot").getAsBoolean())) return;
@@ -222,6 +227,7 @@ final class DiscordGateway {
         if (text.isEmpty()) return;
         int max = pl.getConfig().getInt("discord.chat-bridge.max-length", 256);
         if (text.length() > max) text = text.substring(0, max) + "...";
+        if (kingdom > 0) { pl.chat.fromDiscord(kingdom, name, text); return; }
         String fmt = pl.getConfig().getString("discord.chat-bridge.format", "&9[Discord] &f{name}&7: &f{message}");
         String line = ChatColor.translateAlternateColorCodes('&', fmt.replace("{name}", name.replace('§', '&').replace("&", "")).replace("{message}", "\u0000"))
                 .replace("\u0000", text);

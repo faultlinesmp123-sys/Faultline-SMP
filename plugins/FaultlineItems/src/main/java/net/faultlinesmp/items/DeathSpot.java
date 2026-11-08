@@ -86,10 +86,12 @@ final class DeathSpot implements Listener, CommandExecutor {
         Spot s = get(p);
         if (s == null) { p.sendMessage(ChatColor.GRAY + "You haven't died yet. Keep it that way."); return; }
         String head = justDied ? "☠ You died at " : "☠ Your last death: ";
-        String where = s.coords() + " (" + dimension(s.world()) + ")";
+        String where = (CreatorMode.on(p) ? "(hidden)" : s.coords()) + " (" + dimension(s.world()) + ")";
         String far = away(p, s);
         if (Edition.bedrock(p) && BedrockForms.menu(plugin, p, "Where you died", "§c" + head + "§f" + where + "\n§7That's " + far + " from you.\n\n§8/lastdeath shows it again.",
                 List.of("OK"), i -> { }, null)) return;
+        if (CreatorMode.on(p)) { p.sendMessage(Component.text(head, NamedTextColor.RED).append(Component.text(where, NamedTextColor.WHITE))
+                .append(Component.text(" · " + far, NamedTextColor.GRAY))); return; }
         p.sendMessage(Component.text(head, NamedTextColor.RED).append(Component.text(where, NamedTextColor.WHITE))
                 .append(Component.text(" · " + far + " ", NamedTextColor.GRAY))
                 .append(Component.text("[Copy]", NamedTextColor.AQUA).clickEvent(ClickEvent.copyToClipboard(s.coords()))

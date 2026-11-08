@@ -136,6 +136,7 @@ final class DenRep {
         Tier t = tier(p.getUniqueId());
         if (m.angry()) { p.sendActionBar(net.kyori.adventure.text.Component.text("Not now: they're fighting.", net.kyori.adventure.text.format.NamedTextColor.RED)); return; }
         if (t == Tier.HATED) { p.sendMessage(ChatColor.DARK_RED + "They turn their backs on you."); return; }
+        if (pl.festival != null && pl.festival.gift(p, m)) return; // 1.15.0: the festival gift comes first
         ItemStack hand = p.getInventory().getItemInMainHand();
         if (!guard && gift(p, m, hand)) return;
         Tier need = guard ? Tier.ALLY : Tier.FRIEND;

@@ -369,7 +369,11 @@ final class Glimmertide implements Listener {
     }
 
     void openShop(Player p) {
-        if (!active()) { p.sendMessage(ChatColor.GRAY + "The Glimmer Shop only opens during the Glimmertide (the Dark Ocean's season)." + next()); return; }
+        if (!active()) {
+            p.sendMessage(ChatColor.GRAY + "The Glimmer Shop only opens during the Glimmertide (the Dark Ocean's season)." + next());
+            p.sendMessage(ChatColor.AQUA + "The coral buyer is always in: " + ChatColor.WHITE + "/glimmer sell" + ChatColor.GRAY + " (Air Coral Fragments for Glimmer Pearls).");
+            return;
+        }
         List<Offer> list = offers();
         int have = count(p);
         if (Edition.bedrock(p)) {
@@ -398,6 +402,15 @@ final class Glimmertide implements Listener {
                 ChatColor.DARK_GRAY + (d > 0 ? d + " day" + (d == 1 ? "" : "s") + " of the season left." : "")));
         info.setItemMeta(m);
         inv.setItem(rows * 9 - 5, info);
+        if (pl.coralFarm != null) { // 1.15.0: sell Air Coral Fragments
+            ItemStack sell = pl.coralFarm.fragment(1);
+            ItemMeta sm = sell.getItemMeta();
+            int frags = pl.coralFarm.count(p), per = Math.max(1, (int) pl.coralFarm.cfg("sell-per-pearl", 4));
+            sm.setDisplayName(ChatColor.AQUA + "Sell Air Coral Fragments");
+            sm.setLore(List.of(ChatColor.GRAY + "" + per + " fragments = 1 Glimmer Pearl", ChatColor.GRAY + "You have " + frags + ".", ChatColor.YELLOW + "Click to sell them all"));
+            sell.setItemMeta(sm);
+            inv.setItem(rows * 9 - 9, sell);
+        }
         p.openInventory(inv);
     }
 
@@ -416,6 +429,7 @@ final class Glimmertide implements Listener {
         if (!(e.getWhoClicked() instanceof Player p) || e.getClickedInventory() != e.getView().getTopInventory()) return;
         List<Offer> list = offers();
         int slot = e.getRawSlot();
+        if (slot == shop.inv.getSize() - 9 && pl.coralFarm != null) { pl.coralFarm.sell(p); p.closeInventory(); Bukkit.getScheduler().runTask(pl, () -> { if (p.isOnline()) openShop(p); }); return; }
         if (slot < 0 || slot >= list.size() || slot >= shop.inv.getSize() - 9) return;
         buy(p, list.get(slot));
         p.closeInventory();
@@ -447,6 +461,7 @@ final class Glimmertide implements Listener {
             return true;
         }
         if (!(sender instanceof Player p)) { sender.sendMessage(status()); return true; }
+        if (sub.equals("sell") && pl.coralFarm != null) { pl.coralFarm.sell(p); return true; }
         openShop(p);
         return true;
     }

@@ -328,7 +328,7 @@ wardrobe:
 item-textures:
   enabled: true
   url: "https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/main/FaultlineSMP.zip"
-  hash: "3a6f752ce2415dd1f77286b1106fe65005360109"
+  hash: "eea51ace7f763484909575d6cb97e5d7ac290782"
   # The Dark Ocean's music, a second pack sent beside the main one (empty url = not sent)
   music-url: "https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/main/FaultlineDeepMusic.zip"
   music-hash: "e9e6ed1623ab28d2d2af74286259157caf2dc299"
@@ -749,3 +749,61 @@ blue-obsidian:
   min-portal-cells: 2
   travel-ticks: 30            # how long you stand in it before it pulls you through (creative: at once)
   portal-light: 11            # the light the open portal gives off (0-15)
+
+# 1.2.78 BACKPACK: an accessory with 9 extra slots (/backpack, or sneak + right-click the air with an empty hand).
+# The contents belong to the player; dying drops them (keepInventory keeps them). Craft: leather, string, a chest.
+backpack:
+  enabled: true
+  drop-on-death: true
+
+# 1.2.78 CREATOR MODE (/creator): hides your /coords X Y Z, death coordinates and shared locations, and blanks
+# coordinates and IP addresses in chat you see. The F3 screen can't be hidden per player by a server.
+creator-mode:
+  enabled: true
+  mask-chat: true
+
+# 1.2.78 MIMIC PLAYER (admin only, /mimicplayer [random|<player>|clear|list] [count]): an NPC with a player's skin that
+# fights like a PvPer (strafes, crits, shield, golden apples, pearls, bow, one totem). Not saved over restarts.
+mimic-player:
+  health: 40
+  speed: 0.31
+  kit: diamond          # iron, diamond or netherite
+  block-chance: 0.03    # per tick in close range
+  eat-below: 0.4
+  bow-damage: 3
+  xp: 0
+  drops: []             # e.g. ["DIAMOND:2"]
+
+# 1.2.78 HAUNTED VILLAGES (Halloween): spirits rise over a village at night; beat the Lantern Wraith for Candy.
+haunted-villages:
+  enabled: true
+  start: "10-01"
+  end: "11-02"
+  zone: "America/New_York"
+  check-minutes: 10
+  chance: 0.15          # per survival player near a village, each check, at night
+  minutes: 6
+  waves: 3
+  wave-size: 6
+  wraith-health: 160    # +20% per extra defender
+  soul-flame-damage: 5
+  reward-candy: 6
+
+# 1.2.78 KRAMPUS (Christmas): rung with Krampus' Bell, or at night now and then, from December 1 to January 6.
+krampus:
+  enabled: true
+  start: "12-01"
+  end: "01-06"
+  zone: "America/New_York"
+  natural-chance: 0.003 # per survival player in the Overworld, every 5 minutes at night
+  health: 900
+  per-fighter: 0.25
+  scale: 1.7
+  melee: 10
+  sack-break: 0.05
+  reward-presents: 12
+  moves:
+    switch: 9
+    lash: 4
+    coal: 5
+    howl: 6

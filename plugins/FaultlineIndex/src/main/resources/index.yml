@@ -1320,6 +1320,40 @@ entries:
   - {id: fish_blind_king, chapter: fish, name: "The Blind King", icon: fish_blind_king, detect: "faultlineitems:fish_species=blind_king",
      how: "Fish in the Trench (very rare). In the Dark Ocean 70% of catches are its own fish (every catch over the Trench: cast anywhere above the rift).",
      does: "The Trench's legend: eyeless, ancient, enormous. Catching it is announced to the server. Food, weighed like every catch (50-300 kg); the heaviest is a server record and a Trophy Fish (/fishing records)."}
+  # ---------------------------------------------------------------- 1.9.0: holidays, backpack, mimic, coral farming, lighthouses
+  - {chapter: accessories, name: "Backpack", icon: backpack, detect: "faultlineitems:backpack",
+     how: "Craft it: Leather, String, Leather / Leather, a Chest, Leather / Leather all along the bottom.",
+     does: "Wear it in /accessories for 9 extra slots: /backpack (or sneak + right-click the air with an empty hand) opens them. What's inside is yours, not the bag's, and drops when you die (like the backpack itself). A backpack can't go inside a backpack."}
+  - {chapter: weapons, name: "Krampus' Bell", icon: krampus_bell, detect: "faultlineitems:krampus_bell",
+     how: "Craft it: Coal Blocks in the corners, Iron Bars on the sides, a Bell in the middle.",
+     does: "Ring it (right-click) between December 1 and January 6 and Krampus comes for you. Bring friends."}
+  - {chapter: weapons, name: "Cursed Jack o'Lantern", icon: cursed_lantern, detect: "faultlineitems:cursed_lantern",
+     how: "Staff only (/itemsmenu).",
+     does: "Hold it up (right-click) at night in October near a village: the village is haunted, and the Lantern Wraith comes at the end."}
+  - {chapter: consumables, id: air_coral_fragment, name: "Air Coral Fragment", icon: air_coral_fragment, detect: "faultlinedeep:coral_fragment",
+     how: "Air Coral you planted blooms every few minutes (up to 3; faster near a dome with Hydroponics). Right-click it with an empty hand to harvest.",
+     does: "Sell them for Glimmer Pearls all year: /glimmer sell (4 = 1 pearl), or put 4 round a Tube Coral Block to grow another Air Coral."}
+  - {chapter: weapons, id: lighthouse_lamp, name: "Lighthouse Lamp", icon: lighthouse_lamp, detect: "faultlinedeep:lighthouse_lamp",
+     how: "Craft it: Glass across the top, Sea Lantern, Heart of the Sea, Sea Lantern, Prismarine Bricks along the bottom.",
+     does: "Put it on top of a tower you built. The taller the tower, the farther it shines (10 blocks + 1.5 a block of tower, up to 48): the Dark Ocean's pitch-black dark lifts round it for good, and a beam sweeps round it. Break it to take it back. 3 each."}
+  - {chapter: bosses, name: "Krampus", icon: krampus, detect-tag: faultline_krampus, weakness: "Stay spread out so the Switch only catches one of you, and hit him hard when he sacks a friend: enough damage frees them.",
+     where: "Christmas only (December 1 - January 6): ring Krampus' Bell, or he may come for you on a winter night.",
+     does: "A mini boss, 900 health (+25% per extra fighter). Birch Switch, Chain Lash, Into the Sack, Coal Barrage, the Naughty List (he hunts whoever hurt him most), his Imps, and below half Winter's Howl.", drops: ["12 Presents each|100%", "Mythic Bag + 2 Goodie Bags each|100%", "Coal Blocks, Diamonds|100%"]}
+  - {chapter: enemies, name: "Krampus' Imp", icon: krampus_imp, detect-tag: faultline_krampus_imp,
+     where: "Krampus calls them, three at a time.",
+     does: "Small, fast and furry. 16 health."}
+  - {chapter: bosses, name: "The Lantern Wraith", icon: lantern_wraith, detect-tag: faultline_lantern_wraith, weakness: "When it wails, back off and kill the spirits it calls. Look behind you after it vanishes.",
+     where: "Halloween only (October 1 - November 2): the end of a village haunting.",
+     does: "A mini boss, 160 health (+20% per extra defender). Soul Flames along the ground, a Wail that blinds and calls spirits, and it blinks behind you. Beat it and the village is at peace.", drops: ["6 Candy each|100%", "A Goodie Bag each|100%", "Diamonds, Jack o'Lanterns|100%"]}
+  - {chapter: enemies, name: "Restless Spirit", icon: restless_spirit, detect-tag: faultline_haunt_spirit,
+     where: "A haunted village (Halloween nights).",
+     does: "A spirit that flies through walls. 14 health."}
+  - {chapter: enemies, name: "Haunted Villager", icon: haunted_villager, detect-tag: faultline_haunt_villager,
+     where: "A haunted village (Halloween nights).",
+     does: "A villager who didn't make it, still wearing a carved pumpkin."}
+  - {chapter: enemies, name: "Mimic Player", icon: mimic_player, detect-tag: faultline_player_mimic,
+     where: "Only when staff spawn one (/mimicplayer).",
+     does: "Looks exactly like a real player (their skin and name) and fights like one: strafes, crits, blocks with a shield (an axe breaks it), eats golden apples, throws pearls, shoots a bow, and pops a totem once."}
 achievements:
   - {id: first_blood, name: "First Blood", icon: demon_eye, desc: "Defeat any boss.",
      defeat: [queen_spider, diamond_jacob, the_abyssal_kraken, captain_rotbeard, the_great_hog, the_bulwark, the_skeleton_captain, ghost_captain, brine_scourge, umbral_leviathan, coralia, old_inkjaw, grandmaw_clam, the_lament, abyssal_titan, deep_goblin, deep_rimeback, deep_drownking],
@@ -1428,3 +1462,11 @@ achievements:
      defeat: [fish_gloomfin, fish_shadow_mackerel, fish_pearl_snapper, fish_lanternjaw, fish_grenadier, fish_ghost_eel, fish_acid_gar, fish_sulphur_sprat, fish_mermaid_tetra, fish_coral_princess, fish_hadal_snailfish, fish_coelacanth, fish_titan_isopod], need: all, reward: {items: ["DIAMOND_BLOCK:2"], xp: 1500}}
   - {id: blind_king, name: "The Blind King", icon: fish_blind_king, desc: "Pull the Blind King out of the Trench.",
      stat: blind_king, count: 1, reward: {items: ["NETHERITE_INGOT:1", "HEART_OF_THE_SEA:1"], xp: 3000}}
+  - {id: silent_night, name: "Silent Night", icon: krampus, desc: "Beat Krampus.",
+     stat: krampus, count: 1, reward: {items: ["DIAMOND:5"], xp: 800}}
+  - {id: ghostbuster, name: "Ghostbuster", icon: lantern_wraith, desc: "Lift a village's haunting.",
+     stat: haunted_villages, count: 1, reward: {items: ["JACK_O_LANTERN:8", "DIAMOND:3"], xp: 500}}
+  - {id: festival_goer, name: "Festival Goer", icon: deep_mermaid, desc: "Get a gift at the Den Festival.",
+     stat: den_festivals, count: 1, reward: {items: ["PRISMARINE_CRYSTALS:16"], xp: 200}}
+  - {id: coral_farmer, name: "Coral Farmer", icon: air_coral_fragment, desc: "Harvest 100 Air Coral Fragments.",
+     stat: coral_harvested, count: 100, reward: {items: ["HEART_OF_THE_SEA:1"], xp: 800}}

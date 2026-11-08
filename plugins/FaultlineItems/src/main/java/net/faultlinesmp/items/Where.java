@@ -101,7 +101,7 @@ final class Where implements Listener, CommandExecutor, TabCompleter {
 
     private void update(Player p, BossBar b) {
         Location l = p.getLocation();
-        b.setTitle(ChatColor.WHITE + "📍 " + spot(l) + ChatColor.GRAY + "  ·  " + ChatColor.WHITE + facing(l.getYaw())
+        b.setTitle(ChatColor.WHITE + "📍 " + (CreatorMode.on(p) ? ChatColor.DARK_GRAY + "hidden" + ChatColor.WHITE : spot(l)) + ChatColor.GRAY + "  ·  " + ChatColor.WHITE + facing(l.getYaw())
                 + ChatColor.GRAY + "  ·  " + biome(l) + "  ·  " + dimension(l.getWorld()));
     }
 
@@ -157,18 +157,18 @@ final class Where implements Listener, CommandExecutor, TabCompleter {
         String line = ChatColor.AQUA + "📍 " + p.getName() + ChatColor.GRAY + " is at " + ChatColor.WHITE + spot(l)
                 + ChatColor.GRAY + " (" + dimension(l.getWorld()) + ", " + biome(l) + ")";
         switch (to.toLowerCase(Locale.ROOT)) {
-            case "all" -> Bukkit.broadcastMessage(line);
+            case "all" -> { for (Player o : Bukkit.getOnlinePlayers()) o.sendMessage(CreatorMode.forViewer(o, line)); Bukkit.getConsoleSender().sendMessage(line); }
             case "kingdom", "k" -> {
                 int k = kingdom(p.getUniqueId());
                 if (k == 0) { p.sendMessage(ChatColor.RED + "You're not in a kingdom."); return true; }
                 int n = 0;
-                for (Player o : Bukkit.getOnlinePlayers()) if (kingdom(o.getUniqueId()) == k) { o.sendMessage(ChatColor.GOLD + "[Kingdom] " + line); n++; }
+                for (Player o : Bukkit.getOnlinePlayers()) if (kingdom(o.getUniqueId()) == k) { o.sendMessage(CreatorMode.forViewer(o, ChatColor.GOLD + "[Kingdom] " + line)); n++; }
                 if (n <= 1) p.sendMessage(ChatColor.GRAY + "Nobody else from your kingdom is online.");
             }
             default -> {
                 Player o = Bukkit.getPlayerExact(to);
                 if (o == null || (plugin.vanish != null && plugin.vanish.vanished(o) && !Vanish.sees(p))) { p.sendMessage(ChatColor.RED + to + " isn't online."); return true; }
-                o.sendMessage(line);
+                o.sendMessage(CreatorMode.forViewer(o, line));
                 p.sendMessage(ChatColor.GREEN + "Sent your location to " + o.getName() + ".");
             }
         }

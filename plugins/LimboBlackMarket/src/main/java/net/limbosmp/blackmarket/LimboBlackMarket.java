@@ -18,6 +18,7 @@ public final class LimboBlackMarket extends JavaPlugin {
     private TierManager tierManager;
     private MarketConfig marketConfig;
     private StatsManager statsManager;
+    StreakFx streakFx;
     private KillStreakConfig killStreakConfig;
     private QuestRegistry questRegistry;
     private QuestDataManager questDataManager;
@@ -48,6 +49,8 @@ public final class LimboBlackMarket extends JavaPlugin {
 
         getServer().getPluginManager().registerEvents(new HeadTagger(this), this);
         getServer().getPluginManager().registerEvents(new StatsListener(this), this);
+        streakFx = new StreakFx(this); // 1.2.0: fire trail at 5 kills, crown at 10
+        getServer().getPluginManager().registerEvents(streakFx, this);
         this.bounties = new Bounties(this);
         getServer().getPluginManager().registerEvents(bounties, this);
         getCommand("bounty").setExecutor(bounties);
@@ -84,6 +87,7 @@ public final class LimboBlackMarket extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (streakFx != null) try { streakFx.removeAll(); } catch (RuntimeException ignored) { }
         if (tierManager != null) {
             tierManager.save();
         }

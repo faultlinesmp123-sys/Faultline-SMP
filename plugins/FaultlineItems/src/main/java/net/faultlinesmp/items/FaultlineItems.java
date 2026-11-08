@@ -425,6 +425,8 @@ public final class FaultlineItems extends JavaPlugin {
         mimics = new MimicPlayer(this);
         getServer().getPluginManager().registerEvents(mimics, this);
         if (getCommand("mimicplayer") != null) { getCommand("mimicplayer").setExecutor(mimics); getCommand("mimicplayer").setTabCompleter(mimics); }
+        combatTag = new CombatTag(this, mimics);
+        getServer().getPluginManager().registerEvents(combatTag, this);
         haunted = new HauntedVillage(this);
         getServer().getPluginManager().registerEvents(haunted, this);
         krampus = new Krampus(this);
@@ -923,6 +925,7 @@ public final class FaultlineItems extends JavaPlugin {
     Backpack backpack;
     CreatorMode creatorMode;
     MimicPlayer mimics;
+    CombatTag combatTag;
     HauntedVillage haunted;
     Krampus krampus;
     Holidays holidays;

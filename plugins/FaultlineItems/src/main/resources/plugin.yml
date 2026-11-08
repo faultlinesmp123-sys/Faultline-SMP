@@ -1,8 +1,8 @@
 name: FaultlineItems
-version: 1.2.85
+version: 1.2.86
 main: net.faultlinesmp.items.FaultlineItems
 api-version: '1.21'
-softdepend: [floodgate, Geyser-Spigot]
+softdepend: [floodgate, Geyser-Spigot, DonutCombat]
 author: FaultlineSMP
 description: Custom items for Faultline SMP — Magic Mirror, Cloud Potion, Darkness Potion, Golden Ring, Goodie Bag
 

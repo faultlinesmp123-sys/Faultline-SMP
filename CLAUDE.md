@@ -1960,6 +1960,28 @@ Notes:
   Godlike circle-strafes longer. Tests (scratch `nt/NewTest`; its physics stand-in now does per-axis wall sliding with a
   0.6-wide body, open doors passable, gravity even at zero speed): dodge, shield an arrow, totem swap, cut-off angle, memory,
   door open/through/shut/never chopped, swing poses; 6/6 runs.
+- **Mimic: drain, mending, crits, pots, drops, combat (Items 1.2.86)**: BUCKETS are real (`pour()`: the bucket count drops when
+  it pours; `TempBlock.owner`): it gets the bucket back only by scooping its own water / lava when the TempBlock expires;
+  a PLAYER scooping it first with an empty bucket (`onBucket`, allowed for owned water / lava) DRAINS it: theirs, never back
+  (the clutch and self-extinguish used to be free). CRITS (`canCrit`): falling and NOT in a web (whole hitbox, `inWeb`),
+  water, on a ladder / vine (`Tag.CLIMBABLE`), blind, riding, or sprint-hitting (vanilla: a web resets fall distance); no crit
+  jumps in webs / water. POTS: only re-pots a buff in its last 3 s or when stronger; bad effects mixed into its own potion
+  (Turtle Master's Slowness) never count; lingering potions are never its buffs; re-pots only with SPACE (6+ blocks, or hard+
+  right after its hit knocked them back; drinkables need 10+). ARMOUR: `m.wear` = its own copies (the kit-when-bare used to
+  write into the shared gear snapshot); `onWear` (MONITOR, causes in `WEARS`) wears every piece damage/4 (min 1, Unbreaking
+  chance), breaks at max (sound, attributes recomputed). MENDING (`mend`, every 10 ticks, 5+ from the target): pieces with
+  Mending repair 2 a point from the copied player's XP (`Gear.xpPoints` = `getTotalExperience`, `xpPool`) then XP BOTTLES
+  (`xpBottles`, thrown at its feet, 3-11 points), random damaged piece like vanilla; none = no mending. DROPS
+  (`drop-inventory`, `inventory(m)`): killed = its armour as worn, weapons / tools, and every unused consumable + a player's
+  XP drop (it copies a real player's gear: that duplicates items, the owner asked for it). COMBAT (`CombatTag.java`,
+  `mimic-player.combat-tag`): the mimic hurting you (`combat(tg)` at every damage call; its shots / TNT via the damage
+  event) or you hurting it (`onBrainHurt`) = in combat. With DONUTCOMBAT (the owner's combat plugin, softdepend; its own
+  listener only tags player-vs-player) it calls DonutCombat's public `tagPlayer(Player)` by reflection = the real tag;
+  without it a built-in 30 s tag (action bar, `blocked-commands` incl. DonutTPA's tpa/tpahere/tpaccept, command / plugin
+  teleports over `max-teleport` 16 cancelled, pearls fine, cleared on death). DonutTPA has no combat system. Tested (scratch
+  `nt/NewTest`, `-Ddonut=<DonutCombat.jar>` loads the real plugin into MockBukkit: the mimic's hit lands in its `combatLog`;
+  the harness turns `pack-shield` off (mock players never finish loading the pack = no damage) and the built-in tag off
+  outside its own section; physics stand-in: walls before floor, open doors are thin, no standing on them). 8/8 runs.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Skills → Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

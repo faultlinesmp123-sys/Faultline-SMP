@@ -118,7 +118,8 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         Location followAt, tgPrev;
         Vector tgVel = new Vector();
         boolean totemHand;
-        int swingId, doorUntil;
+        int swingId, doorUntil, xpPool, xpBottles, mendReady;
+        final ItemStack[] wear = new ItemStack[4]; // ITS armour (own copies: they wear down, break, get mended)
         Block doorGoal;
         boolean riptideHit, tridentOut;
         String boomKind;
@@ -151,7 +152,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         int gaps, egaps, pearls, pots, totems, wind, lava, water, webs, blocks, rockets;
         boolean rod, flint, elytra;
         int arrows, throwables;
-        int tnt, fireCharges;
+        int tnt, fireCharges, xpPoints, xpBottles;
         ItemStack spear, trident, crossbow, pickaxe, shovel;
         final List<ItemStack> buffs = new ArrayList<>(), debuffs = new ArrayList<>(); // one entry per potion they carry
         Material block = Material.COBBLESTONE;
@@ -209,6 +210,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
                 case FLINT_AND_STEEL -> g.flint = true;
                 case FIREWORK_ROCKET -> g.rockets += it.getAmount();
                 case ELYTRA -> g.elytra = true;
+                case EXPERIENCE_BOTTLE -> g.xpBottles += it.getAmount();
                 case BOW -> { if (g.bow == null || level(it, "power") > level(g.bow, "power")) g.bow = it.clone(); }
                 case SPLASH_POTION, POTION, LINGERING_POTION -> {
                     if (m == Material.SPLASH_POTION && healing(it)) { g.pots += it.getAmount(); break; }
@@ -217,7 +219,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
                     for (int i = 0; i < it.getAmount(); i++) {
                         ItemStack one = it.clone(); one.setAmount(1);
                         if (m == Material.POTION) { if (good || !bad) { if (!fx.isEmpty()) g.buffs.add(one); } } // anything drinkable is for itself
-                        else if (good) g.buffs.add(one); else if (bad) g.debuffs.add(one);
+                        else if (good && m == Material.SPLASH_POTION) g.buffs.add(one); else if (bad) g.debuffs.add(one); // lingering = short pulses: never its own buff
                     }
                 }
                 case ARROW, SPECTRAL_ARROW, TIPPED_ARROW -> g.arrows += it.getAmount();
@@ -250,6 +252,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         if (g.chest != null && g.chest.getType() == Material.ELYTRA) g.elytra = true;
         if (g.offhand == null) for (ItemStack it : inv.getStorageContents()) if (it != null && it.getType() == Material.SHIELD) { g.offhand = it.clone(); break; } // they'd swap it on
         try { g.maxHealth = p.getAttribute(Attribute.MAX_HEALTH).getValue(); } catch (RuntimeException e) { g.maxHealth = 20; }
+        try { g.xpPoints = p.getTotalExperience(); } catch (RuntimeException ignored) { }
         return g;
     }
 
@@ -316,6 +319,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
                 g.rod = c.getBoolean("rod"); g.flint = c.getBoolean("flint"); g.elytra = c.getBoolean("elytra");
                 g.arrows = c.getInt("arrows"); g.throwables = c.getInt("throwables");
                 g.tnt = c.getInt("tnt"); g.fireCharges = c.getInt("fire-charges");
+                g.xpPoints = c.getInt("xp-points"); g.xpBottles = c.getInt("xp-bottles");
                 g.spear = c.getItemStack("spear"); g.trident = c.getItemStack("trident"); g.crossbow = c.getItemStack("crossbow");
                 g.pickaxe = c.getItemStack("pickaxe"); g.shovel = c.getItemStack("shovel");
                 for (Object o : c.getList("buffs", List.of())) if (o instanceof ItemStack is) g.buffs.add(is);
@@ -343,6 +347,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             y.set(k + "blocks", g.blocks); y.set(k + "rockets", g.rockets);
             y.set(k + "arrows", g.arrows); y.set(k + "throwables", g.throwables);
             y.set(k + "tnt", g.tnt); y.set(k + "fire-charges", g.fireCharges);
+            y.set(k + "xp-points", g.xpPoints); y.set(k + "xp-bottles", g.xpBottles);
             y.set(k + "spear", g.spear); y.set(k + "trident", g.trident); y.set(k + "crossbow", g.crossbow); y.set(k + "pickaxe", g.pickaxe); y.set(k + "shovel", g.shovel);
             y.set(k + "buffs", new ArrayList<>(g.buffs)); y.set(k + "debuffs", new ArrayList<>(g.debuffs));
             y.set(k + "rod", g.rod); y.set(k + "flint", g.flint); y.set(k + "elytra", g.elytra); y.set(k + "block", g.block.name());
@@ -371,7 +376,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         return new double[]{t[slot][0], tough, kb};
     }
 
-    ItemStack[] armour(Mimic m) { Gear g = m.gear; return new ItemStack[]{g.helmet, g.chest, g.legs, g.boots}; }
+    ItemStack[] armour(Mimic m) { return m.wear; }
 
     /** Vanilla's enchantment protection factor for this damage (capped 20, 4% each). */
     double epf(Mimic m, EntityDamageEvent.DamageCause c, boolean projectile) {
@@ -418,11 +423,11 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         m.skill = skill;
         m.gear = gearFor(who);
         if (m.gear == null) m.gear = kitGear();
-        else if (plugin.getConfig().getBoolean("mimic-player.kit-when-bare", true)) { // no armour at all: the kit's pieces
-            Gear k = null;
-            if (m.gear.helmet == null && m.gear.chest == null && m.gear.legs == null && m.gear.boots == null) k = kitGear();
-            if (k != null) { m.gear.helmet = k.helmet; m.gear.chest = k.chest; m.gear.legs = k.legs; m.gear.boots = k.boots; }
-        }
+        Gear arm = m.gear;
+        if (plugin.getConfig().getBoolean("mimic-player.kit-when-bare", true) && arm.helmet == null && arm.chest == null && arm.legs == null && arm.boots == null) arm = kitGear(); // no armour at all: the kit's
+        ItemStack[] src = {arm.helmet, arm.chest, arm.legs, arm.boots};
+        for (int i = 0; i < 4; i++) m.wear[i] = src[i] == null ? null : src[i].clone();
+        m.xpPool = m.gear.xpPoints; m.xpBottles = m.gear.xpBottles;
         m.apples = m.gear.gaps; m.gapples = m.gear.egaps; m.pots = m.gear.pots; m.pearlsLeft = m.gear.pearls; m.totems = m.gear.totems;
         m.arrows = m.gear.arrows; m.throwables = m.gear.throwables;
         m.tnt = m.gear.tnt; m.fireCharges = m.gear.fireCharges;
@@ -490,10 +495,10 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
 
     private void dress(Mimic m, EntityEquipment eq) {
         Gear g = m.gear;
-        eq.setHelmet(g.helmet == null ? null : g.helmet.clone());
-        eq.setChestplate(g.chest == null ? null : g.chest.clone());
-        eq.setLeggings(g.legs == null ? null : g.legs.clone());
-        eq.setBoots(g.boots == null ? null : g.boots.clone());
+        eq.setHelmet(m.wear[0] == null ? null : m.wear[0].clone());
+        eq.setChestplate(m.wear[1] == null ? null : m.wear[1].clone());
+        eq.setLeggings(m.wear[2] == null ? null : m.wear[2].clone());
+        eq.setBoots(m.wear[3] == null ? null : m.wear[3].clone());
         eq.setItemInMainHand(hotbar(m, "sword"));
         eq.setItemInOffHand(g.offhand == null ? null : g.offhand.clone());
         for (EquipmentSlot s : EquipmentSlot.values()) try { eq.setDropChance(s, 0f); } catch (RuntimeException ignored) { }
@@ -778,7 +783,10 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         // ---- POT PvP: keep its buffs up (Strength, Speed, Fire Res... whatever it carries), debuff you, snowball you
         if (selfExtinguish(m)) { follow(m); return; }
         if (m.potRunUntil > m.t) { potRun(m, tg); follow(m); return; }
-        if (m.rushUntil <= m.t && dist < 24 && m.t >= m.buffReady && (dist > 3.6 || m.wtapUntil > m.t || charge(m) < 0.5) && buff(m)) { follow(m); return; }
+        // re-pots only with SPACE (a player never pops a Strength right in your face): 6+ blocks, or (hard+) the moment after
+        // its hit knocked them back; drinkables (1.6 s) want 10+
+        boolean space = dist >= 6 || tier(m) >= 3 && m.t - m.lastHit <= 4 && dist >= 4;
+        if (m.rushUntil <= m.t && dist < 24 && m.t >= m.buffReady && space && buff(m, dist)) { follow(m); return; }
         if (tier(m) >= 2 && m.rushUntil <= m.t && dist > 2.5 && dist < 8 && sees && m.t >= m.debuffReady && debuff(m, tg)) { follow(m); return; }
         if (tier(m) >= 2 && m.throwables > 0 && dist > 3.5 && dist < 10 && sees && m.t >= m.throwReady && tg.isSprinting() && random.nextDouble() < 0.15) { snowball(m, tg); follow(m); return; }
         // ---- heal up
@@ -814,6 +822,8 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             follow(m);
             return;
         }
+        // ---- mending its armour from its XP (backs off to do it)
+        if (mend(m, dist)) { follow(m); return; }
         // ---- reading them (the advanced bits)
         if (dodge(m)) { follow(m); return; }
         if (read(m, tg, dist, sees, hp)) { follow(m); return; }
@@ -993,7 +1003,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         m.flying = false;
         m.noFallUntil = m.t + 30;
         m.flyCooldown = m.t + 60;
-        m.body.getEquipment().setChestplate(m.gear.chest == null || m.gear.chest.getType() == Material.ELYTRA ? null : m.gear.chest.clone()); // back to the chestplate
+        m.body.getEquipment().setChestplate(m.wear[1] == null || m.wear[1].getType() == Material.ELYTRA ? null : m.wear[1].clone()); // back to the chestplate
         armourFor(m, false);
         hold(m, "sword");
     }
@@ -1002,7 +1012,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     private void armourFor(Mimic m, boolean elytra) {
         double ar = 0, tough = 0, kb = 0;
         for (ItemStack it : armour(m)) {
-            if (elytra && it == m.gear.chest) continue;
+            if (elytra && it == m.wear[1]) continue;
             double[] a = armorOf(it); ar += a[0]; tough += a[1]; kb += a[2];
         }
         attr(m.brain, Attribute.ARMOR, ar);
@@ -1276,12 +1286,14 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             double dmg = (8 + (wet(tg) ? 2.5 * level(m.trident, "impaling") : 0)) * cfg("damage-multiplier", 1.0);
             striking = true;
             try { tg.damage(dmg, v); } finally { striking = false; }
+        combat(tg);
             Vector push = tg.getLocation().toVector().subtract(v.getLocation().toVector()).setY(0);
             if (push.lengthSquared() > 1e-4) Safe.vel(tg, tg.getVelocity().add(push.normalize().multiply(0.6).setY(0.2)));
             if (level(m.trident, "channeling") > 0 && v.getWorld().isThundering()) {
                 Emotes.q(() -> tg.getWorld().strikeLightningEffect(tg.getLocation()));
                 striking = true;
                 try { tg.damage(5, v); } finally { striking = false; }
+                combat(tg);
             }
         }
         return true;
@@ -1417,6 +1429,113 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         Vector aim = tg.getLocation().toVector().add(m.tgVel.clone().multiply(ticks)).subtract(m.brain.getLocation().toVector()).setY(0);
         return aim.lengthSquared() > 1e-4 ? aim.normalize() : to;
     }
+
+    // ---- CRITS: only when a player could crit (falling; NOT in a web, in water, on a ladder / vine, blind, riding, sprinting)
+
+    boolean inWeb(Mimic m) {
+        for (Block b : underNow(m.brain.getLocation()))
+            if (b.getType() == Material.COBWEB || b.getRelative(org.bukkit.block.BlockFace.UP).getType() == Material.COBWEB) return true;
+        return false;
+    }
+
+    boolean canCrit(Mimic m) {
+        Vindicator v = m.brain;
+        if (v.isOnGround() || v.getVelocity().getY() >= -0.05) return false;
+        if (inWeb(m) || v.isInWater() || v.isInsideVehicle() || v.hasPotionEffect(PotionEffectType.BLINDNESS)) return false;
+        return !Tag.CLIMBABLE.isTagged(v.getLocation().getBlock().getType());
+    }
+
+    // ---- ARMOUR WEAR: its armour loses durability like a player's (damage / 4 a piece, Unbreaking), breaks at 0;
+    // MENDING pieces repair from the copied player's XP points (2 durability a point) and XP bottles (thrown at its feet)
+
+    static final Set<String> WEARS = Set.of("ENTITY_ATTACK", "ENTITY_SWEEP_ATTACK", "PROJECTILE", "BLOCK_EXPLOSION", "ENTITY_EXPLOSION",
+            "CONTACT", "FIRE", "LAVA", "HOT_FLOOR", "THORNS", "FALLING_BLOCK", "LIGHTNING", "CAMPFIRE");
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onWear(EntityDamageEvent e) {
+        Mimic m = byBrain.get(e.getEntity().getUniqueId());
+        if (m == null || !WEARS.contains(e.getCause().name())) return;
+        int dmg = Math.max(1, (int) (e.getDamage() / 4));
+        for (int i = 0; i < 4; i++) wearDown(m, i, dmg);
+    }
+
+    void wearDown(Mimic m, int slot, int amount) {
+        ItemStack it = m.wear[slot];
+        if (it == null || it.getType().getMaxDurability() <= 0 || !(it.getItemMeta() instanceof org.bukkit.inventory.meta.Damageable dm) || dm.isUnbreakable()) return;
+        int unb = level(it, "unbreaking"), taken = 0;
+        for (int k = 0; k < amount; k++) if (random.nextDouble() < 0.6 + 0.4 / (unb + 1)) taken++;
+        if (taken == 0) return;
+        int now = dm.getDamage() + taken;
+        if (now >= it.getType().getMaxDurability()) { // broken
+            m.wear[slot] = null;
+            setArmourSlot(m, slot, null);
+            m.brain.getWorld().playSound(m.brain.getLocation(), Sound.ENTITY_ITEM_BREAK, 1, 1);
+            m.brain.getWorld().spawnParticle(Particle.ITEM, m.brain.getLocation().add(0, 1.2, 0), 12, 0.3, 0.4, 0.3, 0.05, it);
+            armourFor(m, m.flying);
+            return;
+        }
+        dm.setDamage(now);
+        it.setItemMeta(dm);
+        setArmourSlot(m, slot, it);
+    }
+
+    void setArmourSlot(Mimic m, int slot, ItemStack it) {
+        EntityEquipment eq = m.body.getEquipment();
+        ItemStack c = it == null ? null : it.clone();
+        switch (slot) {
+            case 0 -> eq.setHelmet(c);
+            case 1 -> { if (!m.flying) eq.setChestplate(c); } // the elytra's showing while it flies
+            case 2 -> eq.setLeggings(c);
+            default -> eq.setBoots(c);
+        }
+    }
+
+    /** Every 10 ticks: Mending pieces that are worn get repaired from its XP (out of melee range: it backs off to mend). */
+    private boolean mend(Mimic m, double dist) {
+        if (m.t < m.mendReady || (m.xpPool <= 0 && m.xpBottles <= 0) || dist < 5) return false;
+        List<Integer> hurt = new ArrayList<>();
+        int missing = 0;
+        for (int i = 0; i < 4; i++) {
+            ItemStack it = m.wear[i];
+            if (it == null || level(it, "mending") <= 0 || !(it.getItemMeta() instanceof org.bukkit.inventory.meta.Damageable dm) || dm.getDamage() <= 0) continue;
+            hurt.add(i); missing += dm.getDamage();
+        }
+        if (hurt.isEmpty()) return false;
+        m.mendReady = m.t + 10;
+        Vindicator v = m.brain;
+        int points;
+        if (m.xpPool > 0) { // its XP points
+            points = Math.min(m.xpPool, Math.min(6, (missing + 1) / 2));
+            m.xpPool -= points;
+            v.getWorld().spawnParticle(Particle.HAPPY_VILLAGER, v.getLocation().add(0, 1, 0), 4, 0.3, 0.5, 0.3, 0);
+        } else { // an XP bottle at its feet
+            m.xpBottles--;
+            points = 3 + random.nextInt(9);
+            m.lookDownUntil = m.t + 5;
+            m.body.getEquipment().setItemInMainHand(new ItemStack(Material.EXPERIENCE_BOTTLE)); m.held = "?";
+            swing(m);
+            v.getWorld().playSound(v.getLocation(), Sound.ENTITY_EXPERIENCE_BOTTLE_THROW, 1, 1);
+            v.getWorld().spawnParticle(Particle.EFFECT, v.getLocation().add(0, 0.2, 0), 20, 0.5, 0.1, 0.5, 0);
+            Bukkit.getScheduler().runTaskLater(plugin, () -> { if (m.body.isValid()) hold(m, "sword"); }, 5L);
+        }
+        v.getWorld().playSound(v.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 0.6f, 1.2f);
+        int repair = points * 2;
+        while (repair > 0 && !hurt.isEmpty()) { // like Mending: a random damaged mending piece each time
+            int slot = hurt.get(random.nextInt(hurt.size()));
+            ItemStack it = m.wear[slot];
+            var dm = (org.bukkit.inventory.meta.Damageable) it.getItemMeta();
+            int fix = Math.min(repair, dm.getDamage());
+            dm.setDamage(dm.getDamage() - fix);
+            it.setItemMeta(dm);
+            setArmourSlot(m, slot, it);
+            repair -= fix;
+            if (dm.getDamage() <= 0) hurt.remove((Integer) slot);
+        }
+        return true;
+    }
+
+    /** In combat (DonutCombat's tag when it's there, else the built-in one), every time it hurts you or you hurt it. */
+    void combat(Player p) { try { if (plugin.combatTag != null) plugin.combatTag.tag(p); } catch (RuntimeException ignored) { } }
 
     // ---- ARM SWINGS: a mannequin never plays the arm-swing animation (the game only plays it back for mobs and players), so
     // every M1 / mining chop is drawn with item-use poses on a copy of what it holds: arm UP (trident pose) for 2 ticks, then
@@ -1711,7 +1830,6 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         m.webTicks++;
         if (m.webTicks < 2 + m.skill.reaction() / 3) return false; // a moment to notice
         if (m.water > 0 && worldTechs()) {
-            m.water--;
             hold(m, "water");
             m.lookDownUntil = m.t + 8;
             swing(m);
@@ -1720,12 +1838,8 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
                 temp.remove(b); // one it placed itself: the water takes it
                 b.setType(Material.AIR, false);
             }
-            if (place(feet, Material.WATER, 10)) feet.getWorld().playSound(feet.getLocation().clone().add(0.5, 0.5, 0.5), Sound.ITEM_BUCKET_EMPTY, 1, 1);
-            Bukkit.getScheduler().runTaskLater(plugin, () -> { // bucket back
-                if (!m.body.isValid()) return;
-                m.water++;
-                hold(m, "sword");
-            }, 11L);
+            if (pour(m, feet, Material.WATER, 10)) feet.getWorld().playSound(feet.getLocation().clone().add(0.5, 0.5, 0.5), Sound.ITEM_BUCKET_EMPTY, 1, 1);
+            Bukkit.getScheduler().runTaskLater(plugin, () -> { if (m.body.isValid()) hold(m, "sword"); }, 11L);
             m.webTicks = 0;
             return true;
         }
@@ -1792,7 +1906,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         // I-FRAME TIMING (hard+): a hit while they're still flashing red is wasted, so it waits for their hurt time to run out
         boolean flashing = tier(m) >= 3 && tg.getNoDamageTicks() > tg.getMaximumNoDamageTicks() / 2 + 1;
         if (!flashing && reach <= cfg("reach", 3.0) + 0.6 && sees && ch >= s.hitSelect() - 0.1 && !(shielding && random.nextDouble() < 0.5)) {
-            boolean falling = !v.isOnGround() && v.getVelocity().getY() < -0.05;
+            boolean falling = canCrit(m);
             boolean rising = !v.isOnGround() && !falling;
             boolean inReach = reach <= cfg("reach", 3.0);
             if (falling && inReach && ch >= s.hitSelect()) { // the crit lands
@@ -1806,7 +1920,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
                 if (shielding) { m.blockUntil = m.t; Emotes.q(() -> m.body.clearActiveItem()); }
                 Vector to0 = tg.getLocation().toVector().subtract(v.getLocation().toVector()).setY(0);
                 if (to0.lengthSquared() > 1e-4) to0.normalize();
-                boolean room = !v.getLocation().getBlock().getRelative(0, 2, 0).getType().isSolid();
+                boolean room = !v.getLocation().getBlock().getRelative(0, 2, 0).getType().isSolid() && !inWeb(m) && !v.isInWater();
                 boolean critStyle = m.style.equals("axe") || m.style.equals("uhc") || m.style.equals("mace");
                 if (room && m.wtapUntil <= m.t && safePath(v, to0, 1.8) && random.nextDouble() < (critStyle ? Math.max(0.6, s.jumpCrit()) : s.jumpCrit() * 0.8)) {
                     // CRIT: jump now, hit on the way down (stays close so they're still in reach)
@@ -2039,7 +2153,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     /** One hit, the way a player's would land. */
     private void strike(Mimic m, Player tg, double charge) {
         Vindicator v = m.brain;
-        boolean crit = !v.isOnGround() && v.getVelocity().getY() < -0.05;
+        boolean crit = canCrit(m) && !m.sprintHit;
         ItemStack w = weaponHeld(m);
         double base = w == null ? 1 : baseDamage(w.getType());
         double sharp = level(w, "sharpness");
@@ -2054,6 +2168,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         boolean axeOnShield = m.held.equals("axe") && tg.isBlocking() && facing(tg, v);
         striking = true;
         try { tg.damage(dmg, v); } finally { striking = false; }
+        combat(tg);
         if (axeOnShield) {
             Emotes.q(() -> tg.setCooldown(Material.SHIELD, 100));
             Emotes.q(() -> tg.clearActiveItem());
@@ -2168,6 +2283,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         swing(m);
         striking = true;
         try { tg.damage(dmg, v); } finally { striking = false; }
+        combat(tg);
         Location at = tg.getLocation();
         tg.getWorld().playSound(at, fall > 5 ? Sound.ITEM_MACE_SMASH_GROUND_HEAVY : Sound.ITEM_MACE_SMASH_GROUND, 1, 1);
         tg.getWorld().spawnParticle(Particle.CRIT, at.clone().add(0, 1, 0), 20, 0.4, 0.5, 0.4, 0.3);
@@ -2192,7 +2308,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
 
     // ---- world techs: everything they place is put back (TempBlock), never into anything but air
 
-    static final class TempBlock { Block block; org.bukkit.block.data.BlockData before; Material placed; int until; }
+    static final class TempBlock { Block block; org.bukkit.block.data.BlockData before; Material placed; int until; Mimic owner; } // owner = whose bucket it came out of
     final Map<Block, TempBlock> temp = new HashMap<>();
     private int clock;
 
@@ -2207,6 +2323,18 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         return true;
     }
 
+    /**
+     * Empties one of its buckets (water / lava) into this block: the bucket is GONE until it scoops the liquid back up itself
+     * when the TempBlock runs out. A player who scoops it first with an empty bucket takes it (they're draining it).
+     */
+    boolean pour(Mimic m, Block b, Material liquid, int ticks) {
+        if (liquid == Material.WATER ? m.water <= 0 : m.lava <= 0) return false;
+        if (!place(b, liquid, ticks)) return false;
+        temp.get(b).owner = m;
+        if (liquid == Material.WATER) m.water--; else m.lava--;
+        return true;
+    }
+
     void restore(TempBlock t) {
         if (t.block.getType() == t.placed) t.block.setBlockData(t.before, false);
         temp.remove(t.block);
@@ -2217,6 +2345,9 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         try { tickDoors(); } catch (RuntimeException ignored) { }
         if (temp.isEmpty()) return;
         for (TempBlock t : new ArrayList<>(temp.values())) if (clock >= t.until) {
+            if (t.owner != null && t.block.getType() == t.placed) { // it scoops its own water / lava back up: bucket back
+                if (t.placed == Material.WATER) t.owner.water++; else if (t.placed == Material.LAVA) t.owner.lava++;
+            }
             restore(t);
             Sound s = t.placed == Material.LAVA ? Sound.ITEM_BUCKET_FILL_LAVA : t.placed == Material.WATER ? Sound.ITEM_BUCKET_FILL : null;
             if (s != null) t.block.getWorld().playSound(t.block.getLocation().clone().add(0.5, 0.5, 0.5), s, 0.8f, 1);
@@ -2259,6 +2390,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             v.getWorld().playSound(a, Sound.ENTITY_FISHING_BOBBER_THROW, 1, 1);
             striking = true;
             try { tg.damage(0.01, v); } finally { striking = false; }
+            combat(tg);
             Vector away = b.toVector().subtract(a.toVector()).setY(0);
             if (away.lengthSquared() > 1e-4) Safe.vel(tg, tg.getVelocity().add(away.normalize().multiply(0.25).setY(0.25)));
             Bukkit.getScheduler().runTaskLater(plugin, () -> { if (m.body.isValid()) hold(m, "sword"); }, 5L);
@@ -2268,7 +2400,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         if (!worldTechs()) return false;
         // LAVA at their feet
         if (m.lava > 0 && !fireproof && dist <= 4 && m.t >= m.lavaReady && tg.isOnGround() && solidBelow(feet) && random.nextDouble() < 0.05) {
-            if (place(feet, Material.LAVA, 30)) {
+            if (pour(m, feet, Material.LAVA, 30)) {
                 m.lavaReady = m.t + 200;
                 hold(m, "lava");
                 swing(m);
@@ -2312,7 +2444,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         for (int i = 0; i < 3; i++) {
             Block under = below.getRelative(org.bukkit.block.BlockFace.DOWN);
             if (under.getType().isSolid()) {
-                if (place(below, Material.WATER, 12)) {
+                if (pour(m, below, Material.WATER, 12)) {
                     m.clutchUntil = m.t + 20;
                     hold(m, "water");
                     swing(m);
@@ -2377,7 +2509,16 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     public void onSpread(org.bukkit.event.block.BlockSpreadEvent e) { if (!temp.isEmpty() && (nearTemp(e.getBlock(), Material.FIRE, 4) || nearTemp(e.getBlock(), Material.LAVA, 4))) e.setCancelled(true); }
 
     @EventHandler(ignoreCancelled = true)
-    public void onBucket(org.bukkit.event.player.PlayerBucketFillEvent e) { if (temp.containsKey(e.getBlockClicked())) e.setCancelled(true); } // no free lava
+    public void onBucket(org.bukkit.event.player.PlayerBucketFillEvent e) {
+        TempBlock t = temp.get(e.getBlockClicked());
+        if (t == null) return;
+        if (t.owner != null && (t.placed == Material.WATER || t.placed == Material.LAVA)) { // DRAINED: the player scooped its bucket
+            temp.remove(e.getBlockClicked()); // stays theirs; the mimic never gets that bucket back
+            if (t.owner.body.isValid() && t.owner.held.equals(t.placed == Material.WATER ? "water" : "lava")) hold(t.owner, "sword");
+            return;
+        }
+        e.setCancelled(true); // anything else it placed isn't free loot
+    }
 
     @EventHandler(ignoreCancelled = true)
     public void onTempBreak(org.bukkit.event.block.BlockBreakEvent e) {
@@ -2391,15 +2532,18 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     // ---- pot PvP (Diamond SMP / Neth OP): their own potions
 
     /** A buff it's missing (or about to lose) from a potion it really carries: splash = at its feet, drinkable = 1.6 s. */
-    private boolean buff(Mimic m) {
+    private boolean buff(Mimic m, double dist) {
         Vindicator v = m.brain;
         for (Iterator<ItemStack> it = m.buffs.iterator(); it.hasNext(); ) {
             ItemStack pot = it.next();
+            if (pot.getType() == Material.POTION && dist < 10) continue; // a drink takes 1.6 s: not with them this close
             boolean need = false;
             for (PotionEffect pe : effects(pot)) {
-                if (pe.getType().equals(PotionEffectType.INSTANT_HEALTH)) { need = v.getHealth() / maxHp(v) < 0.5; continue; }
+                if (BAD.contains(pe.getType())) continue; // Turtle Master's Slowness etc: never a reason to drink it again
+                if (pe.getType().equals(PotionEffectType.INSTANT_HEALTH)) { if (v.getHealth() / maxHp(v) < 0.5) need = true; continue; }
                 PotionEffect has = v.getPotionEffect(pe.getType());
-                if (has == null || has.getDuration() < 100 || has.getAmplifier() < pe.getAmplifier()) need = true;
+                // only once it's ALMOST done (last 3 s) or this one's stronger: no wasted pots
+                if (has == null || has.getAmplifier() < pe.getAmplifier() || has.getDuration() < 60 && has.getDuration() != PotionEffect.INFINITE_DURATION) need = true;
             }
             if (!need) continue;
             it.remove();
@@ -2472,7 +2616,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         Vindicator v = m.brain;
         if (v.getFireTicks() <= 20 || m.water <= 0 || v.hasPotionEffect(PotionEffectType.FIRE_RESISTANCE) || !v.isOnGround()) return false;
         Block feet = v.getLocation().getBlock();
-        if (!place(feet, Material.WATER, 10)) return false;
+        if (!pour(m, feet, Material.WATER, 10)) return false;
         hold(m, "water");
         swing(m);
         v.setFireTicks(0);
@@ -2650,6 +2794,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             }
         }
         m.lastHurt = m.t;
+        { Player hitter = TotemLimit.playerBehind(e.getDamager()); if (hitter != null) combat(hitter); } // hitting a mimic puts YOU in combat too
         if (!(e.getDamager() instanceof Projectile)) { m.comboTaken++; m.comboGiven = 0; }
         Player by = TotemLimit.playerBehind(e.getDamager()); // someone else hit it: it turns on them, like a player would
         if (by != null && by != m.target && (by.getGameMode() == GameMode.SURVIVAL || by.getGameMode() == GameMode.ADVENTURE)
@@ -2701,6 +2846,10 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         if (m == null) return;
         e.getDrops().clear();
         e.setDroppedExp(plugin.getConfig().getInt("mimic-player.xp", 0));
+        if (plugin.getConfig().getBoolean("mimic-player.drop-inventory", true)) { // killed = it drops everything it had left, like a player
+            e.getDrops().addAll(inventory(m));
+            e.setDroppedExp(e.getDroppedExp() + Math.min(m.xpPool, 100) * 7 / 10 + 0); // a player drops 7 a level, capped at 100
+        }
         for (String s : plugin.getConfig().getStringList("mimic-player.drops")) {
             try { String[] p = s.split(":"); e.getDrops().add(new ItemStack(Material.valueOf(p[0].toUpperCase(Locale.ROOT)), p.length > 1 ? Integer.parseInt(p[1]) : 1)); }
             catch (RuntimeException ignored) { }
@@ -2711,6 +2860,33 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         byBody.remove(m.body.getUniqueId());
         try { m.body.remove(); } catch (RuntimeException ignored) { }
         if (m.tag != null && m.tag.isValid()) m.tag.remove();
+    }
+
+    /** What it has left: its armour (as worn, durability and all), weapons and tools, and every consumable it didn't use. */
+    List<ItemStack> inventory(Mimic m) {
+        List<ItemStack> out = new ArrayList<>();
+        Gear g = m.gear;
+        for (ItemStack it : m.wear) if (it != null) out.add(it.clone());
+        for (ItemStack it : new ItemStack[]{g.weapon, g.axe, g.mace, g.bow, g.crossbow, g.spear, m.trident, g.pickaxe, g.shovel})
+            if (it != null && out.stream().noneMatch(x -> x.isSimilar(it))) out.add(it.clone());
+        if (g.offhand != null && g.offhand.getType() != Material.TOTEM_OF_UNDYING) out.add(g.offhand.clone());
+        add(out, Material.GOLDEN_APPLE, m.apples); add(out, Material.ENCHANTED_GOLDEN_APPLE, m.gapples);
+        add(out, Material.ENDER_PEARL, m.pearlsLeft); add(out, Material.TOTEM_OF_UNDYING, m.totems);
+        add(out, Material.WIND_CHARGE, m.wind); add(out, Material.WATER_BUCKET, m.water); add(out, Material.LAVA_BUCKET, m.lava);
+        add(out, Material.COBWEB, m.webs); if (g.block != null) add(out, g.block, m.blocks); add(out, Material.FIREWORK_ROCKET, m.rockets);
+        add(out, Material.ARROW, m.arrows); add(out, Material.SNOWBALL, m.throwables); add(out, Material.TNT, m.tnt);
+        add(out, Material.FIRE_CHARGE, m.fireCharges); add(out, Material.EXPERIENCE_BOTTLE, m.xpBottles);
+        if (g.rod) out.add(new ItemStack(Material.FISHING_ROD));
+        if (g.flint) out.add(new ItemStack(Material.FLINT_AND_STEEL));
+        if (g.elytra && (m.wear[1] == null || m.wear[1].getType() != Material.ELYTRA)) out.add(new ItemStack(Material.ELYTRA));
+        for (int i = 0; i < m.pots; i++) out.add(healingPotion());
+        for (ItemStack it : m.buffs) out.add(it.clone());
+        for (ItemStack it : m.debuffs) out.add(it.clone());
+        return out;
+    }
+
+    static void add(List<ItemStack> out, Material mat, int n) {
+        while (n > 0) { int k = Math.min(n, mat.getMaxStackSize()); out.add(new ItemStack(mat, k)); n -= k; }
     }
 
     @EventHandler(ignoreCancelled = true)

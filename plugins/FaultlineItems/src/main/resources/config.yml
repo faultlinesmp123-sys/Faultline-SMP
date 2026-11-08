@@ -794,6 +794,7 @@ mimic-player:
   drop-inventory: true  # killed = drops everything it had left (armour as worn, weapons, unused pots / gaps / pearls...). NOTE: copies a real player's gear
   fake-join: true       # mimicking an OFFLINE player says "<name> joined the game" (and "left the game" / a death line when it goes)
   tab-list: true        # ...and puts them in the tab list while it is out
+  path-nodes: 2500      # how hard the walker looks for a way to you (doors, stairs, drops, digging); more = smarter round big builds, a bit more CPU
   combat-tag:           # it hitting you / you hitting it = in combat. With DonutCombat installed its own tag is used (its duration, blocked commands, combat-log kill)
     enabled: true
     use-donutcombat: true

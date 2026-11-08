@@ -2006,6 +2006,32 @@ Notes:
   "left the game" + ClientboundPlayerInfoRemovePacket; killed = a vanilla death line ("death.attack.player") then it leaves 2 s
   later. Mimicking an online player does none of it. Reflection failing = one warning, no tab line (UNTESTED on the live server:
   MockBukkit has no NMS). Tested (scratch `nt/NewTest`).
+- **Mimic: the walker + reach techs (Items 1.2.88)**: `MimicNav.java` = A* over the block grid with a player's moves (a node =
+  the cell its feet stand in; cells cached per search, unloaded chunks = walls): WALK (8 ways, no corner cutting), STEP (1 up:
+  blocks, stairs, slabs; half-steps under a low ceiling need no head room), DROP (off a ledge as far as `maxDrop`: health - 3
+  hearts, min 3, max 23, 30 with a water bucket; water landings any height), DOOR (closed wooden doors / gates: +1, opened on
+  the way; iron = wall), DIG (feet + head with the right tool, dirt/sand/leaves by hand; player-built blocks cost x4 + 6 so it
+  takes the door; never next to water/lava, never block entities), DIG up a step, DIGDOWN (mines its floor), PILLAR (tier 2+,
+  blocks), CLIMB (ladders/vines), SWIM. Budget `mimic-player.path-nodes` 2500, range 96; no full way = the partial path that
+  gets closest (`navReach` false). `direct()` = about level (|dy| <= 1.2) and `walkLine` clear (same floor, room for the
+  body, no hazard / drop of 2+), or within 3.2 and seen: then the old fight / straight chase; anything else (above / below
+  them, a wall, a door, stairs) = `navChase` (no more strafing on a ledge above you). Replans when they move 3 blocks (1.5
+  close), every 2 s, when stuck. `followPath`: skips ahead to any of the next 5 steps it's in, string-pulls level WALK steps
+  (`walkLine`), jumps STEPs, sprint-jumps long runs (`openAir`), slows for drops / doors, air-strafes, mines `dig` blocks first
+  (`navDig`, the old digTick), opens doors, centres for DIGDOWN / PILLAR. STUCK (no closer for 25 ticks): out of a wall if in one,
+  that edge penalised 40 for 10 s (`navBad`), a hop, replan; 4 in a row = vanilla's pathfinder for 3 s. IN A WALL anywhere
+  (`inWall`: feet/head point inside a block's box) 8 ticks = `unwall` to the nearest standable cell 2 round. `towerUp` only
+  when the walker has no full path. REACH TECHS (`reachTech`, no full path): WIND HOP (ledge 1.8-7 up within 6, no roof:
+  a wind charge, steers onto the ledge on the way down, `hopUntil`), WATER CLIMB (`waterClimb`: from a cell open overhead and
+  right beside the edge of their floor (`edgeBeside`); a water TempBlock in its head cell, swims up held on the column, picks
+  it up and re-places it above its head, steps onto their floor at the top, scoops the last one back; under their floor /
+  out in the open = first `stageSpot` (nearest such cell 6 round, planned to exactly)), PEARL (sees them, 5-60), WIND CHARGE +
+  PEARL (`pearlCatch` over a wall, 4-22). BREEZE RODS: counted in the gear (`rods`, saved), out of wind charges = crafts one
+  rod into 4 (1 s), dropped on death. REACH FIX: hits are judged from the brain AND the body players see (`reachOf`, max of
+  both, 3.0; spear 3.5), the mace slam lost its +0.5, and the body snaps to the brain past 0.6 (was 1.2: the body trailed,
+  so hits looked like 4 blocks). Tested (scratch `nt/NewTest`: house door (walls intact), stairs up 6, drop off a 6 ledge,
+  dig down through rock (glass walls kept), out of a wall, breeze rods, wind hop, water climb from a wall and from under the
+  floor, pearl; 8/8 runs).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Skills → Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

@@ -1931,6 +1931,17 @@ Notes:
   COMMITS to one side (`detourDeg`/`detourUntil`, only that side's angles) until `clearLine` (the straight way at full width)
   is clear; the crit-chain hop and air control check for hazards too. Tested (scratch `nt/NewTest`: godlike carrying
   crystals + anchors never places either; the lava pool walk-round passes 6/6).
+- **The mimic reads you (Items 1.2.84)**: `read()` in `think` (before towering / the fight): their ACTIVE ITEM (`isHandRaised`
+  + `getActiveItem`) = food / potion -> `rushUntil` 15 (punish the eat, normal+), bow / crossbow -> shield up (hard+, if it has
+  one); they're under 35% and it's over 50% -> all in; PRE-GAP (hard+): golden apple at < 75% with no absorption, 10 s unhurt,
+  they're 5+ away; PEARL FOLLOW (hard+, `onTargetPearl` = PlayerTeleportEvent ENDER_PEARL of its target -> `followAt` after its
+  reaction time, throws a pearl there when 8-60 away); comboed 4+ times under 50% (godlike) -> pearls out. In `melee`:
+  COMBO BREAK (normal+, `comboTaken` counts melee hits taken since its last hit, `comboGiven` the other way): 2+ in a row, its
+  hit not ready = a hard side cut + jump (`breakUntil`); I-FRAME TIMING (hard+): never swings while their `noDamageTicks` >
+  half the max (a wasted hit); BACK TO A HAZARD (hard+): lava / a ledge 2.2 behind it = strafes to the safe side; BAIT
+  (godlike): a fake jump in while its hit charges. FLANK (normal+, `flank`): several mimics on one player come in at +-40/80
+  degrees. `webEscape` and the test's web physics use the whole hitbox (`underNow`). Tested (scratch `nt/NewTest`: i-frames
+  wait + hit after, combo break, pearl follow, pre-gap, flank angle; 8/8 runs).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Skills → Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

@@ -113,6 +113,8 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         ItemStack trident; // its trident (null while thrown away without Loyalty)
         int boomStep, boomWait, boomReady, spearReady, lungeUntil, tridentReady, riptideUntil, crossUntil, crossReady;
         int potRunUntil, rushUntil, digTicks, digNeed, detourDeg, detourUntil;
+        int comboTaken, comboGiven, breakUntil, followT, baitReady;
+        Location followAt;
         boolean riptideHit, tridentOut;
         String boomKind;
         Block boomAt, digBlock;
@@ -794,6 +796,8 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             follow(m);
             return;
         }
+        // ---- reading them (the advanced bits)
+        if (read(m, tg, dist, sees, hp)) { follow(m); return; }
         // ---- they pillared up: it builds up after them (normal+)
         if (towerUp(m, tg)) { follow(m); return; }
         // ---- close: the fight
@@ -1344,6 +1348,70 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         b.setType(Material.AIR, false);
     }
 
+    // ---- reading the other player
+
+    /**
+     * What a good player reads off their opponent: EATING / drinking = rush in and punish it (normal+); DRAWING A BOW at it =
+     * shield up (hard+, with a shield) or a zig-zag in; they're LOW and it isn't = all in (no spacing); PRE-GAP (hard+): its
+     * absorption's gone, it's hurt and they're out of reach = a gap now, before it needs one; PEARL FOLLOW (hard+): they
+     * pearled away = it pearls after them; being COMBOED hard (godlike) = pearls out.
+     */
+    private boolean read(Mimic m, Player tg, double dist, boolean sees, double hp) {
+        Vindicator v = m.brain;
+        int tr = tier(m);
+        ItemStack using = null;
+        try { if (tg.isHandRaised()) using = tg.getActiveItem(); } catch (Throwable ignored) { }
+        Material u = using == null ? Material.AIR : using.getType();
+        // they're eating / drinking: punish it
+        if (tr >= 2 && (u.isEdible() || u == Material.POTION) && dist < 14) { m.rushUntil = Math.max(m.rushUntil, m.t + 15); m.reactAt = Math.min(m.reactAt, m.t); }
+        // they're drawing a bow / crossbow at it
+        if (tr >= 2 && (u == Material.BOW || u == Material.CROSSBOW) && dist > 4 && sees) {
+            if (tr >= 3 && hasShield(m) && m.shieldOffUntil <= m.t && m.blockUntil <= m.t) {
+                m.blockUntil = m.t + 12;
+                Emotes.q(() -> m.body.startUsingItem(EquipmentSlot.OFF_HAND));
+            }
+        }
+        // they're low and it isn't: all in
+        double theirs = tg.getHealth() / Math.max(1, tg.getAttribute(Attribute.MAX_HEALTH).getValue());
+        if (tr >= 2 && theirs < 0.35 && hp > 0.5) m.rushUntil = Math.max(m.rushUntil, m.t + 10);
+        // pre-gap
+        if (tr >= 3 && m.apples > 0 && hp < 0.75 && v.getAbsorptionAmount() <= 0 && dist > 5 && m.t - m.lastHurt > 10 && m.rushUntil <= m.t) { eat(m); return true; }
+        // pearl after them
+        if (m.followAt != null && m.t >= m.followT) {
+            Location at = m.followAt; m.followAt = null;
+            if (at.getWorld() == v.getWorld() && at.distance(v.getLocation()) > 8 && at.distance(v.getLocation()) < 60 && m.pearlsLeft > 0 && m.t >= m.pearlReady) { throwPearl(m, at); return true; }
+        }
+        // comboed hard and hurt: pearl out (godlike)
+        if (tr >= 4 && m.comboTaken >= 4 && hp < 0.5 && m.pearlsLeft > 0 && m.t >= m.pearlReady) { m.comboTaken = 0; pearlAway(m, tg); return true; }
+        return false;
+    }
+
+    /** Several mimics on one player come in from different sides (a flank), not in a line behind each other. */
+    private Vector flank(Mimic m, Player tg, Vector to, double dist) {
+        if (tier(m) < 2 || dist < 2.5 || dist > 16) return to;
+        int idx = 0, n = 0;
+        for (Mimic o : byBrain.values()) {
+            if (o.target != tg) continue;
+            if (o == m) idx = n;
+            n++;
+        }
+        if (n < 2 || idx == 0) return to;
+        double deg = (idx % 2 == 1 ? 1 : -1) * Math.min(75, 40 * ((idx + 1) / 2)) * Math.min(1, (dist - 2.5) / 6);
+        double r = Math.toRadians(deg), c = Math.cos(r), sn = Math.sin(r);
+        return new Vector(to.getX() * c - to.getZ() * sn, 0, to.getX() * sn + to.getZ() * c);
+    }
+
+    /** Its target pearled: it notes where they landed and (hard+) pearls after them a moment later. */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onTargetPearl(org.bukkit.event.player.PlayerTeleportEvent e) {
+        if (e.getCause() != org.bukkit.event.player.PlayerTeleportEvent.TeleportCause.ENDER_PEARL || byBrain.isEmpty()) return;
+        for (Mimic m : byBrain.values()) {
+            if (m.target != e.getPlayer() || tier(m) < 3) continue;
+            m.followAt = e.getTo().clone();
+            m.followT = m.t + m.skill.reaction() + 2;
+        }
+    }
+
     // ---- cobwebs
 
     /**
@@ -1354,7 +1422,12 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         Vindicator v = m.brain;
         Block feet = v.getLocation().getBlock(), head = feet.getRelative(org.bukkit.block.BlockFace.UP);
         Block web = feet.getType() == Material.COBWEB ? feet : head.getType() == Material.COBWEB ? head : null;
+        if (web == null) for (Block b : underNow(v.getLocation())) { // half in one counts too (a player's hitbox is stuck all the same)
+            if (b.getType() == Material.COBWEB) { web = b; break; }
+            if (b.getRelative(org.bukkit.block.BlockFace.UP).getType() == Material.COBWEB) { web = b.getRelative(org.bukkit.block.BlockFace.UP); break; }
+        }
         if (web == null) { m.webTicks = 0; return false; }
+        if (web != feet && web != head) { feet = web.getY() == feet.getY() ? web : web.getRelative(org.bukkit.block.BlockFace.DOWN); head = feet.getRelative(org.bukkit.block.BlockFace.UP); }
         m.webTicks++;
         if (m.webTicks < 2 + m.skill.reaction() / 3) return false; // a moment to notice
         if (m.water > 0 && worldTechs()) {
@@ -1414,7 +1487,17 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         boolean shielding = m.blockUntil > m.t && m.shieldOffUntil <= m.t;
         // swing when charged enough and in reach (lower the shield first). EVERY hit is a CRIT (falling onto them after a
         // jump) or a SPRINT hit (a lunge in): never a plain standing hit, never a sweep.
-        if (reach <= cfg("reach", 3.0) + 0.6 && sees && ch >= s.hitSelect() - 0.1 && !(shielding && random.nextDouble() < 0.5)) {
+        // COMBO BREAK (normal+): taking hits without hitting back = cuts out of the line, hard to the side, jumps the knockback
+        Vector toB = tg.getLocation().toVector().subtract(v.getLocation().toVector()).setY(0);
+        if (tier(m) >= 2 && m.comboTaken >= 2 && m.t - m.lastHurt <= 10 && m.breakUntil < m.t && v.isOnGround() && toB.lengthSquared() > 1e-4 && (ch < s.hitSelect() || reach > cfg("reach", 3.0))) {
+            Vector to = toB.normalize();
+            m.strafeDir = -m.strafeDir; m.strafeFlip = 15;
+            Vector out = new Vector(-to.getZ(), 0, to.getX()).multiply(0.38 * m.strafeDir);
+            if (safeStep(v, out.clone().normalize())) { walk(v, out.setY(0.42), 3); m.breakUntil = m.t + 8; return; }
+        }
+        // I-FRAME TIMING (hard+): a hit while they're still flashing red is wasted, so it waits for their hurt time to run out
+        boolean flashing = tier(m) >= 3 && tg.getNoDamageTicks() > tg.getMaximumNoDamageTicks() / 2 + 1;
+        if (!flashing && reach <= cfg("reach", 3.0) + 0.6 && sees && ch >= s.hitSelect() - 0.1 && !(shielding && random.nextDouble() < 0.5)) {
             boolean falling = !v.isOnGround() && v.getVelocity().getY() < -0.05;
             boolean rising = !v.isOnGround() && !falling;
             boolean inReach = reach <= cfg("reach", 3.0);
@@ -1468,6 +1551,17 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         }
         if (dist < 4.5) {
             if (--m.strafeFlip <= 0) { m.strafeDir = -m.strafeDir; m.strafeFlip = 12 + random.nextInt(30); }
+            // BACK TO A HAZARD (hard+): their knockback would put it in lava / off a ledge: circles round so its back is clear
+            if (tier(m) >= 3 && !cellSafe(v.getLocation().clone().add(-to.getX() * 2.2, 0.01, -to.getZ() * 2.2).getBlock())) {
+                Vector l = new Vector(-to.getZ(), 0, to.getX());
+                boolean leftOk = cellSafe(v.getLocation().clone().add(l.getX() * 1.5 - to.getX() * 1.5, 0.01, l.getZ() * 1.5 - to.getZ() * 1.5).getBlock());
+                m.strafeDir = leftOk ? 1 : -1; m.strafeFlip = 15;
+            }
+            // BAIT (godlike): a fake jump in while its hit charges, to draw their swing / shield
+            if (tier(m) >= 4 && ch < s.hitSelect() - 0.2 && dist > 3 && dist < 4.2 && v.isOnGround() && m.t >= m.baitReady && random.nextDouble() < 0.04) {
+                m.baitReady = m.t + 60;
+                if (safePath(v, to, 1.5)) { walk(v, to.clone().multiply(0.15).setY(0.42), 3); return; }
+            }
             if (!safeStep(v, new Vector(-to.getZ(), 0, to.getX()).multiply(m.strafeDir))) { m.strafeDir = -m.strafeDir; m.strafeFlip = 20; } // never strafes into lava / off a ledge
             Vector side = new Vector(-to.getZ(), 0, to.getX()).multiply(safeStep(v, new Vector(-to.getZ(), 0, to.getX()).multiply(m.strafeDir)) ? s.strafe() * m.strafeDir : 0);
             // SPACING: sit just outside their reach while our hit charges, step in the moment it's ready
@@ -1476,7 +1570,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             if (v.isOnGround()) walk(v, new Vector(cur.getX() * 0.55 + side.getX() + fw.getX(), cur.getY(), cur.getZ() * 0.55 + side.getZ() + fw.getZ()), 3);
             m.sprintHit = false;
         } else {
-            chase(m, tg, to);
+            chase(m, tg, flank(m, tg, to, dist));
             m.sprintHit = true; // running in = a sprint hit
         }
     }
@@ -1670,6 +1764,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         else if (charge > 0.9) tg.getWorld().playSound(l, m.sprintHit ? Sound.ENTITY_PLAYER_ATTACK_KNOCKBACK : Sound.ENTITY_PLAYER_ATTACK_STRONG, 1, 1);
         else tg.getWorld().playSound(l, Sound.ENTITY_PLAYER_ATTACK_WEAK, 1, 1);
         m.lastHit = m.t;
+        m.comboGiven++; m.comboTaken = 0;
         if (crit && random.nextDouble() < m.skill.jumpCrit()) m.jumpAt = m.t + 2 + random.nextInt(2); // crit chain
         if (m.sprintHit && random.nextDouble() < m.skill.wtap()) m.wtapUntil = m.t + 3 + random.nextInt(3);
         m.sprintHit = false;
@@ -2247,6 +2342,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             }
         }
         m.lastHurt = m.t;
+        if (!(e.getDamager() instanceof Projectile)) { m.comboTaken++; m.comboGiven = 0; }
         Player by = TotemLimit.playerBehind(e.getDamager()); // someone else hit it: it turns on them, like a player would
         if (by != null && by != m.target && (by.getGameMode() == GameMode.SURVIVAL || by.getGameMode() == GameMode.ADVENTURE)
                 && (m.target == null || random.nextDouble() < 0.6)) { m.target = by; m.reactAt = m.t + Math.max(1, m.skill.reaction() / 2); }

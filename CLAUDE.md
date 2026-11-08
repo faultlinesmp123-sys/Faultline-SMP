@@ -1982,6 +1982,30 @@ Notes:
   `nt/NewTest`, `-Ddonut=<DonutCombat.jar>` loads the real plugin into MockBukkit: the mimic's hit lands in its `combatLog`;
   the harness turns `pack-shield` off (mock players never finish loading the pack = no damage) and the built-in tag off
   outside its own section; physics stand-in: walls before floor, open doors are thin, no standing on them). 8/8 runs.
+- **Mimic: mace techs, vanilla M1, fake join (Items 1.2.87)**: MACE: `Gear.breachMace` (a second mace with Breach; the main
+  one is the best SLAM mace, `slamScore` = 2 Density + 2 Wind Burst + Breach; saved `breach-mace`, hotbar "breach").
+  `smash()`: DENSITY / BREACH SWAP (normal+: a low slam (< 7) or no Density into 15+ armour points = the Breach mace), Breach
+  maths `breachMult` (vanilla armour formula before/after armour x(1-0.15/level)), ATTRIBUTE SWAP (hard+: the swing's charge
+  comes from the SWORD's cooldown, the mace comes out on the hit's tick). Slams: BACKSLAM (normal+ vs a shield with no axe,
+  hard+ when they face it: air control aims 1.4 behind them), STUN SLAM (axe breaks the shield, then the mace). `windJump`
+  (look down, wind charge at the feet, vy 1.4). `pearlCatch(m, vel, slam)`: a pearl (FX, tag `faultline_mimic_fx`) + a wind
+  charge 3 ticks later = teleported there riding `vel` (fall reset); hard+: SIDEWAYS catch (12-32 away, angled at their cut-off),
+  VERTICAL catch (Density mace, roof clear, vy 1.9), DOUBLE HEIGHT (godlike, 2+ charges: wind jump then the catch 5 ticks into
+  the climb, vy 2.6, `catchAt`), MID-AIR catch (`airCatch`, falling 10+ with nothing to slam and no water clutch = pearl back up).
+  GROUND BREACH SWAP (`breachSwap`, hard+, 15+ armour: the Breach mace on the hit tick, the sword back 2 ticks later). ELYTRA MACE
+  IS GONE (the dive and the glide smash removed; elytra-pvp itself stays off). VANILLA M1 (`strike`): attack delay = 20 / attack
+  speed exactly (`cooldown()` double: sword 12.5, mace 33.3, axes 20/22.2/25...), charge = (ticks + 0.5) / delay; a slot change
+  resets the meter the NEXT tick (`hold` -> `tickerResetAt`, `ticker()`); crits AND sprint knockback need charge > 0.9, crits
+  never while sprint-hitting; the crit x1.5 is on the attack only (Sharpness = (0.5 lvl + 0.5) x charge after it); bonus
+  knockback = (Knockback + 1 for a charged sprint hit) x 0.5 along its facing (vanilla `knockback()`: half the old speed + dir,
+  y min 0.4 on the ground, x KB resistance), then its own speed x0.6 (the base 0.4 comes from the hit). FAKE JOIN
+  (`mimic-player.fake-join` / `tab-list`, both true): mimicking an OFFLINE player broadcasts the yellow translatable
+  "multiplayer.player.joined" (`announce`: every player + console) and adds a tab-list line (`MimicTab`: the server's own
+  ClientboundPlayerInfoUpdatePacket by reflection (Paper is Mojang-mapped): Entry record filled by type, a random UUID, their
+  name + skin textures, ping 25-95; new joiners get it on `PlayerJoinEvent`; the real player logging in removes it); removed =
+  "left the game" + ClientboundPlayerInfoRemovePacket; killed = a vanilla death line ("death.attack.player") then it leaves 2 s
+  later. Mimicking an online player does none of it. Reflection failing = one warning, no tab line (UNTESTED on the live server:
+  MockBukkit has no NMS). Tested (scratch `nt/NewTest`).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Skills → Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

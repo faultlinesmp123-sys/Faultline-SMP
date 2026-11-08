@@ -106,6 +106,8 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         TextDisplay tag;
         UUID who;
         String name;
+        UUID tabId; // its fake line in the tab list (an offline player 'joined')
+        PlayerProfile skin;
         Skill skill;
         Player target;
         int t, strafeDir = 1, strafeFlip, lastHit = -100, lastHurt = -100, reactAt;
@@ -118,7 +120,8 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         Location followAt, tgPrev;
         Vector tgVel = new Vector();
         boolean totemHand;
-        int swingId, doorUntil, xpPool, xpBottles, mendReady;
+        int swingId, doorUntil, xpPool, xpBottles, mendReady, catchAt, catchReady, tickerResetAt;
+        Vector catchVel;
         final ItemStack[] wear = new ItemStack[4]; // ITS armour (own copies: they wear down, break, get mended)
         Block doorGoal;
         boolean riptideHit, tridentOut;
@@ -154,6 +157,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         int arrows, throwables;
         int tnt, fireCharges, xpPoints, xpBottles;
         ItemStack spear, trident, crossbow, pickaxe, shovel;
+        ItemStack breachMace; // a second mace with Breach (the main one is the best for slams: Density / Wind Burst)
         final List<ItemStack> buffs = new ArrayList<>(), debuffs = new ArrayList<>(); // one entry per potion they carry
         Material block = Material.COBBLESTONE;
         double maxHealth = 20;
@@ -201,7 +205,10 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
                 case ENCHANTED_GOLDEN_APPLE -> g.egaps += it.getAmount();
                 case ENDER_PEARL -> g.pearls += it.getAmount();
                 case TOTEM_OF_UNDYING -> g.totems += it.getAmount();
-                case MACE -> { if (g.mace == null || maceScore(it) > maceScore(g.mace)) g.mace = it.clone(); }
+                case MACE -> {
+                    if (level(it, "breach") > 0 && (g.breachMace == null || level(it, "breach") > level(g.breachMace, "breach"))) g.breachMace = it.clone();
+                    if (g.mace == null || slamScore(it) > slamScore(g.mace)) g.mace = it.clone();
+                }
                 case WIND_CHARGE -> g.wind += it.getAmount();
                 case LAVA_BUCKET -> g.lava++;
                 case WATER_BUCKET -> g.water++;
@@ -250,6 +257,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         if (held != null && weapon(held.getType()) && !held.getType().name().endsWith("_AXE") && !held.getType().name().endsWith("_SPEAR") && held.getType() != Material.TRIDENT) g.weapon = held.clone(); // what they're holding right now wins
         if (g.weapon == null) g.weapon = g.axe != null ? g.axe : g.trident != null ? g.trident : g.spear;
         if (g.chest != null && g.chest.getType() == Material.ELYTRA) g.elytra = true;
+        if (g.breachMace != null && g.mace != null && g.breachMace.isSimilar(g.mace) && level(g.mace, "density") + level(g.mace, "wind_burst") == 0) g.breachMace = null; // one breach mace = the main one
         if (g.offhand == null) for (ItemStack it : inv.getStorageContents()) if (it != null && it.getType() == Material.SHIELD) { g.offhand = it.clone(); break; } // they'd swap it on
         try { g.maxHealth = p.getAttribute(Attribute.MAX_HEALTH).getValue(); } catch (RuntimeException e) { g.maxHealth = 20; }
         try { g.xpPoints = p.getTotalExperience(); } catch (RuntimeException ignored) { }
@@ -276,6 +284,23 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         double[] a = armorOf(it);
         return a[0] * 10 + a[1] * 3 + level(it, "protection") * 2 + level(it, "blast_protection") + level(it, "projectile_protection");
     }
+
+    static double armourPoints(LivingEntity e) {
+        try { return e.getAttribute(Attribute.ARMOR).getValue(); } catch (RuntimeException ex) { return 0; }
+    }
+
+    /** How much more a hit lands when their armour works 15% less a Breach level (vanilla's armour formula, both ways). */
+    static double breachMult(LivingEntity tg, double dmg, int breach) {
+        if (breach <= 0) return 1;
+        double a = armourPoints(tg), tough;
+        try { tough = tg.getAttribute(Attribute.ARMOR_TOUGHNESS).getValue(); } catch (RuntimeException ex) { tough = 0; }
+        double t = tough;
+        java.util.function.DoubleUnaryOperator red = arm -> Math.min(20, Math.max(arm / 5, arm - 4 * dmg / (t + 8))) / 25;
+        double before = 1 - red.applyAsDouble(a), after = 1 - red.applyAsDouble(a * Math.max(0, 1 - 0.15 * breach));
+        return before <= 0.01 ? 1 : after / before;
+    }
+
+    static int slamScore(ItemStack it) { return 2 * level(it, "density") + 2 * level(it, "wind_burst") + level(it, "breach"); }
 
     static int maceScore(ItemStack it) { return level(it, "density") + level(it, "breach") + 2 * level(it, "wind_burst"); }
 
@@ -313,7 +338,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
                 g.weapon = c.getItemStack("weapon"); g.axe = c.getItemStack("axe"); g.bow = c.getItemStack("bow"); g.offhand = c.getItemStack("offhand");
                 g.gaps = c.getInt("gaps"); g.egaps = c.getInt("egaps"); g.pearls = c.getInt("pearls"); g.pots = c.getInt("pots"); g.totems = c.getInt("totems");
                 g.maxHealth = c.getDouble("max-health", 20);
-                g.mace = c.getItemStack("mace");
+                g.mace = c.getItemStack("mace"); g.breachMace = c.getItemStack("breach-mace");
                 g.wind = c.getInt("wind"); g.lava = c.getInt("lava"); g.water = c.getInt("water"); g.webs = c.getInt("webs");
                 g.blocks = c.getInt("blocks"); g.rockets = c.getInt("rockets");
                 g.rod = c.getBoolean("rod"); g.flint = c.getBoolean("flint"); g.elytra = c.getBoolean("elytra");
@@ -342,7 +367,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             y.set(k + "weapon", g.weapon); y.set(k + "axe", g.axe); y.set(k + "bow", g.bow); y.set(k + "offhand", g.offhand);
             y.set(k + "gaps", g.gaps); y.set(k + "egaps", g.egaps); y.set(k + "pearls", g.pearls); y.set(k + "pots", g.pots); y.set(k + "totems", g.totems);
             y.set(k + "max-health", g.maxHealth);
-            y.set(k + "mace", g.mace);
+            y.set(k + "mace", g.mace); y.set(k + "breach-mace", g.breachMace);
             y.set(k + "wind", g.wind); y.set(k + "lava", g.lava); y.set(k + "water", g.water); y.set(k + "webs", g.webs);
             y.set(k + "blocks", g.blocks); y.set(k + "rockets", g.rockets);
             y.set(k + "arrows", g.arrows); y.set(k + "throwables", g.throwables);
@@ -474,6 +499,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         if (who != null) {
             try {
                 PlayerProfile pp = who.getPlayerProfile();
+                m.skin = pp;
                 b.setProfile(ResolvableProfile.resolvableProfile(pp));
                 if (!pp.hasTextures()) pp.update().thenAccept(full -> Bukkit.getScheduler().runTask(plugin, () -> {
                     if (b.isValid()) Emotes.q(() -> b.setProfile(ResolvableProfile.resolvableProfile(full)));
@@ -485,6 +511,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         if (plugin.getConfig().getBoolean("mimic-player.kingdom-tag", true)) m.tag = kingdomTag(m, at);
         byBrain.put(v.getUniqueId(), m);
         byBody.put(b.getUniqueId(), m);
+        joinGame(m, who);
         return m;
     }
 
@@ -541,6 +568,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             case "pearl" -> new ItemStack(Material.ENDER_PEARL);
             case "potion" -> healingPotion();
             case "mace" -> g.mace;
+            case "breach" -> g.breachMace != null ? g.breachMace : g.mace;
             case "wind" -> new ItemStack(Material.WIND_CHARGE);
             case "lava" -> new ItemStack(Material.LAVA_BUCKET);
             case "water" -> new ItemStack(Material.WATER_BUCKET);
@@ -562,7 +590,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     }
 
     ItemStack weaponHeld(Mimic m) {
-        return switch (m.held) { case "axe" -> m.gear.axe; case "mace" -> m.gear.mace; case "spear" -> m.gear.spear; case "trident" -> m.trident; default -> m.gear.weapon; };
+        return switch (m.held) { case "axe" -> m.gear.axe; case "mace" -> m.gear.mace; case "breach" -> m.gear.breachMace != null ? m.gear.breachMace : m.gear.mace; case "spear" -> m.gear.spear; case "trident" -> m.trident; default -> m.gear.weapon; };
     }
 
     /** What kind of fighter their inventory says they are (mace / nethop / diamond / uhc / axe / sword). */
@@ -591,8 +619,10 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
 
     void hold(Mimic m, String what) {
         if (what.equals(m.held)) return;
+        ItemStack before = hotbar(m, m.held), after = hotbar(m, what);
         m.held = what;
-        m.body.getEquipment().setItemInMainHand(hotbar(m, what));
+        m.body.getEquipment().setItemInMainHand(after);
+        if (before == null ? after != null : !before.isSimilar(after)) m.tickerResetAt = m.t + 1; // a slot change resets the swing meter
     }
 
     // ---- the human bits: aim shake, misses, swap time, how fast it turns its head
@@ -660,7 +690,42 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         } catch (ReflectiveOperationException | RuntimeException | LinkageError e) { return null; }
     }
 
+    // ---- an OFFLINE player mimicked "joins the game": the yellow join line and a line in the tab list, like a real login;
+    // gone = "left the game" and out of the tab list
+    void joinGame(Mimic m, OfflinePlayer who) {
+        if (who != null && who.isOnline()) return; // they're really here: already in the tab list
+        if (plugin.getConfig().getBoolean("mimic-player.fake-join", true))
+            announce(Component.translatable("multiplayer.player.joined", net.kyori.adventure.text.format.NamedTextColor.YELLOW, Component.text(m.name)));
+        if (plugin.getConfig().getBoolean("mimic-player.tab-list", true)) {
+            m.tabId = UUID.randomUUID();
+            MimicTab.add(Bukkit.getOnlinePlayers(), m.tabId, m.name, m.skin);
+        }
+    }
+
+    static void announce(Component c) {
+        for (Player p : Bukkit.getOnlinePlayers()) p.sendMessage(c);
+        try { Bukkit.getConsoleSender().sendMessage(c); } catch (RuntimeException ignored) { }
+    }
+
+    void leaveGame(Mimic m) {
+        if (m.tabId != null) { MimicTab.remove(Bukkit.getOnlinePlayers(), m.tabId); m.tabId = null; }
+        else if (m.who != null && Bukkit.getPlayer(m.who) != null) return;
+        if (plugin.getConfig().getBoolean("mimic-player.fake-join", true) && (m.who == null || Bukkit.getPlayer(m.who) == null))
+            announce(Component.translatable("multiplayer.player.left", net.kyori.adventure.text.format.NamedTextColor.YELLOW, Component.text(m.name)));
+    }
+
+    @EventHandler
+    public void onRealJoin(org.bukkit.event.player.PlayerJoinEvent e) {
+        Player p = e.getPlayer();
+        for (Mimic m : byBrain.values()) {
+            if (m.tabId == null) continue;
+            if (p.getUniqueId().equals(m.who)) { MimicTab.remove(Bukkit.getOnlinePlayers(), m.tabId); m.tabId = null; continue; } // the real one logged in: one line, theirs
+            MimicTab.add(List.of(p), m.tabId, m.name, m.skin);
+        }
+    }
+
     void remove(Mimic m) {
+        leaveGame(m);
         byBrain.remove(m.brain.getUniqueId());
         byBody.remove(m.body.getUniqueId());
         try { m.brain.remove(); } catch (RuntimeException ignored) { }
@@ -714,17 +779,30 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     double maxHp(LivingEntity e) { return e.getAttribute(Attribute.MAX_HEALTH).getValue(); }
 
     /** Attack cooldown in ticks of what it holds (sword 1.6 attacks/s, axe 1.0). */
-    static int cooldown(ItemStack w) {
-        if (w == null) return 5;
+    /** Ticks a full swing takes = 20 / the item's attack speed (vanilla). */
+    static double cooldown(ItemStack w) {
+        if (w == null) return 5; // fist: 4 / s
         String n = w.getType().name();
-        if (n.endsWith("_SWORD")) return 13;
-        if (n.endsWith("_AXE")) return n.startsWith("WOODEN") || n.startsWith("STONE") ? 25 : n.startsWith("IRON") ? 22 : 20;
-        if (n.equals("TRIDENT")) return 18;
-        if (n.equals("MACE")) return 33;
-        return 13;
+        if (n.endsWith("_SWORD")) return 12.5; // 1.6
+        if (n.endsWith("_AXE")) return n.startsWith("WOODEN") || n.startsWith("STONE") ? 25 : n.startsWith("IRON") ? 20 / 0.9 : 20; // 0.8 / 0.9 / 1.0
+        if (n.equals("TRIDENT")) return 20 / 1.1;
+        if (n.equals("MACE")) return 20 / 0.6;
+        if (n.endsWith("_SPEAR")) return 20 / 1.1;
+        if (n.endsWith("_PICKAXE")) return 20 / 1.2;
+        if (n.endsWith("_SHOVEL")) return 20.0;
+        if (n.endsWith("_HOE")) return 20 / 1.0;
+        return 5;
     }
 
-    double charge(Mimic m) { return Math.min(1, (m.t - m.lastHit) / (double) cooldown(weaponHeld(m))); }
+    /** Vanilla resets the attack ticker the tick AFTER the item in hand changes (a hit in the same tick keeps the old charge). */
+    void ticker(Mimic m) {
+        if (m.tickerResetAt > 0 && m.t >= m.tickerResetAt) { m.lastHit = Math.max(m.lastHit, m.tickerResetAt); m.tickerResetAt = 0; }
+    }
+
+    /** Vanilla's attack strength: (ticks since the last swing + 0.5) / delay. */
+    double charge(Mimic m, ItemStack w) { ticker(m); return Math.max(0, Math.min(1, (m.t - m.lastHit + 0.5) / cooldown(w))); }
+
+    double charge(Mimic m) { return charge(m, weaponHeld(m)); }
 
     /** Eye to the nearest point of the target's hitbox. */
     static double reachTo(LivingEntity from, LivingEntity to) {
@@ -762,6 +840,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         if (m.t - m.lastHurt > 120 && m.t % 10 == 0 && v.getHealth() < maxHp(v)) v.setHealth(Math.min(maxHp(v), v.getHealth() + 1));
 
         clutch(m); // water MLG on a long fall, any time
+        if (airCatch(m, tg)) { follow(m); return; }
         if (m.jumpAt == m.t && v.isOnGround() && tg != null) { // crit chain: back up into the air right after a crit
             Vector to = tg.getLocation().toVector().subtract(v.getLocation().toVector()).setY(0);
             if (to.lengthSquared() > 1e-4 && safePath(v, to.clone().normalize(), 2.5)) Safe.vel(v, to.normalize().multiply(0.25).setY(0.42));
@@ -989,7 +1068,6 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         if (m.flyTicks > 4 && speed < 0.9 && m.t >= m.nextRocket && m.rockets > 0 && dist > 6) rocket(m, tg, 0.1);
         // hit as it passes (falling = a crit; flying in fast = a sprint hit; a mace smashes)
         if (reachTo(v, tg) <= cfg("reach", 3.0) && charge(m) >= m.skill.hitSelect() && sees(v, tg)) {
-            if (m.gear.mace != null && cur.getY() < -0.5) { hold(m, "mace"); smash(m, tg); land(m); return; }
             hold(m, "sword");
             m.sprintHit = speed > 0.5;
             strike(m, tg, charge(m));
@@ -1711,12 +1789,17 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
                 Emotes.q(() -> m.body.startUsingItem(EquipmentSlot.OFF_HAND));
                 return false; // keeps doing whatever it was, shield up
             }
-            if (tier(m) < 3 || !v.isOnGround()) return false;
+            if (tier(m) < 3) return false;
             Vector side = new Vector(miss.getX(), 0, miss.getZ());
             if (side.lengthSquared() < 0.01) side = new Vector(-u.getZ(), 0, u.getX()); // dead on: either side
             side.normalize();
             if (!safeStep(v, side)) side.multiply(-1);
             if (!safeStep(v, side)) return false;
+            if (!v.isOnGround()) { // mid-jump: air-strafe out of the line (a player's air control)
+                Vector cur = v.getVelocity();
+                Safe.vel(v, new Vector(cur.getX() * 0.6 + side.getX() * 0.25, cur.getY(), cur.getZ() * 0.6 + side.getZ() * 0.25));
+                return true;
+            }
             walk(v, side.multiply(0.42).setY(v.getVelocity().getY()), 3); // a sidestep out of its line
             return true;
         }
@@ -1930,6 +2013,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
                 // SPRINT HIT: lunge in (sprinting) and hit (no lunge toward lava or a drop)
                 if (safePath(v, to0, 1.8)) walk(v, new Vector(to0.getX() * 0.42, v.getVelocity().getY(), to0.getZ() * 0.42), 3);
                 m.sprintHit = true;
+                breachSwap(m, tg);
                 if (!whiff(m, tg)) strike(m, tg, ch);
                 return;
             }
@@ -2153,16 +2237,19 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     /** One hit, the way a player's would land. */
     private void strike(Mimic m, Player tg, double charge) {
         Vindicator v = m.brain;
-        boolean crit = canCrit(m) && !m.sprintHit;
         ItemStack w = weaponHeld(m);
+        boolean full = charge > 0.9; // vanilla: crits and sprint knockback both need a 90% swing
+        if (!full) m.sprintHit = false;
+        boolean crit = full && canCrit(m) && !m.sprintHit;
         double base = w == null ? 1 : baseDamage(w.getType());
         double sharp = level(w, "sharpness");
         PotionEffect str = v.getPotionEffect(PotionEffectType.STRENGTH), weak = v.getPotionEffect(PotionEffectType.WEAKNESS);
         base += (str == null ? 0 : 3 * (str.getAmplifier() + 1)) - (weak == null ? 0 : 4 * (weak.getAmplifier() + 1));
         base = Math.max(0.5, base);
-        double dmg = (base * (0.2 + 0.8 * charge * charge) + (sharp > 0 ? 0.5 * sharp + 0.5 : 0) * charge) * (crit ? 1.5 : 1);
+        double dmg = base * (0.2 + 0.8 * charge * charge) * (crit ? 1.5 : 1) + (sharp > 0 ? 0.5 * sharp + 0.5 : 0) * charge; // the crit multiplies the attack, not Sharpness
         if (m.held.equals("spear")) dmg += Math.min(6, Math.hypot(v.getVelocity().getX(), v.getVelocity().getZ()) * 6) * charge; // a spear hits harder the faster you're going
         if (m.held.equals("trident") && wet(tg)) dmg += 2.5 * level(w, "impaling");
+        dmg *= breachMult(tg, dmg, level(w, "breach")); // a Breach mace's ground hit: their armour counts for less
         dmg *= cfg("damage-multiplier", 1.0);
         swing(m);
         boolean axeOnShield = m.held.equals("axe") && tg.isBlocking() && facing(tg, v);
@@ -2175,10 +2262,21 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             tg.getWorld().playSound(tg.getLocation(), Sound.ITEM_SHIELD_BREAK, 1, 1);
             m.axeUntil = m.t + 4;
         }
-        Vector push = tg.getLocation().toVector().subtract(v.getLocation().toVector()).setY(0);
+        // vanilla bonus knockback ((Knockback level + 1 for a charged sprint hit) x 0.5, along the attacker's facing);
+        // the base 0.4 comes from the hit itself. A sprint hit then stops its sprint and slows it (x0.6)
         int kbLvl = level(w, "knockback");
-        if ((m.sprintHit || kbLvl > 0) && push.lengthSquared() > 1e-4)
-            Safe.vel(tg, tg.getVelocity().add(push.normalize().multiply((m.sprintHit ? 0.45 : 0) + 0.45 * kbLvl).setY(0.1)));
+        double bonus = (kbLvl + (m.sprintHit ? 1 : 0)) * 0.5;
+        if (bonus > 0 && !axeOnShield) {
+            double res = 0;
+            try { res = tg.getAttribute(Attribute.KNOCKBACK_RESISTANCE).getValue(); } catch (RuntimeException ex) { }
+            double kStr = bonus * (1 - Math.max(0, Math.min(1, res)));
+            double yaw = Math.toRadians(v.getLocation().getYaw());
+            Vector dir = new Vector(-Math.sin(yaw), 0, Math.cos(yaw));
+            Vector old = tg.getVelocity();
+            if (kStr > 0) Safe.vel(tg, new Vector(old.getX() / 2 + dir.getX() * kStr, tg.isOnGround() ? Math.min(0.4, old.getY() / 2 + kStr) : old.getY(), old.getZ() / 2 + dir.getZ() * kStr));
+            Vector mine = v.getVelocity();
+            Safe.vel(v, new Vector(mine.getX() * 0.6, mine.getY(), mine.getZ() * 0.6));
+        }
         int fire = level(w, "fire_aspect");
         if (fire > 0 && !axeOnShield) tg.setFireTicks(Math.max(tg.getFireTicks(), 80 * fire));
         Location l = tg.getLocation().add(0, 1, 0);
@@ -2205,23 +2303,30 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     /**
      * MACE TECHS: WIND-CHARGE SLAM (throws one at its feet, flies up, steers in the air, smashes on the way down),
      * WIND BURST POGO (Wind Burst throws it back up after a smash: it chains), STUN SLAM (your shield's up: the axe breaks
-     * it, then the mace lands), ELYTRA DIVE (rockets up from range and dives in), AXE/SWORD TO MACE SWAP (any time it's
-     * falling far enough into reach, it swaps to the mace for the hit). Density adds 0.5 a block per level, Breach cuts
-     * through armour.
+     * it, then the mace lands), BACKSLAM (lands behind a shield / someone facing it), PEARL CATCHES (vertical, double height,
+     * sideways, mid-air), ATTRIBUTE SWAP (hard+: the sword's charge, the mace's hit), DENSITY / BREACH SWAP, AXE/SWORD TO MACE
+     * SWAP (falling into reach). No elytra mace (off on Faultline).
      */
     private boolean maceTech(Mimic m, Player tg, double dist, boolean sees) {
         Vindicator v = m.brain;
         boolean ground = v.isOnGround();
         if (m.slam) {
-            if (ground && m.t > m.maceReady - 50) { m.slam = false; m.dive = false; hold(m, "sword"); return false; } // missed: landed
-            // air control toward the target (a player steering a slam)
-            Vector to = tg.getLocation().toVector().subtract(v.getLocation().toVector()).setY(0);
+            if (ground && m.t > m.maceReady - 50 && m.catchAt <= m.t) { m.slam = false; m.dive = false; hold(m, "sword"); return false; } // missed: landed
+            if (m.catchAt == m.t) { pearlCatch(m, m.catchVel, true); return true; } // DOUBLE HEIGHT: the pearl catch on the way up
+            // air control toward the target (a player steering a slam); BACKSLAM (normal+): shield up / facing it = it lands BEHIND them
+            Location aimAt = tg.getLocation();
+            if (tier(m) >= 2 && (tg.isBlocking() && m.gear.axe == null || tier(m) >= 3 && facing(tg, v))) {
+                Vector back = tg.getLocation().getDirection().setY(0);
+                if (back.lengthSquared() > 1e-4) aimAt = tg.getLocation().clone().subtract(back.normalize().multiply(1.4));
+            }
+            Vector to = aimAt.toVector().subtract(v.getLocation().toVector()).setY(0);
             Vector cur = v.getVelocity();
             if (to.lengthSquared() > 0.04) {
                 to.normalize().multiply(m.dive && cur.getY() < 0 ? 0.9 : 0.32);
                 Safe.vel(v, new Vector(cur.getX() * 0.7 + to.getX() * 0.3, m.dive && cur.getY() < 0 ? Math.min(cur.getY(), -0.9) : cur.getY(), cur.getZ() * 0.7 + to.getZ() * 0.3));
             }
-            if (cur.getY() < -0.1 && v.getFallDistance() > 1.5) hold(m, "mace");
+            // ATTRIBUTE SWAP (hard+): the sword stays out until the hit's last tick (smash() swaps); below that, the mace comes out early
+            if (cur.getY() < -0.1 && v.getFallDistance() > 1.5 && tier(m) < 3) hold(m, "mace");
             if (cur.getY() < -0.1 && v.getFallDistance() > 1.5 && reachTo(v, tg) <= cfg("reach", 3.0) + 0.5) smash(m, tg);
             return true;
         }
@@ -2230,43 +2335,124 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             hold(m, "mace"); smash(m, tg); return true;
         }
         if (m.t < m.maceReady || !sees) return false;
-        // WIND-CHARGE SLAM
+        int tr = tier(m);
+        boolean canCatch = tr >= 3 && m.pearlsLeft > 0 && m.wind > 0 && m.t >= m.pearlReady && m.t >= m.catchReady;
+        // SIDEWAYS PEARL CATCH (hard+): they're 12-32 off = a pearl at 45 degrees + a wind charge behind it rockets it at them
+        if (canCatch && dist > 12 && dist < 32 && random.nextDouble() < 0.1) {
+            Vector to = intercept(m, tg, tg.getLocation().toVector().subtract(v.getLocation().toVector()).setY(0).normalize(), dist);
+            double h = Math.min(2.1, 0.07 * dist + 0.5);
+            pearlCatch(m, to.clone().multiply(h).setY(0.55), true);
+            return true;
+        }
+        // VERTICAL PEARL CATCH (hard+): pearl straight up + a wind charge = ~20 blocks up for a Density slam;
+        // DOUBLE HEIGHT (godlike, 2+ wind charges): wind charge first, then the catch on the way up inherits it = ~40
+        if (canCatch && ground && dist <= 7 && level(m.gear.mace, "density") > 0 && random.nextDouble() < 0.06 && !v.getLocation().getBlock().getRelative(0, 3, 0).getType().isSolid()) {
+            Vector to = tg.getLocation().toVector().subtract(v.getLocation().toVector()).setY(0);
+            Vector drift = to.lengthSquared() > 1e-4 ? to.normalize().multiply(0.12) : new Vector();
+            if (tr >= 4 && m.wind >= 2) {
+                windJump(m, tg, drift.clone().multiply(1.5));
+                m.catchAt = m.t + 5; m.catchVel = drift.clone().setY(2.6);
+                m.maceReady = m.t + 100;
+            } else pearlCatch(m, drift.clone().setY(1.9), true);
+            return true;
+        }
+        // WIND-CHARGE SLAM: look down, jump, wind charge at its feet
         if (ground && dist <= 5.5 && m.wind > 0 && random.nextDouble() < 0.08 + m.skill.jumpCrit() * 0.1) {
+            windJump(m, tg, null);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * GROUND BREACH SWAP (hard+): into heavy armour (15+ points) with a Breach mace, the hit swaps from the sword to the
+     * mace on its last tick: the sword's charge, the mace's Breach. The sword's back 2 ticks later.
+     */
+    private void breachSwap(Mimic m, Player tg) {
+        ItemStack b = m.gear.breachMace;
+        if (b == null && m.gear.mace != null && level(m.gear.mace, "breach") > 0) b = m.gear.mace;
+        if (b == null || tier(m) < 3 || armourPoints(tg) < 15 || !m.held.equals("sword")) return;
+        hold(m, b == m.gear.breachMace ? "breach" : "mace");
+        Bukkit.getScheduler().runTaskLater(plugin, () -> { if (m.body.isValid() && (m.held.equals("breach") || m.held.equals("mace")) && !m.slam) hold(m, "sword"); }, 2L);
+    }
+
+    /** Look straight down, jump, wind charge at the feet: ~7-8 blocks up, straight into a slam. */
+    private void windJump(Mimic m, Player tg, Vector drift) {
+        Vindicator v = m.brain;
+        {
             m.wind--;
+            m.lookDownUntil = m.t + 3;
             hold(m, "wind");
             swing(m);
             Location feet = v.getLocation();
             v.getWorld().spawnParticle(Particle.GUST_EMITTER_SMALL, feet, 1);
             v.getWorld().playSound(feet, Sound.ENTITY_WIND_CHARGE_WIND_BURST, 1, 1);
             Vector to = tg.getLocation().toVector().subtract(feet.toVector()).setY(0);
-            Vector out = to.lengthSquared() > 1e-4 ? to.normalize().multiply(0.2) : new Vector();
-            Safe.vel(v, out.setY(1.25)); // ~7 blocks up, like a wind charge at your feet
+            Vector out = drift != null ? drift : to.lengthSquared() > 1e-4 ? to.normalize().multiply(0.2) : new Vector();
+            Safe.vel(v, out.setY(v.isOnGround() ? 1.4 : 1.25)); // jump + the charge at its feet
+            v.setFallDistance(0); // a wind charge's knockback resets the fall it counts from
             m.slam = true; m.dive = false;
             m.stunSlam = tg.isBlocking() && m.gear.axe != null;
             m.maceReady = m.t + 60;
-            return true;
         }
-        // ELYTRA DIVE from range
-        if (ground && dist > 10 && dist < 26 && m.gear.elytra && m.rockets > 0 && random.nextDouble() < 0.04) {
-            m.rockets--;
-            hold(m, "rocket");
+    }
+
+    /**
+     * PEARL CATCH: a pearl thrown along `vel` and a wind charge right behind it: the burst rockets the pearl (it inherits its
+     * thrower's speed), and the thrower is teleported riding that momentum. `vel` is where it ends up going.
+     */
+    private void pearlCatch(Mimic m, Vector vel, boolean slam) {
+        Vindicator v = m.brain;
+        if (m.pearlsLeft <= 0 || m.wind <= 0) return;
+        m.pearlsLeft--; m.wind--;
+        m.pearlReady = m.t + 300; m.catchReady = m.t + 80; m.catchAt = 0;
+        Location eye = eye(m);
+        Vector look = vel.clone().normalize();
+        m.lookDownUntil = 0;
+        hold(m, "pearl");
+        swing(m);
+        v.getWorld().playSound(eye, Sound.ENTITY_ENDER_PEARL_THROW, 1, 1);
+        EnderPearl fx = v.getWorld().spawn(eye.clone().add(look.clone().multiply(0.6)), EnderPearl.class, e -> { e.setShooter(v); e.addScoreboardTag("faultline_mimic_fx"); });
+        Safe.vel(fx, look.clone().multiply(1.5));
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (!v.isValid()) { fx.remove(); return; }
+            hold(m, "wind");
             swing(m);
-            v.getWorld().playSound(v.getLocation(), Sound.ENTITY_FIREWORK_ROCKET_LAUNCH, 1, 1);
-            v.getWorld().spawnParticle(Particle.FIREWORK, v.getLocation(), 20, 0.2, 0.2, 0.2, 0.05);
-            Vector to = tg.getLocation().toVector().subtract(v.getLocation().toVector()).setY(0).normalize().multiply(0.6);
-            Safe.vel(v, to.setY(1.7));
-            m.slam = true; m.dive = true;
-            m.stunSlam = false;
-            m.maceReady = m.t + 120;
-            return true;
-        }
-        return false;
+            Location at = fx.isValid() ? fx.getLocation() : v.getLocation().clone().add(look.clone().multiply(2));
+            fx.remove();
+            if (at.getBlock().getType().isSolid() || at.getBlock().getRelative(0, 1, 0).getType().isSolid()) at = v.getLocation(); // never into a wall
+            at.setYaw(v.getLocation().getYaw());
+            at.getWorld().spawnParticle(Particle.GUST_EMITTER_SMALL, at, 1);
+            at.getWorld().playSound(at, Sound.ENTITY_WIND_CHARGE_WIND_BURST, 1, 1);
+            v.teleport(at);
+            v.getWorld().playSound(at, Sound.ENTITY_PLAYER_TELEPORT, 1, 1);
+            Safe.vel(v, vel);
+            v.setFallDistance(0);
+            m.noFallUntil = m.t + 5;
+            if (slam) { m.slam = true; m.dive = false; m.maceReady = m.t + 80; }
+            Bukkit.getScheduler().runTaskLater(plugin, () -> { if (m.body.isValid() && m.slam && tier(m) < 3) hold(m, "mace"); else if (m.body.isValid()) hold(m, "sword"); }, 3L);
+        }, 3L);
+    }
+
+    /**
+     * MID-AIR PEARL CATCH (hard+): falling fast from a failed dive / a knock off a ledge and not about to land a hit = a pearl
+     * straight up + a wind charge: back up into the sky, fall reset, ready to drop again.
+     */
+    private boolean airCatch(Mimic m, Player tg) {
+        Vindicator v = m.brain;
+        if (tier(m) < 3 || v.isOnGround() || v.getVelocity().getY() > -0.8 || v.getFallDistance() < 10 || m.pearlsLeft <= 0 || m.wind <= 0 || m.t < m.pearlReady || m.t < m.catchReady) return false;
+        if (tg != null && m.gear.mace != null && reachTo(v, tg) < 5 && tg.getLocation().getY() < v.getLocation().getY()) return false; // about to land the slam: let it
+        if (m.water > 0 && worldTechs() && v.getFallDistance() < 20) return false; // a water clutch will do
+        pearlCatch(m, new Vector(0, 1.3, 0), m.gear.mace != null);
+        return true;
     }
 
     private void smash(Mimic m, Player tg) {
         Vindicator v = m.brain;
-        ItemStack mace = m.gear.mace;
         double fall = v.getFallDistance();
+        // DENSITY / BREACH SWAP: a high slam (7+) = the Density mace; a low one into heavy armour = the Breach mace
+        boolean breachIt = m.gear.breachMace != null && tier(m) >= 2 && (fall < 7 || level(m.gear.mace, "density") == 0) && armourPoints(tg) >= 15;
+        ItemStack mace = breachIt ? m.gear.breachMace : m.gear.mace;
         // STUN SLAM: shield up? the axe breaks it first
         if ((m.stunSlam || tg.isBlocking()) && m.gear.axe != null && tg.isBlocking()) {
             hold(m, "axe");
@@ -2276,9 +2462,12 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             hold(m, "mace");
         }
         m.stunSlam = false;
-        double dmg = 6 * 1.5 + maceBonus(fall) + 0.5 * level(mace, "density") * fall;
-        int breach = level(mace, "breach");
-        if (breach > 0) dmg *= 1 + 0.12 * breach; // armour counts for less
+        // ATTRIBUTE SWAP (hard+): it swings with the SWORD's cooldown and swaps to the mace on the hit's last tick, so the
+        // swing counts as fully charged; without it the mace's own 1.65 s cooldown scales the base hit down
+        double c = tier(m) >= 3 ? charge(m, m.gear.weapon) : charge(m, mace);
+        hold(m, breachIt ? "breach" : "mace");
+        double dmg = 6 * (0.2 + 0.8 * c * c) * 1.5 + maceBonus(fall) + 0.5 * level(mace, "density") * fall;
+        dmg *= breachMult(tg, dmg, level(mace, "breach")); // Breach: their armour counts for less
         dmg *= cfg("damage-multiplier", 1.0);
         swing(m);
         striking = true;
@@ -2844,6 +3033,13 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     public void onDeath(EntityDeathEvent e) {
         Mimic m = byBrain.get(e.getEntity().getUniqueId());
         if (m == null) return;
+        if (m.tabId != null && plugin.getConfig().getBoolean("mimic-player.fake-join", true)) { // a player's death line, then they log off
+            Player killer = e.getEntity().getKiller();
+            announce(killer != null
+                    ? Component.translatable("death.attack.player", Component.text(m.name), killer.displayName())
+                    : Component.translatable("death.attack.generic", Component.text(m.name)));
+            Bukkit.getScheduler().runTaskLater(plugin, () -> leaveGame(m), 40L);
+        }
         e.getDrops().clear();
         e.setDroppedExp(plugin.getConfig().getInt("mimic-player.xp", 0));
         if (plugin.getConfig().getBoolean("mimic-player.drop-inventory", true)) { // killed = it drops everything it had left, like a player

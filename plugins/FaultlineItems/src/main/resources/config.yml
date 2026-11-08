@@ -792,6 +792,8 @@ mimic-player:
   doors: true           # opens wooden doors / trapdoors / fence gates in its way (and looks for one when walled off), shuts them behind it
   arm-animations: true  # draws its M1 / mining swings with arm poses (a mannequin can't play the vanilla swing)
   drop-inventory: true  # killed = drops everything it had left (armour as worn, weapons, unused pots / gaps / pearls...). NOTE: copies a real player's gear
+  fake-join: true       # mimicking an OFFLINE player says "<name> joined the game" (and "left the game" / a death line when it goes)
+  tab-list: true        # ...and puts them in the tab list while it is out
   combat-tag:           # it hitting you / you hitting it = in combat. With DonutCombat installed its own tag is used (its duration, blocked commands, combat-log kill)
     enabled: true
     use-donutcombat: true

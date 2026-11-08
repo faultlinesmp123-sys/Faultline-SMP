@@ -733,6 +733,12 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
 
     private double kcfg(String path, double def) { return getConfig().getDouble("kraken." + path, def); }
 
+    /** Bosses 2.0.1: the Abyssal Kraken is smaller (players lagged). A server config still holding 1.9.0's default reads as the new one. */
+    private double acfg(String path, double old, double now) {
+        double v = getConfig().getDouble("kraken.abyssal." + path, now);
+        return Math.abs(v - old) < 1e-9 ? now : v;
+    }
+
     /** The Dark Ocean (FaultlineDeep's world): a Kraken woken there is the Abyssal Kraken, ten times his size. */
     boolean colossalWorld(World w) {
         return w != null && getConfig().getBoolean("kraken.abyssal.enabled", true)
@@ -919,7 +925,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         final double k, hs, ms;
         final Map<UUID, Integer> touched = new HashMap<>();
         final List<Vector> storm = new ArrayList<>(); int stormT;
-        double far(double d) { return colossal ? d * kcfg("abyssal.reach-scale", 2.5) : d; }
+        double far(double d) { return colossal ? d * acfg("reach-scale", 2.5, 1.6) : d; }
         double bodyR(double d) { return colossal ? d * k * 0.6 : d; }
 
         final class Arm {
@@ -1086,14 +1092,18 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             this.vessel = vessel;
             atSea = vessel != null;
             colossal = !atSea && !krakenNormalOnly && colossalWorld(world);
-            scale = (float) (colossal ? kcfg("abyssal.scale", 40.0) : kcfg("scale", 4.0));
+            scale = (float) (colossal ? acfg("scale", 40.0, 14.0) : kcfg("scale", 4.0));
             k = colossal ? scale / Math.max(0.5, kcfg("scale", 4.0)) : 1;
-            hs = colossal ? kcfg("abyssal.hit-scale", 2.2) : 1;
-            ms = colossal ? kcfg("abyssal.move-scale", 2.2) : 1;
+            hs = colossal ? acfg("hit-scale", 2.2, 1.5) : 1;
+            ms = colossal ? acfg("move-scale", 2.2, 1.4) : 1;
             maxHp = atSea ? kcfg("sea.health", 1600) : colossal ? kcfg("abyssal.health", 9000) : kcfg("health", 2200); hp = maxHp; defense = kcfg("defense", 0.3);
             double floor = seabedY(at.getX(), at.getZ(), at.getY());
             home = atSea ? new Location(world, at.getX(), surfaceY(at.getX(), at.getZ(), at.getY()) + kcfg("sea.rise", 1.2) * scale / 4, at.getZ())
                          : new Location(world, at.getX(), Math.max(floor + 9 * scale / 4, at.getY() - 4), at.getZ());
+            if (!atSea) { // 2.0.1: his home must fit his whole head (a summon beside a cliff put him half in it)
+                pos = home.toVector();
+                if (!fits(pos, headR())) { Vector f = openWater(headR()); if (f != null) { home.setX(f.getX()); home.setY(f.getY()); home.setZ(f.getZ()); } }
+            }
             pos = home.toVector().add(new Vector(0, -14 * k, 0)); // starts deep below, and rises
             if (by != null) {
                 Vector to = by.getLocation().toVector().subtract(pos);
@@ -1114,10 +1124,10 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             for (int i = 0; i < ARMS; i++) arms[i] = new Arm(i);
             for (Arm a : arms) for (ItemDisplay d : a.segs) if (d != null) d.setViewRange(8f);
             if (colossal) { // big displays are culled by a box at their origin: give them one their size (or they blink out)
-                for (ItemDisplay d : new ItemDisplay[]{mantle, beakTop, beakBottom, pupilL, pupilR}) { d.setViewRange(16f); d.setDisplayWidth(scale * 2.5f); d.setDisplayHeight(scale * 2.5f); }
-                for (Arm a : arms) for (ItemDisplay d : a.segs) if (d != null) { d.setViewRange(16f); d.setDisplayWidth(scale); d.setDisplayHeight(scale); }
+                for (ItemDisplay d : new ItemDisplay[]{mantle, beakTop, beakBottom, pupilL, pupilR}) { d.setViewRange(6f); d.setDisplayWidth(scale * 2.5f); d.setDisplayHeight(scale * 2.5f); }
+                for (Arm a : arms) for (ItemDisplay d : a.segs) if (d != null) { d.setViewRange(5f); d.setDisplayWidth(scale); d.setDisplayHeight(scale); }
             }
-            proxy(hitbox, mantle, EntityType.GLOW_SQUID, colossal ? 16 : kcfg("bedrock.squid-scale", 10)); // Bedrock: a giant glow squid
+            proxy(hitbox, mantle, EntityType.GLOW_SQUID, colossal ? 8 : kcfg("bedrock.squid-scale", 10)); // Bedrock: a giant glow squid
             bar = Bukkit.createBossBar(ChatColor.DARK_AQUA + "" + ChatColor.BOLD + title(), colossal ? BarColor.PURPLE : BarColor.BLUE, BarStyle.SEGMENTED_6);
             pinkTimer = (int) kcfg("pink-bubble-seconds", 15) * 20;
             playMusic();
@@ -1222,8 +1232,19 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             if (ticks % 10 == 0) bossPart("Kraken", "music", this::musicTick);
         }
 
+        /** Bosses 2.0.1: every model piece is a teleport + a transformation packet to everyone watching (~150 a tick):
+         *  now every 2nd tick (the displays interpolate over 2 ticks, so it looks the same), and none with nobody near. */
+        boolean send() {
+            if (dying || leaving) return true;
+            if ((ticks & 1) != 0) return false;
+            double r = colossal ? 200 : 128;
+            for (Player p : world.getPlayers()) if (p.getLocation().toVector().distanceSquared(pos) < r * r) return true;
+            return false;
+        }
+
         void renderAll() {
-            bossPart("Kraken", "arms", () -> { for (Arm arm : arms) { arm.solve(); arm.render(); } });
+            boolean send = send();
+            bossPart("Kraken", "arms", () -> { for (Arm arm : arms) { arm.solve(); if (send) arm.render(); } });
             bossPart("Kraken", "drawing", this::render);
         }
 
@@ -1331,8 +1352,8 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                     int cycle = (int) Math.max(20, 40 / sp), c = ticks % cycle;
                     double flat = Math.hypot(to.getX(), to.getZ());
                     Vector station = tp.clone().add(new Vector(0, 2, 0));
-                    if (colossal) station.add(new Vector(0, kcfg("abyssal.station-height", 20), 0)); // his beak and arms hang low: his head stays above you
-                    double sd = colossal ? kcfg("abyssal.station", 50) : 10;
+                    if (colossal) station.add(new Vector(0, acfg("station-height", 20, 8), 0)); // his beak and arms hang low: his head stays above you
+                    double sd = colossal ? acfg("station", 50, 20) : 10;
                     if (colossal) { // always that far off (the normal one stays put once he's within 10): never with you inside his head
                         Vector away = flat > 0.1 ? new Vector(-to.getX(), 0, -to.getZ()).multiply(1 / flat) : new Vector(Math.sin(Math.toRadians(yaw)), 0, -Math.cos(Math.toRadians(yaw)));
                         station.add(away.multiply(sd));
@@ -1378,14 +1399,98 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             if (atSea) { keepAtSurface(); return; }
             if (!finite(pos)) pos = home.toVector();
             Vector flat = pos.clone().subtract(home.toVector()).setY(0);
-            double limit = colossal ? kcfg("abyssal.arena-radius", 140) : kcfg("arena-radius", 24);
+            double limit = colossal ? acfg("arena-radius", 140, 70) : kcfg("arena-radius", 24);
             if (flat.length() > limit) { pos = home.toVector().add(flat.normalize().multiply(limit)).setY(pos.getY()); vel.multiply(0.3); }
+            if (intro <= 0) unwall(); // (during the intro he rises out of the dark on purpose)
             double top = surfaceY(pos.getX(), pos.getZ(), Math.min(pos.getY(), home.getY() + 30 * k)) - 5.5 * scale / 4;
             double floor = seabedY(pos.getX(), pos.getZ(), pos.getY()) + 4.5 * scale / 4;
+            // Bosses 2.0.1: his head is wide, so the rock beside the middle counts too (he sank into slopes and ledges)
+            if (wallTick != ticks / 4) { wallTick = ticks / 4; ringFloor = ringFloor(); }
+            if (ringFloor > -1e8) floor = Math.max(floor, ringFloor + 4.5 * scale / 4 * 0.75);
             if (top < floor) { // a shallow spot: the middle of the water column
                 double mid = (top + floor) / 2; pos.setY(mid);
             } else if (pos.getY() > top) { pos.setY(top); if (vel.getY() > 0) vel.setY(0); }
             else if (pos.getY() < floor && intro <= 0) { pos.setY(floor); if (vel.getY() < 0) vel.setY(0); }
+        }
+
+        // ---- Bosses 2.0.1: never stuck in the ground. Only the column under his middle was checked, so his head swam into
+        // cliffs, ledges and cave walls beside it and sat there half buried.
+        int wallTick = -1, buried; double ringFloor = -1e9;
+        double headR() { return 3.5 * scale / 4; }
+
+        boolean solidAt(double x, double y, double z) {
+            int bx = (int) Math.floor(x), bz = (int) Math.floor(z), by = (int) Math.floor(y);
+            if (by < world.getMinHeight() || by >= world.getMaxHeight()) return by < world.getMinHeight();
+            if (!world.isChunkLoaded(bx >> 4, bz >> 4)) return true; // never into unloaded ground
+            return world.getBlockAt(bx, by, bz).getType().isSolid();
+        }
+
+        /** The highest floor under the edge of his head (only ground BELOW him: walls are unwall()'s job). */
+        double ringFloor() {
+            double r = headR() * 0.75, best = -1e9;
+            for (int i = 0; i < 8; i++) {
+                double a = i * Math.PI / 4, x = pos.getX() + Math.cos(a) * r, z = pos.getZ() + Math.sin(a) * r;
+                if (solidAt(x, pos.getY(), z)) continue;
+                double f = seabedY(x, z, pos.getY());
+                if (f <= pos.getY() && f > best) best = f;
+            }
+            return best;
+        }
+
+        /** Pushes him out of any rock his head overlaps, kills the speed going into it, and if he's still buried after
+         *  2 s (a cave, a slide), lifts him to the nearest open water that fits his head. */
+        void unwall() {
+            double r = headR();
+            Vector out = new Vector(); int hit = 0, tried = 0;
+            for (int i = 0; i < 12; i++) {
+                double a = i * Math.PI / 6, cx = Math.cos(a), cz = Math.sin(a);
+                for (double f : new double[]{0.5, 1.0}) for (double dy : new double[]{-0.6, 0, 0.6}) {
+                    tried++;
+                    if (solidAt(pos.getX() + cx * r * f, pos.getY() + dy * r, pos.getZ() + cz * r * f)) {
+                        out.add(new Vector(-cx, -dy * 0.8, -cz).multiply(f)); hit++;
+                    }
+                }
+            }
+            boolean core = solidAt(pos.getX(), pos.getY(), pos.getZ());
+            if (hit == 0 && !core) { buried = 0; return; }
+            if (out.lengthSquared() > 1e-6) {
+                Vector dir = out.normalize();
+                pos.add(dir.clone().multiply(Math.min(0.25 + 0.04 * hit, 1.2) * ms));
+                double into = -vel.dot(dir);
+                if (into > 0) vel.add(dir.clone().multiply(into));
+            }
+            if (core || hit > tried / 3) buried++; else buried = Math.max(0, buried - 1);
+            if (buried < 40) return;
+            buried = 0;
+            Vector free = openWater(r);
+            if (free != null) {
+                pos = free; vel = new Vector();
+                world.spawnParticle(Particle.BUBBLE_COLUMN_UP, pos.toLocation(world), colossal ? 120 : 30, r * 0.4, r * 0.4, r * 0.4, 0.1);
+                getLogger().info("[Kraken] was stuck in the ground: moved him to open water.");
+            }
+        }
+
+        boolean fits(Vector c, double r) {
+            if (!isWater(world.getBlockAt(c.getBlockX(), c.getBlockY(), c.getBlockZ()))) return false;
+            for (int i = 0; i < 8; i++) {
+                double a = i * Math.PI / 4;
+                for (double dy : new double[]{-0.6, 0, 0.6}) if (solidAt(c.getX() + Math.cos(a) * r, c.getY() + dy * r, c.getZ() + Math.sin(a) * r)) return false;
+            }
+            return true;
+        }
+
+        /** The nearest spot (up first, then outward) where his whole head is in water. */
+        Vector openWater(double r) {
+            for (int step = 1; step <= 12; step++) {
+                double d = step * r * 0.5;
+                Vector[] tries = {new Vector(0, d, 0), new Vector(d, d * 0.5, 0), new Vector(-d, d * 0.5, 0), new Vector(0, d * 0.5, d),
+                        new Vector(0, d * 0.5, -d), new Vector(d, 0, d), new Vector(-d, 0, -d), new Vector(d, 0, -d), new Vector(-d, 0, d)};
+                for (Vector t : tries) {
+                    Vector c = pos.clone().add(t);
+                    if (fits(c, r)) return c;
+                }
+            }
+            return null;
         }
 
         /** At sea: his head stays out of the water (rising to it during the intro), wherever the ship goes. */
@@ -2087,7 +2192,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             lastSeen = ticks;
             Player f = a.get(random.nextInt(a.size()));
             Vector spot = colossal
-                    ? f.getLocation().toVector().add(safeDir(new Vector(random.nextGaussian(), 0, random.nextGaussian()), new Vector(1, 0, 0)).multiply(kcfg("abyssal.station", 50))).add(new Vector(0, kcfg("abyssal.station-height", 20), 0))
+                    ? f.getLocation().toVector().add(safeDir(new Vector(random.nextGaussian(), 0, random.nextGaussian()), new Vector(1, 0, 0)).multiply(acfg("station", 50, 20))).add(new Vector(0, acfg("station-height", 20, 8), 0))
                     : f.getLocation().toVector().add(new Vector(random.nextGaussian() * 6, 0, random.nextGaussian() * 6));
             pos = spot; vel = new Vector();
             keepInWater();
@@ -2127,9 +2232,13 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             Quaternionf rot = rotModel();
             Quaternionf base = rotBase(); // for positions (rot is only for drawing)
             Location l = pos.toLocation(world); l.setYaw(0); l.setPitch(0);
-            mantle.teleport(l);
-            mantle.setInterpolationDelay(0);
-            mantle.setTransformation(new Transformation(new Vector3f(), rot, new Vector3f(scale * sxz, scale * sy, scale * sxz), new Quaternionf()));
+            boolean send = send();
+            if (send) {
+                mantle.teleport(l);
+                mantle.setInterpolationDelay(0);
+                mantle.setTransformation(new Transformation(new Vector3f(), rot, new Vector3f(scale * sxz, scale * sy, scale * sxz), new Quaternionf()));
+            }
+            if (!send) return;
             // eyes follow the nearest player
             Player look = null; double bd = far(40) * far(40);
             for (Player p : world.getPlayers()) { double d = p.getLocation().toVector().distanceSquared(pos); if (d < bd) { bd = d; look = p; } }

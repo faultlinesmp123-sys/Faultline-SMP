@@ -1749,6 +1749,18 @@ Notes:
   gunner per gun; others get "Someone's manning that gun." Pushed past `leave-distance` 4.5, the gun gone or the ship wrecked =
   let go. `LandCannons.turn(c, yaw, pitch, eps)` for fine steps. Tested (scratch `gt/GunTest`: man, hold sneak, W/D/fine,
   clamp, Jump fire + ball used + upward shot, scroll = heavy x1.3, reload, arc, leave, stranger, distance, quit).
+- **The Kraken: smaller, lighter, never in the ground (Bosses 2.0.1)**: STUCK: `keepInWater` only checked the column under his
+  middle, so his wide head swam into cliffs, ledges and cave walls and sat there buried. Now `unwall()` (not during the intro)
+  tests 72 points round his head (`headR` = 3.5 x scale/4, 12 directions x 2 rings x 3 heights, `solidAt`, unloaded = solid),
+  pushes him out and kills the speed going into rock; buried 2 s = moved to the nearest open water his head fits (`openWater`,
+  `fits`, logged "[Kraken] was stuck in the ground"); the floor clamp uses the highest floor under the edge of his head too
+  (`ringFloor`, every 4 ticks); a summon whose home doesn't fit his head moves it. LAG: the Abyssal Kraken was scale 40 (a
+  70-block head, view range 16 = drawn from ~1000 blocks) and every one of his ~77 displays sent a teleport + transformation
+  every tick: now `abyssal.scale` 14 (3.5x; `acfg(path, old, new)` reads 1.9.0's defaults as the new ones: hit-scale 2.2->1.5,
+  move-scale 2.2->1.4, reach-scale 2.5->1.6, station 50->20, station-height 20->8, arena-radius 140->70), view range 6/5, Bedrock
+  squid 8, and display packets every 2nd tick (interpolated over 2) and none with nobody within 128/200 (`send()`; the hitbox
+  still moves every tick). Tested (scratch `kt/KrakenWallTest`, MockBukkit gaps stubbed with ByteBuddy `kt/Patch.java`: old jar
+  had his head buried 461 of 650 ticks, new 0).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Skills → Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

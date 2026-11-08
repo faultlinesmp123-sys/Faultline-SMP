@@ -23,15 +23,15 @@ kraken:
     enabled: true
     world: faultline_deep
     min-depth: 60             # blocks of water under the worm (max 63)
-    scale: 40.0               # 10x the normal Kraken (a head ~70 blocks wide, arms ~220 long)
+    scale: 14.0               # 3.5x the normal Kraken (head ~25 wide). Was 40 (10x): players lagged; an old 40 reads as 14
     health: 9000
     damage-multiplier: 1.5    # on top of his normal damage
-    hit-scale: 2.2            # how much bigger his hit areas get (rings, ink, surge...): smaller than his size, so you can dodge
-    move-scale: 2.2           # how much faster he swims
-    reach-scale: 2.5          # how far he notices fighters, plays music, shows his bar
-    station: 50               # how far from his prey his head hangs
-    station-height: 20        # ...and how high above them (his beak and arms hang low)
-    arena-radius: 140
+    hit-scale: 1.5            # how much bigger his hit areas get (rings, ink, surge...): smaller than his size, so you can dodge
+    move-scale: 1.4           # how much faster he swims
+    reach-scale: 1.6          # how far he notices fighters, plays music, shows his bar
+    station: 20               # how far from his prey his head hangs
+    station-height: 8         # ...and how high above them (his beak and arms hang low)
+    arena-radius: 70
     rest-multiplier: 0.75     # shorter rests between moves
     pink-multiplier: 3.0      # pink bubbles hurt him 3x as much
     reward-multiplier: 2.0    # bags, diamonds, XP

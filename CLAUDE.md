@@ -1923,6 +1923,14 @@ Notes:
   (`towerUp`): they're 2.5+ up within 4 = jump-places blocks under itself. Tested (scratch `nt/NewTest`: styles, drinkables,
   fire res, pot run, crystal + punch, easy never crystals, anchor, trident + Loyalty, spear lunge, dig + restore, tower; the
   test's physics stand-in floors on blocks and slows in webs).
+- **No crystal / anchor / cart PvP (Items 1.2.83)**: the owner: Faultline NEVER does crystal, respawn anchor or TNT minecart
+  PvP. The mimic's crystal, anchor and surround techs and its crystal / anchor / obsidian / glowstone gear counts are GONE (the
+  "crystal" style too); `boomStart` only does TNT and fire charges (`explosives`). Don't add any of them back. Movement:
+  `move()` tries the way it wants then 45 / 90 / 135 degrees aside; each candidate must pass `clearMove` (where that velocity
+  really takes its whole hitbox over the next ticks, cells it already stands on ignored, `cellSafe`); round an obstacle it
+  COMMITS to one side (`detourDeg`/`detourUntil`, only that side's angles) until `clearLine` (the straight way at full width)
+  is clear; the crit-chain hop and air control check for hazards too. Tested (scratch `nt/NewTest`: godlike carrying
+  crystals + anchors never places either; the lava pool walk-round passes 6/6).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Skills → Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

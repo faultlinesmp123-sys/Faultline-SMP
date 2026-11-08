@@ -109,14 +109,13 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         Player target;
         int t, strafeDir = 1, strafeFlip, lastHit = -100, lastHurt = -100, reactAt;
         int webTicks, chaseStuck, flyTicks, nextRocket, flyCooldown, idleAt;
-        int crystals, obsidian, anchors, glowstone, tnt, fireCharges;
+        int tnt, fireCharges;
         ItemStack trident; // its trident (null while thrown away without Loyalty)
-        int boomStep, boomWait, boomReady, surroundReady, spearReady, lungeUntil, tridentReady, riptideUntil, crossUntil, crossReady;
-        int potRunUntil, rushUntil, digTicks, digNeed;
+        int boomStep, boomWait, boomReady, spearReady, lungeUntil, tridentReady, riptideUntil, crossUntil, crossReady;
+        int potRunUntil, rushUntil, digTicks, digNeed, detourDeg, detourUntil;
         boolean riptideHit, tridentOut;
         String boomKind;
         Block boomAt, digBlock;
-        EnderCrystal crystal;
         float aimJx, aimJy, idleYaw;
         boolean idleWalk;
         boolean flying;
@@ -145,7 +144,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         int gaps, egaps, pearls, pots, totems, wind, lava, water, webs, blocks, rockets;
         boolean rod, flint, elytra;
         int arrows, throwables;
-        int crystals, obsidian, anchors, glowstone, tnt, fireCharges;
+        int tnt, fireCharges;
         ItemStack spear, trident, crossbow, pickaxe, shovel;
         final List<ItemStack> buffs = new ArrayList<>(), debuffs = new ArrayList<>(); // one entry per potion they carry
         Material block = Material.COBBLESTONE;
@@ -215,10 +214,6 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
                     }
                 }
                 case ARROW, SPECTRAL_ARROW, TIPPED_ARROW -> g.arrows += it.getAmount();
-                case END_CRYSTAL -> g.crystals += it.getAmount();
-                case OBSIDIAN -> g.obsidian += it.getAmount();
-                case RESPAWN_ANCHOR -> g.anchors += it.getAmount();
-                case GLOWSTONE -> g.glowstone += it.getAmount();
                 case TNT -> g.tnt += it.getAmount();
                 case FIRE_CHARGE -> g.fireCharges += it.getAmount();
                 case TRIDENT -> { if (g.trident == null || score(it) + level(it, "impaling") + 2 * level(it, "loyalty") > score(g.trident) + level(g.trident, "impaling") + 2 * level(g.trident, "loyalty")) g.trident = it.clone(); }
@@ -311,7 +306,6 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
                 g.blocks = c.getInt("blocks"); g.rockets = c.getInt("rockets");
                 g.rod = c.getBoolean("rod"); g.flint = c.getBoolean("flint"); g.elytra = c.getBoolean("elytra");
                 g.arrows = c.getInt("arrows"); g.throwables = c.getInt("throwables");
-                g.crystals = c.getInt("crystals"); g.obsidian = c.getInt("obsidian"); g.anchors = c.getInt("anchors"); g.glowstone = c.getInt("glowstone");
                 g.tnt = c.getInt("tnt"); g.fireCharges = c.getInt("fire-charges");
                 g.spear = c.getItemStack("spear"); g.trident = c.getItemStack("trident"); g.crossbow = c.getItemStack("crossbow");
                 g.pickaxe = c.getItemStack("pickaxe"); g.shovel = c.getItemStack("shovel");
@@ -338,7 +332,6 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             y.set(k + "wind", g.wind); y.set(k + "lava", g.lava); y.set(k + "water", g.water); y.set(k + "webs", g.webs);
             y.set(k + "blocks", g.blocks); y.set(k + "rockets", g.rockets);
             y.set(k + "arrows", g.arrows); y.set(k + "throwables", g.throwables);
-            y.set(k + "crystals", g.crystals); y.set(k + "obsidian", g.obsidian); y.set(k + "anchors", g.anchors); y.set(k + "glowstone", g.glowstone);
             y.set(k + "tnt", g.tnt); y.set(k + "fire-charges", g.fireCharges);
             y.set(k + "spear", g.spear); y.set(k + "trident", g.trident); y.set(k + "crossbow", g.crossbow); y.set(k + "pickaxe", g.pickaxe); y.set(k + "shovel", g.shovel);
             y.set(k + "buffs", new ArrayList<>(g.buffs)); y.set(k + "debuffs", new ArrayList<>(g.debuffs));
@@ -422,7 +415,6 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         }
         m.apples = m.gear.gaps; m.gapples = m.gear.egaps; m.pots = m.gear.pots; m.pearlsLeft = m.gear.pearls; m.totems = m.gear.totems;
         m.arrows = m.gear.arrows; m.throwables = m.gear.throwables;
-        m.crystals = m.gear.crystals; m.obsidian = m.gear.obsidian; m.anchors = m.gear.anchors; m.glowstone = m.gear.glowstone;
         m.tnt = m.gear.tnt; m.fireCharges = m.gear.fireCharges;
         m.trident = m.gear.trident == null ? null : m.gear.trident.clone();
         m.buffs.addAll(m.gear.buffs); m.debuffs.addAll(m.gear.debuffs);
@@ -542,10 +534,6 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             case "flint" -> new ItemStack(Material.FLINT_AND_STEEL);
             case "block" -> new ItemStack(g.block);
             case "rocket" -> new ItemStack(Material.FIREWORK_ROCKET);
-            case "crystal" -> new ItemStack(Material.END_CRYSTAL);
-            case "obsidian" -> new ItemStack(Material.OBSIDIAN);
-            case "anchor" -> new ItemStack(Material.RESPAWN_ANCHOR);
-            case "glowstone" -> new ItemStack(Material.GLOWSTONE);
             case "tnt" -> new ItemStack(Material.TNT);
             case "firecharge" -> new ItemStack(Material.FIRE_CHARGE);
             case "spear" -> g.spear;
@@ -566,7 +554,6 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     static String style(Gear g) {
         if (g.mace != null && g.spear != null) return "spearmace";
         if (g.mace != null) return "mace";
-        if (g.crystals > 0 && (g.obsidian > 0 || g.anchors > 0)) return "crystal";
         boolean neth = g.chest != null && g.chest.getType().name().startsWith("NETHERITE");
         boolean potions = g.buffs.size() + g.pots + g.debuffs.size() >= 3;
         if (potions && g.pots >= 3) return neth ? "nethpot" : "pot"; // healing-pot kits
@@ -753,7 +740,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         clutch(m); // water MLG on a long fall, any time
         if (m.jumpAt == m.t && v.isOnGround() && tg != null) { // crit chain: back up into the air right after a crit
             Vector to = tg.getLocation().toVector().subtract(v.getLocation().toVector()).setY(0);
-            if (to.lengthSquared() > 1e-4) Safe.vel(v, to.normalize().multiply(0.25).setY(0.42));
+            if (to.lengthSquared() > 1e-4 && safePath(v, to.clone().normalize(), 2.5)) Safe.vel(v, to.normalize().multiply(0.25).setY(0.42));
         }
         if (m.jumpReset == m.t && v.isOnGround()) { // JUMP RESET: jumping as the hit lands takes the knockback down
             Vector cur = v.getVelocity();
@@ -771,7 +758,6 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         // ---- POT PvP: keep its buffs up (Strength, Speed, Fire Res... whatever it carries), debuff you, snowball you
         if (selfExtinguish(m)) { follow(m); return; }
         if (m.potRunUntil > m.t) { potRun(m, tg); follow(m); return; }
-        if (surround(m, tg)) { follow(m); return; }
         if (m.rushUntil <= m.t && dist < 24 && m.t >= m.buffReady && (dist > 3.6 || m.wtapUntil > m.t || charge(m) < 0.5) && buff(m)) { follow(m); return; }
         if (tier(m) >= 2 && m.rushUntil <= m.t && dist > 2.5 && dist < 8 && sees && m.t >= m.debuffReady && debuff(m, tg)) { follow(m); return; }
         if (tier(m) >= 2 && m.throwables > 0 && dist > 3.5 && dist < 10 && sees && m.t >= m.throwReady && tg.isSprinting() && random.nextDouble() < 0.15) { snowball(m, tg); follow(m); return; }
@@ -1060,50 +1046,22 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         }
     }
 
-    // ---- SURROUND (godlike): their crystals / anchors out = obsidian round its feet
-
-    private boolean surround(Mimic m, Player tg) {
-        Vindicator v = m.brain;
-        if (tier(m) < 4 || m.obsidian < 4 || m.t < m.surroundReady || !worldTechs() || !v.isOnGround()) return false;
-        Material h = tg.getInventory().getItemInMainHand().getType(), o = tg.getInventory().getItemInOffHand().getType();
-        if (h != Material.END_CRYSTAL && h != Material.RESPAWN_ANCHOR && o != Material.END_CRYSTAL) return false;
-        if (tg.getLocation().distance(v.getLocation()) > 7) return false;
-        m.surroundReady = m.t + 400;
-        Block feet = v.getLocation().getBlock();
-        hold(m, "obsidian");
-        int n = 0;
-        for (org.bukkit.block.BlockFace f : new org.bukkit.block.BlockFace[]{org.bukkit.block.BlockFace.NORTH, org.bukkit.block.BlockFace.SOUTH, org.bukkit.block.BlockFace.EAST, org.bukkit.block.BlockFace.WEST}) {
-            Block b = feet.getRelative(f);
-            if (b.getRelative(org.bukkit.block.BlockFace.DOWN).getType().isSolid() && place(b, Material.OBSIDIAN, 240)) { m.obsidian--; n++; }
-        }
-        if (n == 0) { hold(m, "sword"); return false; }
-        Emotes.q(() -> m.body.swingMainHand());
-        v.getWorld().playSound(feet.getLocation(), Sound.BLOCK_STONE_PLACE, 1, 0.8f);
-        Bukkit.getScheduler().runTaskLater(plugin, () -> { if (m.body.isValid()) hold(m, "sword"); }, 3L);
-        return true;
-    }
-
-    // ---- BOOM: crystals (obsidian + crystal + punch), respawn anchors (anchor + glowstone + click), TNT (place + light), fire charges
+    // ---- BOOM: TNT (place + light) and fire charges. NO crystal, anchor or cart PvP on Faultline: never used.
 
     /** A cell beside them to blow up: air with solid ground, room above, close to them, and far enough from itself. */
-    private Block boomSpot(Mimic m, Player tg, boolean crystal) {
+    private Block boomSpot(Mimic m, Player tg) {
         Vindicator v = m.brain;
         Block best = null; double bestScore = -1;
         Block feet = tg.getLocation().getBlock();
         for (int dx = -2; dx <= 2; dx++) for (int dz = -2; dz <= 2; dz++) for (int dy = -1; dy <= 0; dy++) {
             if (dx == 0 && dz == 0) continue;
             Block c = feet.getRelative(dx, dy, dz);
-            Block below = c.getRelative(org.bukkit.block.BlockFace.DOWN);
-            boolean onObby = crystal && (below.getType() == Material.OBSIDIAN || below.getType() == Material.BEDROCK);
             if (!c.getType().isAir() || !c.getRelative(org.bukkit.block.BlockFace.UP).getType().isAir()) continue;
-            if (crystal && !onObby && (m.obsidian <= 0 || !below.getType().isSolid())) continue;
-            if (!crystal && !below.getType().isSolid()) continue;
-            if (crystal && !onObby && !c.getRelative(0, 2, 0).getType().isAir()) continue;
-            Location center = c.getLocation().clone().add(0.5, crystal && !onObby ? 1 : 0.5, 0.5);
+            if (!c.getRelative(org.bukkit.block.BlockFace.DOWN).getType().isSolid()) continue;
+            Location center = c.getLocation().clone().add(0.5, 0.5, 0.5);
             double toThem = center.distance(tg.getLocation()), toMe = center.distance(v.getLocation());
             if (toThem > 2.6 || toMe < 3.6) continue; // never blows itself up
-            double sc = toMe - toThem + (onObby ? 2 : 0);
-            if (sc > bestScore) { bestScore = sc; best = onObby ? below : c; }
+            if (toMe - toThem > bestScore) { bestScore = toMe - toThem; best = c; }
         }
         return best;
     }
@@ -1113,36 +1071,9 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         if (!worldTechs() || m.boomStep > 0 || m.t < m.boomReady || !sees || dist < 3 || dist > 6.5 || !plugin.getConfig().getBoolean("mimic-player.explosives", true)) return false;
         int tr = tier(m);
         double roll = random.nextDouble();
-        // crystals (hard+)
-        if (tr >= 3 && m.crystals > 0 && roll < 0.35) {
-            Block spot = boomSpot(m, tg, true);
-            if (spot != null) {
-                if (spot.getType() != Material.OBSIDIAN && spot.getType() != Material.BEDROCK) { // place the obsidian first
-                    if (!place(spot, Material.OBSIDIAN, 120)) return false;
-                    m.obsidian--;
-                    hold(m, "obsidian");
-                    Emotes.q(() -> m.body.swingMainHand());
-                    v.getWorld().playSound(spot.getLocation(), Sound.BLOCK_STONE_PLACE, 1, 1);
-                }
-                m.boomKind = "crystal"; m.boomAt = spot; m.boomStep = 1; m.boomWait = m.t + boomGap(m);
-                return true;
-            }
-        }
-        // respawn anchors (hard+, not in the Nether)
-        if (tr >= 3 && m.anchors > 0 && m.glowstone > 0 && v.getWorld().getEnvironment() != World.Environment.NETHER && roll < 0.55) {
-            Block spot = boomSpot(m, tg, false);
-            if (spot != null && place(spot, Material.RESPAWN_ANCHOR, 80)) {
-                m.anchors--;
-                hold(m, "anchor");
-                Emotes.q(() -> m.body.swingMainHand());
-                v.getWorld().playSound(spot.getLocation(), Sound.BLOCK_STONE_PLACE, 1, 1);
-                m.boomKind = "anchor"; m.boomAt = spot; m.boomStep = 1; m.boomWait = m.t + boomGap(m);
-                return true;
-            }
-        }
         // TNT (normal+), lit with flint and steel or a fire charge
         if (tr >= 2 && m.tnt > 0 && (m.gear.flint || m.fireCharges > 0) && roll < 0.7 && tg.isOnGround()) {
-            Block spot = boomSpot(m, tg, false);
+            Block spot = boomSpot(m, tg);
             if (spot != null && place(spot, Material.TNT, 80)) {
                 m.tnt--;
                 hold(m, "tnt");
@@ -1167,7 +1098,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         return false;
     }
 
-    /** Ticks between the steps of a boom: a godlike player places, crystals and hits in a blink. */
+    /** Ticks between placing and lighting: a godlike player does it in a blink. */
     int boomGap(Mimic m) { return switch (tier(m)) { case 4 -> 1; case 3 -> 2; default -> 4; }; }
 
     private boolean boomTick(Mimic m, Player tg) {
@@ -1177,45 +1108,6 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         if (m.t < m.boomWait) return true;
         Location top = m.boomAt.getLocation().clone().add(0.5, 1, 0.5), mid = m.boomAt.getLocation().clone().add(0.5, 0.5, 0.5);
         switch (m.boomKind) {
-            case "crystal" -> {
-                if (m.boomStep == 1) {
-                    if (!top.getBlock().getType().isAir() || m.crystals <= 0) { m.boomStep = 0; return false; }
-                    m.crystals--;
-                    hold(m, "crystal");
-                    Emotes.q(() -> m.body.swingMainHand());
-                    m.crystal = v.getWorld().spawn(top, EnderCrystal.class, e -> { e.setShowingBottom(false); e.addScoreboardTag(TAG); e.setPersistent(false); });
-                    v.getWorld().playSound(top, Sound.BLOCK_GLASS_PLACE, 1, 1);
-                    m.boomStep = 2; m.boomWait = m.t + boomGap(m);
-                } else {
-                    hold(m, "sword");
-                    Emotes.q(() -> m.body.swingMainHand());
-                    Location at = m.crystal != null && m.crystal.isValid() ? m.crystal.getLocation() : top;
-                    if (m.crystal != null && m.crystal.isValid()) m.crystal.remove();
-                    m.crystal = null;
-                    if (at.distance(v.getLocation()) >= 3) Emotes.q(() -> v.getWorld().createExplosion(at, 6f, false, false, v)); // a crystal's blast, no terrain damage
-                    // godlike: DOUBLE CRYSTAL (another on the same obsidian right away)
-                    if (tier(m) >= 4 && m.crystals > 0 && random.nextDouble() < 0.5 && m.boomAt.getType() == Material.OBSIDIAN) { m.boomStep = 1; m.boomWait = m.t + 2; return true; }
-                    m.boomStep = 0; m.boomReady = m.t + switch (tier(m)) { case 4 -> 12; case 3 -> 25; default -> 40; };
-                }
-            }
-            case "anchor" -> {
-                if (m.boomAt.getType() != Material.RESPAWN_ANCHOR) { m.boomStep = 0; return false; }
-                if (m.boomStep == 1) {
-                    m.glowstone--;
-                    hold(m, "glowstone");
-                    Emotes.q(() -> m.body.swingMainHand());
-                    if (m.boomAt.getBlockData() instanceof org.bukkit.block.data.type.RespawnAnchor ra) { ra.setCharges(1); m.boomAt.setBlockData(ra, false); }
-                    v.getWorld().playSound(mid, Sound.BLOCK_RESPAWN_ANCHOR_CHARGE, 1, 1);
-                    m.boomStep = 2; m.boomWait = m.t + boomGap(m);
-                } else {
-                    hold(m, "sword");
-                    Emotes.q(() -> m.body.swingMainHand());
-                    temp.remove(m.boomAt);
-                    m.boomAt.setType(Material.AIR, false);
-                    if (mid.distance(v.getLocation()) >= 3) Emotes.q(() -> v.getWorld().createExplosion(mid, 5f, false, false, v));
-                    m.boomStep = 0; m.boomReady = m.t + switch (tier(m)) { case 4 -> 15; case 3 -> 30; default -> 40; };
-                }
-            }
             default -> { // tnt
                 if (m.boomAt.getType() != Material.TNT) { m.boomStep = 0; return false; }
                 boolean charge = !m.gear.flint;
@@ -1233,7 +1125,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         return true;
     }
 
-    /** Its TNT and crystals never break the world (the blast still hurts). */
+    /** Its TNT never breaks the world (the blast still hurts). */
     @EventHandler(ignoreCancelled = true)
     public void onOurBoom(EntityExplodeEvent e) {
         if (e.getEntity().getScoreboardTags().contains(TAG)) e.blockList().clear();
@@ -1545,7 +1437,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
                     return;
                 }
                 // SPRINT HIT: lunge in (sprinting) and hit (no lunge toward lava or a drop)
-                if (safePath(v, to0, 1.8)) Safe.vel(v, new Vector(to0.getX() * 0.42, v.getVelocity().getY(), to0.getZ() * 0.42));
+                if (safePath(v, to0, 1.8)) walk(v, new Vector(to0.getX() * 0.42, v.getVelocity().getY(), to0.getZ() * 0.42), 3);
                 m.sprintHit = true;
                 if (!whiff(m, tg)) strike(m, tg, ch);
                 return;
@@ -1581,7 +1473,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             // SPACING: sit just outside their reach while our hit charges, step in the moment it's ready
             double keep = ch >= s.hitSelect() - 0.1 ? 2.5 : (m.rushUntil > m.t ? 2.5 : m.style.equals("sword") || m.style.startsWith("neth") || m.style.equals("diamond") || m.style.equals("pot") ? 3.35 : 2.8);
             Vector fw = to.clone().multiply(dist > keep + 0.3 ? (safeStep(v, to) ? 0.1 : 0) : dist < keep - 0.3 ? (safeStep(v, to.clone().multiply(-1)) ? -0.08 : 0) : 0);
-            if (v.isOnGround()) Safe.vel(v, new Vector(cur.getX() * 0.55 + side.getX() + fw.getX(), cur.getY(), cur.getZ() * 0.55 + side.getZ() + fw.getZ()));
+            if (v.isOnGround()) walk(v, new Vector(cur.getX() * 0.55 + side.getX() + fw.getX(), cur.getY(), cur.getZ() * 0.55 + side.getZ() + fw.getZ()), 3);
             m.sprintHit = false;
         } else {
             chase(m, tg, to);
@@ -1628,31 +1520,94 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             Safe.vel(v, new Vector(cur.getX() * 0.8 + dir.getX() * 0.06, Math.min(0.12, cur.getY() + 0.04), cur.getZ() * 0.8 + dir.getZ() * 0.06));
             return;
         }
-        double look = 0.9 + Math.hypot(cur.getX(), cur.getZ()) * 3 + sp * 2; // looks further ahead the faster it goes
-        if (v.isOnGround() && !safePath(v, dir, look)) { // never walks into lava / fire / off a cliff: turns aside, else stops
-            Vector alt = null;
-            for (int deg : new int[]{45, -45, 90, -90}) {
-                double r = Math.toRadians(deg * m.strafeDir), c = Math.cos(r), sn = Math.sin(r);
-                Vector t = new Vector(dir.getX() * c - dir.getZ() * sn, 0, dir.getX() * sn + dir.getZ() * c);
-                if (safePath(v, t, look)) { alt = t; break; }
-            }
-            if (alt == null) { Safe.vel(v, new Vector(0, cur.getY(), 0)); return; }
-            dir = alt; sprintJump = false;
-        }
         if (v.isOnGround()) {
-            Block ahead = v.getLocation().clone().add(dir.getX() * 1.6, 0, dir.getZ() * 1.6).getBlock();
-            boolean open = !ahead.getType().isSolid() && !ahead.getRelative(0, 1, 0).getType().isSolid() && ahead.getRelative(0, -1, 0).getType().isSolid()
-                    && !v.getLocation().getBlock().getRelative(0, 2, 0).getType().isSolid();
-            if (stepUp) { Safe.vel(v, new Vector(dir.getX() * sp, 0.42, dir.getZ() * sp)); return; }
-            if (sprintJump && open && safePath(v, dir, 4.5) && random.nextDouble() < 0.6) { // sprint-jump: +0.2 forward on take-off
-                Safe.vel(v, new Vector(dir.getX() * (sp + 0.2), 0.42, dir.getZ() * (sp + 0.2)));
-                return;
+            // never walks into lava / fire / off a cliff: the way it wants, else 45 / 90 / 135 degrees aside (its strafe side
+            // first), the first one whose real next steps are clear; nothing clear = stops
+            // going round something: it COMMITS to the side it picked for a second (no dithering at a pool's edge), until the
+            // straight way is clear again
+            if (m.detourUntil > m.t && clearLine(v, dir, 3.6)) m.detourUntil = 0;
+            int sg = Integer.signum(m.detourDeg);
+            int[] tries = m.detourUntil > m.t && sg != 0 ? new int[]{45 * sg, 90 * sg, 135 * sg, 0} // only ever its chosen side
+                    : new int[]{0, 45, -45, 90, -90, 135, -135};
+            boolean roof = v.getLocation().getBlock().getRelative(0, 2, 0).getType().isSolid();
+            for (int deg : tries) {
+                double r = Math.toRadians(m.detourUntil > m.t ? deg : deg * m.strafeDir), c = Math.cos(r), sn = Math.sin(r);
+                Vector d = new Vector(dir.getX() * c - dir.getZ() * sn, 0, dir.getX() * sn + dir.getZ() * c);
+                if (deg != 0 && !safeStep(v, d)) continue;
+                if (stepUp && deg == 0) { if (clearMove(v, new Vector(d.getX() * sp, 0.42, d.getZ() * sp), 3)) { Safe.vel(v, new Vector(d.getX() * sp, 0.42, d.getZ() * sp)); return; } continue; }
+                Block ahead = v.getLocation().clone().add(d.getX() * 1.6, 0, d.getZ() * 1.6).getBlock();
+                boolean open = !ahead.getType().isSolid() && !ahead.getRelative(0, 1, 0).getType().isSolid() && ahead.getRelative(0, -1, 0).getType().isSolid() && !roof;
+                Vector jump = new Vector(d.getX() * (sp + 0.2), 0.42, d.getZ() * (sp + 0.2));
+                if (deg == 0 && sprintJump && open && safePath(v, d, 4.5) && clearMove(v, jump, 9) && random.nextDouble() < 0.6) { Safe.vel(v, jump); return; } // sprint-jump: +0.2 on take-off
+                double keep = deg == 0 ? 0.4 : 0.1; // turning aside drops its old momentum
+                Vector nv = new Vector(cur.getX() * keep + d.getX() * sp * 0.9, cur.getY(), cur.getZ() * keep + d.getZ() * sp * 0.9);
+                if (clearMove(v, nv, 3)) {
+                    if (deg != 0 && m.detourUntil <= m.t) { m.detourDeg = deg * m.strafeDir; m.detourUntil = m.t + 25; }
+                    else if (deg != 0) m.detourUntil = Math.max(m.detourUntil, m.t + 10); // still blocked: keeps going round the same side
+                    Safe.vel(v, nv); return;
+                }
             }
-            Safe.vel(v, new Vector(cur.getX() * 0.4 + dir.getX() * sp * 0.9, cur.getY(), cur.getZ() * 0.4 + dir.getZ() * sp * 0.9));
+            Safe.vel(v, new Vector(0, cur.getY(), 0));
         } else {
-            // air: keeps its momentum (a player can't turn much mid-jump), a little steering
-            Safe.vel(v, new Vector(cur.getX() * 0.98 + dir.getX() * 0.02, cur.getY(), cur.getZ() * 0.98 + dir.getZ() * 0.02));
+            // air: keeps its momentum (a player can't turn much mid-jump), a little steering; heading into lava = lets go of W
+            Vector h = new Vector(cur.getX(), 0, cur.getZ());
+            if (h.lengthSquared() > 1e-4 && !safePath(v, h.clone().normalize(), 1.8)) Safe.vel(v, new Vector(cur.getX() * 0.6 - dir.getX() * 0.02, cur.getY(), cur.getZ() * 0.6 - dir.getZ() * 0.02));
+            else Safe.vel(v, new Vector(cur.getX() * 0.98 + dir.getX() * 0.02, cur.getY(), cur.getZ() * 0.98 + dir.getZ() * 0.02));
         }
+    }
+
+    /**
+     * The last check before any step: where this velocity really takes it over the next ticks (its whole hitbox, corners
+     * too, so it never clips the corner of a lava pool). Unsafe = it stops dead instead (keeps falling / jumping).
+     */
+    static boolean walk(LivingEntity v, Vector nv, int ticks) {
+        if (clearMove(v, nv, ticks)) { Safe.vel(v, nv); return true; }
+        Safe.vel(v, new Vector(0, nv.getY(), 0));
+        return false;
+    }
+
+    static boolean clearMove(LivingEntity v, Vector nv, int ticks) {
+        Location at = v.getLocation();
+        Set<Block> now = underNow(at); // cells its hitbox already touches don't count (it can always step back out)
+        Vector h = new Vector(nv.getX(), 0, nv.getZ());
+        double gx = 0, gz = 0; // ground friction takes speed off each tick; close enough for a look-ahead
+        for (int k = 1; k <= ticks && h.lengthSquared() > 1e-6; k++) {
+            gx += h.getX() * Math.pow(0.6, k - 1); gz += h.getZ() * Math.pow(0.6, k - 1);
+            for (double cx : new double[]{-0.3, 0, 0.3}) for (double cz : new double[]{-0.3, 0, 0.3}) {
+                Block b = at.clone().add(gx + cx, 0.01, gz + cz).getBlock();
+                if (!now.contains(b) && !cellSafe(b)) return false;
+            }
+        }
+        return true;
+    }
+
+    static Set<Block> underNow(Location at) {
+        Set<Block> s = new HashSet<>();
+        for (double cx : new double[]{-0.3, 0.3}) for (double cz : new double[]{-0.3, 0.3}) s.add(at.clone().add(cx, 0.01, cz).getBlock());
+        return s;
+    }
+
+    /** The straight way, its whole width, clear out to `far` (to know a detour is over). */
+    static boolean clearLine(LivingEntity v, Vector dir, double far) {
+        Location at = v.getLocation();
+        Set<Block> now = underNow(at);
+        for (double d = 0.5; d <= far; d += 0.5)
+            for (double cx : new double[]{-0.3, 0, 0.3}) for (double cz : new double[]{-0.3, 0, 0.3}) {
+                Block b = at.clone().add(dir.getX() * d + cx, 0.01, dir.getZ() * d + cz).getBlock();
+                if (!now.contains(b) && !cellSafe(b)) return false;
+            }
+        return true;
+    }
+
+    static boolean cellSafe(Block b) {
+        if (HAZARD.contains(b.getType()) || HAZARD.contains(b.getRelative(0, 1, 0).getType())) return false;
+        if (b.getType().isSolid()) return true;
+        for (int i = 1; i <= 4; i++) {
+            Block d = b.getRelative(0, -i, 0);
+            if (HAZARD.contains(d.getType())) return false;
+            if (d.getType().isSolid() || d.getType() == Material.WATER) return true;
+        }
+        return false;
     }
 
     static final Set<Material> HAZARD = EnumSet.of(Material.LAVA, Material.FIRE, Material.SOUL_FIRE, Material.CACTUS, Material.MAGMA_BLOCK,
@@ -1867,7 +1822,6 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
 
     void restoreAll() {
         for (TempBlock t : new ArrayList<>(temp.values())) restore(t);
-        for (Mimic m : byBrain.values()) if (m.crystal != null && m.crystal.isValid()) m.crystal.remove();
     }
 
     boolean nearTemp(Block b, Material mat, int r) {

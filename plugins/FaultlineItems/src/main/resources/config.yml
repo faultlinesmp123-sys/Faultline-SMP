@@ -783,7 +783,7 @@ mimic-player:
   xp: 0
   drops: []             # e.g. ["DIAMOND:2"]
   range: 160            # how far off it finds you (it keeps chasing its target out to 1.5x this)
-  elytra-pvp: true      # with an elytra + rockets in their gear: flies after you, elytra swaps, dives, rockets away when losing
+  elytra-pvp: false     # true = with an elytra + rockets in their gear it flies after you, elytra swaps, dives, rockets away
   kit-when-bare: true   # a player with no armour anywhere = it wears the kit's armour
   world-techs: true     # UHC techs that place blocks (lava, webs, water, pillars); everything is put back
 

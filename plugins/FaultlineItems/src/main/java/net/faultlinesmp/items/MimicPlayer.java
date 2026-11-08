@@ -107,7 +107,9 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         Skill skill;
         Player target;
         int t, strafeDir = 1, strafeFlip, lastHit = -100, lastHurt = -100, reactAt;
-        int webTicks, chaseStuck, flyTicks, nextRocket, flyCooldown;
+        int webTicks, chaseStuck, flyTicks, nextRocket, flyCooldown, idleAt;
+        float aimJx, aimJy, idleYaw;
+        boolean idleWalk;
         boolean flying;
         int blockUntil, shieldOffUntil, eatUntil, drinkUntil, drawUntil, pearlReady, bowReady, wtapUntil, fleeUntil, axeUntil;
         int apples, gapples, pots, pearlsLeft, totems = 1, wind, lava, water, webs, blocks, rockets, arrows, throwables;
@@ -439,7 +441,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             } catch (RuntimeException | LinkageError ignored) { }
         }
         m.brain = v; m.body = b;
-        m.yaw = at.getYaw();
+        m.yaw = at.getYaw(); m.idleYaw = at.getYaw();
         if (plugin.getConfig().getBoolean("mimic-player.kingdom-tag", true)) m.tag = kingdomTag(m, at);
         byBrain.put(v.getUniqueId(), m);
         byBody.put(b.getUniqueId(), m);
@@ -537,6 +539,35 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         if (what.equals(m.held)) return;
         m.held = what;
         m.body.getEquipment().setItemInMainHand(hotbar(m, what));
+    }
+
+    // ---- the human bits: aim shake, misses, swap time, how fast it turns its head
+    double missChance(Mimic m) { return switch (m.skill.id()) { case "easy" -> 0.25; case "hard" -> 0.07; case "godlike" -> 0.03; default -> 0.14; }; }
+    int swapTicks(Mimic m) { return switch (m.skill.id()) { case "easy" -> 4; case "hard" -> 2; case "godlike" -> 1; default -> 3; }; }
+    float turnRate(Mimic m) { return switch (m.skill.id()) { case "easy" -> 22f; case "hard" -> 50f; case "godlike" -> 65f; default -> 35f; }; }
+
+    /** A swing that misses (players miss): the arm swings, the cooldown resets, nothing lands. */
+    private boolean whiff(Mimic m, Player tg) {
+        if (random.nextDouble() >= missChance(m)) return false;
+        Emotes.q(() -> m.body.swingMainHand());
+        m.brain.getWorld().playSound(m.brain.getLocation(), Sound.ENTITY_PLAYER_ATTACK_NODAMAGE, 0.8f, 1);
+        m.lastHit = m.t;
+        m.sprintHit = false;
+        return true;
+    }
+
+    /** Nobody to fight: looks around, now and then wanders a few steps (it never just stands frozen). */
+    private void idle(Mimic m) {
+        Vindicator v = m.brain;
+        if (m.t >= m.idleAt) {
+            m.idleAt = m.t + 40 + random.nextInt(100);
+            m.idleYaw = m.yaw + (random.nextFloat() - 0.5f) * 160f;
+            m.idleWalk = random.nextDouble() < 0.35;
+        }
+        if (m.idleWalk && m.idleAt - m.t > 20) {
+            double r = Math.toRadians(m.idleYaw);
+            move(m, new Vector(-Math.sin(r), 0, Math.cos(r)), 0.1, false, false);
+        }
     }
 
     /** Their kingdom line over the name, like FaultlineKingdoms' head tags (read by reflection). */
@@ -678,7 +709,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         }
         if (busy) { busyTick(m, tg); follow(m); return; }
         if (webEscape(m, tg)) { follow(m); return; }
-        if (tg == null) { hold(m, "sword"); follow(m); return; }
+        if (tg == null) { hold(m, "sword"); idle(m); follow(m); return; }
         double dist = tg.getLocation().distance(v.getLocation());
         boolean sees = sees(v, tg);
 
@@ -720,7 +751,17 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
 
     private void busyTick(Mimic m, Player tg) {
         Vindicator v = m.brain;
-        Safe.vel(v, new Vector(v.getVelocity().getX() * 0.5, v.getVelocity().getY(), v.getVelocity().getZ() * 0.5));
+        if (tg != null && tg.getWorld() == v.getWorld() && (m.eatUntil > m.t || m.drawUntil > m.t || m.potUntil > m.t)) {
+            // using an item slows a player to a crawl, but they keep moving: backs off and strafes while eating / drawing
+            Vector away = v.getLocation().toVector().subtract(tg.getLocation().toVector()).setY(0);
+            if (away.lengthSquared() < 1e-4) away = new Vector(1, 0, 0);
+            away.normalize();
+            if (--m.strafeFlip <= 0) { m.strafeDir = -m.strafeDir; m.strafeFlip = 10 + random.nextInt(25); }
+            Vector side = new Vector(-away.getZ(), 0, away.getX()).multiply(m.strafeDir);
+            double d = tg.getLocation().distance(v.getLocation());
+            Vector dir = (m.drawUntil > m.t && d > 10 ? side : away.multiply(d < 8 ? 0.8 : 0.2).add(side)).normalize();
+            move(m, dir, 0.075, false, false);
+        } else Safe.vel(v, new Vector(v.getVelocity().getX() * 0.5, v.getVelocity().getY(), v.getVelocity().getZ() * 0.5));
         if (m.eatUntil > m.t) {
             if (m.eatUntil - m.t == 1) {
                 if (m.eatingGod) { // an enchanted golden apple
@@ -757,7 +798,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         boolean god = m.gapples > 0 && (m.apples == 0 || m.brain.getHealth() / maxHp(m.brain) < 0.25);
         if (god) m.gapples--; else m.apples--;
         m.eatingGod = god;
-        m.eatUntil = m.t + 32;
+        m.eatUntil = m.t + 32 + swapTicks(m);
         hold(m, god ? "gapple" : "apple");
         Emotes.q(() -> m.body.clearActiveItem());
         Emotes.q(() -> m.body.startUsingItem(EquipmentSlot.HAND));
@@ -765,7 +806,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
 
     private void drink(Mimic m) {
         m.pots--;
-        m.drinkUntil = m.t + 8;
+        m.drinkUntil = m.t + 8 + swapTicks(m);
         hold(m, "potion");
     }
 
@@ -792,7 +833,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
 
     // ---- elytra PvP
 
-    boolean elytraOn() { return plugin.getConfig().getBoolean("mimic-player.elytra-pvp", true); }
+    boolean elytraOn() { return plugin.getConfig().getBoolean("mimic-player.elytra-pvp", false); }
 
     /**
      * ELYTRA PvP (it needs an elytra + rockets in their gear): takes off with a rocket to chase anyone far off or anyone
@@ -990,7 +1031,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             if (falling && inReach && ch >= s.hitSelect()) { // the crit lands
                 if (shielding) { m.blockUntil = m.t; Emotes.q(() -> m.body.clearActiveItem()); }
                 m.sprintHit = false;
-                strike(m, tg, ch);
+                if (!whiff(m, tg)) strike(m, tg, ch);
                 return;
             }
             if (rising) return; // on the way up: wait for the fall
@@ -1000,15 +1041,15 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
                 if (to0.lengthSquared() > 1e-4) to0.normalize();
                 boolean room = !v.getLocation().getBlock().getRelative(0, 2, 0).getType().isSolid();
                 boolean critStyle = m.style.equals("axe") || m.style.equals("uhc") || m.style.equals("mace");
-                if (room && m.wtapUntil <= m.t && random.nextDouble() < (critStyle ? Math.max(0.6, s.jumpCrit()) : s.jumpCrit() * 0.8)) {
+                if (room && m.wtapUntil <= m.t && safePath(v, to0, 1.8) && random.nextDouble() < (critStyle ? Math.max(0.6, s.jumpCrit()) : s.jumpCrit() * 0.8)) {
                     // CRIT: jump now, hit on the way down (stays close so they're still in reach)
                     Safe.vel(v, to0.clone().multiply(0.12).setY(0.42));
                     return;
                 }
-                // SPRINT HIT: lunge in (sprinting) and hit
-                Safe.vel(v, new Vector(to0.getX() * 0.42, v.getVelocity().getY(), to0.getZ() * 0.42));
+                // SPRINT HIT: lunge in (sprinting) and hit (no lunge toward lava or a drop)
+                if (safePath(v, to0, 1.8)) Safe.vel(v, new Vector(to0.getX() * 0.42, v.getVelocity().getY(), to0.getZ() * 0.42));
                 m.sprintHit = true;
-                strike(m, tg, ch);
+                if (!whiff(m, tg)) strike(m, tg, ch);
                 return;
             }
         }
@@ -1027,20 +1068,21 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         if (to.lengthSquared() < 1e-4) return;
         to.normalize();
         Vector cur = v.getVelocity();
-        if (m.wtapUntil > m.t) {
+        if (m.wtapUntil > m.t && safeStep(v, to.clone().multiply(-1))) {
             Safe.vel(v, new Vector(cur.getX() * 0.5 - to.getX() * 0.12, cur.getY(), cur.getZ() * 0.5 - to.getZ() * 0.12));
             return;
         }
-        if (v.isOnGround() && dist > 2.4 && dist < 4.2 && ch > 0.55 && ch < 0.9 && random.nextDouble() < s.jumpCrit() * 0.3) {
+        if (v.isOnGround() && dist > 2.4 && dist < 4.2 && ch > 0.55 && ch < 0.9 && safePath(v, to, 2.7) && random.nextDouble() < s.jumpCrit() * 0.3) {
             Safe.vel(v, to.clone().multiply(0.3).setY(0.42)); // lands the hit on the way down
             return;
         }
         if (dist < 4.5) {
             if (--m.strafeFlip <= 0) { m.strafeDir = -m.strafeDir; m.strafeFlip = 12 + random.nextInt(30); }
-            Vector side = new Vector(-to.getZ(), 0, to.getX()).multiply(s.strafe() * m.strafeDir);
+            if (!safeStep(v, new Vector(-to.getZ(), 0, to.getX()).multiply(m.strafeDir))) { m.strafeDir = -m.strafeDir; m.strafeFlip = 20; } // never strafes into lava / off a ledge
+            Vector side = new Vector(-to.getZ(), 0, to.getX()).multiply(safeStep(v, new Vector(-to.getZ(), 0, to.getX()).multiply(m.strafeDir)) ? s.strafe() * m.strafeDir : 0);
             // SPACING: sit just outside their reach while our hit charges, step in the moment it's ready
             double keep = ch >= s.hitSelect() - 0.1 ? 2.5 : (m.style.equals("sword") || m.style.equals("nethop") || m.style.equals("diamond") ? 3.35 : 2.8);
-            Vector fw = to.clone().multiply(dist > keep + 0.3 ? 0.1 : dist < keep - 0.3 ? -0.08 : 0);
+            Vector fw = to.clone().multiply(dist > keep + 0.3 ? (safeStep(v, to) ? 0.1 : 0) : dist < keep - 0.3 ? (safeStep(v, to.clone().multiply(-1)) ? -0.08 : 0) : 0);
             if (v.isOnGround()) Safe.vel(v, new Vector(cur.getX() * 0.55 + side.getX() + fw.getX(), cur.getY(), cur.getZ() * 0.55 + side.getZ() + fw.getZ()));
             m.sprintHit = false;
         } else {
@@ -1063,6 +1105,15 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         boolean wall = ahead.getType().isSolid(), tall = ahead.getRelative(0, 1, 0).getType().isSolid();
         if (wall && tall) m.chaseStuck++; else m.chaseStuck = Math.max(0, m.chaseStuck - 1);
         if (m.chaseStuck > 10) { Emotes.q(() -> v.getPathfinder().moveTo(tg, 1.4)); return; }
+        // ZIG-ZAG in like a player dodging arrows when they hold a bow / crossbow / trident, or from far off
+        double d = tg.getLocation().distance(v.getLocation());
+        Material held = tg.getInventory().getItemInMainHand().getType();
+        boolean ranged = held == Material.BOW || held == Material.CROSSBOW || held == Material.TRIDENT || tg.getInventory().getItemInOffHand().getType() == Material.CROSSBOW;
+        if (d > 5 && (ranged || d > 12)) {
+            double a = Math.toRadians(Math.sin(m.t * 0.22 + m.strafeDir) * (ranged ? 35 : 15));
+            double c = Math.cos(a), sn = Math.sin(a);
+            to = new Vector(to.getX() * c - to.getZ() * sn, 0, to.getX() * sn + to.getZ() * c);
+        }
         move(m, to, sp, wall && !tall, true);
     }
 
@@ -1073,12 +1124,27 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     private void move(Mimic m, Vector dir, double sp, boolean stepUp, boolean sprintJump) {
         Vindicator v = m.brain;
         Vector cur = v.getVelocity();
+        if (v.isInWater()) { // swims like a player: holds space, swims toward where it's going
+            Safe.vel(v, new Vector(cur.getX() * 0.8 + dir.getX() * 0.06, Math.min(0.12, cur.getY() + 0.04), cur.getZ() * 0.8 + dir.getZ() * 0.06));
+            return;
+        }
+        double look = 0.9 + Math.hypot(cur.getX(), cur.getZ()) * 3 + sp * 2; // looks further ahead the faster it goes
+        if (v.isOnGround() && !safePath(v, dir, look)) { // never walks into lava / fire / off a cliff: turns aside, else stops
+            Vector alt = null;
+            for (int deg : new int[]{45, -45, 90, -90}) {
+                double r = Math.toRadians(deg * m.strafeDir), c = Math.cos(r), sn = Math.sin(r);
+                Vector t = new Vector(dir.getX() * c - dir.getZ() * sn, 0, dir.getX() * sn + dir.getZ() * c);
+                if (safePath(v, t, look)) { alt = t; break; }
+            }
+            if (alt == null) { Safe.vel(v, new Vector(0, cur.getY(), 0)); return; }
+            dir = alt; sprintJump = false;
+        }
         if (v.isOnGround()) {
             Block ahead = v.getLocation().clone().add(dir.getX() * 1.6, 0, dir.getZ() * 1.6).getBlock();
             boolean open = !ahead.getType().isSolid() && !ahead.getRelative(0, 1, 0).getType().isSolid() && ahead.getRelative(0, -1, 0).getType().isSolid()
                     && !v.getLocation().getBlock().getRelative(0, 2, 0).getType().isSolid();
             if (stepUp) { Safe.vel(v, new Vector(dir.getX() * sp, 0.42, dir.getZ() * sp)); return; }
-            if (sprintJump && open && random.nextDouble() < 0.6) { // sprint-jump: +0.2 forward on take-off
+            if (sprintJump && open && safePath(v, dir, 4.5) && random.nextDouble() < 0.6) { // sprint-jump: +0.2 forward on take-off
                 Safe.vel(v, new Vector(dir.getX() * (sp + 0.2), 0.42, dir.getZ() * (sp + 0.2)));
                 return;
             }
@@ -1087,6 +1153,31 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             // air: keeps its momentum (a player can't turn much mid-jump), a little steering
             Safe.vel(v, new Vector(cur.getX() * 0.98 + dir.getX() * 0.02, cur.getY(), cur.getZ() * 0.98 + dir.getZ() * 0.02));
         }
+    }
+
+    static final Set<Material> HAZARD = EnumSet.of(Material.LAVA, Material.FIRE, Material.SOUL_FIRE, Material.CACTUS, Material.MAGMA_BLOCK,
+            Material.CAMPFIRE, Material.SOUL_CAMPFIRE, Material.SWEET_BERRY_BUSH, Material.POWDER_SNOW, Material.WITHER_ROSE);
+
+    /** Is the next step safe: no hazard at the feet or under them, and ground within 3 blocks down (no cliffs). */
+    static boolean safeStep(LivingEntity v, Vector dir) { return safeStep(v, dir, 0.9); }
+
+    /** Safe all the way out to `far` blocks (a sprint-jump's landing, a lunge). */
+    static boolean safePath(LivingEntity v, Vector dir, double far) {
+        for (double d = 0.9; d <= far + 0.01; d += 0.9) if (!safeStep(v, dir, d)) return false;
+        return true;
+    }
+
+    static boolean safeStep(LivingEntity v, Vector dir, double dist) {
+        Location at = v.getLocation().clone().add(dir.getX() * dist, 0, dir.getZ() * dist);
+        Block feet = at.getBlock();
+        if (HAZARD.contains(feet.getType()) || HAZARD.contains(feet.getRelative(0, 1, 0).getType())) return false;
+        if (feet.getType().isSolid()) return !HAZARD.contains(feet.getRelative(0, 1, 0).getType()); // a step up
+        for (int i = 1; i <= 4; i++) {
+            Block b = feet.getRelative(0, -i, 0);
+            if (HAZARD.contains(b.getType())) return false;
+            if (b.getType().isSolid() || b.getType() == Material.WATER) return i <= 4;
+        }
+        return false;
     }
 
     /** One hit, the way a player's would land. */
@@ -1544,16 +1635,23 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         float pitch = l.getPitch();
         float wantYaw = m.yaw;
         if (m.target != null) {
-            Vector d = m.target.getEyeLocation().toVector().subtract(m.brain.getEyeLocation().toVector());
+            // aims at their chest (players do), with a little hand shake by skill
+            Vector d = m.target.getLocation().add(0, 1.15, 0).toVector().subtract(m.brain.getEyeLocation().toVector());
+            if (m.t % 3 == 0) {
+                double sp = m.skill.spread();
+                m.aimJx = (float) (m.aimJx * 0.5 + random.nextGaussian() * sp * 0.9);
+                m.aimJy = (float) (m.aimJy * 0.5 + random.nextGaussian() * sp * 0.6);
+            }
             if (d.lengthSquared() > 1e-4) {
-                wantYaw = (float) Math.toDegrees(Math.atan2(-d.getX(), d.getZ()));
-                pitch = (float) -Math.toDegrees(Math.atan2(d.getY(), Math.hypot(d.getX(), d.getZ())));
+                wantYaw = (float) Math.toDegrees(Math.atan2(-d.getX(), d.getZ())) + m.aimJx;
+                pitch = (float) -Math.toDegrees(Math.atan2(d.getY(), Math.hypot(d.getX(), d.getZ()))) + m.aimJy;
             }
             if (m.fleeUntil > m.t) wantYaw += 180;
-        }
+        } else { wantYaw = m.idleYaw; pitch = (float) (Math.sin(m.t * 0.03) * 12); }
         if (m.drinkUntil > m.t || m.lookDownUntil > m.t) pitch = 88;
         float diff = ((wantYaw - m.yaw) % 360 + 540) % 360 - 180;
-        m.yaw += Math.max(-40, Math.min(40, diff)); // a quick but not instant turn
+        float rate = turnRate(m);
+        m.yaw += Math.max(-rate, Math.min(rate, diff)); // a quick but not instant turn (faster for better players)
         to.setYaw(m.yaw);
         to.setPitch(pitch);
         // MOVE the body (velocity = the gap to the brain) instead of teleporting it every tick: the game only animates a
@@ -1671,6 +1769,9 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             }
         }
         m.lastHurt = m.t;
+        Player by = TotemLimit.playerBehind(e.getDamager()); // someone else hit it: it turns on them, like a player would
+        if (by != null && by != m.target && (by.getGameMode() == GameMode.SURVIVAL || by.getGameMode() == GameMode.ADVENTURE)
+                && (m.target == null || random.nextDouble() < 0.6)) { m.target = by; m.reactAt = m.t + Math.max(1, m.skill.reaction() / 2); }
         if (!(e.getDamager() instanceof Projectile) && m.brain.isOnGround() && random.nextDouble() < m.skill.jumpCrit()) m.jumpReset = m.t + 1;
         Emotes.q(() -> m.body.playHurtAnimation(0));
         m.brain.getWorld().playSound(m.brain.getLocation(), Sound.ENTITY_PLAYER_HURT, 1, 1);

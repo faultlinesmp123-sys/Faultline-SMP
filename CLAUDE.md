@@ -1889,6 +1889,17 @@ Notes:
   stays ~6 above then dives, hits as it passes (mace = smash), lands near a grounded target; when losing it rockets away
   (`elytraEscape`). `eye(m)` falls back to the brain's eye. `/mimicplayer clear` also removes its pearls in flight. Style
   counts debuff pots. Tested (scratch `nt/NewTest`, with a tiny gravity/ground sim since MockBukkit has no entity physics).
+- **The mimic, human pass (Items 1.2.81)**: `elytra-pvp` is OFF by default now (code + config). Human bits in `MimicPlayer`:
+  SAFE MOVEMENT (`safeStep`/`safePath`, `HAZARD` set): never walks, strafes, W-taps, lunges or sprint-jumps into lava / fire /
+  cactus / magma / campfires / berry bushes / powder snow or off a drop of 4+; looks further ahead the faster it moves
+  (`look`), turns 45/90 aside to go round, else stops; SWIMS in water (holds space). MISSES like a player (`whiff`,
+  `missChance` easy 25% / normal 14% / hard 7% / godlike 3%: arm swings, cooldown resets, nothing lands). AIM: at your chest
+  with a hand shake by skill (`aimJx/aimJy` from `skill.spread`), head turn speed by skill (`turnRate` 22/35/50/65 degrees a
+  tick). ITEM SWAP time (`swapTicks` 4/3/2/1 before eating / drinking). Keeps MOVING while eating / drawing a bow / drinking
+  (item-use crawl 0.075, backs off + strafes, strafes sideways while drawing far off). ZIG-ZAGS in when you hold a bow /
+  crossbow / trident (+-35 degrees) or from far off (+-15). TURNS ON whoever hits it (60%, half its reaction time). IDLE with
+  nobody around: looks around and wanders a few steps (`idle`, `idleYaw`). Tested (scratch `nt/NewTest`: a stone floor under
+  the mock world, the lava pool walk-round, turning on Ana, elytra test turns the key on).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Skills → Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

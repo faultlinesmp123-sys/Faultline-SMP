@@ -2032,6 +2032,19 @@ Notes:
   so hits looked like 4 blocks). Tested (scratch `nt/NewTest`: house door (walls intact), stairs up 6, drop off a 6 ledge,
   dig down through rock (glass walls kept), out of a wall, breeze rods, wind hop, water climb from a wall and from under the
   floor, pearl; 8/8 runs).
+- **Mimic walker 2 (Items 1.2.89)**: `MimicNav` new moves: GAP (parkour: a sprint-jump over 1-3 air cells to a standable
+  cell level, 1 up (gap <= 2) or 1 down; needs head room; `followPath` runs to the edge of its cell (0.15 past the centre),
+  jumps 0.36 + 0.42, then holds 0.3 b/t at the landing in the air: `gapUntil`/`gapStep`) and BRIDGE (`canBridge` = blocks +
+  world techs: a block placed under the next cell over a gap, water or lava, `replaceable`; it creeps to the edge, stops,
+  `bridgeBlock` = a TempBlock into air/water/lava, put back after 30 s). DROPS are judged by fall DAMAGE (`maxFallDamage`:
+  health - 6, 40 with a water bucket; `fallDamage` = (k - 3) x 0 on slime / powder snow / cobweb / water, 0.2 hay / honey, 0.5
+  beds). TERRAIN cost (`terrain`): soul sand / honey +1.5, slime +0.8. Sprint-swimming (0.2). PATH BUDGET: all mimics share
+  `mimic-player.path-budget-per-tick` 8000 nodes a tick (`budgetUsed`; over it = keeps its old path a tick). FLEE uses the
+  walker (`navFlee`: a standable spot ~18 away, turned up to 90 degrees off straight-away, replanned every 2 s) when the
+  straight run isn't a clear `walkLine`. Can't reach them at all and no movement tech = `farShot`: a WIND CHARGE at them (a real
+  WindCharge entity; knocks them off a pillar), the ROD (hook, 8 ticks later reel: + 0.1 x the gap), the BOW, snowballs.
+  Tested (scratch `nt/NewTest`: 3-wide parkour gap with nothing to bridge, a 6-wide gap bridged (3 blocks, then a jump), wind
+  charges + rod at Ben up a 10-high pillar; 8/8 runs).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Skills → Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

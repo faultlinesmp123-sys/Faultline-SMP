@@ -134,7 +134,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         boolean idleWalk;
         boolean flying;
         int blockUntil, shieldOffUntil, eatUntil, drinkUntil, drawUntil, pearlReady, bowReady, wtapUntil, fleeUntil, axeUntil;
-        int rods, craftReady, reachTechReady, climbTicks, hopUntil, stageUntil; Block climbWater, stageGoal;
+        int rods, craftReady, reachTechReady, climbTicks, hopUntil, stageUntil, gapUntil, farShotReady, fleePlanAt; Block climbWater, stageGoal, fleeGoal; MimicNav.Step gapStep;
         int apples, gapples, pots, pearlsLeft, totems = 1, wind, lava, water, webs, blocks, rockets, arrows, throwables;
         final List<ItemStack> buffs = new ArrayList<>(), debuffs = new ArrayList<>();
         int buffReady, debuffReady, throwReady, jumpReset = -1, potUntil, lookDownUntil;
@@ -2202,6 +2202,13 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
                 return d;
             }
             public boolean canPillar() { return tier(m) >= 2 && m.blocks > 0 && worldTechs(); }
+            public boolean canBridge() { return m.blocks > 0 && worldTechs(); }
+            public double maxFallDamage() {
+                Vindicator v = m.brain;
+                double d = v.getHealth() + v.getAbsorptionAmount() - 6; // keeps 3 hearts
+                if (m.water > 0 && worldTechs()) d = Math.max(d, 40); // it can water-MLG the landing
+                return Math.max(0, Math.min(20, d));
+            }
             public double penalty(long from, long to) {
                 if (m.navBad.isEmpty()) return 0;
                 Integer until = m.navBad.get(from * 31 + to);
@@ -2216,11 +2223,17 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         return blocks(b) ? b.getRelative(0, 1, 0) : b;
     }
 
+    private long budgetTick = -1; private int budgetUsed;
+
     void plan(Mimic m, Block goal) {
         Vindicator v = m.brain;
+        // every mimic shares a budget of nodes a tick: lots of them chasing at once never adds up to a lag spike
+        if (budgetTick != clock) { budgetTick = clock; budgetUsed = 0; }
+        if (budgetUsed > cfg("path-budget-per-tick", 8000) && m.path != null) return; // keeps its old path a tick longer
         Block f = feetCell(v);
         MimicNav nav = new MimicNav(v.getWorld(), navRules(m));
         MimicNav.Result r = nav.find(f.getX(), f.getY(), f.getZ(), goal.getX(), goal.getY(), goal.getZ(), goal.equals(m.stageGoal) && m.stageUntil > m.t ? 0.5 : 1.6, (int) cfg("path-nodes", 2500), (int) Math.min(96, range()));
+        budgetUsed += r.expanded;
         m.path = r.steps; m.pathIdx = 0; m.pathAt = m.t; m.pathGoal = goal; m.navReach = r.reached;
         m.navBest = 1e9; m.navProgressAt = m.t;
         m.navBad.values().removeIf(u -> u <= m.t);
@@ -2248,7 +2261,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             }
             return;
         }
-        if (m.path != null && (!m.navReach || m.stageUntil > m.t) && m.stageUntil <= m.t && reachTech(m, tg)) return;
+        if (m.path != null && (!m.navReach || m.stageUntil > m.t) && m.stageUntil <= m.t && (reachTech(m, tg) || farShot(m, tg))) return;
         if (m.path == null || m.pathIdx >= m.path.size()) { // no step left (it's there, or there's no way at all): straight at them
             Vector to = tg.getLocation().toVector().subtract(v.getLocation().toVector()).setY(0);
             if (to.lengthSquared() > 1e-4) move(m, to.normalize(), chaseSpeed(m), false, false);
@@ -2394,6 +2407,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             if (ok && s.type == MimicNav.Type.PILLAR && at.getY() < s.y - 0.05) ok = false;
             if (ok) { m.pathIdx = j + 1; m.navBest = 1e9; m.navProgressAt = m.t; m.navStuck = 0; break; }
         }
+        if (v.isOnGround() && m.gapUntil > 0 && m.gapUntil - m.t < 27) m.gapUntil = 0;
         if (m.pathIdx >= m.path.size()) return;
         MimicNav.Step s = m.path.get(m.pathIdx);
         // stuck: no closer to this step for 25 ticks
@@ -2420,7 +2434,48 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             return;
         }
         Vector cur = v.getVelocity();
+        // mid parkour jump: holds W (a player's sprinting air speed) straight at the landing block
+        if (m.gapUntil > m.t && m.gapStep != null && !v.isOnGround()) {
+            Vector d = new Vector(m.gapStep.cx() - at.getX(), 0, m.gapStep.cz() - at.getZ());
+            double l = d.length();
+            if (l > 0.05) { d.multiply(Math.min(0.3, l * 0.5) / l); Safe.vel(v, d.setY(cur.getY())); }
+            return;
+        }
         switch (s.type) {
+            case GAP -> {
+                MimicNav.Step from = m.pathIdx > 0 ? m.path.get(m.pathIdx - 1) : null;
+                double fx = from != null ? from.cx() : Math.floor(at.getX()) + 0.5, fz = from != null ? from.cz() : Math.floor(at.getZ()) + 0.5;
+                Vector d = new Vector(s.cx() - fx, 0, s.cz() - fz);
+                if (d.lengthSquared() < 1e-4 || !v.isOnGround()) break;
+                d.normalize();
+                double out = (at.getX() - fx) * d.getX() + (at.getZ() - fz) * d.getZ(); // how far toward the edge it's run
+                double side = (at.getX() - fx) * -d.getZ() + (at.getZ() - fz) * d.getX();
+                Vector run = d.clone().multiply(chaseSpeed(m)).add(new Vector(-d.getZ(), 0, d.getX()).multiply(-side * 0.4));
+                if (out >= 0.15) { // at the edge: the sprint-jump
+                    Safe.vel(v, d.clone().multiply(0.36).setY(0.42));
+                    m.gapUntil = m.t + 30; m.gapStep = s; m.navProgressAt = m.t;
+                    return;
+                }
+                Safe.vel(v, run.setY(cur.getY()));
+                return;
+            }
+            case BRIDGE -> {
+                Block under = v.getWorld().getBlockAt(s.x, s.y - 1, s.z);
+                if (blocks(under)) break; // already down: walk on
+                MimicNav.Step from = m.pathIdx > 0 ? m.path.get(m.pathIdx - 1) : null;
+                double fx = from != null ? from.cx() : Math.floor(at.getX()) + 0.5, fz = from != null ? from.cz() : Math.floor(at.getZ()) + 0.5;
+                Vector d = new Vector(s.cx() - fx, 0, s.cz() - fz);
+                if (d.lengthSquared() > 1e-4) d.normalize();
+                double out = (at.getX() - fx) * d.getX() + (at.getZ() - fz) * d.getZ();
+                // speed-bridge: creeps (sneaking) to the edge facing back, places the block against it, steps on
+                if (out < 0.2 && v.isOnGround()) { Safe.vel(v, d.clone().multiply(0.08).setY(cur.getY())); return; }
+                Safe.vel(v, new Vector(0, cur.getY(), 0));
+                if (m.blocks > 0 && bridgeBlock(under, m.gear.block)) {
+                    m.blocks--; hold(m, "block"); swing(m); m.navProgressAt = m.t;
+                    under.getWorld().playSound(under.getLocation(), Sound.BLOCK_STONE_PLACE, 1, 1);
+                } else navStuck(m, s);
+                return;
+            }
             case PILLAR -> {
                 if (Math.hypot(s.cx() - at.getX(), s.cz() - at.getZ()) > 0.3 && v.isOnGround()) { centre(m, s, 0.1); return; }
                 if (v.isOnGround()) { m.pillarFrom = at.getBlock(); hold(m, "block"); Safe.vel(v, new Vector(0, 0.42, 0)); m.navProgressAt = m.t; return; }
@@ -2438,7 +2493,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             case SWIM -> {
                 Vector d3 = new Vector(s.cx() - at.getX(), s.y + 0.1 - at.getY(), s.cz() - at.getZ());
                 if (d3.lengthSquared() > 1e-4) d3.normalize();
-                Safe.vel(v, cur.multiply(0.6).add(d3.multiply(0.12)).add(new Vector(0, 0.02, 0)));
+                Safe.vel(v, cur.multiply(0.5).add(d3.multiply(0.2)).add(new Vector(0, 0.02, 0))); // sprint-swimming
                 return;
             }
             default -> { }
@@ -2446,7 +2501,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         if (wet) { // swimming toward a land step: head for it, hold space
             Vector d3 = new Vector(s.cx() - at.getX(), 0, s.cz() - at.getZ());
             if (d3.lengthSquared() > 1e-4) d3.normalize();
-            Safe.vel(v, new Vector(cur.getX() * 0.8 + d3.getX() * 0.07, Math.min(0.14, cur.getY() + 0.05), cur.getZ() * 0.8 + d3.getZ() * 0.07));
+            Safe.vel(v, new Vector(cur.getX() * 0.6 + d3.getX() * 0.12, Math.min(0.14, cur.getY() + 0.05), cur.getZ() * 0.6 + d3.getZ() * 0.12));
             return;
         }
         // aim: the furthest of the next few level WALK steps it can walk straight to (smooth lines, no zig-zag on the grid)
@@ -2501,6 +2556,94 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         double l = d.length();
         if (l > 1e-3) d.multiply(Math.min(sp, l) / l);
         Safe.vel(v, d.setY(v.getVelocity().getY()));
+    }
+
+    /** A bridge block: into air, water or lava (a TempBlock: put back like its other blocks). */
+    boolean bridgeBlock(Block b, Material mat) {
+        Material t = b.getType();
+        if (!worldTechs() || temp.containsKey(b) || !(t.isAir() || t == Material.WATER || t == Material.LAVA)) return false;
+        TempBlock tb = new TempBlock();
+        tb.block = b; tb.before = b.getBlockData().clone(); tb.placed = mat; tb.until = clock + 600;
+        b.setType(mat, false);
+        temp.put(b, tb);
+        return true;
+    }
+
+    /**
+     * Can't get to them at all (up a pillar, over a moat...): it fights from where it is. A WIND CHARGE at them (knocks them off
+     * their pillar), the ROD (hooks and reels them in), the BOW, snowballs; else it waits under them.
+     */
+    private boolean farShot(Mimic m, Player tg) {
+        Vindicator v = m.brain;
+        if (m.t < m.farShotReady || !sees(v, tg)) return false;
+        double dist = tg.getLocation().distance(v.getLocation()), dy = tg.getLocation().getY() - v.getLocation().getY();
+        Location eye = eye(m);
+        Vector aim = tg.getLocation().add(0, 0.9, 0).toVector().add(m.tgVel.clone().multiply(Math.min(8, dist / 1.5))).subtract(eye.toVector());
+        if (m.wind > 0 && dist <= 24 && dy >= 1.5) { // wind charge at their feet: off the pillar they come
+            m.wind--; m.farShotReady = m.t + 30;
+            hold(m, "wind"); swing(m);
+            try {
+                org.bukkit.entity.WindCharge wc = v.getWorld().spawn(eye, org.bukkit.entity.WindCharge.class, e -> e.setShooter(v));
+                Safe.vel(wc, aim.clone().normalize().multiply(1.5));
+            } catch (RuntimeException ex) { // no wind charge entity here: the burst itself
+                Vector push = tg.getLocation().toVector().subtract(v.getLocation().toVector()).setY(0);
+                if (push.lengthSquared() > 1e-4) Safe.vel(tg, tg.getVelocity().add(push.normalize().multiply(0.9).setY(0.6)));
+            }
+            v.getWorld().playSound(eye, Sound.ENTITY_WIND_CHARGE_THROW, 1, 1);
+            Bukkit.getScheduler().runTaskLater(plugin, () -> { if (m.body.isValid()) hold(m, "sword"); }, 4L);
+            return true;
+        }
+        if (m.gear.rod && dist >= 4 && dist <= 20) { // hook + reel: pulls them toward it (vanilla: 0.1 x the gap)
+            m.farShotReady = m.t + 40;
+            hold(m, "rod"); swing(m);
+            v.getWorld().playSound(eye, Sound.ENTITY_FISHING_BOBBER_THROW, 1, 1);
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (!tg.isValid() || !v.isValid() || tg.getWorld() != v.getWorld()) return;
+                Vector pull = v.getLocation().toVector().subtract(tg.getLocation().toVector()).multiply(0.1);
+                Safe.vel(tg, tg.getVelocity().add(pull.setY(Math.max(0.1, pull.getY()))));
+                v.getWorld().playSound(v.getLocation(), Sound.ENTITY_FISHING_BOBBER_RETRIEVE, 1, 1);
+                combat(tg);
+                if (m.body.isValid()) hold(m, "sword");
+            }, 8L);
+            return true;
+        }
+        if (m.gear.bow != null && (m.arrows > 0 || level(m.gear.bow, "infinity") > 0) && dist >= 5 && dist <= 40) {
+            m.farShotReady = m.t + 50;
+            m.drawUntil = m.t + 20 + random.nextInt(6);
+            hold(m, "bow");
+            Emotes.q(() -> m.body.startUsingItem(EquipmentSlot.HAND));
+            return true;
+        }
+        if (m.throwables > 0 && dist <= 16 && m.t >= m.throwReady) { m.farShotReady = m.t + 15; snowball(m, tg); return true; }
+        return false;
+    }
+
+    /** Runs away along a real path (round walls, through doors, down off ledges) to a spot ~18 blocks from them. */
+    private boolean navFlee(Mimic m, Player tg) {
+        Vindicator v = m.brain;
+        if (m.fleeGoal == null || m.t - m.fleePlanAt > 40 || m.fleeGoal.getWorld() != v.getWorld()) {
+            Vector away = v.getLocation().toVector().subtract(tg.getLocation().toVector()).setY(0);
+            if (away.lengthSquared() < 1e-4) away = new Vector(1, 0, 0);
+            away.normalize();
+            MimicNav nav = new MimicNav(v.getWorld(), navRules(m));
+            Block pick = null;
+            for (int turn : new int[]{0, 30, -30, 60, -60, 90, -90}) {
+                double r = Math.toRadians(turn), c = Math.cos(r), sn = Math.sin(r);
+                Vector d = new Vector(away.getX() * c - away.getZ() * sn, 0, away.getX() * sn + away.getZ() * c).multiply(18);
+                Location to = v.getLocation().add(d);
+                for (int dy = 0; dy <= 6 && pick == null; dy++) for (int sgn : new int[]{1, -1}) {
+                    int y = to.getBlockY() + dy * sgn;
+                    if (nav.standable(to.getBlockX(), y, to.getBlockZ())) { pick = v.getWorld().getBlockAt(to.getBlockX(), y, to.getBlockZ()); break; }
+                }
+                if (pick != null) break;
+            }
+            if (pick == null) return false;
+            m.fleeGoal = pick; m.fleePlanAt = m.t;
+            plan(m, pick);
+        }
+        if (m.path == null || m.pathIdx >= m.path.size()) { m.fleeGoal = null; return false; }
+        followPath(m, tg);
+        return true;
     }
 
     /** Mines one block in its path (the right tool, or a hand for dirt / sand / leaves), at a player's speed. */
@@ -3281,8 +3424,8 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         away.normalize();
         Block ahead = v.getLocation().clone().add(away.getX() * 0.8, 0, away.getZ() * 0.8).getBlock();
         boolean wall = ahead.getType().isSolid(), tall = ahead.getRelative(0, 1, 0).getType().isSolid();
-        if (wall && tall) { Location to = v.getLocation().add(away.multiply(8)); Emotes.q(() -> v.getPathfinder().moveTo(to, 1.4)); }
-        else move(m, away, m.skill.speed() * 0.9, wall, true);
+        if (wall && tall || !walkLine(v, v.getLocation().add(away.clone().multiply(6)))) { if (!navFlee(m, tg)) move(m, away, m.skill.speed() * 0.9, wall, true); }
+        else { m.fleeGoal = null; move(m, away, m.skill.speed() * 0.9, wall, true); }
         hold(m, "sword");
         if (m.fleeUntil - m.t < 2 || v.getHealth() / maxHp(v) > 0.7) m.fleeUntil = 0;
     }

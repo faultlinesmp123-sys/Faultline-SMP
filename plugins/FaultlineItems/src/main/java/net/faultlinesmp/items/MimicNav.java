@@ -15,7 +15,7 @@ import java.util.*;
  * block under it), CLIMB (ladders / vines), SWIM. Too far / no way = the partial path that gets closest, so it always moves.
  */
 final class MimicNav {
-    enum Type { WALK, STEP, DROP, DIG, DIGDOWN, PILLAR, CLIMB, SWIM }
+    enum Type { WALK, STEP, DROP, DIG, DIGDOWN, PILLAR, CLIMB, SWIM, GAP, BRIDGE }
 
     static final class Step {
         final int x, y, z;
@@ -36,6 +36,10 @@ final class MimicNav {
         int maxDrop();
         /** Blocks to pillar with. */
         boolean canPillar();
+        /** Blocks to bridge with (over gaps, water, lava). */
+        default boolean canBridge() { return canPillar(); }
+        /** The most fall damage it'll take for a shortcut. */
+        default double maxFallDamage() { return Math.max(0, maxDrop() - 3); }
         /** A penalty for this edge (an edge that got it stuck), keyed by from/to. */
         double penalty(long from, long to);
     }
@@ -165,8 +169,25 @@ final class MimicNav {
         return new ArrayList<>(out);
     }
 
+    /** Slow ground costs more (soul sand, honey, mud... ), so it goes round when it can. */
+    private double terrain(int x, int y, int z) {
+        Material t = w.getBlockAt(x, y - 1, z).getType();
+        if (t == Material.SOUL_SAND || t == Material.HONEY_BLOCK) return 1.5;
+        if (t == Material.SLIME_BLOCK) return 0.8;
+        return 0;
+    }
+
+    /** Fall damage a drop of k blocks onto this block does (hay / beds / honey soften it, slime and water take it all). */
+    private double fallDamage(int x, int landY, int z, int k) {
+        if (water(x, landY, z)) return 0;
+        Material t = w.getBlockAt(x, landY - 1, z).getType();
+        double mult = t == Material.SLIME_BLOCK || t == Material.POWDER_SNOW || t == Material.COBWEB ? 0 : t == Material.HAY_BLOCK || t == Material.HONEY_BLOCK ? 0.2 : Tag.BEDS.isTagged(t) ? 0.5 : 1;
+        return Math.max(0, k - 3) * mult;
+    }
+
     private Node node(Node from, int x, int y, int z, double cost, Type type, List<Block> dig, Block door, int gx, int gy, int gz) {
         long k = key(x, y, z);
+        if (type != Type.SWIM && type != Type.CLIMB) cost += terrain(x, y, z);
         double g = from.g + cost + rules.penalty(from.key, k);
         return new Node(k, x, y, z, g, g + h(x, y, z, gx, gy, gz), from, new Step(x, y, z, type, dig, door));
     }
@@ -210,18 +231,39 @@ final class MimicNav {
             }
             // DROP off a ledge: the way out is open, falls to the first floor below
             if (pass(nx, y, nz) && pass(nx, y + 1, nz) && !floor(nx, y - 1, nz)) {
-                int max = rules.maxDrop();
-                for (int k = 1; k <= Math.max(max, 40); k++) {
+                double maxDmg = rules.maxFallDamage();
+                for (int k = 1; k <= 60; k++) {
                     int ly = y - k;
                     if (hazard(nx, ly, nz)) break;
                     if (water(nx, ly, nz)) { out.add(node(c, nx, ly, nz, base + k * 0.15 + 1, Type.DROP, List.of(), null, gx, gy, gz)); break; }
                     if (!pass(nx, ly, nz)) break;
                     if (floor(nx, ly - 1, nz)) {
-                        if (k <= max) out.add(node(c, nx, ly, nz, base + k * 0.25 + Math.max(0, k - 3) * 1.5, Type.DROP, List.of(), null, gx, gy, gz));
+                        double dmg = fallDamage(nx, ly, nz, k);
+                        if (dmg <= maxDmg) out.add(node(c, nx, ly, nz, base + k * 0.25 + dmg * 1.5, Type.DROP, List.of(), null, gx, gy, gz));
                         break;
                     }
                 }
+                // PARKOUR: a sprint-jump across the gap (1-3 wide; 1 up over 1-2; 1 down over 1-3)
+                if (pass(x, y + 2, z)) {
+                    for (int g = 1; g <= 3; g++) {
+                        int mx = x + dx * g, mz = z + dz * g;
+                        if (!pass(mx, y, mz) || !pass(mx, y + 1, mz) || !pass(mx, y + 2, mz) || floor(mx, y - 1, mz) && g > 1) break;
+                        int lx = x + dx * (g + 1), lz = z + dz * (g + 1);
+                        for (int dyl : new int[]{0, 1, -1}) {
+                            if (dyl == 1 && g > 2) continue;
+                            if (!standable(lx, y + dyl, lz) || door(lx, y + dyl, lz) || !pass(lx, y + dyl + 2, lz) && dyl >= 0) continue;
+                            out.add(node(c, lx, y + dyl, lz, (g + 1) + 1.2 + (g == 3 ? 1 : 0) + (dyl == 1 ? 0.8 : 0), Type.GAP, List.of(), null, gx, gy, gz));
+                            break;
+                        }
+                    }
+                }
+                // BRIDGE: a block placed under the next cell (over a gap, water or lava), like a player
+                if (rules.canBridge() && replaceable(nx, y - 1, nz)) out.add(node(c, nx, y, nz, base + 2.2, Type.BRIDGE, List.of(), null, gx, gy, gz));
                 continue;
+            }
+            // water / lava on the level: bridge it (lava never gets walked into)
+            if (rules.canBridge() && (water(nx, y - 1, nz) || hazard(nx, y - 1, nz)) && pass(nx, y, nz) && pass(nx, y + 1, nz) && replaceable(nx, y - 1, nz)) {
+                out.add(node(c, nx, y, nz, base + 2.2, Type.BRIDGE, List.of(), null, gx, gy, gz));
             }
             // DIG through (feet and head), on the level
             if (floor(nx, y - 1, nz)) {
@@ -256,6 +298,13 @@ final class MimicNav {
         // PILLAR: jump and put a block under itself (only worth it toward something above)
         if (rules.canPillar() && gy > y && pass(x, y + 2, z) && floor(x, y - 1, z)) out.add(node(c, x, y + 1, z, 3.5, Type.PILLAR, List.of(), null, gx, gy, gz));
         return out;
+    }
+
+    /** Something a block can be put into: air, water, lava (not another block). */
+    private boolean replaceable(int x, int y, int z) {
+        if (y < w.getMinHeight() || !w.isChunkLoaded(x >> 4, z >> 4)) return false;
+        Material t = w.getBlockAt(x, y, z).getType();
+        return t.isAir() || t == Material.WATER || t == Material.LAVA;
     }
 
     private boolean halfStep(int x, int y, int z) {

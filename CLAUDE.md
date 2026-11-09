@@ -2337,6 +2337,14 @@ Notes:
   player hit in `onHit` and by each counted pop), saved in totems.yml `last-hit.<uuid>` so logging off / restarts don't skip
   it; counts from before 1.3.7 and `/totems set` start the clock at that moment. Tested (scratch `dh/TotTest`: 9 min = kept,
   10 min = reset + message, a player hit restarts it).
+- **Unholy Arrows are back (Items 1.3.8, Index 1.9.4)**: `Items/UnholyArrows.java` (`unholy-arrows:`), same PDC key
+  `faultlinebosses:unholy_arrow` + model `faultline:unholy_arrow` as the Demon Eye's (old ones work; OldGear no longer takes
+  them). Skeletons / Strays / Bogged killed by a player drop 1-2 at `drop-chance` 0.05 (never spawner / trial spawner mobs or
+  mutant minions); shapeless recipe Arrow + Fermented Spider Eye + Glowstone Dust + Redstone = 2. No bonus damage: a hit on a
+  living thing (not armor stands / invisible boss hitboxes) from a draw >= `min-draw` 0.9 (crossbows always count) gives the
+  SHOOTER Strength II + Swiftness II for `buff-seconds` 3, at most once every `cooldown-seconds` 20 (action bar); never cuts a
+  stronger effect. Infinity still uses one up; the arrow picked back up is an Unholy Arrow; purple trail. `/giveunholy [amount]
+  [player]` (`items.giveunholy`), /itemsmenu, Index entry (weapons). Tested (scratch `dh/UnTest`).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Skills → Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

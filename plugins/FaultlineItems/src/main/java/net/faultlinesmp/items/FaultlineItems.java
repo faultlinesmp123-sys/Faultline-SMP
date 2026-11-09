@@ -425,6 +425,9 @@ public final class FaultlineItems extends JavaPlugin {
         modGuard = new ModGuard(this); // 1.3.0: map / pie chart mods + the pie chart limit
         getServer().getPluginManager().registerEvents(modGuard, this);
         if (getCommand("pielimit") != null && modGuard != null) getCommand("pielimit").setExecutor((snd, cmd, lbl, args) -> modGuard.command(snd, args));
+        UnholyArrows unholy = new UnholyArrows(this); // 1.3.8: Unholy Arrows are back (skeletons 5%, crafted)
+        getServer().getPluginManager().registerEvents(unholy, this);
+        if (getCommand("giveunholy") != null) getCommand("giveunholy").setExecutor(unholy);
         new DragonEggBuff(this); // 1.3.4: the dragon egg on you = Strength II + Speed II
         getServer().getPluginManager().registerEvents(new RecipeUnlock(this), this); // 1.3.5: Bedrock only sees unlocked recipes
         offlineTp = new OfflineTp(this); // 1.2.99: /offtp
@@ -7032,6 +7035,7 @@ public final class FaultlineItems extends JavaPlugin {
                 pl -> pl.darkLoot.bag(), // 1.2.41
                 pl -> pl.balloons.item(null, 0), // 1.2.24
                 pl -> pl.blueObsidian.item(16), // 1.2.75
+                pl -> UnholyArrows.item(16), // 1.3.8
                 pl -> pl.backpack.item(), // 1.2.78
                 pl -> pl.krampus.bell(1), // 1.2.78: summons Krampus
                 pl -> pl.holidays.lantern(1), // 1.2.78: haunts the nearest village

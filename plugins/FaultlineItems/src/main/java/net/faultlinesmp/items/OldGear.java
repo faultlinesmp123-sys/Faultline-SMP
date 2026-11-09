@@ -45,7 +45,7 @@ final class OldGear implements Listener {
     private final NamespacedKey sweptKey, sweptEntitiesKey;
 
     /** faultlinebosses keys whose item is gone whatever its value. */
-    static final Set<String> BOSS_KEYS = Set.of("suspicious_eye", "twin_eye_staff", "demon_eye_shield", "unholy_arrow", "mortimer_egg",
+    static final Set<String> BOSS_KEYS = Set.of("suspicious_eye", "twin_eye_staff", "demon_eye_shield", "mortimer_egg", // (1.3.8: Unholy Arrows are back, not taken)
             "dune_egg", "frostmaw_egg", "captains_armband", "lorenzos_ball", "talon", "dune_idol", "vendetta_item", "warlord_item", "rush_sigil");
     /** faultlinebosses:wild_item values that are still in the game (the Dark Ocean's summons). */
     static final Set<String> WILD_KEEP = Set.of("brine_bait", "umbral_sonar", "sirens_comb", "inkjaw_bait", "glistening_pearl", "mournful_shell");

@@ -2173,6 +2173,25 @@ Notes:
   planning 40% -> ~18-35%, total ~1.35-1.74 -> ~0.9 ms/tick in MockBukkit. Tested (scratch `nt/NewTest`: jump takeoff, glide
   physics, pitch range, speed changes, lands near Ben slowly, never in a block, dives in a tank toward a lower target; the
   harness clears the cell cache every tick since setType fires no events; 6/6 runs).
+- **Mimic walks like a player (Items 1.2.96)**: LOCOMOTION on vanilla's own physics (`stride`): the server already applies
+  friction / soul sand / honey to the mob, so each tick only ADDS a player's input, at most `a` = sp x 0.454 x 0.216 / f^3
+  (f = `friction()` under its feet: ice / packed 0.98, blue ice 0.989, slime 0.8, else 0.6), steering the carried speed toward
+  `want` (slowing and turning cost the same input): it accelerates over ~5 ticks to `sp`, keeps momentum, slides on ice. (The
+  old `cur*0.4 + dir*sp*0.9` snapped to speed and ran ~15% faster than a real sprint.) `jumpVel` = 0.42 (+ Jump Boost) on top of
+  its speed, sprint-jump +0.2; SPRINT-JUMPS every landing on an open straight once up to speed, and HEAD-HITS under a 2-high
+  ceiling (`headHitter`). AIR (`airStrafe`): only 0.026 a tick of control, no braking; `landsSafe` simulates the fall (drag
+  0.91, gravity) and heading for lava / a 6+ drop / the void it steers toward the safe side (knocked off a ledge). AVOID
+  (`avoid`, `getNearbyEntities` 1.8): people / mobs ahead push its heading aside (not its target, nor anything within 1.5 of
+  the target, nor invisible hitboxes). PATHS: pure pursuit over the next 8 level WALK steps (`aimIdx`), eases off before a
+  corner sharper than 60 degrees, brakes instead of carrying off an edge on a WALK step (never on a planned DROP). MimicNav
+  EDGE COSTS (`edge`, cached in `Cells.edges`): a cell beside a 2+ drop +0.35, beside lava / fire +1.2 (max 2.4), only within
+  20 blocks of the start (so it walks down the middle of a bridge). Melee spacing that would hang a corner over an edge
+  steps in / out without the strafe and flips it. ELYTRA LANDING: approach starts earlier the faster it is (`speed * 18`),
+  AIR-BRAKE (pitch -28/-12 when coming in fast within 10 above the spot), never sinks below the spot short of it, a rocket
+  back up when it overshot / sank over nothing, harder turn when behind. BUG: `landsSafe` read below the world on long falls
+  (threw = the mimic's tick died). Profiled: ~12% over 1.2.95 in the all-ledges test world. Tested (scratch `nt/NewTest`:
+  accel / top speed / ice / jump numbers, head-hitter, air recovery off a lava ledge, bridge middle 17/17, avoid; scratch
+  `nt/Focus` for the ladder / momentum break / void landing 10/10).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Skills → Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

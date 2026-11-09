@@ -2439,7 +2439,13 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             // SPACING: sit just outside their reach while our hit charges, step in the moment it's ready
             double keep = ch >= s.hitSelect() - 0.1 ? 2.5 : (m.rushUntil > m.t ? 2.5 : m.style.equals("sword") || m.style.startsWith("neth") || m.style.equals("diamond") || m.style.equals("pot") ? 3.35 : 2.8);
             Vector fw = to.clone().multiply(dist > keep + 0.3 ? (safeStep(v, to) ? 0.1 : 0) : dist < keep - 0.3 ? (safeStep(v, to.clone().multiply(-1)) ? -0.08 : 0) : 0);
-            if (v.isOnGround()) walk(v, new Vector(cur.getX() * 0.55 + side.getX() + fw.getX(), cur.getY(), cur.getZ() * 0.55 + side.getZ() + fw.getZ()), 3);
+            if (v.isOnGround()) {
+                Vector full = new Vector(cur.getX() * 0.55 + side.getX() + fw.getX(), cur.getY(), cur.getZ() * 0.55 + side.getZ() + fw.getZ());
+                Vector straight = new Vector(cur.getX() * 0.55 + fw.getX(), cur.getY(), cur.getZ() * 0.55 + fw.getZ());
+                // 1.2.96: strafing would hang it over an edge: it still steps in / out, and circles the other way
+                if (!clearMove(v, full, 3) && side.lengthSquared() > 0 && clearMove(v, straight, 3)) { Safe.vel(v, straight); m.strafeDir = -m.strafeDir; m.strafeFlip = 20; }
+                else walk(v, full, 3);
+            }
             m.sprintHit = false;
         } else {
             chase(m, tg, flank(m, tg, intercept(m, tg, to, dist), dist));
@@ -2824,7 +2830,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         double groundY = ground != null ? ground.getY() : Math.min(y - 30, dest.getY() - 10);
         double speed = Math.hypot(m.glide.getX(), m.glide.getZ());
         // landing: a dry spot it can stand on near the end of the trip, picked once, glided down onto
-        if (flat < 32 + Math.max(0, y - groundY - 26)) {
+        if (flat < 32 + Math.max(0, y - groundY - 26) + speed * 18) { // starts its approach earlier the faster it comes in
             if (m.landSpot == null || m.landSpot.getWorld() != v.getWorld()) {
                 Block ls = standNear(dest);
                 if (ls == null || ls.getRelative(0, -1, 0).isLiquid()) { Block lg = legGoal(m, dest, Math.max(4, flat - 6)); if (lg != null) ls = lg; }
@@ -2836,10 +2842,18 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             if (v.isOnGround() || above < 0.6 || toLand.length() < 1.5 && above < 2.5 || m.t - m.landT > 400) { m.travelFly = false; m.landSpot = null; land(m); return false; }
             float wantYaw = hl > 1.5 ? (float) Math.toDegrees(Math.atan2(-toLand.getX(), toLand.getZ())) : m.flyYaw;
             double slope = Math.toDegrees(Math.atan2(-toLand.getY(), Math.max(0.5, hl))); // how steeply the spot lies below
+            boolean behind = hl > 2 && (toLand.getX() * m.glide.getX() + toLand.getZ() * m.glide.getZ()) < 0; // overshot it
+            double under = m.landSpot.getY() - y; // > 0 = it's sunk below where it wants to land
             float wantPitch;
             if (above < 3.5 || above < 8 && speed > 0.8) wantPitch = speed > 0.5 ? -25 : -8; // the flare: nose up, bleeds the speed off just over the ground
+            else if (speed > 0.75 && hl < speed * 22 && under > -10 && y < v.getWorld().getMaxHeight() - 12) wantPitch = under > -4 ? -28 : -12; // 1.2.96 AIR-BRAKE: coming in too fast: pulls up, trades the speed for height
             else if (hl < 6 && -toLand.getY() > hl) wantPitch = 50; // high over it: spirals down steep
             else wantPitch = (float) Math.max(-10, Math.min(55, slope + (speed > 0.9 ? 6 : -6)));
+            if (under > -2 && hl > 2.5) wantPitch = Math.min(wantPitch, -15); // never sinks below the spot short of it (the void, a cliff)
+            if ((behind || under > -1 && hl > 3) && m.boostTicks == 0 && m.rockets > 0 && speed < 0.6 && m.t >= m.nextRocket && (overVoid || under > 0)) {
+                m.flyPitch = Math.min(m.flyPitch, -20); elytraRocket(m); // short of it / past it over nothing: a rocket back up
+            }
+            if (behind) { float d = ((wantYaw - m.flyYaw) % 360 + 540) % 360 - 180; m.flyYaw += (float) Math.max(-6, Math.min(6, d)); } // turns harder when it overshot
             glideStep(m, wantPitch, wantYaw);
             return true;
         }
@@ -3483,14 +3497,20 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             Safe.vel(v, swimVel(m, cur, d3.getX(), d3.getZ(), s.y + 0.1, 0.12));
             return;
         }
-        // aim: the furthest of the next few level WALK steps it can walk straight to (smooth lines, no zig-zag on the grid)
+        // aim (1.2.96): pure pursuit. The furthest of the next 8 level WALK steps it can walk straight to (smooth lines, no
+        // zig-zag on the grid), and a point on the way to it ~1.6 blocks out, so it rounds corners instead of hitting each cell
         double ax = s.cx(), az = s.cz();
+        int aimIdx = m.pathIdx;
         if (s.type == MimicNav.Type.WALK && s.door == null) {
-            for (int j = Math.min(m.path.size() - 1, m.pathIdx + 4); j > m.pathIdx; j--) {
+            int lastLevel = m.pathIdx;
+            for (int k = m.pathIdx; k <= Math.min(m.path.size() - 1, m.pathIdx + 8); k++) {
+                MimicNav.Step q = m.path.get(k);
+                if (q.type != MimicNav.Type.WALK || q.y != s.y || q.door != null || !q.dig.isEmpty()) break;
+                lastLevel = k;
+            }
+            for (int j = lastLevel; j > m.pathIdx; j--) {
                 MimicNav.Step t = m.path.get(j);
-                boolean level = true;
-                for (int k = m.pathIdx; k <= j; k++) { MimicNav.Step q = m.path.get(k); if (q.type != MimicNav.Type.WALK || q.y != s.y || q.door != null || !q.dig.isEmpty()) { level = false; break; } }
-                if (level && walkLine(v, new Location(v.getWorld(), t.cx(), at.getY(), t.cz()))) { ax = t.cx(); az = t.cz(); break; }
+                if (walkLine(v, new Location(v.getWorld(), t.cx(), at.getY(), t.cz()))) { ax = t.cx(); az = t.cz(); aimIdx = j; break; }
             }
         }
         Vector dir = new Vector(ax - at.getX(), 0, az - at.getZ());
@@ -3503,26 +3523,35 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             Safe.vel(v, new Vector(dir.getX() * 0.2, s.y > at.getY() - 0.2 ? 0.2 : Math.max(-0.15, cur.getY()), dir.getZ() * 0.2));
             return;
         }
-        if (!v.isOnGround()) { // in the air: it can still steer a little (a player's air strafe)
-            Safe.vel(v, new Vector(cur.getX() * 0.9 + dir.getX() * 0.035, cur.getY(), cur.getZ() * 0.9 + dir.getZ() * 0.035));
-            return;
-        }
-        // a step up: jump onto it once it's close (stairs / slabs under a low ceiling: walks up them)
+        if (!v.isOnGround()) { airStrafe(m, cur, dir, sp); return; } // in the air: a player's air strafe (lands safe)
+        // a step up: jump onto it once it's close, keeping its speed (stairs / slabs under a low ceiling: walks up them)
         if (s.type == MimicNav.Type.STEP && flat < 1.35) {
             Block over = at.getBlock().getRelative(0, 2, 0);
-            if (!blocks(over)) { Safe.vel(v, new Vector(dir.getX() * sp * 0.95, 0.42, dir.getZ() * sp * 0.95)); return; } // sprint-jumps up the step, no slowing down
+            if (!blocks(over)) { Safe.vel(v, jumpVel(m, stride(m, cur, dir, sp, sp), dir, false)); return; }
         }
-        // sprint-jump down long straight runs, like a player
-        if (s.type == MimicNav.Type.WALK && flat > 3.5 && openAir(v, dir) && random.nextDouble() < 0.3) {
-            Safe.vel(v, new Vector(dir.getX() * (sp + 0.2), 0.42, dir.getZ() * (sp + 0.2)));
+        double hs = Math.hypot(cur.getX(), cur.getZ());
+        // the corner after the aim point: how hard it turns there, so it eases off before a sharp one instead of overshooting
+        double turn = 0;
+        if (aimIdx + 1 < m.path.size()) {
+            MimicNav.Step nx = m.path.get(aimIdx + 1);
+            Vector seg = new Vector(nx.cx() - ax, 0, nx.cz() - az);
+            if (seg.lengthSquared() > 1e-4) turn = Math.toDegrees(Math.acos(Math.max(-1, Math.min(1, seg.normalize().dot(dir)))));
+        }
+        // sprint-jump down long straight runs once it's up to speed, every landing (head-hitting in 2-high tunnels), like a player
+        if (s.type == MimicNav.Type.WALK && flat > 3.5 && turn < 45 && hs > sp * 0.6 && (openAir(v, dir) || headHitter(v, dir))) {
+            Safe.vel(v, jumpVel(m, stride(m, cur, dir, sp, sp), dir, true));
             return;
         }
-        // careful near a step it has to land exactly (a drop / a door / the end): slows down
+        // careful near a step it has to land exactly (a drop / a door / the end), and before a sharp corner: slows down
         double want = sp;
         if (flat < 1.2 && (s.type == MimicNav.Type.DROP || s.door != null || m.pathIdx == m.path.size() - 1)) want = Math.max(0.12, sp * flat);
+        if (turn > 60 && flat < 1.5 + hs * 4) want = Math.min(want, Math.max(0.14, sp * (1 - (turn - 60) / 150)));
         Block ahead = at.clone().add(dir.getX() * 0.8, 0.01, dir.getZ() * 0.8).getBlock();
         if (HAZARD.contains(ahead.getType()) || HAZARD.contains(ahead.getRelative(0, -1, 0).getType()) && s.type != MimicNav.Type.DROP) { Safe.vel(v, new Vector(0, cur.getY(), 0)); return; }
-        Safe.vel(v, new Vector(cur.getX() * 0.35 + dir.getX() * want * 0.9, cur.getY(), cur.getZ() * 0.35 + dir.getZ() * want * 0.9));
+        Vector nv = stride(m, cur, avoid(m, dir), want, sp);
+        // 1.2.96: with real momentum, a step that would carry it off an edge / into lava brakes instead (never on a planned drop)
+        if (s.type == MimicNav.Type.WALK && !clearMove(v, nv, 3)) { nv = stride(m, cur, dir, 0, sp); if (!clearMove(v, nv, 3)) nv = new Vector(0, cur.getY(), 0); }
+        Safe.vel(v, nv);
     }
 
     private static boolean openAir(LivingEntity v, Vector dir) {
@@ -4267,17 +4296,24 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             int[] tries = m.detourUntil > m.t && sg != 0 ? new int[]{45 * sg, 90 * sg, 135 * sg, 0} // only ever its chosen side
                     : new int[]{0, 45, -45, 90, -90, 135, -135};
             boolean roof = v.getLocation().getBlock().getRelative(0, 2, 0).getType().isSolid();
+            dir = avoid(m, dir); // 1.2.96: steps round other people / mobs in its way instead of shoving through them
+            double hs = Math.hypot(cur.getX(), cur.getZ());
             for (int deg : tries) {
                 double r = Math.toRadians(m.detourUntil > m.t ? deg : deg * m.strafeDir), c = Math.cos(r), sn = Math.sin(r);
                 Vector d = new Vector(dir.getX() * c - dir.getZ() * sn, 0, dir.getX() * sn + dir.getZ() * c);
                 if (deg != 0 && !safeStep(v, d)) continue;
-                if (stepUp && deg == 0) { if (clearMove(v, new Vector(d.getX() * sp, 0.42, d.getZ() * sp), 3)) { Safe.vel(v, new Vector(d.getX() * sp, 0.42, d.getZ() * sp)); return; } continue; }
+                if (stepUp && deg == 0) { Vector up = jumpVel(m, stride(m, cur, d, sp, sp), d, false); if (clearMove(v, up, 3)) { Safe.vel(v, up); return; } continue; }
                 Block ahead = v.getLocation().clone().add(d.getX() * 1.6, 0, d.getZ() * 1.6).getBlock();
-                boolean open = !ahead.getType().isSolid() && !ahead.getRelative(0, 1, 0).getType().isSolid() && ahead.getRelative(0, -1, 0).getType().isSolid() && !roof;
-                Vector jump = new Vector(d.getX() * (sp + 0.2), 0.42, d.getZ() * (sp + 0.2));
-                if (deg == 0 && sprintJump && open && safePath(v, d, 4.5) && clearMove(v, jump, 9) && random.nextDouble() < 0.6) { Safe.vel(v, jump); return; } // sprint-jump: +0.2 on take-off
-                double keep = deg == 0 ? 0.4 : 0.1; // turning aside drops its old momentum
-                Vector nv = new Vector(cur.getX() * keep + d.getX() * sp * 0.9, cur.getY(), cur.getZ() * keep + d.getZ() * sp * 0.9);
+                boolean floorAhead = ahead.getRelative(0, -1, 0).getType().isSolid() && !ahead.getType().isSolid() && !ahead.getRelative(0, 1, 0).getType().isSolid();
+                // 1.2.96 SPRINT-JUMPS every landing on an open straight run once it's up to speed (like a player), and under a
+                // 2-high ceiling (a tunnel) it HEAD-HITS: the jump bonks the ceiling at once and every hop adds the +0.2 again
+                boolean runway = deg == 0 && sprintJump && floorAhead && hs > sp * 0.6 && safePath(v, d, 4.5);
+                if (runway && (!roof || headHitter(v, d))) {
+                    Vector jump = jumpVel(m, stride(m, cur, d, sp, sp), d, true);
+                    if (clearMove(v, jump, 9)) { Safe.vel(v, jump); return; }
+                }
+                Vector nv = stride(m, cur, d, sp, sp);
+                if (deg != 0) nv = stride(m, new Vector(cur.getX() * 0.5, cur.getY(), cur.getZ() * 0.5), d, sp, sp); // cutting aside: lets go of W first
                 if (clearMove(v, nv, 3)) {
                     if (deg != 0 && m.detourUntil <= m.t) { m.detourDeg = deg * m.strafeDir; m.detourUntil = m.t + 25; }
                     else if (deg != 0) m.detourUntil = Math.max(m.detourUntil, m.t + 10); // still blocked: keeps going round the same side
@@ -4285,12 +4321,125 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
                 }
             }
             Safe.vel(v, new Vector(0, cur.getY(), 0));
-        } else {
-            // air: keeps its momentum (a player can't turn much mid-jump), a little steering; heading into lava = lets go of W
-            Vector h = new Vector(cur.getX(), 0, cur.getZ());
-            if (h.lengthSquared() > 1e-4 && !safePath(v, h.clone().normalize(), 1.8)) Safe.vel(v, new Vector(cur.getX() * 0.6 - dir.getX() * 0.02, cur.getY(), cur.getZ() * 0.6 - dir.getZ() * 0.02));
-            else Safe.vel(v, new Vector(cur.getX() * 0.98 + dir.getX() * 0.02, cur.getY(), cur.getZ() * 0.98 + dir.getZ() * 0.02));
+        } else airStrafe(m, cur, dir, sp);
+    }
+
+    // ================================================================ 1.2.96 player locomotion
+
+    /** Block friction under its feet (vanilla's slipperiness: ice 0.98, blue ice 0.989, slime 0.8, everything else 0.6). */
+    static double friction(LivingEntity v) {
+        Material t = v.getLocation().clone().add(0, -0.5, 0).getBlock().getType();
+        return switch (t) {
+            case ICE, PACKED_ICE, FROSTED_ICE -> 0.98;
+            case BLUE_ICE -> 0.989;
+            case SLIME_BLOCK -> 0.8;
+            default -> 0.6;
+        };
+    }
+
+    /**
+     * One tick of a player's ground input. The server's own physics already took friction (and soul sand / honey slowness) off
+     * the speed it carries (`cur`), so like vanilla it only ADDS this tick's input: at most `a` = the sprint input scaled by
+     * 0.216 / friction^3 (on normal ground it tops out at `sp` blocks a tick after ~5 ticks; on ice it builds slowly and
+     * slides), steering the speed it carries toward `want` along `dir` (slowing / turning costs the same input as speeding up).
+     */
+    Vector stride(Mimic m, Vector cur, Vector dir, double want, double sp) {
+        double f = friction(m.brain);
+        double a = sp * (1 - 0.6 * 0.91) * 0.216 / (f * f * f);
+        double dx = dir.getX() * want - cur.getX(), dz = dir.getZ() * want - cur.getZ();
+        double l = Math.hypot(dx, dz);
+        if (l > a) { dx *= a / l; dz *= a / l; }
+        return new Vector(cur.getX() + dx, cur.getY(), cur.getZ() + dz);
+    }
+
+    /** A jump on top of the speed it has: 0.42 up (+ Jump Boost), and a sprint-jump's +0.2 along where it's going. */
+    Vector jumpVel(Mimic m, Vector ground, Vector dir, boolean sprint) {
+        PotionEffect jb = m.brain.getPotionEffect(PotionEffectType.JUMP_BOOST);
+        double up = 0.42 + (jb != null ? 0.1 * (jb.getAmplifier() + 1) : 0);
+        return new Vector(ground.getX() + (sprint ? dir.getX() * 0.2 : 0), up, ground.getZ() + (sprint ? dir.getZ() * 0.2 : 0));
+    }
+
+    /** A 2-high ceiling over a flat run ahead: hopping there is faster (the head-hitter). */
+    static boolean headHitter(LivingEntity v, Vector d) {
+        Location at = v.getLocation();
+        for (double k = 0; k <= 3; k += 1) {
+            Block b = at.clone().add(d.getX() * k, 0.01, d.getZ() * k).getBlock();
+            if (blocks(b) || blocks(b.getRelative(0, 1, 0)) || !b.getRelative(0, 2, 0).getType().isSolid() || !b.getRelative(0, -1, 0).getType().isSolid()) return false;
         }
+        return true;
+    }
+
+    /**
+     * In the air like a player: only a little control (0.026 a tick, sprinting) over the speed it carries, no braking. 1.2.96: it
+     * works out where it will land; heading for lava / a long drop (knocked back off a ledge, a bad jump) it steers with what
+     * control it has toward the side that lands it safely.
+     */
+    void airStrafe(Mimic m, Vector cur, Vector dir, double sp) {
+        Vindicator v = m.brain;
+        Vector best = dir;
+        if (cur.getY() < 0.3 && !landsSafe(v, cur, dir)) {
+            best = null;
+            double ba = 0;
+            for (int i = 0; i < 8; i++) {
+                double r = Math.PI / 4 * i;
+                Vector d = new Vector(-Math.sin(r), 0, Math.cos(r));
+                if (landsSafe(v, cur, d)) { double al = d.dot(dir); if (best == null || al > ba) { best = d; ba = al; } }
+            }
+            if (best == null) { Vector back = cur.clone().setY(0); best = back.lengthSquared() > 1e-4 ? back.normalize().multiply(-1) : dir; }
+        }
+        Safe.vel(v, stride0(cur, best, sp, 0.026));
+    }
+
+    private static Vector stride0(Vector cur, Vector dir, double want, double a) {
+        double dx = dir.getX() * want - cur.getX(), dz = dir.getZ() * want - cur.getZ();
+        double l = Math.hypot(dx, dz);
+        if (l > a) { dx *= a / l; dz *= a / l; }
+        return new Vector(cur.getX() + dx, cur.getY(), cur.getZ() + dz);
+    }
+
+    /** Where it comes down holding `dir` (air drag 0.91, gravity 0.08 x 0.98): somewhere safe to stand? */
+    static boolean landsSafe(LivingEntity v, Vector cur, Vector dir) {
+        Location at = v.getLocation();
+        World w = at.getWorld();
+        double x = at.getX(), y = at.getY(), z = at.getZ(), vx = cur.getX(), vy = cur.getY(), vz = cur.getZ();
+        for (int t = 0; t < 40; t++) {
+            vx += dir.getX() * 0.026; vz += dir.getZ() * 0.026;
+            x += vx; y += vy; z += vz;
+            vx *= 0.91; vz *= 0.91; vy = (vy - 0.08) * 0.98;
+            if (y < w.getMinHeight() + 1 || y >= w.getMaxHeight()) return y >= w.getMaxHeight() && vy > 0; // under the world = no; above it, still climbing
+            if (!w.isChunkLoaded((int) Math.floor(x) >> 4, (int) Math.floor(z) >> 4)) return true;
+            Block feet = w.getBlockAt((int) Math.floor(x), (int) Math.floor(y), (int) Math.floor(z));
+            if (HAZARD.contains(feet.getType())) return false;
+            if (feet.isLiquid()) return feet.getType() == Material.WATER;
+            if (vy < 0 && feet.getRelative(0, -1, 0).getType().isSolid() && y - Math.floor(y) < 0.3) return !HAZARD.contains(feet.getRelative(0, -1, 0).getType()) && at.getY() - y < 6;
+        }
+        return false;
+    }
+
+    /**
+     * Steps round people and mobs in its way (not who it's after): each one close ahead pushes its heading aside, the nearer
+     * the harder (the mob AI and players stand in doorways and on bridges; it used to walk into them and stop).
+     */
+    Vector avoid(Mimic m, Vector dir) {
+        Vindicator v = m.brain;
+        double px = 0, pz = 0;
+        Location at = v.getLocation();
+        for (Entity e : v.getNearbyEntities(1.8, 1.0, 1.8)) {
+            if (!(e instanceof LivingEntity le) || e == m.body || e == m.target || e instanceof ArmorStand || byBody.containsKey(e.getUniqueId())) continue;
+            if (le instanceof Player pl && (pl.getGameMode() == GameMode.SPECTATOR)) continue;
+            Mimic other = byBrain.get(e.getUniqueId());
+            if (other == null && le.isInvisible()) continue; // hitboxes and the like
+            if (m.target != null && m.target.getWorld() == e.getWorld() && m.target.getLocation().distanceSquared(e.getLocation()) < 2.25) continue; // bunched up with who it's after: part of the fight
+            double ox = e.getLocation().getX() - at.getX(), oz = e.getLocation().getZ() - at.getZ(), d = Math.hypot(ox, oz);
+            if (d < 1e-3 || d > 1.8 || (ox * dir.getX() + oz * dir.getZ()) / d < 0.2) continue; // only what's ahead of it
+            double side = Math.signum(dir.getX() * oz - dir.getZ() * ox); // which side of its line it stands on
+            if (side == 0) side = m.strafeDir;
+            double push = (1.8 - d) / 1.8 * 0.9;
+            px += -dir.getZ() * -side * push; pz += dir.getX() * -side * push;
+        }
+        if (px == 0 && pz == 0) return dir;
+        Vector out = new Vector(dir.getX() + px, 0, dir.getZ() + pz);
+        return out.lengthSquared() < 1e-4 ? dir : out.normalize();
     }
 
     /**

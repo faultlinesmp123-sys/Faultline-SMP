@@ -65,7 +65,7 @@ final class MimicNav {
     static int clock;
 
     static final class Cells {
-        long[] keys = new long[4096]; byte[] vals = new byte[4096]; boolean[] used = new boolean[4096]; int size, born = clock;
+        long[] keys = new long[4096]; byte[] vals = new byte[4096]; boolean[] used = new boolean[4096]; int size, born = clock; Cells edges;
         byte get(long k) { int m = keys.length - 1, i = mix(k) & m; while (used[i]) { if (keys[i] == k) return vals[i]; i = (i + 1) & m; } return -1; }
         void put(long k, byte v) {
             if (size * 2 >= keys.length) grow();
@@ -80,6 +80,8 @@ final class MimicNav {
         }
         private static int mix(long k) { k ^= k >>> 33; k *= 0xff51afd7ed558ccdL; k ^= k >>> 33; return (int) k; }
     }
+
+    private int startX, startZ;
 
     static void dirty(World w) { CELLS.remove(w); }
 
@@ -174,6 +176,7 @@ final class MimicNav {
      * From where its feet are to anywhere within `near` (flat) and 1 up/down of the goal. `budget` = nodes it may look at.
      */
     Result find(int sx, int sy, int sz, int gx, int gy, int gz, double near, int budget, int range) {
+        startX = sx; startZ = sz;
         PriorityQueue<Node> open = new PriorityQueue<>(Comparator.comparingDouble(Node::f));
         Map<Long, Double> best = new HashMap<>();
         Node start = new Node(key(sx, sy, sz), sx, sy, sz, 0, h(sx, sy, sz, gx, gy, gz), null, null);
@@ -222,6 +225,32 @@ final class MimicNav {
         return 0;
     }
 
+    private static final int[][] SIDES = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+
+    /**
+     * 1.2.96 edge-aware routes: a cell beside a ledge (2+ blocks of air under the side cell) or lava / fire costs a little
+     * more, so it walks down the middle of a bridge / away from the lava when there's room (a knockback or a slip there hurts).
+     */
+    private double edge(int x, int y, int z) {
+        long k = key(x, y, z);
+        if (cache.edges == null) cache.edges = new Cells(); // its own table, dropped with the cells
+        byte got = cache.edges.get(k);
+        if (got != -1) return got / 10.0;
+        double c = edge0(x, y, z);
+        cache.edges.put(k, (byte) Math.round(c * 10));
+        return c;
+    }
+
+    private double edge0(int x, int y, int z) {
+        double c = 0;
+        for (int[] d : SIDES) {
+            int nx = x + d[0], nz = z + d[1];
+            if (hazard(nx, y, nz) || hazard(nx, y - 1, nz)) c += 1.2;
+            else if (pass(nx, y, nz) && pass(nx, y - 1, nz) && pass(nx, y - 2, nz) && !water(nx, y - 1, nz) && !water(nx, y - 2, nz)) c += 0.35;
+        }
+        return Math.min(c, 2.4);
+    }
+
     /** Fall damage a drop of k blocks onto this block does (hay / beds / honey soften it, slime and water take it all). */
     private double fallDamage(int x, int landY, int z, int k) {
         if (water(x, landY, z)) return 0;
@@ -233,6 +262,7 @@ final class MimicNav {
     private Node node(Node from, int x, int y, int z, double cost, Type type, List<Block> dig, Block door, int gx, int gy, int gz) {
         long k = key(x, y, z);
         if (type != Type.SWIM && type != Type.CLIMB) cost += terrain(x, y, z);
+        if ((type == Type.WALK || type == Type.STEP) && Math.abs(x - startX) + Math.abs(z - startZ) < 20) cost += edge(x, y, z); // near it, where a slip matters now
         double g = from.g + cost + rules.penalty(from.key, k);
         return new Node(k, x, y, z, g, g + h(x, y, z, gx, gy, gz), from, new Step(x, y, z, type, dig, door));
     }

@@ -2309,6 +2309,11 @@ Notes:
   its surface status, stop + cleanup, the timed one near a player + next in an hour, `/kraken summon` in the Overworld = the
   normal Kraken, `kraken.overworld: false` refuses). The fake beacon beam and the normal Kraken's full fight can't be checked
   in MockBukkit (no client; the mock can't draw his rig).
+- **Dragon head buff (Items 1.3.4)**: `Items/DragonHeadBuff.java` (`dragon-head:`): a DRAGON_HEAD anywhere on a player
+  (inventory, hotbar, off hand, worn; `carrying`) = `dragon-head.effects` ["STRENGTH:2", "SPEED:2"] ("EFFECT:level",
+  `swiftness` = speed), topped up every 20 ticks for 40 ticks (ambient, icon only), so it runs out within 2 s of losing the
+  head (never removed by hand: a weaker longer potion the game kept hidden comes back). Never replaces a stronger effect.
+  Spectators skipped. Tested (scratch `dh/DhTest`: none without, inventory / off hand / worn, gone after, stronger kept).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Skills → Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

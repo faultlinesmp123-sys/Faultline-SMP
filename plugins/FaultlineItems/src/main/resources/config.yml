@@ -873,6 +873,11 @@ mod-guard:
 # banners, heads, spawners, trial spawners, vaults, pots...) is shown to a player as the wall around it (or air) until
 # they're within touch-distance, or within reveal-distance AND can see it; past rehide-distance it's faked again.
 # Client-side only: the world never changes. Bypass permission: faultline.piechart.bypass.
+# 1.3.4: carrying a Dragon Head (inventory, hotbar, off hand or worn) gives these ("EFFECT:level"; strength, speed, ...)
+dragon-head:
+  enabled: true
+  effects: ["STRENGTH:2", "SPEED:2"]
+
 pie-limit:
   enabled: true
   touch-distance: 6

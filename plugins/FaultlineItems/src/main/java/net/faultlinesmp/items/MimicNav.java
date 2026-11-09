@@ -246,9 +246,15 @@ final class MimicNav {
         for (int[] d : SIDES) {
             int nx = x + d[0], nz = z + d[1];
             if (hazard(nx, y, nz) || hazard(nx, y - 1, nz)) c += 1.2;
-            else if (pass(nx, y, nz) && pass(nx, y - 1, nz) && pass(nx, y - 2, nz) && !water(nx, y - 1, nz) && !water(nx, y - 2, nz)) c += 0.35;
+            else if (pass(nx, y, nz) && pass(nx, y - 1, nz) && pass(nx, y - 2, nz) && !water(nx, y - 1, nz) && !water(nx, y - 2, nz)) {
+                c += 0.35;
+                // 1.2.98: a long fall / the void right beside it (32+ blocks of nothing): a knockback there kills, keep well off it
+                boolean deep = true;
+                for (int yy = y - 3; yy >= Math.max(w.getMinHeight(), y - 32); yy--) if (!pass(nx, yy, nz) || water(nx, yy, nz)) { deep = false; break; }
+                if (deep) c += 1.6;
+            }
         }
-        return Math.min(c, 2.4);
+        return Math.min(c, 4.0);
     }
 
     /** Fall damage a drop of k blocks onto this block does (hay / beds / honey soften it, slime and water take it all). */

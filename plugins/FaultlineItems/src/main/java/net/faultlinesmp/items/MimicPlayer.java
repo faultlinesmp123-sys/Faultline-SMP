@@ -118,6 +118,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         int potRunUntil, rushUntil, digTicks, digNeed, detourDeg, detourUntil;
         int comboTaken, comboGiven, breakUntil, followT, baitReady, dodgeReady;
         Location followAt, tgPrev;
+        double slamFall; boolean voidMe, voidTg; int voidCheckAt; Vector voidAway; int edgeUntil; // 1.2.98: the void round it / its target (cached 10 ticks)
         final Map<UUID, Integer> hitBy = new HashMap<>(); int teamRetarget, teamWebReady;
         Vector tgVel = new Vector(); double tgVy; boolean flatPearl; int maceDodgeLog;
         boolean totemHand;
@@ -997,7 +998,11 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     static double reachOf(Mimic m, LivingEntity tg) {
         double a = reachTo(m.brain, tg);
         try { if (m.body.isValid() && m.body.getWorld() == tg.getWorld()) a = Math.max(a, reachTo(m.body, tg)); } catch (RuntimeException ignored) { }
-        for (Vector e : m.seenEye) if (e != null && e.getX() == e.getX()) a = Math.max(a, reachFrom(e, tg)); // where the viewer's screen still had it
+        // 1.2.98: the viewer must have SEEN it in reach at one of the last ticks (body interpolation lags): the closest of those
+        // counts, never the furthest (a slam falling 1.5 blocks a tick was "out of reach" from 3 ticks ago and phased through)
+        double seen = Double.MAX_VALUE;
+        for (Vector e : m.seenEye) if (e != null && e.getX() == e.getX()) seen = Math.min(seen, reachFrom(e, tg));
+        if (seen != Double.MAX_VALUE) a = Math.max(a, seen);
         return a;
     }
 
@@ -1106,6 +1111,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         if (tg == null) { hold(m, "sword"); idle(m); follow(m); return; }
         double dist = tg.getLocation().distance(v.getLocation());
         boolean sees = sees(v, tg);
+        if (edgeEscape(m, tg)) { follow(m); return; }
         if (tier(m) >= 2 && antiMace(m, tg)) { follow(m); return; }
         if (tier(m) >= 2 && outnumbered(m, tg)) { follow(m); return; }
         tg = m.target; if (tg == null) { follow(m); return; }
@@ -2452,7 +2458,8 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         if (dist < 4.5) {
             if (--m.strafeFlip <= 0) { m.strafeDir = -m.strafeDir; m.strafeFlip = tier(m) >= 4 ? 25 + random.nextInt(40) : 12 + random.nextInt(30); } // godlike circles longer
             // BACK TO A HAZARD (hard+): their knockback would put it in lava / off a ledge: circles round so its back is clear
-            if (tier(m) >= 3 && !cellSafe(v.getLocation().clone().add(-to.getX() * 2.2, 0.01, -to.getZ() * 2.2).getBlock())) {
+            if (tier(m) >= 2 && (!cellSafe(v.getLocation().clone().add(-to.getX() * 2.2, 0.01, -to.getZ() * 2.2).getBlock())
+                    || m.voidMe && voidColumn(v.getWorld(), (int) Math.floor(v.getLocation().getX() - to.getX() * 4), v.getLocation().getBlockY(), (int) Math.floor(v.getLocation().getZ() - to.getZ() * 4)))) {
                 Vector l = new Vector(-to.getZ(), 0, to.getX());
                 boolean leftOk = cellSafe(v.getLocation().clone().add(l.getX() * 1.5 - to.getX() * 1.5, 0.01, l.getZ() * 1.5 - to.getZ() * 1.5).getBlock());
                 m.strafeDir = leftOk ? 1 : -1; m.strafeFlip = 15;
@@ -2832,7 +2839,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             if (t.isSolid() || t == Material.WATER) return false; // something to land on
         }
         Location home = m.lastGround.clone().add(0, 0.1, 0);
-        if (m.gear.elytra && m.rockets > 0 && w.getEnvironment() != World.Environment.NETHER) {
+        if (m.gear.elytra && (m.rockets > 0 || m.lastGround.distance(at) < 30 && at.getY() > m.lastGround.getY() - 6) && w.getEnvironment() != World.Environment.NETHER) {
             m.travelFly = true; m.flying = true; m.landSpot = null; m.glideAt = null; m.boostTicks = 0; m.landT = 0;
             m.glide = v.getVelocity().clone();
             Vector to = home.toVector().subtract(at.toVector()).setY(0);
@@ -3162,7 +3169,9 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     boolean direct(Mimic m, LivingEntity tg) {
         Location a = m.brain.getLocation(), b = tg.getLocation();
         double dy = b.getY() - a.getY(), flat = Math.hypot(b.getX() - a.getX(), b.getZ() - a.getZ());
-        if (Math.abs(dy) <= 1.3 && flat <= 3.2 && sees(m.brain, tg)) return true;
+        // 1.2.98: seeing them over a wall isn't enough (it stood outside a log box forever): it must be able to HIT them from
+        // here or walk to them; anything else goes to the walker, which mines in
+        if (Math.abs(dy) <= 1.3 && flat <= 3.2 && sees(m.brain, tg) && (reachOf(m, tg) <= cfg("reach", 3.0) || walkLine(m.brain, b))) return true;
         return Math.abs(dy) <= 1.2 && walkLine(m.brain, b);
     }
 
@@ -3345,7 +3354,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         }
         if (m.pearlsLeft <= 0 || m.t < m.pearlReady || dist < 5 || dist > 60) return false;
         if (sees) { m.reachTechReady = m.t + 40; pearl(m, tg); return true; }
-        if (m.wind > 0 && flat >= 4 && flat <= 22) { // over the wall / up the cliff on a charged pearl
+        if (m.wind > 0 && flat >= 4 && flat <= 22 && !voidRisk(m, tg)) { // over the wall / up the cliff on a charged pearl
             m.reachTechReady = m.t + 60;
             pearlCatch(m, to.clone().multiply(Math.min(1.1, 0.12 + flat * 0.05)).setY(Math.min(1.6, 0.8 + Math.max(0, dy) * 0.09)), false);
             return true;
@@ -3808,7 +3817,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             breakShield(tg, 100);
             Emotes.q(() -> tg.clearActiveItem());
             tg.getWorld().playSound(tg.getLocation(), Sound.ITEM_SHIELD_BREAK, 1, 1);
-            if (m.gear.mace != null && m.wind > 0 && v.isOnGround()) windJump(m, tg, null);
+            if (m.gear.mace != null && m.wind > 0 && v.isOnGround() && !voidRisk(m, tg)) windJump(m, tg, null);
             else if (m.gear.axe != null) { hold(m, "axe"); m.axeUntil = m.t + 20; }
             else hold(m, "sword");
             return true;
@@ -3850,7 +3859,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
                 Safe.vel(tg, tg.getVelocity().add(pull.setY(Math.max(0.15, pull.getY()))));
                 v.getWorld().playSound(v.getLocation(), Sound.ENTITY_FISHING_BOBBER_RETRIEVE, 1, 1);
                 combat(tg);
-                if (m.wind > 0 && v.isOnGround()) windJump(m, tg, null); else hold(m, "mace");
+                if (m.wind > 0 && v.isOnGround() && !voidRisk(m, tg)) windJump(m, tg, null); else hold(m, "mace");
             }, 6L);
             return true;
         }
@@ -4111,7 +4120,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         d.multiply(1 / len);
         for (double t = 0.5; t < len - 0.3; t += 0.4) {
             Block x = a.getWorld().getBlockAt((int) Math.floor(a.getX() + d.getX() * t), (int) Math.floor(a.getY() + d.getY() * t), (int) Math.floor(a.getZ() + d.getZ() * t));
-            if (x.getType().isOccluding()) return false;
+            if (x.getType().isSolid() && !(x.getBlockData() instanceof org.bukkit.block.data.Openable o && o.isOpen())) return false; // vanilla sight stops at collision shapes
         }
         return true;
     }
@@ -4483,6 +4492,80 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     }
 
     /** Where it comes down holding `dir` (air drag 0.91, gravity 0.08 x 0.98): somewhere safe to stand? */
+    /** Nothing solid (or water) under this spot all the way down: the void. Unloaded = not void (unknown). */
+    /** (world, x, z) -> (tick checked << 1 | void); a column's void-ness hardly changes: re-read once a second at most. */
+    private static final Map<UUID, Map<Long, Long>> VOID_CACHE = new HashMap<>();
+    private static long voidTick;
+
+    static boolean voidColumn(World w, int x, int y, int z) {
+        if (!w.isChunkLoaded(x >> 4, z >> 4)) return false;
+        long now = Bukkit.getCurrentTick();
+        if (now != voidTick && now % 200 == 0) { voidTick = now; VOID_CACHE.clear(); }
+        Map<Long, Long> c = VOID_CACHE.computeIfAbsent(w.getUID(), k -> new HashMap<>());
+        long key = ((long) (x & 0x3ffffff) << 38) | ((long) (z & 0x3ffffff) << 12) | (y & 0xfff);
+        Long hit = c.get(key);
+        if (hit != null && now - (hit >> 1) < 20) return (hit & 1) == 1;
+        boolean v = voidColumn0(w, x, y, z);
+        c.put(key, now << 1 | (v ? 1 : 0));
+        return v;
+    }
+
+    private static boolean voidColumn0(World w, int x, int y, int z) {
+        int min = w.getMinHeight();
+        for (int yy = Math.min(y, w.getMaxHeight() - 1); yy >= min; yy--) {
+            Material t = w.getBlockAt(x, yy, z).getType();
+            if (t.isSolid() || t == Material.WATER) return false;
+        }
+        return true;
+    }
+
+    /** The direction (flat) toward any void column within r of this spot, or null when there's none. */
+    static Vector voidDir(Location l, double r) {
+        World w = l.getWorld();
+        Vector sum = null;
+        for (double rr : new double[]{r * 0.5, r}) for (int i = 0; i < 12; i++) {
+            double a = Math.PI * 2 * i / 12, dx = Math.cos(a) * rr, dz = Math.sin(a) * rr;
+            if (voidColumn(w, (int) Math.floor(l.getX() + dx), l.getBlockY(), (int) Math.floor(l.getZ() + dz))) {
+                if (sum == null) sum = new Vector();
+                sum.add(new Vector(dx, 0, dz).normalize());
+            }
+        }
+        return sum;
+    }
+
+    /** Refreshes `voidMe` / `voidTg` every 10 ticks (the End's edges: a slam or a knockback there is a death). */
+    void voidScan(Mimic m, LivingEntity tg) {
+        if (m.t < m.voidCheckAt) return;
+        m.voidCheckAt = m.t + 10;
+        Location at = m.brain.getLocation();
+        m.voidAway = voidDir(at, 4);
+        m.voidMe = m.voidAway != null;
+        m.voidTg = tg != null && tg.getWorld() == at.getWorld() && (voidDir(tg.getLocation(), 4) != null
+                || voidColumn(at.getWorld(), tg.getLocation().getBlockX(), tg.getLocation().getBlockY(), tg.getLocation().getBlockZ()));
+    }
+
+    /** A mace launch (wind charge / pearl catch) would fly it over the void: no. */
+    boolean voidRisk(Mimic m, LivingEntity tg) { voidScan(m, tg); return m.voidMe || m.voidTg; }
+
+    /** Simulates a fall with this air input until it touches something: false = it falls out of the world. */
+    static boolean landsAtAll(LivingEntity v, Vector cur, Vector dir) {
+        Location at = v.getLocation();
+        World w = at.getWorld();
+        double x = at.getX(), y = at.getY(), z = at.getZ(), vx = cur.getX(), vy = cur.getY(), vz = cur.getZ();
+        for (int t = 0; t < 200; t++) {
+            vx += dir.getX() * 0.026; vz += dir.getZ() * 0.026;
+            x += vx; y += vy; z += vz;
+            vx *= 0.91; vz *= 0.91; vy = (vy - 0.08) * 0.98;
+            if (y < w.getMinHeight() + 1) return false;
+            if (y >= w.getMaxHeight()) continue;
+            if (!w.isChunkLoaded((int) Math.floor(x) >> 4, (int) Math.floor(z) >> 4)) return true;
+            Block feet = w.getBlockAt((int) Math.floor(x), (int) Math.floor(y), (int) Math.floor(z));
+            if (feet.getType().isSolid() || feet.getType() == Material.WATER) return true;
+            if (vy < 0 && feet.getRelative(0, -1, 0).getType().isSolid() && y - Math.floor(y) < 0.3) return true;
+        }
+        return true;
+    }
+
     static boolean landsSafe(LivingEntity v, Vector cur, Vector dir) {
         Location at = v.getLocation();
         World w = at.getWorld();
@@ -4700,7 +4783,10 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         Vindicator v = m.brain;
         boolean ground = v.isOnGround();
         if (m.slam) {
-            if (ground && m.t > m.maceReady - 50 && m.catchAt <= m.t) { m.slam = false; m.dive = false; hold(m, "sword"); return false; } // missed: landed
+            if (!ground) m.slamFall = Math.max(m.slamFall, v.getFallDistance());
+            // landed this tick with them in reach: the slam still hits (a fast fall can go from above their head to the floor in one tick)
+            if (ground && m.slamFall > 1.5 && reachOf(m, tg) <= cfg("reach", 3.0)) { smash(m, tg); return true; }
+            if (ground && m.t > m.maceReady - 50 && m.catchAt <= m.t) { m.slam = false; m.dive = false; m.slamFall = 0; hold(m, "sword"); return false; } // missed: landed
             if (m.catchAt == m.t) { pearlCatch(m, m.catchVel, true); return true; } // DOUBLE HEIGHT: the pearl catch on the way up
             // air control toward the target (a player steering a slam); BACKSLAM (normal+): shield up / facing it = it lands BEHIND them
             Location aimAt = tg.getLocation();
@@ -4710,6 +4796,15 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             }
             Vector to = aimAt.toVector().subtract(v.getLocation().toVector()).setY(0);
             Vector cur = v.getVelocity();
+            // 1.2.98: steering at them would carry it out over the void = steers home instead (a missed slam beats dying)
+            if (to.lengthSquared() > 0.04 && !landsAtAll(v, cur, to.clone().normalize()) && m.lastGround != null && m.lastGround.getWorld() == v.getWorld()) {
+                Vector home = m.lastGround.toVector().subtract(v.getLocation().toVector()).setY(0);
+                if (home.lengthSquared() > 1e-4) {
+                    home.normalize();
+                    Safe.vel(v, new Vector(cur.getX() * 0.6 + home.getX() * 0.4, cur.getY(), cur.getZ() * 0.6 + home.getZ() * 0.4));
+                }
+                return true;
+            }
             if (to.lengthSquared() > 0.04) {
                 to.normalize().multiply(m.dive && cur.getY() < 0 ? 0.9 : 0.32);
                 Safe.vel(v, new Vector(cur.getX() * 0.7 + to.getX() * 0.3, m.dive && cur.getY() < 0 ? Math.min(cur.getY(), -0.9) : cur.getY(), cur.getZ() * 0.7 + to.getZ() * 0.3));
@@ -4724,6 +4819,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             hold(m, "mace"); smash(m, tg); return true;
         }
         if (m.t < m.maceReady || !sees) return false;
+        if (voidRisk(m, tg)) return false; // 1.2.98: no slams by the void (Cloud followed Scarlet off the End's edge)
         int tr = tier(m);
         boolean canCatch = tr >= 3 && m.pearlsLeft > 0 && m.wind > 0 && m.t >= m.pearlReady && m.t >= m.catchReady;
         // SIDEWAYS PEARL CATCH (hard+): they're 12-32 off = a pearl at 45 degrees + a wind charge behind it rockets it at them
@@ -4838,7 +4934,8 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
 
     private void smash(Mimic m, LivingEntity tg) {
         Vindicator v = m.brain;
-        double fall = v.getFallDistance();
+        double fall = Math.max(v.getFallDistance(), m.slamFall);
+        m.slamFall = 0;
         // DENSITY / BREACH SWAP: a high slam (7+) = the Density mace; a low one into heavy armour = the Breach mace
         boolean breachIt = m.gear.breachMace != null && tier(m) >= 2 && (fall < 7 || level(m.gear.mace, "density") == 0) && armourPoints(tg) >= 15;
         ItemStack mace = breachIt ? m.gear.breachMace : m.gear.mace;
@@ -5241,6 +5338,12 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             boolean wall = ahead.getType().isSolid(), tall = ahead.getRelative(0, 1, 0).getType().isSolid();
             // CORNERED: nowhere to run and they're on it: turns and fights (a player doesn't run into a wall)
             if (wall && tall && d < 3.5 && !openOut(m)) { m.fleeUntil = 0; m.healRun = false; m.reactAt = m.t; return; }
+            Vector vd = voidDir(v.getLocation(), 3.5); // 1.2.98: never runs off the edge: bends the run away from the void
+            if (vd != null && vd.lengthSquared() > 1e-4) {
+                vd.normalize();
+                double into = away.dot(vd);
+                if (into > -0.2) { away.subtract(vd.clone().multiply(into + 0.6)); if (away.lengthSquared() < 1e-4) away = vd.clone().multiply(-1); away.setY(0).normalize(); }
+            }
             move(m, away, m.skill.speed() * 0.9, wall, true);
         } else if (m.path != null && m.pathIdx < m.path.size()) {
             MimicNav.Step st = m.path.get(Math.min(m.path.size() - 1, m.pathIdx + 1));
@@ -5298,8 +5401,14 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         return look.lengthSquared() > 1e-4 && to.lengthSquared() > 1e-4 && look.normalize().dot(to.normalize()) > 0.6;
     }
 
+    private boolean seesWarned;
+
     private boolean sees(LivingEntity a, LivingEntity b) {
-        try { return a.hasLineOfSight(b); } catch (RuntimeException e) { return true; }
+        if (a.getWorld() != b.getWorld()) return false;
+        try { if (!a.hasLineOfSight(b)) return false; } catch (RuntimeException e) { if (!seesWarned) { seesWarned = true; plugin.getLogger().fine("[Mimic] hasLineOfSight: " + e); } }
+        // 1.2.98: and a block walk (eyes, or their chest): never "sees" through a wall (it fought a log box instead of mining in)
+        Location e = a.getEyeLocation();
+        return clearSight(e, b.getEyeLocation()) || clearSight(e, b.getLocation().clone().add(0, b.getBoundingBox().getHeight() * 0.5, 0));
     }
 
     /** The body stands where the brain is, faces its target (head + body), crouches behind its shield, looks down to splash. */
@@ -5334,6 +5443,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     }
 
     private void follow(Mimic m) {
+        try { voidGuard(m); } catch (RuntimeException ignored) { }
         try { if (m.body.isValid()) { m.seenEye[m.seenI] = m.body.getEyeLocation().toVector(); m.seenI = (m.seenI + 1) % m.seenEye.length; } } catch (RuntimeException ignored) { }
         // a swing pose that didn't get cleaned up (cut off by another move): the real weapon back, arm down
         if (m.t > m.poseUntil && m.t % 5 == 0) {
@@ -5661,7 +5771,80 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         return false;
     }
 
-    boolean holdsMace(LivingEntity e) {
+    /**
+     * 1.2.98 EDGE: fighting with the void within 2-4 blocks = one knockback (a mace slam, a sprint hit, a wind charge) from
+     * death. Gets off the edge first: walks away from the void (sideways round them if they're on that side), a few ticks at a
+     * time, then fights on. Every skill does it, easy too (a player stands back from the End's edge).
+     */
+    boolean edgeEscape(Mimic m, LivingEntity tg) {
+        Vindicator v = m.brain;
+        if (m.slam || m.travelFly || m.flying) return false;
+        voidScan(m, tg);
+        if (!m.voidMe || m.voidAway == null || m.voidAway.lengthSquared() < 1e-4) { m.edgeUntil = 0; return false; }
+        Vector away = m.voidAway.clone().multiply(-1).setY(0);
+        if (away.lengthSquared() < 1e-4) return false;
+        away.normalize();
+        if (tg != null && tg.getWorld() == v.getWorld()) {
+            Vector toT = tg.getLocation().toVector().subtract(v.getLocation().toVector()).setY(0);
+            if (toT.lengthSquared() > 1e-4 && toT.length() < 3 && toT.normalize().dot(away) > 0.6) // they're between it and safety: round them
+                away.add(new Vector(-away.getZ(), 0, away.getX()).multiply(0.8 * m.strafeDir)).normalize();
+        }
+        // only while the void is really close (within 3): further out it just fights carefully (the walker keeps it off edges)
+        Vector near = voidDir(v.getLocation(), 3.5);
+        if (near == null) return false;
+        if (!v.isOnGround()) { // mid-jump by the edge: no new jumps / crits from here, air control inward (vanilla 0.026)
+            Vector cur = v.getVelocity();
+            Safe.vel(v, cur.clone().add(away.clone().multiply(0.026)));
+            return true;
+        }
+        move(m, away, m.skill.speed(), true, false);
+        m.travelNote = "getting away from the edge";
+        return true;
+    }
+
+    /**
+     * 1.2.98 VOID GUARD, last thing every tick, whatever made the move (a run, a strafe, a sprint-jump, a knockback in the
+     * air): on the ground, a step or a jump that would carry it out over the void is cancelled (it stops at the edge like a
+     * player who sees it); in the air with nothing to land on, it air-steers back toward where it last stood (vanilla air
+     * control, 0.026 a tick). Off while flying the elytra.
+     */
+    void voidGuard(Mimic m) {
+        Vindicator v = m.brain;
+        if (m.travelFly || m.flying || !v.isValid()) return;
+        Vector vel = v.getVelocity();
+        double hs = Math.hypot(vel.getX(), vel.getZ());
+        World w = v.getWorld();
+        Location at = v.getLocation();
+        if (v.isOnGround()) {
+            if (hs < 0.02) return;
+            boolean bad;
+            if (vel.getY() > 0.05) bad = !landsAtAll(v, vel, new Vector()); // a jump: where does it come down?
+            else {
+                bad = false;
+                for (double k = 1; k <= 4 && !bad; k++) {
+                    double px = at.getX() + vel.getX() * k * 2.5, pz = at.getZ() + vel.getZ() * k * 2.5;
+                    if (Math.hypot(px - at.getX(), pz - at.getZ()) > 1.6) break;
+                    bad = voidColumn(w, (int) Math.floor(px), at.getBlockY(), (int) Math.floor(pz));
+                }
+            }
+            if (bad) Safe.vel(v, new Vector(0, Math.min(0, vel.getY()), 0));
+            return;
+        }
+        if (m.lastGround == null || m.lastGround.getWorld() != w) return;
+        // a jump that only just left the ground (still rising, right by where it stood) and would come down in the void:
+        // takes the forward push back (like letting go of W the moment it jumped)
+        if (vel.getY() > 0.1 && hs > 0.02 && Math.hypot(at.getX() - m.lastGround.getX(), at.getZ() - m.lastGround.getZ()) < 1.2
+                && !landsAtAll(v, vel, new Vector())) { Safe.vel(v, new Vector(0, vel.getY(), 0)); return; }
+        if (m.t % 2 != 0) return;
+        if (landsAtAll(v, vel, new Vector())) return;
+        Vector home = m.lastGround.toVector().subtract(at.toVector()).setY(0);
+        if (home.lengthSquared() < 1e-4) return;
+        home.normalize();
+        // vanilla air control both ticks (only every 2nd tick is checked)
+        Safe.vel(v, vel.clone().add(home.multiply(0.052)));
+    }
+
+        boolean holdsMace(LivingEntity e) {
         ItemStack h = mainHand(e);
         if (h != null && h.getType() == Material.MACE) return true;
         if (e instanceof Player p) for (int i = 0; i < 9; i++) { ItemStack it = p.getInventory().getItem(i); if (it != null && it.getType() == Material.MACE) return true; }

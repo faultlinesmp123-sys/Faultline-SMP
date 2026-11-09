@@ -2212,6 +2212,24 @@ Notes:
   reads use Paper's read-only view (46 places), MaceEnchants reads enchants before copying the meta, MimicNav caches edge costs.
   Tested (scratch `nt/NewTest` 6/6; `nt/Focus` cliff staircase). Anti-mace and team tactics have no MockBukkit test (no projectile
   flight / player physics there).
+- **Mimic: the void, the slam, log boxes (Items 1.2.98)**: the VOID: `voidColumn` (nothing solid / water under a spot to
+  the bottom; cached per (world, x, y, z) for 20 ticks in `VOID_CACHE`), `voidDir(l, r)` (which way the void is, 24 samples),
+  `voidScan` every 10 ticks (`voidMe` / `voidTg`). No mace launch (wind-charge slam, pearl catches, stun slam, grapple, reach
+  tech pearl catch) when either of them is within 4 of the void (`voidRisk`); a slam whose air steering would land in the void
+  (`landsAtAll`: fall sim, 200 ticks) steers home to `lastGround` instead. EDGE ESCAPE (`edgeEscape`, every skill, first in
+  the fight): void within 3.5 = walks away from it (round them if they're on the safe side); mid-jump there = no new jumps, air
+  control inward. VOID GUARD (`voidGuard`, start of `follow`, every tick, whatever moved it): a ground step or a jump that comes
+  down in the void is cancelled, also a jump that left the ground this tick; falling over nothing = air control home. The
+  straight run-away bends away from the void. Void save: an elytra with no rockets still glides home when within 30.
+  `MimicNav.edge0`: a cell beside 32+ blocks of nothing costs +1.6 more (paths keep off the End's edges). SLAM HITS: `reachOf`
+  takes the CLOSEST of the body's last 3 eyes (1.2.97 took the furthest: a fast slam was "out of reach" and phased through), and a
+  slam that lands on the tick it reaches them still hits (`slamFall`). SIGHT: `sees()` = hasLineOfSight AND a block walk
+  (`clearSight` now stops at any solid block = vanilla's collision-shape sight; isOccluding missed logs), so `direct()` (also
+  needs reach or a walkable line now) no longer sends it to fight a player through a wall: the walker mines in (log box test:
+  first log at tick 17-30). Tested: scratch `nt/VoidTest` (two godlike-kit mace mimics on a 15x15 island over a cleared void,
+  run one round per JVM with `-Donly=k -Drounds=k+1`: 18/18 rounds no fall, was 4/4 falling; `-Dbox=true` = the log box),
+  `nt/NewTest` 6 runs (known flakes only). The VoidTest physics stand-in checks the hitbox corners and doesn't tunnel through
+  thin floors at speed.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Skills → Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

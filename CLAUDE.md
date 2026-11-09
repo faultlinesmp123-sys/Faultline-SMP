@@ -2322,6 +2322,16 @@ Notes:
   (`recipes.unlock-all`, true). RULE: any new recipe is covered automatically; no per-recipe `discoverRecipe` needed.
   Tested (scratch `dh/DhTest`: egg in inventory / off hand, a head does nothing, gone after, stronger kept, all 31 recipes
   unlocked on join).
+- **Boss enchant nerf 3 (Items 1.3.6, Index 1.9.3)**: every boss enchant through `Enchants.tune(path, new, olds...)` (any
+  older default in a server config reads as the new value): LIFESTEAL 2% / 4% of the hit (`lifesteal.per-level` 0.02),
+  at most 1 health a heal (`max-per-hit`), at most one heal a second per player (`cooldown-ms` 1000, `stealReady`), on players
+  every 8th hit (`pvp-every-hits`, was 5); Executioner +5% / +10% below 25% (`executioner.below` 0.25); Cleave 10% / 20%; Bleed
+  5% / 10% for 2 / 3 s; Arrowguard 5%; Thornhide 4%; Swiftstride 2%; Frostbite 4% / 8%, once every 8 s per target; Venom 6%;
+  Thunderstrike 4% / +3 / 15 s; Vitality I below 35% health, II below 60% (`vitality.level2-below`, was always on); Featherstep
+  20%; Vein Miner 12 blocks; Tidecaller off for `tidecaller.pvp-off-seconds` 10 after a player fight (`lastPvp`, `onPvp`);
+  Autosmelt `autosmelt.chance` 0.5 per stack; Clearsight blocks Blindness / Darkness `clearsight.chance` 0.5 of the time.
+  Index Boss Enchant Book text updated. Tested (scratch `dh/LsTest`: an old config's 0.05 / 2 read as 0.02 / 1, a 40 hit heals 1,
+  none within a second, a 10 hit after it heals 0.4).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Skills → Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

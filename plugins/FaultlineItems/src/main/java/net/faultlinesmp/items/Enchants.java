@@ -44,6 +44,7 @@ import java.util.UUID;
 /**
  * BOSS ENCHANT BOOKS (Items 1.2.17, config enchants:). Bosses drop books of enchantments vanilla doesn't have; put the
  * item on the left of an anvil and the book on the right. Two books of the same enchantment and level make the next level.
+ * 1.3.6: EVERY boss enchant nerfed again (numbers in config.yml `enchants:`; any older default reads as the new one).
  * 1.2.53 NERF of all of them (the numbers below are the old ones; the code's comments by each nerf() call have the new):
  * Lifesteal 5% a level (max 2 a hit), Frostbite 6% a level (1.3.3), Venom 10% a level, Thunderstrike 5% for +3 (12 s), Vitality I = Regeneration I
  * below half health / II = Regeneration I always, Featherstep 25%, Vein Miner 16 blocks, Executioner 8%, Cleave 15%, Bleed 8%
@@ -146,6 +147,19 @@ final class Enchants implements Listener, CommandExecutor, TabCompleter {
 
     /** 1.2.53: every boss enchant was nerfed; a server config still holding the old default reads as the new one. */
     private final java.util.Map<java.util.UUID, Long> frostReady = new java.util.HashMap<>();
+    private final java.util.Map<java.util.UUID, Long> stealReady = new java.util.HashMap<>(), lastPvp = new java.util.HashMap<>();
+
+    /** 1.3.6: Tidecaller switches off for a while after a player fight. */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onPvp(EntityDamageByEntityEvent e) {
+        if (!(e.getEntity() instanceof Player v)) return;
+        org.bukkit.entity.Entity d = e.getDamager();
+        if (d instanceof org.bukkit.entity.Projectile pr && pr.getShooter() instanceof org.bukkit.entity.Entity sh) d = sh;
+        if (!(d instanceof Player a) || a == v) return;
+        long now = System.currentTimeMillis();
+        lastPvp.put(v.getUniqueId(), now); lastPvp.put(a.getUniqueId(), now);
+        if (lastPvp.size() > 500) lastPvp.values().removeIf(t -> now - t > 60000);
+    }
     private double nerf(String path, double oldDefault, double newDefault) { return Balance.num(plugin, "enchants." + path, oldDefault, newDefault); }
 
     /** 1.2.65's balance pass: a value still equal to ANY of its old defaults reads as the new one. */
@@ -379,45 +393,45 @@ final class Enchants implements Listener, CommandExecutor, TabCompleter {
     void procs(Player p, LivingEntity victim, EntityDamageByEntityEvent e, Map<String, Integer> ench, boolean full, boolean melee) {
         Integer x = ench.get("executioner"); // first, so the procs below see the bigger hit
         AttributeInstance vmax = victim.getAttribute(Attribute.MAX_HEALTH);
-        if (x != null && vmax != null && victim.getHealth() < vmax.getValue() * cfg("executioner.below", 0.3)) {
-            e.setDamage(e.getDamage() * (1 + nerf("executioner.bonus-per-level", 0.12, 0.08) * x));
+        if (x != null && vmax != null && victim.getHealth() < vmax.getValue() * tune("executioner.below", 0.25, 0.3)) {
+            e.setDamage(e.getDamage() * (1 + tune("executioner.bonus-per-level", 0.05, 0.12, 0.08) * x));
             victim.getWorld().spawnParticle(Particle.DAMAGE_INDICATOR, victim.getLocation().add(0, 1, 0), 4, 0.2, 0.3, 0.2, 0.05);
         }
         Integer t = ench.get("thunderstrike");
-        if (t != null && full && random.nextDouble() < tune("thunderstrike.chance", 0.07, 0.08, 0.05)
+        if (t != null && full && random.nextDouble() < tune("thunderstrike.chance", 0.04, 0.07, 0.08, 0.05)
                 && thunderReady.getOrDefault(p.getUniqueId(), 0L) <= System.currentTimeMillis()) {
-            thunderReady.put(p.getUniqueId(), System.currentTimeMillis() + (long) (tune("thunderstrike.cooldown-seconds", 10, 8, 12) * 1000));
+            thunderReady.put(p.getUniqueId(), System.currentTimeMillis() + (long) (tune("thunderstrike.cooldown-seconds", 15, 10, 8, 12) * 1000));
             victim.getWorld().strikeLightningEffect(victim.getLocation());
-            e.setDamage(e.getDamage() + tune("thunderstrike.damage", 4, 3));
+            e.setDamage(e.getDamage() + tune("thunderstrike.damage", 3, 4));
         }
         Integer f = ench.get("frostbite");
         // 1.3.3 nerf: 6% a level (was 10%), always Slowness I, 1.5 s / 2 s (was I/II for 3/4 s), at most once every 5 s per victim
         if (f != null && full && frostReady.getOrDefault(victim.getUniqueId(), 0L) <= System.currentTimeMillis()
-                && random.nextDouble() < tune("frostbite.chance-per-level", 0.06, 0.15, 0.1) * f) {
+                && random.nextDouble() < tune("frostbite.chance-per-level", 0.04, 0.06, 0.15, 0.1) * f) {
             if (frostReady.size() > 500) { long now = System.currentTimeMillis(); frostReady.values().removeIf(until -> until < now); }
-            frostReady.put(victim.getUniqueId(), System.currentTimeMillis() + (long) (tune("frostbite.cooldown-seconds", 5) * 1000));
+            frostReady.put(victim.getUniqueId(), System.currentTimeMillis() + (long) (tune("frostbite.cooldown-seconds", 8, 5) * 1000));
             victim.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 20 + 10 * f, 0));
             victim.getWorld().spawnParticle(Particle.SNOWFLAKE, victim.getLocation().add(0, 1, 0), 12, 0.3, 0.5, 0.3, 0.02);
             victim.getWorld().playSound(victim.getLocation(), Sound.BLOCK_GLASS_BREAK, 0.5f, 1.8f);
         }
         Integer v = ench.get("venom");
-        if (v != null && full && random.nextDouble() < nerf("venom.chance-per-level", 0.15, 0.1) * v) {
+        if (v != null && full && random.nextDouble() < tune("venom.chance-per-level", 0.06, 0.15, 0.1) * v) {
             victim.addPotionEffect(new PotionEffect(PotionEffectType.POISON, 60, v - 1));
             victim.getWorld().spawnParticle(Particle.ITEM_SLIME, victim.getLocation().add(0, 1, 0), 8, 0.3, 0.4, 0.3, 0.02);
         }
         Integer b = ench.get("bleed");
-        if (b != null && full && random.nextDouble() < nerf("bleed.chance-per-level", 0.12, 0.08) * b) {
-            bleeding.put(victim.getUniqueId(), new int[]{(int) nerf("bleed.seconds", 3, 2) + b});
+        if (b != null && full && random.nextDouble() < tune("bleed.chance-per-level", 0.05, 0.12, 0.08) * b) {
+            bleeding.put(victim.getUniqueId(), new int[]{(int) tune("bleed.seconds", 1, 3, 2) + b});
             bledBy.put(victim.getUniqueId(), p.getUniqueId());
             victim.getWorld().spawnParticle(Particle.BLOCK, victim.getLocation().add(0, 1, 0), 14, 0.3, 0.4, 0.3, 0, Material.REDSTONE_BLOCK.createBlockData());
         }
         Integer c = ench.get("cleave");
-        if (c != null && melee && full) cleave(p, victim, e.getDamage() * nerf("cleave.share-per-level", 0.25, 0.15) * c);
+        if (c != null && melee && full) cleave(p, victim, e.getDamage() * tune("cleave.share-per-level", 0.1, 0.25, 0.15) * c);
         Integer l = ench.get("lifesteal");
         if (l != null && !p.isDead()) {
             // 1.2.52: against PLAYERS it only heals on every 5th hit you land on players (it was every hit); mobs: every hit
             if (victim instanceof Player) {
-                int every = Math.max(1, (int) cfg("lifesteal.pvp-every-hits", 5));
+                int every = Math.max(1, (int) tune("lifesteal.pvp-every-hits", 8, 5));
                 int n = pvpHits.merge(p.getUniqueId(), 1, Integer::sum);
                 if (n < every) {
                     p.sendActionBar(net.kyori.adventure.text.Component.text("Lifesteal " + n + "/" + every, net.kyori.adventure.text.format.NamedTextColor.DARK_RED));
@@ -425,7 +439,11 @@ final class Enchants implements Listener, CommandExecutor, TabCompleter {
                 }
                 pvpHits.put(p.getUniqueId(), 0);
             }
-            double heal = Math.min(nerf("lifesteal.max-per-hit", 3, 2), e.getFinalDamage() * nerf("lifesteal.per-level", 0.08, 0.05) * l);
+            // 1.3.6 nerf: 2% / 4% of the damage (was 5% / 10%), at most 1 health (half a heart) a heal, at most one heal a second
+            long now = System.currentTimeMillis();
+            if (now < stealReady.getOrDefault(p.getUniqueId(), 0L)) return;
+            double heal = Math.min(tune("lifesteal.max-per-hit", 1, 3, 2), e.getFinalDamage() * tune("lifesteal.per-level", 0.02, 0.08, 0.05) * l);
+            if (heal > 0) stealReady.put(p.getUniqueId(), now + (long) tune("lifesteal.cooldown-ms", 1000));
             AttributeInstance max = p.getAttribute(Attribute.MAX_HEALTH);
             if (heal > 0 && max != null) {
                 p.setHealth(Math.min(max.getValue(), p.getHealth() + heal));
@@ -459,13 +477,13 @@ final class Enchants implements Listener, CommandExecutor, TabCompleter {
         if (!(e.getEntity() instanceof Player p)) return;
         if (e.getDamager() instanceof org.bukkit.entity.Projectile) {
             int a = level(p.getInventory().getChestplate(), "arrowguard");
-            if (a > 0) e.setDamage(e.getDamage() * (1 - tune("arrowguard.reduction-per-level", 0.08, 0.1, 0.06) * a));
+            if (a > 0) e.setDamage(e.getDamage() * (1 - tune("arrowguard.reduction-per-level", 0.05, 0.08, 0.1, 0.06) * a));
             return;
         }
         if (e.getCause() != EntityDamageEvent.DamageCause.ENTITY_ATTACK || !(e.getDamager() instanceof LivingEntity att) || att.equals(p)) return;
         int th = level(p.getInventory().getLeggings(), "thornhide");
         if (th <= 0 || cutting.contains(p.getUniqueId())) return;
-        double back = e.getDamage() * nerf("thornhide.reflect-per-level", 0.1, 0.06) * th;
+        double back = e.getDamage() * tune("thornhide.reflect-per-level", 0.04, 0.1, 0.06) * th;
         if (back <= 0) return;
         cutting.add(p.getUniqueId()); // (never ping-pong between two Thornhide wearers)
         try { att.damage(back, p); } finally { cutting.remove(p.getUniqueId()); }
@@ -479,7 +497,7 @@ final class Enchants implements Listener, CommandExecutor, TabCompleter {
         PotionEffectType t = e.getNewEffect().getType();
         if (!t.equals(PotionEffectType.BLINDNESS) && !t.equals(PotionEffectType.DARKNESS)) return;
         if (e.getNewEffect().isAmbient() && !e.getNewEffect().hasParticles()) return;
-        if (level(p.getInventory().getHelmet(), "clearsight") > 0) e.setCancelled(true);
+        if (level(p.getInventory().getHelmet(), "clearsight") > 0 && random.nextDouble() < tune("clearsight.chance", 0.5)) e.setCancelled(true); // 1.3.6: half the time
     }
 
     /** Autosmelt: raw ores from your pickaxe drop as ingots. */
@@ -490,6 +508,7 @@ final class Enchants implements Listener, CommandExecutor, TabCompleter {
             ItemStack st = it.getItemStack();
             Material to = switch (st.getType()) { case RAW_IRON -> Material.IRON_INGOT; case RAW_GOLD -> Material.GOLD_INGOT; case RAW_COPPER -> Material.COPPER_INGOT; default -> null; };
             if (to == null || st.hasItemMeta() && st.getItemMeta().hasDisplayName()) continue;
+            if (random.nextDouble() >= tune("autosmelt.chance", 0.5)) continue; // 1.3.6: half the stacks
             it.setItemStack(new ItemStack(to, st.getAmount()));
         }
     }
@@ -501,7 +520,7 @@ final class Enchants implements Listener, CommandExecutor, TabCompleter {
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onFall(EntityDamageEvent e) {
         if (e.getCause() != EntityDamageEvent.DamageCause.FALL || !(e.getEntity() instanceof Player p)) return;
-        if (level(p.getInventory().getBoots(), "featherstep") > 0) e.setDamage(e.getDamage() * (1 - tune("featherstep.fall-reduction", 0.3, 0.35, 0.25)));
+        if (level(p.getInventory().getBoots(), "featherstep") > 0) e.setDamage(e.getDamage() * (1 - tune("featherstep.fall-reduction", 0.2, 0.3, 0.35, 0.25)));
     }
 
     @EventHandler(ignoreCancelled = true)
@@ -527,7 +546,7 @@ final class Enchants implements Listener, CommandExecutor, TabCompleter {
         if (level(tool, "veinminer") <= 0) return;
         if (plugin.getConfig().getStringList("enchants.veinminer.exclude").contains(start.getType().name())) return;
         String fam = family(start.getType());
-        int max = (int) tune("veinminer.max-blocks", 20, 32, 16);
+        int max = (int) tune("veinminer.max-blocks", 12, 20, 32, 16);
         java.util.List<org.bukkit.block.Block> vein = new ArrayList<>();
         java.util.Set<org.bukkit.block.Block> seen = new java.util.HashSet<>(List.of(start));
         java.util.ArrayDeque<org.bukkit.block.Block> queue = new java.util.ArrayDeque<>(List.of(start));
@@ -571,7 +590,7 @@ final class Enchants implements Listener, CommandExecutor, TabCompleter {
             vitality(p, level(p.getInventory().getChestplate(), "vitality"));
             ItemStack boots = p.getInventory().getBoots();
             swift(p, level(boots, "swiftstride"));
-            if (level(boots, "tidecaller") > 0 && p.isInWater()) p.addPotionEffect(new PotionEffect(PotionEffectType.DOLPHINS_GRACE, 40, 0, true, false, true));
+            if (level(boots, "tidecaller") > 0 && p.isInWater() && System.currentTimeMillis() - lastPvp.getOrDefault(p.getUniqueId(), 0L) > tune("tidecaller.pvp-off-seconds", 10) * 1000) p.addPotionEffect(new PotionEffect(PotionEffectType.DOLPHINS_GRACE, 40, 0, true, false, true));
         }
         // Bleed: 1 damage a second while it lasts (from whoever cut them, so kills are credited)
         for (var it = bleeding.entrySet().iterator(); it.hasNext(); ) {
@@ -592,7 +611,7 @@ final class Enchants implements Listener, CommandExecutor, TabCompleter {
     void swift(Player p, int lvl) {
         AttributeInstance sp = p.getAttribute(Attribute.MOVEMENT_SPEED);
         if (sp == null) return;
-        double want = lvl * nerf("swiftstride.speed-per-level", 0.05, 0.03);
+        double want = lvl * tune("swiftstride.speed-per-level", 0.02, 0.05, 0.03);
         AttributeModifier have = null;
         for (AttributeModifier m : sp.getModifiers()) if (swiftKey.equals(m.getKey())) have = m;
         if (have != null && (lvl <= 0 || Math.abs(have.getAmount() - want) > 1e-9)) { sp.removeModifier(have); have = null; }
@@ -619,7 +638,9 @@ final class Enchants implements Listener, CommandExecutor, TabCompleter {
         int amp = Math.max(0, Math.min(lvl, (int) nerf("vitality.max-regeneration-level", 2, 1)) - 1);
         // 1.2.53: Vitality I only works below half health; Vitality II all the time (both Regeneration I)
         AttributeInstance mh = p.getAttribute(Attribute.MAX_HEALTH);
-        if (lvl == 1 && mh != null && p.getHealth() > mh.getValue() * cfg("vitality.level1-below", 0.5)) {
+        // 1.3.6: Vitality I only below 35% health, Vitality II only below 60% (II was all the time)
+        double below = lvl == 1 ? tune("vitality.level1-below", 0.35, 0.5) : tune("vitality.level2-below", 0.6);
+        if (mh != null && p.getHealth() > mh.getValue() * below) {
             PotionEffect r = p.getPotionEffect(PotionEffectType.REGENERATION);
             if (r != null && r.isAmbient() && !r.hasParticles() && r.getDuration() <= 200 && r.getAmplifier() <= 1) p.removePotionEffect(PotionEffectType.REGENERATION);
             return;

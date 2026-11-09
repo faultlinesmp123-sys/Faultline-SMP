@@ -35,7 +35,9 @@ import java.util.*;
  * lit) counts: 1/4, 2/4, ... Once a player has had `max` (4) totems popped by players, their next totem won't save them
  * from a player ("4/4 Totems has been popped, this totem wont work") and they die. Totems still work against mobs, falls,
  * lava and everything else. Holding a totem while at the limit (offhand or main hand) shows the warning. The count goes
- * back to 0 when they die (`reset-on-death`, true), or when an admin sets it.
+ * back to 0 when they die (`reset-on-death`, true), when no player has hurt them for `reset-after-minutes` (10; 1.3.7, 0 = off;
+ * the clock is real time and saved in totems.yml `last-hit`, so logging off or a restart doesn't skip it), or when an admin
+ * sets it.
  * Admin: /totems <player> | set <player> <n> | reset <player|all> | limit <n|off> | on | off. Players: /totems = their own count.
  */
 final class TotemLimit implements Listener, CommandExecutor, TabCompleter {
@@ -54,7 +56,12 @@ final class TotemLimit implements Listener, CommandExecutor, TabCompleter {
         file = new File(plugin.getDataFolder(), "totems.yml");
         YamlConfiguration y = YamlConfiguration.loadConfiguration(file);
         for (String k : y.getKeys(false)) try { pops.put(UUID.fromString(k), y.getInt(k)); } catch (IllegalArgumentException ignored) { }
+        var hits = y.getConfigurationSection("last-hit");
+        if (hits != null) for (String k : hits.getKeys(false)) try { lastAt.put(UUID.fromString(k), hits.getLong(k)); } catch (IllegalArgumentException ignored) { }
+        long now = System.currentTimeMillis();
+        for (UUID id : pops.keySet()) lastAt.putIfAbsent(id, now); // counts from before 1.3.7: their clock starts now
         Bukkit.getScheduler().runTaskTimer(plugin, this::warnHolders, 40L, 10L);
+        Bukkit.getScheduler().runTaskTimer(plugin, this::expire, 100L, 200L);
     }
 
     boolean enabled() { return plugin.getConfig().getBoolean("totem-limit.enabled", true); }
@@ -63,14 +70,37 @@ final class TotemLimit implements Listener, CommandExecutor, TabCompleter {
 
     int count(UUID id) { return pops.getOrDefault(id, 0); }
 
+    long resetMs() { return (long) (Math.max(0, plugin.getConfig().getDouble("totem-limit.reset-after-minutes", 10)) * 60000); }
+
+    /** 1.3.7: nobody (no player) has hurt them for reset-after-minutes = their count is back to 0. Every 10 s. */
+    void expire() {
+        long ms = resetMs();
+        if (ms <= 0 || pops.isEmpty()) return;
+        long now = System.currentTimeMillis();
+        boolean changed = false;
+        for (var it = pops.entrySet().iterator(); it.hasNext(); ) {
+            var en = it.next();
+            if (now - lastAt.getOrDefault(en.getKey(), now) < ms) continue;
+            it.remove(); changed = true;
+            warned.remove(en.getKey());
+            Player p = Bukkit.getPlayer(en.getKey());
+            if (p != null) p.sendMessage(ChatColor.GREEN + "No player has hit you for " + Math.round(ms / 60000.0) + " minutes: your totem count is back to " + line(0) + ".");
+        }
+        if (changed) save();
+    }
+
     void set(UUID id, int n) {
-        if (n <= 0) pops.remove(id); else pops.put(id, n);
+        if (n <= 0) pops.remove(id); else { pops.put(id, n); lastAt.putIfAbsent(id, System.currentTimeMillis()); }
         save();
     }
 
     private void save() {
         YamlConfiguration y = new YamlConfiguration();
-        for (Map.Entry<UUID, Integer> e : pops.entrySet()) y.set(e.getKey().toString(), e.getValue());
+        for (Map.Entry<UUID, Integer> e : pops.entrySet()) {
+            y.set(e.getKey().toString(), e.getValue());
+            Long at = lastAt.get(e.getKey());
+            if (at != null) y.set("last-hit." + e.getKey(), at);
+        }
         try { plugin.getDataFolder().mkdirs(); y.save(file); } catch (IOException e) { plugin.getLogger().warning("[Totems] couldn't save totems.yml: " + e.getMessage()); }
     }
 
@@ -93,7 +123,7 @@ final class TotemLimit implements Listener, CommandExecutor, TabCompleter {
         Player by = playerBehind(e.getDamager());
         if (by == null || by.equals(victim)) return;
         lastBy.put(victim.getUniqueId(), by.getUniqueId());
-        lastAt.put(victim.getUniqueId(), System.currentTimeMillis());
+        lastAt.put(victim.getUniqueId(), System.currentTimeMillis()); // (also restarts their 10-minute reset clock)
     }
 
     /** Was this player's fatal hit (the one popping the totem) from another player? */
@@ -119,6 +149,7 @@ final class TotemLimit implements Listener, CommandExecutor, TabCompleter {
             return;
         }
         n++;
+        lastAt.put(p.getUniqueId(), System.currentTimeMillis());
         set(p.getUniqueId(), n);
         p.sendMessage(ChatColor.GOLD + "Totem popped by a player: " + ChatColor.YELLOW + line(n)
                 + (n >= max ? ChatColor.RED + " (your next totem won't work against players)" : ""));
@@ -161,7 +192,7 @@ final class TotemLimit implements Listener, CommandExecutor, TabCompleter {
         if (args.length == 0 || !admin) {
             if (!(sender instanceof Player p)) { sender.sendMessage(ChatColor.YELLOW + "/totems <player> | set <player> <n> | reset <player|all> | limit <n|off> | on | off"); return true; }
             sender.sendMessage(!enabled() ? ChatColor.GRAY + "There's no totem limit right now."
-                    : ChatColor.GOLD + "Totems popped by players: " + ChatColor.YELLOW + line(count(p.getUniqueId())) + ChatColor.GRAY + " (resets when you die)");
+                    : ChatColor.GOLD + "Totems popped by players: " + ChatColor.YELLOW + line(count(p.getUniqueId())) + ChatColor.GRAY + " (resets when you die, or after " + Math.round(resetMs() / 60000.0) + " minutes without a player hitting you)");
             return true;
         }
         String sub = args[0].toLowerCase();

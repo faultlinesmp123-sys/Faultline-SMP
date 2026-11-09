@@ -584,6 +584,7 @@ totem-limit:
   enabled: true
   max: 4
   reset-on-death: true
+  reset-after-minutes: 10   # 1.3.7: no player hits you for this long = back to 0/4 (0 = never)
 
 balloon:
   speed: 0.35              # blocks a tick (sprint = x1.6)

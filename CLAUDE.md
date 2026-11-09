@@ -2332,6 +2332,11 @@ Notes:
   Autosmelt `autosmelt.chance` 0.5 per stack; Clearsight blocks Blindness / Darkness `clearsight.chance` 0.5 of the time.
   Index Boss Enchant Book text updated. Tested (scratch `dh/LsTest`: an old config's 0.05 / 2 read as 0.02 / 1, a 40 hit heals 1,
   none within a second, a 10 hit after it heals 0.4).
+- **Totem count resets (Items 1.3.7)**: `TotemLimit.expire()` (every 10 s): a player no PLAYER has hurt for
+  `totem-limit.reset-after-minutes` 10 (0 = off) goes back to 0/4 with a chat line. The clock is `lastAt` (real time, set by any
+  player hit in `onHit` and by each counted pop), saved in totems.yml `last-hit.<uuid>` so logging off / restarts don't skip
+  it; counts from before 1.3.7 and `/totems set` start the clock at that moment. Tested (scratch `dh/TotTest`: 9 min = kept,
+  10 min = reset + message, a player hit restarts it).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Skills → Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

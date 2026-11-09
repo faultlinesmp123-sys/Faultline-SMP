@@ -1,5 +1,5 @@
 name: FaultlineItems
-version: 1.3.1
+version: 1.3.2
 main: net.faultlinesmp.items.FaultlineItems
 api-version: '1.21'
 softdepend: [floodgate, Geyser-Spigot, DonutCombat]
@@ -153,6 +153,9 @@ commands:
     description: "Creator mode: hides your coordinates and IP addresses on screen while you record"
     usage: /creator [on|off]
     aliases: [creatormode, streamermode]
+  pielimit:
+    description: "Is the pie chart limit working for a player, and if not, why"
+    usage: /pielimit [player]
   offtp:
     description: "Teleport to an offline player's logout spot, bed / respawn point or last death"
     usage: /offtp <player> [last|bed|death]
@@ -239,6 +242,9 @@ permissions:
   faultline.piechart.bypass:
     description: Sees every chest / block entity at any distance (the pie chart limit is off for you)
     default: false
+  items.pielimit:
+    description: /pielimit (pie chart limit status)
+    default: op
   items.offlinetp:
     description: /offtp (teleport to offline players)
     default: op

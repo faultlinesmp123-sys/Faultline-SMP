@@ -62,6 +62,7 @@ final class ModGuard implements Listener {
     private final Map<UUID, Map<Long, Set<Long>>> hidden = new HashMap<>();
     private final Map<UUID, Map<Long, Set<Long>>> shown = new HashMap<>();
     private final Map<UUID, UUID> worldOf = new HashMap<>();
+    private final Set<UUID> armed = new HashSet<>();
     private Set<Material> hide = EnumSet.noneOf(Material.class);
     private List<Pattern> mapPatterns = List.of(), mapAllow = List.of(), piePatterns = List.of();
     private int tick;
@@ -181,8 +182,7 @@ final class ModGuard implements Listener {
     // ================================================================ the pie chart
 
     boolean pieFor(Player p) {
-        return pieOn() && !Edition.bedrock(p) && p.getGameMode() != GameMode.CREATIVE && p.getGameMode() != GameMode.SPECTATOR
-                && !p.hasPermission("faultline.piechart.bypass");
+        return pieOn() && !Edition.bedrock(p) && !p.hasPermission("faultline.piechart.bypass");
     }
 
     static long pack(int x, int y, int z) { return ((long) (x & 0x3FFFFFF) << 38) | ((long) (z & 0x3FFFFFF) << 12) | (y & 0xFFF); }
@@ -196,6 +196,17 @@ final class ModGuard implements Listener {
         Player p = e.getPlayer();
         if (!pieFor(p)) return;
         Chunk c = e.getChunk();
+        List<Block> blocks = entities(c);
+        if (blocks.isEmpty()) return;
+        hideNow(p, blocks, false); // Paper fires this right after the chunk packet went out
+        // and once more a moment later, in case the chunk packet was still queued behind it
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (p.isOnline() && p.getWorld() == c.getWorld() && pieFor(p)) hideNow(p, blocks, false);
+        }, 3L);
+    }
+
+    /** The chunk's block entities we hide. */
+    List<Block> entities(Chunk c) {
         List<Block> blocks = new ArrayList<>();
         try {
             for (BlockState s : c.getTileEntities(b -> hide.contains(b.getType()), false)) blocks.add(s.getBlock());
@@ -203,12 +214,24 @@ final class ModGuard implements Listener {
             try { for (BlockState s : c.getTileEntities(false)) if (hide.contains(s.getType())) blocks.add(s.getBlock()); }
             catch (Throwable t2) { scan(c, blocks); }
         }
-        if (blocks.isEmpty()) return;
-        // after the chunk packet: next tick
-        Bukkit.getScheduler().runTask(plugin, () -> {
-            if (!p.isOnline() || p.getWorld() != c.getWorld() || !sent(p, chunkKey(c.getX(), c.getZ()))) return;
-            hideNow(p, blocks, false);
-        });
+        return blocks;
+    }
+
+    /** Everything already sent to p (they joined before this was on, came out of the bypass, a /reload...). */
+    int sweep(Player p) {
+        World w = p.getWorld();
+        int r = 12;
+        try { r = Math.max(2, Math.min(32, p.getSendViewDistance())); } catch (Throwable ignored) { }
+        int pcx = p.getLocation().getBlockX() >> 4, pcz = p.getLocation().getBlockZ() >> 4;
+        List<Block> all = new ArrayList<>();
+        for (int dx = -r; dx <= r; dx++) for (int dz = -r; dz <= r; dz++) {
+            int cx = pcx + dx, cz = pcz + dz;
+            if (!w.isChunkLoaded(cx, cz)) continue;
+            all.addAll(entities(w.getChunkAt(cx, cz)));
+        }
+        armed.add(p.getUniqueId());
+        if (!all.isEmpty()) hideNow(p, all, false);
+        return all.size();
     }
 
     static boolean sent(Player p, long ck) { try { return p.isChunkSent(ck); } catch (Throwable t) { return true; } }
@@ -238,14 +261,14 @@ final class ModGuard implements Listener {
         Bukkit.getScheduler().runTask(plugin, () -> {
             if (!hide.contains(b.getType())) return;
             long ck = chunkKey(b.getX() >> 4, b.getZ() >> 4);
-            for (Player p : b.getWorld().getPlayers()) if (pieFor(p) && sent(p, ck)) hideNow(p, List.of(b), true);
+            for (Player p : b.getWorld().getPlayers()) if (pieFor(p)) hideNow(p, List.of(b), true);
         });
     }
 
     @EventHandler public void onQuit(PlayerQuitEvent e) { forget(e.getPlayer()); }
     @EventHandler public void onWorld(PlayerChangedWorldEvent e) { forget(e.getPlayer()); }
 
-    void forget(Player p) { hidden.remove(p.getUniqueId()); shown.remove(p.getUniqueId()); worldOf.remove(p.getUniqueId()); }
+    void forget(Player p) { armed.remove(p.getUniqueId()); hidden.remove(p.getUniqueId()); shown.remove(p.getUniqueId()); worldOf.remove(p.getUniqueId()); }
 
     /** Fakes these for p unless it may see them now. `place` = a block just placed (nearby + seen ones stay real). */
     void hideNow(Player p, List<Block> blocks, boolean place) {
@@ -259,7 +282,12 @@ final class ModGuard implements Listener {
         for (Block b : blocks) {
             if (!hide.contains(b.getType())) continue;
             long k = pack(b.getX(), b.getY(), b.getZ()), ck = chunkKey(b.getX() >> 4, b.getZ() >> 4);
-            if (may(p, eye, b)) { s.computeIfAbsent(ck, x -> new HashSet<>()).add(k); continue; }
+            if (may(p, eye, b)) { // may see it: real (and real again if it was faked before)
+                s.computeIfAbsent(ck, x -> new HashSet<>()).add(k);
+                Set<Long> hh = h.get(ck);
+                if (hh != null && hh.remove(k)) show(p, b);
+                continue;
+            }
             h.computeIfAbsent(ck, x -> new HashSet<>()).add(k);
             Set<Long> ss = s.get(ck); if (ss != null) ss.remove(k);
             fakes.put(Position.block(b.getX(), b.getY(), b.getZ()), fake(b));
@@ -285,7 +313,7 @@ final class ModGuard implements Listener {
     /** Close enough to touch, or within reveal distance and in sight. */
     boolean may(Player p, Location eye, Block b) {
         if (!p.getWorld().equals(b.getWorld())) return false;
-        double d2 = eye.distanceSquared(b.getLocation().add(0.5, 0.5, 0.5));
+        double dx = b.getX() + 0.5 - eye.getX(), dy = b.getY() + 0.5 - eye.getY(), dz = b.getZ() + 0.5 - eye.getZ(), d2 = dx * dx + dy * dy + dz * dz;
         double touch = plugin.getConfig().getDouble("pie-limit.touch-distance", 6), reveal = plugin.getConfig().getDouble("pie-limit.reveal-distance", 24);
         if (d2 <= touch * touch) return true;
         return d2 <= reveal * reveal && seesBlock(eye, b);
@@ -318,45 +346,53 @@ final class ModGuard implements Listener {
         double rehide = plugin.getConfig().getDouble("pie-limit.rehide-distance", 32);
         int budget = plugin.getConfig().getInt("pie-limit.checks-per-player", 96);
         for (Player p : Bukkit.getOnlinePlayers()) {
-            UUID id = p.getUniqueId();
-            Map<Long, Set<Long>> h = hidden.get(id), s = shown.get(id);
-            if (h == null) continue;
-            if (!p.getWorld().getUID().equals(worldOf.get(id))) { forget(p); continue; }
-            if (!pieFor(p)) { revealAll(p, h); continue; } // went creative / got the bypass: everything real again
-            World w = p.getWorld();
-            Location eye = p.getEyeLocation();
-            int pcx = eye.getBlockX() >> 4, pcz = eye.getBlockZ() >> 4;
-            int reach = (int) Math.ceil(plugin.getConfig().getDouble("pie-limit.reveal-distance", 24) / 16) + 1;
-            List<Block> reveal = new ArrayList<>();
-            int checks = 0;
-            for (int dx = -reach; dx <= reach && checks < budget; dx++) for (int dz = -reach; dz <= reach && checks < budget; dz++) {
-                Set<Long> set = h.get(chunkKey(pcx + dx, pcz + dz));
-                if (set == null || set.isEmpty()) continue;
-                for (Iterator<Long> it = set.iterator(); it.hasNext() && checks < budget; ) {
+            try { tickOne(p, rehide, budget); }
+            catch (Throwable t) { if (!warned) { warned = true; plugin.getLogger().warning("[PieLimit] tick failed for " + p.getName() + ": " + t); } }
+        }
+    }
+
+    private boolean warned;
+
+    private void tickOne(Player p, double rehide, int budget) {
+        UUID id = p.getUniqueId();
+        if (!armed.contains(id) && pieFor(p) && tick % 4 == 0) sweep(p); // anything sent before it was on for them
+        Map<Long, Set<Long>> h = hidden.get(id), s = shown.get(id);
+        if (h == null) return;
+        if (!p.getWorld().getUID().equals(worldOf.get(id))) { forget(p); return; }
+        if (!pieFor(p)) { revealAll(p, h); return; } // got the bypass: everything real again
+        World w = p.getWorld();
+        Location eye = p.getEyeLocation();
+        int pcx = eye.getBlockX() >> 4, pcz = eye.getBlockZ() >> 4;
+        int reach = (int) Math.ceil(plugin.getConfig().getDouble("pie-limit.reveal-distance", 24) / 16) + 1;
+        List<Block> reveal = new ArrayList<>();
+        int checks = 0;
+        for (int dx = -reach; dx <= reach && checks < budget; dx++) for (int dz = -reach; dz <= reach && checks < budget; dz++) {
+            Set<Long> set = h.get(chunkKey(pcx + dx, pcz + dz));
+            if (set == null || set.isEmpty()) continue;
+            for (Iterator<Long> it = set.iterator(); it.hasNext() && checks < budget; ) {
+                long k = it.next();
+                Block b = w.getBlockAt(ux(k), uy(k), uz(k));
+                if (!hide.contains(b.getType())) { it.remove(); continue; } // broken: the server already sent the truth
+                checks++;
+                if (may(p, eye, b)) { it.remove(); reveal.add(b); }
+            }
+        }
+        for (Block b : reveal) {
+            show(p, b);
+            s.computeIfAbsent(chunkKey(b.getX() >> 4, b.getZ() >> 4), x -> new HashSet<>()).add(pack(b.getX(), b.getY(), b.getZ()));
+        }
+        if (tick % 4 == 0) { // walked away: fake it again
+            List<Block> again = new ArrayList<>();
+            for (Iterator<Map.Entry<Long, Set<Long>>> ci = s.entrySet().iterator(); ci.hasNext(); ) {
+                Set<Long> set = ci.next().getValue();
+                for (Iterator<Long> it = set.iterator(); it.hasNext(); ) {
                     long k = it.next();
-                    Block b = w.getBlockAt(ux(k), uy(k), uz(k));
-                    if (!hide.contains(b.getType())) { it.remove(); continue; } // broken: the server already sent the truth
-                    checks++;
-                    if (may(p, eye, b)) { it.remove(); reveal.add(b); }
+                    double ddx = ux(k) + 0.5 - eye.getX(), ddy = uy(k) + 0.5 - eye.getY(), ddz = uz(k) + 0.5 - eye.getZ();
+                    if (ddx * ddx + ddy * ddy + ddz * ddz > rehide * rehide) { it.remove(); again.add(w.getBlockAt(ux(k), uy(k), uz(k))); }
                 }
+                if (set.isEmpty()) ci.remove();
             }
-            for (Block b : reveal) {
-                show(p, b);
-                s.computeIfAbsent(chunkKey(b.getX() >> 4, b.getZ() >> 4), x -> new HashSet<>()).add(pack(b.getX(), b.getY(), b.getZ()));
-            }
-            if (tick % 4 == 0) { // walked away: fake it again
-                List<Block> again = new ArrayList<>();
-                for (Iterator<Map.Entry<Long, Set<Long>>> ci = s.entrySet().iterator(); ci.hasNext(); ) {
-                    Set<Long> set = ci.next().getValue();
-                    for (Iterator<Long> it = set.iterator(); it.hasNext(); ) {
-                        long k = it.next();
-                        double ddx = ux(k) + 0.5 - eye.getX(), ddy = uy(k) + 0.5 - eye.getY(), ddz = uz(k) + 0.5 - eye.getZ();
-                        if (ddx * ddx + ddy * ddy + ddz * ddz > rehide * rehide) { it.remove(); again.add(w.getBlockAt(ux(k), uy(k), uz(k))); }
-                    }
-                    if (set.isEmpty()) ci.remove();
-                }
-                if (!again.isEmpty()) hideNow(p, again, false);
-            }
+            if (!again.isEmpty()) hideNow(p, again, false);
         }
     }
 
@@ -377,5 +413,22 @@ final class ModGuard implements Listener {
         Map<Long, Set<Long>> h = hidden.get(p.getUniqueId());
         if (h == null) return 0;
         int n = 0; for (Set<Long> s : h.values()) n += s.size(); return n;
+    }
+
+    /** /pielimit [player]: is it working for them, and if not, why. Admins. */
+    boolean command(org.bukkit.command.CommandSender s, String[] a) {
+        if (!s.hasPermission("items.pielimit")) { s.sendMessage(ChatColor.RED + "You don't have permission."); return true; }
+        Player p = a.length > 0 ? Bukkit.getPlayerExact(a[0]) : (s instanceof Player me ? me : null);
+        if (p == null) { s.sendMessage(ChatColor.YELLOW + "/pielimit <player>"); return true; }
+        String why = !pieOn() ? "pie-limit.enabled is false in the config"
+                : Edition.bedrock(p) ? "they're on Bedrock (no pie chart there)"
+                : p.hasPermission("faultline.piechart.bypass") ? "they have faultline.piechart.bypass (an op with '*' or a permissions plugin giving everything?)"
+                : null;
+        if (why != null) { s.sendMessage(ChatColor.RED + "Pie chart limit is OFF for " + p.getName() + ": " + why); return true; }
+        int n = sweep(p);
+        s.sendMessage(ChatColor.GREEN + "Pie chart limit is ON for " + p.getName() + ": " + hiddenFor(p) + " block entities hidden right now ("
+                + n + " in their loaded chunks; the ones within " + (int) plugin.getConfig().getDouble("pie-limit.touch-distance", 6)
+                + " blocks or in sight within " + (int) plugin.getConfig().getDouble("pie-limit.reveal-distance", 24) + " stay real).");
+        return true;
     }
 }

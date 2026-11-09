@@ -47,7 +47,7 @@ discord:
   # announcements matching any of these (Java regexes) are posted
   forward: ["(?i)has been defeated", "(?i)has fallen", "(?i)has been laid to rest", "(?i)caravan", "(?i)achievement",
             "(?i)is the first to", "(?i)sandstorm", "(?i)blizzard", "(?i)eclipse", "(?i)ghost ship|wailing mary",
-            "(?i)invasion"]
+            "(?i)invasion", "(?i)whirlpool has opened"]
 
 # Watch (1.6.15): catches x-rayers, cheaters, dupers and griefers. Daily log files in plugins/FaultlineIndex/logs/,
 # /watch in game. LOG lines go to the Discord logs channel, ALERTS also to staff in game (faultlineindex.alerts) and ping

@@ -241,7 +241,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                     if (self == null) { sender.sendMessage("Players only."); return true; }
                     if (kraken != null) { sender.sendMessage(ChatColor.GRAY + "The Kraken is already here."); return true; }
                     Location at = self.getLocation().add(self.getLocation().getDirection().setY(0).multiply(8));
-                    if (!colossalWorld(self.getWorld())) { sender.sendMessage(ChatColor.RED + "Only in the Dark Ocean (2.0.0: only the Abyssal Kraken is left)."); return true; }
+                    if (!colossalWorld(self.getWorld()) && !krakenHere(self.getWorld())) { sender.sendMessage(ChatColor.RED + "Not in this world (the Overworld's seas or the Dark Ocean)."); return true; }
                     if (!isWater(at.getBlock())) { sender.sendMessage(ChatColor.RED + "Stand in deep water (he needs water to swim in)."); return true; }
                     summonKraken(at, self);
                 }
@@ -255,7 +255,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 }
                 case "bubble" -> { if (kraken != null) { kraken.pinkTimer = 1; sender.sendMessage(ChatColor.LIGHT_PURPLE + "A pink bubble is coming."); } }
                 case "worm" -> { if (self != null) console("givekraken worm 1 " + self.getName(), self); }
-                default -> sender.sendMessage(ChatColor.YELLOW + "/kraken <summon|kill|phase <2|3>|bubble|worm>" + ChatColor.GRAY + " (the Abyssal Kraken: the Dark Ocean only)");
+                default -> sender.sendMessage(ChatColor.YELLOW + "/kraken <summon|kill|phase <2|3>|bubble|worm>" + ChatColor.GRAY + " (Overworld water = the Kraken, the Dark Ocean = the Abyssal Kraken)");
             }
             return true;
         });
@@ -745,6 +745,11 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 && w.getName().equals(getConfig().getString("kraken.abyssal.world", "faultline_deep"));
     }
 
+    /** 2.0.2: the normal Kraken lives in the Overworld's deep oceans again (kraken.overworld). */
+    boolean krakenHere(World w) {
+        return w != null && w.getEnvironment() == World.Environment.NORMAL && !colossalWorld(w) && getConfig().getBoolean("kraken.overworld", true);
+    }
+
     static boolean isWater(Block b) {
         Material m = b.getType();
         return m == Material.WATER || m == Material.BUBBLE_COLUMN || m == Material.KELP || m == Material.KELP_PLANT
@@ -809,7 +814,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 String why = null;
                 boolean abyss = colossalWorld(item.getWorld()); // the Dark Ocean: the Abyssal Kraken, in any open water deep enough
                 int need = (int) (abyss ? Math.min(63, kcfg("abyssal.min-depth", 60)) : kcfg("min-depth", 15));
-                if (!abyss) why = "The Kraken only lives in the Dark Ocean now."; // 2.0.0: only the Abyssal Kraken is left
+                if (!abyss && (!krakenHere(item.getWorld()) || !deepOcean(item.getLocation()))) why = "It needs a Deep Ocean (or the Dark Ocean)."; // 2.0.2: the normal Kraken is back
                 else if (waterDepth(item.getLocation()) < need) why = "The water isn't deep enough here (it needs " + need + "+ blocks).";
                 else if (kraken != null) why = "Something down there is already awake...";
                 else if (sinking.values().stream().anyMatch(o -> o != s && o.sinking >= 0)) why = "Another worm is already sinking. Something down there is stirring..."; // BUG FIX: the second worm was lost

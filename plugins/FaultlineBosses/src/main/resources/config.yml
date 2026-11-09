@@ -18,6 +18,7 @@ kraken:
   damage-multiplier: 1.2      # all his damage (+20%)
   scale: 4.0                  # model size (4 = a head about 9 blocks tall)
   min-depth: 15               # blocks of water needed to summon him
+  overworld: true             # 2.0.2: the normal Kraken again: a Bait Worm in an Overworld Deep Ocean (or /kraken summon in Overworld water)
   sink-ticks: 160             # the worm sinks for 8 seconds before he comes
   abyssal:                    # the ABYSSAL KRAKEN: a Bait Worm dropped in the Dark Ocean (any open water this deep)
     enabled: true

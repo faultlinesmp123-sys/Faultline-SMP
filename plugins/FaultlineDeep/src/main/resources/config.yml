@@ -182,11 +182,29 @@ acid-rain:
   cap-per-player: 6         # ...up to this many round each player
   goblin-after-seconds: 90  # then Grubnash the Acid Goblin (mini boss, 500 health) rides in
 
-# Lucki's whirlpool (1.5.0): a real funnel the sea drains into
+# 1.16.0 THE WHIRLPOOL (Lucki is gone): every hour one opens in an Overworld ocean under a light-blue beam in the sky,
+# the coordinates go out in chat. Swim into its eye = down to the Dark Ocean. /whirlpool = where / when; admins:
+# /whirlpool here|random|at <x> <z>|stop|next <minutes> (free, any time).
+whirlpool:
+  enabled: true
+  every-minutes: 60
+  first-after-minutes: 10   # after the very first start (later restarts keep the saved timer: whirlpool.yml)
+  open-minutes: 10
+  retry-minutes: 5          # nobody in the Overworld / no open ocean found: try again this soon
+  world: ""                 # empty = the first Overworld
+  min-distance: 150         # from a random survival player
+  max-distance: 450
+  min-depth: 10             # blocks of water under the middle
+  search-tries: 16
+  radius: 11
+  depth: 18                 # down to the eye (or the sea floor if it's shallower)
+  debris: 14                # planks, barrels, kelp... spinning down the walls
+  beam-height: 160
+  pointer-distance: 400     # an action bar arrow for anyone this close
+  needs-jacob: false        # true = only players who beat Diamond Jacob can go down
+
 journey:
-  whirlpool-radius: 9
-  whirlpool-depth: 16       # down to the eye (or to the sea floor if it's shallower)
-  whirlpool-seconds: 40
+  return-seconds: 5         # the Mirror in the Dark Ocean: this long to go back up (to journey.kingdom, else your bed / spawn)
 
 mobs:
   cap: 10                   # creatures round each player (each is up to 10 entities with its moving bones: keep it low)

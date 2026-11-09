@@ -45,11 +45,12 @@ import java.util.UUID;
  * BOSS ENCHANT BOOKS (Items 1.2.17, config enchants:). Bosses drop books of enchantments vanilla doesn't have; put the
  * item on the left of an anvil and the book on the right. Two books of the same enchantment and level make the next level.
  * 1.2.53 NERF of all of them (the numbers below are the old ones; the code's comments by each nerf() call have the new):
- * Lifesteal 5% a level (max 2 a hit), Frostbite / Venom 10% a level, Thunderstrike 5% for +3 (12 s), Vitality I = Regeneration I
+ * Lifesteal 5% a level (max 2 a hit), Frostbite 6% a level (1.3.3), Venom 10% a level, Thunderstrike 5% for +3 (12 s), Vitality I = Regeneration I
  * below half health / II = Regeneration I always, Featherstep 25%, Vein Miner 16 blocks, Executioner 8%, Cleave 15%, Bleed 8%
  * for 2+lvl s, Arrowguard 6%, Thornhide 6%, Swiftstride 3% a level.
  *  - Lifesteal I-II (swords, axes, tridents, and bows since 1.2.27: on the arrow, a 90% draw counts as charged): heal 8% / 16% of the damage you deal (max 3 hp a hit).
- *  - Frostbite I-II (swords, axes, tridents, and bows since 1.2.27: on the arrow, a 90% draw counts as charged): 15% / 30% to chill: Slowness I/II for 3/4 s.
+ *  - Frostbite I-II (swords, axes, tridents, and bows since 1.2.27: on the arrow, a 90% draw counts as charged): 6% / 12% to chill:
+ *    Slowness I for 1.5 / 2 s, at most once every 5 s per victim (1.3.3; was 15%/30%, then 10%/20%, Slowness I/II 3/4 s).
  *  - Venom I-II (swords, axes, tridents, and bows since 1.2.27: on the arrow, a 90% draw counts as charged): 15% / 30% to poison: Poison I/II for 3 s.
  *  - Thunderstrike I (swords, axes, tridents, and bows since 1.2.27: on the arrow, a 90% draw counts as charged): 8% to call a (harmless to blocks) lightning bolt for +4 damage, 8 s cooldown.
  *  - Vitality I-II (chestplates): Regeneration I / II while worn (1.2.46; it was +2 / +4 max health).
@@ -144,6 +145,7 @@ final class Enchants implements Listener, CommandExecutor, TabCompleter {
     private double cfg(String path, double def) { return plugin.getConfig().getDouble("enchants." + path, def); }
 
     /** 1.2.53: every boss enchant was nerfed; a server config still holding the old default reads as the new one. */
+    private final java.util.Map<java.util.UUID, Long> frostReady = new java.util.HashMap<>();
     private double nerf(String path, double oldDefault, double newDefault) { return Balance.num(plugin, "enchants." + path, oldDefault, newDefault); }
 
     /** 1.2.65's balance pass: a value still equal to ANY of its old defaults reads as the new one. */
@@ -389,8 +391,12 @@ final class Enchants implements Listener, CommandExecutor, TabCompleter {
             e.setDamage(e.getDamage() + tune("thunderstrike.damage", 4, 3));
         }
         Integer f = ench.get("frostbite");
-        if (f != null && full && random.nextDouble() < nerf("frostbite.chance-per-level", 0.15, 0.1) * f) {
-            victim.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 40 + 20 * f, f - 1));
+        // 1.3.3 nerf: 6% a level (was 10%), always Slowness I, 1.5 s / 2 s (was I/II for 3/4 s), at most once every 5 s per victim
+        if (f != null && full && frostReady.getOrDefault(victim.getUniqueId(), 0L) <= System.currentTimeMillis()
+                && random.nextDouble() < tune("frostbite.chance-per-level", 0.06, 0.15, 0.1) * f) {
+            if (frostReady.size() > 500) { long now = System.currentTimeMillis(); frostReady.values().removeIf(until -> until < now); }
+            frostReady.put(victim.getUniqueId(), System.currentTimeMillis() + (long) (tune("frostbite.cooldown-seconds", 5) * 1000));
+            victim.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 20 + 10 * f, 0));
             victim.getWorld().spawnParticle(Particle.SNOWFLAKE, victim.getLocation().add(0, 1, 0), 12, 0.3, 0.5, 0.3, 0.02);
             victim.getWorld().playSound(victim.getLocation(), Sound.BLOCK_GLASS_BREAK, 0.5f, 1.8f);
         }

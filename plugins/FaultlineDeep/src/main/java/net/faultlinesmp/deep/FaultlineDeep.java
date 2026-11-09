@@ -23,9 +23,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * FAULTLINE DEEP: the Dark Ocean (a world of water only, under the Black Market's abandoned kingdom). The Kraken's Mirror
- * takes you to the kingdom, Lucki rows you out and opens a whirlpool, and you drop into the Dark Ocean at 0, 300, 0.
- * DeepGenerator = the terrain, DeepMobs = its 20 creatures, Journey = the Mirror / Lucki / the whirlpool, Ocean = music,
+ * FAULTLINE DEEP: the Dark Ocean (a world of water only). The way down:
+ * (1.16.0) every hour a whirlpool opens in an Overworld ocean under a beam of light: its eye drops you into the Dark Ocean at 0, 300, 0.
+ * DeepGenerator = the terrain, DeepMobs = its 20 creatures, Journey = the Mirror / the hourly whirlpool, Ocean = music,
  * events and dying down there. The bosses live in FaultlineBosses (Wild), Dark Loot in FaultlineItems.
  */
 public final class FaultlineDeep extends JavaPlugin implements Listener {
@@ -97,6 +97,10 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
         caves = new CaveCaches(this);
         getServer().getPluginManager().registerEvents(caves, this);
         if (getCommand("den") != null) getCommand("den").setExecutor(rep::command);
+        if (getCommand("whirlpool") != null) {
+            getCommand("whirlpool").setExecutor((sender, cmd, label, args) -> journey.command(sender, args));
+            getCommand("whirlpool").setTabCompleter((sender, cmd, label, args) -> journey.tab(args));
+        }
         if (getCommand("dome") != null) {
             getCommand("dome").setExecutor((sender, cmd, label, args) -> habitat.command(sender, args));
             getCommand("dome").setTabCompleter((sender, cmd, label, args) -> {
@@ -112,7 +116,6 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(subs, this);
         getServer().getPluginManager().registerEvents(new MarketGuard(this), this); // no flooding the Bubble, no robbing the market // the Black Market's lift down to the Pit
         getServer().getPluginManager().registerEvents(this, this);
-        Bukkit.getScheduler().runTask(this, journey::spawnLucki);
     }
 
     @Override
@@ -221,8 +224,8 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
         if (!sender.hasPermission("faultlinedeep.admin")) { sender.sendMessage(ChatColor.RED + "Admins only."); return true; }
         switch (sub) {
             case "set" -> {
-                if (self == null || args.length < 2 || !List.of("kingdom", "lucki", "whirlpool").contains(args[1].toLowerCase())) {
-                    sender.sendMessage(ChatColor.YELLOW + "/deep set <kingdom|lucki|whirlpool>   (where you stand; Lucki's spot must be water)"); return true;
+                if (self == null || args.length < 2 || !args[1].equalsIgnoreCase("kingdom")) {
+                    sender.sendMessage(ChatColor.YELLOW + "/deep set kingdom   (where you stand: where the Mirror brings players back up from the Dark Ocean)"); return true;
                 }
                 journey.setPlace(args[1].toLowerCase(), self.getLocation());
                 sender.sendMessage(ChatColor.GREEN + "Set the " + args[1].toLowerCase() + " spot here.");
@@ -393,15 +396,15 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
                 who.teleport(new Location(world, c[0] + 0.5, y, c[1] + 0.5));
                 sender.sendMessage(ChatColor.GREEN + "Sent " + who.getName() + " to " + Regions.title(r) + " (" + c[0] + ", " + c[1] + ").");
             }
-            case "lucki" -> { journey.removeLucki(); journey.spawnLucki(); sender.sendMessage(ChatColor.GREEN + "Lucki is back at his spot (if it's set and loaded)."); }
+            case "whirlpool" -> journey.command(sender, java.util.Arrays.copyOfRange(args, 1, args.length));
             case "info", "" -> {
                 sender.sendMessage(ChatColor.DARK_AQUA + "" + ChatColor.BOLD + "The Dark Ocean " + ChatColor.GRAY + "(" + worldName() + (world == null ? ", NOT LOADED" : "") + ")");
-                sender.sendMessage(ChatColor.GRAY + "Kingdom: " + spot(journey.place("kingdom")) + "  Lucki: " + spot(journey.place("lucki")) + "  Whirlpool: " + spot(journey.poolSpot()));
+                sender.sendMessage(ChatColor.GRAY + "Mirror's way up: " + spot(journey.place("kingdom")) + "  Whirlpool: " + (journey.pool != null ? spot(journey.pool.v.center) : "next in " + journey.minutesToNext() + " min"));
                 sender.sendMessage(ChatColor.GRAY + "Creatures out: " + mobs.live.size() + "   Event: " + (ocean.event == null ? "none" : ocean.event) + "   Acid Rain: " + (acidRain.active ? "falling" : "no"));
                 if (self != null && world != null && self.getWorld().equals(world)) sender.sendMessage(ChatColor.GRAY + "You're in: " + zone(self.getLocation()));
-                sender.sendMessage(ChatColor.YELLOW + "/deep set <kingdom|lucki|whirlpool>, tp [player], town [player], sulphur [player], trench [maw] [player], spawn <mob>, egg <mob> [n] [player], event <pressure|undertow|stop>, acidrain [start|stop|goblin], den [info|tp|raid|stop|reset|rise], eclipse, redtide, frenzy, volcano, region <name>, give <item>, domes, lucki");
+                sender.sendMessage(ChatColor.YELLOW + "/deep set kingdom, whirlpool [here|random|at|stop|next], tp [player], town [player], sulphur [player], trench [maw] [player], spawn <mob>, egg <mob> [n] [player], event <pressure|undertow|stop>, acidrain [start|stop|goblin], den [info|tp|raid|stop|reset|rise], eclipse, redtide, frenzy, volcano, region <name>, give <item>, domes");
             }
-            default -> sender.sendMessage(ChatColor.YELLOW + "/deep [info|set|tp|town|sulphur|trench|spawn|egg|event|acidrain|den|lucki]");
+            default -> sender.sendMessage(ChatColor.YELLOW + "/deep [info|set|whirlpool|tp|town|sulphur|trench|spawn|egg|event|acidrain|den]");
         }
         return true;
     }
@@ -411,12 +414,12 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         List<String> out = new ArrayList<>();
-        if (args.length == 1) out.addAll(List.of("info", "set", "tp", "town", "sulphur", "trench", "spawn", "egg", "event", "acidrain", "den", "bloom", "migration", "sub", "lucki", "eclipse", "redtide", "frenzy", "volcano", "domes", "give", "region", "season"));
+        if (args.length == 1) out.addAll(List.of("info", "set", "tp", "town", "sulphur", "trench", "spawn", "egg", "event", "acidrain", "den", "bloom", "migration", "sub", "whirlpool", "eclipse", "redtide", "frenzy", "volcano", "domes", "give", "region", "season"));
         else if (args.length == 2 && args[0].equalsIgnoreCase("season")) out.addAll(List.of("start", "stop", "auto", "shoal"));
         else if (args.length == 2 && args[0].equalsIgnoreCase("give")) out.addAll(List.of("coral", "dome_small", "dome_large", "vault_key", "cache_key", "fossil", "chart", "glimmer", "fragment", "lighthouse"));
         else if (args.length == 2 && args[0].equalsIgnoreCase("region")) out.addAll(List.of("frozen", "city", "glass", "bones"));
         else if (args.length == 2 && args[0].equalsIgnoreCase("volcano")) out.addAll(List.of("where", "start", "here", "cool", "heal"));
-        else if (args.length == 2 && args[0].equalsIgnoreCase("set")) out.addAll(List.of("kingdom", "lucki", "whirlpool"));
+        else if (args.length == 2 && args[0].equalsIgnoreCase("set")) out.addAll(List.of("kingdom"));
         else if (args.length == 2 && (args[0].equalsIgnoreCase("spawn") || args[0].equalsIgnoreCase("egg"))) out.addAll(DeepMobs.KINDS.keySet());
         else if (args.length == 2 && args[0].equalsIgnoreCase("event")) out.addAll(List.of("pressure", "undertow", "stop"));
         else if (args.length == 2 && args[0].equalsIgnoreCase("den")) out.addAll(List.of("info", "where", "tp", "raid", "stop", "reset", "rise"));

@@ -1,16 +1,20 @@
 name: FaultlineDeep
-version: '1.15.0'
+version: '1.16.0'
 main: net.faultlinesmp.deep.FaultlineDeep
 api-version: '1.21'
 author: FaultlineSMP
-description: The Dark Ocean (a world of water only), Lucki and the whirlpool, its creatures and events
+description: The Dark Ocean (a world of water only), the hourly whirlpool down to it, its creatures and events
 softdepend: [floodgate, Geyser-Spigot, FaultlineItems, FaultlineBosses, FaultlineIndex]
 
 commands:
   deep:
-    description: "Admin: the Dark Ocean (set kingdom/lucki/whirlpool spots, tp, spawn creatures, eggs, events)"
-    usage: /deep [info|set <kingdom|lucki|whirlpool>|tp [player]|town [player]|sulphur [player]|trench [maw] [player]|spawn <mob>|egg <mob> [n] [player]|event <pressure|undertow|stop>|acidrain|den [info|where|tp|raid|stop|reset|rise]|bloom|migration|lucki]
+    description: "Admin: the Dark Ocean (the Mirror's way up, whirlpools, tp, spawn creatures, eggs, events)"
+    usage: /deep [info|set kingdom|whirlpool [here|random|at|stop|next]|tp [player]|town [player]|sulphur [player]|trench [maw] [player]|spawn <mob>|egg <mob> [n] [player]|event <pressure|undertow|stop>|acidrain|den [info|where|tp|raid|stop|reset|rise]|bloom|migration]
     permission: faultlinedeep.admin
+  whirlpool:
+    description: "Where the Whirlpool to the Dark Ocean is (or when the next opens); admins: here, random, at <x> <z>, stop, next <minutes>"
+    usage: /whirlpool [where|here|random|at <x> <z> [world]|stop|next <minutes>]
+    aliases: [maelstrom]
   dome:
     description: "Your dome bases: list them, combine two with a hallway, answer the combine question"
     usage: /dome [list|combine|yes|no]
@@ -32,6 +36,9 @@ permissions:
   faultlinedeep.market:
     description: Build in the Black Market and the Pit, open its shulker boxes, break the Bubble's glass
     default: op
+  faultlinedeep.whirlpool:
+    description: Open / close whirlpools for free (/whirlpool here|random|at|stop|next)
+    default: op
   faultlinedeep.bypass:
-    description: Use the Mirror and Lucki without having beaten Diamond Jacob
+    description: Go down a whirlpool without having beaten Diamond Jacob (only matters with whirlpool.needs-jacob)
     default: false

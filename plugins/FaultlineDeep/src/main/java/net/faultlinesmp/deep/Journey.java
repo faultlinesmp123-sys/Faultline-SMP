@@ -1,35 +1,28 @@
 package net.faultlinesmp.deep;
 
-import io.papermc.paper.entity.TeleportFlag;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
-import org.bukkit.Color;
+import org.bukkit.Chunk;
+import org.bukkit.GameMode;
 import org.bukkit.Location;
-import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
 import org.bukkit.World;
+import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Boat;
 import org.bukkit.entity.Entity;
-import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
-import org.bukkit.entity.Villager;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
-import org.bukkit.event.entity.EntityDamageEvent;
-import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
-import org.bukkit.event.player.PlayerMoveEvent;
-import org.bukkit.event.vehicle.VehicleDamageEvent;
-import org.bukkit.event.vehicle.VehicleDestroyEvent;
-import org.bukkit.event.vehicle.VehicleExitEvent;
 import org.bukkit.event.world.ChunkLoadEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
@@ -38,56 +31,66 @@ import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.Vector;
 
+import java.io.File;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
+import java.util.Random;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 /**
- * THE WAY DOWN: Diamond Jacob's Mirror (FaultlineItems lost_mirror), the abandoned kingdom, Lucki and the whirlpool.
+ * THE WAY DOWN (1.16.0: Lucki is gone). Every hour (`whirlpool.every-minutes`) a WHIRLPOOL opens somewhere in the
+ * Overworld's oceans, 150-450 blocks from a random player (`min/max-distance`), under a light-blue beam in the sky. Its
+ * coordinates go out in chat; it stays open `open-minutes` (10). Swim into its eye (or sail a boat in: you're thrown out
+ * at the edge of the funnel) and the sea pulls you down into the Dark Ocean at 0, 300, 0. Admins open one any time for free:
+ * `/whirlpool here|random|at <x> <z>|stop` (`/whirlpool` alone = where it is / when the next one comes, for anyone).
+ * `whirlpool.needs-jacob` (false) = only players who beat Diamond Jacob may go down.
  *
- *  1. Right-click the Mirror (needs Diamond Jacob beaten (Deep 1.13.0: Rocco is gone): the Index's kill records): after 3 seconds of
- *     the glass clouding over you're in the abandoned kingdom where the Black Market stands (journey.kingdom, set by an
- *     admin with /deep set kingdom).
- *  2. Lucki waits at the dock in his little boat (journey.lucki, /deep set lucki): a fisherman (a villager that doesn't
- *     move or take damage). Talk to him (right-click): a few lines, and you climb in.
- *  3. He rows you out toward the whirlpool spot (journey.whirlpool; by default 0, sea level, 0 in his world): a short sail,
- *     the screen fades, and you're there. He holds up one finger, and a great WHIRLPOOL opens around the boat.
- *  4. Drop into it (he lets you out; or step off yourself) and the sea pulls you down: you come out in the Dark Ocean at
- *     0, 300, 0. It stays open 40 seconds for anyone else who's earned the way; then Lucki rows home.
- *  Coming back: right-click the Mirror in the Dark Ocean (5 seconds) = back at the kingdom.
+ * The Mirror (FaultlineItems lost_mirror): on the surface it points you at the whirlpool; in the Dark Ocean (5 seconds)
+ * it brings you back up (journey.kingdom if set, else your bed, else the world spawn).
  */
 final class Journey implements Listener {
 
-    static final String LUCKI_TAG = "faultline_lucki", BOAT_TAG = "faultline_lucki_boat";
-
     final FaultlineDeep pl;
     final NamespacedKey mirrorKey = NamespacedKey.fromString("faultlineitems:lost_mirror");
-    Villager lucki;
-    Boat boat;
-    /** The trip in progress (one at a time: he has one boat). */
-    Trip trip;
     final Map<UUID, Long> channeling = new HashMap<>();
-    private final Map<UUID, Long> talkCd = new HashMap<>();
+    private final Random random = new Random();
+    private final File file;
+    private final YamlConfiguration data;
     private int ticks;
+    long nextAt;
+    boolean searching;
+    Pool pool;
 
-    final class Trip {
-        final Player rider;
-        int t, phase; // 0 talking, 1 rowing, 2 fading, 3 the whirlpool, 4 rowing home
-        Location pool;
-        Vortex vortex;
-        Swarm swarm;            // 1.5.0: Lucki was Swarm all along
-        int revealT = -1;       // ticks since the rider dropped into the funnel (-1 = not yet)
-        final Set<UUID> sent = new HashSet<>();
-        Trip(Player rider) { this.rider = rider; }
+    final class Pool {
+        final Vortex v;
+        final long endsAt;
+        final boolean admin;
+        final Map<UUID, Long> sent = new HashMap<>(); // who went down, when (they can come back up and go again)
+        final List<Chunk> tickets = new ArrayList<>();
+        boolean warned;
+        int errors;
+        boolean logged;
+        Pool(Vortex v, long endsAt, boolean admin) { this.v = v; this.endsAt = endsAt; this.admin = admin; }
     }
 
     Journey(FaultlineDeep pl) {
         this.pl = pl;
+        file = new File(pl.getDataFolder(), "whirlpool.yml");
+        data = YamlConfiguration.loadConfiguration(file);
+        nextAt = data.getLong("next-at", 0);
+        if (nextAt <= 0) { nextAt = System.currentTimeMillis() + (long) (cfg("first-after-minutes", 10) * 60000); save(); }
         Bukkit.getScheduler().runTaskTimer(pl, this::tick, 20L, 1L);
+    }
+
+    double cfg(String k, double def) { return pl.getConfig().getDouble("whirlpool." + k, def); }
+
+    void save() {
+        data.set("next-at", nextAt);
+        try { data.save(file); } catch (Exception e) { pl.getLogger().warning("[Whirlpool] couldn't save whirlpool.yml: " + e); }
     }
 
     // =========================================================================================== places
@@ -108,16 +111,6 @@ final class Journey implements Listener {
         pl.getConfig().set(b + "z", Math.round(l.getZ() * 10) / 10.0);
         pl.getConfig().set(b + "yaw", Math.round(l.getYaw()));
         pl.saveConfig();
-        if (key.equals("lucki")) { removeLucki(); spawnLucki(); }
-    }
-
-    /** Where the whirlpool opens: journey.whirlpool, else 0, sea level, 0 in Lucki's world. */
-    Location poolSpot() {
-        Location p = place("whirlpool");
-        if (p != null) return p;
-        Location l = place("lucki");
-        if (l == null) return null;
-        return new Location(l.getWorld(), 0.5, l.getWorld().getSeaLevel() - 1, 0.5);
     }
 
     Location entry() {
@@ -125,14 +118,32 @@ final class Journey implements Listener {
         return w == null ? null : new Location(w, 0.5, DeepGenerator.SEA, 0.5, 0, 20);
     }
 
-    // =========================================================================================== the Mirror
-    boolean isMirror(ItemStack it) {
-        return it != null && it.hasItemMeta() && mirrorKey != null && it.getItemMeta().getPersistentDataContainer().has(mirrorKey, PersistentDataType.BYTE);
+    /** The world the whirlpools open in: whirlpool.world, else the first Overworld. */
+    World surface() {
+        World w = Bukkit.getWorld(pl.getConfig().getString("whirlpool.world", ""));
+        if (w != null) return w;
+        for (World x : Bukkit.getWorlds()) if (x.getEnvironment() == World.Environment.NORMAL && x != pl.world) return x;
+        return null;
     }
 
-    /** Has this player beaten Diamond Jacob? (asks the Index; without the Index: yes) */
+    /** Where the Mirror brings you up: journey.kingdom if set, else your bed, else the surface world's spawn. */
+    Location upTop(Player p) {
+        Location k = place("kingdom");
+        if (k != null) return k;
+        Location bed = p.getRespawnLocation();
+        if (bed != null && bed.getWorld() != null && !bed.getWorld().equals(pl.world)) return bed;
+        World s = surface();
+        return s == null ? null : s.getSpawnLocation().add(0.5, 0, 0.5);
+    }
+
+    // =========================================================================================== the Mirror
+    boolean isMirror(ItemStack it) {
+        return it != null && it.hasItemMeta() && mirrorKey != null && it.getPersistentDataContainer().has(mirrorKey, PersistentDataType.BYTE);
+    }
+
+    /** May this player go down? (whirlpool.needs-jacob: only after beating Diamond Jacob; asks the Index) */
     boolean earned(Player p) {
-        if (p.hasPermission("faultlinedeep.bypass")) return true;
+        if (!pl.getConfig().getBoolean("whirlpool.needs-jacob", false) || p.hasPermission("faultlinedeep.bypass")) return true;
         try {
             Class<?> c = Class.forName("net.faultlinesmp.index.FaultlineIndex", true, Bukkit.getPluginManager().getPlugin("FaultlineIndex").getClass().getClassLoader());
             var m = c.getMethod("defeated", UUID.class, String.class);
@@ -152,15 +163,14 @@ final class Journey implements Listener {
         e.setCancelled(true);
         if (channeling.containsKey(p.getUniqueId())) return;
         boolean inDeep = pl.world != null && p.getWorld().equals(pl.world);
-        Location kingdom = place("kingdom");
-        if (kingdom == null) { p.sendMessage(ChatColor.GRAY + "You look into the Mirror. It shows nothing... yet. " + ChatColor.DARK_GRAY + "(An admin sets the kingdom with /deep set kingdom.)"); return; }
-        if (!inDeep && !earned(p)) {
-            p.sendMessage(ChatColor.DARK_AQUA + "" + ChatColor.ITALIC + "You look into the Mirror. A knight in diamond looks back, and he doesn't let you through.");
-            p.sendMessage(ChatColor.GRAY + "Beat " + ChatColor.WHITE + "Diamond Jacob" + ChatColor.GRAY + " first.");
-            p.playSound(p.getLocation(), Sound.BLOCK_GLASS_HIT, 1f, 0.6f);
+        if (!inDeep) { // on the surface: it shows you the way
+            p.playSound(p.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_RESONATE, 0.8f, 0.7f);
+            for (String line : status(p)) p.sendMessage(line);
             return;
         }
-        int secs = inDeep ? (int) pl.getConfig().getDouble("journey.return-seconds", 5) : (int) pl.getConfig().getDouble("journey.mirror-seconds", 3);
+        Location up = upTop(p);
+        if (up == null) { p.sendMessage(ChatColor.GRAY + "You look into the Mirror. It shows nothing."); return; }
+        int secs = (int) pl.getConfig().getDouble("journey.return-seconds", 5);
         channeling.put(p.getUniqueId(), System.currentTimeMillis());
         Location start = p.getLocation();
         int[] t = {0};
@@ -176,248 +186,235 @@ final class Journey implements Listener {
             p.sendActionBar(Component.text("The Mirror clouds over... " + Math.max(0, secs - t[0] / 20) + "s", NamedTextColor.AQUA));
             if (t[0] >= secs * 20) {
                 task.cancel(); channeling.remove(p.getUniqueId());
-                p.teleport(kingdom);
+                p.teleport(up);
                 p.setFallDistance(0);
                 p.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 30, 0, false, false, false));
-                p.showTitle(Title.title(Component.text(inDeep ? "The Surface" : "The Abandoned Kingdom", NamedTextColor.GRAY),
-                        Component.text(inDeep ? "The Mirror pulls you back up." : "Find Lucki at the docks.", NamedTextColor.DARK_GRAY),
+                p.showTitle(Title.title(Component.text("The Surface", NamedTextColor.GRAY), Component.text("The Mirror pulls you back up.", NamedTextColor.DARK_GRAY),
                         Title.Times.times(Duration.ofMillis(400), Duration.ofMillis(2500), Duration.ofMillis(800))));
-                p.playSound(kingdom, Sound.ENTITY_ENDERMAN_TELEPORT, 1f, 0.5f);
+                p.playSound(up, Sound.ENTITY_ENDERMAN_TELEPORT, 1f, 0.5f);
             }
         }, 1L, 1L);
     }
 
-    // =========================================================================================== Lucki
-    void spawnLucki() {
-        Location l = place("lucki");
-        if (l == null || !l.getWorld().isChunkLoaded(l.getBlockX() >> 4, l.getBlockZ() >> 4)) return;
-        if (lucki != null && lucki.isValid() && boat != null && boat.isValid()) return;
-        removeLucki();
-        World w = l.getWorld();
-        boat = (Boat) w.spawnEntity(l, EntityType.OAK_BOAT, false);
-        boat.addScoreboardTag(BOAT_TAG);
-        boat.setPersistent(false);
-        boat.setInvulnerable(true);
-        lucki = (Villager) w.spawnEntity(l, EntityType.VILLAGER, false);
-        lucki.addScoreboardTag(LUCKI_TAG);
-        lucki.setPersistent(false);
-        lucki.setInvulnerable(true);
-        lucki.setAI(false);
-        lucki.setSilent(false);
-        lucki.setProfession(Villager.Profession.FISHERMAN);
-        lucki.setCustomName(ChatColor.AQUA + "" + ChatColor.BOLD + "Lucki");
-        lucki.setCustomNameVisible(true);
-        lucki.setRemoveWhenFarAway(false);
-        boat.addPassenger(lucki);
-    }
-
-    void removeLucki() {
-        if (lucki != null && lucki.isValid()) lucki.remove();
-        if (boat != null && boat.isValid()) boat.remove();
-        lucki = null; boat = null;
-    }
-
-    boolean isLucki(Entity e) { return e.getScoreboardTags().contains(LUCKI_TAG) || e.getScoreboardTags().contains(BOAT_TAG); }
-
-    @EventHandler(priority = EventPriority.HIGHEST)
-    public void onTalk(PlayerInteractEntityEvent e) {
-        if (!isLucki(e.getRightClicked())) return;
-        e.setCancelled(true);
-        if (e.getHand() != EquipmentSlot.HAND) return;
-        Player p = e.getPlayer();
-        long now = System.currentTimeMillis();
-        if (now < talkCd.getOrDefault(p.getUniqueId(), 0L)) return;
-        talkCd.put(p.getUniqueId(), now + 3000);
-        if (trip != null) { say(p, trip.rider == p ? "Hold tight." : "One at a time, friend. Wait for me to come back. Or swim after us."); return; }
-        if (!earned(p)) {
-            say(p, "Who sent you? No... you haven't earned the way. Jacob still stands. Come back when he doesn't.");
-            return;
-        }
-        if (pl.world == null) { say(p, "The sea's not ready for you yet. (The Dark Ocean world isn't loaded.)"); return; }
-        Location spot = poolSpot();
-        if (spot == null) { say(p, "I don't know where to take you. (An admin sets the spot with /deep set whirlpool.)"); return; }
-        if (!spot.getWorld().isChunkLoaded(spot.getBlockX() >> 4, spot.getBlockZ() >> 4)) spot.getChunk().load();
-        if (spot.getBlock().getType() != Material.WATER && spot.getBlock().getRelative(0, -1, 0).getType() != Material.WATER) {
-            say(p, "There's no open water out there for the whirlpool. (An admin stands in the sea and runs /deep set whirlpool.)");
-            return;
-        }
-        startTrip(p);
-    }
-
-    void say(Player p, String line) {
-        p.sendMessage(ChatColor.AQUA + "" + ChatColor.BOLD + "Lucki" + ChatColor.DARK_GRAY + ": " + ChatColor.WHITE + line);
-        p.playSound(p.getLocation(), Sound.ENTITY_VILLAGER_AMBIENT, 1f, 1.2f);
-    }
-
-    static final List<String> HELLO = List.of(
-            "Oh! Another one who looked into that Mirror.",
-            "You want to go down there? Into the Dark Ocean? Ha. Nobody comes back the same.",
-            "Down there, if you drown, the fish get your things in a minute. Remember that.",
-            "Get in. Hold on to something.");
-
-    void startTrip(Player p) {
-        trip = new Trip(p);
-        trip.pool = poolSpot();
-    }
-
+    // =========================================================================================== the hourly whirlpool
     void tick() {
         ticks++;
-        if (ticks % 100 == 0) { spawnLucki(); if (trip == null) boatHome(); }
-        Trip tr = trip;
-        if (tr == null) return;
-        tr.t++;
-        Player p = tr.rider;
-        if (!p.isOnline() || p.isDead()) { endTrip(); return; }
-        switch (tr.phase) {
-            case 0 -> { // talking
-                int i = tr.t / 40;
-                if (tr.t % 40 == 1 && i < HELLO.size()) say(p, HELLO.get(i));
-                if (tr.t >= HELLO.size() * 40) {
-                    if (boat == null || !boat.isValid()) { endTrip(); return; }
-                    boat.addPassenger(p);
-                    tr.phase = 1; tr.t = 0;
-                }
+        Pool p = pool;
+        if (p != null) {
+            try { poolTick(p); p.errors = 0; }
+            catch (Throwable ex) { // one bad tick doesn't close it; 100 in a row do
+                if (!p.logged) { p.logged = true; pl.getLogger().log(java.util.logging.Level.WARNING, "[Whirlpool] tick failed", ex); }
+                p.errors++;
+                if (p.errors >= 100) close();
             }
-            case 1 -> { // rowing out
-                if (boat == null || !boat.isValid()) { endTrip(); return; }
-                Vector to = tr.pool.toVector().subtract(boat.getLocation().toVector()).setY(0);
-                double d = to.length();
-                if (d > 1) Edition.vel(boat, to.normalize().multiply(0.35));
-                if (tr.t % 30 == 0) boat.getWorld().playSound(boat.getLocation(), Sound.ENTITY_BOAT_PADDLE_WATER, 1f, 1f);
-                if (d < 6 || tr.t > pl.getConfig().getDouble("journey.row-seconds", 6) * 20) { // a fade: the rest of the way happens off screen
-                    tr.phase = 2; tr.t = 0;
-                    p.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 50, 0, false, false, false));
-                    p.showTitle(Title.title(Component.empty(), Component.text("Lucki rows on into the fog...", NamedTextColor.GRAY),
-                            Title.Times.times(Duration.ofMillis(300), Duration.ofMillis(1500), Duration.ofMillis(500))));
-                }
-            }
-            case 2 -> {
-                if (tr.t == 20) {
-                    Location at = tr.pool.clone().add(-(radius() + 3), 0, 0); // just outside the funnel
-                    at.setY(tr.pool.getY() + 1);
-                    at.setYaw(-90);
-                    boat.teleport(at, TeleportFlag.EntityState.RETAIN_PASSENGERS);
-                }
-                if (tr.t == 50) {
-                    say(p, "Here. Right here. Watch.");
-                    lucki.swingMainHand();
-                    p.getWorld().spawnParticle(Particle.END_ROD, lucki.getEyeLocation().add(0, 0.6, 0), 20, 0.05, 0.3, 0.05, 0.02);
-                    p.getWorld().playSound(tr.pool, Sound.BLOCK_BEACON_ACTIVATE, SoundCategory.AMBIENT, 1.5f, 0.5f);
-                }
-                if (tr.t >= 70) {
-                    tr.phase = 3; tr.t = 0;
-                    tr.vortex = new Vortex(tr.pool, radius(), pl.getConfig().getDouble("journey.whirlpool-depth", 16));
-                    p.getWorld().playSound(tr.pool, Sound.ENTITY_ELDER_GUARDIAN_CURSE, SoundCategory.AMBIENT, 1f, 0.5f);
-                }
-            }
-            case 3 -> { // the whirlpool
-                tr.vortex.tick();
-                if (tr.t == 60) say(p, "Go on. Jump. And don't look up.");
-                if (tr.t == 110 && p.getVehicle() == boat) { p.leaveVehicle(); Edition.vel(p, tr.pool.toVector().subtract(p.getLocation().toVector()).setY(0).normalize().multiply(0.7).setY(0.35)); }
-                pull(tr);
-                if (tr.revealT >= 0) reveal(tr);
-                boolean riderGone = tr.sent.contains(p.getUniqueId());
-                if (tr.t > pl.getConfig().getDouble("journey.whirlpool-seconds", 40) * 20 && (riderGone || tr.revealT < 0)) { tr.vortex.closing = true; tr.phase = 4; tr.t = 0; }
-            }
-            case 4 -> { // the sea closes over it; then home again
-                if (tr.vortex != null && !tr.vortex.closed()) { tr.vortex.tick(); pull(tr); return; }
-                Location home = place("lucki");
-                if (home != null && boat != null && boat.isValid()) boat.teleport(home, TeleportFlag.EntityState.RETAIN_PASSENGERS);
-                endTrip();
-            }
-            default -> endTrip();
+            return;
+        }
+        if (ticks % 20 != 0 || searching || !pl.getConfig().getBoolean("whirlpool.enabled", true)) return;
+        if (System.currentTimeMillis() >= nextAt) {
+            nextAt = System.currentTimeMillis() + (long) (cfg("retry-minutes", 5) * 60000); // if it finds nowhere
+            save();
+            startRandom(null, false);
         }
     }
 
-    double radius() { return pl.getConfig().getDouble("journey.whirlpool-radius", 9); }
+    long minutesToNext() { return Math.max(0, (nextAt - System.currentTimeMillis() + 59999) / 60000); }
+
+    /** Near a random survival player in the surface world, in an ocean. */
+    void startRandom(CommandSender by, boolean admin) {
+        World w = surface();
+        if (w == null) { if (by != null) by.sendMessage(ChatColor.RED + "No Overworld to open it in."); return; }
+        List<Player> who = new ArrayList<>();
+        for (Player p : w.getPlayers()) if (p.getGameMode() == GameMode.SURVIVAL || p.getGameMode() == GameMode.ADVENTURE) who.add(p);
+        if (who.isEmpty() && by instanceof Player self && self.getWorld().equals(w)) who.add(self);
+        if (who.isEmpty()) { if (by != null) by.sendMessage(ChatColor.RED + "Nobody in " + w.getName() + " to open it near."); return; }
+        Player near = who.get(random.nextInt(who.size()));
+        searching = true;
+        if (by != null) by.sendMessage(ChatColor.GRAY + "Looking for open ocean near " + near.getName() + "...");
+        tryAt(w, near.getLocation(), 0, by, admin);
+    }
+
+    private void tryAt(World w, Location around, int attempt, CommandSender by, boolean admin) {
+        int tries = (int) cfg("search-tries", 16);
+        if (attempt >= tries) {
+            searching = false;
+            pl.getLogger().info("[Whirlpool] no open ocean found near " + around.getBlockX() + " " + around.getBlockZ() + "; trying again later");
+            if (by != null) by.sendMessage(ChatColor.RED + "Couldn't find open ocean there (" + tries + " tries). Try /whirlpool here in the sea.");
+            return;
+        }
+        double a = random.nextDouble() * Math.PI * 2, d = cfg("min-distance", 150) + random.nextDouble() * Math.max(0, cfg("max-distance", 450) - cfg("min-distance", 150));
+        int x = (int) (around.getX() + Math.cos(a) * d), z = (int) (around.getZ() + Math.sin(a) * d);
+        int cx = x >> 4, cz = z >> 4;
+        List<CompletableFuture<Chunk>> loads = new ArrayList<>();
+        for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) loads.add(chunkAsync(w, cx + dx, cz + dz));
+        CompletableFuture.allOf(loads.toArray(new CompletableFuture[0])).whenComplete((ok, err) -> Bukkit.getScheduler().runTask(pl, () -> {
+            if (pool != null) { searching = false; return; }
+            Location spot = err == null ? openSea(w, x, z) : null;
+            if (spot == null) { tryAt(w, around, attempt + 1, by, admin); return; }
+            searching = false;
+            open(spot, admin);
+            if (!admin) { nextAt = System.currentTimeMillis() + (long) (cfg("every-minutes", 60) * 60000); save(); }
+        }));
+    }
+
+    /** Loads (or generates) a chunk in the background; a server without async chunks loads it now. */
+    static CompletableFuture<Chunk> chunkAsync(World w, int cx, int cz) {
+        try { return w.getChunkAtAsync(cx, cz, true); }
+        catch (RuntimeException e) { return CompletableFuture.completedFuture(w.getChunkAt(cx, cz)); }
+    }
+
+    /** Open sea here? An ocean biome, the sea level block water, deep enough, and water (no land, no ice) all round the rim. */
+    Location openSea(World w, int x, int z) {
+        int y = w.getSeaLevel() - 1;
+        String biome = w.getBlockAt(x, y, z).getBiome().getKey().getKey();
+        if (!biome.contains("ocean")) return null;
+        if (!Vortex.water(w.getBlockAt(x, y, z)) || !w.getBlockAt(x, y + 1, z).isEmpty()) return null;
+        int deep = 0;
+        while (deep < 40 && Vortex.water(w.getBlockAt(x, y - deep - 1, z))) deep++;
+        if (deep < cfg("min-depth", 10)) return null;
+        double r = cfg("radius", 11) + 3;
+        for (int i = 0; i < 24; i++) {
+            double a = i * Math.PI / 12;
+            int bx = (int) Math.floor(x + Math.cos(a) * r), bz = (int) Math.floor(z + Math.sin(a) * r);
+            if (!w.isChunkLoaded(bx >> 4, bz >> 4)) return null;
+            if (!Vortex.water(w.getBlockAt(bx, y, bz)) || !w.getBlockAt(bx, y + 1, bz).isEmpty()) return null;
+        }
+        return new Location(w, x + 0.5, y, z + 0.5);
+    }
+
+    /** Opens one here (water under it). False = no water. */
+    boolean open(Location spot, boolean admin) {
+        if (pool != null) close();
+        if (!Vortex.water(spot.getBlock()) && !Vortex.water(spot.getBlock().getRelative(0, -1, 0))) return false;
+        Vortex v = new Vortex(spot, cfg("radius", 11), cfg("depth", 18), (int) cfg("debris", 14), cfg("beam-height", 160));
+        Pool p = new Pool(v, System.currentTimeMillis() + (long) (cfg("open-minutes", 10) * 60000), admin);
+        World w = spot.getWorld();
+        for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) {
+            Chunk c = w.getChunkAt((spot.getBlockX() >> 4) + dx, (spot.getBlockZ() >> 4) + dz);
+            try { if (c.addPluginChunkTicket(pl)) p.tickets.add(c); } catch (Throwable ignored) { } // keeps it loaded while it's open
+        }
+        pool = p;
+        announce(p);
+        pl.getLogger().info("[Whirlpool] opened at " + w.getName() + " " + v.center.getBlockX() + " " + v.center.getBlockZ() + (admin ? " (admin)" : ""));
+        return true;
+    }
+
+    void announce(Pool p) {
+        Location c = p.v.center;
+        int mins = (int) Math.round(cfg("open-minutes", 10));
+        String where = c.getBlockX() + ", " + c.getBlockZ();
+        Bukkit.broadcastMessage(ChatColor.AQUA + "" + ChatColor.BOLD + "A whirlpool has opened " + ChatColor.GRAY + "in the ocean at "
+                + ChatColor.WHITE + ChatColor.BOLD + where + ChatColor.GRAY + " (" + c.getWorld().getName() + ")"); // (also the Index's Discord forward)
+        for (Player o : Bukkit.getOnlinePlayers()) {
+            o.sendMessage(ChatColor.GRAY + "  Follow the beam of light. Swim into its eye to go down to the " + ChatColor.DARK_AQUA + "Dark Ocean" + ChatColor.GRAY
+                    + ". It closes in " + mins + " minutes." + (o.getWorld().equals(c.getWorld()) ? ChatColor.DARK_GRAY + " (" + away(o, c) + ")" : ""));
+            o.playSound(o.getLocation(), Sound.ENTITY_ELDER_GUARDIAN_CURSE, SoundCategory.AMBIENT, 0.6f, 0.5f);
+            o.playSound(o.getLocation(), Sound.BLOCK_BUBBLE_COLUMN_WHIRLPOOL_AMBIENT, SoundCategory.AMBIENT, 1f, 0.5f);
+            if (o.getWorld().equals(c.getWorld()))
+                o.showTitle(Title.title(Component.text("A Whirlpool Opens", NamedTextColor.AQUA), Component.text(where + "  (" + away(o, c) + ")", NamedTextColor.GRAY),
+                        Title.Times.times(Duration.ofMillis(400), Duration.ofMillis(3000), Duration.ofMillis(800))));
+        }
+    }
+
+    static final String[] ARROWS = {"↑", "↗", "→", "↘", "↓", "↙", "←", "↖"};
+
+    /** "312 blocks NE" for this player. */
+    static String away(Player p, Location c) {
+        double dx = c.getX() - p.getLocation().getX(), dz = c.getZ() - p.getLocation().getZ();
+        int dist = (int) Math.round(Math.hypot(dx, dz));
+        String[] names = {"S", "SW", "W", "NW", "N", "NE", "E", "SE"}; // atan2 of (dz, dx) measured like Minecraft yaw
+        double yaw = Math.toDegrees(Math.atan2(-dx, dz)); // 0 = south (+z), 90 = west
+        int i = (int) Math.floorMod(Math.round(yaw / 45.0), 8);
+        return dist + " blocks " + names[i];
+    }
+
+    /** An arrow from where p looks to c. */
+    static String arrow(Player p, Location c) {
+        double dx = c.getX() - p.getLocation().getX(), dz = c.getZ() - p.getLocation().getZ();
+        double want = Math.toDegrees(Math.atan2(-dx, dz));
+        double rel = ((want - p.getLocation().getYaw()) % 360 + 540) % 360 - 180; // -180..180, 0 = straight ahead
+        return ARROWS[(int) Math.floorMod(Math.round(rel / 45.0), 8)];
+    }
+
+    List<String> status(Player p) {
+        List<String> out = new ArrayList<>();
+        Pool c = pool;
+        if (c != null) {
+            Location at = c.v.center;
+            long left = Math.max(0, (c.endsAt - System.currentTimeMillis()) / 60000);
+            out.add(ChatColor.AQUA + "The Whirlpool is open at " + ChatColor.WHITE + at.getBlockX() + ", " + at.getBlockZ() + ChatColor.GRAY + " (" + at.getWorld().getName()
+                    + (p != null && p.getWorld().equals(at.getWorld()) ? ", " + away(p, at) : "") + "), closing in about " + (left + 1) + " min.");
+        } else if (pl.getConfig().getBoolean("whirlpool.enabled", true)) {
+            out.add(ChatColor.AQUA + "The next Whirlpool opens in about " + ChatColor.WHITE + minutesToNext() + " min" + ChatColor.GRAY + " somewhere in the ocean. Watch for the beam.");
+        } else out.add(ChatColor.GRAY + "The whirlpools are switched off.");
+        return out;
+    }
+
+    private void poolTick(Pool p) {
+        Vortex v = p.v;
+        long now = System.currentTimeMillis();
+        if (!v.closing && now >= p.endsAt) {
+            v.closing = true;
+            for (Player o : v.center.getWorld().getPlayers()) if (o.getLocation().distanceSquared(v.center) < 200 * 200)
+                o.sendMessage(ChatColor.AQUA + "The Whirlpool is closing...");
+        }
+        if (!v.closing && !p.warned && p.endsAt - now < 60000) {
+            p.warned = true;
+            Bukkit.broadcastMessage(ChatColor.AQUA + "The Whirlpool at " + v.center.getBlockX() + ", " + v.center.getBlockZ() + ChatColor.GRAY + " closes in 1 minute!");
+        }
+        v.tick();
+        pull(p);
+        if (ticks % 10 == 0) for (Player o : v.center.getWorld().getPlayers()) { // a pointer for anyone heading there
+            double dd = o.getLocation().distance(v.center);
+            if (dd < 12 || dd > cfg("pointer-distance", 400) || v.closing) continue;
+            o.sendActionBar(Component.text("Whirlpool  " + arrow(o, v.center) + "  " + (int) dd + " blocks", NamedTextColor.AQUA));
+        }
+        if (v.closed()) close();
+    }
+
+    void close() {
+        Pool p = pool;
+        pool = null;
+        if (p == null) return;
+        p.v.clear();
+        for (Chunk c : p.tickets) try { c.removePluginChunkTicket(pl); } catch (Throwable ignored) { }
+    }
 
     /**
-     * Anyone near it is dragged round and in; inside the funnel they slide round its walls and down into the eye. Earned =
-     * into the Dark Ocean; not = thrown back out. The rider is the one Swarm wants a word with: when they drop in, they're
-     * carried slowly round and down the funnel while he talks (`reveal`), then sent.
+     * Anyone near it is dragged round and in; inside the funnel they slide round its walls and down into the eye, and the eye
+     * sends them down. A boat is dragged in with its rider, and throws them out at the edge of the funnel.
      */
-    void pull(Trip tr) {
-        Vortex v = tr.vortex;
-        if (v == null || v.r < 1) return;
-        double spin = v.t * 0.22;
-        for (Player p : tr.pool.getWorld().getPlayers()) {
-            if (p.isInsideVehicle() || tr.sent.contains(p.getUniqueId()) || p.getGameMode() == org.bukkit.GameMode.SPECTATOR) continue;
+    void pull(Pool pl0) {
+        Vortex v = pl0.v;
+        if (v.r < 1) return;
+        for (Player p : v.center.getWorld().getPlayers()) {
+            if (System.currentTimeMillis() - pl0.sent.getOrDefault(p.getUniqueId(), 0L) < 10000 || p.getGameMode() == GameMode.SPECTATOR) continue;
             Location l = p.getLocation();
             double dx = v.center.getX() - l.getX(), dz = v.center.getZ() - l.getZ(), d = Math.hypot(dx, dz);
-            if (d > v.r + 3 || l.getY() > v.surf + 4 || l.getY() < v.surf - v.d - 4) continue;
+            if (d > v.r + 4 || l.getY() > v.surf + 5 || l.getY() < v.surf - v.d - 4) continue;
+            Vector in = d < 0.05 ? new Vector() : new Vector(dx, 0, dz).normalize(), round = d < 0.05 ? new Vector() : new Vector(-dz, 0, dx).normalize();
+            Entity ride = p.getVehicle();
+            if (ride != null) {
+                if (!(ride instanceof Boat)) continue;
+                if (v.inside(ride.getLocation()) || d < v.r - 1) { p.leaveVehicle(); }
+                else { Edition.vel(ride, in.clone().multiply(0.25).add(round.clone().multiply(0.3)).setY(0)); continue; }
+            }
             if (!earned(p)) {
-                if (tr.t % 20 == 0) { Edition.vel(p, new Vector(-dx, 0, -dz).normalize().multiply(0.9).setY(0.5)); p.sendActionBar(Component.text("The water won't take you. (Beat Diamond Jacob.)", NamedTextColor.GRAY)); }
+                if (ticks % 20 == 0) { Edition.vel(p, in.clone().multiply(-0.9).setY(0.5)); p.sendActionBar(Component.text("The water won't take you. (Beat Diamond Jacob.)", NamedTextColor.GRAY)); }
                 continue;
             }
-            if (p == tr.rider && v.inside(l) && tr.revealT < 0 && !v.closing) { tr.revealT = 0; continue; }
-            if (p == tr.rider && tr.revealT >= 0) continue; // reveal() carries them
-            Vector in = new Vector(dx, 0, dz).normalize(), round = new Vector(-dz, 0, dx).normalize();
-            if (v.inside(l)) Edition.vel(p, in.multiply(0.14).add(round.multiply(0.2)).setY(-0.45)); // down the wall
+            if (v.inside(l)) Edition.vel(p, in.multiply(0.14).add(round.multiply(0.22)).setY(-0.45)); // down the wall
             else Edition.vel(p, in.multiply(0.2).add(round.multiply(0.25)).setY(-0.04));             // in the water at the rim
-            if (v.atEye(l)) { tr.sent.add(p.getUniqueId()); send(p); }
-        }
-    }
-
-    static final String[] SWARM_LINES = {
-            "Ha. Ha ha ha...",
-            "Lucki? There is no Lucki. There never was.",
-            "You beat Jacob. And you still climbed into a stranger's boat.",
-            "Jacob was our general. Below the Bedrock remembers what you did to him.",
-            "Go on down. The Ocean is hungry, and I'm in no hurry. We'll meet again."};
-
-    /** The rider drops into the funnel, Lucki stands up in his boat... and he's Swarm. ~11 s, then down they go. */
-    void reveal(Trip tr) {
-        Player p = tr.rider;
-        int t = tr.revealT++;
-        Vortex v = tr.vortex;
-        World w = tr.pool.getWorld();
-        // carried slowly round and down the funnel, looking up at him
-        double s = Math.min(1, t / 220.0), ang = v.t * 0.12;
-        double x = Math.max(1.0, v.r * 0.55 * (1 - s));
-        Location want = v.center.clone().add(Math.cos(ang) * x, 0, Math.sin(ang) * x);
-        want.setY(v.surf + 0.2 - (v.d - 1.5) * s);
-        Vector go = want.toVector().subtract(p.getLocation().toVector());
-        if (go.length() > 1.2) go.normalize().multiply(1.2);
-        Edition.vel(p, go.multiply(0.4));
-        p.setFallDistance(0);
-        p.setRemainingAir(p.getMaximumAir());
-        if (t == 0) {
-            p.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_FALLING, 260, 0, false, false, false));
-            say(p, SWARM_LINES[0]);
-            w.playSound(lucki != null ? lucki.getLocation() : tr.pool, Sound.ENTITY_VILLAGER_AMBIENT, SoundCategory.NEUTRAL, 1.4f, 0.5f);
-        }
-        if (t == 30 && boat != null && boat.isValid()) { // the disguise drops
-            Location at = boat.getLocation().add(0, 0.45, 0);
-            w.spawnParticle(Particle.LARGE_SMOKE, at.clone().add(0, 1, 0), 60, 0.4, 0.8, 0.4, 0.02);
-            w.spawnParticle(Particle.SQUID_INK, at.clone().add(0, 1, 0), 30, 0.3, 0.6, 0.3, 0.05);
-            w.playSound(at, Sound.ENTITY_ILLUSIONER_MIRROR_MOVE, SoundCategory.HOSTILE, 2f, 0.5f);
-            w.playSound(at, Sound.ENTITY_WARDEN_NEARBY_CLOSER, SoundCategory.HOSTILE, 1.5f, 0.6f);
-            if (lucki != null) for (Player o : w.getPlayers()) o.hideEntity(pl, lucki);
-            float yaw = new Location(w, 0, 0, 0).setDirection(v.center.toVector().subtract(at.toVector())).getYaw();
-            tr.swarm = new Swarm(pl, at, yaw);
-            p.showTitle(Title.title(Component.text("SWARM", NamedTextColor.DARK_RED),
-                    Component.text("...was Lucki all along", NamedTextColor.GRAY),
-                    Title.Times.times(Duration.ofMillis(200), Duration.ofMillis(2500), Duration.ofMillis(800))));
-        }
-        if (tr.swarm != null) tr.swarm.tick(t);
-        for (int i = 1; i < SWARM_LINES.length; i++) if (t == 30 + i * 45) swarmSay(w, tr.pool, SWARM_LINES[i]);
-        if (t == 245) w.playSound(tr.pool, Sound.ENTITY_WITCH_CELEBRATE, SoundCategory.HOSTILE, 2f, 0.5f);
-        if (t >= 250 && !tr.sent.contains(p.getUniqueId())) { tr.sent.add(p.getUniqueId()); send(p); }
-    }
-
-    void swarmSay(World w, Location near, String line) {
-        for (Player o : w.getPlayers()) if (o.getLocation().distanceSquared(near) < 64 * 64) {
-            o.sendMessage(ChatColor.DARK_RED + "" + ChatColor.BOLD + "Swarm" + ChatColor.DARK_GRAY + ": " + ChatColor.GRAY + line);
-            o.playSound(o.getLocation(), Sound.ENTITY_PILLAGER_AMBIENT, 1f, 0.5f);
+            if (v.atEye(l)) { pl0.sent.put(p.getUniqueId(), System.currentTimeMillis()); send(p); }
         }
     }
 
     /** Down into the Dark Ocean. */
     void send(Player p) {
         Location to = entry();
-        if (to == null) return;
+        if (to == null) { p.sendMessage(ChatColor.GRAY + "The sea below isn't ready. (The Dark Ocean world isn't loaded.)"); return; }
         p.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 40, 0, false, false, false));
         p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_SPLASH_HIGH_SPEED, 1f, 0.5f);
+        p.playSound(p.getLocation(), Sound.BLOCK_BUBBLE_COLUMN_WHIRLPOOL_INSIDE, 1.5f, 0.5f);
         Bukkit.getScheduler().runTaskLater(pl, () -> {
             if (!p.isOnline()) return;
             p.teleport(to);
@@ -430,52 +427,55 @@ final class Journey implements Listener {
         }, 15L);
     }
 
-    void endTrip() {
-        Trip tr = trip;
-        trip = null;
-        if (tr != null) {
-            if (tr.vortex != null) tr.vortex.clear();
-            if (tr.swarm != null) tr.swarm.remove();
+    // =========================================================================================== /whirlpool
+    boolean command(CommandSender s, String[] a) {
+        String sub = a.length > 0 ? a[0].toLowerCase() : "";
+        boolean admin = s.hasPermission("faultlinedeep.whirlpool");
+        Player self = s instanceof Player p ? p : null;
+        if (sub.isEmpty() || sub.equals("where") || !admin) {
+            for (String line : status(self)) s.sendMessage(line);
+            if (admin && sub.isEmpty()) s.sendMessage(ChatColor.YELLOW + "/whirlpool [here|random|at <x> <z> [world]|stop|next <minutes>]");
+            return true;
         }
-        if (lucki != null && lucki.isValid()) for (Player o : lucki.getWorld().getPlayers()) o.showEntity(pl, lucki); // Lucki is back on the dock
-        if (boat != null && boat.isValid()) for (Entity e : boat.getPassengers()) if (e instanceof Player p) p.leaveVehicle();
-        boatHome(); // (a rider who quit or died mid-trip left him out at the whirlpool)
+        switch (sub) {
+            case "here" -> {
+                if (self == null) { s.sendMessage("Players only."); return true; }
+                if (!open(self.getLocation().getBlock().getLocation().add(0.5, 0, 0.5), true)) s.sendMessage(ChatColor.RED + "Stand in the sea (water under you).");
+            }
+            case "random" -> { if (pool != null) close(); startRandom(s, true); }
+            case "at" -> {
+                if (a.length < 3) { s.sendMessage(ChatColor.YELLOW + "/whirlpool at <x> <z> [world]"); return true; }
+                World w = a.length > 3 ? Bukkit.getWorld(a[3]) : self != null ? self.getWorld() : surface();
+                int x, z;
+                try { x = Integer.parseInt(a[1]); z = Integer.parseInt(a[2]); } catch (NumberFormatException e) { s.sendMessage(ChatColor.RED + "Numbers, please."); return true; }
+                if (w == null) { s.sendMessage(ChatColor.RED + "No such world."); return true; }
+                chunkAsync(w, x >> 4, z >> 4).thenAccept(c -> {
+                    Location at = new Location(w, x + 0.5, w.getSeaLevel() - 1, z + 0.5);
+                    if (!open(at, true)) s.sendMessage(ChatColor.RED + "There's no sea at " + x + ", " + z + ".");
+                });
+            }
+            case "stop" -> { if (pool == null) s.sendMessage(ChatColor.GRAY + "None is open."); else { pool.v.closing = true; s.sendMessage(ChatColor.GREEN + "It's closing."); } }
+            case "next" -> {
+                double m = 0;
+                try { m = Double.parseDouble(a.length > 1 ? a[1] : "0"); } catch (NumberFormatException ignored) { }
+                nextAt = System.currentTimeMillis() + (long) (m * 60000); save();
+                s.sendMessage(ChatColor.GREEN + "The next hourly whirlpool opens in " + (int) m + " min.");
+            }
+            default -> s.sendMessage(ChatColor.YELLOW + "/whirlpool [here|random|at <x> <z> [world]|stop|next <minutes>]");
+        }
+        return true;
     }
 
-    /** Lucki's boat back at his spot (it ends trips there, and drifts on waves and currents while he waits). */
-    void boatHome() {
-        Location home = place("lucki");
-        if (home == null || boat == null || !boat.isValid() || !boat.getWorld().equals(home.getWorld())) return;
-        if (boat.getLocation().distanceSquared(home) < 2.25) return;
-        boat.teleport(home, TeleportFlag.EntityState.RETAIN_PASSENGERS);
-        Edition.vel(boat, new Vector());
-    }
-
-    // ---- Lucki's boat can't be broken, and Lucki can't be hurt or left behind
-    @EventHandler(ignoreCancelled = true)
-    public void onHurt(EntityDamageEvent e) { if (isLucki(e.getEntity())) e.setCancelled(true); }
-
-    @EventHandler(ignoreCancelled = true)
-    public void onBoatHit(VehicleDamageEvent e) { if (isLucki(e.getVehicle())) e.setCancelled(true); }
-
-    @EventHandler(ignoreCancelled = true)
-    public void onBoatBreak(VehicleDestroyEvent e) { if (isLucki(e.getVehicle())) e.setCancelled(true); }
-
-    @EventHandler(ignoreCancelled = true)
-    public void onExit(VehicleExitEvent e) {
-        if (!isLucki(e.getVehicle())) return;
-        if (e.getExited() == lucki) { e.setCancelled(true); return; }
-        // the rider can't hop off while rowing out (they'd be left in the middle of the sea)
-        if (trip != null && e.getExited() == trip.rider && trip.phase < 3) e.setCancelled(true);
+    List<String> tab(String[] a) {
+        if (a.length == 1) return List.of("where", "here", "random", "at", "stop", "next").stream().filter(x -> x.startsWith(a[0].toLowerCase())).toList();
+        return List.of();
     }
 
     @EventHandler
     public void onChunk(ChunkLoadEvent e) {
-        Location l = place("lucki");
-        if (l != null && l.getWorld().equals(e.getWorld()) && (l.getBlockX() >> 4) == e.getChunk().getX() && (l.getBlockZ() >> 4) == e.getChunk().getZ())
-            Bukkit.getScheduler().runTask(pl, this::spawnLucki);
-        for (Entity en : e.getChunk().getEntities()) if (isLucki(en) && en != lucki && en != boat) en.remove(); // leftovers
+        for (Entity en : e.getChunk().getEntities()) if (en.getScoreboardTags().contains("faultline_lucki") || en.getScoreboardTags().contains("faultline_lucki_boat")
+                || (en.getScoreboardTags().contains(Vortex.TAG) && pool == null)) en.remove(); // leftovers (Lucki is gone since 1.16.0)
     }
 
-    void shutdown() { endTrip(); removeLucki(); }
+    void shutdown() { close(); save(); }
 }

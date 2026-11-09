@@ -254,7 +254,10 @@ final class Enchants implements Listener, CommandExecutor, TabCompleter {
         for (var e : ench.entrySet()) { Def d = DEFS.get(e.getKey()); lore.add(d.color + "✦ " + d.name + (d.max > 1 || e.getValue() > 1 ? " " + roman(e.getValue()) : "")); }
         if (m.hasLore()) for (String l : m.getLore()) if (!ours(l)) lore.add(l);
         m.setLore(lore);
-        m.setEnchantmentGlintOverride(true);
+        if (ench.isEmpty()) { // 1.3.9: the Upgraded Grindstone took the last one off
+            m.getPersistentDataContainer().remove(itemKey);
+            m.setEnchantmentGlintOverride(null);
+        } else m.setEnchantmentGlintOverride(true);
         it.setItemMeta(m);
     }
 

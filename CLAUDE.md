@@ -2345,6 +2345,19 @@ Notes:
   SHOOTER Strength II + Swiftness II for `buff-seconds` 3, at most once every `cooldown-seconds` 20 (action bar); never cuts a
   stronger effect. Infinity still uses one up; the arrow picked back up is an Unholy Arrow; purple trail. `/giveunholy [amount]
   [player]` (`items.giveunholy`), /itemsmenu, Index entry (weapons). Tested (scratch `dh/UnTest`).
+- **The Upgraded Grindstone (Items 1.3.9, Index 1.9.5, FaultlineSMP.zip)**: `Items/UpgradedGrindstone.java`
+  (`upgraded-grindstone:`): GRINDSTONE item, model `faultline:upgraded_grindstone` (vanilla grindstone model retextured icy
+  blue, blue obsidian legs, a glowing band on the wheel; scratch `ug/tools/make.py`), PDC `faultlineitems:upgraded_grindstone`;
+  recipe BBB/BGB/BBB = 8 Blue Obsidian (ExactChoice) round a Grindstone (`BlueObsidian.onCraft` lets this recipe through).
+  Placed = a real grindstone marked in the chunk PDC (int array, like Blue Obsidian) + a non-persistent ItemDisplay (tag
+  `faultline_upgraded_grindstone` + `faultline_no_bedrock_fx`, scale 1.01, turned like the blockstate: `turn()` = rotateYXZ(-y,
+  -x)); Bedrock sees a plain grindstone. Broken = drops our item (`onDrop`); explosion- and piston-proof. Right-click = a 54-slot
+  menu (`Menu`): input slot 13, one button per enchant (rows 4-5: boss `b:<id>`, normal `v:<key>`), 46 every boss enchant,
+  48 every normal one, 50 everything, 53 close. Boss enchants come back as their book (`return-boss-books` true); normal ones
+  give XP like a grindstone (min modified cost, half to all) or books (`return-vanilla-books` false); curses stay
+  (`remove-curses` false); repair cost = 2^remaining - 1; an emptied enchanted book becomes a BOOK; boss books and stacks are
+  refused. `Enchants.write` with an empty map now removes the PDC key and the glint override. `/giveupgradedgrindstone`,
+  /itemsmenu, Index entry (weapons, glyphs 58456/59480). Tested (scratch `ug/t/GrTest`).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Skills → Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

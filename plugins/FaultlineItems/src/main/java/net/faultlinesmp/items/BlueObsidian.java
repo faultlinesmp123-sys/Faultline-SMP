@@ -138,7 +138,7 @@ final class BlueObsidian implements Listener {
     @EventHandler
     public void onCraft(PrepareItemCraftEvent e) {
         Recipe r = e.getRecipe();
-        if (r instanceof ShapedRecipe s && s.getKey().equals(recipeKey)) return;
+        if (r instanceof ShapedRecipe s && (s.getKey().equals(recipeKey) || s.getKey().equals(UpgradedGrindstone.RECIPE))) return; // 1.3.9
         for (ItemStack it : e.getInventory().getMatrix()) if (isItem(it)) { e.getInventory().setResult(null); return; }
     }
 

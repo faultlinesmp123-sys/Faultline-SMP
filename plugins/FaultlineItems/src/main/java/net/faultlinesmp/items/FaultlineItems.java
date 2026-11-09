@@ -415,6 +415,10 @@ public final class FaultlineItems extends JavaPlugin {
         getServer().getPluginManager().registerEvents(blueObsidian, this);
         if (getCommand("giveblueobsidian") != null) getCommand("giveblueobsidian").setExecutor(new GiveItemCommand(this, "items.giveblueobsidian",
                 "/giveblueobsidian [amount] [player]", ItemCatalog.single(pl -> pl.blueObsidian.item(1))));
+        upgradedGrindstone = new UpgradedGrindstone(this); // 1.3.9: takes enchants (boss ones too) off gear
+        getServer().getPluginManager().registerEvents(upgradedGrindstone, this);
+        if (getCommand("giveupgradedgrindstone") != null) getCommand("giveupgradedgrindstone").setExecutor(new GiveItemCommand(this, "items.giveupgradedgrindstone",
+                "/giveupgradedgrindstone [amount] [player]", ItemCatalog.single(pl -> pl.upgradedGrindstone.item(1))));
         // 1.2.78: the backpack, creator mode, the admin player mimic, haunted villages (Halloween), Krampus (Christmas)
         backpack = new Backpack(this);
         getServer().getPluginManager().registerEvents(backpack, this);
@@ -653,6 +657,7 @@ public final class FaultlineItems extends JavaPlugin {
     @Override
     public void onDisable() {
         if (blueObsidian != null) try { blueObsidian.shutdown(); } catch (RuntimeException ignored) { }
+        if (upgradedGrindstone != null) try { upgradedGrindstone.shutdown(); } catch (RuntimeException ignored) { }
         if (mimics != null) try { mimics.removeAll(); } catch (RuntimeException ignored) { }
         if (haunted != null) try { haunted.shutdown(); } catch (RuntimeException ignored) { }
         if (krampus != null) try { krampus.shutdown(); } catch (RuntimeException ignored) { }
@@ -933,6 +938,7 @@ public final class FaultlineItems extends JavaPlugin {
     PvpLimits pvpLimits;
     TotemLimit totemLimit;
     BlueObsidian blueObsidian;
+    UpgradedGrindstone upgradedGrindstone;
     Backpack backpack;
     CreatorMode creatorMode;
     OfflineTp offlineTp;
@@ -7036,6 +7042,7 @@ public final class FaultlineItems extends JavaPlugin {
                 pl -> pl.balloons.item(null, 0), // 1.2.24
                 pl -> pl.blueObsidian.item(16), // 1.2.75
                 pl -> UnholyArrows.item(16), // 1.3.8
+                pl -> pl.upgradedGrindstone.item(1), // 1.3.9
                 pl -> pl.backpack.item(), // 1.2.78
                 pl -> pl.krampus.bell(1), // 1.2.78: summons Krampus
                 pl -> pl.holidays.lantern(1), // 1.2.78: haunts the nearest village

@@ -1219,3 +1219,6 @@ lantern_wraith:
 mimic_player:
   large: 59479
   small: 58455
+upgraded_grindstone:
+  large: 59480
+  small: 58456

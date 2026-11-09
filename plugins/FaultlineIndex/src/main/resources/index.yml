@@ -142,6 +142,9 @@ entries:
   - {chapter: weapons, name: "Blue Obsidian", icon: blue_obsidian, detect: "faultlineitems:blue_obsidian",
      how: "Craft it: 8 Obsidian around a Lapis Lazuli.",
      does: "A block for portals out of the End. Build a closed frame of it in the End (any shape: a ring works), then light the inside with Flint and Steel or a Fire Charge. Step through and you come out on the surface of the Overworld at a random spot within 500 blocks of 0, 0. Nothing is built where you land, so there's no portal back. It only lights in the End."}
+  - {chapter: weapons, name: "Upgraded Grindstone", icon: upgraded_grindstone, detect: "faultlineitems:upgraded_grindstone",
+     how: "Craft it: 8 Blue Obsidian around a Grindstone.",
+     does: "A blue grindstone that takes enchants off your gear, BOSS ENCHANTS too. Place it and right-click it, put an item in the middle, then click any one enchant to take just that one off, or take off every boss enchant, every normal enchant, or everything. Boss enchants come back to you as their book. Normal enchants give XP like a grindstone. Curses stay on."}
   - {chapter: weapons, name: "Unholy Arrow", icon: unholy_arrow, detect: "faultlinebosses:unholy_arrow",
      how: "5% from Skeletons, Strays and Bogged you kill (1-2; never from spawners), or craft it: an Arrow, a Fermented Spider Eye, Glowstone Dust and Redstone make 2.",
      does: "A normal arrow's damage, but hit something with a full draw (crossbows always count) and YOU get Strength II and Swiftness II for 3 seconds. Once every 20 seconds. Infinity doesn't make them endless."}

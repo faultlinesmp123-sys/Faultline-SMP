@@ -20,6 +20,9 @@ import java.util.*;
  */
 final class MimicBody {
     private static boolean tried, ok;
+    private static String why = "not started yet (no mimic out since the server started)";
+
+    static String why() { return why; }
     private static Constructor<?> addCtor, headCtor, animCtor, hurtCtor, removeCtor, dataCtor, equipCtor;
     private static Method posOf, getHandle, entityData, nonDefault, dataGet, dvCreate, dvId, itemBySlot, pairOf;
     private static Object playerType, zero, flagsAcc, poseAcc;
@@ -90,8 +93,10 @@ final class MimicBody {
             for (Object o : poseC.getEnumConstants()) POSES.put(((Enum<?>) o).name(), o);
             if (allowed.isEmpty() || !POSES.containsKey("STANDING")) throw new IllegalStateException("no entity data to copy");
             ok = true;
+            why = "running";
         } catch (ReflectiveOperationException | RuntimeException | LinkageError e) {
             ok = false;
+            why = "couldn't start: " + e;
             Bukkit.getLogger().warning("[Mimic] can't draw mimics as players on this server version (they stay mannequins): " + e);
         }
         return ok;
@@ -245,6 +250,7 @@ final class MimicBody {
     private static void fail(FaultlineItems plugin, Throwable e) {
         if (!ok) return;
         ok = false;
+        why = "stopped after an error: " + e + (e.getStackTrace().length > 0 ? " at " + e.getStackTrace()[0] : "");
         Bukkit.getLogger().warning("[Mimic] drawing mimics as players failed, back to mannequins: " + e);
         if (plugin.mimics == null) return;
         for (MimicPlayer.Mimic m : new ArrayList<>(plugin.mimics.byBrain.values())) {

@@ -143,7 +143,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         UUID bodyId = UUID.randomUUID(); boolean bodyOwnInfo = true; final Set<UUID> bodyViewers = new HashSet<>(); int bodyLookSig; String bodyEquipSig = "";
         // 1.2.95 elytra flight like a player's: where it looks, the rocket burning, the speed it carries
         float flyPitch, flyYaw; int boostTicks, takeoffAt, landT; Vector glide, glideAt;
-        boolean surfacing;
+        boolean surfacing; int errors; Location lastGround; Location voidDest;
         int leapTryAt, legAt, pearlSolveAt; Block legCached; // 1.2.95: a failed pearl hop isn't re-solved every tick, the leg goal is reused for 10 ticks
         double swimToY = Double.NaN; int swimToT = -100;
         int eyesLeft, rods, craftReady, reachTechReady, climbTicks, hopUntil, stageUntil, gapUntil, farShotReady, fleePlanAt; Block climbWater, stageGoal, fleeGoal; MimicNav.Step gapStep;
@@ -813,10 +813,14 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     private void tick() {
         try { tickTemp(); } catch (RuntimeException ignored) { }
         for (Mimic m : new ArrayList<>(byBrain.values())) {
-            try { think(m); } catch (RuntimeException ex) {
+            try { think(m); m.errors = 0; } catch (RuntimeException ex) {
+                // 1.2.97: one error used to DELETE the mimic (it "vanished at random"). Now it drops what it was doing and carries
+                // on; only an error every tick for 5 s straight removes it
                 StackTraceElement at = Arrays.stream(ex.getStackTrace()).filter(s -> s.getClassName().startsWith("net.faultlinesmp")).findFirst().orElse(null);
-                plugin.getLogger().warning("[MimicPlayer] " + ex + (at == null ? "" : " at " + at.getMethodName() + ":" + at.getLineNumber()));
-                remove(m);
+                if (m.errors == 0 || m.errors % 100 == 0)
+                    plugin.getLogger().warning("[MimicPlayer] " + m.name + ": " + ex + (at == null ? "" : " at " + at.getMethodName() + ":" + at.getLineNumber()));
+                m.path = null; m.digBlock = null; m.boomAt = null;
+                if (++m.errors >= 100) { plugin.getLogger().warning("[MimicPlayer] removed " + m.name + " after 100 errors in a row"); remove(m); }
             }
         }
     }
@@ -1008,6 +1012,9 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         Vindicator v = m.brain;
         if (!v.isValid() || !m.body.isValid()) { remove(m); return; }
         m.t++;
+        keepLoaded(m); // 1.2.97: always (it isn't saved with its chunk: an unloaded chunk = the mimic gone); 3x3, 7x7 hunting
+        if (v.isOnGround()) m.lastGround = v.getLocation().clone();
+        if (voidSave(m)) { follow(m); return; }
         // stuck inside a block (knocked into a wall, a block placed on it): out to the nearest cell it fits, never frozen there
         if (inWall(v)) { if (++m.wallTicks > 8) { unwall(m); m.wallTicks = 0; m.path = null; } } else m.wallTicks = 0;
         // its kingdom line over its head: put back if anything removed it, the text kept up to date (kingdom changes)
@@ -1338,6 +1345,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
 
     private void land(Mimic m) {
         m.flying = false;
+        m.voidDest = null;
         m.glide = null; m.glideAt = null; m.boostTicks = 0;
         m.noFallUntil = m.t + 30;
         m.flyCooldown = m.t + 60;
@@ -2510,7 +2518,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         World w = m.brain.getWorld();
         if (m.ticketWorld != null && m.ticketWorld != w) releaseTickets(m);
         m.ticketWorld = w;
-        int cx = m.brain.getLocation().getBlockX() >> 4, cz = m.brain.getLocation().getBlockZ() >> 4, r = (int) cfg("hunt.load-radius", 3);
+        int cx = m.brain.getLocation().getBlockX() >> 4, cz = m.brain.getLocation().getBlockZ() >> 4, r = m.hunting ? (int) cfg("hunt.load-radius", 3) : 1;
         Set<Long> want = new HashSet<>();
         for (int dx = -r; dx <= r; dx++) for (int dz = -r; dz <= r; dz++) want.add(((long) (cx + dx) << 32) | ((cz + dz) & 0xffffffffL));
         for (Long k : new ArrayList<>(m.tickets)) if (!want.contains(k)) { try { w.removePluginChunkTicket((int) (k >> 32), (int) (long) k, plugin); } catch (RuntimeException ignored) { } m.tickets.remove(k); }
@@ -2780,6 +2788,46 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             return;
         }
         followPath(m, null);
+    }
+
+    /**
+     * 1.2.97 VOID SAVE (the End): falling with nothing under it all the way down, like a player it opens its elytra and rockets
+     * back to the last ground it stood on (or a pearl there); it used to just fall out of the world.
+     */
+    boolean voidSave(Mimic m) {
+        Vindicator v = m.brain;
+        if (m.voidDest != null) {
+            if (!m.travelFly || m.voidDest.getWorld() != v.getWorld()) { m.voidDest = null; return false; }
+            m.travelNote = "flying back from the void";
+            if (!flyTo(m, m.voidDest)) m.voidDest = null;
+            return true;
+        }
+        if (v.isOnGround() || m.travelFly || v.getVelocity().getY() > -0.25 || m.t % 2 != 0 || m.lastGround == null || m.lastGround.getWorld() != v.getWorld()) return false;
+        Location at = v.getLocation();
+        World w = at.getWorld();
+        int minY = w.getMinHeight();
+        if (!w.isChunkLoaded(at.getBlockX() >> 4, at.getBlockZ() >> 4)) return false;
+        for (int y = Math.min(at.getBlockY(), w.getMaxHeight() - 1); y > minY; y--) {
+            Material t = w.getBlockAt(at.getBlockX(), y, at.getBlockZ()).getType();
+            if (t.isSolid() || t == Material.WATER) return false; // something to land on
+        }
+        Location home = m.lastGround.clone().add(0, 0.1, 0);
+        if (m.gear.elytra && m.rockets > 0 && w.getEnvironment() != World.Environment.NETHER) {
+            m.travelFly = true; m.flying = true; m.landSpot = null; m.glideAt = null; m.boostTicks = 0; m.landT = 0;
+            m.glide = v.getVelocity().clone();
+            Vector to = home.toVector().subtract(at.toVector()).setY(0);
+            m.flyYaw = to.lengthSquared() > 1e-4 ? (float) Math.toDegrees(Math.atan2(-to.getX(), to.getZ())) : m.yaw;
+            m.flyPitch = -30;
+            m.body.getEquipment().setChestplate(new ItemStack(Material.ELYTRA)); armourFor(m, true);
+            v.getWorld().playSound(at, Sound.ITEM_ARMOR_EQUIP_ELYTRA, 0.8f, 1);
+            elytraRocket(m);
+            m.voidDest = home;
+            return true;
+        }
+        if (m.pearlsLeft > 0 && m.t >= m.pearlReady) {
+            if (throwPearl(m, home, true) || throwPearl(m, home, false)) { m.travelNote = "pearling out of the void"; return true; }
+        }
+        return false;
     }
 
     /** Elytra + more rockets than it keeps for the fight. */
@@ -5516,6 +5564,12 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         if (e.getClickedBlock() != null && e.getClickedBlock().getBlockData() instanceof org.bukkit.block.data.Openable) blocksChanged(e.getClickedBlock().getWorld());
     }
 
+    // 1.2.97: a respawn or a world change wipes every entity on the player's screen, so the player body has to be sent again
+    private void resendBody(Player p) { for (Mimic m : byBrain.values()) m.bodyViewers.remove(p.getUniqueId()); }
+    @EventHandler(priority = EventPriority.MONITOR) public void onBodyRespawn(org.bukkit.event.player.PlayerRespawnEvent e) { resendBody(e.getPlayer()); }
+    @EventHandler(priority = EventPriority.MONITOR) public void onBodyWorld(org.bukkit.event.player.PlayerChangedWorldEvent e) { resendBody(e.getPlayer()); }
+    @EventHandler(priority = EventPriority.MONITOR) public void onBodyJoin(org.bukkit.event.player.PlayerJoinEvent e) { resendBody(e.getPlayer()); }
+
     /** Hits on the body go to the brain (knockback, armour and all). */
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onBodyHit(EntityDamageEvent e) {
@@ -5720,6 +5774,17 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             watch.command(p, a.length > 1 ? a[1] : null);
             return true;
         }
+        if (sub.equals("body")) { // 1.2.97: is the real player body (real M1 swings) running, and if not, why
+            boolean cfgOn = plugin.getConfig().getBoolean("mimic-player.player-body", true);
+            boolean on = MimicBody.active(plugin);
+            s.sendMessage(ChatColor.YELLOW + "Mimic player body: " + (on ? "" + ChatColor.GREEN + "ON (real player swings, sprint, swim, elytra poses)"
+                    : "" + ChatColor.RED + "OFF (plain mannequins: no swing animation)"));
+            if (!cfgOn) s.sendMessage(ChatColor.GRAY + "mimic-player.player-body is false in config.yml.");
+            else if (!on) s.sendMessage(ChatColor.GRAY + "Why: " + MimicBody.why());
+            int viewers = 0; for (Mimic m : byBrain.values()) viewers += m.bodyViewers.size();
+            s.sendMessage("" + ChatColor.GRAY + byBrain.size() + " mimics out, drawn as players for " + viewers + " viewer(s).");
+            return true;
+        }
         if (sub.equals("debug")) {
             if (!(s instanceof Player p)) { s.sendMessage("In game only."); return true; }
             boolean on = hitLog.add(p.getUniqueId());
@@ -5872,7 +5937,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     @Override
     public List<String> onTabComplete(CommandSender s, Command c, String l, String[] a) {
         if (a.length == 1) {
-            List<String> out = new ArrayList<>(List.of("random", "remove", "clear", "list", "hunt", "spectate", "debug", "fight", "duel", "ffa"));
+            List<String> out = new ArrayList<>(List.of("random", "remove", "clear", "list", "hunt", "spectate", "debug", "body", "fight", "duel", "ffa"));
             for (Player p : Bukkit.getOnlinePlayers()) out.add(p.getName());
             return out;
         }

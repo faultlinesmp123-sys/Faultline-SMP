@@ -235,6 +235,10 @@ entries:
 
 
   # ---------------------------------------------------------------- ENEMIES
+  - {chapter: enemies, name: "Crimson Champion", icon: elite_mob, detect-tag: faultline_crimson_champion,
+     where: "At midnight of a Blood Moon (an event), it comes for someone in survival.",
+     does: "A mini boss, 150 health: a red knight with a fiery netherite sword. It leaps at you, heals itself with every hit it lands, and at half health 3 Bloodbound zombies rise to help it. It doesn't burn in the sun, but it crumbles at dawn.",
+     drops: ["2-4 Diamonds|100%", "1-2 Golden Apples|100%", "4-10 Emeralds|100%", "A Goodie Bag for everyone who hurt it|100%", "250 XP|100%"]}
   - {chapter: enemies, name: "Vampire", icon: vampire, detect-tag: faultline_vampire,
      where: "Disguised as a cave bat (2.5% of bats). Hunts the surface during Blood Moons.",
      does: "Turns from a bat into a vampire when you get close. Its claws make you bleed.",
@@ -1383,6 +1387,12 @@ achievements:
   - {id: slayer_of_faultline, name: "Slayer of Faultline", icon: slayer_crown, desc: "Defeat every big boss: the Queen Spider, Diamond Jacob, the Abyssal Kraken, the Brine Scourge, the Umbral Leviathan, Coralia and the Abyssal Titan.",
      defeat: [queen_spider, diamond_jacob, the_abyssal_kraken, brine_scourge, umbral_leviathan, coralia, abyssal_titan],
      need: all, reward: {cosmetic: slayer_crown, items: ["NETHERITE_INGOT:2"], xp: 2000}}
+  - {id: blood_hunter, name: "Blood Hunter", icon: vampire, desc: "Kill 100 monsters under Blood Moons.",
+     stat: blood_moon_kills, count: 100, reward: {items: ["DIAMOND:5", "GOLDEN_APPLE:2"], xp: 500}}
+  - {id: champion_slayer, name: "Champion Slayer", icon: elite_mob, desc: "Help bring down the Crimson Champion.",
+     stat: crimson_champions, count: 1, reward: {items: ["DIAMOND:4"], xp: 400}}
+  - {id: lamplighter, name: "Lamplighter", icon: lantern_of_souls, desc: "Catch 25 Lantern Wisps on Lantern Nights.",
+     stat: lantern_wisps, count: 25, reward: {items: ["EMERALD:16", "GOLDEN_CARROT:16"], xp: 300}}
   - {id: mutant_hunter, name: "Mutant Hunter", icon: twin_zombie, desc: "Kill 25 mutants (Plague Zombies, Storm Creepers, Broodmothers...).",
      stat: mutants, count: 25, reward: {items: ["DIAMOND:3", "GOLDEN_APPLE:2"], xp: 500}}
   - {id: mutant_slayer, name: "Mutant Slayer", icon: broodmother, desc: "Kill 250 mutants.",

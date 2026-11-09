@@ -1,0 +1,18 @@
+name: FaultlineEvents
+version: '2.0.0'
+main: net.faultlinesmp.events.FaultlineEvents
+api-version: '1.21'
+author: FaultlineSMP
+description: Sky events in the Overworld - the Blood Moon, Fog, Lantern Night and Windy days
+softdepend: [floodgate, Geyser-Spigot, FaultlineIndex, FaultlineItems]
+
+commands:
+  fevent:
+    description: "The event going on now, and what each one does (admins: start / stop them)"
+    usage: /fevent [list|start <event>|stop|champion]
+    aliases: [faultlineevents, events]
+
+permissions:
+  faultlineevents.admin:
+    description: Start and stop events, spawn the Crimson Champion
+    default: op

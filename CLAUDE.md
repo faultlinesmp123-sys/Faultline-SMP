@@ -44,6 +44,7 @@ All are Maven projects: Java 21, `paper-api 1.21.11-R0.1-SNAPSHOT`. Build with
 | **FaultlineDeep** | `net.faultlinesmp.deep` | **The Dark Ocean**: a water-only world (`DeepGenerator.java`), its biomes **the Reaches** (`Reaches.java`), **the Sulphur Sea** acid region (`Sulphur.java`), **the Bubble** town over the build area (`Town.java`), **the Black Market + the Pit** (`Market.java`, `Elevator.java`), ruins (`Ruins.java`), its 66 creatures (`DeepMobs.java`), the pitch-black Abyss (`Ocean.dark`), the Mirror + the HOURLY WHIRLPOOL down to it (`Journey.java`, `Vortex.java`; Lucki/Swarm removed in 1.16.0), zone music, events and dying down there (`Ocean.java`), **the Trench** (`Trench.java`), Den reputation (`DenRep.java`), the Submersible, the Migration, the Bloom | `/whirlpool [where\|here\|random\|at <x> <z> [world]\|stop\|next <min>]` (`/maelstrom`; players: where / when), `/dome [list\|combine\|yes\|no\|upgrades\|trust\|untrust\|home\|color]` (dome bases in any water, hallways, 20 upgrades), `/chart`, `/glimmer [top]` (the Glimmertide's shop), admin `/deep season [start\|stop\|auto\|shoal]`, `/deep [info\|set kingdom\|whirlpool ...\|tp [player]\|town [player]\|sulphur [player]\|spawn <mob>\|egg <mob> [n] [player]\|event <pressure\|undertow\|stop>\|acidrain\|den [info\|where\|tp\|raid\|stop\|reset\|rise]\|lucki\|trench [maw] [player]\|bloom\|migration\|sub [player]\|eclipse\|redtide\|frenzy\|volcano [where\|start [x z]\|here\|cool\|heal]\|region <frozen\|city\|glass\|bones>\|give <coral\|dome_small\|dome_large\|vault_key\|cache_key\|fossil\|chart\|glimmer>\|domes]`, players `/den [home]` |
 | **FaultlineShips** | `net.faultlinesmp.ships` | Ships: Dinghy, Sloop, Brigantine, Galleon, Pirate Ship. Blueprint → lay out on water → place every block → sail. Health, part damage, sinking, Shipwright's Hammer repair minigame, cannons, banners, names. **Skeleton ships** and the **Pirate Invasion** (`Pirates.java`). Ships saved in `ships.yml` | `/ship [list\|info\|name\|crew\|anchor\|stop\|banner\|scrap]`, sneak + right-click a gun with a Cannonball = man it (W/S/A/D aim), admin `/ship <give\|repair\|wreck\|remove\|tp> [name\|#n]`, `/ship spawn <ship> [owner]`, `/ship give upgrade_<hull\|sails\|loaders\|ram>`, `/ship pirates <ship\|invasion\|horn\|spawn\|egg\|ghost [player]\|bell [n] [player]\|map [player]\|stop>` |
 | **FaultlineSkills** | `net.faultlinesmp.skills` | Skill trees: Mining, Building, Farming, Redstone (`Tree.java`: 6 perks each), levels 1-50, anti-abuse (placed-block marks, settle time), chest menu + Bedrock form. Data in `players.yml` | `/skills [top <tree>]`, admin `/skills <player>`, `/skills give <player> <tree> <xp>`, `/skills reset <player> [tree\|perks]` |
+| **FaultlineEvents** | `net.faultlinesmp.events` | Sky events in the main world (2.0.0 rewrite, source here since then): **Blood Moon** (`BloodMoon.java` + the Crimson Champion), **Fog** (`Fog.java`), **Lantern Night** (`LanternNight.java`), **Windy** (`Windy.java`, `WindPush.java`) | `/fevent [list]` (`/events`), admin `/fevent start <blood-moon\|fog\|lantern-night\|windy>\|stop\|champion [player]` |
 
 Notes:
 - `FaultlineItems.java` (~350 KB) and `FaultlineBosses.java` (~585 KB) are huge. Search them instead of reading them whole.
@@ -478,7 +479,7 @@ Notes:
   ribbons were visible to everyone: now 3 private ribbons per player (`aurora.size` 1.2 = ~29 wide, `aurora.height` 38).
   No Weather event starts while FaultlineEvents has an event active (`faultlineevents:active_event` on the main world,
   `FaultlineItems.faultlineEvent()`) or in `faultline_void`. Tested (`WildSpawnTest`, `WildItemsTest`).
-  FaultlineEvents (Blood Moon, Snowy Day, Lantern Night, fog...) is a separate plugin whose source is NOT in this repo.
+  FaultlineEvents' source is in this repo since its 2.0.0 rewrite (see the FaultlineEvents note).
 - **Wild models v2 (Bosses 1.4.4)**: the FROST WYRM is a real dragon: `wyrm_body` (chest, four clawed legs, spine spikes),
   3 `wyrm_neck` segments placed along a quadratic curve from the chest to the head in `FrostWyrm.place()` (low and forward
   for Frost Breath, high for the landed roar), a horned `wyrm_head` (`headBase()` = the head's joint, `mouth()`), bat wings
@@ -2358,7 +2359,44 @@ Notes:
   (`remove-curses` false); repair cost = 2^remaining - 1; an emptied enchanted book becomes a BOOK; boss books and stacks are
   refused. `Enchants.write` with an empty map now removes the PDC key and the glint override. `/giveupgradedgrindstone`,
   /itemsmenu, Index entry (weapons, glyphs 58456/59480). Tested (scratch `ug/t/GrTest`).
-- Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Skills → Index; Index → all the others.
+- **FaultlineEvents 2.0.0 (a rewrite; Items 1.3.10, Index 1.9.6)**: the old jar's source was never in the repo, so it's new
+  (`plugins/FaultlineEvents`, `net.faultlinesmp.events`). `FaultlineEvents.java` = clock, rolls, boss bar, `/fevent`; `Ev` = one
+  event (`id` written to the main world's PDC `faultlineevents:active_event` = BLOOD_MOON / FOG / LANTERN_NIGHT / WINDY, which
+  Items (sky pack, vampires, Lantern Night drops x2 + villager discount, Weather never overlaps) and Raids (Blood Moon raids)
+  read; `faultlineevents:ends_at` + per-event `last_<event>` day for `schedule.cooldown-days`). Rolled once at dusk
+  (`schedule.dusk`: blood-moon 0.10, lantern-night 0.10, fog 0.05) and at dawn (`schedule.dawn`: windy 0.15, fog 0.10), first
+  hit wins, one at a time, `min-players` 1 survival; night events end at dawn, timed ones count down in SERVER seconds
+  (`secondsLeft`); a restart resumes the running one. Admin start of a night event in the day sets the time to 13000
+  (`admin-start-sets-night`). Main world + `extra-worlds`. **BLOOD MOON**: NATURAL `Monster` spawns get MULTIPLY_SCALAR_1
+  modifiers `faultlineevents:blood_*` (health x1.3, damage x1.25, speed x1.1; tag `bloodmoon_mob`: no "faultline" prefix so
+  Raids' Elites still roll), up to `extra-spawns.per-player` 5 more come for each survival player every 15 s (NATURAL reason,
+  `groundSpot`, never where block light >= 8), monster kills x2 XP + 25% one `bonus-loot` roll, no sleeping, red mist +
+  heartbeat; at `champion.at-time` 18000 the CRIMSON CHAMPION (Zombie, tag `faultline_crimson_champion`, 150 hp, 9 damage,
+  scale 1.25, red leather + Fire Aspect netherite sword, no burning) hunts a random survival player: Blood Leap every 6-8 s,
+  heals 35% of damage it deals, 3 `bloodmoon_minion` Bloodbound at half health, own boss bar within 64; killed = `drops` +
+  `rewards` (Goodie Bag) for everyone who hurt it + stat `crimson_champions`; crumbles at dawn. Dawn: top 3 hunters broadcast,
+  `dawn-rewards` for 10+ kills, stats `blood_moon_kills` / `blood_moons_survived`. **FOG** (12 min): each player's
+  `setSendViewDistance(view-distance 4)` = the game's own distance fog (restored with -1 on end / quit / world change), grey
+  DUST mist (size 3-4) round everyone every 5 ticks, undead don't burn in sunlight, up to 3 `fog_mob` wanderers each, kills x1.5
+  XP (stat `fog_kills`), distant sounds, SHADES: a MANNEQUIN (tag `faultline_fog_shade`, only that player sees it) with a random
+  online player's face 18-26 blocks ahead that watches you and vanishes in smoke when you get within 11 or stare at it 1 s (stat
+  `fog_shades`). **LANTERN NIGHT**: `calm` 60% of NATURAL monster spawns cancelled, XP x1.5 (PlayerExpChangeEvent), rising sky
+  lanterns (BlockDisplay LANTERN, tag `faultline_sky_lantern`, up to 14 per player, SMALL_FLAME trail for Bedrock), LANTERN
+  WISPS (glowing BlockDisplay lanterns, tag `faultline_lantern_wisp`, 2 per player, bob near the ground; walk into one =
+  `wisps.rewards` "chance;xp:N|item:MAT:a-b|cmd:..." + stat `lantern_wisps`), harmless midnight fireworks (`faultline_lantern_show`,
+  their damage cancelled). **WINDY** (15 min by day): a wind angle that veers 3 degrees/s, gusts every 20-45 s for 3 s (x2.5);
+  every 10 ticks exposed players (under the sky, not swimming/riding/flying/spectating, not Bedrock) are pushed `push` 0.035
+  downwind (sneak x0.3, gliding x3, above y 120 x1.4) by `WindPush`: a ClientboundExplodePacket by reflection (Mojang names,
+  manifest `paperweight-mappings-namespace: mojang`) carrying only a knockback that the client ADDS (setVelocity would replace the
+  player's speed), the silent `SoundEvents.EMPTY`, a WHITE_ASH / GUST particle; any mismatch = one warning and no push (UNTESTED
+  on a live server: MockBukkit has no NMS). Projectiles launched drift `projectile-drift` 0.006/tick for 4 s. Luck I, and x1.2
+  (`loot-multiplier`, probabilistic rounding) on stackable mob drops (not what the mob was holding, not faultline-tagged mobs),
+  XP, ores / ripe crops / melons / glowstone / amethyst (never a block's drop of itself = silk touch, never seeds) and 20% an
+  extra fish (not our custom fish). Items /itemsmenu has a button per event + the Champion. Index: Crimson Champion entry,
+  achievements Blood Hunter (100 `blood_moon_kills`), Champion Slayer, Lamplighter (25 wisps), guide line, Discord forwards.
+  Snowy Day is gone (Items' Frost Wraith hook just never fires). Tested (scratch `ev/EvTest`: all four events, the Champion,
+  calm rate, wisp catch, x1.2 exactly, held items not multiplied, arrow drift, timed end, the dusk roll).
+- Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.
 - Earlier chats mentioned Kingdom End teleporters, permadeath phases, and per-phase
@@ -2380,7 +2418,7 @@ Notes:
 | `FaultlineBloodMoon.zip` | Blood Moon pack: replaces moon phase textures (sent by FaultlineItems' EventPacks during a Blood Moon) |
 | `FaultlineEclipse.zip`, `FaultlineAurora.zip` | Eclipse / Aurora sky packs (`tools/event_packs.py`, sent by EventPacks during those events) |
 | `FaultlineBosses.zip` | Very old zip of the FaultlineBosses source (Demon Eye only). Ignore it; the live copy is `plugins/FaultlineBosses/` |
-| `plugins/` | Source code for all ten custom plugins (edit these) |
+| `plugins/` | Source code for all eleven custom plugins (edit these) |
 | `FaultlineEmotes.zip` | Third Java pack: the bendy emote body (26.2 core shader + body part models, `tools/emote_pack.py`; sent to 26.2 games beside FaultlineSMP.zip) |
 | `FaultlineDeepMusic.zip` | Second Java pack: the Dark Ocean's three music tracks (sunken, abyss, acid; sent beside FaultlineSMP.zip) |
 | `bedrock/` | Bedrock (Geyser) packs + custom item mappings: cosmetics (`tools/cosmetics_assets.py`), ships (`tools/ship_assets.py --bedrock`), wild models (`tools/wild_assets.py`) |

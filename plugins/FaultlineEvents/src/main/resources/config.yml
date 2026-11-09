@@ -1,0 +1,77 @@
+# FaultlineEvents 2.0.0: sky events in the main world (and the worlds in extra-worlds).
+# One event at a time. Night events last until dawn; day events run for their minutes.
+# The running event is written on the main world as faultlineevents:active_event (BLOOD_MOON, FOG, LANTERN_NIGHT,
+# WINDY): FaultlineItems (Blood Moon sky pack, vampires, Lantern Night drops x2 + villager discount) and FaultlineRaids
+# (Blood Moon raids) read it.
+enabled: true
+extra-worlds: []
+min-players: 1              # survival players online for an event to roll
+schedule:
+  # rolled once when night falls (dusk) and once when day breaks (dawn), in this order; the first that hits starts
+  dusk: {blood-moon: 0.10, lantern-night: 0.10, fog: 0.05}
+  dawn: {windy: 0.15, fog: 0.10}
+  cooldown-days: 2          # the same event can't come back for this many in-game days
+admin-start-sets-night: true  # /fevent start <night event> in the day turns the world to dusk first
+
+blood-moon:
+  enabled: true
+  mob-health: 1.3           # natural monsters spawn with this much health...
+  mob-damage: 1.25          # ...this much damage...
+  mob-speed: 1.1            # ...and this much speed
+  xp-multiplier: 2.0        # XP from monsters you kill
+  bonus-loot-chance: 0.25   # Blood Moon monsters: chance of one bonus drop
+  bonus-loot: ["BONE:1-3", "GUNPOWDER:1-3", "STRING:1-3", "ARROW:2-6", "IRON_NUGGET:3-8", "GOLD_NUGGET:2-6", "EMERALD:1-2", "REDSTONE:2-5"]
+  extra-spawns: {every-seconds: 15, per-player: 5, min-distance: 16, max-distance: 30}
+  no-sleep: true
+  particles: 14             # red mist round each player, every second
+  champion:
+    enabled: true
+    at-time: 18000          # midnight
+    health: 150
+    damage: 9
+    xp: 250
+    drops: ["DIAMOND:2-4", "GOLDEN_APPLE:1-2", "EMERALD:4-10"]
+    rewards: ["givegoodiebag 1 {player}"]   # for everyone who hurt it
+  dawn-rewards:
+    min-kills: 10
+    commands: ["give {player} minecraft:diamond 2"]
+    top-commands: ["givegoodiebag 1 {player}"]   # the top hunter
+
+fog:
+  enabled: true
+  minutes: 12
+  view-distance: 4          # chunks: the world fades out past ~60 blocks (0 = leave it)
+  density: 60               # mist particles round each player every 5 ticks
+  undead-dont-burn: true
+  xp-multiplier: 1.5
+  spawns: {every-seconds: 20, per-player: 3, min-distance: 14, max-distance: 26}
+  shades: {enabled: true, every-seconds: 35, chance: 0.4}   # someone standing in the fog... who vanishes
+  ambience: true
+
+lantern-night:
+  enabled: true
+  calm: 0.6                 # share of natural monster spawns that never happen
+  xp-multiplier: 1.5
+  sky-lanterns: {per-player: 14, every-ticks: 30, rise-per-second: 1.6, lifetime-seconds: 45, min-distance: 6, max-distance: 30}
+  wisps:
+    per-player: 2
+    every-seconds: 20
+    lifetime-seconds: 180
+    collect-radius: 1.8
+    # chance;reward  (xp:N, item:MATERIAL:min-max, cmd:<console command with {player}>)
+    rewards: ["1.0;xp:25", "0.6;item:EMERALD:1-3", "0.25;item:GLOWSTONE_DUST:2-5", "0.12;item:GOLDEN_CARROT:2-4",
+              "0.05;cmd:givegoodiebag 1 {player}", "0.005;cmd:givemythicbag 1 {player}"]
+  fireworks: {enabled: true, at-time: 18000, seconds: 40}
+
+windy:
+  enabled: true
+  minutes: 15
+  luck: true                # Luck I while it blows
+  loot-multiplier: 1.2      # mob drops, ores, ripe crops, fishing
+  push: 0.035               # how hard the wind nudges you (blocks/tick), every push-every-ticks
+  push-every-ticks: 10
+  sneak-factor: 0.3         # sneaking braces you
+  glide-factor: 3.0         # elytra: a tailwind
+  gusts: {min-seconds: 20, max-seconds: 45, seconds: 3, strength: 2.5}
+  projectile-drift: 0.006   # arrows, tridents, pearls, snowballs drift with the wind
+  particles: 5

@@ -7312,6 +7312,13 @@ public final class FaultlineItems extends JavaPlugin {
             list.add(external(icon(Material.BLACK_CONCRETE, null, ChatColor.DARK_RED + "" + ChatColor.BOLD + "Event: Eclipse " + ChatColor.GRAY + "(the black sun)", "FaultlineItems"), "fweather eclipse {player}", "FaultlineItems"));
             list.add(external(icon(Material.CHEST, null, ChatColor.GOLD + "" + ChatColor.BOLD + "Mimic " + ChatColor.GRAY + "(spawns one)", "FaultlineItems"), "fcreature mimic {player}", "FaultlineItems"));
             list.add(external(icon(Material.SKELETON_HORSE_SPAWN_EGG, null, ChatColor.WHITE + "" + ChatColor.BOLD + "Skeleton Knight Patrol " + ChatColor.GRAY + "(spawns one)", "FaultlineItems"), "fcreature knights {player}", "FaultlineItems"));
+            if (enabled("FaultlineEvents")) { // 1.3.10: FaultlineEvents 2.0.0's sky events + the Blood Moon's mini boss
+                list.add(external(icon(Material.REDSTONE_BLOCK, null, ChatColor.DARK_RED + "" + ChatColor.BOLD + "Event: Blood Moon " + ChatColor.GRAY + "(starts it, turns it to dusk)", "FaultlineEvents"), "fevent start blood-moon", "FaultlineEvents"));
+                list.add(external(icon(Material.LIGHT_GRAY_STAINED_GLASS, null, ChatColor.GRAY + "" + ChatColor.BOLD + "Event: Fog " + ChatColor.GRAY + "(starts it)", "FaultlineEvents"), "fevent start fog", "FaultlineEvents"));
+                list.add(external(icon(Material.LANTERN, null, ChatColor.GOLD + "" + ChatColor.BOLD + "Event: Lantern Night " + ChatColor.GRAY + "(starts it, turns it to dusk)", "FaultlineEvents"), "fevent start lantern-night", "FaultlineEvents"));
+                list.add(external(icon(Material.FEATHER, null, ChatColor.AQUA + "" + ChatColor.BOLD + "Event: Windy " + ChatColor.GRAY + "(starts it)", "FaultlineEvents"), "fevent start windy", "FaultlineEvents"));
+                list.add(external(icon(Material.ZOMBIE_SPAWN_EGG, null, ChatColor.DARK_RED + "" + ChatColor.BOLD + "Crimson Champion " + ChatColor.GRAY + "(Blood Moon mini boss, near you)", "FaultlineEvents"), "fevent champion {player}", "FaultlineEvents"));
+            }
             if (enabled("FaultlineBosses")) {
                 // the Dark Ocean's bosses (Bosses 1.6.0): their summon items (used down there) + a summon right here
                 String[][] deep = {{"scourge", "brine_bait", "Brine Bait", "the Brine Scourge"}, {"umbral", "umbral_sonar", "Umbral Sonar", "the Umbral Leviathan"},

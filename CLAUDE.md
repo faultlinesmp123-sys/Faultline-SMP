@@ -2243,6 +2243,28 @@ Notes:
   (a block placed in its way, a door shut) instead of waiting to get stuck. MockBukkit has no step height, so the no-jump stairs
   are untested there. Tested (scratch `nt/VoidTest -Dofftp=true`: logout spot, unknown name, tab, non-op; `nt/NewTest` 6 runs,
   void rounds, the log box).
+- **Map mods, pie chart mods, the pie chart limit (Items 1.3.0)**: `Items/ModGuard.java`. MAP MODS (`mod-guard:`): on join
+  every Java player gets Xaero's switch-off codes as literal-text chat lines (`codes`: `&n&o&m&i&n&i&m&a&p` = no minimap,
+  `&f&a&i&r&x&a&e&r&o` = fair play; `&` swapped for the section sign BY HAND: Bukkit's colour translation skips `&i`, which
+  broke the code) and in the server-list MOTD (`motd-codes`, PaperServerListPingEvent). Any other map mod the client
+  announces (a plugin channel via PlayerRegisterChannelEvent + `getListeningPluginChannels` 2 s / 10 s after join, or
+  `getClientBrandName`) matching `map-patterns` (world/journey/voxel/mini map, ftbchunks, mapfrontiers, antique atlas, ANY
+  "...map" / "...atlas" name = homemade ones, radar) and not `map-allow` (Xaero's Minimap; keymap / bitmap / lightmap...)
+  = `map-action` kick (Xaero's World Map has no known off-code, so it's kicked). PIE CHART MODS: `pie-patterns`
+  (pie chart / pie ray / pie menu) = `pie-action` kick. A mod that registers no channel can't be seen. Bypass
+  `faultline.modguard.bypass` (false). The Xaero codes are from memory (the docs site was blocked here): edit `codes` if
+  wrong. PIE CHART LIMIT (`pie-limit:`): every chunk SENT to a Java player (Paper `PlayerChunkLoadEvent`, its block entities
+  via `getTileEntities(predicate, false)`) has its drawn block entities (`DEFAULT_HIDE`: chests, trapped chests, shulkers,
+  beds, banners, signs, heads, spawners, TRIAL SPAWNERS, VAULTS, enchanting tables, beacons, bells, conduits, campfires,
+  lecterns, pots, suspicious sand/gravel, copper golem statues, shelves; NEVER the ender chest) replaced client-side
+  (`sendMultiBlockChange`, the tick after) by the wall round it (all 6 sides occluding) else air / water; revealed
+  (`show`: real block + `sendBlockUpdate` for its data) within `touch-distance` 6, or within `reveal-distance` 24 when a
+  block walk from the eyes reaches it (`seesBlock`); faked again past `rehide-distance` 32. Ticked every 5 ticks, at most
+  `checks-per-player` 96 sight checks. New blocks placed are hidden from far players. Bedrock / creative / spectator /
+  `faultline.piechart.bypass` skip it (creative turns everything real again). Entities (item frames, chest minecarts) still
+  show in the pie chart. Tested (scratch `nt/VoidTest -Dmods=true`: codes intact, minimap allowed, JourneyMap / World Map /
+  pie / homemade map kicked, ordinary mods kept, buried chest + trial spawner hidden, ender chest + open chest not, reveal
+  on approach, rehide; `nt/NewTest` 4/4).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Skills → Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

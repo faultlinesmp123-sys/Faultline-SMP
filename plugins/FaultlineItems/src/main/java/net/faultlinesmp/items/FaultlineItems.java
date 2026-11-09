@@ -422,6 +422,8 @@ public final class FaultlineItems extends JavaPlugin {
         creatorMode = new CreatorMode(this);
         getServer().getPluginManager().registerEvents(creatorMode, this);
         if (getCommand("creator") != null) getCommand("creator").setExecutor(creatorMode);
+        modGuard = new ModGuard(this); // 1.3.0: map / pie chart mods + the pie chart limit
+        getServer().getPluginManager().registerEvents(modGuard, this);
         offlineTp = new OfflineTp(this); // 1.2.99: /offtp
         getServer().getPluginManager().registerEvents(offlineTp, this);
         if (getCommand("offtp") != null) { getCommand("offtp").setExecutor(offlineTp); getCommand("offtp").setTabCompleter(offlineTp); }
@@ -928,6 +930,7 @@ public final class FaultlineItems extends JavaPlugin {
     Backpack backpack;
     CreatorMode creatorMode;
     OfflineTp offlineTp;
+    ModGuard modGuard;
     MimicPlayer mimics;
     CombatTag combatTag;
     HauntedVillage haunted;

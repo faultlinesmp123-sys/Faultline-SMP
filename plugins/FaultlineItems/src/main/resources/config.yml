@@ -852,3 +852,30 @@ krampus:
     lash: 4
     coal: 5
     howl: 6
+
+# 1.3.0: client mods. Map mods: Xaero's Minimap is switched off by the codes it reads in chat on join (no minimap,
+# fair play); any other map mod the client announces (plugin channel / client brand matching map-patterns, e.g.
+# Xaero's World Map, JourneyMap, VoxelMap, FTB Chunks, a homemade "...map" mod) can't be switched off by a server, so
+# map-action kicks them (kick | warn | none). Pie chart mods (pie-patterns) likewise. A mod that announces nothing
+# can't be seen by any server. Bypass permission: faultline.modguard.bypass.
+mod-guard:
+  enabled: true
+  xaero-codes: true
+  motd-codes: true
+  codes: ["&n&o&m&i&n&i&m&a&p", "&f&a&i&r&x&a&e&r&o"]
+  map-action: kick
+  pie-action: kick
+  map-patterns: ["(?i)world_?map", "(?i)journey_?map", "(?i)voxel_?map", "(?i)ftb_?chunks", "(?i)map_?frontiers", "(?i)antique_?atlas", "(?i)mini_?map", "(?i)maps?(?=[:_./-]|$)", "(?i)atlas(?=[:_./-]|$)", "(?i)radar"]
+  map-allow: ["(?i)^xaerominimap", "(?i)^xaero_minimap", "(?i)(key|bit|tone|mip|cube|shadow|normal|light|height|texture|block|item|color|colour|font)_?maps?(?=[:_./-]|$)"]
+  pie-patterns: ["(?i)pie.?chart", "(?i)pie.?ray", "(?i)pie.?menu"]
+
+# 1.3.0: the F3 pie chart only shows ENDER CHESTS. Every other drawn block entity (chests, shulkers, beds, signs,
+# banners, heads, spawners, trial spawners, vaults, pots...) is shown to a player as the wall around it (or air) until
+# they're within touch-distance, or within reveal-distance AND can see it; past rehide-distance it's faked again.
+# Client-side only: the world never changes. Bypass permission: faultline.piechart.bypass.
+pie-limit:
+  enabled: true
+  touch-distance: 6
+  reveal-distance: 24
+  rehide-distance: 32
+  checks-per-player: 96

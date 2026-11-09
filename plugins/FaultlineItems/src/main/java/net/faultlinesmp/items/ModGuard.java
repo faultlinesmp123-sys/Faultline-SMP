@@ -50,7 +50,7 @@ import java.util.regex.Pattern;
  *
  * PIE CHART LIMIT (`pie-limit:`): F3's pie chart counts the block entities the client is drawing, so it shows chests behind
  * walls. Every chunk sent to a Java player has its rendered block entities (chests, shulkers, beds, signs, banners, heads,
- * spawners, TRIAL SPAWNERS, VAULTS, pots...; never ENDER CHESTS) swapped for a fake block (the wall around it, or air /
+ * spawners, pots...; never ENDER CHESTS, trial spawners or vaults) swapped for a fake block (the wall around it, or air /
  * water if it's open) until the player is within `reveal-distance` and can SEE it (a block walk from the eyes), or within
  * `touch-distance`. Revealed ones go back to fake past `rehide-distance`. Fake blocks are client-side only (the world never
  * changes). Bedrock players (no pie chart), `faultline.piechart.bypass`, creative/spectator skip it.
@@ -69,7 +69,7 @@ final class ModGuard implements Listener {
     /** Rendered block entities; the ender chest stays (the owner wants it to show). */
     static final String[] DEFAULT_HIDE = {
             "CHEST", "TRAPPED_CHEST", "*SHULKER_BOX", "*_BED", "*_BANNER", "*_SIGN", "*_HANGING_SIGN",
-            "*_HEAD", "*_SKULL", "SPAWNER", "TRIAL_SPAWNER", "VAULT", "ENCHANTING_TABLE", "BEACON", "BELL", "CONDUIT",
+            "*_HEAD", "*_SKULL", "SPAWNER", "ENCHANTING_TABLE", "BEACON", "BELL", "CONDUIT",
             "CAMPFIRE", "SOUL_CAMPFIRE", "LECTERN", "DECORATED_POT", "SUSPICIOUS_SAND", "SUSPICIOUS_GRAVEL", "END_GATEWAY",
             "COPPER_GOLEM_STATUE", "*_COPPER_GOLEM_STATUE", "SHELF", "*_SHELF"};
 
@@ -98,6 +98,7 @@ final class ModGuard implements Listener {
             }
         }
         h.remove(Material.ENDER_CHEST);
+        h.remove(Material.TRIAL_SPAWNER); h.remove(Material.VAULT); // 1.3.1: players need to find trial chambers
         hide = h;
         mapPatterns = patterns("mod-guard.map-patterns", DEFAULT_MAPS);
         mapAllow = patterns("mod-guard.map-allow", DEFAULT_ALLOW);

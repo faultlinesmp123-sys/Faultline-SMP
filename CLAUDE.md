@@ -2255,8 +2255,9 @@ Notes:
   `faultline.modguard.bypass` (false). The Xaero codes are from memory (the docs site was blocked here): edit `codes` if
   wrong. PIE CHART LIMIT (`pie-limit:`): every chunk SENT to a Java player (Paper `PlayerChunkLoadEvent`, its block entities
   via `getTileEntities(predicate, false)`) has its drawn block entities (`DEFAULT_HIDE`: chests, trapped chests, shulkers,
-  beds, banners, signs, heads, spawners, TRIAL SPAWNERS, VAULTS, enchanting tables, beacons, bells, conduits, campfires,
-  lecterns, pots, suspicious sand/gravel, copper golem statues, shelves; NEVER the ender chest) replaced client-side
+  beds, banners, signs, heads, spawners, enchanting tables, beacons, bells, conduits, campfires,
+  lecterns, pots, suspicious sand/gravel, copper golem statues, shelves; NEVER the ender chest, and since 1.3.1 never TRIAL
+  SPAWNERS / VAULTS: players need to find trial chambers; removed even from a server config's own `hide` list) replaced client-side
   (`sendMultiBlockChange`, the tick after) by the wall round it (all 6 sides occluding) else air / water; revealed
   (`show`: real block + `sendBlockUpdate` for its data) within `touch-distance` 6, or within `reveal-distance` 24 when a
   block walk from the eyes reaches it (`seesBlock`); faked again past `rehide-distance` 32. Ticked every 5 ticks, at most

@@ -66,7 +66,8 @@
     },
     "components": {
      "minecraft:max_stack_size": 64
-    }
+    },
+    "display_name": "Unholy Arrow"
    }
   ],
   "minecraft:blaze_powder": [
@@ -97,18 +98,6 @@
      "minecraft:max_stack_size": 1
     },
     "display_name": "Necromancer Staff"
-   },
-   {
-    "type": "definition",
-    "model": "faultline:twin_eye_staff",
-    "bedrock_identifier": "faultline:twin_eye_staff",
-    "bedrock_options": {
-     "icon": "faultline.twin_eye_staff",
-     "allow_offhand": true
-    },
-    "components": {
-     "minecraft:max_stack_size": 64
-    }
    }
   ],
   "minecraft:book": [
@@ -253,6 +242,21 @@
     "display_name": "Treasure Sense"
    }
   ],
+  "minecraft:crying_obsidian": [
+   {
+    "type": "definition",
+    "model": "faultline:blue_obsidian",
+    "bedrock_identifier": "faultline:blue_obsidian",
+    "bedrock_options": {
+     "icon": "faultline.blue_obsidian",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    },
+    "display_name": "Blue Obsidian"
+   }
+  ],
   "minecraft:diamond": [
    {
     "type": "definition",
@@ -365,18 +369,6 @@
      "minecraft:max_stack_size": 16
     },
     "display_name": "Ender Anchor"
-   },
-   {
-    "type": "definition",
-    "model": "faultline:suspicious_eye",
-    "bedrock_identifier": "faultline:suspicious_eye",
-    "bedrock_options": {
-     "icon": "faultline.suspicious_eye",
-     "allow_offhand": true
-    },
-    "components": {
-     "minecraft:max_stack_size": 64
-    }
    }
   ],
   "minecraft:feather": [
@@ -433,20 +425,6 @@
     "display_name": "Ranger Emblem"
    }
   ],
-  "minecraft:firework_star": [
-   {
-    "type": "definition",
-    "model": "faultline:lorenzos_ball",
-    "bedrock_identifier": "faultline:lorenzos_ball",
-    "bedrock_options": {
-     "icon": "faultline.lorenzos_ball",
-     "allow_offhand": true
-    },
-    "components": {
-     "minecraft:max_stack_size": 64
-    }
-   }
-  ],
   "minecraft:fishing_rod": [
    {
     "type": "definition",
@@ -488,18 +466,6 @@
      "minecraft:max_stack_size": 16
     },
     "display_name": "Cleft Horn"
-   },
-   {
-    "type": "definition",
-    "model": "faultline:talon",
-    "bedrock_identifier": "faultline:talon",
-    "bedrock_options": {
-     "icon": "faultline.talon",
-     "allow_offhand": true
-    },
-    "components": {
-     "minecraft:max_stack_size": 64
-    }
    },
    {
     "type": "definition",
@@ -627,6 +593,21 @@
     "display_name": "Harpy Ring"
    }
   ],
+  "minecraft:grindstone": [
+   {
+    "type": "definition",
+    "model": "faultline:upgraded_grindstone",
+    "bedrock_identifier": "faultline:upgraded_grindstone",
+    "bedrock_options": {
+     "icon": "faultline.upgraded_grindstone",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    },
+    "display_name": "Upgraded Grindstone"
+   }
+  ],
   "minecraft:heart_of_the_sea": [
    {
     "type": "definition",
@@ -640,18 +621,6 @@
      "minecraft:max_stack_size": 16
     },
     "display_name": "Abyssal Diving Gear"
-   },
-   {
-    "type": "definition",
-    "model": "faultline:dune_idol",
-    "bedrock_identifier": "faultline:dune_idol",
-    "bedrock_options": {
-     "icon": "faultline.dune_idol",
-     "allow_offhand": true
-    },
-    "components": {
-     "minecraft:max_stack_size": 64
-    }
    },
    {
     "type": "definition",
@@ -884,18 +853,6 @@
     "components": {
      "minecraft:max_stack_size": 1
     }
-   },
-   {
-    "type": "definition",
-    "model": "faultline:warlord_cleaver",
-    "bedrock_identifier": "faultline:warlord_cleaver",
-    "bedrock_options": {
-     "icon": "faultline.warlord_cleaver",
-     "allow_offhand": true
-    },
-    "components": {
-     "minecraft:max_stack_size": 1
-    }
    }
   ],
   "minecraft:netherite_scrap": [
@@ -958,18 +915,6 @@
   "minecraft:nether_star": [
    {
     "type": "definition",
-    "model": "faultline:boss_rush_sigil",
-    "bedrock_identifier": "faultline:boss_rush_sigil",
-    "bedrock_options": {
-     "icon": "faultline.boss_rush_sigil",
-     "allow_offhand": true
-    },
-    "components": {
-     "minecraft:max_stack_size": 64
-    }
-   },
-   {
-    "type": "definition",
     "model": "faultline:nightwatch_charm",
     "bedrock_identifier": "faultline:nightwatch_charm",
     "bedrock_options": {
@@ -998,6 +943,18 @@
    },
    {
     "type": "definition",
+    "model": "faultline:air_coral_fragment",
+    "bedrock_identifier": "faultline:air_coral_fragment",
+    "bedrock_options": {
+     "icon": "faultline.air_coral_fragment",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   },
+   {
+    "type": "definition",
     "model": "faultline:ancient_core",
     "bedrock_identifier": "faultline:ancient_core",
     "bedrock_options": {
@@ -1008,18 +965,6 @@
      "minecraft:max_stack_size": 1
     },
     "display_name": "Ancient Core"
-   },
-   {
-    "type": "definition",
-    "model": "faultline:ancient_gear_part",
-    "bedrock_identifier": "faultline:ancient_gear_part",
-    "bedrock_options": {
-     "icon": "faultline.ancient_gear_part",
-     "allow_offhand": true
-    },
-    "components": {
-     "minecraft:max_stack_size": 64
-    }
    },
    {
     "type": "definition",
@@ -1049,6 +994,18 @@
    },
    {
     "type": "definition",
+    "model": "faultline:blood_moon",
+    "bedrock_identifier": "faultline:blood_moon",
+    "bedrock_options": {
+     "icon": "faultline.blood_moon",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   },
+   {
+    "type": "definition",
     "model": "faultline:brine_bait",
     "bedrock_identifier": "faultline:brine_bait",
     "bedrock_options": {
@@ -1059,18 +1016,6 @@
      "minecraft:max_stack_size": 16
     },
     "display_name": "Brine Bait"
-   },
-   {
-    "type": "definition",
-    "model": "faultline:captains_armband",
-    "bedrock_identifier": "faultline:captains_armband",
-    "bedrock_options": {
-     "icon": "faultline.captains_armband",
-     "allow_offhand": true
-    },
-    "components": {
-     "minecraft:max_stack_size": 64
-    }
    },
    {
     "type": "definition",
@@ -1164,6 +1109,18 @@
    },
    {
     "type": "definition",
+    "model": "faultline:lighthouse_lamp",
+    "bedrock_identifier": "faultline:lighthouse_lamp",
+    "bedrock_options": {
+     "icon": "faultline.lighthouse_lamp",
+     "allow_offhand": true
+    },
+    "components": {
+     "minecraft:max_stack_size": 64
+    }
+   },
+   {
+    "type": "definition",
     "model": "faultline:mournful_shell",
     "bedrock_identifier": "faultline:mournful_shell",
     "bedrock_options": {
@@ -1239,42 +1196,6 @@
      "minecraft:max_stack_size": 16
     },
     "display_name": "Umbral Sonar"
-   },
-   {
-    "type": "definition",
-    "model": "faultline:vendetta_contract",
-    "bedrock_identifier": "faultline:vendetta_contract",
-    "bedrock_options": {
-     "icon": "faultline.vendetta_contract",
-     "allow_offhand": true
-    },
-    "components": {
-     "minecraft:max_stack_size": 64
-    }
-   },
-   {
-    "type": "definition",
-    "model": "faultline:vendetta_fist",
-    "bedrock_identifier": "faultline:vendetta_fist",
-    "bedrock_options": {
-     "icon": "faultline.vendetta_fist",
-     "allow_offhand": true
-    },
-    "components": {
-     "minecraft:max_stack_size": 64
-    }
-   },
-   {
-    "type": "definition",
-    "model": "faultline:warlord_challenge",
-    "bedrock_identifier": "faultline:warlord_challenge",
-    "bedrock_options": {
-     "icon": "faultline.warlord_challenge",
-     "allow_offhand": true
-    },
-    "components": {
-     "minecraft:max_stack_size": 64
-    }
    }
   ],
   "minecraft:phantom_membrane": [

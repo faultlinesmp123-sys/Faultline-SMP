@@ -16,15 +16,15 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * 1.3.4: carrying a DRAGON HEAD (anywhere in your inventory, hotbar, off hand or worn) gives Strength II and Speed II
- * (`dragon-head.effects`, "TYPE:level"). Topped up every second (2 s long, ambient, icon only), so it runs out within 2 s
- * of the head leaving you. Never cuts a stronger effect; a weaker longer potion comes back after (the game keeps it hidden).
+ * 1.3.4: carrying the DRAGON EGG (anywhere in your inventory, hotbar or off hand) gives Strength II and Speed II
+ * (`dragon-egg.effects`, "TYPE:level"). Topped up every second (2 s long, ambient, icon only), so it runs out within 2 s
+ * of the egg leaving you. Never cuts a stronger effect; a weaker longer potion comes back after (the game keeps it hidden).
  */
-final class DragonHeadBuff {
+final class DragonEggBuff {
     static final List<String> DEFAULT = List.of("STRENGTH:2", "SPEED:2");
     private final FaultlineItems plugin;
 
-    DragonHeadBuff(FaultlineItems plugin) {
+    DragonEggBuff(FaultlineItems plugin) {
         this.plugin = plugin;
         Bukkit.getScheduler().runTaskTimer(plugin, this::tick, 40L, 20L);
     }
@@ -32,7 +32,7 @@ final class DragonHeadBuff {
     record Eff(PotionEffectType type, int amp) { }
 
     List<Eff> effects() {
-        List<String> raw = plugin.getConfig().isList("dragon-head.effects") ? plugin.getConfig().getStringList("dragon-head.effects") : DEFAULT;
+        List<String> raw = plugin.getConfig().isList("dragon-egg.effects") ? plugin.getConfig().getStringList("dragon-egg.effects") : DEFAULT;
         List<Eff> out = new ArrayList<>();
         for (String s : raw) {
             String[] p = s.split(":");
@@ -49,9 +49,9 @@ final class DragonHeadBuff {
 
     static boolean carrying(Player p) {
         PlayerInventory inv = p.getInventory();
-        for (ItemStack it : inv.getContents()) if (it != null && it.getType() == Material.DRAGON_HEAD) return true; // (storage, armour, off hand)
+        for (ItemStack it : inv.getContents()) if (it != null && it.getType() == Material.DRAGON_EGG) return true; // (storage, armour, off hand)
         ItemStack off = inv.getItemInOffHand(), head = inv.getHelmet();
-        return off.getType() == Material.DRAGON_HEAD || head != null && head.getType() == Material.DRAGON_HEAD;
+        return off.getType() == Material.DRAGON_EGG || head != null && head.getType() == Material.DRAGON_EGG;
     }
 
     /** One of ours: the level we give, ambient, no longer than we give it for. */
@@ -60,7 +60,7 @@ final class DragonHeadBuff {
     }
 
     void tick() {
-        boolean on = plugin.getConfig().getBoolean("dragon-head.enabled", true);
+        boolean on = plugin.getConfig().getBoolean("dragon-egg.enabled", true);
         List<Eff> effs = effects();
         for (Player p : Bukkit.getOnlinePlayers()) {
             boolean has = on && p.getGameMode() != GameMode.SPECTATOR && carrying(p);

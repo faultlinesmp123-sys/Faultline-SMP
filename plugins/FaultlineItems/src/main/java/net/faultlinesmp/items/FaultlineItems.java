@@ -425,7 +425,8 @@ public final class FaultlineItems extends JavaPlugin {
         modGuard = new ModGuard(this); // 1.3.0: map / pie chart mods + the pie chart limit
         getServer().getPluginManager().registerEvents(modGuard, this);
         if (getCommand("pielimit") != null && modGuard != null) getCommand("pielimit").setExecutor((snd, cmd, lbl, args) -> modGuard.command(snd, args));
-        new DragonHeadBuff(this); // 1.3.4: a dragon head on you = Strength II + Speed II
+        new DragonEggBuff(this); // 1.3.4: the dragon egg on you = Strength II + Speed II
+        getServer().getPluginManager().registerEvents(new RecipeUnlock(this), this); // 1.3.5: Bedrock only sees unlocked recipes
         offlineTp = new OfflineTp(this); // 1.2.99: /offtp
         getServer().getPluginManager().registerEvents(offlineTp, this);
         if (getCommand("offtp") != null) { getCommand("offtp").setExecutor(offlineTp); getCommand("offtp").setTabCompleter(offlineTp); }

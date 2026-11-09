@@ -2309,11 +2309,19 @@ Notes:
   its surface status, stop + cleanup, the timed one near a player + next in an hour, `/kraken summon` in the Overworld = the
   normal Kraken, `kraken.overworld: false` refuses). The fake beacon beam and the normal Kraken's full fight can't be checked
   in MockBukkit (no client; the mock can't draw his rig).
-- **Dragon head buff (Items 1.3.4)**: `Items/DragonHeadBuff.java` (`dragon-head:`): a DRAGON_HEAD anywhere on a player
-  (inventory, hotbar, off hand, worn; `carrying`) = `dragon-head.effects` ["STRENGTH:2", "SPEED:2"] ("EFFECT:level",
-  `swiftness` = speed), topped up every 20 ticks for 40 ticks (ambient, icon only), so it runs out within 2 s of losing the
-  head (never removed by hand: a weaker longer potion the game kept hidden comes back). Never replaces a stronger effect.
-  Spectators skipped. Tested (scratch `dh/DhTest`: none without, inventory / off hand / worn, gone after, stronger kept).
+- **Dragon egg buff (Items 1.3.4)**: `Items/DragonEggBuff.java` (`dragon-egg:`): the DRAGON_EGG anywhere on a player
+  (inventory, hotbar, off hand; `carrying`) = `dragon-egg.effects` ["STRENGTH:2", "SPEED:2"] ("EFFECT:level", `swiftness` =
+  speed), topped up every 20 ticks for 40 ticks (ambient, icon only), so it runs out within 2 s of losing the egg (never
+  removed by hand: a weaker longer potion the game kept hidden comes back). Never replaces a stronger effect. Spectators
+  skipped. (1.3.4 first shipped it on the dragon HEAD by mistake; 1.3.5 = the egg, config key `dragon-egg`.)
+- **Bedrock couldn't craft our items (Items 1.3.5)**: since 1.21.2 the server only sends a client the recipes in its recipe
+  book, and Geyser's Bedrock crafting grid only shows a result for a recipe it was told about; plugin recipes are never
+  unlocked on their own (only the Mirror / Golden Ring / Iron Stick / Necro Staff / Harpy Ring / combos / ships / Index book /
+  Quest Book were, by hand). `Items/RecipeUnlock.java`: every recipe whose namespace starts with `faultline` or `limbo` (all
+  our plugins) is discovered for every player 2 s and 10 s after join and for everyone online 5 s after enable
+  (`recipes.unlock-all`, true). RULE: any new recipe is covered automatically; no per-recipe `discoverRecipe` needed.
+  Tested (scratch `dh/DhTest`: egg in inventory / off hand, a head does nothing, gone after, stronger kept, all 31 recipes
+  unlocked on join).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Skills → Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

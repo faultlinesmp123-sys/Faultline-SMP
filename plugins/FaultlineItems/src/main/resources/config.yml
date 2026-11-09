@@ -873,8 +873,13 @@ mod-guard:
 # banners, heads, spawners, trial spawners, vaults, pots...) is shown to a player as the wall around it (or air) until
 # they're within touch-distance, or within reveal-distance AND can see it; past rehide-distance it's faked again.
 # Client-side only: the world never changes. Bypass permission: faultline.piechart.bypass.
-# 1.3.4: carrying a Dragon Head (inventory, hotbar, off hand or worn) gives these ("EFFECT:level"; strength, speed, ...)
-dragon-head:
+# 1.3.5: every Faultline recipe is unlocked in everyone's recipe book on join. Bedrock (Geyser) only knows recipes that are
+# unlocked, so without this Bedrock players saw no crafting result for accessories, the backpack, diving gear...
+recipes:
+  unlock-all: true
+
+# 1.3.4: carrying the Dragon Egg (inventory, hotbar or off hand) gives these ("EFFECT:level"; strength, speed, ...)
+dragon-egg:
   enabled: true
   effects: ["STRENGTH:2", "SPEED:2"]
 

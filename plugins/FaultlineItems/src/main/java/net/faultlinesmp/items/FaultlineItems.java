@@ -422,6 +422,9 @@ public final class FaultlineItems extends JavaPlugin {
         creatorMode = new CreatorMode(this);
         getServer().getPluginManager().registerEvents(creatorMode, this);
         if (getCommand("creator") != null) getCommand("creator").setExecutor(creatorMode);
+        offlineTp = new OfflineTp(this); // 1.2.99: /offtp
+        getServer().getPluginManager().registerEvents(offlineTp, this);
+        if (getCommand("offtp") != null) { getCommand("offtp").setExecutor(offlineTp); getCommand("offtp").setTabCompleter(offlineTp); }
         mimics = new MimicPlayer(this);
         getServer().getPluginManager().registerEvents(mimics, this);
         if (getCommand("mimicplayer") != null) { getCommand("mimicplayer").setExecutor(mimics); getCommand("mimicplayer").setTabCompleter(mimics); }
@@ -924,6 +927,7 @@ public final class FaultlineItems extends JavaPlugin {
     BlueObsidian blueObsidian;
     Backpack backpack;
     CreatorMode creatorMode;
+    OfflineTp offlineTp;
     MimicPlayer mimics;
     CombatTag combatTag;
     HauntedVillage haunted;

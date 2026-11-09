@@ -1,5 +1,5 @@
 name: FaultlineItems
-version: 1.2.98
+version: 1.2.99
 main: net.faultlinesmp.items.FaultlineItems
 api-version: '1.21'
 softdepend: [floodgate, Geyser-Spigot, DonutCombat]
@@ -153,6 +153,11 @@ commands:
     description: "Creator mode: hides your coordinates and IP addresses on screen while you record"
     usage: /creator [on|off]
     aliases: [creatormode, streamermode]
+  offtp:
+    description: "Teleport to an offline player's logout spot, bed / respawn point or last death"
+    usage: /offtp <player> [last|bed|death]
+    aliases: [otp, tpoffline]
+    permission: items.offlinetp
   mimicplayer:
     description: "Admin: spawn an NPC that looks and fights like a player"
     usage: /mimicplayer [random|<player>|clear|list|debug|body|hunt <target> [mimic] [skill]|hunt stop|spectate [name|next|stop]|duel <player> <player> [skill]|fight <a> <b>|fight <a,b> vs <c,d>|ffa|fight stop] [count] [skill]
@@ -227,6 +232,9 @@ permissions:
     default: true
   items.mimicplayer:
     description: /mimicplayer
+    default: op
+  items.offlinetp:
+    description: /offtp (teleport to offline players)
     default: op
   items.holiday:
     description: /holiday, and ringing Krampus' Bell / the Cursed Jack o'Lantern out of season

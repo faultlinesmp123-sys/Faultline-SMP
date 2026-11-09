@@ -3265,6 +3265,30 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     }
 
     /** Goes and gets them along a planned path (replans as they move, when it's stuck, every 2 s). */
+    /** The top of what the step's floor block really is (a bottom slab = +0.5, a stair's low side = +0.5, a block = +1). */
+    static double stepTop(World w, MimicNav.Step s) {
+        Block f = w.getBlockAt(s.x, s.y - 1, s.z);
+        try {
+            BoundingBox bb = f.getBoundingBox();
+            if (bb.getHeight() > 0) return bb.getMaxY();
+        } catch (RuntimeException ignored) { }
+        return f.getY() + 1;
+    }
+
+    /** The next few plain steps of its path aren't walkable any more. Steps it digs / bridges / pillars / climbs are left out. */
+    boolean pathBlocked(Mimic m) {
+        if (m.path == null) return false;
+        MimicNav nav = null;
+        for (int i = m.pathIdx; i < Math.min(m.path.size(), m.pathIdx + 5); i++) {
+            MimicNav.Step s = m.path.get(i);
+            if (!s.dig.isEmpty() || s.door != null) continue;
+            if (s.type != MimicNav.Type.WALK && s.type != MimicNav.Type.STEP && s.type != MimicNav.Type.DROP && s.type != MimicNav.Type.GAP) continue;
+            if (nav == null) nav = new MimicNav(m.brain.getWorld(), navRules(m));
+            if (!nav.standable(s.x, s.y, s.z)) return true;
+        }
+        return false;
+    }
+
     private void navChase(Mimic m, LivingEntity tg) {
         Vindicator v = m.brain;
         if (m.navVanillaUntil > m.t) { Emotes.q(() -> v.getPathfinder().moveTo(tg, 1.4)); return; }
@@ -3273,6 +3297,8 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         boolean near = m.path != null && m.path.size() - m.pathIdx < 6;
         boolean repath = m.path == null || m.pathIdx >= m.path.size() || m.pathGoal == null || m.pathGoal.getWorld() != goal.getWorld()
                 || m.pathGoal.getLocation().distanceSquared(goal.getLocation()) > (near ? 2.5 : 9) || m.t - m.pathAt > 40;
+        // 1.2.99: the way ahead got blocked (a block placed in it, a door shut, lava poured): replan now, not once it's stuck
+        if (!repath && m.path != null && m.t % 5 == 0 && pathBlocked(m)) { repath = true; m.pathAt = -100; }
         if (repath && m.t - m.pathAt >= 6) {
             plan(m, goal);
             // the way round is far longer than the straight line (a long detour round a wall / river): a pearl over it
@@ -3620,8 +3646,13 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         if (!v.isOnGround()) { airStrafe(m, cur, dir, sp); return; } // in the air: a player's air strafe (lands safe)
         // a step up: jump onto it once it's close, keeping its speed (stairs / slabs under a low ceiling: walks up them)
         if (s.type == MimicNav.Type.STEP && flat < 1.35) {
-            Block over = at.getBlock().getRelative(0, 2, 0);
-            if (!blocks(over)) { Safe.vel(v, jumpVel(m, stride(m, cur, dir, sp, sp), dir, false)); return; }
+            // 1.2.99: a rise of 0.6 or less (a slab, a stair, a slab onto a block) is WALKED up like a player (vanilla step height):
+            // no jump, no lost speed
+            double rise = stepTop(v.getWorld(), s) - at.getY();
+            if (rise > 0.6) {
+                Block over = at.getBlock().getRelative(0, 2, 0);
+                if (!blocks(over)) { Safe.vel(v, jumpVel(m, stride(m, cur, dir, sp, sp), dir, false)); return; }
+            }
         }
         double hs = Math.hypot(cur.getX(), cur.getZ());
         // the corner after the aim point: how hard it turns there, so it eases off before a sharp one instead of overshooting

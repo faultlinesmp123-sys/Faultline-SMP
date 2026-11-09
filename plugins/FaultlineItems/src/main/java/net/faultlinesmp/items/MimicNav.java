@@ -222,6 +222,8 @@ final class MimicNav {
         Material t = w.getBlockAt(x, y - 1, z).getType();
         if (t == Material.SOUL_SAND || t == Material.HONEY_BLOCK) return 1.5;
         if (t == Material.SLIME_BLOCK) return 0.8;
+        if (t == Material.ICE || t == Material.PACKED_ICE || t == Material.BLUE_ICE || t == Material.FROSTED_ICE) return -0.3; // 1.2.99: a player sprints faster on ice
+        if (water(x, y, z) && !water(x, y + 1, z)) return 0.7; // wading (feet in water, head out): slow
         return 0;
     }
 
@@ -294,9 +296,13 @@ final class MimicNav {
             int nx = x + dx, nz = z + dz;
             boolean diag = dx != 0 && dz != 0;
             double base = diag ? 1.414 : 1;
-            if (diag) { // no corner cutting: both sides open at feet and head
-                if (!pass(x + dx, y, z) || !pass(x + dx, y + 1, z) || !pass(x, y, z + dz) || !pass(x, y + 1, z + dz)) continue;
-                if (standable(nx, y, nz) && !door(nx, y, nz)) out.add(node(c, nx, y, nz, base + (web(nx, y, nz) ? 8 : 0), Type.WALK, List.of(), null, gx, gy, gz));
+            if (diag) { // corner cutting like a player: both sides open, or ONE (a 0.6 body slides round a single corner, a bit slower)
+                boolean sideA = pass(x + dx, y, z) && pass(x + dx, y + 1, z), sideB = pass(x, y, z + dz) && pass(x, y + 1, z + dz);
+                if (!sideA && !sideB) continue;
+                boolean hurtA = hazard(x + dx, y, z) || hazard(x + dx, y + 1, z) || hazard(x + dx, y - 1, z);
+                boolean hurtB = hazard(x, y, z + dz) || hazard(x, y + 1, z + dz) || hazard(x, y - 1, z + dz);
+                if (hurtA || hurtB) continue; // never brushes lava / cactus / fire on the corner
+                if (standable(nx, y, nz) && !door(nx, y, nz)) out.add(node(c, nx, y, nz, base + (sideA && sideB ? 0 : 0.25) + (web(nx, y, nz) ? 8 : 0), Type.WALK, List.of(), null, gx, gy, gz));
                 continue;
             }
             // WALK / DOOR on the level
@@ -307,7 +313,7 @@ final class MimicNav {
             }
             // STEP up one (stairs, slabs, a block, a ledge): its own head room to jump, room up there
             if (floor(nx, y, nz) && pass(nx, y + 1, nz) && pass(nx, y + 2, nz) && (pass(x, y + 2, z) || halfStep(nx, y, nz))) {
-                out.add(node(c, nx, y + 1, nz, base + 0.6, Type.STEP, List.of(), null, gx, gy, gz));
+                out.add(node(c, nx, y + 1, nz, base + (halfStep(nx, y, nz) ? 0.15 : 0.6), Type.STEP, List.of(), null, gx, gy, gz));
                 continue;
             }
             // DROP off a ledge: the way out is open, falls to the first floor below

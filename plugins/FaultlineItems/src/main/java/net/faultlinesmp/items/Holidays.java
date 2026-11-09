@@ -57,7 +57,7 @@ final class Holidays implements Listener, CommandExecutor, TabCompleter {
         return it;
     }
 
-    boolean isLantern(ItemStack it) { return it != null && it.hasItemMeta() && it.getItemMeta().getPersistentDataContainer().has(lanternKey, PersistentDataType.BYTE); }
+    boolean isLantern(ItemStack it) { return it != null && it.hasItemMeta() && it.getPersistentDataContainer().has(lanternKey, PersistentDataType.BYTE); }
 
     @EventHandler(ignoreCancelled = true)
     public void onPlace(BlockPlaceEvent e) { if (isLantern(e.getItemInHand())) e.setCancelled(true); }

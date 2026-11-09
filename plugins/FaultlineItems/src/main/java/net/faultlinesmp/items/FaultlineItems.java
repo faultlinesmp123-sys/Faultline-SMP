@@ -1045,7 +1045,7 @@ public final class FaultlineItems extends JavaPlugin {
             }
             for (ItemStack item : items) {
                 if (item == null || !item.hasItemMeta()) continue;
-                Byte tag = item.getItemMeta().getPersistentDataContainer().get(itemKey, PersistentDataType.BYTE);
+                Byte tag = item.getPersistentDataContainer().get(itemKey, PersistentDataType.BYTE);
                 if (tag != null && tag == (byte) 1) return true;
             }
             return false;
@@ -1054,15 +1054,15 @@ public final class FaultlineItems extends JavaPlugin {
         /** The same accessory: the two share one of their own tags (other than the generic "accessory" one). */
         static boolean same(FaultlineItems plugin, ItemStack a, ItemStack b) {
             if (a == null || b == null || !a.hasItemMeta() || !b.hasItemMeta()) return false;
-            Set<org.bukkit.NamespacedKey> ka = new HashSet<>(a.getItemMeta().getPersistentDataContainer().getKeys());
+            Set<org.bukkit.NamespacedKey> ka = new HashSet<>(a.getPersistentDataContainer().getKeys());
             ka.removeIf(k -> k.equals(plugin.getAccessoryKey()) || !k.getNamespace().equals(plugin.getAccessoryKey().getNamespace()));
-            for (org.bukkit.NamespacedKey k : b.getItemMeta().getPersistentDataContainer().getKeys()) if (ka.contains(k)) return true;
+            for (org.bukkit.NamespacedKey k : b.getPersistentDataContainer().getKeys()) if (ka.contains(k)) return true;
             return false;
         }
 
         public static boolean isAccessory(FaultlineItems plugin, ItemStack item) {
             if (item == null || !item.hasItemMeta()) return false;
-            Byte tag = item.getItemMeta().getPersistentDataContainer()
+            Byte tag = item.getPersistentDataContainer()
                     .get(plugin.getAccessoryKey(), PersistentDataType.BYTE);
             return tag != null && tag == (byte) 1;
         }
@@ -1200,14 +1200,14 @@ public final class FaultlineItems extends JavaPlugin {
             if (item == null || item.getType() == Material.AIR || !item.hasItemMeta()) {
                 return false;
             }
-            Byte tag = item.getItemMeta().getPersistentDataContainer()
+            Byte tag = item.getPersistentDataContainer()
                     .get(plugin.getMagicMirrorKey(), PersistentDataType.BYTE);
             return tag != null && tag == (byte) 1;
         }
 
         public static int getUses(FaultlineItems plugin, ItemStack item) {
             if (!isMagicMirror(plugin, item)) return 0;
-            Integer uses = item.getItemMeta().getPersistentDataContainer()
+            Integer uses = item.getPersistentDataContainer()
                     .get(plugin.getUsesKey(), PersistentDataType.INTEGER);
             return uses != null ? uses : 0;
         }
@@ -1828,7 +1828,7 @@ public final class FaultlineItems extends JavaPlugin {
             if (item == null || item.getType() != Material.POTION || !item.hasItemMeta()) {
                 return false;
             }
-            Byte tag = item.getItemMeta().getPersistentDataContainer()
+            Byte tag = item.getPersistentDataContainer()
                     .get(plugin.getCloudPotionKey(), PersistentDataType.BYTE);
             return tag != null && tag == (byte) 1;
         }
@@ -2183,7 +2183,7 @@ public final class FaultlineItems extends JavaPlugin {
 
         public static boolean isGoodieBag(FaultlineItems plugin, ItemStack item) {
             if (item == null || item.getType() == Material.AIR || !item.hasItemMeta()) return false;
-            Byte tag = item.getItemMeta().getPersistentDataContainer()
+            Byte tag = item.getPersistentDataContainer()
                     .get(plugin.getGoodieBagKey(), PersistentDataType.BYTE);
             return tag != null && tag == (byte) 1;
         }
@@ -2335,7 +2335,7 @@ public final class FaultlineItems extends JavaPlugin {
 
         public static boolean isMythicBag(FaultlineItems plugin, ItemStack item) {
             if (item == null || item.getType() == Material.AIR || !item.hasItemMeta()) return false;
-            Byte tag = item.getItemMeta().getPersistentDataContainer()
+            Byte tag = item.getPersistentDataContainer()
                     .get(plugin.getMythicGoodieBagKey(), PersistentDataType.BYTE);
             return tag != null && tag == (byte) 1;
         }
@@ -2476,7 +2476,7 @@ public final class FaultlineItems extends JavaPlugin {
 
         public static boolean isGoldenRing(FaultlineItems plugin, ItemStack item) {
             if (item == null || item.getType() == Material.AIR || !item.hasItemMeta()) return false;
-            Byte tag = item.getItemMeta().getPersistentDataContainer()
+            Byte tag = item.getPersistentDataContainer()
                     .get(plugin.getGoldenRingKey(), PersistentDataType.BYTE);
             return tag != null && tag == (byte) 1;
         }
@@ -2582,7 +2582,7 @@ public final class FaultlineItems extends JavaPlugin {
 
         public static boolean isClimbingClaws(FaultlineItems plugin, ItemStack item) {
             if (item == null || !item.hasItemMeta()) return false;
-            Byte tag = item.getItemMeta().getPersistentDataContainer()
+            Byte tag = item.getPersistentDataContainer()
                     .get(plugin.getClimbingClawsKey(), PersistentDataType.BYTE);
             return tag != null && tag == (byte) 1;
         }
@@ -2789,7 +2789,7 @@ public final class FaultlineItems extends JavaPlugin {
 
         static boolean isPiece(ItemStack item) {
             if (item == null || !item.hasItemMeta() || ankhPieceKey == null) return false;
-            var pdc = item.getItemMeta().getPersistentDataContainer();
+            var pdc = item.getPersistentDataContainer();
             return pdc.has(ankhPieceKey, PersistentDataType.BYTE) || pdc.has(crossKey, PersistentDataType.BYTE);
         }
 
@@ -2926,7 +2926,7 @@ public final class FaultlineItems extends JavaPlugin {
 
         static boolean isImbued(ItemStack item) {
             return item != null && item.getType() == Material.SHIELD && item.hasItemMeta() && imbuedKey != null
-                    && item.getItemMeta().getPersistentDataContainer().has(imbuedKey, PersistentDataType.BYTE);
+                    && item.getPersistentDataContainer().has(imbuedKey, PersistentDataType.BYTE);
         }
 
         /** ankh-shield.old-effects: true brings back the old fire/freeze immunity, resistance, speed and damage. */
@@ -2963,7 +2963,7 @@ public final class FaultlineItems extends JavaPlugin {
 
         private boolean isAnkh(ItemStack item) {
             return item != null && item.hasItemMeta()
-                    && item.getItemMeta().getPersistentDataContainer().has(plugin.getAnkhShieldKey(), PersistentDataType.BYTE);
+                    && item.getPersistentDataContainer().has(plugin.getAnkhShieldKey(), PersistentDataType.BYTE);
         }
 
         @EventHandler(priority = EventPriority.HIGHEST)
@@ -3024,7 +3024,7 @@ public final class FaultlineItems extends JavaPlugin {
 
         public static boolean isBezoar(FaultlineItems plugin, ItemStack item) {
             if (item == null || !item.hasItemMeta()) return false;
-            Byte tag = item.getItemMeta().getPersistentDataContainer()
+            Byte tag = item.getPersistentDataContainer()
                     .get(plugin.getBezoarKey(), PersistentDataType.BYTE);
             return tag != null && tag == (byte) 1;
         }
@@ -3099,7 +3099,7 @@ public final class FaultlineItems extends JavaPlugin {
 
         public static boolean isDiscountCard(FaultlineItems plugin, ItemStack item) {
             if (item == null || !item.hasItemMeta()) return false;
-            Byte tag = item.getItemMeta().getPersistentDataContainer()
+            Byte tag = item.getPersistentDataContainer()
                     .get(plugin.getDiscountCardKey(), PersistentDataType.BYTE);
             return tag != null && tag == (byte) 1;
         }
@@ -3245,7 +3245,7 @@ public final class FaultlineItems extends JavaPlugin {
 
         public static boolean isLifeJelly(FaultlineItems plugin, ItemStack item) {
             if (item == null || !item.hasItemMeta()) return false;
-            Byte tag = item.getItemMeta().getPersistentDataContainer()
+            Byte tag = item.getPersistentDataContainer()
                     .get(plugin.getLifeJellyKey(), PersistentDataType.BYTE);
             return tag != null && tag == (byte) 1;
         }
@@ -3321,7 +3321,7 @@ public final class FaultlineItems extends JavaPlugin {
 
         public static boolean isShieldOfTheOcean(FaultlineItems plugin, ItemStack item) {
             if (item == null || !item.hasItemMeta()) return false;
-            Byte tag = item.getItemMeta().getPersistentDataContainer()
+            Byte tag = item.getPersistentDataContainer()
                     .get(plugin.getShieldOfTheOceanKey(), PersistentDataType.BYTE);
             return tag != null && tag == (byte) 1;
         }
@@ -4413,7 +4413,7 @@ public final class FaultlineItems extends JavaPlugin {
 
         static boolean isIronStick(FaultlineItems plugin, ItemStack item) {
             if (item == null || item.getType() != Material.STICK || !item.hasItemMeta()) return false;
-            Byte tag = item.getItemMeta().getPersistentDataContainer().get(plugin.getIronStickKey(), PersistentDataType.BYTE);
+            Byte tag = item.getPersistentDataContainer().get(plugin.getIronStickKey(), PersistentDataType.BYTE);
             return tag != null && tag == (byte) 1;
         }
 
@@ -4450,7 +4450,7 @@ public final class FaultlineItems extends JavaPlugin {
 
         static boolean isStaff(FaultlineItems plugin, ItemStack item) {
             if (item == null || item.getType() != Material.BLAZE_ROD || !item.hasItemMeta()) return false;
-            Byte tag = item.getItemMeta().getPersistentDataContainer().get(plugin.getNecroStaffKey(), PersistentDataType.BYTE);
+            Byte tag = item.getPersistentDataContainer().get(plugin.getNecroStaffKey(), PersistentDataType.BYTE);
             return tag != null && tag == (byte) 1;
         }
 
@@ -4847,7 +4847,7 @@ public final class FaultlineItems extends JavaPlugin {
 
         static boolean isVampireEgg(FaultlineItems plugin, ItemStack item) {
             if (item == null || item.getType() != Material.BAT_SPAWN_EGG || !item.hasItemMeta()) return false;
-            Byte tag = item.getItemMeta().getPersistentDataContainer().get(plugin.getVampireEggKey(), PersistentDataType.BYTE);
+            Byte tag = item.getPersistentDataContainer().get(plugin.getVampireEggKey(), PersistentDataType.BYTE);
             return tag != null && tag == (byte) 1;
         }
     }
@@ -5316,7 +5316,7 @@ public final class FaultlineItems extends JavaPlugin {
 
         static boolean isEgg(FaultlineItems plugin, ItemStack item) {
             if (item == null || item.getType() != Material.STRAY_SPAWN_EGG || !item.hasItemMeta()) return false;
-            Byte tag = item.getItemMeta().getPersistentDataContainer().get(plugin.getFrostWraithEggKey(), PersistentDataType.BYTE);
+            Byte tag = item.getPersistentDataContainer().get(plugin.getFrostWraithEggKey(), PersistentDataType.BYTE);
             return tag != null && tag == (byte) 1;
         }
     }
@@ -5584,7 +5584,7 @@ public final class FaultlineItems extends JavaPlugin {
 
         static boolean isStaff(FaultlineItems plugin, ItemStack item) {
             if (item == null || item.getType() != Material.BREEZE_ROD || !item.hasItemMeta()) return false;
-            Byte tag = item.getItemMeta().getPersistentDataContainer().get(plugin.getSpiderStaffKey(), PersistentDataType.BYTE);
+            Byte tag = item.getPersistentDataContainer().get(plugin.getSpiderStaffKey(), PersistentDataType.BYTE);
             return tag != null && tag == (byte) 1;
         }
     }
@@ -5603,7 +5603,7 @@ public final class FaultlineItems extends JavaPlugin {
 
         static boolean isEgg(FaultlineItems plugin, ItemStack item) {
             if (item == null || item.getType() != Material.SPIDER_SPAWN_EGG || !item.hasItemMeta()) return false;
-            Byte tag = item.getItemMeta().getPersistentDataContainer().get(plugin.getQueenEggKey(), PersistentDataType.BYTE);
+            Byte tag = item.getPersistentDataContainer().get(plugin.getQueenEggKey(), PersistentDataType.BYTE);
             return tag != null && tag == (byte) 1;
         }
     }
@@ -6456,7 +6456,7 @@ public final class FaultlineItems extends JavaPlugin {
 
         static boolean isHook(FaultlineItems plugin, ItemStack item) {
             if (item == null || item.getType() != Material.FISHING_ROD || !item.hasItemMeta()) return false;
-            Byte tag = item.getItemMeta().getPersistentDataContainer().get(plugin.getGrapplingHookKey(), PersistentDataType.BYTE);
+            Byte tag = item.getPersistentDataContainer().get(plugin.getGrapplingHookKey(), PersistentDataType.BYTE);
             return tag != null && tag == (byte) 1;
         }
     }
@@ -6482,7 +6482,7 @@ public final class FaultlineItems extends JavaPlugin {
 
         static boolean isSilk(FaultlineItems plugin, ItemStack item) {
             if (item == null || item.getType() != Material.STRING || !item.hasItemMeta()) return false;
-            Byte tag = item.getItemMeta().getPersistentDataContainer().get(plugin.getQueenSilkKey(), PersistentDataType.BYTE);
+            Byte tag = item.getPersistentDataContainer().get(plugin.getQueenSilkKey(), PersistentDataType.BYTE);
             return tag != null && tag == (byte) 1;
         }
     }
@@ -6695,7 +6695,7 @@ public final class FaultlineItems extends JavaPlugin {
 
         static boolean is(ItemStack item, NamespacedKey key) {
             if (item == null || item.getType() != Material.LEATHER_BOOTS || !item.hasItemMeta()) return false;
-            Byte tag = item.getItemMeta().getPersistentDataContainer().get(key, PersistentDataType.BYTE);
+            Byte tag = item.getPersistentDataContainer().get(key, PersistentDataType.BYTE);
             return tag != null && tag == (byte) 1;
         }
     }

@@ -78,6 +78,9 @@ final class MaceEnchants implements Listener {
             if (it.getEnchantments().isEmpty()) return false;
             Map<String, Integer> ok = allowed();
             boolean changed = false;
+            boolean any = false; // 1.2.97: read the enchants first (no meta copy) and only copy the meta when one is wrong
+            for (var e : it.getEnchantments().entrySet()) { int max = ok.getOrDefault(id(e.getKey()), 0); if (max <= 0 || e.getValue() > max) { any = true; break; } }
+            if (!any) return false;
             ItemMeta meta = it.getItemMeta();
             for (var e : new HashMap<>(meta.getEnchants()).entrySet()) {
                 int max = ok.getOrDefault(id(e.getKey()), 0);

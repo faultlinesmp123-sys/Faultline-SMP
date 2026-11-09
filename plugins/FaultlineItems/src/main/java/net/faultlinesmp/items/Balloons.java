@@ -142,7 +142,7 @@ final class Balloons implements Listener, org.bukkit.command.CommandExecutor {
     }
 
     boolean isItem(ItemStack it) {
-        return it != null && it.getType() == Material.PAPER && it.hasItemMeta() && it.getItemMeta().getPersistentDataContainer().has(itemKey, PersistentDataType.STRING);
+        return it != null && it.getType() == Material.PAPER && it.hasItemMeta() && it.getPersistentDataContainer().has(itemKey, PersistentDataType.STRING);
     }
 
     static String pretty(String c) { return c.replace('_', ' '); }
@@ -253,7 +253,7 @@ final class Balloons implements Listener, org.bukkit.command.CommandExecutor {
             Location at = on.getLocation().add(0.5, 0, 0.5);
             String why = room(at);
             if (why != null) { p.sendMessage(ChatColor.RED + why); return; }
-            String[] v = hand.getItemMeta().getPersistentDataContainer().get(itemKey, PersistentDataType.STRING).split(";");
+            String[] v = hand.getPersistentDataContainer().get(itemKey, PersistentDataType.STRING).split(";");
             double fuel = 0; try { fuel = Double.parseDouble(v.length > 1 ? v[1] : "0"); } catch (NumberFormatException ignored) { }
             Balloon b = new Balloon(UUID.randomUUID(), p.getUniqueId(), v[0], fuel, at);
             balloons.put(b.id, b);
@@ -435,7 +435,7 @@ final class Balloons implements Listener, org.bukkit.command.CommandExecutor {
             o.sendMessage(ChatColor.GOLD + "Your hot air balloon was taken down and put back in your inventory.");
             return;
         }
-        String[] v = it.getItemMeta().getPersistentDataContainer().getOrDefault(itemKey, PersistentDataType.STRING, "red;0").split(";");
+        String[] v = it.getPersistentDataContainer().getOrDefault(itemKey, PersistentDataType.STRING, "red;0").split(";");
         returns.computeIfAbsent(owner, k -> new ArrayList<>()).add(v[0] + ";" + (v.length > 1 ? v[1] : "0"));
     }
 

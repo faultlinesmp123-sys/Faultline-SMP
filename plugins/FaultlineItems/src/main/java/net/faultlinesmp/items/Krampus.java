@@ -114,7 +114,7 @@ final class Krampus implements Listener {
         return it;
     }
 
-    boolean isBell(ItemStack it) { return it != null && it.hasItemMeta() && it.getItemMeta().getPersistentDataContainer().has(bellKey, PersistentDataType.BYTE); }
+    boolean isBell(ItemStack it) { return it != null && it.hasItemMeta() && it.getPersistentDataContainer().has(bellKey, PersistentDataType.BYTE); }
 
     @EventHandler(priority = EventPriority.HIGH)
     public void onRing(PlayerInteractEvent e) {

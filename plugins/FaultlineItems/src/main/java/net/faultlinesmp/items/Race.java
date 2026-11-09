@@ -312,7 +312,7 @@ final class Race implements Listener, CommandExecutor, TabCompleter {
         return it;
     }
 
-    boolean lent(ItemStack it) { return it != null && it.hasItemMeta() && it.getItemMeta().getPersistentDataContainer().has(lentKey, PersistentDataType.BYTE); }
+    boolean lent(ItemStack it) { return it != null && it.hasItemMeta() && it.getPersistentDataContainer().has(lentKey, PersistentDataType.BYTE); }
 
     /** Takes back every lent item and gives back the chestplate. */
     void giveBack(Player p, Racer r) {

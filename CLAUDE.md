@@ -2192,6 +2192,26 @@ Notes:
   (threw = the mimic's tick died). Profiled: ~12% over 1.2.95 in the all-ledges test world. Tested (scratch `nt/NewTest`:
   accel / top speed / ice / jump numbers, head-hitter, air recovery off a lava ledge, bridge middle 17/17, avoid; scratch
   `nt/Focus` for the ladder / momentum break / void landing 10/10).
+- **Mimic: never vanishes, vanilla placing, mace dodge, teams (Items 1.2.97)**: VANISHING: an error in `think` no longer removes the
+  mimic (logged, its plan reset; only 100 errors in a row remove it); its chunks keep a 3x3 plugin ticket even when not hunting;
+  VOID SAVE (`voidSave`: falling with nothing under it to the bottom = elytra + rocket back to `lastGround`, else a pearl there);
+  viewers get the player body re-sent on respawn / world change / join (`resendBody`). M1: the jar's manifest says
+  `paperweight-mappings-namespace: mojang` (pom: maven-jar-plugin), so Paper doesn't remap the Mojang names `MimicBody` reflects on;
+  `/mimicplayer body` = is the player body running, and if not why (`MimicBody.why()`). PLACING (`supported`): every block it places
+  (`place`, `bridgeBlock`) must touch a non-fluid block on one of its 6 faces like a player's (no more floating trail / cover blocks);
+  buckets also go on top of their own water column (`pourOver`) and the climb's first pour may be a waterfall from a ledge in
+  reach; a cell it mined itself can be built back into (still restored later); at the wall's top it jumps out onto the ledge. POTS
+  only from the ground / water (a pot thrown mid-air on a slam fell far below it): buffs, heals, the pot run and the drink-splash
+  wait to land. REACH: `reachOf` also measures from the body's eye over the last 3 ticks (`seenEye`: what a viewer still saw).
+  ANTI-MACE (`antiMace`, normal+): someone holding / carrying a mace 2.2+ above it in the air = it works out where they'll land
+  (drift `tgVel` + fall time from `tgVy`) and sprints out sideways past 5.5; right before the slam: shield up, else a pearl away.
+  ESCAPE PEARLS ARE FLAT (`flatPearl`: `pearlOut`/`pearlAway` solve only pitches up to 20 degrees, fallback lift 0.3; a lob hung it
+  in the air for free hits). TEAMED (`outnumbered`, normal+, not in mimic fights; `hitBy` = who hit it in the last 5 s within 16):
+  focuses the weakest one in reach, webs the second one coming in, runs out sideways when sandwiched (they come from one side),
+  pearls out with 3 on it or 2 and under 40%. Staircases: `digTick` no longer digs the floor of a planned stair step. Lag: item PDC
+  reads use Paper's read-only view (46 places), MaceEnchants reads enchants before copying the meta, MimicNav caches edge costs.
+  Tested (scratch `nt/NewTest` 6/6; `nt/Focus` cliff staircase). Anti-mace and team tactics have no MockBukkit test (no projectile
+  flight / player physics there).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Skills → Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

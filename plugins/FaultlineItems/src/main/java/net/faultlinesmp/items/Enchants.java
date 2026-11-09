@@ -180,7 +180,7 @@ final class Enchants implements Listener, CommandExecutor, TabCompleter {
     Map<String, Integer> read(ItemStack it, boolean asBook) {
         Map<String, Integer> out = new LinkedHashMap<>();
         if (it == null || !it.hasItemMeta()) return out;
-        String s = it.getItemMeta().getPersistentDataContainer().get(asBook ? bookKey : itemKey, PersistentDataType.STRING);
+        String s = it.getPersistentDataContainer().get(asBook ? bookKey : itemKey, PersistentDataType.STRING);
         if (s == null || s.isEmpty()) return out;
         for (String part : s.split(";")) {
             String[] kv = part.split("=");

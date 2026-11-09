@@ -206,7 +206,7 @@ final class RangerGear implements Listener {
         }
         // boss enchant books on bows (Frostbite, Venom, Lifesteal, Thunderstrike): carried by the arrow
         if (isBow && plugin.enchants != null) {
-            String s = bow.hasItemMeta() ? bow.getItemMeta().getPersistentDataContainer().get(plugin.enchants.itemKey, PersistentDataType.STRING) : null;
+            String s = bow.hasItemMeta() ? bow.getPersistentDataContainer().get(plugin.enchants.itemKey, PersistentDataType.STRING) : null;
             if (s != null && !s.isEmpty()) {
                 arrow.getPersistentDataContainer().set(bowEnchKey, PersistentDataType.STRING, s);
                 if (force >= 0.9) arrow.getPersistentDataContainer().set(fullKey, PersistentDataType.BYTE, (byte) 1);

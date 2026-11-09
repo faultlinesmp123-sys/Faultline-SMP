@@ -358,7 +358,7 @@ final class TrinketGear implements Listener {
             NamespacedKey mapKey = new NamespacedKey("faultlineships", "treasure_map");
             for (ItemStack it : p.getInventory().getContents()) {
                 if (it == null || !it.hasItemMeta()) continue;
-                String s = it.getItemMeta().getPersistentDataContainer().get(mapKey, PersistentDataType.STRING);
+                String s = it.getPersistentDataContainer().get(mapKey, PersistentDataType.STRING);
                 if (s == null) continue;
                 String[] a = s.split(";");
                 try {

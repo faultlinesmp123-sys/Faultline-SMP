@@ -131,7 +131,7 @@ final class BlueObsidian implements Listener {
 
     boolean isItem(ItemStack it) {
         if (it == null || it.getType() != Material.CRYING_OBSIDIAN || !it.hasItemMeta()) return false;
-        return it.getItemMeta().getPersistentDataContainer().has(itemKey, PersistentDataType.BYTE);
+        return it.getPersistentDataContainer().has(itemKey, PersistentDataType.BYTE);
     }
 
     /** Blue Obsidian never goes into vanilla recipes (respawn anchors take crying obsidian). */

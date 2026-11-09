@@ -95,7 +95,7 @@ final class DarkLoot implements Listener, CommandExecutor {
         return it;
     }
 
-    boolean isBag(ItemStack it) { return it != null && it.hasItemMeta() && it.getItemMeta().getPersistentDataContainer().has(bagKey, PersistentDataType.BYTE); }
+    boolean isBag(ItemStack it) { return it != null && it.hasItemMeta() && it.getPersistentDataContainer().has(bagKey, PersistentDataType.BYTE); }
 
     @EventHandler(priority = EventPriority.HIGH)
     public void onBag(PlayerInteractEvent e) {

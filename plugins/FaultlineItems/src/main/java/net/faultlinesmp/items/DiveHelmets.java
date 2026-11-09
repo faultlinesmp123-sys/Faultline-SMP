@@ -90,7 +90,7 @@ final class DiveHelmets {
     int worn(Player p) {
         ItemStack h = p.getInventory().getHelmet();
         if (h == null || !h.hasItemMeta()) return 0;
-        Integer t = h.getItemMeta().getPersistentDataContainer().get(tierKey, PersistentDataType.INTEGER);
+        Integer t = h.getPersistentDataContainer().get(tierKey, PersistentDataType.INTEGER);
         return t == null ? 0 : t;
     }
 

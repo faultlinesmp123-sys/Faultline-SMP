@@ -190,7 +190,7 @@ final class Gear implements Listener, CommandExecutor {
 
     String id(ItemStack s) {
         if (s == null || !s.hasItemMeta()) return null;
-        PersistentDataContainer c = s.getItemMeta().getPersistentDataContainer();
+        io.papermc.paper.persistence.PersistentDataContainerView c = s.getPersistentDataContainer();
         if (c.has(coreKey, PersistentDataType.BYTE)) return "ancient_core";
         return c.get(gearKey, PersistentDataType.STRING);
     }
@@ -226,7 +226,7 @@ final class Gear implements Listener, CommandExecutor {
         if (e.getRecipe() instanceof org.bukkit.Keyed k && k.getKey().getNamespace().equals(plugin.getName().toLowerCase(Locale.ROOT))) return; // ours
         for (ItemStack it : e.getInventory().getMatrix()) {
             if (it == null || !it.hasItemMeta()) continue;
-            PersistentDataContainer c = it.getItemMeta().getPersistentDataContainer();
+            io.papermc.paper.persistence.PersistentDataContainerView c = it.getPersistentDataContainer();
             boolean bossItem = c.getKeys().stream().anyMatch(key -> key.getNamespace().equals("faultlinebosses") && key.getKey().equals("wild_item"));
             if (c.has(gearKey, PersistentDataType.STRING) || bossItem) { e.getInventory().setResult(null); return; }
         }

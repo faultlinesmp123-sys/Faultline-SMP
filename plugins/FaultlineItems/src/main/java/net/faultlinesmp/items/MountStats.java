@@ -87,7 +87,7 @@ final class MountStats implements Listener {
         Player p = e.getPlayer();
         var hand = p.getInventory().getItemInMainHand();
         if (hand.getType() != Material.STICK) return;
-        if (hand.hasItemMeta() && (hand.getItemMeta().hasDisplayName() || !hand.getItemMeta().getPersistentDataContainer().getKeys().isEmpty())) return; // the Shipwright's Hammer and other custom sticks
+        if (hand.hasItemMeta() && (hand.getItemMeta().hasDisplayName() || !hand.getPersistentDataContainer().getKeys().isEmpty())) return; // the Shipwright's Hammer and other custom sticks
         if (!(e.getRightClicked() instanceof AbstractHorse m)) return; // horses, donkeys, mules, skeleton/zombie horses, llamas, camels
         e.setCancelled(true);
         List<String> l = lines(m);

@@ -98,7 +98,7 @@ final class KrakenGear implements Listener {
     }
 
     boolean isWorm(ItemStack s) {
-        return s != null && s.hasItemMeta() && s.getItemMeta().getPersistentDataContainer().has(wormKey, PersistentDataType.BYTE);
+        return s != null && s.hasItemMeta() && s.getPersistentDataContainer().has(wormKey, PersistentDataType.BYTE);
     }
 
     Map<String, Function<FaultlineItems, ItemStack>> catalog() {

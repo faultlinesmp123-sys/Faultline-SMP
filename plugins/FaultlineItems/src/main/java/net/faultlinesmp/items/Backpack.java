@@ -69,7 +69,7 @@ final class Backpack implements Listener, CommandExecutor {
     }
 
     boolean isBackpack(ItemStack it) {
-        return it != null && it.hasItemMeta() && it.getItemMeta().getPersistentDataContainer().has(key, PersistentDataType.BYTE);
+        return it != null && it.hasItemMeta() && it.getPersistentDataContainer().has(key, PersistentDataType.BYTE);
     }
 
     boolean wearing(Player p) { return plugin.getAccessoryManager().hasEquipped(p, key); }
@@ -141,7 +141,7 @@ final class Backpack implements Listener, CommandExecutor {
         if (it == null || it.getType().isAir()) return false;
         if (isBackpack(it)) return true;
         if (!it.hasItemMeta()) return false;
-        return it.getItemMeta().getPersistentDataContainer().has(new NamespacedKey(plugin, "race_lent"), PersistentDataType.BYTE);
+        return it.getPersistentDataContainer().has(new NamespacedKey(plugin, "race_lent"), PersistentDataType.BYTE);
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)

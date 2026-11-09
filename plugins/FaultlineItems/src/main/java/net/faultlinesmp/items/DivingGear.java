@@ -140,7 +140,7 @@ final class DivingGear implements Listener {
 
     boolean isSuit(ItemStack it) {
         if (it == null || !it.hasItemMeta()) return false;
-        Byte tag = it.getItemMeta().getPersistentDataContainer().get(keys.get(Piece.SUIT), PersistentDataType.BYTE);
+        Byte tag = it.getPersistentDataContainer().get(keys.get(Piece.SUIT), PersistentDataType.BYTE);
         return tag != null && tag == (byte) 1;
     }
 

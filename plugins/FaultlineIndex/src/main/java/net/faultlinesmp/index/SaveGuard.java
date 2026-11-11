@@ -274,7 +274,14 @@ final class SaveGuard implements Listener {
 
     /** Null = it saves fine; else why not. */
     private String unsaveable(ItemStack it) {
-        try { it.serializeAsBytes(); return null; }
+        try {
+            byte[] raw = it.serializeAsBytes();
+            // 1.9.8: it must also READ back. A file that saves but can't be loaded makes the game fall back to the
+            // player's previous save (.dat_old) = a rollback, or start them fresh at spawn.
+            ItemStack back = ItemStack.deserializeBytes(raw);
+            if (back == null || back.getType() != it.getType()) return "it doesn't read back as the same item";
+            return null;
+        }
         catch (Throwable t) {
             String s = String.valueOf(t);
             if (t instanceof LinkageError || s.contains("Unimplemented") || t instanceof UnsupportedOperationException) { canSerialize = false; return null; }

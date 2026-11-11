@@ -2408,6 +2408,12 @@ Notes:
   online player's items are re-checked every 5 s. `clean` flag + `online` list in saveguard.yml: a start after an unclean
   stop (crash / kill) is an ALERT naming who was online (their records are dropped: they can't be trusted). Tested (scratch
   `sg/SgTest`). The real cause on the live server is NOT confirmed: needs latest.log ("Failed to save player data").
+  1.9.8: the unsaveable test is a round trip (`deserializeBytes(serializeAsBytes())`): a player file that saves but fails to
+  LOAD makes the game use `<uuid>.dat_old` (the save before) or start them fresh at spawn. Third-party jars read (javap):
+  BedrockShield 2.6.2 (one class: fake barrier blocks + startUsingItem, never touches inventories), InventoryRollbackPlus
+  1.8.5 (only snapshots on join / quit / death / world change; restores only from the staff menu), Backuper 4.1.2
+  (`backup.setWorldsReadOnly: true` turns every world's autosave OFF and marks the world folder read-only for the whole
+  backup: a crash then loses the WORLD's changes while players keep theirs = the opposite rollback, also a dupe; keep it false).
   **Blue Obsidian Bed** (`Items/BlueBed.java`, `blue-bed:`; LIGHT_BLUE_BED item with glint, PDC `faultlineitems:blue_bed`;
   recipe WWW/BBB = any wool over Blue Obsidian, key `faultlineitems:blue_obsidian_bed`; `/givebluebed`, /itemsmenu, Index
   entry with the blue_obsidian icon; no pack change): both halves marked in the chunk PDC (`faultlineitems:blue_bed`);

@@ -145,6 +145,9 @@ entries:
   - {chapter: weapons, name: "Upgraded Grindstone", icon: upgraded_grindstone, detect: "faultlineitems:upgraded_grindstone",
      how: "Craft it: 8 Blue Obsidian around a Grindstone.",
      does: "A blue grindstone that takes enchants off your gear, BOSS ENCHANTS too. Place it and right-click it, put an item in the middle, then click any one enchant to take just that one off, or take off every boss enchant, every normal enchant, or everything. Boss enchants come back to you as their book. Normal enchants give XP like a grindstone. Curses stay on."}
+  - {chapter: weapons, name: "Blue Obsidian Bed", icon: blue_obsidian, detect: "faultlineitems:blue_bed",
+     how: "Craft it: 3 Wool (any colour) over 3 Blue Obsidian.",
+     does: "A bed that works in the Nether and the End. It never explodes. Right-click it there to set your respawn point (a normal bed or respawn anchor used later takes over). The Nether and the End have their own day and night now: at night you can sleep in it, and once half the players there are asleep the night passes. In the Overworld it's a normal bed."}
   - {chapter: weapons, name: "Unholy Arrow", icon: unholy_arrow, detect: "faultlinebosses:unholy_arrow",
      how: "5% from Skeletons, Strays and Bogged you kill (1-2; never from spawners), or craft it: an Arrow, a Fermented Spider Eye, Glowstone Dust and Redstone make 2.",
      does: "A normal arrow's damage, but hit something with a full draw (crossbows always count) and YOU get Strength II and Swiftness II for 3 seconds. Once every 20 seconds. Infinity doesn't make them endless."}
@@ -1393,6 +1396,12 @@ achievements:
      stat: crimson_champions, count: 1, reward: {items: ["DIAMOND:4"], xp: 400}}
   - {id: lamplighter, name: "Lamplighter", icon: lantern_of_souls, desc: "Catch 25 Lantern Wisps on Lantern Nights.",
      stat: lantern_wisps, count: 25, reward: {items: ["EMERALD:16", "GOLDEN_CARROT:16"], xp: 300}}
+  - {id: soul_catcher, name: "Soul Catcher", icon: lantern_of_souls, desc: "Catch 25 lost souls during Soul Tides in the Nether.",
+     stat: lost_souls, count: 25, reward: {items: ["GOLD_INGOT:16", "QUARTZ:32"], xp: 300}}
+  - {id: star_catcher, name: "Star Catcher", icon: blue_obsidian, desc: "Reach 25 fallen stars during Starfalls in the End.",
+     stat: star_shards, count: 25, reward: {items: ["ENDER_PEARL:16", "DIAMOND:4"], xp: 300}}
+  - {id: night_shift, name: "Night Shift", icon: blue_obsidian, desc: "Stay awake through 10 nights in the Nether or the End.",
+     stat: realm_nights, count: 10, reward: {items: ["GOLDEN_APPLE:4"], xp: 500}}
   - {id: mutant_hunter, name: "Mutant Hunter", icon: twin_zombie, desc: "Kill 25 mutants (Plague Zombies, Storm Creepers, Broodmothers...).",
      stat: mutants, count: 25, reward: {items: ["DIAMOND:3", "GOLDEN_APPLE:2"], xp: 500}}
   - {id: mutant_slayer, name: "Mutant Slayer", icon: broodmother, desc: "Kill 250 mutants.",

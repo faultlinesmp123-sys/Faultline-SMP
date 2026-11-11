@@ -49,6 +49,15 @@ discord:
             "(?i)is the first to", "(?i)sandstorm", "(?i)blizzard", "(?i)eclipse", "(?i)ghost ship|wailing mary",
             "(?i)invasion", "(?i)whirlpool has opened", "(?i)blood moon (rises|sets)", "(?i)crimson champion", "(?i)lantern night", "(?i)the fog (rolls in|lifts)", "(?i)the wind (picks up|dies down)"]
 
+# Save guard (1.9.7): catches ROLLBACKS. What every player carries when they leave is remembered; if they come back with
+# something else, their save went back in time (the "wiped after a crash" and "put it in a shulker, relog, have it twice"
+# cases): an alert with what came back / what's missing. Also fixes items the game can't save (they make a whole save
+# fail) and reports a server that didn't stop cleanly. Lines go where the Watch's go (kinds: rollback, unsaveable).
+save-guard:
+  enabled: true
+  save-on-quit: true           # save the player by hand as they leave, and log the real error if that fails
+  fix-unsaveable: true         # stacks over 99, enchant levels over 255, items that can't be written to disk
+
 # Watch (1.6.15): catches x-rayers, cheaters, dupers and griefers. Daily log files in plugins/FaultlineIndex/logs/,
 # /watch in game. LOG lines go to the Discord logs channel, ALERTS also to staff in game (faultlineindex.alerts) and ping
 # discord.logs.alert-role. Every check can be turned off with <check>.enabled: false.

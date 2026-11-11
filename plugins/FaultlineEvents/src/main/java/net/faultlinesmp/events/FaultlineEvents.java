@@ -55,6 +55,7 @@ public final class FaultlineEvents extends JavaPlugin implements Listener, TabEx
     private BossBar bar;
     private Boolean wasNight;
     long ticks;
+    Realms realms; // 2.1.0: day and night in the Nether and the End
 
     @Override
     public void onEnable() {
@@ -64,11 +65,15 @@ public final class FaultlineEvents extends JavaPlugin implements Listener, TabEx
             getServer().getPluginManager().registerEvents(e, this);
         }
         getServer().getPluginManager().registerEvents(this, this);
+        realms = new Realms(this);
+        getServer().getPluginManager().registerEvents(realms, this);
         if (getCommand("fevent") != null) { getCommand("fevent").setExecutor(this); getCommand("fevent").setTabCompleter(this); }
         Bukkit.getScheduler().runTaskTimer(this, this::second, 20L, 20L);
+        Bukkit.getScheduler().runTaskTimer(this, () -> { try { realms.second(); } catch (RuntimeException e) { problem("realms", e); } }, 20L, 20L);
         Bukkit.getScheduler().runTaskTimer(this, () -> {
             ticks++;
             if (active != null) try { active.tick(ticks); } catch (RuntimeException e) { problem("tick", e); }
+            realms.tick(ticks);
         }, 1L, 1L);
         Bukkit.getScheduler().runTask(this, this::resume);
     }
@@ -77,6 +82,7 @@ public final class FaultlineEvents extends JavaPlugin implements Listener, TabEx
     public void onDisable() {
         if (active != null) try { active.stop(false); } catch (RuntimeException ignored) { }
         if (bar != null) bar.removeAll();
+        if (realms != null) try { realms.shutdown(); } catch (RuntimeException ignored) { }
         // the PDC stays: a restart resumes it
     }
 
@@ -259,6 +265,8 @@ public final class FaultlineEvents extends JavaPlugin implements Listener, TabEx
                     }
                     s.spigot().sendMessage(line);
                 }
+                s.sendMessage(ChatColor.RED + "" + ChatColor.BOLD + "The Nether" + ChatColor.GRAY + " and " + ChatColor.LIGHT_PURPLE + ChatColor.BOLD + "the End" + ChatColor.GRAY
+                        + " have their own day and night. Nights there can bring an Ember Storm or a Soul Tide (Nether), a Void Storm or a Starfall (End). Sleep through one in a Blue Obsidian Bed.");
             }
             case "start" -> {
                 if (!admin) { s.sendMessage(ChatColor.RED + "You don't have permission."); return true; }
@@ -290,7 +298,15 @@ public final class FaultlineEvents extends JavaPlugin implements Listener, TabEx
                 bm.spawnChampion(at, t);
                 s.sendMessage(ChatColor.DARK_RED + "The Crimson Champion walks.");
             }
+            case "realm" -> {
+                if (!admin) { s.sendMessage(ChatColor.RED + "You don't have permission."); return true; }
+                if (a.length < 3) { s.sendMessage(ChatColor.YELLOW + "/fevent realm <nether|end> <day|night|ember-storm|soul-tide|void-storm|starfall>"); return true; }
+                String why = realms.force(a[1], a[2]);
+                s.sendMessage(why == null ? ChatColor.GREEN + "Done." : ChatColor.YELLOW + why);
+            }
             default -> {
+                String realm = s instanceof Player p ? realms.status(p.getWorld()) : null;
+                if (realm != null) { s.sendMessage(realm); if (admin) s.sendMessage(ChatColor.DARK_GRAY + "/fevent realm <nether|end> <day|night|event>"); return true; }
                 if (active == null) {
                     s.sendMessage(ChatColor.GRAY + "No event right now. One might start at the next dusk or dawn. " + ChatColor.DARK_GRAY + "(/fevent list)");
                 } else {
@@ -298,7 +314,7 @@ public final class FaultlineEvents extends JavaPlugin implements Listener, TabEx
                     if (!active.night()) s.sendMessage(ChatColor.GRAY + "Ends in " + Math.max(1, (secondsLeft + 59) / 60) + " min.");
                     else s.sendMessage(ChatColor.GRAY + "It lasts until dawn.");
                 }
-                if (admin) s.sendMessage(ChatColor.DARK_GRAY + "/fevent list | start <event> | stop | champion [player]");
+                if (admin) s.sendMessage(ChatColor.DARK_GRAY + "/fevent list | start <event> | stop | champion [player] | realm <nether|end> <day|night|event>");
             }
         }
         return true;
@@ -309,8 +325,10 @@ public final class FaultlineEvents extends JavaPlugin implements Listener, TabEx
     @Override
     public List<String> onTabComplete(CommandSender s, Command c, String label, String[] a) {
         List<String> opts = new ArrayList<>();
-        if (a.length == 1) { opts.add("list"); if (s.hasPermission("faultlineevents.admin")) { opts.add("start"); opts.add("stop"); opts.add("champion"); } }
+        if (a.length == 1) { opts.add("list"); if (s.hasPermission("faultlineevents.admin")) { opts.add("start"); opts.add("stop"); opts.add("champion"); opts.add("realm"); } }
         else if (a.length == 2 && a[0].equalsIgnoreCase("start")) opts.addAll(keys());
+        else if (a.length == 2 && a[0].equalsIgnoreCase("realm")) { opts.add("nether"); opts.add("end"); }
+        else if (a.length == 3 && a[0].equalsIgnoreCase("realm")) { opts.add("day"); opts.add("night"); opts.addAll(a[1].equalsIgnoreCase("end") ? Realms.END_EVENTS : Realms.NETHER_EVENTS); }
         else if (a.length == 2 && a[0].equalsIgnoreCase("champion")) for (Player p : Bukkit.getOnlinePlayers()) opts.add(p.getName());
         String last = a.length == 0 ? "" : a[a.length - 1].toLowerCase();
         List<String> out = new ArrayList<>();

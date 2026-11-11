@@ -905,6 +905,12 @@ pie-limit:
 
 # 1.3.9: the Upgraded Grindstone (8 Blue Obsidian round a grindstone). Right-click it = a menu that takes off any one
 # enchant you click, every boss enchant, every normal enchant, or all of them.
+# 1.3.11: the Blue Obsidian Bed (3 wool over 3 Blue Obsidian). A bed for the Nether and the End: never explodes, sets
+# your respawn point there, and you sleep in it during that dimension's night (FaultlineEvents' Nether / End nights).
+blue-bed:
+  enabled: true
+  needs-night: true            # false = you can lie down there at any time
+
 upgraded-grindstone:
   enabled: true
   return-boss-books: true      # a boss enchant taken off comes back as its book

@@ -75,3 +75,55 @@ windy:
   gusts: {min-seconds: 20, max-seconds: 45, seconds: 3, strength: 2.5}
   projectile-drift: 0.006   # arrows, tridents, pearls, snowballs drift with the wind
   particles: 5
+
+# 2.1.0: DAY AND NIGHT IN THE NETHER AND THE END. Each has its own clock (it only runs while someone is there).
+# Night = more of that dimension's monsters come for you, and one of its night events may start. A Blue Obsidian Bed
+# (FaultlineItems) lets players sleep through it. /fevent realm <nether|end> <day|night|event>.
+realms:
+  enabled: true
+  skip-worlds: []            # Nether / End worlds that should have no cycle
+  sleep-percent: 0.5         # share of the survival players there who must be asleep
+  sleep-seconds: 5
+  night-xp: 1.25             # monster kill XP on a quiet night
+  pickup-seconds: 75         # how long a lost soul / fallen star waits
+  extra-spawns: {enabled: true, every-seconds: 20, per-player: 3, min-distance: 16, max-distance: 28}
+  nether:
+    day-minutes: 12
+    night-minutes: 8
+    events: {ember-storm: 0.3, soul-tide: 0.3}   # chance at each nightfall, first hit wins; none = a quiet night
+  end:
+    day-minutes: 12
+    night-minutes: 8
+    events: {void-storm: 0.3, starfall: 0.3}
+  ember-storm:
+    enabled: true
+    burn-chance: 0.12        # per second in the open (no roof within 6, no Fire Resistance)
+    burn-ticks: 60
+    mob-health: 1.25
+    mob-damage: 1.25
+    bonus-loot-chance: 0.25
+  soul-tide:
+    enabled: true
+    double-barter: true
+    ore-multiplier: 1.5      # quartz and nether gold ore
+    skull-bonus: 0.05        # extra wither skeleton skull chance
+    souls:
+      every-seconds: 25
+      per-player: 2
+      rewards: ["1.0;xp:25", "0.5;item:GOLD_NUGGET:6-14", "0.3;item:QUARTZ:4-10", "0.2;item:SOUL_LANTERN:1-2", "0.12;item:GOLD_INGOT:2-5",
+                "0.03;item:WITHER_SKELETON_SKULL:1", "0.02;item:NETHERITE_SCRAP:1"]
+  void-storm:
+    enabled: true
+    hunt-every-seconds: 15   # an enderman near you turns on you
+    hunters: 2               # at most this many after one player
+    enderman-health: 1.25
+    enderman-damage: 1.3
+  starfall:
+    enabled: true
+    xp-multiplier: 1.5
+    elytra-no-wear: true
+    stars:
+      every-seconds: 25
+      per-player: 2
+      rewards: ["1.0;xp:35", "0.5;item:ENDER_PEARL:2-5", "0.3;item:CHORUS_FRUIT:4-10", "0.2;item:AMETHYST_SHARD:4-8", "0.12;item:DIAMOND:1-2",
+                "0.04;item:SHULKER_SHELL:1", "0.03;item:FIREWORK_ROCKET:8-16"]

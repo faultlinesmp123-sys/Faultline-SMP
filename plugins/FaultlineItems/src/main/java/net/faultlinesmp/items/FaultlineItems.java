@@ -419,6 +419,10 @@ public final class FaultlineItems extends JavaPlugin {
         getServer().getPluginManager().registerEvents(upgradedGrindstone, this);
         if (getCommand("giveupgradedgrindstone") != null) getCommand("giveupgradedgrindstone").setExecutor(new GiveItemCommand(this, "items.giveupgradedgrindstone",
                 "/giveupgradedgrindstone [amount] [player]", ItemCatalog.single(pl -> pl.upgradedGrindstone.item(1))));
+        blueBed = new BlueBed(this); // 1.3.11: a bed for the Nether and the End
+        getServer().getPluginManager().registerEvents(blueBed, this);
+        if (getCommand("givebluebed") != null) getCommand("givebluebed").setExecutor(new GiveItemCommand(this, "items.givebluebed",
+                "/givebluebed [amount] [player]", ItemCatalog.single(pl -> pl.blueBed.item(1))));
         // 1.2.78: the backpack, creator mode, the admin player mimic, haunted villages (Halloween), Krampus (Christmas)
         backpack = new Backpack(this);
         getServer().getPluginManager().registerEvents(backpack, this);
@@ -658,6 +662,7 @@ public final class FaultlineItems extends JavaPlugin {
     public void onDisable() {
         if (blueObsidian != null) try { blueObsidian.shutdown(); } catch (RuntimeException ignored) { }
         if (upgradedGrindstone != null) try { upgradedGrindstone.shutdown(); } catch (RuntimeException ignored) { }
+        if (blueBed != null) try { blueBed.shutdown(); } catch (RuntimeException ignored) { }
         if (mimics != null) try { mimics.removeAll(); } catch (RuntimeException ignored) { }
         if (haunted != null) try { haunted.shutdown(); } catch (RuntimeException ignored) { }
         if (krampus != null) try { krampus.shutdown(); } catch (RuntimeException ignored) { }
@@ -939,6 +944,7 @@ public final class FaultlineItems extends JavaPlugin {
     TotemLimit totemLimit;
     BlueObsidian blueObsidian;
     UpgradedGrindstone upgradedGrindstone;
+    BlueBed blueBed;
     Backpack backpack;
     CreatorMode creatorMode;
     OfflineTp offlineTp;
@@ -7043,6 +7049,7 @@ public final class FaultlineItems extends JavaPlugin {
                 pl -> pl.blueObsidian.item(16), // 1.2.75
                 pl -> UnholyArrows.item(16), // 1.3.8
                 pl -> pl.upgradedGrindstone.item(1), // 1.3.9
+                pl -> pl.blueBed.item(1), // 1.3.11
                 pl -> pl.backpack.item(), // 1.2.78
                 pl -> pl.krampus.bell(1), // 1.2.78: summons Krampus
                 pl -> pl.holidays.lantern(1), // 1.2.78: haunts the nearest village
@@ -7317,6 +7324,11 @@ public final class FaultlineItems extends JavaPlugin {
                 list.add(external(icon(Material.LIGHT_GRAY_STAINED_GLASS, null, ChatColor.GRAY + "" + ChatColor.BOLD + "Event: Fog " + ChatColor.GRAY + "(starts it)", "FaultlineEvents"), "fevent start fog", "FaultlineEvents"));
                 list.add(external(icon(Material.LANTERN, null, ChatColor.GOLD + "" + ChatColor.BOLD + "Event: Lantern Night " + ChatColor.GRAY + "(starts it, turns it to dusk)", "FaultlineEvents"), "fevent start lantern-night", "FaultlineEvents"));
                 list.add(external(icon(Material.FEATHER, null, ChatColor.AQUA + "" + ChatColor.BOLD + "Event: Windy " + ChatColor.GRAY + "(starts it)", "FaultlineEvents"), "fevent start windy", "FaultlineEvents"));
+                // 1.3.11: the Nether's and the End's nights (FaultlineEvents 2.1.0)
+                list.add(external(icon(Material.MAGMA_BLOCK, null, ChatColor.RED + "" + ChatColor.BOLD + "Nether night: Ember Storm", "FaultlineEvents"), "fevent realm nether ember-storm", "FaultlineEvents"));
+                list.add(external(icon(Material.SOUL_LANTERN, null, ChatColor.AQUA + "" + ChatColor.BOLD + "Nether night: Soul Tide", "FaultlineEvents"), "fevent realm nether soul-tide", "FaultlineEvents"));
+                list.add(external(icon(Material.ENDER_EYE, null, ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + "End night: Void Storm", "FaultlineEvents"), "fevent realm end void-storm", "FaultlineEvents"));
+                list.add(external(icon(Material.END_ROD, null, ChatColor.YELLOW + "" + ChatColor.BOLD + "End night: Starfall", "FaultlineEvents"), "fevent realm end starfall", "FaultlineEvents"));
                 list.add(external(icon(Material.ZOMBIE_SPAWN_EGG, null, ChatColor.DARK_RED + "" + ChatColor.BOLD + "Crimson Champion " + ChatColor.GRAY + "(Blood Moon mini boss, near you)", "FaultlineEvents"), "fevent champion {player}", "FaultlineEvents"));
             }
             if (enabled("FaultlineBosses")) {

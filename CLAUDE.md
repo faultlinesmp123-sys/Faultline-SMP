@@ -44,7 +44,7 @@ All are Maven projects: Java 21, `paper-api 1.21.11-R0.1-SNAPSHOT`. Build with
 | **FaultlineDeep** | `net.faultlinesmp.deep` | **The Dark Ocean**: a water-only world (`DeepGenerator.java`), its biomes **the Reaches** (`Reaches.java`), **the Sulphur Sea** acid region (`Sulphur.java`), **the Bubble** town over the build area (`Town.java`), **the Black Market + the Pit** (`Market.java`, `Elevator.java`), ruins (`Ruins.java`), its 66 creatures (`DeepMobs.java`), the pitch-black Abyss (`Ocean.dark`), the Mirror + the HOURLY WHIRLPOOL down to it (`Journey.java`, `Vortex.java`; Lucki/Swarm removed in 1.16.0), zone music, events and dying down there (`Ocean.java`), **the Trench** (`Trench.java`), Den reputation (`DenRep.java`), the Submersible, the Migration, the Bloom | `/whirlpool [where\|here\|random\|at <x> <z> [world]\|stop\|next <min>]` (`/maelstrom`; players: where / when), `/dome [list\|combine\|yes\|no\|upgrades\|trust\|untrust\|home\|color]` (dome bases in any water, hallways, 20 upgrades), `/chart`, `/glimmer [top]` (the Glimmertide's shop), admin `/deep season [start\|stop\|auto\|shoal]`, `/deep [info\|set kingdom\|whirlpool ...\|tp [player]\|town [player]\|sulphur [player]\|spawn <mob>\|egg <mob> [n] [player]\|event <pressure\|undertow\|stop>\|acidrain\|den [info\|where\|tp\|raid\|stop\|reset\|rise]\|lucki\|trench [maw] [player]\|bloom\|migration\|sub [player]\|eclipse\|redtide\|frenzy\|volcano [where\|start [x z]\|here\|cool\|heal]\|region <frozen\|city\|glass\|bones>\|give <coral\|dome_small\|dome_large\|vault_key\|cache_key\|fossil\|chart\|glimmer>\|domes]`, players `/den [home]` |
 | **FaultlineShips** | `net.faultlinesmp.ships` | Ships: Dinghy, Sloop, Brigantine, Galleon, Pirate Ship. Blueprint → lay out on water → place every block → sail. Health, part damage, sinking, Shipwright's Hammer repair minigame, cannons, banners, names. **Skeleton ships** and the **Pirate Invasion** (`Pirates.java`). Ships saved in `ships.yml` | `/ship [list\|info\|name\|crew\|anchor\|stop\|banner\|scrap]`, sneak + right-click a gun with a Cannonball = man it (W/S/A/D aim), admin `/ship <give\|repair\|wreck\|remove\|tp> [name\|#n]`, `/ship spawn <ship> [owner]`, `/ship give upgrade_<hull\|sails\|loaders\|ram>`, `/ship pirates <ship\|invasion\|horn\|spawn\|egg\|ghost [player]\|bell [n] [player]\|map [player]\|stop>` |
 | **FaultlineSkills** | `net.faultlinesmp.skills` | Skill trees: Mining, Building, Farming, Redstone (`Tree.java`: 6 perks each), levels 1-50, anti-abuse (placed-block marks, settle time), chest menu + Bedrock form. Data in `players.yml` | `/skills [top <tree>]`, admin `/skills <player>`, `/skills give <player> <tree> <xp>`, `/skills reset <player> [tree\|perks]` |
-| **FaultlineEvents** | `net.faultlinesmp.events` | Sky events in the main world (2.0.0 rewrite, source here since then): **Blood Moon** (`BloodMoon.java` + the Crimson Champion), **Fog** (`Fog.java`), **Lantern Night** (`LanternNight.java`), **Windy** (`Windy.java`, `WindPush.java`) | `/fevent [list]` (`/events`), admin `/fevent start <blood-moon\|fog\|lantern-night\|windy>\|stop\|champion [player]` |
+| **FaultlineEvents** | `net.faultlinesmp.events` | Sky events in the main world (2.0.0 rewrite, source here since then): **Blood Moon** (`BloodMoon.java` + the Crimson Champion), **Fog** (`Fog.java`), **Lantern Night** (`LanternNight.java`), **Windy** (`Windy.java`, `WindPush.java`) | `/fevent [list]` (`/events`), admin `/fevent start <blood-moon\|fog\|lantern-night\|windy>\|stop\|champion [player]\|realm <nether\|end> <day\|night\|event>` (2.1.0: day and night in the Nether and the End, `Realms.java`) |
 
 Notes:
 - `FaultlineItems.java` (~350 KB) and `FaultlineBosses.java` (~585 KB) are huge. Search them instead of reading them whole.
@@ -2396,6 +2396,41 @@ Notes:
   achievements Blood Hunter (100 `blood_moon_kills`), Champion Slayer, Lamplighter (25 wisps), guide line, Discord forwards.
   Snowy Day is gone (Items' Frost Wraith hook just never fires). Tested (scratch `ev/EvTest`: all four events, the Champion,
   calm rate, wisp catch, x1.2 exactly, held items not multiplied, arrow drift, timed end, the dusk roll).
+- **Save guard, the Blue Obsidian Bed, Nether / End nights (Index 1.9.7, Items 1.3.11, Events 2.1.0)**:
+  **SaveGuard** (`Index/SaveGuard.java`, `save-guard:`, data `saveguard.yml`; Watch kinds `rollback`, `unsaveable`): reports
+  of inventories WIPED after a relog and of "put it in a shulker, relog, have it twice" = a player's save going BACK IN TIME
+  (no code of ours loads or restores player data; the cause is a save that fails or never happens). On quit (MONITOR) it
+  fixes what the game can't write (`repair`: stack > 99, enchant level > 255, anything `ItemStack#serializeAsBytes` throws
+  on is taken out and logged with the reason), calls `saveData()` and records what they carry (`print`: material counts of
+  inventory + ender chest + cursor, into shulker boxes and bundles; location). On join (LOWEST, before other plugins hand
+  things out) the loaded inventory is compared: different = ALERT (LOG for < 32 non-valuable items gained and nothing
+  missing) "came back with a DIFFERENT inventory" with what came back / what's missing, minutes away, blocks moved. One
+  online player's items are re-checked every 5 s. `clean` flag + `online` list in saveguard.yml: a start after an unclean
+  stop (crash / kill) is an ALERT naming who was online (their records are dropped: they can't be trusted). Tested (scratch
+  `sg/SgTest`). The real cause on the live server is NOT confirmed: needs latest.log ("Failed to save player data").
+  **Blue Obsidian Bed** (`Items/BlueBed.java`, `blue-bed:`; LIGHT_BLUE_BED item with glint, PDC `faultlineitems:blue_bed`;
+  recipe WWW/BBB = any wool over Blue Obsidian, key `faultlineitems:blue_obsidian_bed`; `/givebluebed`, /itemsmenu, Index
+  entry with the blue_obsidian icon; no pack change): both halves marked in the chunk PDC (`faultlineitems:blue_bed`);
+  drops itself (`onDrop`, and `onItem` for the half vanilla breaks without an event); explosion- and piston-proof. In the
+  NETHER / END a right-click is cancelled (no explosion), sets the respawn point (player PDC `blue_bed_spawn`
+  "world;x;y;z" of the head; `onRespawn` DEATH -> `stand()` beside it; a vanilla bed / anchor set later clears it via
+  PlayerSetSpawnEvent; bed gone = cleared) and, at that world's night (`faultlineevents:realm_night`; always without
+  FaultlineEvents; `needs-night`), `Player#sleep(loc, true)`; refused / unimplemented = RESTING (held on the bed, Blindness,
+  metadata `faultline_blue_bed_rest`, moving gets up). In the Overworld it's a normal bed. Tested (scratch `bb/BbTest`).
+  **Realms** (`Events/Realms.java`, `realms:`, `/fevent realm <nether|end> <day|night|ember-storm|soul-tide|void-storm|
+  starfall>`): every NETHER / THE_END world has its own clock (world PDC `faultlineevents:realm_clock` seconds,
+  `realm_night` 0/1, `realm_event`; runs only with a player there): `day-minutes` 12, then `night-minutes` 8. Night: boss
+  bar, extra spawns near survival players (Nether: blaze / magma cube / wither skeleton / skeleton, End: endermen; tag
+  `realm_mob`, NATURAL reason, max 3 each), kill XP x1.25, and at nightfall each event rolls 0.3 (first hit; none = a quiet
+  night). EMBER STORM: in the open (no solid block within 6 above, no Fire Resistance) 12%/s you catch fire for 3 s; natural
+  `Enemy` spawns +25% health / damage (modifiers `faultlineevents:realm_*`), kills x2 XP + 25% a bonus drop, stat
+  `ember_storm_kills`. SOUL TIDE: piglin barters doubled, quartz / nether gold ore x1.5, +5% wither skulls, Speed I, LOST
+  SOULS (glowing soul-lantern BlockDisplays, tag `faultline_realm_pickup`, walk into one = `soul-tide.souls.rewards`, stat
+  `lost_souls`). VOID STORM: every 15 s a calm enderman within 24 targets you (max 2), endermen +25% / +30%, +1-2 pearls
+  and x2 XP, stat `void_storm_kills`. STARFALL: fallen stars (sea-lantern displays, `starfall.stars.rewards`, stat
+  `star_shards`), XP x1.5, elytra don't wear. Dawn when the night runs out or `sleep-percent` 0.5 of the survival players
+  there sleep / rest for `sleep-seconds` 5; staying awake a whole night = stat `realm_nights`. Index achievements Soul
+  Catcher, Star Catcher, Night Shift. Tested (scratch `rl/RlTest`).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

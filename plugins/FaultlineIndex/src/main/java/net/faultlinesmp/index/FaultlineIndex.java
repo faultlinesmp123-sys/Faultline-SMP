@@ -128,6 +128,7 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
     Museum museum;
     Discord discord;
     Watch watch;
+    SaveGuard saveGuard;
     Daily daily;
 
     // ===================== LIFECYCLE =====================
@@ -165,6 +166,8 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(weakness, this);
         watch = new Watch(this); // 1.6.15: x-ray, cheats, dupes, grief, alts
         getServer().getPluginManager().registerEvents(watch, this);
+        saveGuard = new SaveGuard(this); // 1.9.7: rollbacks (wiped / duped inventories), unsaveable items, unclean stops
+        getServer().getPluginManager().registerEvents(saveGuard, this);
         getCommand("watch").setExecutor(watch);
         getCommand("watch").setTabCompleter(watch);
         getCommand("serverstats").setExecutor(new ServerStats(this));
@@ -247,6 +250,7 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
     public void onDisable() {
         saveProgress();
         if (museum != null) museum.save();
+        if (saveGuard != null) try { saveGuard.shutdown(); } catch (RuntimeException ignored) { }
         if (watch != null) try { watch.shutdown(); } catch (RuntimeException ignored) { }
         if (daily != null) try { daily.save(); } catch (RuntimeException ignored) { }
         if (discord != null) try { discord.serverStopping(); } catch (RuntimeException ignored) { }

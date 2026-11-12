@@ -2451,6 +2451,18 @@ Notes:
   `AccessoryManager.setSlots` and the bounty place / claim / cancel / payout now also `saveData()` that player
   (`accessories.save-player-on-change`). Checked and fine: every menu has a drag guard, the Upgraded Grindstone menu, random
   picks from empty lists, the Coral farm, the three third-party jars above.
+- **Accessory backups + InventoryRollbackPlus (Items 1.3.13, `Items/AccessoryBackups.java`, `accessory-backups:`,
+  `accessory_backups.yml`)**: IRP only backs up the vanilla inventory and has no API / events. At the moments IRP takes a
+  backup (join, quit, death at LOWEST = before the accessories drop, world change, `/irp forcebackup` = everyone online) the 3
+  accessory slots are snapshotted with the time (`current(p)` reads an open /accessories menu), newest `keep` 80 per player.
+  IRP's "restore whole inventory" button is detected in InventoryClickEvent (MONITOR): view title "Main Inventory Backup",
+  a NETHER_STAR in the top inventory with PDC `inventoryrollbackplus:uuid` (STRING) + `inventoryrollbackplus:timestamp`
+  (LONG), clicker has `inventoryrollbackplus.restore`, target online; 5 ticks later the snapshot within `match-seconds` 15 of
+  that timestamp REPLACES the worn accessories (`restore`: closes their open Wardrobe first, takes a "before restore"
+  snapshot, staff + player are told, logged "[AccessoryBackups]"). No snapshot that old (backups start with 1.3.13) = staff
+  are told. `/accrestore <player> [#n]` (`items.accrestore`, op) lists / restores by hand. Taking single items out of IRP's
+  menu by hand restores nothing. If an IRP update renames that menu or its keys, the hook stops matching (`/accrestore`
+  still works). Tested (scratch `ab/AbTest`, a fake IRP menu).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

@@ -419,6 +419,9 @@ public final class FaultlineItems extends JavaPlugin {
         getServer().getPluginManager().registerEvents(upgradedGrindstone, this);
         if (getCommand("giveupgradedgrindstone") != null) getCommand("giveupgradedgrindstone").setExecutor(new GiveItemCommand(this, "items.giveupgradedgrindstone",
                 "/giveupgradedgrindstone [amount] [player]", ItemCatalog.single(pl -> pl.upgradedGrindstone.item(1))));
+        accessoryBackups = new AccessoryBackups(this); // 1.3.13: accessory snapshots, restored with an InventoryRollbackPlus restore
+        getServer().getPluginManager().registerEvents(accessoryBackups, this);
+        if (getCommand("accrestore") != null) { getCommand("accrestore").setExecutor(accessoryBackups); getCommand("accrestore").setTabCompleter(accessoryBackups); }
         blueBed = new BlueBed(this); // 1.3.11: a bed for the Nether and the End
         getServer().getPluginManager().registerEvents(blueBed, this);
         if (getCommand("givebluebed") != null) getCommand("givebluebed").setExecutor(new GiveItemCommand(this, "items.givebluebed",
@@ -663,6 +666,7 @@ public final class FaultlineItems extends JavaPlugin {
         if (blueObsidian != null) try { blueObsidian.shutdown(); } catch (RuntimeException ignored) { }
         if (upgradedGrindstone != null) try { upgradedGrindstone.shutdown(); } catch (RuntimeException ignored) { }
         if (blueBed != null) try { blueBed.shutdown(); } catch (RuntimeException ignored) { }
+        if (accessoryBackups != null) try { accessoryBackups.save(); } catch (RuntimeException ignored) { }
         if (mimics != null) try { mimics.removeAll(); } catch (RuntimeException ignored) { }
         if (haunted != null) try { haunted.shutdown(); } catch (RuntimeException ignored) { }
         if (krampus != null) try { krampus.shutdown(); } catch (RuntimeException ignored) { }
@@ -945,6 +949,7 @@ public final class FaultlineItems extends JavaPlugin {
     BlueObsidian blueObsidian;
     UpgradedGrindstone upgradedGrindstone;
     BlueBed blueBed;
+    AccessoryBackups accessoryBackups;
     Backpack backpack;
     CreatorMode creatorMode;
     OfflineTp offlineTp;

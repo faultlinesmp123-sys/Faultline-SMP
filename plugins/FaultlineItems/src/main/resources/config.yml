@@ -905,6 +905,14 @@ pie-limit:
 
 # 1.3.9: the Upgraded Grindstone (8 Blue Obsidian round a grindstone). Right-click it = a menu that takes off any one
 # enchant you click, every boss enchant, every normal enchant, or all of them.
+# 1.3.13: accessory backups. The 3 accessory slots are snapshotted whenever InventoryRollbackPlus takes a backup (join,
+# quit, death, world change, /irp forcebackup). Clicking IRP's "restore whole inventory" button also puts the accessories
+# from that backup back. /accrestore <player> [#n] does it by hand.
+accessory-backups:
+  enabled: true
+  keep: 80                     # newest backups kept per player
+  match-seconds: 15            # how close a snapshot must be to the IRP backup's time
+
 # 1.3.11: the Blue Obsidian Bed (3 wool over 3 Blue Obsidian). A bed for the Nether and the End: never explodes, sets
 # your respawn point there, and you sleep in it during that dimension's night (FaultlineEvents' Nether / End nights).
 blue-bed:

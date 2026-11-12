@@ -2437,6 +2437,20 @@ Notes:
   `star_shards`), XP x1.5, elytra don't wear. Dawn when the night runs out or `sleep-percent` 0.5 of the survival players
   there sleep / rest for `sleep-seconds` 5; staying awake a whole night = stat `realm_nights`. Index achievements Soul
   Catcher, Star Catcher, Night Shift. Tested (scratch `rl/RlTest`).
+- **Bug pass (Items 1.3.12, LimboBlackMarket 1.2.2, Deep 1.16.1, Bosses 2.0.3)**: PARTICLES THAT NEED DATA: since 1.21.9
+  `Particle.FLASH` takes a `Color`, `EFFECT` / `INSTANT_EFFECT` a `Particle.Spell`, `DRAGON_BREATH` a `Float`; spawned without
+  it the call throws on a real server (MockBukkit doesn't). Five places did: the Lighthouse Lamp (threw after placing, so no
+  message / Index discover), `DeepMobs.emp` (first line: that ability never ran) and the Mirrorfin's flash, a deep boss move
+  (`DeepBosses` ~1116) and the mimic's XP-bottle mend. RULE: give those particles their data. TOTEMS: `onQuit` dropped the
+  player's `lastAt`, so after a relog the 10-minute reset never fired (`getOrDefault(now)`); kept while pops are counted.
+  UNHOLY ARROWS: every CREATIVE_ONLY arrow was made pickable, incl. a Multishot crossbow's two side arrows (1 arrow -> 3);
+  only the Infinity bow case now. BACKPACK: `store` threw when one item couldn't be serialized, leaving the OLD contents in
+  the PDC while the new ones sat in the menu (a dupe on reopen); the bad item is handed back and the rest saved. BOUNTIES:
+  the payout handler ran on cancelled deaths (`ignoreCancelled`). CRASH CONSISTENCY: accessories.yml and bounties.yml are
+  written at once but the player's own file only at autosave / quit, so a server crash in between duped or lost the item;
+  `AccessoryManager.setSlots` and the bounty place / claim / cancel / payout now also `saveData()` that player
+  (`accessories.save-player-on-change`). Checked and fine: every menu has a drag guard, the Upgraded Grindstone menu, random
+  picks from empty lists, the Coral farm, the three third-party jars above.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index; Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

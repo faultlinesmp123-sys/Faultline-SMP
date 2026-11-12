@@ -125,10 +125,13 @@ final class UnholyArrows implements Listener, CommandExecutor {
         if (!is(e.getConsumable()) || !(e.getProjectile() instanceof AbstractArrow arrow)) return;
         refresh(e.getConsumable());
         ItemStack bow = e.getBow();
-        if (bow != null && bow.containsEnchantment(Enchantment.INFINITY)) e.setConsumeItem(true); // never endless
+        boolean infinity = bow != null && bow.getType() == Material.BOW && bow.containsEnchantment(Enchantment.INFINITY);
+        if (infinity) e.setConsumeItem(true); // never endless
         try {
             arrow.setItemStack(item(1)); // picking it back up gives an Unholy Arrow
-            if (arrow.getPickupStatus() == AbstractArrow.PickupStatus.CREATIVE_ONLY && e.shouldConsumeItem())
+            // 1.3.12: only the Infinity case. A Multishot crossbow's two side arrows are CREATIVE_ONLY too, and making
+            // them pickable turned 1 Unholy Arrow into 3.
+            if (infinity && arrow.getPickupStatus() == AbstractArrow.PickupStatus.CREATIVE_ONLY && e.shouldConsumeItem())
                 arrow.setPickupStatus(AbstractArrow.PickupStatus.ALLOWED);
         } catch (RuntimeException ignored) { }
         arrow.addScoreboardTag(FLIGHT);

@@ -1055,6 +1055,15 @@ public final class FaultlineItems extends JavaPlugin {
             slots.put(playerId, copy);
             dirty = true;
             save(); // immediate — a crash before the periodic save would otherwise lose equipped accessories
+            // 1.3.12: and the player's own file with it. accessories.yml was written at once but their inventory only at
+            // the next autosave / quit, so a server crash in between left an accessory BOTH worn and in the inventory
+            // (a dupe), or in neither.
+            if (plugin.getConfig().getBoolean("accessories.save-player-on-change", true)) {
+                org.bukkit.Bukkit.getScheduler().runTask(plugin, () -> {
+                    org.bukkit.entity.Player pl = org.bukkit.Bukkit.getPlayer(playerId);
+                    if (pl != null && pl.isOnline()) try { pl.saveData(); } catch (Throwable ignored) { }
+                });
+            }
         }
 
         /** True if the player has this specific tagged accessory item equipped in either slot. */

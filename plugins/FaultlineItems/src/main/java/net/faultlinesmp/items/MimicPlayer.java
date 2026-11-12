@@ -1943,7 +1943,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             m.body.getEquipment().setItemInMainHand(new ItemStack(Material.EXPERIENCE_BOTTLE)); m.held = "?";
             swing(m);
             v.getWorld().playSound(v.getLocation(), Sound.ENTITY_EXPERIENCE_BOTTLE_THROW, 1, 1);
-            v.getWorld().spawnParticle(Particle.EFFECT, v.getLocation().add(0, 0.2, 0), 20, 0.5, 0.1, 0.5, 0);
+            v.getWorld().spawnParticle(Particle.EFFECT, v.getLocation().add(0, 0.2, 0), 20, 0.5, 0.1, 0.5, 0, new Particle.Spell(org.bukkit.Color.fromRGB(200, 255, 120), 1f));
             Bukkit.getScheduler().runTaskLater(plugin, () -> { if (m.body.isValid()) hold(m, "sword"); }, 5L);
         }
         v.getWorld().playSound(v.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 0.6f, 1.2f);

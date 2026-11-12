@@ -194,7 +194,7 @@ final class Lighthouse implements Listener {
         save();
         if (p.getGameMode() != GameMode.CREATIVE) e.getItem().setAmount(e.getItem().getAmount() - 1);
         at.getWorld().playSound(at.getLocation(), Sound.BLOCK_BEACON_ACTIVATE, 1.5f, 1.2f);
-        at.getWorld().spawnParticle(Particle.FLASH, at.getLocation().clone().add(0.5, 0.5, 0.5), 1);
+        at.getWorld().spawnParticle(Particle.FLASH, at.getLocation().clone().add(0.5, 0.5, 0.5), 1, org.bukkit.Color.WHITE); // (FLASH needs a colour since 1.21.9: without one it threw)
         p.sendMessage(ChatColor.YELLOW + "The lighthouse is lit: a tower of " + h + " blocks, light reaches " + (int) Math.round(l.radius) + " blocks."
                 + (l.radius < cfg("max-radius", 48) ? ChatColor.GRAY + " (Build it higher to reach farther.)" : ""));
         pl.console("index discover " + p.getName() + " lighthouse_lamp");

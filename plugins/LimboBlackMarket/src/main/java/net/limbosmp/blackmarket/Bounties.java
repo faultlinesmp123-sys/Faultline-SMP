@@ -131,6 +131,9 @@ public class Bounties implements Listener, TabExecutor {
         return true;
     }
 
+    /** 1.2.2: bounties.yml is written at once, so the player's own file is too (a server crash between the two duped or lost the heads). */
+    private static void savePlayer(Player p) { if (p != null && p.isOnline()) try { p.saveData(); } catch (Throwable ignored) { } }
+
     static String plural(int n) { return n + (n == 1 ? " head" : " heads"); }
 
     static OfflinePlayer find(String name) {
@@ -143,7 +146,7 @@ public class Bounties implements Listener, TabExecutor {
     }
 
     // ============================================================================================ claiming
-    @EventHandler(priority = EventPriority.MONITOR)
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true) // 1.2.2: a death another plugin cancelled paid out
     public void onDeath(PlayerDeathEvent event) {
         if (!enabled()) return;
         Player victim = event.getEntity();
@@ -163,6 +166,7 @@ public class Bounties implements Listener, TabExecutor {
         prize.addAll(own);
         boolean waited = deliver(killer.getUniqueId(), prize);
         save();
+        savePlayer(killer);
         if (n > 0) {
             Bukkit.broadcastMessage(ChatColor.DARK_RED + "[Bounty] " + ChatColor.GOLD + killer.getName() + ChatColor.GRAY + " claimed the bounty on "
                     + ChatColor.WHITE + victim.getName() + ChatColor.GRAY + ": " + ChatColor.GOLD + plural(n) + ChatColor.GRAY + "!");
@@ -255,6 +259,7 @@ public class Bounties implements Listener, TabExecutor {
                 b.name = target.getName() != null ? target.getName() : args[1];
                 b.stakes.add(new Stake(self.getUniqueId(), System.currentTimeMillis(), put));
                 save();
+                savePlayer(self);
                 Bukkit.broadcastMessage(ChatColor.DARK_RED + "[Bounty] " + ChatColor.WHITE + self.getName() + ChatColor.GRAY + " put " + ChatColor.GOLD + plural(amount)
                         + ChatColor.GRAY + " on " + ChatColor.WHITE + b.name + ChatColor.GRAY + "'s head. Total: " + ChatColor.GOLD + plural(b.heads()) + ChatColor.GRAY + ".");
                 if (target.getPlayer() != null) target.getPlayer().sendMessage(ChatColor.DARK_RED + "[Bounty] " + ChatColor.GRAY + "Someone wants you dead. Watch your back.");
@@ -309,6 +314,7 @@ public class Bounties implements Listener, TabExecutor {
                 int n = 0; for (ItemStack s : back) n += s.getAmount();
                 boolean waited = deliver(self.getUniqueId(), back);
                 save();
+                savePlayer(self);
                 sender.sendMessage(ChatColor.GREEN + "Took back " + plural(n) + " from the bounty on " + b.name + "." + (waited ? ChatColor.YELLOW + " Some are waiting: /bounty claim" : ""));
             }
             case "claim" -> {
@@ -317,6 +323,7 @@ public class Bounties implements Listener, TabExecutor {
                 if (l == null || l.isEmpty()) { sender.sendMessage(ChatColor.GRAY + "Nothing waiting for you."); return true; }
                 boolean waited = deliver(self.getUniqueId(), l);
                 save();
+                savePlayer(self);
                 sender.sendMessage(waited ? ChatColor.YELLOW + "Your inventory filled up: the rest is still waiting." : ChatColor.GREEN + "Collected everything that was waiting.");
             }
             default -> sender.sendMessage(ChatColor.YELLOW + "/bounty <place <player> [amount]|list|info <player>|cancel <player>|claim>");

@@ -165,7 +165,8 @@ final class TotemLimit implements Listener, CommandExecutor, TabCompleter {
     @EventHandler
     public void onQuit(PlayerQuitEvent e) {
         UUID id = e.getPlayer().getUniqueId();
-        lastBy.remove(id); lastAt.remove(id); warned.remove(id);
+        lastBy.remove(id); warned.remove(id);
+        if (count(id) <= 0) lastAt.remove(id); // 1.3.12: with pops counted the clock must survive a relog (it never reset after one)
     }
 
     /** Holding a totem while at the limit: warn once per totem picked up. */

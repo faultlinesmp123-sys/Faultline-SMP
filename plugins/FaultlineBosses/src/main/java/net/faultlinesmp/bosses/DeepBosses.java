@@ -1113,7 +1113,7 @@ final class DeepBosses {
             if (ticks % 140 == 0 && !a.isEmpty()) {
                 Player p = a.get(random.nextInt(a.size()));
                 p.playSound(p.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, SoundCategory.WEATHER, 1f, 0.7f);
-                world.spawnParticle(Particle.FLASH, p.getLocation().add(random.nextGaussian() * 20, 18, random.nextGaussian() * 20), 1);
+                world.spawnParticle(Particle.FLASH, p.getLocation().add(random.nextGaussian() * 20, 18, random.nextGaussian() * 20), 1, org.bukkit.Color.WHITE);
             }
             if (ticks % 30 == 0) for (Player p : a) {
                 if (p.isInWater()) continue;

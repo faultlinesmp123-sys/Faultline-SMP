@@ -101,7 +101,28 @@ final class Backpack implements Listener, CommandExecutor {
             if (it != null && !it.getType().isAir()) { copy[i] = it.clone(); empty = false; } else copy[i] = new ItemStack(Material.AIR);
         }
         if (empty) { pdc.remove(dataKey); return; }
-        pdc.set(dataKey, PersistentDataType.BYTE_ARRAY, ItemStack.serializeItemsAsBytes(copy));
+        byte[] raw;
+        try { raw = ItemStack.serializeItemsAsBytes(copy); }
+        catch (RuntimeException ex) {
+            // 1.3.12: one item the game can't write used to make EVERY save throw: the old contents stayed stored while the
+            // new ones sat in the menu (what was taken out came back on the next open = a dupe). Now that item is handed
+            // back and the rest is saved.
+            for (int i = 0; i < SIZE; i++) {
+                if (copy[i].getType().isAir()) continue;
+                try { copy[i].serializeAsBytes(); }
+                catch (RuntimeException bad) {
+                    ItemStack out = copy[i];
+                    copy[i] = new ItemStack(Material.AIR);
+                    if (i < items.length) items[i] = null;
+                    plugin.getLogger().warning("[Backpack] " + p.getName() + "'s " + out.getType() + " x" + out.getAmount() + " can't be saved (" + bad + "): put back in their inventory.");
+                    out.setAmount(Math.max(1, Math.min(out.getAmount(), out.getMaxStackSize())));
+                    for (ItemStack rest : p.getInventory().addItem(out).values()) p.getWorld().dropItemNaturally(p.getLocation(), rest);
+                }
+            }
+            try { raw = ItemStack.serializeItemsAsBytes(copy); }
+            catch (RuntimeException again) { plugin.getLogger().warning("[Backpack] couldn't save " + p.getName() + "'s backpack: " + again); pdc.remove(dataKey); return; }
+        }
+        pdc.set(dataKey, PersistentDataType.BYTE_ARRAY, raw);
     }
 
     void open(Player p) {
@@ -115,7 +136,11 @@ final class Backpack implements Listener, CommandExecutor {
         p.playSound(p.getLocation(), Sound.ITEM_ARMOR_EQUIP_LEATHER, 0.8f, 1.1f);
     }
 
-    private void saveFrom(Player p, Inventory inv) { store(p, Arrays.copyOf(inv.getContents(), SIZE)); }
+    private void saveFrom(Player p, Inventory inv) {
+        ItemStack[] now = Arrays.copyOf(inv.getContents(), SIZE);
+        store(p, now);
+        for (int i = 0; i < SIZE; i++) { ItemStack was = inv.getItem(i); if (now[i] == null && was != null && !was.getType().isAir()) inv.setItem(i, null); } // handed back
+    }
 
     @Override
     public boolean onCommand(CommandSender s, Command c, String l, String[] a) {

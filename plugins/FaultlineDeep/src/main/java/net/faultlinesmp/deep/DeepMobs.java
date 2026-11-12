@@ -1305,7 +1305,7 @@ final class DeepMobs implements Listener {
 
     void emp(Beast m, Location c) {
         World w = c.getWorld();
-        w.spawnParticle(Particle.FLASH, c, 1);
+        w.spawnParticle(Particle.FLASH, c, 1, org.bukkit.Color.WHITE);
         w.spawnParticle(Particle.SONIC_BOOM, c, 1);
         w.playSound(c, Sound.BLOCK_BEACON_DEACTIVATE, SoundCategory.HOSTILE, 1.5f, 0.6f);
         for (Player p : near(c, 9)) if (fair(p)) {
@@ -1631,7 +1631,7 @@ final class DeepMobs implements Listener {
                 if (by != null && m.cd <= 0) {
                     m.cd = 60;
                     World w = ent.getWorld();
-                    w.spawnParticle(Particle.FLASH, ent.getLocation(), 1);
+                    w.spawnParticle(Particle.FLASH, ent.getLocation(), 1, org.bukkit.Color.WHITE);
                     w.playSound(ent.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_CHIME, SoundCategory.NEUTRAL, 1.5f, 1.8f);
                     for (Player p : near(ent.getLocation(), cfg("mirrorfin.flash-range", 6))) if (fair(p)) p.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 60, 0));
                     Edition.vel(m.body, unit(ent.getLocation().toVector().subtract(by.getLocation().toVector())).multiply(0.8));

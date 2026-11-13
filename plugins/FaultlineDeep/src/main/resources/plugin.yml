@@ -1,5 +1,5 @@
 name: FaultlineDeep
-version: '1.17.0'
+version: '1.17.1'
 main: net.faultlinesmp.deep.FaultlineDeep
 api-version: '1.21'
 author: FaultlineSMP
@@ -7,6 +7,10 @@ description: The Dark Ocean (a world of water only), the hourly whirlpool down t
 softdepend: [floodgate, Geyser-Spigot, FaultlineItems, FaultlineBosses, FaultlineIndex]
 
 commands:
+  halcyon:
+    description: Teleport to Halcyon, the dome city (admins)
+    usage: /halcyon [player]
+    permission: faultlinedeep.admin
   deep:
     description: "Admin: the Dark Ocean (the Mirror's way up, whirlpools, tp, spawn creatures, eggs, events)"
     usage: /deep [info|set kingdom|whirlpool [here|random|at|stop|next]|tp [player]|town [player]|sulphur [player]|trench [maw] [player]|spawn <mob>|egg <mob> [n] [player]|event <pressure|undertow|stop>|acidrain|den [info|where|tp|raid|stop|reset|rise]|bloom|migration]

@@ -70,6 +70,7 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
         subs = new Submersible(this);
         city = new HalcyonCity(this); // 1.17.0 (after the subs: the Dock Master sells them)
         new Ambience(this);            // 1.17.0: every biome's own particles and far-off sounds
+        if (getCommand("halcyon") != null) getCommand("halcyon").setExecutor((sender, cmd, label, args) -> city.command(sender, args));
         migration = new Migration(this);
         bloom = new Bloom(this);
         outer = new Outer(this);

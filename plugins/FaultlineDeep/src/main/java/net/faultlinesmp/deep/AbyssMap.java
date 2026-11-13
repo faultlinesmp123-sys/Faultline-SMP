@@ -267,6 +267,7 @@ final class AbyssMap implements Listener {
         l.add(new Object[]{Trench.LX, Trench.LZ, MapCursor.Type.RED_X, "The Maw"});
         l.add(new Object[]{FrozenShelf.CX, FrozenShelf.CZ, MapCursor.Type.BANNER_LIGHT_BLUE, "The Frozen Shelf"});
         l.add(new Object[]{DrownedCity.CX, DrownedCity.CZ, MapCursor.Type.BANNER_GRAY, "The Drowned City"});
+        l.add(new Object[]{Halcyon.HX, Halcyon.HZ, MapCursor.Type.BANNER_LIGHT_BLUE, "Halcyon"}); // 1.17.0
         l.add(new Object[]{GlassReef.CX, GlassReef.CZ, MapCursor.Type.BANNER_MAGENTA, "The Glass Reef"});
         l.add(new Object[]{BoneFields.CX, BoneFields.CZ, MapCursor.Type.BANNER_WHITE, "The Bone Fields"});
         if (pl.grave != null && pl.grave.open()) l.add(new Object[]{KrakenGrave.GX, KrakenGrave.GZ, MapCursor.Type.BANNER_BLACK, "The Kraken's Grave"});

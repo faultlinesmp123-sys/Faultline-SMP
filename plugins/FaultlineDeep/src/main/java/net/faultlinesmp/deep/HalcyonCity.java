@@ -111,7 +111,28 @@ final class HalcyonCity implements Listener {
 
     boolean ours(Block b) { return pl.world != null && b.getWorld().equals(pl.world) && Halcyon.grounds(b.getX() + 0.5, b.getY() + 0.5, b.getZ() + 0.5); }
 
-    static boolean exempt(Player p) { return p.hasPermission("faultlinedeep.city") || p.getGameMode() == GameMode.CREATIVE && p.hasPermission("faultlinedeep.admin"); }
+    /** Builds and goes unpunished: creative mode AND the permission (an op playing in survival is treated like anyone). */
+    static boolean exempt(Player p) { return p.getGameMode() == GameMode.CREATIVE && (p.hasPermission("faultlinedeep.city") || p.hasPermission("faultlinedeep.admin")); }
+
+    /** /halcyon [player]: to the plaza (the chunks load first, off the main thread). */
+    boolean command(org.bukkit.command.CommandSender sender, String[] args) {
+        if (pl.world == null) { sender.sendMessage(ChatColor.RED + "The Dark Ocean isn't loaded."); return true; }
+        Player who = args.length > 0 ? Bukkit.getPlayerExact(args[0]) : sender instanceof Player p ? p : null;
+        if (who == null) { sender.sendMessage(ChatColor.RED + (args.length > 0 ? "No player called " + args[0] + "." : "/halcyon <player>")); return true; }
+        int[] at = Halcyon.spawnSpot();
+        Location l = new Location(pl.world, at[0] + 0.5, Halcyon.G, at[1] + 0.5, 180, 0);
+        java.util.function.Consumer<Boolean> done = ok -> {
+            if (!ok) { sender.sendMessage(ChatColor.RED + "Couldn't teleport " + who.getName() + "."); return; }
+            who.sendMessage(ChatColor.AQUA + "Halcyon. " + ChatColor.GRAY + "(" + Halcyon.HX + ", " + Halcyon.G + ", " + Halcyon.HZ + " in the Dark Ocean)");
+            Material m = pl.world.getBlockAt(at[0], Halcyon.HF, at[1]).getType(); // (loaded now: they're standing on it)
+            if (m != Material.CALCITE && !m.name().contains("POLISHED") && !m.name().contains("SMOOTH"))
+                sender.sendMessage(ChatColor.YELLOW + "No city here? That part of the Dark Ocean was generated before the update: delete its region files with the server stopped.");
+        };
+        try { who.teleportAsync(l).thenAccept(ok -> Bukkit.getScheduler().runTask(pl, () -> done.accept(ok))); }
+        catch (RuntimeException e) { done.accept(who.teleport(l)); } // (a server without async teleports)
+        if (who != sender) sender.sendMessage(ChatColor.GREEN + "Sending " + who.getName() + " to Halcyon.");
+        return true;
+    }
 
     void tick() {
         ticks++;
@@ -322,6 +343,13 @@ final class HalcyonCity implements Listener {
         CreatureSpawnEvent.SpawnReason r = e.getSpawnReason();
         if (r != CreatureSpawnEvent.SpawnReason.NATURAL && r != CreatureSpawnEvent.SpawnReason.REINFORCEMENTS && r != CreatureSpawnEvent.SpawnReason.PATROL) return;
         if (Halcyon.grounds(e.getLocation().getX(), e.getLocation().getY(), e.getLocation().getZ())) e.setCancelled(true);
+    }
+
+    /** Its houses' beds make it a "village" to the game: no Bad Omen raid ever starts in Halcyon. */
+    @EventHandler(ignoreCancelled = true)
+    public void onRaid(org.bukkit.event.raid.RaidTriggerEvent e) {
+        Location l = e.getRaid().getLocation();
+        if (enabled() && l.getWorld().equals(pl.world) && Halcyon.e(l.getX(), Math.max(l.getY(), Halcyon.HF), l.getZ()) < 1.5) e.setCancelled(true);
     }
 
     // =========================================================================================== admin

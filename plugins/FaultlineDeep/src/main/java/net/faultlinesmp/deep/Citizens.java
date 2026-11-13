@@ -325,7 +325,13 @@ final class Citizens implements Listener {
     }
 
     // =========================================================================================== spawning
-    long time() { return pl.world == null ? 6000 : Math.floorMod(pl.world.getTime(), 24000); }
+    /** The Dark Ocean's clock (or the main world's, if its daylight cycle is switched off: their day must still turn). */
+    long time() {
+        if (pl.world == null) return 6000;
+        org.bukkit.World w = pl.world;
+        if (Boolean.FALSE.equals(w.getGameRuleValue(org.bukkit.GameRule.DO_DAYLIGHT_CYCLE)) && !Bukkit.getWorlds().isEmpty()) w = Bukkit.getWorlds().get(0);
+        return Math.floorMod(w.getTime(), 24000);
+    }
 
     void spawnAll() {
         if (pl.world == null) return;
@@ -517,6 +523,8 @@ final class Citizens implements Listener {
     /** One step along the route. */
     void walk(Person p) {
         double[] next = p.route.peekFirst();
+        // never into a chunk that isn't loaded (a teleport there would load it on the main thread): wait at the edge
+        if (!pl.world.isChunkLoaded((Halcyon.HX + (int) Math.floor(next[0] + 0.5)) >> 4, (Halcyon.HZ + (int) Math.floor(next[2] + 0.5)) >> 4)) return;
         double dx = next[0] - p.pos[0], dy = next[1] - p.pos[1], dz = next[2] - p.pos[2];
         double d = Math.sqrt(dx * dx + dz * dz + dy * dy);
         double sp = p.speed;
@@ -873,6 +881,7 @@ final class Citizens implements Listener {
         for (int turn : new int[]{0, 35, -35, 70, -70, 110, -110}) {
             Vector d = dir.clone().rotateAroundY(Math.toRadians(turn)).multiply(sp);
             Location n = me.clone().add(d);
+            if (!Halcyon.inside(n.getX(), n.getY() + 0.5, n.getZ()) || !n.getWorld().isChunkLoaded(n.getBlockX() >> 4, n.getBlockZ() >> 4)) continue; // never out of the city
             double y = floorAt(n);
             if (Double.isNaN(y)) continue;
             n.setY(y);

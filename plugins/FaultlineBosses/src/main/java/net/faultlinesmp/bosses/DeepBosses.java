@@ -800,7 +800,7 @@ final class DeepBosses {
             headB = rig.add("scourge_head_b", k, pos);  // Bedrock: one head with the mandibles as animated bones
             mandL = rig.add("scourge_mandible", k, pos); // Java: the two great mandibles, opening and snapping
             mandR = rig.add("scourge_mandible_r", k, pos);
-            world.playSound(pos, Sound.ENTITY_ELDER_GUARDIAN_CURSE, SoundCategory.HOSTILE, 4f, 0.4f);
+            if (Wild.SPECIMEN == null) world.playSound(pos, Sound.ENTITY_ELDER_GUARDIAN_CURSE, SoundCategory.HOSTILE, 4f, 0.4f);
             world.spawnParticle(Particle.BUBBLE_COLUMN_UP, pos, 200, 3, 3, 3, 0.2);
         }
 
@@ -1812,7 +1812,7 @@ final class DeepBosses {
         Umbral(Wild w, Location at, Player by) {
             super(w, "umbral", at, by, 1.8);
             build("umbral_head", "umbral_body", "umbral_tail", (int) c("segments", 14), 2.0, 0.03, 3, "The Umbral Leviathan");
-            world.playSound(pos, Sound.ENTITY_WARDEN_EMERGE, SoundCategory.HOSTILE, 4f, 0.5f);
+            if (Wild.SPECIMEN == null) world.playSound(pos, Sound.ENTITY_WARDEN_EMERGE, SoundCategory.HOSTILE, 4f, 0.5f);
         }
 
         @Override double defHealth() { return 2600; }
@@ -2037,7 +2037,7 @@ final class DeepBosses {
             trident = rig.add("coralia_trident", k, pos);
             hitbox(pos, Math.max(2, (int) Math.round(2.4 * k)), "Coralia");
             hitbox(pos, Math.max(2, (int) Math.round(2.0 * k)), "Coralia");
-            world.playSound(pos, Sound.ENTITY_ALLAY_AMBIENT_WITHOUT_ITEM, SoundCategory.HOSTILE, 3f, 0.5f);
+            if (Wild.SPECIMEN == null) world.playSound(pos, Sound.ENTITY_ALLAY_AMBIENT_WITHOUT_ITEM, SoundCategory.HOSTILE, 3f, 0.5f);
         }
 
         /** 1.7.0: a full boss now (was a 900 mini boss); a server config still saying 900 gets the new number. */
@@ -2523,7 +2523,7 @@ final class DeepBosses {
             body = rig.add("inkjaw_body", k, pos);
             for (int i = 0; i < ARMS; i++) for (int s = 0; s < SEGS; s++) arms[i][s] = rig.add("inkjaw_tentacle", k * (1 - s * 0.22), pos);
             hitbox(pos, Math.max(2, (int) Math.round(2.6 * k)), "Old Inkjaw");
-            world.playSound(pos, Sound.ENTITY_SQUID_AMBIENT, SoundCategory.HOSTILE, 3f, 0.3f);
+            if (Wild.SPECIMEN == null) world.playSound(pos, Sound.ENTITY_SQUID_AMBIENT, SoundCategory.HOSTILE, 3f, 0.3f);
         }
 
         @Override double defHealth() { return 500; }
@@ -2731,7 +2731,7 @@ final class DeepBosses {
             lid = rig.add("grandmaw_lid", k, pos);
             pearl = rig.add("grandmaw_pearl", k, pos);
             hitbox(pos.clone().add(0, 0.6 * k, 0), Math.max(2, (int) Math.round(3 * k)), "The Grandmaw Clam");
-            world.playSound(pos, Sound.BLOCK_SHULKER_BOX_OPEN, SoundCategory.HOSTILE, 3f, 0.3f);
+            if (Wild.SPECIMEN == null) world.playSound(pos, Sound.BLOCK_SHULKER_BOX_OPEN, SoundCategory.HOSTILE, 3f, 0.3f);
         }
 
         @Override double defHealth() { return 900; }
@@ -2913,7 +2913,7 @@ final class DeepBosses {
         Lament(Wild w, Location at, Player by) {
             super(w, "lament", at, by, 2.6);
             build("lament_head", "lament_body", "lament_tail", 2, 2.3, 0.12, 1, "The Lament");
-            world.playSound(pos, Sound.AMBIENT_CAVE, SoundCategory.HOSTILE, 3f, 0.5f);
+            if (Wild.SPECIMEN == null) world.playSound(pos, Sound.AMBIENT_CAVE, SoundCategory.HOSTILE, 3f, 0.5f);
         }
 
         @Override double defHealth() { return 900; }
@@ -3120,8 +3120,8 @@ final class DeepBosses {
             for (Wild.Part p : List.of(eyes, lures[0], lures[1], lures[2])) if (p.d != null) p.d.setBrightness(new Display.Brightness(15, 15));
             hitbox(base.clone().add(0, 1.2 * k, 0), Math.max(3, (int) Math.round(3.2 * k)), "The Abyssal Titan");
             hitbox(base.clone().add(0, 3.2 * k, 0), Math.max(2, (int) Math.round(2.0 * k)), "The Abyssal Titan");
-            world.playSound(base, Sound.ENTITY_WARDEN_EMERGE, SoundCategory.HOSTILE, 5f, 0.4f);
-            world.playSound(base, Sound.ENTITY_ELDER_GUARDIAN_CURSE, SoundCategory.HOSTILE, 5f, 0.3f);
+            if (Wild.SPECIMEN == null) world.playSound(base, Sound.ENTITY_WARDEN_EMERGE, SoundCategory.HOSTILE, 5f, 0.4f);
+            if (Wild.SPECIMEN == null) world.playSound(base, Sound.ENTITY_ELDER_GUARDIAN_CURSE, SoundCategory.HOSTILE, 5f, 0.3f);
             pose(0);
         }
 

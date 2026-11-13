@@ -331,7 +331,7 @@ final class Habitat implements Listener {
         int x = at.getX(), y = at.getY(), z = at.getZ();
         if (!wet(at)) return "Put it down under water (any sea or lake).";
         if (y - 2 < w.getMinHeight() || y + r + 2 >= w.getMaxHeight()) return "There's no room for a dome here.";
-        if (w.equals(pl.world) && (Math.hypot(x - 681, z + 951) < 160 || MermaidDen.weight(x, z) > 0 || DrownedCity.inside(x, z)
+        if (w.equals(pl.world) && (Math.hypot(x - 681, z + 951) < 160 || Halcyon.e(x, Halcyon.HF, z) < 1.3 || MermaidDen.weight(x, z) > 0 || DrownedCity.inside(x, z)
                 || Math.hypot(x - GlassReef.CX, z - GlassReef.CZ) < GlassReef.PLAZA_R + 10 || Math.hypot(x - Trench.LX, z - Trench.LZ) < Trench.LAIR_R + 20))
             return "You can't put a dome here.";
         long mine = domes.values().stream().filter(d -> d.owner.equals(p.getUniqueId())).count();

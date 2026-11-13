@@ -4668,6 +4668,20 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         return pl.wild.summon("titan", at, by) != null;
     }
 
+    /**
+     * FaultlineDeep (by reflection): a sea boss's real model, tiny, posed in a lab jar (scale = the rig's k; radius = the
+     * circle a serpent swims round). Returns its id, or null. Harmless: no hitboxes, no fight, no music.
+     */
+    public static String specimen(String kind, Location at, double scale, double radius) {
+        FaultlineBosses pl = instance;
+        return pl == null || pl.wild == null ? null : pl.wild.specimen(kind, at, scale, radius);
+    }
+
+    public static void removeSpecimen(String id) {
+        FaultlineBosses pl = instance;
+        if (pl != null && pl.wild != null) pl.wild.removeSpecimen(id);
+    }
+
     public static boolean hearingBossMusic(UUID id) {
         FaultlineBosses pl = instance;
         if (pl == null) return false;

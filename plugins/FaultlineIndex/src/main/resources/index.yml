@@ -732,6 +732,20 @@ entries:
      where: "1% of hostile mobs that spawn naturally (any kind), and some mobs in raids. Look for the gold ★ Elite name.",
      does: "Double health, 50% more damage, faster and a little bigger. Kill it for double drops, triple XP and bonus loot.",
      drops: ["Its normal drops twice|100%", "2-5 Bottles o' Enchanting|40%", "2-6 Iron Ingots|35%", "1-3 Emeralds|25%", "Golden Apple|15%", "1-2 Diamonds|10%", "Goodie Bag|4%"]}
+  - {chapter: friends, id: halcyon_citizen, name: "Citizen of Halcyon", icon: caravan_merchant, detect-tag: faultline_citizen,
+     where: "HALCYON, the city under the dome in the Dark Ocean's south-west (-1800, 2200, floor y 70). Swim to its south or west gate.",
+     does: "Villagers living their day: breakfast at home, work (farming, woodcutting, mining coal down the stair tunnel, building, the Bio-Center, the Aquarium, the market), lunch at the Kelp & Kettle, the plaza at dusk, then to bed. Right-click one to trade (vanilla trades by job). They can't be leashed, ridden or named. Hit one and they all scream and run, and the guards come for you."}
+  - {chapter: friends, id: halcyon_dockmaster, name: "Halcyon Dock Master", icon: caravan_merchant, detect-tag: faultline_citizen,
+     where: "Halcyon's dock office, just inside the south gate.",
+     does: "Sells the SUBMERSIBLE for 128 emeralds (the only way to get one), iron for patching hulls, and maps."}
+  - {chapter: enemies, id: halcyon_guard, name: "City Guard", icon: deep_merguard, detect-tag: faultline_citizen,
+     where: "Patrolling Halcyon day and night (two shifts; the night shift sleeps in the barracks by day).",
+     does: "Harmless until you're WANTED: hit a citizen (1 star), hit a guard, kill anyone or get caught mining the dome (2), sink a patrol sub (3). Then they run you down, hit for 6 and shoot from range. Wanted lasts 3 minutes per star after your last crime; dying clears it.",
+     drops: ["Nothing (and they come back)|100%"]}
+  - {chapter: enemies, id: halcyon_patrol_sub, name: "Halcyon Patrol Sub", icon: deep_submersible, detect-tag: faultline_halcyon_sub_hit,
+     where: "Four of them berth at Halcyon's dock and patrol the sea 300 blocks round it while anyone's near.",
+     does: "Villager-piloted subs that explore, scan creatures, capture harmless ones for the Aquarium and torpedo dangerous ones. Their RADAR finds anyone wanted within 400 blocks: they close in and fire homing torpedoes. 120 health (a bar over each); at 0 it sinks, its pilot bails out and it drops salvage. Sinking one makes you wanted 3.",
+     drops: ["Iron Ingots, Copper Ingots|100%", "Dark Loot Bag|30%"]}
   - {chapter: friends, id: caravan_merchant, name: "Caravan Merchant", icon: caravan_merchant, detect-tag: faultline_caravan,
      where: "Every 3 hours the Caravan sets up camp 40-100 blocks from a random player for one hour (the whole server is told where; /caravan says where he is or when he's back).",
      does: "Sells rare things for diamonds, emeralds and netherite: Totems, Elytra, Mythic Goodie Bags, top enchanted books, smithing templates, a Nether Star, a Bait Worm, sometimes even the Ankh or the Cross. 8 offers each visit, a few of each."}
@@ -1202,11 +1216,14 @@ entries:
     detect: faultlineitems:oxygen_helmet=3
     how: "Craft: a Reinforced Dive Helmet with 2 Netherite Ingots, 2 Hearts of the Sea and 4 Echo Shards round it."
     does: "A 600-second oxygen tank, +3 armor, +2 toughness. Rated for the Trench: wear it WITH the Abyssal Diving Suit and the Trench's hadal pressure can't touch you."
+  - {chapter: consumables, name: "The Halcyon Bestiary", icon: abyssal_chart, detect: "faultlinedeep:halcyon_book",
+     how: "On the lecterns at the Halcyon Aquarium's door (sneak + right-click takes a copy; the Bio-Center's lectern has its Research Notes).",
+     does: "Every creature of the Dark Ocean: what it does, and where it came from. The Research Notes tell the bosses' stories."}
   - chapter: weapons
     name: Submersible
     icon: deep_submersible
     detect: faultlinedeep:submersible
-    how: "Craft: Iron Blocks, Glass, Copper Blocks and a Heart of the Sea (IGI / CHC / III)."
+    how: "Buy it from the Dock Master in HALCYON (the dome city at -1800, 2200 in the Dark Ocean) for 128 emeralds. It can't be crafted any more."
     does: "A little research sub. Right-click water to put it in, right-click it to climb in, sneak to climb out (sneak + punch it to pick it up). W goes where you look, S backs up, A/D slide, Jump rises, Sprint is faster. Inside you breathe, creatures' bites hit the HULL instead of you, the deep's pressure can't reach you, and its headlight lifts the Abyss's dark. Below y -40 (the Trench) the hull cracks unless you fit HADAL PLATING (right-click it with 4 Netherite Ingots); at 0% it implodes. Iron Ingots patch the hull."
   # ---------------------------------------------------------------- the outer ring (Deep 1.9.0)
   - {chapter: deep, id: deep_marroweel, name: "Marrow Eel", icon: deep_marroweel, detect-tag: faultline_deep_marroweel,
@@ -1292,7 +1309,7 @@ entries:
      does: "Right-click under water ANYWHERE (the Dark Ocean, an Overworld ocean or lake): a glass dome inflates and pushes the water out (Small 13 blocks across, Large 21), with two doors to swim in and out. Build inside: chests, crafting tables, beds. Only you can break its walls, and the sea still stays out (a broken wall is an open window). Put two of your domes close together (up to 12 blocks apart) and it asks if you want to combine them: yes = a glass hallway joins them (/dome combine asks again from inside one). In the Dark Ocean it's a DRY BASE: no pressure, no Abyss dark, your drops stay. Sneak + right-click its glass with an empty hand to pack it away (the kit comes back). 3 domes each. /dome upgrades (standing in it): 20 upgrades bought with materials: Airlock, Keycard Doors, Locked Vault, Oxygen Reserve, Bubble Ring, Hydroponics Bay, Fish Trap, Thermal Vents, Med Bay, Floodlights, Sonar, Defense Pulse, Mob Ward, Home Beacon (/dome home), Respawn Pod, Docking Bay, Pressure Hull, Heat Lamps, Intruder Alarm and Stained Shell. /dome trust <player> lets friends through locked doors and vaults."}
   - {chapter: weapons, name: "Glimmer Pearl", icon: glimmer_pearl, detect: "faultlinedeep:glimmer_pearl",
      how: "Only during the Glimmertide (the Dark Ocean's season: the first two weeks of November, February, May and August). Dark Ocean creatures drop 1-2 (15%), bosses 8-12, and glimmer shoals (glowing orbs drifting through the water) give one per orb you swim through.",
-     does: "The Glimmertide's currency. Spend them at the Glimmer Shop (/glimmer, open during the season): Dark Loot Bags, Air Coral, Dome Kits, the Abyssal Chart, a Submersible, Hearts of the Sea, a Conduit, a Trident, Mythic Goodie Bags, a Bait Worm for the Abyssal Kraken... They keep between seasons. /glimmer top: this season's best collectors."}
+     does: "The Glimmertide's currency. Spend them at the Glimmer Shop (/glimmer, open during the season): Dark Loot Bags, Air Coral, Dome Kits, the Abyssal Chart, Hearts of the Sea, a Conduit, a Trident, Mythic Goodie Bags, a Bait Worm for the Abyssal Kraken... They keep between seasons. /glimmer top: this season's best collectors."}
   - {chapter: consumables, name: "Deep Cache Key", icon: drowned_vault_key, detect: "faultlinedeep:cache_key",
      how: "3% from Dark Ocean creatures killed in the caves under the sea floor or in the Abyss.",
      does: "Opens one LOCKED cave cache: the chests in the Dark Ocean's caves on a chiseled deepslate plinth with a soul lantern beside them (the ones with a plain lantern are open). Cave caches are rare (about 1 chunk in 40) and hold Dark Loot with a 1% shot at a rare (an ordinary Dark Loot chest has 0.1%)."}
@@ -1507,3 +1524,7 @@ achievements:
      stat: den_festivals, count: 1, reward: {items: ["PRISMARINE_CRYSTALS:16"], xp: 200}}
   - {id: coral_farmer, name: "Coral Farmer", icon: air_coral_fragment, desc: "Harvest 100 Air Coral Fragments.",
      stat: coral_harvested, count: 100, reward: {items: ["HEART_OF_THE_SEA:1"], xp: 800}}
+  - {id: welcome_to_halcyon, name: "Welcome to Halcyon", icon: caravan_merchant, desc: "Find Halcyon, the city under the dome.",
+     stat: halcyon, count: 1, reward: {items: ["EMERALD:16"], xp: 300}}
+  - {id: most_wanted, name: "Most Wanted", icon: deep_submersible, desc: "Sink one of Halcyon's patrol subs.",
+     stat: subs_sunk, count: 1, reward: {items: ["TNT:4", "IRON_BLOCK:2"], xp: 600}}

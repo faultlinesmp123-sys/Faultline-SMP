@@ -69,7 +69,6 @@ final class Glimmertide implements Listener {
             "dome_small;GLASS;25;Small Dome Kit;deep give dome_small 1 {player}",
             "dome_large;TINTED_GLASS;60;Large Dome Kit;deep give dome_large 1 {player}",
             "chart;FILLED_MAP;20;Abyssal Chart;deep give chart 1 {player}",
-            "sub;IRON_TRAPDOOR;80;Submersible;deep sub {player}",
             "nautilus;NAUTILUS_SHELL;12;4 Nautilus Shells;give {player} nautilus_shell 4",
             "heart;HEART_OF_THE_SEA;40;Heart of the Sea;give {player} heart_of_the_sea 1",
             "conduit;CONDUIT;70;Conduit;give {player} conduit 1",
@@ -355,6 +354,7 @@ final class Glimmertide implements Listener {
         for (String s : raw) {
             String[] p = s.split(";", 5);
             if (p.length < 5) continue;
+            if (p[4].trim().startsWith("deep sub")) continue; // 1.17.0: Submersibles are only sold in Halcyon now
             Material m = Material.matchMaterial(p[1].trim());
             int price;
             try { price = Math.max(1, Integer.parseInt(p[2].trim())); } catch (NumberFormatException e) { continue; }

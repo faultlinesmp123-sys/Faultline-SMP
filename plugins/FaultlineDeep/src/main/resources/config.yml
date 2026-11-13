@@ -287,3 +287,45 @@ lighthouse:
   per-block: 1.5
   max-radius: 48
   max-per-player: 3
+
+# HALCYON (1.17.0): the city under the dome at -1800, 2200 (floor y 70). Wakes while a player is within active-radius.
+# Its people are villagers with homes, jobs, trades and a day; guards hunt anyone WANTED; patrol subs hunt them at sea.
+halcyon:
+  enabled: true
+  active-radius: 260
+  protect: true             # nobody breaks/places/loots there (faultlinedeep.city bypasses)
+  wanted-minutes: 3         # x the wanted level, after your last crime
+  radar-radius: 400         # how far out the patrol subs' radar reaches
+  citizens:
+    respawn-minutes: 10
+    panic-seconds: 15
+    guard-health: 40
+    guard-damage: 6
+    guard-arrow-damage: 2
+    guard-range: 64
+    guard-reach: 2.4
+    guard-run-speed: 0.27
+    site-inspection-minutes: 4
+  subs: true
+  sub-health: 120
+  sub-scale: 2.6
+  sub-speed: 0.2
+  sub-hunt-speed: 0.3
+  sub-respawn-minutes: 10
+  sub-wreck-seconds: 40
+  sub-salvage-bag-chance: 0.3
+  explore-radius: 300
+  hunt-distance: 13
+  torpedo-damage: 7
+  torpedo-speed: 0.9
+  torpedo-cooldown-ticks: 50
+  aquarium:
+    scale: 0.85
+    max-scale: 1.5
+  # specimens.<kind>.scale / .radius / .y tune the Bio-Center's jars (kinds: scourge umbral coralia inkjaw grandmaw lament titan goblin rimeback king jacob kraken abyssal)
+
+# AMBIENCE (1.17.0): each biome's own particles (only the player sees them) and far-off sounds
+ambience:
+  enabled: true
+  density: 1.0
+  sounds: true

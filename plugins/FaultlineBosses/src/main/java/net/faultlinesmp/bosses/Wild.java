@@ -102,6 +102,79 @@ final class Wild implements Listener {
     final Random random;
     final NamespacedKey itemKey;
     final Map<String, Boss> bosses = new LinkedHashMap<>();
+
+    // ============================================================================ lab specimens (2.1.0)
+    /** Set while a specimen is being built: the sea bosses' constructors take this scale and the spot as it is. */
+    static Double SPECIMEN;
+    static final String SPECIMEN_TAG = "faultline_specimen";
+    /** A sea boss's real rig, tiny and harmless, posed in a jar (FaultlineDeep's Halcyon Bio-Center). Never ticks its fight. */
+    record Specimen(String id, DeepBosses.Swimmer b, Location c, double r) { }
+    final Map<String, Specimen> specimens = new LinkedHashMap<>();
+    static final java.util.Set<String> SPECIMEN_KINDS = java.util.Set.of("scourge", "umbral", "coralia", "inkjaw", "grandmaw", "lament", "titan");
+
+    /** Builds one: kind, the jar's middle, the rig's scale, the swim circle's radius (serpents). Null if it couldn't. */
+    String specimen(String kind, Location at, double scale, double radius) {
+        if (!SPECIMEN_KINDS.contains(kind) || at == null || at.getWorld() == null) return null;
+        Boss b;
+        SPECIMEN = scale;
+        try {
+            Location spot = at.clone().add(radius, 0, 0);
+            b = switch (kind) {
+                case "scourge" -> new DeepBosses.Scourge(this, spot, null);
+                case "umbral" -> new DeepBosses.Umbral(this, spot, null);
+                case "coralia" -> new DeepBosses.Coralia(this, at, null);
+                case "inkjaw" -> new DeepBosses.Inkjaw(this, at, null);
+                case "grandmaw" -> new DeepBosses.Grandmaw(this, at, null);
+                case "lament" -> new DeepBosses.Lament(this, spot, null);
+                case "titan" -> new DeepBosses.Titan(this, at, null);
+                default -> null;
+            };
+        } catch (RuntimeException | LinkageError e) {
+            pl.getLogger().log(java.util.logging.Level.WARNING, "Couldn't make a " + kind + " specimen", e);
+            sweep(false);
+            return null;
+        } finally { SPECIMEN = null; }
+        if (!(b instanceof DeepBosses.Swimmer sw)) return null;
+        for (LivingEntity h : b.hitboxes) h.remove();
+        b.hitboxes.clear();
+        for (Part p : b.rig.parts) {
+            if (p.d != null) { p.d.addScoreboardTag(SPECIMEN_TAG); p.d.setViewRange(1.5f); float box = 3; p.d.setDisplayWidth(box); p.d.setDisplayHeight(box); }
+            if (p.stand != null) p.stand.addScoreboardTag(SPECIMEN_TAG);
+        }
+        String id = java.util.UUID.randomUUID().toString();
+        specimens.put(id, new Specimen(id, sw, at.clone(), radius));
+        return id;
+    }
+
+    void removeSpecimen(String id) {
+        Specimen s = id == null ? null : specimens.remove(id);
+        if (s != null) { s.b().rig.remove(); for (LivingEntity h : s.b().hitboxes) h.remove(); }
+    }
+
+    /** Every 2 ticks: serpents swim round their jar, the rest turn slowly on the spot. */
+    void specimenTick() {
+        for (Specimen s : new ArrayList<>(specimens.values())) {
+            DeepBosses.Swimmer b = s.b();
+            try {
+                b.ticks += 2;
+                for (LivingEntity h : b.hitboxes) h.remove(); // (the Titan's lures grow theirs back: never in a jar)
+                b.hitboxes.clear();
+                if (b instanceof DeepBosses.Serpent) {
+                    double a = b.ticks * 0.035, r = s.r();
+                    b.pos = s.c().clone().add(Math.cos(a) * r, Math.sin(b.ticks * 0.05) * 0.15, Math.sin(a) * r);
+                    b.yaw = (float) Math.toDegrees(Math.atan2(-(Math.cos(a)), -Math.sin(a))); // along the circle
+                    b.pitch = 0;
+                } else if (!(b instanceof DeepBosses.Titan)) {
+                    b.pos = s.c().clone().add(0, Math.sin(b.ticks * 0.04) * 0.08, 0);
+                    b.yaw = (float) ((b.ticks * 0.6) % 360);
+                }
+                b.pose(0);
+            } catch (RuntimeException | LinkageError e) {
+                pl.getLogger().log(java.util.logging.Level.WARNING, "[specimen " + b.kind + "] removed", e);
+                removeSpecimen(s.id());
+            }
+        }
+    }
     final Map<String, Long> cooldownUntil = new HashMap<>();
     private final Map<UUID, Long> weaponCd = new HashMap<>();
     private int ticks;
@@ -345,6 +418,7 @@ final class Wild implements Listener {
         if (ticks - lastBusy < 2400 ? ticks % 100 == 50 : ticks % 1200 == 50) sweep(false);
         if (ticks % 40 == 0) standUpkeep();
         if (ticks % 6000 == 3000) deepSpawns();
+        if (ticks % 2 == 0 && !specimens.isEmpty()) specimenTick();
     }
 
     /**
@@ -439,6 +513,7 @@ final class Wild implements Listener {
             for (LivingEntity m : b.minions) owned.add(m.getUniqueId());
             for (UUID u : b.extra()) owned.add(u);
         }
+        for (Specimen sp : specimens.values()) for (Part p : sp.b().rig.parts) { if (p.d != null) owned.add(p.d.getUniqueId()); if (p.stand != null) owned.add(p.stand.getUniqueId()); }
         boolean none = bosses.isEmpty();
         int n = 0;
         for (World wd : Bukkit.getWorlds()) for (Entity e : wd.getEntities()) {
@@ -456,7 +531,9 @@ final class Wild implements Listener {
 
     /** Java players never see a Bedrock stand; Bedrock players always do. */
     void standUpkeep() {
-        for (Boss b : bosses.values()) for (Part p : b.rig.parts) {
+        List<Boss> all = new ArrayList<>(bosses.values());
+        for (Specimen sp : specimens.values()) all.add(sp.b());
+        for (Boss b : all) for (Part p : b.rig.parts) {
             if (p.stand == null || !p.stand.isValid()) continue;
             for (Player pl2 : p.stand.getWorld().getPlayers()) {
                 if (bedrock(pl2)) { if (!pl2.canSee(p.stand)) pl2.showEntity(pl, p.stand); }
@@ -889,9 +966,20 @@ final class Wild implements Listener {
             hp = maxHp * frac;
         }
 
+        /** 2.1.0: a hit flashes the whole model's outline red for a moment (Java; the displays' glow). */
+        int flashT;
+        void hitFlash() {
+            if (!pl.getConfig().getBoolean("wild.hit-flash", true)) return;
+            boolean was = flashT > 0;
+            flashT = 4;
+            if (was) return;
+            for (Part p : rig.parts) if (p.d != null && p.d.isValid()) { p.d.setGlowColorOverride(org.bukkit.Color.fromRGB(255, 60, 60)); p.d.setGlowing(true); }
+        }
+
         void tick() {
             ticks++;
             if (flinch > 0) flinch--;
+            if (flashT > 0 && --flashT == 0) for (Part p : rig.parts) if (p.d != null && p.d.isValid()) p.d.setGlowing(false);
             if (dying) { deathTick(); return; }
             if (!valid()) { leave(null); return; }
             List<Player> a = active();
@@ -1042,6 +1130,7 @@ final class Wild implements Listener {
             amount = damageTaken(amount);
             if (amount <= 0) return;
             if (amount >= 4) flinch = 8; // a real hit: the body recoils (each boss's pose reads it)
+            hitFlash();
             hp -= amount;
             if (hp <= 0) { hp = 0; defeat(); }
         }

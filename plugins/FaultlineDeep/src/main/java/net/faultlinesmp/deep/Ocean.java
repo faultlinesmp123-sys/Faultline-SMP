@@ -331,10 +331,11 @@ final class Ocean implements Listener {
             String cur = track.get(p.getUniqueId());
             String want = "sunken".equals(cur) ? (y < line - 4 ? "abyss" : "sunken") : "abyss".equals(cur) ? (y > line + 4 ? "sunken" : "abyss") : (y >= line ? "sunken" : "abyss");
             if (inSulphur.contains(p.getUniqueId())) want = "acid"; // the Sulphur Sea: "Corrosion" (Theme of the Acid Rain)
+            if (pl.city != null && pl.city.inCity(p)) want = "biocenter"; // 1.17.0: Halcyon ("Engineer's Sanctum", the Bio-center Labs)
             quietVanilla(p); // vanilla's own underwater / background tracks would play over ours (or over a boss's)
             if (bossMusic(p)) { stopMusic(p); continue; } // a boss's music has the floor: ours stops, and waits
             String have = track.get(p.getUniqueId());
-            double len = cfg("music." + want + "-seconds", want.equals("sunken") ? 362 : want.equals("acid") ? 105 : 286);
+            double len = cfg("music." + want + "-seconds", want.equals("sunken") ? 362 : want.equals("acid") ? 105 : want.equals("biocenter") ? 442 : 286);
             if (want.equals(have) && now - trackAt.getOrDefault(p.getUniqueId(), 0L) < len * 1000) continue;
             if (have != null) p.stopSound("faultline:deep." + have, SoundCategory.MUSIC);
             p.stopSound(SoundCategory.MUSIC); // vanilla's background tune too
@@ -444,6 +445,11 @@ final class Ocean implements Listener {
         if (e.isBedSpawn() || e.isAnchorSpawn()) return;
         if (!pl.getConfig().getString("death.respawn", "entry").equalsIgnoreCase("entry")) return;
         Location died = p.getLocation(); // (still where they died)
+        if (Halcyon.inside(died.getX(), died.getY(), died.getZ())) { // 1.17.0: died in Halcyon: back on its plaza
+            int[] at = Halcyon.spawnSpot();
+            e.setRespawnLocation(new Location(pl.world, at[0] + 0.5, Halcyon.G, at[1] + 0.5, 180, 0));
+            return;
+        }
         if (Market.dry(died.getX(), died.getY(), died.getZ())) { // a fight in the Pit, or a fall in the town: back in front of the Black Market
             int[] at = Town.plotSpawn();
             e.setRespawnLocation(new Location(pl.world, at[0] + 0.5, at[1], at[2] + 0.5, 180, 0));

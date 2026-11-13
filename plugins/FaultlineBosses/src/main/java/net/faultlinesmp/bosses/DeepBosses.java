@@ -106,11 +106,12 @@ final class DeepBosses {
 
         Swimmer(Wild w, String kind, Location at, Player by, double defScale) {
             super(w, kind, at, by);
-            k = c("scale", defScale);
-            Location spot = openWater(at, 7, 15, Math.max(1, (int) Math.round(1.3 * k)));
+            Double spec = Wild.SPECIMEN; // a lab specimen (FaultlineDeep's Bio-Center): tiny, right where it's put
+            k = spec != null ? spec : c("scale", defScale);
+            Location spot = spec != null ? at.clone() : openWater(at, 7, 15, Math.max(1, (int) Math.round(1.3 * k)));
             if (spot == null) throw new IllegalStateException("it needs open water all around (a big enough pocket of sea) near you");
             pos = spot;
-            yaw = yawOf(flat(at.toVector().subtract(spot.toVector())));
+            yaw = spec != null ? 0 : yawOf(flat(at.toVector().subtract(spot.toVector())));
             cd = 60;
         }
 
@@ -3096,8 +3097,8 @@ final class DeepBosses {
         final Set<UUID> waveHit = new HashSet<>();
 
         Titan(Wild w, Location at, Player by) {
-            super(w, "titan", at.clone().add(0, 12, 0), by, 3.6); // (the open-water check runs well above the floor; it stands on the floor below)
-            Location f = floorUnder(at.clone(), 48);
+            super(w, "titan", at.clone().add(0, Wild.SPECIMEN != null ? 0 : 12, 0), by, 3.6); // (the open-water check runs well above the floor; it stands on the floor below)
+            Location f = Wild.SPECIMEN != null ? at.clone().add(0, -0.8 * k, 0) : floorUnder(at.clone(), 48);
             floorY = f.getY();
             base = f.clone().add(0, 0.8 * k, 0); // its waist; the torso's base sinks into the Maw's floor
             pos = base.clone().add(0, 1.6 * k, 0);

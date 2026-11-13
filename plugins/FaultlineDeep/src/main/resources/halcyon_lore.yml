@@ -1,0 +1,261 @@
+# Halcyon's books: the Bio-Center's research notes (bosses) and the Aquarium's Bestiary (where each creature came from).
+# "What it does" in the Bestiary comes from the creature itself (DeepMobs); only the ORIGINS are written here.
+intro:
+  bestiary: |-
+    THE HALCYON BESTIARY
+
+    Every creature of the Dark Ocean, as the Aquarium knows them: what each one does, and where it came from.
+
+    Compiled by the Curators of Halcyon. Please return to the lectern.
+  notes: |-
+    BIO-CENTER RESEARCH NOTES
+
+    The specimens in the jars are grown from samples. They are small, they are sedated, and they are NOT to be tapped on.
+
+    What follows is what we know of the great beasts of the deep.
+
+bosses:
+  titan:
+    name: The Abyssal Titan
+    plaque: The oldest thing in the Dark Ocean. It was here before the sea.
+    notes: |-
+      THE ABYSSAL TITAN
+
+      The Founders thought the Trench was a crack in the sea floor. It is not. It is a wound, and the Titan is what lies in it.
+
+      Core samples from the Maw are older than any rock above them. The Titan's lures were glowing down there before the first whirlpool ever opened.
+
+      Its heat warms the whole Trench. Its pressure crushes everything that is not born there. We believe half the creatures of the hadal zone are its children, or its parasites.
+
+      Sample 1 has not stopped growing. Sample 1 is in the big tank.
+  scourge:
+    name: The Brine Scourge
+    plaque: Born in the acid the Sulphur Works spilled. Our fault, all of it.
+    notes: |-
+      THE BRINE SCOURGE
+
+      Halcyon built the Sulphur Works two centuries ago, to refine the sea's minerals. The tanks burst. The acid never stopped spreading.
+
+      Something lived in that acid that should have died: a common sea worm. It drank the poison and grew, and grew, and armoured itself in scales the acid cannot eat.
+
+      When it is cornered it MOLTS, shedding its whole hide, and what comes out underneath is raw, fast and furious.
+
+      The Sulphur Sea is its sea now. We gave it to it.
+  umbral:
+    name: The Umbral Leviathan
+    plaque: A hunter of the dark below y 35. It sees by the light you carry.
+    notes: |-
+      THE UMBRAL LEVIATHAN
+
+      Nothing in the Abyss has eyes like the Umbral's. Six red eyes and a comb of light under its belly, in a place with no light at all.
+
+      It does not need light to see. It hunts by the light YOU carry: lanterns, glowing gear, even a lit Submersible.
+
+      When the whales migrate, it rises to meet them. We have recordings of the Migration calling it up from the deep, every year.
+  coralia:
+    name: Coralia, Queen of the Den
+    plaque: The first mermaid. The Den was built round her throne.
+    notes: |-
+      CORALIA, QUEEN OF THE DEN
+
+      The mermaids say Coralia was a sailor's daughter who fell through the first whirlpool and refused to drown.
+
+      The sea kept her. Coral grew in her hair and her legs became a tail, and the drowned who came after her became her people.
+
+      Only a sword reaches her. The mermaids say spears and arrows were the weapons of the ships that drowned them, and she will not be touched by them again.
+
+      Do not hurt her mermaids. She knows. She always knows.
+  inkjaw:
+    name: Old Inkjaw
+    plaque: A squid so old its ink has turned to tar.
+    notes: |-
+      OLD INKJAW
+
+      Every fisher in Halcyon has an Inkjaw story. Most of them are lies. All of the scars are real.
+
+      Old Inkjaw is a lampsquid that never stopped growing. Its ink is thick as tar, its beak cracks hulls, and it has learned that a dropped bait means a meal and a fight.
+
+      Sample 4 bit Dr. Pell. Twice.
+  grandmaw:
+    name: The Grandmaw Clam
+    plaque: Half a pearl farm, half a fortress. Her pearls are worth the bruises.
+    notes: |-
+      THE GRANDMAW CLAM
+
+      A clam the size of a house, sitting on the open sea floor for longer than Halcyon has stood.
+
+      Every pearl in the Dark Ocean is, in a way, one of hers: the little clams of the Sunlit Sea are her spawn, carried off by the currents.
+
+      She shells up when hurt, and she does not let go of what she has caught. The Shield of the Ocean was cut from one of her old shells.
+  lament:
+    name: The Lament
+    plaque: It wails for something that drowned. We have never found out what.
+    notes: |-
+      THE LAMENT
+
+      The Lament cries. All the time. The sound carries for miles in the deep, and every creature that hears it falls silent.
+
+      The scientists who studied it the longest all asked to be moved to the farms. They said the crying sounds like a name.
+
+      It eats light. It hunts by grief. We do not keep Sample 6 near the others.
+  kraken:
+    name: The Kraken
+    plaque: The surface ocean's own monster. It followed the bait down here once.
+    notes: |-
+      THE KRAKEN
+
+      The Kraken is not from the Dark Ocean. It lives in the deep oceans of the world above, under the ships, and a Bait Worm brings it up.
+
+      One of them followed a bait through a whirlpool. It did not go back. In the Dark Ocean's depths it kept growing: that one is the ABYSSAL KRAKEN, many times its size.
+
+      Both drop bubbles of air for those who fight them. We believe it is not mercy. It wants the fight to last.
+  abyssal:
+    name: The Abyssal Kraken
+    plaque: A Kraken that never went home. The deep made it enormous.
+    notes: |-
+      THE ABYSSAL KRAKEN
+
+      The Kraken that stayed. A Bait Worm dropped in the Dark Ocean's deep water wakes it.
+
+      Its arms are as long as the dome is wide. Swimming into one is enough to hurt. It claps, it ink-storms, and it has learned to clap where you are going to be.
+
+      The Cross was found inside one, half digested. We do not know whose it was.
+  jacob:
+    name: Diamond Jacob
+    plaque: Not a sea creature. A cast of his armour, recovered from the Trench.
+    notes: |-
+      DIAMOND JACOB
+
+      Jacob is not one of ours. He fights on land, in the world above, a knight in diamond with an army of riders.
+
+      So why is he in the Bio-Center? Because we found his armour. An old, empty set of it, at the bottom of the Trench, beside the bones of a horse.
+
+      Either there were two of him, or he has been down here before. The Mirror he carries points the way to the whirlpools. We would like to know who made it.
+  goblin:
+    name: Grubnash the Acid Goblin
+    plaque: Rides in on the Acid Rain. Steals anything that isn't nailed down.
+    notes: |-
+      GRUBNASH THE ACID GOBLIN
+
+      Goblins are not native to the Dark Ocean. Grubnash came through a whirlpool with a pack of scrap and has refused to leave ever since.
+
+      He lives on the Sulphur Sea's islands and only comes out when the Acid Rain falls: the acid hides his smell from the Scourge.
+
+      He builds his bombs from wrecks. Several of them were ours.
+  rimeback:
+    name: The Rimeback
+    plaque: An orca sealed in ice. It sleeps under the Frozen Shelf.
+    notes: |-
+      THE RIMEBACK
+
+      The Frozen Shelf was not always frozen. Something froze it, and the orcas say it was the Rimeback waking.
+
+      It is an orca grown vast and sheathed in ice that never melts. It breathes frost, and the pod follows it.
+
+      Under the ice, mind your air. It counts on you forgetting.
+  king:
+    name: The Drowned King
+    plaque: The Drowned City's king. He told his people to stay. They stayed.
+    notes: |-
+      THE DROWNED KING
+
+      Before the flood, the Drowned City was a city of the world above. When the sea came, its king ordered everyone to stay in their homes and wait for the water to go down.
+
+      It never went down. They are still waiting. The King still sits his throne, and his guards still keep his vaults.
+
+      His people are not dead, exactly. We do not have a better word for what they are.
+
+origins:
+  gawker: "The first fish the Founders ever drew. Ordinary sea fish that fell through the whirlpools grew bigger eyes to see in the dimmer water."
+  bloatfin: "A pufferfish line that learned to hold air instead of water. Halcyon's divers used to follow schools of them up when their tanks ran low."
+  jellywing: "Grew from moon jellies in the Sunlit Sea's warm reefs. The mermaids prize their slime for their hair."
+  driftback: "Turtles that stopped swimming and let the reef grow on them. The oldest Driftbacks carry reefs older than Halcyon."
+  clam: "Spawn of the Grandmaw Clam, carried across the sea floor by the currents."
+  lumenbell: "The Glass Reef's light got into ordinary jellyfish. Their glow drifts up from the south every season."
+  gasbloom: "Swollen on the gases of the sea floor vents. Its spores travelled north from the Sulphur Sea."
+  fangstalker: "Sharks that came down the whirlpools after the fish did. They only got hungrier."
+  blastfin: "A Bloatfin cousin that swallowed the vents' gas instead of air. Volatile from birth."
+  burrowshark: "Sharks of the Pale Dunes that learned to wait under the sand instead of swimming."
+  cavecrawler: "Crabs that climbed into the crust's caves and never came back out."
+  glowgrub: "Larvae of something we have not yet found. They glow to keep the cave predators away."
+  shellsnake: "Sea snakes that armoured themselves in the crust's rock to survive the cave crawlers."
+  lampsquid: "Squids that grew lanterns to hunt in the Abyss. Old Inkjaw is what happens when one never stops growing."
+  volteel: "Electric eels from the surface, charged further by the Abyss's vents."
+  needlejaw: "Deep anglers of the Abyss. Their lure is the only light many creatures ever see."
+  devilfish: "It wears the skull of something it killed. The mask grows into its face over time."
+  riftwarper: "It lives near the whirlpools' roots and moves the way they do: from one place to another, without the bit in between."
+  hollowkin: "The mermaids say they are the shadows of children who drowned. We have no better explanation."
+  sharkquid: "A Fangstalker and a Lampsquid. We do not know how. We do not want to know how."
+  acideel: "Eels from the Sulphur Works' outflow pipes. The acid became part of them."
+  trasher: "Crocodiles that came through a whirlpool to the Sulphur Sea's islands and found nothing could eat them there."
+  radiator: "Little fish that swallowed something glowing from the Works. Now they glow too."
+  flakcrab: "Crabs that moved into the Works' rusted pipes and turned them into weapons."
+  nucleartoad: "Swamp toads from the islands. The acid made them unstable. Very unstable."
+  gammaslime: "Slimes that grew round the Works' leaking cores. Keep your distance."
+  sulphurskater: "Pond striders, grown huge on the acid's warmth."
+  acidjelly: "Jellies of the Sulphur Sea. The acid is not their poison; it is their food."
+  orthocera: "A living fossil. It was in the Sulphur Sea long before the acid, and it simply never left."
+  trilobite: "Another living fossil, armoured enough to shrug off the acid entirely."
+  skyfin: "Flying fish that learned to leap over the acid's surface rather than swim in it."
+  leech: "Leeches that fed on the Scourge's wounds and grew bold on its blood."
+  boglurker: "An acidwood stump that is not a stump. The trees and the Lurkers may be the same thing at different ages."
+  corrosionshark: "Fangstalkers that followed prey into the Sulphur Sea and adapted. Their teeth now eat through steel."
+  urchin: "Urchins that grew sulphur-crystal spines over the vents."
+  crabling: "Hatchlings of the Flak Crabs. A whole clutch moves together."
+  bloatgut: "A Bloatfin that swam into the acid and swallowed it. It kept it."
+  sulphurmoth: "Moths from the world above, drawn down the whirlpools by the fumaroles' glow."
+  hazardturtle: "Driftbacks that crawled onto the Sulphur Sea's islands. The sulphur grew into their shells."
+  sludgesnail: "Snails that live off the Works' rust and leave its sludge behind them."
+  shambler: "Sailors drowned in the acid. The Acid Rain brings them back up."
+  rustbones: "Skeletons from the Sulphur Sea's wrecks, raised when the green rain falls."
+  acidmite: "Mites that hatch from the islands' soil when the Acid Rain soaks it."
+  stormwraith: "The Acid Rain itself, given a shape. Nobody has caught one to check."
+  mauler: "Something that lives under the Sulphur Sea's floor and only surfaces in the storm."
+  goblin: "See the Bio-Center's notes on Grubnash."
+  sailfin: "Marlins from the world above. The Sunlit Sea's open water suits them."
+  mantaglider: "Gentle giants of the Sunlit Sea. Halcyon's subs follow their wakes to save fuel."
+  leafydragon: "Seahorses that dressed themselves in kelp to hide in the Kelpwood."
+  pearlhorse: "Seahorses that steal pearls from the Grandmaw's spawn and carry them as their own eggs."
+  hammerjaw: "Hammerhead sharks, grown bolder in a sea with no fishing boats."
+  razorcuda: "Barracudas that hunt in threes, like the Founders' first dive teams. Coincidence, we hope."
+  stingray: "Rays of the Pale Dunes. They lie in the sand where the light falls warmest."
+  mirrorfin: "Hatchetfish that grew mirror scales to hide in the sunlit water. Their flash is a defence, not an attack."
+  kelpstrangler: "Kelp that learned to eat. The Kelpwood is mostly ordinary kelp. Mostly."
+  siren: "Mermaids who left the Den. Coralia does not speak of them."
+  gulper: "Gulper eels of the Abyss. Their mouths grew as their prey grew scarce."
+  isopod: "Woodlice of the deep floor, grown huge on what sinks from above."
+  ghostshark: "Chimaeras, older than sharks. They were here before the Dark Ocean had its name."
+  vampsquid: "Squids of the oxygen-poor Abyss. They drink because there is so little else to eat."
+  dumbo: "Octopuses of the deepest floor. Their glow keeps the dark away, and they share it."
+  swallower: "A fish that eats things bigger than itself, and learned to steal from divers' bags."
+  chainlight: "Hundreds of tiny jellies grown together into one long animal."
+  viperfang: "Viperfish of the Abyss, with lights along their bellies to hide from below."
+  hagfish: "Hagfish, unchanged for millions of years. They had no reason to change."
+  watcher: "An eye. Just an eye. It watched the Founders arrive. It is still watching."
+  mermaid: "One of Coralia's people, drowned sailors the sea kept. See the notes on Coralia."
+  merguard: "Coralia's guards, armoured in prismarine from the Den's own reef."
+  hadalsnail: "Snailfish of the Trench's floor, the deepest fish anyone has ever found."
+  anglerking: "Needlejaws that went down into the Trench and grew to fit it."
+  bonecrawler: "Crabs that wear the skulls of things the Titan killed."
+  palestalker: "Eels that lost their eyes and their colour in the Trench's total dark."
+  crushjelly: "Jellies of the Trench. Their pulse is the Titan's pressure, carried in a bell."
+  tubeworm: "Worms of the Titan's vents. They feed on its heat."
+  greatwhale: "The whales of the Migration. They cross the Sunlit Sea every year, singing, and nobody knows where they go."
+  marroweel: "Eels that nest in the leviathans' bones in the Bone Fields."
+  scavcrab: "Crabs that pick the Bone Fields clean, and wear what they find."
+  ossuaryray: "A ray that died and kept swimming. The Bone Fields do that to things."
+  glassjelly: "Jellies born in the Glass Reef's light. The reef and its creatures are made of the same thing."
+  prismfish: "Fish of cut crystal from the Glass Reef. Their schools are how the reef spreads its colour."
+  crystalcrab: "Geodes of the Glass Reef that grew legs. Or crabs that grew geodes. Both are true."
+  shardback: "Fish armoured in the Glass Reef's shards, fired off when threatened."
+  narwhal: "Whales of the Frozen Shelf, here since before the ice."
+  iceseal: "Seals that came down a whirlpool from somewhere cold and found the Frozen Shelf."
+  frostorca: "The Rimeback's pod. See the notes on the Rimeback."
+  rimejelly: "Jellies that froze into the Shelf and thawed with frost still in them."
+  rimeback: "See the Bio-Center's notes on the Rimeback."
+  magmaeel: "Born in the undersea volcanoes' vents, cooled just enough to swim."
+  cindercrab: "Crabs that live on the volcanoes' slopes. Their shells are cooling lava."
+  drowncitizen: "The people of the Drowned City. See the notes on the Drowned King."
+  drownguard: "The Drowned King's guards, still on duty."
+  drownpriest: "The priests of the drowned cathedral, still praying for the water to go down."
+  drownking: "See the Bio-Center's notes on the Drowned King."

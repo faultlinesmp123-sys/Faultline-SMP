@@ -54,6 +54,7 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
     DenFestival festival;   // 1.15.0
     CoralFarm coralFarm;    // 1.15.0
     Lighthouse lighthouse;  // 1.15.0
+    HalcyonCity city;       // 1.17.0: Halcyon, the city under the dome
 
     @Override
     public void onEnable() {
@@ -67,6 +68,8 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
         den = new Den(this);
         rep = new DenRep(this);
         subs = new Submersible(this);
+        city = new HalcyonCity(this); // 1.17.0 (after the subs: the Dock Master sells them)
+        new Ambience(this);            // 1.17.0: every biome's own particles and far-off sounds
         migration = new Migration(this);
         bloom = new Bloom(this);
         outer = new Outer(this);
@@ -127,6 +130,7 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
         if (den != null) den.shutdown();
         if (rep != null) rep.save();
         if (subs != null) subs.shutdown();
+        if (city != null) city.shutdown();
         if (migration != null) migration.shutdown();
         if (bloom != null) bloom.stop();
         if (outer != null) outer.shutdown();
@@ -235,6 +239,36 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
                 if (who == null || world == null) { sender.sendMessage(ChatColor.RED + "Who? (or the world isn't loaded)"); return true; }
                 who.teleport(journey.entry());
                 sender.sendMessage(ChatColor.GREEN + "Sent " + who.getName() + " into the Dark Ocean.");
+            }
+            case "halcyon", "city" -> { // 1.17.0: Halcyon
+                String what = args.length > 1 ? args[1].toLowerCase() : "info";
+                switch (what) {
+                    case "tp" -> {
+                        Player who = args.length > 2 ? Bukkit.getPlayerExact(args[2]) : self;
+                        if (who == null || world == null) { sender.sendMessage(ChatColor.RED + "Who? (or the world isn't loaded)"); return true; }
+                        int[] at = Halcyon.spawnSpot();
+                        who.teleport(new org.bukkit.Location(world, at[0] + 0.5, Halcyon.G, at[1] + 0.5, 180, 0));
+                        sender.sendMessage(ChatColor.GREEN + "Sent " + who.getName() + " to Halcyon's plaza.");
+                    }
+                    case "wanted" -> {
+                        Player who = args.length > 2 ? Bukkit.getPlayerExact(args[2]) : self;
+                        int lvl = args.length > 3 ? Math.max(0, Math.min(3, Integer.parseInt(args[3]))) : 1;
+                        if (who == null) { sender.sendMessage(ChatColor.RED + "Who?"); return true; }
+                        if (lvl == 0) city.clearWanted(who.getUniqueId()); else city.crime(who, lvl, "an admin says so");
+                        sender.sendMessage(ChatColor.GREEN + who.getName() + " is now wanted " + lvl + ".");
+                    }
+                    case "clear" -> {
+                        Player who = args.length > 2 ? Bukkit.getPlayerExact(args[2]) : self;
+                        if (who != null) city.clearWanted(who.getUniqueId());
+                        sender.sendMessage(ChatColor.GREEN + "Cleared.");
+                    }
+                    case "reset" -> { // everyone back to where their day says, exhibits rebuilt
+                        city.setActive(false);
+                        city.setActive(true);
+                        sender.sendMessage(ChatColor.GREEN + "Halcyon's people, subs and exhibits were respawned.");
+                    }
+                    default -> sender.sendMessage(city.info() + "\n" + ChatColor.YELLOW + "/deep halcyon [info|tp [player]|wanted <player> <0-3>|clear <player>|reset]");
+                }
             }
             case "town" -> { // the bubble: to the path just south of the build plot
                 Player who = args.length > 1 ? Bukkit.getPlayerExact(args[1]) : self;
@@ -414,7 +448,7 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         List<String> out = new ArrayList<>();
-        if (args.length == 1) out.addAll(List.of("info", "set", "tp", "town", "sulphur", "trench", "spawn", "egg", "event", "acidrain", "den", "bloom", "migration", "sub", "whirlpool", "eclipse", "redtide", "frenzy", "volcano", "domes", "give", "region", "season"));
+        if (args.length == 1) out.addAll(List.of("info", "set", "tp", "halcyon", "town", "sulphur", "trench", "spawn", "egg", "event", "acidrain", "den", "bloom", "migration", "sub", "whirlpool", "eclipse", "redtide", "frenzy", "volcano", "domes", "give", "region", "season"));
         else if (args.length == 2 && args[0].equalsIgnoreCase("season")) out.addAll(List.of("start", "stop", "auto", "shoal"));
         else if (args.length == 2 && args[0].equalsIgnoreCase("give")) out.addAll(List.of("coral", "dome_small", "dome_large", "vault_key", "cache_key", "fossil", "chart", "glimmer", "fragment", "lighthouse"));
         else if (args.length == 2 && args[0].equalsIgnoreCase("region")) out.addAll(List.of("frozen", "city", "glass", "bones"));
@@ -422,6 +456,7 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
         else if (args.length == 2 && args[0].equalsIgnoreCase("set")) out.addAll(List.of("kingdom"));
         else if (args.length == 2 && (args[0].equalsIgnoreCase("spawn") || args[0].equalsIgnoreCase("egg"))) out.addAll(DeepMobs.KINDS.keySet());
         else if (args.length == 2 && args[0].equalsIgnoreCase("event")) out.addAll(List.of("pressure", "undertow", "stop"));
+        else if (args.length == 2 && args[0].equalsIgnoreCase("halcyon")) out.addAll(List.of("info", "tp", "wanted", "clear", "reset"));
         else if (args.length == 2 && args[0].equalsIgnoreCase("den")) out.addAll(List.of("info", "where", "tp", "raid", "stop", "reset", "rise"));
         else if (args.length == 2 && args[0].equalsIgnoreCase("acidrain")) out.addAll(List.of("start", "stop", "goblin"));
         String last = args[args.length - 1].toLowerCase();

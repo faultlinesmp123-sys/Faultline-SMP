@@ -49,7 +49,7 @@ import java.util.UUID;
 
 /**
  * THE SUBMERSIBLE (Deep 1.8.0): a little research sub for any water (the Dark Ocean above all).
- *  - craft it (iron blocks, glass, copper blocks, a Heart of the Sea), right-click water to put it in, right-click it to
+ *  - buy it from Halcyon's Dock Master (128 emeralds; 1.17.0: it can't be crafted any more), right-click water to put it in, right-click it to
  *    climb in, sneak to climb out. Sneak + punch it (its owner, or an admin) = back into your inventory, hull and all
  *  - W goes where you look (up and down too), S backs up, A/D slide sideways, Jump rises, Sprint is faster. It can't
  *    leave the water: at the surface it bobs
@@ -90,10 +90,8 @@ final class Submersible implements Listener {
         hullKey = new NamespacedKey(pl, "sub_hull");
         plateKey = new NamespacedKey(pl, "sub_plated");
         ownerKey = new NamespacedKey(pl, "sub_owner");
-        ShapedRecipe r = new ShapedRecipe(new NamespacedKey(pl, "submersible"), item(100, false));
-        r.shape("IGI", "CHC", "III");
-        r.setIngredient('I', Material.IRON_BLOCK); r.setIngredient('G', Material.GLASS); r.setIngredient('C', Material.COPPER_BLOCK); r.setIngredient('H', Material.HEART_OF_THE_SEA);
-        try { Bukkit.addRecipe(r); } catch (RuntimeException ignored) { } // (already there after a reload)
+        // 1.17.0: no more crafting it: Halcyon's Dock Master sells it (128 emeralds). The old recipe is taken out.
+        try { Bukkit.removeRecipe(new NamespacedKey(pl, "submersible")); } catch (RuntimeException ignored) { }
         for (World w : Bukkit.getWorlds()) for (org.bukkit.Chunk c : w.getLoadedChunks()) for (Entity e : c.getEntities()) adopt(e);
         Bukkit.getScheduler().runTaskTimer(pl, this::tick, 1L, 1L);
     }

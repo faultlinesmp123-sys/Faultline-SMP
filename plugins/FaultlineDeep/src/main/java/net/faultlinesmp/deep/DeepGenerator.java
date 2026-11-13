@@ -138,6 +138,8 @@ final class DeepGenerator extends ChunkGenerator {
         if (cw > 0) h = h * (1 - cw) + DrownedCity.floor(n, x, z) * cw;
         if (gw > 0) h = h * (1 - gw) + GlassReef.floor(n, x, z) * gw;
         if (bw > 0) h = h * (1 - bw) + BoneFields.floor(n, x, z) * bw;
+        double hw = Halcyon.weight(x, z);                       // 1.17.0: Halcyon's dome stands on flat ground
+        if (hw > 0) h = h * (1 - hw) + Halcyon.floor() * hw;
         return (int) Math.round(h);
     }
 
@@ -456,6 +458,7 @@ final class DeepGenerator extends ChunkGenerator {
         GlassReef.paint(this, n, p);   // the Glass Reef: glass trees, prism spires, terrariums, arches, the Prism Spire
         BoneFields.paint(this, n, p);  // the Bone Fields: the leviathan skeletons and vertebra columns
         Details.paint(this, n, p);     // 1.10.0: landmarks over the open sea, the Abyss, the Trench, the Sulphur Sea and the Den
+        Halcyon.paint(this, p);        // 1.17.0: Halcyon, the city under the dome (last: nothing draws over it)
     }
 
     /** Bracket mushrooms on the Sulphur Sea's cliffs (Reaches.bracket), from a heightmap reaching 4 blocks past the chunk. */
@@ -911,6 +914,7 @@ final class DeepGenerator extends ChunkGenerator {
             if (DrownedCity.weight(x, z) > 0.35) return Biome.COLD_OCEAN;
             if (GlassReef.weight(x, z) > 0.35) return Biome.WARM_OCEAN;
             if (BoneFields.weight(x, z) > 0.35) return Biome.DEEP_COLD_OCEAN;
+            if (Halcyon.weight(x, z) > 0.35) return Biome.WARM_OCEAN; // 1.17.0: clear water round Halcyon
             if (reef(x, z) > 0.15) return Biome.WARM_OCEAN;
             Reaches.Kind k = Reaches.at(n.seed, x, z); // 1.14.0
             if (k != Reaches.Kind.OPEN) return Reaches.biome(k);

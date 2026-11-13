@@ -29,7 +29,8 @@ final class Regions {
 
     /** Near any of the four (other features keep away). */
     static boolean nearAny(int x, int z, int extra) {
-        return FrozenShelf.near(x, z, extra) || DrownedCity.near(x, z, extra) || GlassReef.near(x, z, extra) || BoneFields.near(x, z, extra);
+        return FrozenShelf.near(x, z, extra) || DrownedCity.near(x, z, extra) || GlassReef.near(x, z, extra) || BoneFields.near(x, z, extra)
+                || Halcyon.near(x, z, extra);
     }
 
     /** Which region a column is in (for titles, music, spawns, the map), or null. */

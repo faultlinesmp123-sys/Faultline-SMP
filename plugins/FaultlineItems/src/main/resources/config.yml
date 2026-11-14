@@ -776,6 +776,7 @@ creator-mode:
 # Fights like a PvPer: hit timing, crits, jump crits, W-taps, strafing, shield, axe on your shield, pots, gaps (pearls away
 # to eat), pearls, bow. Not saved over restarts. kit = what a player with no snapshot gets.
 mimic-player:
+  allowed-users: [voisethegoat]   # ONLY these usernames can use /mimicplayer (console too). Empty [] = anyone with items.mimicplayer
   health: 0             # 0 = the player's real max health (20)
   skill: normal         # easy, normal, hard, godlike
   kingdom-tag: true

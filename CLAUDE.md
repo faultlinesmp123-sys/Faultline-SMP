@@ -2550,6 +2550,10 @@ Notes:
   HalcyonCity cancels villager BREEDING, VILLAGE_DEFENSE (golems) and VILLAGE_INVASION spawns on its grounds. Tested: scratch
   `ht2/HTest` (whole city painted with the generator; 53 citizens, arrests, fights, felled trees, dug ore, divers in the water,
   87 fish one per tank, 0 in walls over a day; sign text is a MockBukkit gap), `hp/HalcyonPreview` (0 leaks, 0 spills).
+- **Mimics locked to names (Items 1.3.15)**: `/mimicplayer` (every subcommand, tab completion too) only works for the usernames in
+  `mimic-player.allowed-users` (default `[voisethegoat]`, any case, op or not) and the console (`MimicPlayer.mayUse`); the
+  `items.mimicplayer` permission no longer opens it (an empty list `[]` = the old permission rule). The command lost its
+  plugin.yml `permission:` so non-ops on the list can see it.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

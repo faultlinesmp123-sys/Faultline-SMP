@@ -6129,9 +6129,22 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
 
     // ================================================================ command
 
+    /**
+     * Who may use /mimicplayer (1.3.15): ONLY the names in `mimic-player.allowed-users` (any case; op or not), plus the
+     * console. An empty list = the old rule (the items.mimicplayer permission).
+     */
+    boolean mayUse(CommandSender s) {
+        if (!(s instanceof Player p)) return true;
+        List<String> names = plugin.getConfig().getStringList("mimic-player.allowed-users");
+        if (!plugin.getConfig().isList("mimic-player.allowed-users")) names = List.of("voisethegoat");
+        if (names.isEmpty()) return s.hasPermission("items.mimicplayer");
+        for (String n : names) if (n != null && n.trim().equalsIgnoreCase(p.getName())) return true;
+        return false;
+    }
+
     @Override
     public boolean onCommand(CommandSender s, Command c, String l, String[] a) {
-        if (!s.hasPermission("items.mimicplayer")) { s.sendMessage(ChatColor.RED + "Admins only."); return true; }
+        if (!mayUse(s)) { s.sendMessage(ChatColor.RED + "You can't use mimics."); return true; }
         String sub = a.length == 0 ? "random" : a[0].toLowerCase(Locale.ROOT);
         if (sub.equals("clear") || (sub.equals("remove") || sub.equals("kill") || sub.equals("delete")) && a.length > 1 && a[1].equalsIgnoreCase("all")) {
             int n = byBrain.size();
@@ -6331,6 +6344,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
 
     @Override
     public List<String> onTabComplete(CommandSender s, Command c, String l, String[] a) {
+        if (!mayUse(s)) return List.of();
         if (a.length == 1) {
             List<String> out = new ArrayList<>(List.of("random", "remove", "clear", "list", "hunt", "spectate", "debug", "body", "fight", "duel", "ffa"));
             for (Player p : Bukkit.getOnlinePlayers()) out.add(p.getName());

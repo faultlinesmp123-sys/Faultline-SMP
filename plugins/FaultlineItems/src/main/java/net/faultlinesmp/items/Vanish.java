@@ -56,7 +56,7 @@ final class Vanish implements Listener, CommandExecutor {
         List<String> l = new ArrayList<>();
         for (UUID u : hidden) l.add(u.toString());
         y.set("vanished", l);
-        try { y.save(file); } catch (IOException e) { plugin.getLogger().warning("Couldn't save vanished.yml: " + e.getMessage()); }
+        SafeYaml.write(plugin, file, y.saveToString()); // 1.3.19: atomic, off the main thread
     }
 
     void apply(Player p) {

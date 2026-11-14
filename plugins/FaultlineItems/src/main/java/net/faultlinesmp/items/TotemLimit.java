@@ -101,7 +101,7 @@ final class TotemLimit implements Listener, CommandExecutor, TabCompleter {
             Long at = lastAt.get(e.getKey());
             if (at != null) y.set("last-hit." + e.getKey(), at);
         }
-        try { plugin.getDataFolder().mkdirs(); y.save(file); } catch (IOException e) { plugin.getLogger().warning("[Totems] couldn't save totems.yml: " + e.getMessage()); }
+        SafeYaml.write(plugin, file, y.saveToString()); // 1.3.19: atomic, off the main thread
     }
 
     private static boolean counted(Player p) { return p.getGameMode() == GameMode.SURVIVAL || p.getGameMode() == GameMode.ADVENTURE; }

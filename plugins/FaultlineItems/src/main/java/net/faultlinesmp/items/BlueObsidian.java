@@ -750,7 +750,7 @@ final class BlueObsidian implements Listener {
             y.set(b + ".inside", new ArrayList<>(p.inside));
             y.set(b + ".frame", new ArrayList<>(p.frame));
         }
-        try { y.save(file); } catch (IOException ex) { plugin.getLogger().warning("Couldn't save blue_portals.yml: " + ex.getMessage()); }
+        SafeYaml.write(plugin, file, y.saveToString()); // 1.3.19: atomic, off the main thread
     }
 
     void load() {

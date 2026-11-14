@@ -736,7 +736,7 @@ final class Emotes implements Listener, CommandExecutor, TabCompleter {
         try { mode = GameMode.valueOf(c.getString("mode", "SURVIVAL")); } catch (IllegalArgumentException ex) { mode = GameMode.SURVIVAL; }
         GameMode back = mode;
         y.set("runs." + p.getUniqueId(), null);
-        try { y.save(file); } catch (IOException ignored) { }
+        SafeYaml.write(plugin, file, y.saveToString()); // 1.3.19: atomic, off the main thread
         Bukkit.getScheduler().runTask(plugin, () -> {
             if (!p.isOnline() || emoting(p)) return;
             moving.add(p.getUniqueId());
@@ -767,7 +767,7 @@ final class Emotes implements Listener, CommandExecutor, TabCompleter {
             y.set("runs." + r.id + ".at", r.home);
             y.set("runs." + r.id + ".mode", r.mode.name());
         }
-        try { y.save(file); } catch (IOException ex) { plugin.getLogger().warning("Couldn't save emotes.yml: " + ex.getMessage()); }
+        SafeYaml.write(plugin, file, y.saveToString()); // 1.3.19: atomic, off the main thread
     }
 
     // ================================================================ the tick

@@ -279,6 +279,6 @@ final class Camera implements Listener, CommandExecutor {
             y.set(k + ".mode", e.getValue().mode().name());
             y.set(k + ".fly-speed", e.getValue().flySpeed());
         }
-        try { y.save(file); } catch (IOException ex) { plugin.getLogger().warning("Couldn't save camera.yml: " + ex.getMessage()); }
+        SafeYaml.write(plugin, file, y.saveToString()); // 1.3.19: atomic, off the main thread
     }
 }

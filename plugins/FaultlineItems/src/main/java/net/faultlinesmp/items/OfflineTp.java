@@ -54,7 +54,7 @@ final class OfflineTp implements Listener, TabExecutor {
     }
 
     void save() {
-        try { data.save(file); } catch (Exception ex) { plugin.getLogger().warning("[OfflineTp] couldn't save offline_spots.yml: " + ex); }
+        SafeYaml.write(plugin, file, data.saveToString()); // 1.3.19: atomic, off the main thread
     }
 
     /** The saved logout spot (null = none / its world isn't loaded). */

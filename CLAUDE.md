@@ -2580,6 +2580,20 @@ Notes:
   5 ticks even for players standing still (an AFK player beside a chest room = the full budget forever); now a player whose
   eye block hasn't changed (`lastEye`) is re-checked once a second. Checked and fine: every full-world entity scan is a one-off
   (startup / command), Kingdoms' and the Index's Discord HTTP is off the main thread. For real lag ask for a spark profile.
+- **Data files can't be cut in half (Items 1.3.19)**: the live server's `accessories.yml` was truncated mid-write ("found unexpected
+  end of stream" at line 543): it was written straight over itself on the main thread on EVERY accessory change, so a crash /
+  kill / full disk mid-write left half a file, the plugin then loaded NOBODY's accessories and its next save erased the rest.
+  `Items/SafeYaml.java`: `write(plugin, file, text)` = `<name>.tmp` + atomic move, on one daemon writer thread (in order) while
+  the plugin runs, on the main thread when disabled (`isEnabled()` is false inside onDisable), `flush()` at the end of
+  onDisable; `load(plugin, file)` = a file that won't parse is copied to `<name>.broken-<time>` and SALVAGED section by
+  section (each top-level key parsed alone; `lost` = the unreadable keys). `AccessoryManager.load` uses it (`damaged`,
+  `salvaged`) and `recoverFrom(AccessoryBackups)` (right after the backups load) gives every player missing from a damaged file
+  their NEWEST accessory snapshot (`AccessoryBackups.newest()`). `/accrestore empty` = everyone with empty slots gets their newest
+  snapshot (for a file that was already saved over). Every YAML data file in Items saves through `SafeYaml.write` (accessories,
+  accessory backups, balloons, blue portals, camera, emotes, fishing, mimic world, offline spots, races, totems, vanish, coords);
+  the accessory backups are no longer rewritten in full on every quit (the 30 s timer does it). RULE: data files go through
+  `SafeYaml`, never `yaml.save(file)` on the main thread. Tested (scratch `acc/AccTest`: the same "quoted scalar" cut, 3 of 4
+  salvaged + the cut one from its backup, the broken copy kept, the file whole again, `/accrestore empty`).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

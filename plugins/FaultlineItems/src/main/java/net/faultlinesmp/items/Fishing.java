@@ -133,7 +133,7 @@ final class Fishing implements Listener, CommandExecutor, TabCompleter {
             String b = "records." + e.getKey();
             y.set(b + ".kg", e.getValue().kg()); y.set(b + ".name", e.getValue().name()); y.set(b + ".when", e.getValue().when());
         }
-        try { y.save(file); } catch (IOException ex) { plugin.getLogger().warning("Couldn't save fishing.yml: " + ex.getMessage()); }
+        SafeYaml.write(plugin, file, y.saveToString()); // 1.3.19: atomic, off the main thread
     }
 
     private void scheduleAuto() {

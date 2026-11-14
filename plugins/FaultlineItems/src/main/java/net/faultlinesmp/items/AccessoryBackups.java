@@ -71,7 +71,7 @@ final class AccessoryBackups implements Listener, TabExecutor {
 
     private void load() {
         if (!file.exists()) return;
-        YamlConfiguration y = YamlConfiguration.loadConfiguration(file);
+        YamlConfiguration y = SafeYaml.load(plugin, file).yaml; // 1.3.19: a damaged file is kept + salvaged, never wiped
         for (String id : y.getKeys(false)) {
             ConfigurationSection ps = y.getConfigurationSection(id);
             if (ps == null) continue;
@@ -100,7 +100,15 @@ final class AccessoryBackups implements Listener, TabExecutor {
                 for (int i = 0; i < s.slots.length; i++) if (s.slots[i] != null) y.set(k + ".slot" + i, s.slots[i]);
             }
         }
-        try { y.save(file); dirty = false; } catch (IOException ex) { plugin.getLogger().warning("[AccessoryBackups] couldn't save: " + ex.getMessage()); }
+        SafeYaml.write(plugin, file, y.saveToString()); // 1.3.19: atomic, off the main thread
+        dirty = false;
+    }
+
+    /** The newest snapshot of everyone (used to refill a damaged accessories.yml). */
+    Map<UUID, ItemStack[]> newest() {
+        Map<UUID, ItemStack[]> out = new HashMap<>();
+        for (var e : snaps.entrySet()) if (!e.getValue().isEmpty()) out.put(e.getKey(), e.getValue().get(e.getValue().size() - 1).slots());
+        return out;
     }
 
     // ---------------------------------------------------------------- snapshots
@@ -139,7 +147,7 @@ final class AccessoryBackups implements Listener, TabExecutor {
     }
 
     @EventHandler(priority = EventPriority.LOWEST) public void onJoin(PlayerJoinEvent e) { snapshot(e.getPlayer(), "join"); }
-    @EventHandler(priority = EventPriority.LOWEST) public void onQuit(PlayerQuitEvent e) { snapshot(e.getPlayer(), "quit"); if (dirty) save(); }
+    @EventHandler(priority = EventPriority.LOWEST) public void onQuit(PlayerQuitEvent e) { snapshot(e.getPlayer(), "quit"); } // saved by the 30 s timer (1.3.19: not a full rewrite on every quit)
     @EventHandler(priority = EventPriority.LOWEST) public void onWorld(PlayerChangedWorldEvent e) { snapshot(e.getPlayer(), "world change"); }
     /** Before the accessories drop (that handler is HIGH). */
     @EventHandler(priority = EventPriority.LOWEST) public void onDeath(PlayerDeathEvent e) { snapshot(e.getEntity(), "death"); }
@@ -223,7 +231,33 @@ final class AccessoryBackups implements Listener, TabExecutor {
     @Override
     public boolean onCommand(CommandSender s, Command c, String label, String[] a) {
         if (!s.hasPermission("items.accrestore")) { s.sendMessage(ChatColor.RED + "You don't have permission."); return true; }
-        if (a.length == 0) { s.sendMessage(ChatColor.YELLOW + "/accrestore <player> [#n]" + ChatColor.GRAY + " (no number = the list)"); return true; }
+        if (a.length == 0) { s.sendMessage(ChatColor.YELLOW + "/accrestore <player> [#n]" + ChatColor.GRAY + " (no number = the list), "
+                + ChatColor.YELLOW + "/accrestore empty" + ChatColor.GRAY + " = everyone with no accessories gets their newest backup"); return true; }
+        if (a[0].equalsIgnoreCase("empty")) { // 1.3.19: after a lost / wiped accessories.yml
+            var am = plugin.getAccessoryManager();
+            int n = 0;
+            for (var e : snaps.entrySet()) {
+                if (e.getValue().isEmpty()) continue;
+                boolean has = false;
+                for (ItemStack it : am.getSlots(e.getKey())) if (it != null) has = true;
+                if (has) continue;
+                Snap sn = e.getValue().get(e.getValue().size() - 1);
+                boolean any = false;
+                for (ItemStack it : sn.slots) if (it != null) any = true;
+                if (!any) continue;
+                Player p = Bukkit.getPlayer(e.getKey());
+                if (p != null) restore(p, sn);
+                else {
+                    ItemStack[] copy = new ItemStack[sn.slots.length];
+                    for (int i = 0; i < copy.length; i++) copy[i] = sn.slots[i] == null ? null : sn.slots[i].clone();
+                    am.setSlots(e.getKey(), copy);
+                }
+                n++;
+            }
+            plugin.getLogger().warning("[AccessoryBackups] " + s.getName() + " refilled " + n + " players with no accessories from their newest backup");
+            s.sendMessage(ChatColor.GREEN + "Gave " + n + " players with empty accessory slots their newest backup.");
+            return true;
+        }
         Player online = Bukkit.getPlayerExact(a[0]);
         UUID who = online != null ? online.getUniqueId() : null;
         if (who == null) { OfflinePlayer o = Bukkit.getOfflinePlayerIfCached(a[0]); if (o != null) who = o.getUniqueId(); }
@@ -255,6 +289,7 @@ final class AccessoryBackups implements Listener, TabExecutor {
     @Override
     public List<String> onTabComplete(CommandSender s, Command c, String label, String[] a) {
         List<String> out = new ArrayList<>();
+        if (a.length == 1 && s.hasPermission("items.accrestore") && "empty".startsWith(a[0].toLowerCase(Locale.ROOT))) out.add("empty");
         if (a.length == 1 && s.hasPermission("items.accrestore"))
             for (Player p : Bukkit.getOnlinePlayers()) if (p.getName().toLowerCase(Locale.ROOT).startsWith(a[0].toLowerCase(Locale.ROOT))) out.add(p.getName());
         return out;

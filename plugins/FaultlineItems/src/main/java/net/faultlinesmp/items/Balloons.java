@@ -716,7 +716,7 @@ final class Balloons implements Listener, org.bukkit.command.CommandExecutor {
             y.set(k + ".landed", b.landed);
         }
         for (var r : returns.entrySet()) y.set("returns." + r.getKey(), r.getValue());
-        try { y.save(file); } catch (IOException e) { plugin.getLogger().warning("Couldn't save balloons.yml: " + e.getMessage()); }
+        SafeYaml.write(plugin, file, y.saveToString()); // 1.3.19: atomic, off the main thread
     }
 
     /** Server stopping: everyone aboard is set on the ground below first, then everything is saved. */

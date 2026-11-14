@@ -69,7 +69,7 @@ final class Where implements Listener, CommandExecutor, TabCompleter {
         YamlConfiguration y = new YamlConfiguration();
         y.set("on", showing.stream().map(UUID::toString).toList());
         y.set("off", hidden.stream().map(UUID::toString).toList());
-        try { y.save(file); } catch (IOException e) { plugin.getLogger().warning("Couldn't save coords.yml: " + e.getMessage()); }
+        SafeYaml.write(plugin, file, y.saveToString()); // 1.3.19: atomic, off the main thread
     }
 
     static String facing(float yaw) {

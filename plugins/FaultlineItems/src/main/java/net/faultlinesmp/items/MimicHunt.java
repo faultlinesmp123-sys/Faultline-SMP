@@ -238,6 +238,6 @@ final class MimicHunt implements Listener {
             list.add(m);
         }
         y.set("portals", list);
-        try { y.save(file); } catch (Exception ex) { plugin.getLogger().warning("mimic_world.yml: " + ex); }
+        SafeYaml.write(plugin, file, y.saveToString()); // 1.3.19: atomic, off the main thread
     }
 }

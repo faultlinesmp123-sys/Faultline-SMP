@@ -420,6 +420,7 @@ public final class FaultlineItems extends JavaPlugin {
         if (getCommand("giveupgradedgrindstone") != null) getCommand("giveupgradedgrindstone").setExecutor(new GiveItemCommand(this, "items.giveupgradedgrindstone",
                 "/giveupgradedgrindstone [amount] [player]", ItemCatalog.single(pl -> pl.upgradedGrindstone.item(1))));
         accessoryBackups = new AccessoryBackups(this); // 1.3.13: accessory snapshots, restored with an InventoryRollbackPlus restore
+        try { accessoryManager.recoverFrom(accessoryBackups); } catch (RuntimeException e) { getLogger().log(Level.SEVERE, "accessory recovery failed", e); }
         getServer().getPluginManager().registerEvents(accessoryBackups, this);
         if (getCommand("accrestore") != null) { getCommand("accrestore").setExecutor(accessoryBackups); getCommand("accrestore").setTabCompleter(accessoryBackups); }
         blueBed = new BlueBed(this); // 1.3.11: a bed for the Nether and the End
@@ -691,6 +692,7 @@ public final class FaultlineItems extends JavaPlugin {
         if (accessoryManager != null) {
             accessoryManager.save();
         }
+        SafeYaml.flush(); // 1.3.19: let any data file still being written finish
         if (necromancerManager != null) {
             necromancerManager.removeAll();
         }
@@ -1015,9 +1017,15 @@ public final class FaultlineItems extends JavaPlugin {
             load();
         }
 
+        /** 1.3.19: the file was damaged: these players' entries (or everyone after the cut) may be missing. */
+        boolean damaged;
+        final java.util.Set<UUID> salvaged = new HashSet<>();
+
         private void load() {
             if (!file.exists()) return;
-            YamlConfiguration yaml = YamlConfiguration.loadConfiguration(file);
+            SafeYaml.Loaded l = SafeYaml.load(plugin, file);
+            damaged = l.broken;
+            YamlConfiguration yaml = l.yaml;
             for (String key : yaml.getKeys(false)) {
                 try {
                     UUID uuid = UUID.fromString(key);
@@ -1026,10 +1034,32 @@ public final class FaultlineItems extends JavaPlugin {
                         items[i] = yaml.getItemStack(key + ".slot" + i, null);
                     }
                     slots.put(uuid, items);
+                    salvaged.add(uuid);
                 } catch (IllegalArgumentException e) {
                     plugin.getLogger().warning("Skipping invalid UUID in accessories.yml: " + key);
                 }
             }
+            if (damaged) { dirty = true; }
+        }
+
+        /** 1.3.19: after a damaged accessories.yml, anyone it lost gets their newest accessory backup back. */
+        void recoverFrom(AccessoryBackups backups) {
+            if (!damaged || backups == null) return;
+            int n = 0;
+            for (Map.Entry<UUID, ItemStack[]> e : backups.newest().entrySet()) {
+                if (salvaged.contains(e.getKey())) continue;
+                ItemStack[] items = e.getValue();
+                boolean any = false;
+                for (ItemStack it : items) if (it != null) any = true;
+                if (!any) continue;
+                ItemStack[] copy = new ItemStack[SLOT_COUNT];
+                for (int i = 0; i < SLOT_COUNT && i < items.length; i++) copy[i] = items[i] == null ? null : items[i].clone();
+                slots.put(e.getKey(), copy);
+                n++;
+            }
+            plugin.getLogger().severe("accessories.yml: " + n + " players the damaged file lost got their newest accessory backup back.");
+            dirty = true;
+            save();
         }
 
         public void save() {
@@ -1043,12 +1073,9 @@ public final class FaultlineItems extends JavaPlugin {
                     }
                 }
             }
-            try {
-                yaml.save(file);
-                dirty = false;
-            } catch (IOException e) {
-                plugin.getLogger().log(Level.SEVERE, "Failed to save accessories.yml", e);
-            }
+            // 1.3.19: atomic (temp file + move) and off the main thread: a crash mid-write can't cut the file in half any more
+            SafeYaml.write(plugin, file, yaml.saveToString());
+            dirty = false;
         }
 
         public ItemStack[] getSlots(UUID playerId) {

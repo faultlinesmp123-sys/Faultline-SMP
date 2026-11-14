@@ -1,5 +1,5 @@
 name: FaultlineItems
-version: 1.3.18
+version: 1.3.19
 main: net.faultlinesmp.items.FaultlineItems
 api-version: '1.21'
 softdepend: [floodgate, Geyser-Spigot, DonutCombat]
@@ -179,7 +179,7 @@ commands:
     permission: items.giveupgradedgrindstone
   accrestore:
     description: "Staff: list / restore a player's accessory backups (also done by an InventoryRollbackPlus restore)"
-    usage: /accrestore <player> [#n]
+    usage: /accrestore <player> [#n] | /accrestore empty
     permission: items.accrestore
   givebluebed:
     description: "Admin: give a Blue Obsidian Bed"

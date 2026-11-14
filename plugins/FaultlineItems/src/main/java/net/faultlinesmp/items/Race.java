@@ -170,7 +170,7 @@ final class Race implements Listener, CommandExecutor, TabCompleter {
         // chestplates a lent elytra replaced, until they're given back (survives a crash)
         for (Racer r : racers.values()) if (r.savedChest != null) y.set("restore." + r.id, r.savedChest);
         for (var e : pendingRestore.entrySet()) y.set("restore." + e.getKey(), e.getValue());
-        try { y.save(file); } catch (IOException e) { plugin.getLogger().warning("Couldn't save races.yml: " + e.getMessage()); }
+        SafeYaml.write(plugin, file, y.saveToString()); // 1.3.19: atomic, off the main thread
     }
 
     // ---------------------------------------------------------------- the race

@@ -268,7 +268,7 @@ final class ModGuard implements Listener {
     @EventHandler public void onQuit(PlayerQuitEvent e) { forget(e.getPlayer()); }
     @EventHandler public void onWorld(PlayerChangedWorldEvent e) { forget(e.getPlayer()); }
 
-    void forget(Player p) { armed.remove(p.getUniqueId()); hidden.remove(p.getUniqueId()); shown.remove(p.getUniqueId()); worldOf.remove(p.getUniqueId()); }
+    void forget(Player p) { lastEye.remove(p.getUniqueId()); armed.remove(p.getUniqueId()); hidden.remove(p.getUniqueId()); shown.remove(p.getUniqueId()); worldOf.remove(p.getUniqueId()); }
 
     /** Fakes these for p unless it may see them now. `place` = a block just placed (nearby + seen ones stay real). */
     void hideNow(Player p, List<Block> blocks, boolean place) {
@@ -353,6 +353,8 @@ final class ModGuard implements Listener {
 
     private boolean warned;
 
+    private final Map<UUID, Long> lastEye = new HashMap<>();
+
     private void tickOne(Player p, double rehide, int budget) {
         UUID id = p.getUniqueId();
         if (!armed.contains(id) && pieFor(p) && tick % 4 == 0) sweep(p); // anything sent before it was on for them
@@ -366,6 +368,10 @@ final class ModGuard implements Listener {
         int reach = (int) Math.ceil(plugin.getConfig().getDouble("pie-limit.reveal-distance", 24) / 16) + 1;
         List<Block> reveal = new ArrayList<>();
         int checks = 0;
+        // standing still (same eye block) = what they can see hasn't changed: re-check only once a second
+        long eyeKey = pack(eye.getBlockX(), eye.getBlockY(), eye.getBlockZ());
+        Long was = lastEye.put(id, eyeKey);
+        if (was != null && was == eyeKey && tick % 4 != 0) budget = 0;
         for (int dx = -reach; dx <= reach && checks < budget; dx++) for (int dz = -reach; dz <= reach && checks < budget; dz++) {
             Set<Long> set = h.get(chunkKey(pcx + dx, pcz + dz));
             if (set == null || set.isEmpty()) continue;

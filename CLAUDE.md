@@ -2576,6 +2576,10 @@ Notes:
   `kingdoms.admin`): every online member of those kingdoms (outlaws = no kingdom) is teleported to you, or to the named player
   (the console must name one); the destination player and the sender never move; riders are dismounted first; teleportAsync
   with a plain-teleport fallback; each one is told who brought them, logged "[Tp]". Tested (scratch `ktp/TpTest`).
+- **Lag pass (Items 1.3.18)**: the pie chart limit (`ModGuard.tickOne`) re-ran up to 96 line-of-sight block walks per player every
+  5 ticks even for players standing still (an AFK player beside a chest room = the full budget forever); now a player whose
+  eye block hasn't changed (`lastEye`) is re-checked once a second. Checked and fine: every full-world entity scan is a one-off
+  (startup / command), Kingdoms' and the Index's Discord HTTP is off the main thread. For real lag ask for a spark profile.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

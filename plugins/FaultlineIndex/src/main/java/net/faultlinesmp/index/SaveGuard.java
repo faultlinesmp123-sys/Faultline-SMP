@@ -55,9 +55,15 @@ final class SaveGuard implements Listener {
 
     record Print(long at, String name, Map<String, Integer> counts, String world, double x, double y, double z) { }
 
+    /** 1.9.12: a full copy of what each player logged off with (inventory + armour + off hand + ender chest), one file each. */
+    private final File invDir;
+    /** When each player's logout copy was taken: a death right after (combat-log kill) throws the copy away. */
+    private final Map<UUID, Long> quitAt = new HashMap<>();
+
     SaveGuard(FaultlineIndex index) {
         this.index = index;
         this.file = new File(index.getDataFolder(), "saveguard.yml");
+        this.invDir = new File(index.getDataFolder(), "inventories");
         load();
         Bukkit.getScheduler().runTaskTimer(index, this::sweep, 200L, 100L);
     }
@@ -86,7 +92,7 @@ final class SaveGuard implements Listener {
             // whoever was online never had a clean quit: their record can't be trusted, and their save may be minutes old
             for (String entry : was) {
                 int bar = entry.indexOf('|');
-                try { prints.remove(UUID.fromString(bar < 0 ? entry : entry.substring(0, bar))); } catch (IllegalArgumentException ignored) { }
+                try { UUID id = UUID.fromString(bar < 0 ? entry : entry.substring(0, bar)); prints.remove(id); snapFile(id).delete(); } catch (IllegalArgumentException ignored) { }
             }
             List<String> names = new ArrayList<>();
             for (String entry : was) { int bar = entry.indexOf('|'); names.add(bar < 0 ? entry : entry.substring(bar + 1)); }
@@ -116,7 +122,9 @@ final class SaveGuard implements Listener {
 
     /** The server is stopping: everyone online is about to be saved as they are. */
     void shutdown() {
-        if (on()) for (Player p : Bukkit.getOnlinePlayers()) { try { repair(p); prints.put(p.getUniqueId(), print(p)); } catch (RuntimeException ignored) { } }
+        if (on()) for (Player p : Bukkit.getOnlinePlayers()) {
+            try { repair(p); Print pr = print(p); prints.put(p.getUniqueId(), pr); snapshot(p, pr.at()); } catch (RuntimeException ignored) { }
+        }
         online.clear();
         write(true);
     }
@@ -152,11 +160,12 @@ final class SaveGuard implements Listener {
     public void onJoin(PlayerJoinEvent e) {
         Player p = e.getPlayer();
         online.add(p.getUniqueId() + "|" + p.getName());
+        quitAt.remove(p.getUniqueId());
         Print old = prints.remove(p.getUniqueId());
         write(false);
         if (!on() || old == null) return;
         Print now = print(p);
-        if (old.counts.equals(now.counts)) return;
+        if (old.counts.equals(now.counts)) { snapFile(p.getUniqueId()).delete(); return; }
         List<String> back = new ArrayList<>(), gone = new ArrayList<>();
         int gained = 0;
         boolean valuable = false;
@@ -174,7 +183,81 @@ final class SaveGuard implements Listener {
                 + (moved < 0 ? ", in another world" : moved > 3 ? ", " + Math.round(moved) + " blocks from where they logged off" : "") + "): their save went back in time."
                 + (back.isEmpty() ? "" : " Has again: " + cut(back) + ".") + (gone.isEmpty() ? "" : " Missing: " + cut(gone) + ".")
                 + (back.isEmpty() ? "" : " If those went into a chest or a shulker box before they left, that's a dupe.");
-        index.watch.record(p, "rollback", valuable || gained >= 32 || !gone.isEmpty() ? Watch.Sev.ALERT : Watch.Sev.LOG, text);
+        boolean restored = restore(p, old);
+        boolean dupe = restored && !back.isEmpty();
+        if (restored) text += " Their inventory and ender chest were PUT BACK to exactly what they logged off with" + (dupe ? " and they were kicked for the dupe." : ".");
+        index.watch.record(p, "rollback", restored || valuable || gained >= 32 || !gone.isEmpty() ? Watch.Sev.ALERT : Watch.Sev.LOG, text);
+        if (!restored) return;
+        if (dupe && index.getConfig().getBoolean("save-guard.kick-on-dupe", true)) {
+            String msg = index.getConfig().getString("save-guard.kick-message",
+                    "Your inventory didn't match what you logged out with, so it was put back. Duping gets you kicked.");
+            Bukkit.getScheduler().runTaskLater(index, () -> { if (p.isOnline()) p.kickPlayer(msg); }, 2L);
+        } else {
+            p.sendMessage(org.bukkit.ChatColor.YELLOW + "Your save didn't load right, so your inventory was put back to what you logged out with.");
+        }
+    }
+
+    // ---------------------------------------------------------------- the logout copy
+
+    private File snapFile(UUID id) { return new File(invDir, id + ".yml"); }
+
+    /** Written straight to disk at logout (temp file + atomic move). Can't write = the old copy is deleted, never kept stale. */
+    private void snapshot(Player p, long at) {
+        File f = snapFile(p.getUniqueId());
+        try {
+            YamlConfiguration y = new YamlConfiguration();
+            y.set("at", at);
+            y.set("name", p.getName());
+            y.set("inventory", java.util.Arrays.asList(p.getInventory().getContents()));
+            y.set("ender-chest", java.util.Arrays.asList(p.getEnderChest().getContents()));
+            SafeYaml.saveNow(y, f);
+            quitAt.put(p.getUniqueId(), System.currentTimeMillis());
+        } catch (Throwable ex) {
+            f.delete();
+            index.getLogger().warning("[SaveGuard] couldn't save " + p.getName() + "'s logout inventory (" + ex + "): no restore for them next time");
+        }
+    }
+
+    /** Puts back what they logged off with. False = no usable copy (none, stale, too old, unreadable). */
+    private boolean restore(Player p, Print old) {
+        if (!index.getConfig().getBoolean("save-guard.restore", true)) return false;
+        File f = snapFile(p.getUniqueId());
+        if (!f.exists()) return false;
+        try {
+            YamlConfiguration y = SafeYaml.load(index, f).yaml;
+            long at = y.getLong("at");
+            long maxAge = index.getConfig().getLong("save-guard.restore-max-days", 14) * 86400000L;
+            if (at != old.at() || System.currentTimeMillis() - at > maxAge) { f.delete(); return false; }
+            ItemStack[] inv = items(y.getList("inventory"), p.getInventory().getSize());
+            ItemStack[] ec = items(y.getList("ender-chest"), p.getEnderChest().getSize());
+            if (inv == null || ec == null) return false;
+            p.setItemOnCursor(null);
+            p.getInventory().setContents(inv);
+            p.getEnderChest().setContents(ec);
+            p.updateInventory();
+            try { p.saveData(); } catch (Throwable ignored) { }
+            f.delete();
+            index.getLogger().info("[SaveGuard] put back " + p.getName() + "'s logout inventory");
+            return true;
+        } catch (Throwable ex) {
+            index.getLogger().warning("[SaveGuard] couldn't put back " + p.getName() + "'s inventory: " + ex);
+            return false;
+        }
+    }
+
+    private static ItemStack[] items(List<?> l, int size) {
+        if (l == null || l.size() != size) return null;
+        ItemStack[] out = new ItemStack[size];
+        for (int i = 0; i < size; i++) out[i] = l.get(i) instanceof ItemStack it ? it : null;
+        return out;
+    }
+
+    /** Killed while logging off (DonutCombat's combat-log kill): their items dropped, so the logout copy is wrong. */
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onDeath(org.bukkit.event.entity.PlayerDeathEvent e) {
+        UUID id = e.getEntity().getUniqueId();
+        Long q = quitAt.get(id);
+        if (q != null && System.currentTimeMillis() - q < 2000) { snapFile(id).delete(); prints.remove(id); quitAt.remove(id); write(false); }
     }
 
     private static double sq(double v) { return v * v; }
@@ -200,7 +283,15 @@ final class SaveGuard implements Listener {
                         index.watch.record(p, "rollback", Watch.Sev.ALERT, Watch.b(p.getName()) + "'s data could NOT be saved when they left: " + why + ". They will come back with an old save.");
                 }
             }
-            prints.put(p.getUniqueId(), print(p));
+            // 1.9.12: the copy is taken a tick later, once every plugin's quit code has run (race items taken back, boss form
+            // undone, DonutCombat's combat-log kill): what's left is exactly what the game writes to their save.
+            if (index.isEnabled()) Bukkit.getScheduler().runTask(index, () -> {
+                if (p.isOnline()) return; // already back (can't really happen in one tick)
+                Print pr = print(p);
+                prints.put(p.getUniqueId(), pr);
+                snapshot(p, pr.at());
+                write(false);
+            });
         }
         write(false);
     }

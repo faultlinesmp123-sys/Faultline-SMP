@@ -2622,6 +2622,17 @@ Notes:
   Kingdoms data.yml keeps 5 of 6 players (scratch `kcut/KCut`). Also audited, clean: async code (only file/HTTP work off
   the main thread), every getCommand() has its plugin.yml entry, 26.2-only crash patterns (particle data, velocity, slime
   class spawns). RULE: new data files in any plugin go through that plugin's `SafeYaml`.
+- **The dupe fix: logout copies (Index 1.9.12, `SaveGuard`, `save-guard.restore / kick-on-dupe / kick-message /
+  restore-max-days`)**: the shulker dupe = a player's save not written at logout (full disk...) while the shulker in the world
+  was. ONE TICK after a player quits (every plugin's quit code done: Race's lent items, boss form, DonutCombat's combat-log
+  kill) their inventory + ender chest are written to `plugins/FaultlineIndex/inventories/<uuid>.yml` (`snapshot`,
+  `SafeYaml.saveNow` = straight to disk; can't write = the old copy is DELETED, never left stale). On join (LOWEST) counts
+  differ from the logout print = `restore`: inventory + ender chest set to the copy (only if its `at` matches the print and
+  it's under `restore-max-days` 14), saved; came back with MORE (any material up) = a dupe = also kicked 2 ticks later with
+  `kick-message`; only less = put back + told, not kicked. Same counts = copy deleted. A death within 2 s AFTER the copy was
+  taken deletes it. Unclean stop = copies of players online then deleted; on shutdown the copy is taken in `shutdown()`.
+  After restoring a world backup ON PURPOSE delete `inventories/` first. Tested (scratch `dupe/DupeTest`: shulker dupe ->
+  diamonds gone + kicked, wiped -> back + not kicked, combat-log death, lent item taken back at logout, normal relog, stale copy).
 - **FAULTLINESMPJAR (one jar for everything, `plugins/FAULTLINESMPJAR`, built by `tools/build_bundle.sh` into
   `release/FAULTLINESMPJAR.jar`)**: a loader plugin (`load: STARTUP`) carrying the 11 plugin jars as `bundled/<Name>.jar`.
   On start each is copied to `plugins/FAULTLINESMPJAR/jars/` (only when changed, temp + atomic move) and loaded with

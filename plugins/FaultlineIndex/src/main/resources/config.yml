@@ -57,6 +57,14 @@ save-guard:
   enabled: true
   save-on-quit: true           # save the player by hand as they leave, and log the real error if that fails
   fix-unsaveable: true         # stacks over 99, enchant levels over 255, items that can't be written to disk
+  # 1.9.12 THE DUPE FIX: a full copy of what each player logs off with (plugins/FaultlineIndex/inventories/). If they come
+  # back with something else (their save failed, e.g. a full disk = the shulker dupe), their inventory + ender chest are put
+  # back to exactly that copy. Came back with MORE than they left with = a dupe: put back AND kicked.
+  # After restoring a world backup on purpose, delete plugins/FaultlineIndex/inventories/ first (or players get their newer items back).
+  restore: true
+  kick-on-dupe: true
+  kick-message: "Your inventory didn't match what you logged out with, so it was put back. Duping gets you kicked."
+  restore-max-days: 14         # older logout copies are ignored
 
 # Watch (1.6.15): catches x-rayers, cheaters, dupers and griefers. Daily log files in plugins/FaultlineIndex/logs/,
 # /watch in game. LOG lines go to the Discord logs channel, ALERTS also to staff in game (faultlineindex.alerts) and ping

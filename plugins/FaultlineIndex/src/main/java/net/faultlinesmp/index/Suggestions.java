@@ -59,7 +59,7 @@ final class Suggestions implements CommandExecutor {
         while (l.size() > 500) l.remove(0);
         y.set("next", n + 1);
         y.set("suggestions", l);
-        try { y.save(file); } catch (IOException e) { index.getLogger().warning("Couldn't save suggestions.yml: " + e.getMessage()); }
+        SafeYaml.write(index, file, y.saveToString());
         if (by != null) last.put(by.getUniqueId(), now);
         boolean posted = index.discord != null && index.discord.suggest(n, sender.getName(), text);
         String line = ChatColor.GOLD + "[Suggestion #" + n + "] " + ChatColor.WHITE + sender.getName() + ChatColor.GRAY + ": " + ChatColor.WHITE + text;

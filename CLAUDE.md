@@ -2603,6 +2603,11 @@ Notes:
   left. Hitting after saying mb cancels your mb; hitting again after a truce is a new fight. Logged "[Truce]". The built-in
   tag is 120 s now (old 30 reads as 120); DonutCombat's length is `combat-duration` in ITS config (server side, 120 = 2 min).
   Tested with the real DonutCombat 1.1.0 jar (scratch `tc/TcTest`).
+- **Full disk (Index 1.9.10, Items 1.3.20)**: the live VPS had ~200 KB free: THAT is what cut accessories.yml and
+  saveguard.yml in half (and can cut player .dat files = rollbacks). `SafeYaml` is in the Index too (saveguard, progress,
+  museum, daily, weakness, watch, reports, suggestions); salvage now goes one level down (`CHILD`: a `players:` section loses
+  only the cut-off player). `SafeYaml.diskCheck` (Items on enable, Index on enable + every 10 min) warns the console and ops
+  under 500 MB free. A failed write leaves the old file whole (temp file first).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

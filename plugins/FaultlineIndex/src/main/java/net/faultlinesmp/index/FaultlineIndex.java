@@ -137,6 +137,8 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
     public void onEnable() {
         self = this;
         repairConfig();
+        SafeYaml.diskCheck(this); // 1.9.10: a full disk is what cut saveguard.yml in half
+        getServer().getScheduler().runTaskTimer(this, () -> SafeYaml.diskCheck(this), 12000L, 12000L);
         bookKey = new NamespacedKey(this, "index_book");
         loadContent();
         dataFile = new File(getDataFolder(), "progress.yml");
@@ -254,6 +256,7 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
         if (watch != null) try { watch.shutdown(); } catch (RuntimeException ignored) { }
         if (daily != null) try { daily.save(); } catch (RuntimeException ignored) { }
         if (discord != null) try { discord.serverStopping(); } catch (RuntimeException ignored) { }
+        SafeYaml.flush(); // 1.9.10: let data files still being written finish
     }
 
     private void loadContent() {
@@ -309,7 +312,7 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
 
     private void loadProgress() {
         if (!dataFile.exists()) return;
-        YamlConfiguration yml = YamlConfiguration.loadConfiguration(dataFile);
+        YamlConfiguration yml = SafeYaml.load(this, dataFile).yaml;
         for (String s : yml.getStringList("got-book")) gotBook.add(UUID.fromString(s));
         achievements.loadProgress(yml);
         ConfigurationSection players = yml.getConfigurationSection("players");
@@ -336,13 +339,8 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
             }
         }
         achievements.saveProgress(yml);
-        try {
-            getDataFolder().mkdirs();
-            yml.save(dataFile);
-            dirty = false;
-        } catch (IOException ex) {
-            getLogger().log(Level.WARNING, "Couldn't save Index progress", ex);
-        }
+        SafeYaml.write(this, dataFile, yml.saveToString());
+        dirty = false;
     }
 
     // ===================== THE BOOK ITEM =====================

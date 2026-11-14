@@ -50,7 +50,7 @@ final class Weakness implements Listener {
         this.ix = ix;
         file = new File(ix.getDataFolder(), "weakness.yml");
         if (file.exists()) {
-            YamlConfiguration y = YamlConfiguration.loadConfiguration(file);
+            YamlConfiguration y = SafeYaml.load(ix, file).yaml;
             for (String k : y.getKeys(false)) try { known.put(UUID.fromString(k), new HashSet<>(y.getStringList(k))); } catch (IllegalArgumentException ignored) { }
         }
     }
@@ -58,7 +58,7 @@ final class Weakness implements Listener {
     void save() {
         YamlConfiguration y = new YamlConfiguration();
         for (Map.Entry<UUID, Set<String>> e : known.entrySet()) y.set(e.getKey().toString(), List.copyOf(e.getValue()));
-        try { y.save(file); } catch (IOException e) { ix.getLogger().warning("Couldn't save weakness.yml: " + e.getMessage()); }
+        SafeYaml.write(ix, file, y.saveToString());
     }
 
     boolean knows(UUID id, String entry) { return known.getOrDefault(id, Set.of()).contains(entry); }

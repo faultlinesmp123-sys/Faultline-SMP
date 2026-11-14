@@ -289,6 +289,7 @@ public final class FaultlineItems extends JavaPlugin {
 
     @Override
     public void onEnable() {
+        SafeYaml.diskCheck(this); // 1.3.20: warn about a full disk (cuts data files in half)
         saveDefaultConfig();
         reloadConfig(); // runs the config repair below before anything reads the config
 

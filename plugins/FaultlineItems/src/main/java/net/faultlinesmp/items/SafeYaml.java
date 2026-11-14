@@ -48,6 +48,21 @@ final class SafeYaml {
     }
 
     private static final Pattern TOP = Pattern.compile("^'?[^\\s#'][^:]*'?:.*$");
+    private static final Pattern CHILD = Pattern.compile("^  '?[^\\s#'-][^:]*'?:.*$");
+
+    /** The disk is (nearly) full: what cut accessories.yml / saveguard.yml in half. Warned on start and every 10 minutes. */
+    static void diskCheck(Plugin plugin) {
+        try {
+            java.nio.file.Path dir = plugin.getDataFolder().toPath();
+            Files.createDirectories(dir);
+            long free = Files.getFileStore(dir).getUsableSpace();
+            long min = 500L * 1024 * 1024;
+            if (free >= min) return;
+            String msg = "THE SERVER DISK IS ALMOST FULL: " + (free / 1024 / 1024) + " MB free. Files get cut in half and player data is lost. Free space now (old world backups, logs, crash reports).";
+            plugin.getLogger().severe(msg);
+            for (org.bukkit.entity.Player p : org.bukkit.Bukkit.getOnlinePlayers()) if (p.isOp()) p.sendMessage(org.bukkit.ChatColor.RED + "[" + plugin.getName() + "] " + msg);
+        } catch (Exception ignored) { }
+    }
 
     static Loaded load(Plugin plugin, File file) {
         Loaded out = new Loaded();
@@ -83,7 +98,26 @@ final class SafeYaml {
                 part.loadFromString(sb.toString());
                 for (String k : part.getKeys(false)) out.yaml.set(k, part.get(k));
                 ok++;
-            } catch (Exception e) { out.lost.add(key); }
+            } catch (Exception e) {
+                // one level down: a section holding everyone (players:) loses only the cut-off entry
+                int got = 0, total = 0;
+                List<Integer> starts = new ArrayList<>();
+                for (int i = b[0] + 1; i < b[1]; i++) if (CHILD.matcher(lines[i]).matches()) starts.add(i);
+                for (int j = 0; j < starts.size(); j++) {
+                    int from = starts.get(j), to = j + 1 < starts.size() ? starts.get(j + 1) : b[1];
+                    StringBuilder cb = new StringBuilder(lines[b[0]]).append('\n');
+                    for (int i = from; i < to; i++) cb.append(lines[i]).append('\n');
+                    total++;
+                    try {
+                        YamlConfiguration part = new YamlConfiguration();
+                        part.loadFromString(cb.toString());
+                        for (String k : part.getKeys(true)) if (!part.isConfigurationSection(k)) out.yaml.set(k, part.get(k));
+                        got++;
+                    } catch (Exception e2) { out.lost.add(key + "." + lines[from].trim().replaceAll(":.*$", "").replace("'", "")); }
+                }
+                if (got > 0) { ok++; plugin.getLogger().severe(file.getName() + ": '" + key + "' salvaged " + got + " of " + total + " entries"); }
+                else if (total == 0) out.lost.add(key);
+            }
         }
         plugin.getLogger().severe(file.getName() + ": salvaged " + ok + " of " + blocks.size() + " entries"
                 + (out.lost.isEmpty() ? "." : "; couldn't read " + out.lost));

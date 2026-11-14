@@ -215,12 +215,12 @@ final class Daily implements Listener {
         y.set("finds", finds.stream().map(a -> a[0] + ";" + a[1]).toList());
         y.set("bosses", bosses);
         y.set("achievements", achievements);
-        try { y.save(file); } catch (IOException e) { index.getLogger().warning("Couldn't save daily.yml: " + e.getMessage()); }
+        SafeYaml.write(index, file, y.saveToString());
     }
 
     private void load() {
         if (!file.exists()) return;
-        YamlConfiguration y = YamlConfiguration.loadConfiguration(file);
+        YamlConfiguration y = SafeYaml.load(index, file).yaml;
         lastPost = y.getString("last-post", "");
         ConfigurationSection c = y.getConfigurationSection("counts");
         if (c != null) for (String what : c.getKeys(false)) {

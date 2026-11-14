@@ -272,7 +272,7 @@ final class Watch implements Listener, CommandExecutor, TabCompleter {
         buildersKey = new NamespacedKey(index, "builders");
         dataFile = new File(index.getDataFolder(), "watch.yml");
         logDir = new File(index.getDataFolder(), "logs");
-        data = dataFile.exists() ? YamlConfiguration.loadConfiguration(dataFile) : new YamlConfiguration();
+        data = SafeYaml.load(index, dataFile).yaml;
         if (data.getString("salt", "").isEmpty()) {
             byte[] b = new byte[16];
             new SecureRandom().nextBytes(b);
@@ -1171,7 +1171,7 @@ final class Watch implements Listener, CommandExecutor, TabCompleter {
         for (var en : miners.entrySet()) data.set("players." + en.getKey() + ".xray.stone", en.getValue().stoneTotal + data.getLong("players." + en.getKey() + ".xray.stone-saved"));
         data.set("muted", muted.stream().map(UUID::toString).toList());
         if (!dirty && !dataFile.exists()) return;
-        try { data.save(dataFile); dirty = false; } catch (IOException e) { index.getLogger().warning("Couldn't save watch.yml: " + e.getMessage()); }
+        SafeYaml.write(index, dataFile, data.saveToString()); dirty = false;
     }
 
     void shutdown() {

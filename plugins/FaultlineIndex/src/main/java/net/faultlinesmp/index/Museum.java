@@ -54,7 +54,7 @@ final class Museum implements Listener {
 
     void load() {
         if (!file.exists()) return;
-        YamlConfiguration y = YamlConfiguration.loadConfiguration(file);
+        YamlConfiguration y = SafeYaml.load(index, file).yaml;
         var f = y.getConfigurationSection("firsts");
         if (f != null) for (String k : f.getKeys(false)) firsts.put(k, f.getString(k));
     }
@@ -62,7 +62,7 @@ final class Museum implements Listener {
     void save() {
         YamlConfiguration y = new YamlConfiguration();
         for (var e : firsts.entrySet()) y.set("firsts." + e.getKey(), e.getValue());
-        try { index.getDataFolder().mkdirs(); y.save(file); dirty = false; } catch (IOException ex) { index.getLogger().warning("Couldn't save museum.yml: " + ex.getMessage()); }
+        SafeYaml.write(index, file, y.saveToString()); dirty = false;
     }
 
     // =====================================================================================================

@@ -79,7 +79,7 @@ final class Reports implements CommandExecutor {
         l.add(new SimpleDateFormat("yyyy-MM-dd HH:mm").format(new Date(when)) + " | " + from + " | " + (about == null ? "-" : about) + " | " + reason);
         while (l.size() > 200) l.remove(0);
         y.set("reports", l);
-        try { y.save(file); } catch (IOException e) { index.getLogger().warning("Couldn't save reports.yml: " + e.getMessage()); }
+        SafeYaml.write(index, file, y.saveToString());
     }
 
     private boolean list(CommandSender sender, String[] args) {

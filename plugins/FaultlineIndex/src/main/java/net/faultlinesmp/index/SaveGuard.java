@@ -68,7 +68,7 @@ final class SaveGuard implements Listener {
 
     private void load() {
         if (!file.exists()) { write(false); return; }
-        YamlConfiguration y = YamlConfiguration.loadConfiguration(file);
+        YamlConfiguration y = SafeYaml.load(index, file).yaml; // 1.9.10: a cut-off file is salvaged, never thrown
         boolean clean = y.getBoolean("clean", true);
         List<String> was = y.getStringList("online");
         ConfigurationSection ps = y.getConfigurationSection("players");
@@ -111,7 +111,7 @@ final class SaveGuard implements Listener {
             y.set(k + ".x", p.x); y.set(k + ".y", p.y); y.set(k + ".z", p.z);
             for (var c : p.counts.entrySet()) y.set(k + ".items." + c.getKey(), c.getValue());
         }
-        try { y.save(file); } catch (IOException ex) { index.getLogger().warning("[SaveGuard] couldn't write saveguard.yml: " + ex.getMessage()); }
+        SafeYaml.write(index, file, y.saveToString());
     }
 
     /** The server is stopping: everyone online is about to be saved as they are. */

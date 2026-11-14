@@ -2608,6 +2608,10 @@ Notes:
   museum, daily, weakness, watch, reports, suggestions); salvage now goes one level down (`CHILD`: a `players:` section loses
   only the cut-off player). `SafeYaml.diskCheck` (Items on enable, Index on enable + every 10 min) warns the console and ops
   under 500 MB free. A failed write leaves the old file whole (temp file first).
+- **SafeYaml pending writes (Items 1.3.21, Index 1.9.11)**: background saves meant a file read back from disk right after a
+  save could miss it (two /report or /suggest in a row lost one; emote / camera crash data on join). `SafeYaml.write` now
+  keeps the queued text in `PENDING` (several saves in a row = only the newest is written) and `SafeYaml.fresh(file)` /
+  `load` read it first. RULE: re-read a SafeYaml file with `SafeYaml.fresh`, never `YamlConfiguration.loadConfiguration`.
 - **FAULTLINESMPJAR (one jar for everything, `plugins/FAULTLINESMPJAR`, built by `tools/build_bundle.sh` into
   `release/FAULTLINESMPJAR.jar`)**: a loader plugin (`load: STARTUP`) carrying the 11 plugin jars as `bundled/<Name>.jar`.
   On start each is copied to `plugins/FAULTLINESMPJAR/jars/` (only when changed, temp + atomic move) and loaded with

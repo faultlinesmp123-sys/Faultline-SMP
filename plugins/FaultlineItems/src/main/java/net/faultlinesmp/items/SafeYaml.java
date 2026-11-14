@@ -66,6 +66,8 @@ final class SafeYaml {
 
     static Loaded load(Plugin plugin, File file) {
         Loaded out = new Loaded();
+        String queued = PENDING.get(file.getAbsoluteFile());
+        if (queued != null) { try { out.yaml.loadFromString(queued); return out; } catch (Exception ignored) { } }
         if (!file.exists()) return out;
         String text;
         try { text = Files.readString(file.toPath(), StandardCharsets.UTF_8); }
@@ -126,12 +128,31 @@ final class SafeYaml {
 
     /** Writes the text safely: off the main thread unless the plugin is shutting down. */
     static void write(Plugin plugin, File file, String text) {
+        File key = file.getAbsoluteFile();
+        PENDING.put(key, text); // reads see it at once, even before it reaches the disk
         Runnable job = () -> {
-            try { atomic(file, text); }
+            String latest = PENDING.get(key);
+            if (latest == null) return; // a later job already wrote it
+            try { atomic(file, latest); }
             catch (IOException e) { plugin.getLogger().log(Level.SEVERE, "Failed to save " + file.getName() + " (is the disk full?)", e); }
+            finally { PENDING.remove(key, latest); }
         };
         if (!plugin.isEnabled()) { job.run(); return; }
         try { WRITER.execute(job); } catch (RuntimeException e) { job.run(); }
+    }
+
+    /** Text queued for a file and not on the disk yet (several saves in a row = only the newest is written). */
+    private static final java.util.concurrent.ConcurrentHashMap<File, String> PENDING = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** The file as it is now: what's queued for it, else the disk (a re-read right after a save used to miss it). */
+    static YamlConfiguration fresh(File file) {
+        YamlConfiguration y = new YamlConfiguration();
+        String queued = PENDING.get(file.getAbsoluteFile());
+        try {
+            if (queued != null) y.loadFromString(queued);
+            else if (file.exists()) y.loadFromString(Files.readString(file.toPath(), StandardCharsets.UTF_8));
+        } catch (Exception ignored) { }
+        return y;
     }
 
     static void atomic(File file, String text) throws IOException {

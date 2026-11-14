@@ -252,7 +252,7 @@ final class Camera implements Listener, CommandExecutor {
     @EventHandler
     public void onJoin(PlayerJoinEvent e) {
         Player p = e.getPlayer();
-        YamlConfiguration y = file.exists() ? YamlConfiguration.loadConfiguration(file) : null;
+        YamlConfiguration y = SafeYaml.fresh(file);
         if (y == null) return;
         ConfigurationSection c = y.getConfigurationSection("camera." + p.getUniqueId());
         if (c == null || inCamera(p)) return;

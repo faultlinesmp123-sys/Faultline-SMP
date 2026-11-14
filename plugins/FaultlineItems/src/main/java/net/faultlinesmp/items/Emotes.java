@@ -728,7 +728,7 @@ final class Emotes implements Listener, CommandExecutor, TabCompleter {
         Player p = e.getPlayer();
         for (Run r : runs.values()) if (r.hid && !r.p.equals(p)) p.hidePlayer(plugin, r.p);
         if (!file.exists()) return;
-        YamlConfiguration y = YamlConfiguration.loadConfiguration(file);
+        YamlConfiguration y = SafeYaml.fresh(file);
         ConfigurationSection c = y.getConfigurationSection("runs." + p.getUniqueId());
         if (c == null) return;
         Location at = c.getLocation("at");

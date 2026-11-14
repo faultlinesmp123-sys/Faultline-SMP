@@ -74,7 +74,7 @@ final class Reports implements CommandExecutor {
     }
 
     private void save(String from, String about, String reason, long when) {
-        YamlConfiguration y = file.exists() ? YamlConfiguration.loadConfiguration(file) : new YamlConfiguration();
+        YamlConfiguration y = SafeYaml.fresh(file);
         List<String> l = new ArrayList<>(y.getStringList("reports"));
         l.add(new SimpleDateFormat("yyyy-MM-dd HH:mm").format(new Date(when)) + " | " + from + " | " + (about == null ? "-" : about) + " | " + reason);
         while (l.size() > 200) l.remove(0);
@@ -86,7 +86,7 @@ final class Reports implements CommandExecutor {
         if (!sender.hasPermission("faultlineindex.reports")) { sender.sendMessage(ChatColor.RED + "You don't have permission to do that."); return true; }
         int n = 10;
         if (args.length > 0) try { n = Math.max(1, Math.min(50, Integer.parseInt(args[0]))); } catch (NumberFormatException ignored) { }
-        List<String> l = file.exists() ? YamlConfiguration.loadConfiguration(file).getStringList("reports") : List.of();
+        List<String> l = SafeYaml.fresh(file).getStringList("reports");
         sender.sendMessage(ChatColor.RED + "" + ChatColor.BOLD + "Reports " + ChatColor.GRAY + "(latest " + Math.min(n, l.size()) + " of " + l.size() + ")");
         for (int i = Math.max(0, l.size() - n); i < l.size(); i++) sender.sendMessage(ChatColor.GRAY + " " + l.get(i));
         return true;

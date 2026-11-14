@@ -52,7 +52,7 @@ final class Suggestions implements CommandExecutor {
                 return true;
             }
         }
-        YamlConfiguration y = file.exists() ? YamlConfiguration.loadConfiguration(file) : new YamlConfiguration();
+        YamlConfiguration y = SafeYaml.fresh(file);
         int n = y.getInt("next", 1);
         List<String> l = new ArrayList<>(y.getStringList("suggestions"));
         l.add("#" + n + " | " + new SimpleDateFormat("yyyy-MM-dd HH:mm").format(new Date(now)) + " | " + sender.getName() + " | " + text);
@@ -73,7 +73,7 @@ final class Suggestions implements CommandExecutor {
         if (!sender.hasPermission("faultlineindex.reports")) { sender.sendMessage(ChatColor.RED + "You don't have permission to do that."); return true; }
         int n = 10;
         if (args.length > 0) try { n = Math.max(1, Math.min(50, Integer.parseInt(args[0]))); } catch (NumberFormatException ignored) { }
-        List<String> l = file.exists() ? YamlConfiguration.loadConfiguration(file).getStringList("suggestions") : List.of();
+        List<String> l = SafeYaml.fresh(file).getStringList("suggestions");
         sender.sendMessage(ChatColor.GOLD + "" + ChatColor.BOLD + "Suggestions " + ChatColor.GRAY + "(latest " + Math.min(n, l.size()) + " of " + l.size() + ")");
         for (int i = Math.max(0, l.size() - n); i < l.size(); i++) sender.sendMessage(ChatColor.GRAY + " " + l.get(i));
         return true;

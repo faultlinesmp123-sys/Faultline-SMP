@@ -677,6 +677,41 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
                 checkTreaties(true);
                 msg(sender, ChatColor.GREEN + name(a) + " + " + name(b) + ": treaty " + (allied(a, b) ? "IN FORCE" : "none") + " (" + treatyWhy(a, b) + ").");
             }
+            case "tp", "bring", "summon" -> { // /kingdoms tp <1|2|3|outlaws|all>[,more] [player]
+                if (args.length < 2) return msg(sender, ChatColor.RED + "/kingdoms tp <1|2|3|outlaws|all> [player]  (several: 1,3)  - brings them to you, or to that player");
+                java.util.Set<Integer> ks = new java.util.TreeSet<>();
+                for (String part : args[1].toLowerCase(Locale.ROOT).split(",")) {
+                    if (part.isBlank()) continue;
+                    if (part.equals("all")) { ks.addAll(List.of(0, 1, 2, 3)); continue; }
+                    if (part.startsWith("outlaw") || part.equals("none")) { ks.add(0); continue; }
+                    int k = parseKingdom(part);
+                    if (k < 1) return msg(sender, ChatColor.RED + "Unknown kingdom: " + part + " (1, 2, 3, outlaws or all)");
+                    ks.add(k);
+                }
+                Player to;
+                if (args.length >= 3) {
+                    to = Bukkit.getPlayerExact(args[2]);
+                    if (to == null) return msg(sender, ChatColor.RED + args[2] + " isn't online.");
+                } else if (sender instanceof Player sp) to = sp;
+                else return msg(sender, ChatColor.RED + "From the console, name who to bring them to: /kingdoms tp <kingdom> <player>");
+                org.bukkit.Location at = to.getLocation();
+                int n = 0;
+                for (Player p : new ArrayList<>(Bukkit.getOnlinePlayers())) {
+                    if (p.equals(to) || p.equals(sender) || !ks.contains(kingdomOf(p.getUniqueId()))) continue;
+                    if (p.isDead()) continue;
+                    if (p.isInsideVehicle()) p.leaveVehicle();
+                    try { p.teleportAsync(at, org.bukkit.event.player.PlayerTeleportEvent.TeleportCause.COMMAND); }
+                    catch (RuntimeException | LinkageError e) { p.teleport(at, org.bukkit.event.player.PlayerTeleportEvent.TeleportCause.COMMAND); }
+                    p.sendMessage(ChatColor.GOLD + "You were brought to " + to.getName() + " by staff.");
+                    n++;
+                }
+                StringBuilder who = new StringBuilder();
+                for (int k : ks) { if (who.length() > 0) who.append(", "); who.append(k == 0 ? "Outlaws" : name(k)); }
+                getLogger().info("[Tp] " + sender.getName() + " brought " + n + " (" + who + ") to " + to.getName());
+                if (!sender.equals(to)) to.sendMessage(ChatColor.GOLD + "" + n + " player" + (n == 1 ? "" : "s") + " (" + who + ") were brought to you.");
+                return msg(sender, n == 0 ? ChatColor.GRAY + "Nobody online in " + who + "."
+                        : ChatColor.GREEN + "Brought " + n + " player" + (n == 1 ? "" : "s") + " (" + who + ") to " + (sender.equals(to) ? "you" : to.getName()) + ".");
+            }
             case "spy" -> {
                 if (!(sender instanceof Player sp)) return msg(sender, "Players only.");
                 if (!chat.spyOff.remove(sp.getUniqueId())) { chat.spyOff.add(sp.getUniqueId()); return msg(sender, ChatColor.GRAY + "Kingdom chat spy OFF."); }
@@ -692,7 +727,7 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
             }
             default -> {
                 status(sender);
-                msg(sender, ChatColor.DARK_GRAY + "/kingdoms grace <all|1|2|3> <on|off> [time] · set <player> <1|2|3|none|auto> · ff <1|2|3> <on|off|vote> · treaty <a> <b> <on|off|vote> · spy · sync [player] · reload");
+                msg(sender, ChatColor.DARK_GRAY + "/kingdoms grace <all|1|2|3> <on|off> [time] · set <player> <1|2|3|none|auto> · ff <1|2|3> <on|off|vote> · treaty <a> <b> <on|off|vote> · tp <1|2|3|outlaws|all> [player] · spy · sync [player] · reload");
             }
         }
         return true;
@@ -703,7 +738,8 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (command.getName().equalsIgnoreCase("kingdoms")) {
-            if (args.length == 1) return List.of("grace", "set", "ff", "treaty", "spy", "sync", "status", "reload");
+            if (args.length == 1) return List.of("grace", "set", "ff", "treaty", "tp", "spy", "sync", "status", "reload");
+            if (args.length == 2 && args[0].equalsIgnoreCase("tp")) return List.of("1", "2", "3", "outlaws", "all");
             if (args[0].equalsIgnoreCase("treaty")) return args.length <= 3 ? List.of("1", "2", "3") : args.length == 4 ? List.of("on", "off", "vote") : List.of();
             if (args.length == 2 && args[0].equalsIgnoreCase("ff")) return List.of("1", "2", "3");
             if (args.length == 3 && args[0].equalsIgnoreCase("ff")) return List.of("on", "off", "vote");

@@ -1,5 +1,5 @@
 name: FaultlineKingdoms
-version: '1.4.1'
+version: '1.4.2'
 main: net.faultlinesmp.kingdoms.FaultlineKingdoms
 api-version: '1.21'
 author: FaultlineSMP
@@ -20,8 +20,8 @@ commands:
     usage: /ac [message]
     aliases: [allychat]
   kingdoms:
-    description: "Admin: /kingdoms grace <all|1|2|3> <on|off> [time], /kingdoms set <player> <1|2|3|none|auto>, sync, reload"
-    usage: /kingdoms <grace|set|ff|sync|status|reload>
+    description: "Admin: /kingdoms grace <all|1|2|3> <on|off> [time], set <player> <1|2|3|none|auto>, tp <1|2|3|outlaws|all> [player], sync, reload"
+    usage: /kingdoms <grace|set|ff|treaty|tp|spy|sync|status|reload>
     permission: kingdoms.admin
 
 permissions:

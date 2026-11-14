@@ -40,7 +40,9 @@ final class CombatTag implements Listener {
     }
 
     boolean on() { return plugin.getConfig().getBoolean("mimic-player.combat-tag.enabled", true); }
-    long ms() { return plugin.getConfig().getLong("mimic-player.combat-tag.seconds", 30) * 1000L; }
+    long ms() { return (long) (Balance.num(plugin, "mimic-player.combat-tag.seconds", 30, 120) * 1000L); } // 1.3.20: 2 minutes (an old 30 reads as 120)
+
+    void clear(UUID id) { until.remove(id); }
 
     private java.lang.reflect.Method donutTag;
     private org.bukkit.plugin.Plugin donut;
@@ -63,6 +65,7 @@ final class CombatTag implements Listener {
     void tag(Player p) {
         if (!on() || p.getGameMode() == GameMode.CREATIVE || p.getGameMode() == GameMode.SPECTATOR) return;
         try { if (plugin.camera != null) plugin.camera.noteFight(p.getUniqueId()); } catch (RuntimeException ignored) { }
+        try { if (plugin.truce != null) plugin.truce.noteMimic(p); } catch (RuntimeException ignored) { }
         if (donutCombat(p)) return; // DonutCombat runs the whole tag
         boolean was = left(p) > 0;
         until.put(p.getUniqueId(), System.currentTimeMillis() + ms());

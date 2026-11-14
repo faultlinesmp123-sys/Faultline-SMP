@@ -451,6 +451,8 @@ public final class FaultlineItems extends JavaPlugin {
         if (getCommand("mimicplayer") != null) { getCommand("mimicplayer").setExecutor(mimics); getCommand("mimicplayer").setTabCompleter(mimics); }
         combatTag = new CombatTag(this, mimics);
         getServer().getPluginManager().registerEvents(combatTag, this);
+        truce = new Truce(this); // 1.3.20: both say mb = the fight stops
+        getServer().getPluginManager().registerEvents(truce, this);
         haunted = new HauntedVillage(this);
         getServer().getPluginManager().registerEvents(haunted, this);
         krampus = new Krampus(this);
@@ -961,6 +963,7 @@ public final class FaultlineItems extends JavaPlugin {
     ModGuard modGuard;
     MimicPlayer mimics;
     CombatTag combatTag;
+    Truce truce;
     HauntedVillage haunted;
     Krampus krampus;
     Holidays holidays;

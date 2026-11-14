@@ -821,9 +821,16 @@ mimic-player:
   combat-tag:           # it hitting you / you hitting it = in combat. With DonutCombat installed its own tag is used (its duration, blocked commands, combat-log kill)
     enabled: true
     use-donutcombat: true
-    seconds: 30         # the built-in tag (no DonutCombat)
+    seconds: 120        # the built-in tag (no DonutCombat); DonutCombat's own length is combat-duration in ITS config
     max-teleport: 16    # built-in: command / plugin teleports further than this are cancelled while tagged (ender pearls still work)
     blocked-commands: [tpa, tpahere, tpaccept, tpaaccept, tpyes, home, homes, spawn, warp, rtp, back]
+
+# 1.3.20 "MB" TRUCE: two players fighting each other both say "mb" in chat within confirm-seconds = the fight stops and both
+# are out of combat (DonutCombat's tag too), unless one is still fighting someone else.
+truce:
+  enabled: true
+  confirm-seconds: 30
+  words: ["mb", "mb all", "my bad", "mbmb", "mb mb"]
 
 # 1.2.78 HAUNTED VILLAGES (Halloween): spirits rise over a village at night; beat the Lantern Wraith for Candy.
 haunted-villages:

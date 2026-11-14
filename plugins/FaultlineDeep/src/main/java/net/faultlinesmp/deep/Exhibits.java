@@ -44,7 +44,8 @@ import java.util.List;
  * HALCYON'S EXHIBITS (Deep 1.17.0), drawn only while someone is close:
  *  - THE AQUARIUM: every creature of the Dark Ocean (bar the Drowned City's people, who are people, and the two mini bosses,
  *    who are in the Bio-Center) swims in one of its ten tanks: each is the creature's own model and moving bones
- *    (DeepParts, the same animation as in the wild), swimming slow circles; a sign over each tank names who's in it.
+ *    (DeepParts, the same animation as in the wild), one to a TANK (1.18.0: two floors, the deeper kinds in the basement);
+ *    each tank's wall signs give its name and where it lives (no floating text).
  *    Bedrock players see each one as a stand wearing its model.
  *  - THE BESTIARY on the two lecterns by the door: every creature (what it does, and where it came from:
  *    halcyon_lore.yml), in two volumes. Right-click to read; sneak + right-click to take a copy.
@@ -142,50 +143,37 @@ final class Exhibits implements Listener {
     void aquaOn() {
         aquaOn = true;
         World w = pl.world;
-        List<DeepMobs.Kind> kinds = aquariumKinds();
-        int tanks = Halcyon.TANKS.length, per = (int) Math.ceil(kinds.size() / (double) tanks);
-        for (int t = 0; t < tanks; t++) {
-            int[] b = Halcyon.TANKS[t];
-            List<DeepMobs.Kind> in = kinds.subList(Math.min(kinds.size(), t * per), Math.min(kinds.size(), (t + 1) * per));
-            for (int i = 0; i < in.size(); i++) {
-                double fx = (i % 3 + 0.5) / 3, fy = ((i / 3) % 3 + 0.5) / 3, fz = i % 2 == 0 ? 0.38 : 0.62;
-                double x = b[0] + fx * (b[3] - b[0] + 1), y = b[1] + 0.6 + fy * (b[4] - b[1] - 0.6), z = b[2] + fz * (b[5] - b[2] + 1);
-                DeepMobs.Kind k = in.get(i);
-                float s = (float) (Math.min(k.modelScale(), cfg("aquarium.max-scale", 1.5)) * cfg("aquarium.scale", 0.85));
-                Fish f = new Fish(k, rel(w, x, y, z), 0.5 + (i % 3) * 0.15, t * 1.7 + i * 0.83, s);
-                spawnFish(f, aquaStuff);
-                fish.add(f);
-            }
-            // the tank's sign: who's in it
-            boolean north = b[2] < 0 && b[5] < -10, south = b[2] > 10, island = !north && !south;
-            double sx = (b[0] + b[3]) / 2.0 + 0.5, sz = north ? b[5] + 1.6 : south ? b[2] - 0.6 : (b[5] + 1.6);
-            StringBuilder names = new StringBuilder();
-            for (DeepMobs.Kind k : in) names.append(names.length() == 0 ? "" : "\n").append(k.name());
-            String zones = zonesOf(in);
-            Location at = rel(w, sx, b[4] + 1.6, sz);
-            int tankNo = t + 1;
-            aquaStuff.add(w.spawn(at, TextDisplay.class, d -> {
-                d.text(Component.text("Tank " + tankNo, NamedTextColor.AQUA, TextDecoration.BOLD)
-                        .append(Component.text(" · " + zones, NamedTextColor.GRAY)).append(Component.newline())
-                        .append(Component.text(names.toString(), NamedTextColor.WHITE)));
-                d.setBillboard(Display.Billboard.VERTICAL);
-                d.setPersistent(false);
-                d.addScoreboardTag(TAG);
-                d.setLineWidth(220);
-                d.setBackgroundColor(org.bukkit.Color.fromARGB(140, 0, 20, 40));
-                Transformation tr = d.getTransformation();
-                d.setTransformation(new Transformation(tr.getTranslation(), tr.getLeftRotation(), new Vector3f(0.6f, 0.6f, 0.6f), tr.getRightRotation()));
-            }));
+        // one creature to a tank (their own model and bones), its name and home painted on the tank's signs
+        int i = 0;
+        for (Halcyon.Tank t : Halcyon.TANKS) {
+            DeepMobs.Kind k = t.kind() == null ? null : DeepMobs.KINDS.get(t.kind());
+            if (k == null) continue;
+            double maxS = cfg("aquarium.max-scale", 0.9), sc = cfg("aquarium.scale", 0.7);
+            if (maxS == 1.5) maxS = 0.9;   // 1.17.x's defaults (big shared tanks): a tank is 3 blocks now
+            if (sc == 0.85) sc = 0.7;
+            float s = (float) (Math.min(k.modelScale(), maxS) * sc);
+            Fish f = new Fish(k, rel(w, t.cx(), t.y0() + 1.1, t.cz()), cfg("aquarium.swim-radius", 0.45), i * 1.7, s);
+            spawnFish(f, aquaStuff);
+            fish.add(f);
+            for (int[] sg : t.signs()) label(w.getBlockAt(Halcyon.HX + sg[0], sg[1], Halcyon.HZ + sg[2]), k);
+            i++;
         }
-        Location curator = rel(w, 55.5, Halcyon.G + 3.2, 0.5);
-        aquaStuff.add(w.spawn(curator, TextDisplay.class, d -> {
-            d.text(Component.text("THE HALCYON AQUARIUM", NamedTextColor.AQUA, TextDecoration.BOLD).append(Component.newline())
-                    .append(Component.text("Every creature of the Dark Ocean.", NamedTextColor.GRAY)).append(Component.newline())
-                    .append(Component.text("The Bestiary is on the lecterns.", NamedTextColor.DARK_AQUA)));
-            d.setBillboard(Display.Billboard.VERTICAL);
-            d.setPersistent(false);
-            d.addScoreboardTag(TAG);
-        }));
+    }
+
+    /** Writes a creature's name and where it lives on a tank's wall sign (waxed: nobody edits it). */
+    static String labelError;
+
+    static void label(org.bukkit.block.Block b, DeepMobs.Kind k) {
+        if (!(b.getState() instanceof org.bukkit.block.Sign sign)) { labelError = "not a sign: " + b.getType() + " " + b.getState().getClass().getSimpleName(); return; }
+        try {
+            var side = sign.getSide(org.bukkit.block.sign.Side.FRONT);
+            side.line(0, Component.text(""));
+            side.line(1, Component.text(k.name(), NamedTextColor.DARK_BLUE, TextDecoration.BOLD));
+            side.line(2, Component.text(zoneName(k), NamedTextColor.DARK_GRAY));
+            side.line(3, Component.text(""));
+            try { sign.setWaxed(true); } catch (RuntimeException ignored) { }
+            sign.update(false, false);
+        } catch (RuntimeException e) { labelError = String.valueOf(e); }
     }
 
     static String zonesOf(List<DeepMobs.Kind> in) {

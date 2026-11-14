@@ -302,10 +302,16 @@ halcyon:
     guard-health: 40
     guard-damage: 6
     guard-arrow-damage: 2
-    guard-range: 64
+    guard-range: 160
     guard-reach: 2.4
     guard-run-speed: 0.27
+    guard-street-chase: 16          # farther than this they run the streets/hallways to you, closer they cut straight in
+    arrest-at-one-star: true        # wanted 1 = arrested (thrown out on the dock, charge dropped); 2+ = they fight
     site-inspection-minutes: 4
+    vanilla-evenings: true          # evenings / play / idle on the plaza with the game's own villager brain
+    tree-regrow-minutes: 6          # the orchard's felled trees grow back
+    ore-regrow-minutes: 5           # the gallery's ore faces fill back in
+    dive-ore-regrow-minutes: 10     # the ore the divers dig out by the caves
   subs: true
   sub-health: 120
   sub-scale: 2.6
@@ -320,8 +326,9 @@ halcyon:
   torpedo-speed: 0.9
   torpedo-cooldown-ticks: 50
   aquarium:
-    scale: 0.85
-    max-scale: 1.5
+    scale: 0.7
+    max-scale: 0.9
+    swim-radius: 0.45
   # specimens.<kind>.scale / .radius / .y tune the Bio-Center's jars (kinds: scourge umbral coralia inkjaw grandmaw lament titan goblin rimeback king jacob kraken abyssal)
 
 # AMBIENCE (1.17.0): each biome's own particles (only the player sees them) and far-off sounds

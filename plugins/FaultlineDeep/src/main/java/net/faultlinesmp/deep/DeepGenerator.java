@@ -458,7 +458,7 @@ final class DeepGenerator extends ChunkGenerator {
         GlassReef.paint(this, n, p);   // the Glass Reef: glass trees, prism spires, terrariums, arches, the Prism Spire
         BoneFields.paint(this, n, p);  // the Bone Fields: the leviathan skeletons and vertebra columns
         Details.paint(this, n, p);     // 1.10.0: landmarks over the open sea, the Abyss, the Trench, the Sulphur Sea and the Den
-        Halcyon.paint(this, p);        // 1.17.0: Halcyon, the city under the dome (last: nothing draws over it)
+        Halcyon.paint(this, n, p);     // 1.17.0: Halcyon, the city under the dome (last: nothing draws over it)
     }
 
     /** Bracket mushrooms on the Sulphur Sea's cliffs (Reaches.bracket), from a heightmap reaching 4 blocks past the chunk. */
@@ -882,7 +882,7 @@ final class DeepGenerator extends ChunkGenerator {
     /** The abyss's ceiling at a column. */
     int ceiling(long seed, int x, int z) { return abyssCeiling(noiseFor(seed), x, z); }
 
-    private Noise noiseFor(long seed) {
+    Noise noiseFor(long seed) {
         Noise n = noise;
         if (n == null || n.seed != seed) { n = new Noise(seed); noise = n; }
         return n;

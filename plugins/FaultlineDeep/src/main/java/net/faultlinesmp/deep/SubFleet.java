@@ -284,8 +284,8 @@ final class SubFleet implements Listener {
         }
         if (!loaded(next) || solid(next)) { s.vel.multiply(-0.3); s.stuck++; return; }
         // keep out of the dome (a sub inside would sit in the air) and under the surface
-        if (Halcyon.e(next.getX(), next.getY(), next.getZ()) < 1.08 && Halcyon.e(s.pos.getX(), s.pos.getY(), s.pos.getZ()) >= 1.08) {
-            Vector out = new Vector(next.getX() - Halcyon.HX, 0, next.getZ() - Halcyon.HZ);
+        if (Halcyon.envelope(next.getX(), next.getY(), next.getZ(), 0.08) && !Halcyon.envelope(s.pos.getX(), s.pos.getY(), s.pos.getZ(), 0.08)) {
+            Vector out = s.vel.clone().multiply(-1).setY(0);
             if (out.lengthSquared() > 1e-4) s.vel.add(out.normalize().multiply(0.05));
             s.vel.setY(Math.max(s.vel.getY(), 0.05));
             return;

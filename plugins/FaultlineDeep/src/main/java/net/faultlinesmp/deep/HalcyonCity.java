@@ -259,7 +259,7 @@ final class HalcyonCity implements Listener {
         if (!protect() || !ours(e.getBlock()) || exempt(e.getPlayer())) return;
         Player p = e.getPlayer();
         if (citizens.witnessed(p)) {
-            boolean shell = Halcyon.e(e.getBlock().getX() + 0.5, e.getBlock().getY() + 0.5, e.getBlock().getZ() + 0.5) > 1 - Halcyon.SHELL / Halcyon.A - 0.02;
+            boolean shell = Halcyon.shellBlock(e.getBlock().getX(), e.getBlock().getY(), e.getBlock().getZ());
             crime(p, 2, shell ? "mining the dome" : "vandalising the city");
         }
     }
@@ -339,7 +339,12 @@ final class HalcyonCity implements Listener {
 
     @EventHandler(ignoreCancelled = true)
     public void onSpawn(CreatureSpawnEvent e) {
-        if (!enabled() || !e.getLocation().getWorld().equals(pl.world) || !(e.getEntity() instanceof Enemy)) return;
+        if (!enabled() || !e.getLocation().getWorld().equals(pl.world)) return;
+        CreatureSpawnEvent.SpawnReason why = e.getSpawnReason();
+        // the citizens never breed, and no iron golems turn up to "defend the village"
+        if ((why == CreatureSpawnEvent.SpawnReason.BREEDING && e.getEntity() instanceof org.bukkit.entity.Villager || why == CreatureSpawnEvent.SpawnReason.VILLAGE_DEFENSE
+                || why == CreatureSpawnEvent.SpawnReason.VILLAGE_INVASION) && Halcyon.grounds(e.getLocation().getX(), e.getLocation().getY(), e.getLocation().getZ())) { e.setCancelled(true); return; }
+        if (!(e.getEntity() instanceof Enemy)) return;
         CreatureSpawnEvent.SpawnReason r = e.getSpawnReason();
         if (r != CreatureSpawnEvent.SpawnReason.NATURAL && r != CreatureSpawnEvent.SpawnReason.REINFORCEMENTS && r != CreatureSpawnEvent.SpawnReason.PATROL) return;
         if (Halcyon.grounds(e.getLocation().getX(), e.getLocation().getY(), e.getLocation().getZ())) e.setCancelled(true);
@@ -349,7 +354,7 @@ final class HalcyonCity implements Listener {
     @EventHandler(ignoreCancelled = true)
     public void onRaid(org.bukkit.event.raid.RaidTriggerEvent e) {
         Location l = e.getRaid().getLocation();
-        if (enabled() && l.getWorld().equals(pl.world) && Halcyon.e(l.getX(), Math.max(l.getY(), Halcyon.HF), l.getZ()) < 1.5) e.setCancelled(true);
+        if (enabled() && l.getWorld().equals(pl.world) && Halcyon.envelope(l.getX(), l.getY(), l.getZ(), 0.5)) e.setCancelled(true);
     }
 
     // =========================================================================================== admin

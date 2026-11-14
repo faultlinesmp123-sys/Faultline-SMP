@@ -29,5 +29,14 @@ final class Lines {
     static final String[] COOK = {"Stew's on!", "Who ordered the cod?", "Mind the hot plates!", "Kelp soup, fresh as it gets."};
     static final String[] PANIC = {"AAAH!", "Help! Help!", "Run!", "Guards! GUARDS!", "Someone call security!"};
     static final String[] CHASE = {"Halt! In the name of Halcyon!", "Stop right there, criminal scum!", "You're coming with me!", "Got you now!"};
+    static final String[] DIVE = {"Suit check. Helmet sealed.", "Going down. Tell the foreman.", "Ore's better out past the caves.", "Cold as the Abyss down there.",
+            "Mind the moon pool, it's deep."};
+    static final String[] FARM = {"Rows don't weed themselves.", "Beetroot's coming in nice.", "The froglights do wonders for the wheat.", "Another harvest, another day."};
+    static final String[] SCHOOL = {"Settle down, class.", "Who can name three creatures of the Abyss?", "Homework's due tomorrow.", "No running in the hall!"};
+    static final String[] DOCTOR = {"Next, please.", "Deep breaths. Good.", "Too much time at pressure, that's your trouble.", "Take two kelp pills and rest."};
+    static final String[] MAYOR = {"Halcyon thanks you for your service.", "The budget won't balance itself.", "Another dome? We'll see.", "Order! Order!"};
+    static final String[] GARDEN = {"These ones need more light.", "Smell that? Real flowers. Under the sea.", "Careful with the azaleas."};
+    static final String[] ARREST = {"You're under arrest!", "That's enough. Out you go.", "Off the premises. Now.", "Halcyon doesn't want you here."};
+    static final String[] TRAIN = {"Again!", "Shields up!", "Keep your guard high.", "Bullseye!", "Hup! Hup!"};
     static final String[] NITWIT = {"Hmm?", "Huh.", "I was told there'd be snacks.", "Zzz... wha?"};
 }

@@ -2633,6 +2633,25 @@ Notes:
   taken deletes it. Unclean stop = copies of players online then deleted; on shutdown the copy is taken in `shutdown()`.
   After restoring a world backup ON PURPOSE delete `inventories/` first. Tested (scratch `dupe/DupeTest`: shulker dupe ->
   diamonds gone + kicked, wiped -> back + not kicked, combat-log death, lent item taken back at logout, normal relog, stale copy).
+- **DupeGuard (Index 1.9.13, Items 1.3.23, `Index/DupeGuard.java`, `dupe-guard:`, data `dupeguard.yml`, `/dupeguard [check
+  <player>]`, perm `faultlineindex.dupeguard.exempt` op)**: every valuable stack-of-1 item (shulker boxes, NETHERITE_* /
+  DIAMOND_*, elytra, mace, trident, totem, heavy core, bundles, anything enchanted, anything with a faultline* / limbo* PDC
+  key: `tracked`) gets a serial (item PDC `faultlineindex:uid`) when seen in a survival player's inventory. Each serial's last
+  place is remembered (`seen`: `p:<uuid>` = inventory + ender chest + cursor, `c:<world>;x;y;z` = a container, `m:<entity>`
+  = a chest minecart / boat / donkey; saved every 5 min, 60 days). A serial twice in one place, or in a new place while the
+  old place STILL holds it (`holds`: checked live; offline / unloaded = never punished) = a COPY: deleted (inside shulkers /
+  bundles too), Watch ALERT kind `dupe`, the holder kicked (`dupe-guard.kick`; someone who merely opened a container isn't).
+  Scans: every online survival player ~once a second (spread over ticks), real storage on open / close (`STORAGE` types only,
+  never a crafting grid / anvil / plugin menu / player holder: a dye-recipe preview would have looked like a copy), pickups,
+  2 s after join. Both halves of a double chest are one place (`halves`). No false kicks: creative clones get a new serial
+  (`onCreative`), leaving creative re-serials everything, mob death drops (mimic copies) re-serialed, exempt staff and 15 s
+  after an InventoryRollbackPlus "Backup" menu click (`graceUntil`) get a new serial instead. Stackables (heads, string) are
+  never serialed: string dupers still work. `auditPaperConfig` warns when config/paper-global.yml has
+  `unsupported-settings.allow-piston-duplication` (TNT/carpet/rail dupers), `allow-unsafe-end-portal-teleportation` (sand
+  dupers) or `allow-headless-pistons` on. SaveGuard copies carry `version` (a copy from another Minecraft version is never
+  restored). Items 1.3.23: `/totems` name lookup tries `getOfflinePlayerIfCached` before scanning every player file.
+  Tested (scratch `dg/DgTest`: serials, string/dirt untouched, legit chest hand-off, copy to another player, two in one
+  inventory, copy in a chest, copy inside a shulker, creative, op, mob drops, save).
 - **FAULTLINESMPJAR (one jar for everything, `plugins/FAULTLINESMPJAR`, built by `tools/build_bundle.sh` into
   `release/FAULTLINESMPJAR.jar`)**: a loader plugin (`load: STARTUP`) carrying the 11 plugin jars as `bundled/<Name>.jar`.
   On start each is copied to `plugins/FAULTLINESMPJAR/jars/` (only when changed, temp + atomic move) and loaded with

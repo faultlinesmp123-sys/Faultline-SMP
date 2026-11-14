@@ -251,6 +251,8 @@ final class TotemLimit implements Listener, CommandExecutor, TabCompleter {
     private static OfflinePlayer find(String name) {
         Player on = Bukkit.getPlayerExact(name);
         if (on != null) return on;
+        OfflinePlayer cached = Bukkit.getOfflinePlayerIfCached(name); // no scan of every player file
+        if (cached != null) return cached;
         for (OfflinePlayer o : Bukkit.getOfflinePlayers()) if (o.getName() != null && o.getName().equalsIgnoreCase(name)) return o;
         return null;
     }

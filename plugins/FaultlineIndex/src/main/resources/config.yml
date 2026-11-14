@@ -66,6 +66,15 @@ save-guard:
   kick-message: "Your inventory didn't match what you logged out with, so it was put back. Duping gets you kicked."
   restore-max-days: 14         # older logout copies are ignored
 
+# DupeGuard (1.9.13): every valuable one-of-a-kind item (shulker boxes, netherite / diamond gear, elytra, maces, tridents,
+# totems, anything enchanted, every custom item) gets an invisible serial number. The same serial in two places at once = a
+# copy: it's deleted, staff get an alert, and the player holding it is kicked. String dupers are NOT touched (stackable items
+# can't be serialed). /dupeguard = status + Paper's dupe settings, /dupeguard check <player>.
+dupe-guard:
+  enabled: true
+  kick: true
+  kick-message: "Duped item detected and removed. Duping gets you kicked."
+
 # Watch (1.6.15): catches x-rayers, cheaters, dupers and griefers. Daily log files in plugins/FaultlineIndex/logs/,
 # /watch in game. LOG lines go to the Discord logs channel, ALERTS also to staff in game (faultlineindex.alerts) and ping
 # discord.logs.alert-role. Every check can be turned off with <check>.enabled: false.

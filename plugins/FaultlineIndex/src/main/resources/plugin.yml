@@ -1,5 +1,5 @@
 name: FaultlineIndex
-version: '1.9.12'
+version: '1.9.13'
 main: net.faultlinesmp.index.FaultlineIndex
 api-version: '1.21'
 author: FaultlineSMP
@@ -7,6 +7,10 @@ description: The Faultline Index — every item, boss, and enemy on the server
 softdepend: [FaultlineItems, FaultlineBosses, FaultlineRaids, FaultlineShips, FaultlineCosmetics, LimboBlackMarket, floodgate, Geyser-Spigot]
 
 commands:
+  dupeguard:
+    description: DupeGuard status, or check a player for duped items.
+    usage: /dupeguard [check <player>]
+    permission: faultlineindex.watch
   index:
     description: Open your Faultline Index
     usage: /index [achievements|give|reset] [player]
@@ -45,6 +49,9 @@ commands:
     permission: faultlineindex.admin
 
 permissions:
+  faultlineindex.dupeguard.exempt:
+    description: A second copy of an item you hold gets a new serial instead of being deleted (staff moving restored items).
+    default: op
   faultlineindex.admin:
     description: Give Index books and reset players' Index progress
     default: op

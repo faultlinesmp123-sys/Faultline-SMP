@@ -208,6 +208,7 @@ final class SaveGuard implements Listener {
             YamlConfiguration y = new YamlConfiguration();
             y.set("at", at);
             y.set("name", p.getName());
+            y.set("version", Bukkit.getBukkitVersion());
             y.set("inventory", java.util.Arrays.asList(p.getInventory().getContents()));
             y.set("ender-chest", java.util.Arrays.asList(p.getEnderChest().getContents()));
             SafeYaml.saveNow(y, f);
@@ -228,6 +229,8 @@ final class SaveGuard implements Listener {
             long at = y.getLong("at");
             long maxAge = index.getConfig().getLong("save-guard.restore-max-days", 14) * 86400000L;
             if (at != old.at() || System.currentTimeMillis() - at > maxAge) { f.delete(); return false; }
+            // after a Minecraft update items can be renamed or changed: a copy from another version is never restored
+            if (!Bukkit.getBukkitVersion().equals(y.getString("version", Bukkit.getBukkitVersion()))) { f.delete(); return false; }
             ItemStack[] inv = items(y.getList("inventory"), p.getInventory().getSize());
             ItemStack[] ec = items(y.getList("ender-chest"), p.getEnderChest().getSize());
             if (inv == null || ec == null) return false;

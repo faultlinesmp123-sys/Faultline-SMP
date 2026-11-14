@@ -129,6 +129,7 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
     Discord discord;
     Watch watch;
     SaveGuard saveGuard;
+    DupeGuard dupeGuard;
     Daily daily;
 
     // ===================== LIFECYCLE =====================
@@ -170,6 +171,9 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(watch, this);
         saveGuard = new SaveGuard(this); // 1.9.7: rollbacks (wiped / duped inventories), unsaveable items, unclean stops
         getServer().getPluginManager().registerEvents(saveGuard, this);
+        dupeGuard = new DupeGuard(this); // 1.9.13: serial numbers on valuables, copies deleted + kicked
+        getServer().getPluginManager().registerEvents(dupeGuard, this);
+        if (getCommand("dupeguard") != null) getCommand("dupeguard").setExecutor(dupeGuard);
         getCommand("watch").setExecutor(watch);
         getCommand("watch").setTabCompleter(watch);
         getCommand("serverstats").setExecutor(new ServerStats(this));
@@ -253,6 +257,7 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
         saveProgress();
         if (museum != null) museum.save();
         if (saveGuard != null) try { saveGuard.shutdown(); } catch (RuntimeException ignored) { }
+        if (dupeGuard != null) try { dupeGuard.save(); } catch (RuntimeException ignored) { }
         if (watch != null) try { watch.shutdown(); } catch (RuntimeException ignored) { }
         if (daily != null) try { daily.save(); } catch (RuntimeException ignored) { }
         if (discord != null) try { discord.serverStopping(); } catch (RuntimeException ignored) { }

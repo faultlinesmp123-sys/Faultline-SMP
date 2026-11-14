@@ -440,6 +440,7 @@ public final class FaultlineItems extends JavaPlugin {
         getServer().getPluginManager().registerEvents(unholy, this);
         if (getCommand("giveunholy") != null) getCommand("giveunholy").setExecutor(unholy);
         new DragonEggBuff(this); // 1.3.4: the dragon egg on you = Strength II + Speed II
+        bedrockShield = new BedrockShield(this); // 1.3.16: Bedrock players raise their shield with right-click
         getServer().getPluginManager().registerEvents(new RecipeUnlock(this), this); // 1.3.5: Bedrock only sees unlocked recipes
         offlineTp = new OfflineTp(this); // 1.2.99: /offtp
         getServer().getPluginManager().registerEvents(offlineTp, this);
@@ -666,6 +667,7 @@ public final class FaultlineItems extends JavaPlugin {
         if (blueObsidian != null) try { blueObsidian.shutdown(); } catch (RuntimeException ignored) { }
         if (upgradedGrindstone != null) try { upgradedGrindstone.shutdown(); } catch (RuntimeException ignored) { }
         if (blueBed != null) try { blueBed.shutdown(); } catch (RuntimeException ignored) { }
+        if (bedrockShield != null) try { bedrockShield.disable(); } catch (RuntimeException ignored) { }
         if (accessoryBackups != null) try { accessoryBackups.save(); } catch (RuntimeException ignored) { }
         if (mimics != null) try { mimics.removeAll(); } catch (RuntimeException ignored) { }
         if (haunted != null) try { haunted.shutdown(); } catch (RuntimeException ignored) { }
@@ -949,6 +951,7 @@ public final class FaultlineItems extends JavaPlugin {
     BlueObsidian blueObsidian;
     UpgradedGrindstone upgradedGrindstone;
     BlueBed blueBed;
+    BedrockShield bedrockShield;
     AccessoryBackups accessoryBackups;
     Backpack backpack;
     CreatorMode creatorMode;

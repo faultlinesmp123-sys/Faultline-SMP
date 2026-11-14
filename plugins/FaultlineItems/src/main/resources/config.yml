@@ -575,7 +575,7 @@ vanish:
 pvp-limits:
   lunge-cooldown-seconds: 5        # spear Lunge: once every 5 s (on cooldown the jab still hits, without the lunge). 0 = off
   cobweb-place-cooldown-ms: 250    # one cobweb every 0.25 s per player. 0 = off
-  ender-pearl-cooldown-seconds: 7  # 1.2.69: one ender pearl every 7 s per player (survival/adventure). 0 = the game's own 1 s
+  ender-pearl-cooldown-seconds: 5  # one ender pearl every 5 s per player (survival/adventure; was 7 until 1.3.16). 0 = the game's own 1 s
 
 # 1.2.69: a totem popped by ANOTHER PLAYER counts (1/4, 2/4...). After `max` of them, the next totem doesn't save you from a
 # player ("4/4 Totems has been popped, this totem wont work"); it still works against mobs, falls, lava... The count goes
@@ -893,6 +893,10 @@ unholy-arrows:
   min-draw: 0.9            # how far the bow must be drawn (crossbows always count)
 
 # 1.3.4: carrying the Dragon Egg (inventory, hotbar or off hand) gives these ("EFFECT:level"; strength, speed, ...)
+bedrock-shield:
+  enabled: true          # Bedrock players raise their shield with right-click (hold), not only by sneaking
+  hold-grace-ticks: 6    # no right-click for this long = the shield comes down
+
 dragon-egg:
   enabled: true
   effects: ["STRENGTH:2", "SPEED:2"]

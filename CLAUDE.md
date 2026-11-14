@@ -2554,6 +2554,15 @@ Notes:
   `mimic-player.allowed-users` (default `[voisethegoat]`, any case, op or not) and the console (`MimicPlayer.mayUse`); the
   `items.mimicplayer` permission no longer opens it (an empty list `[]` = the old permission rule). The command lost its
   plugin.yml `permission:` so non-ops on the list can see it.
+- **Pearls 5 s + Bedrock right-click shield (Items 1.3.16)**: `pvp-limits.ender-pearl-cooldown-seconds` 7 -> 5 (`Balance.num`: an
+  old 7 reads as 5; the mimic's `pearlTicks` follows). `Items/BedrockShield.java` (`bedrock-shield.enabled`, `hold-grace-ticks` 6):
+  a BEDROCK player's right-click with a shield in either hand = `startUsingItem` (server-side block); Bedrock only repeats a held
+  use while pressing on a block, so a FAKE BARRIER (`sendBlockChange`, that player only, into real air ~2 blocks along the look,
+  never in their body) is kept in front of them; every use refreshes the hold, no use for the grace = `clearActiveItem` + the
+  fake block reset. Down too on hotbar change, shield gone / on cooldown (axe), creative/spectator, quit, disable. Usable doors /
+  chests win over a main-hand shield; a usable main-hand item (food, bow, pearl, blocks...) wins over an off-hand one. Sneak
+  blocking (Geyser's) still works. The third-party BedrockShield plugin does the same thing: run only one. Tested (scratch
+  `bs/BsTest`: Java untouched, raise, held 40 ticks, release, axe cooldown, the 7 -> 5 read). UNTESTED with a real Bedrock client.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

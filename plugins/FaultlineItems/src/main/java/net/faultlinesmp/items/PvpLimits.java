@@ -25,7 +25,7 @@ import java.util.UUID;
  *    hits, you just don't fly forward) and the action bar says when it's back. Paper's EntityLungeEvent only exists in
  *    the 26.x API, and the release jars are built against 1.21.11, so it's registered by name at startup.
  *  - COBWEBS: one placed every cobweb-place-cooldown-ms (250) per player (web spam in fights).
- *  - ENDER PEARLS (1.2.69): one thrown every ender-pearl-cooldown-seconds (7) per player. The game's own item cooldown is
+ *  - ENDER PEARLS (1.2.69): one thrown every ender-pearl-cooldown-seconds (5; was 7 until 1.3.16) per player. The game's own item cooldown is
  *    set to it (the pearl greys out, Java and Bedrock), and a throw that still gets through early is cancelled. The time
  *    left is kept over a relog.
  * Creative and spectator players are never limited.
@@ -80,7 +80,7 @@ final class PvpLimits implements Listener {
         webReady.put(id, now + cd);
     }
 
-    long pearlMs() { return (long) (plugin.getConfig().getDouble("pvp-limits.ender-pearl-cooldown-seconds", 7) * 1000); }
+    long pearlMs() { return (long) (Balance.num(plugin, "pvp-limits.ender-pearl-cooldown-seconds", 7, 5) * 1000); } // 1.3.16: 7 -> 5 s (an old 7 reads as 5)
 
     /** A throw while the pearl is still cooling down (the client's cooldown can be dodged): cancelled. */
     @EventHandler(priority = EventPriority.LOW)

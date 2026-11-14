@@ -5576,8 +5576,8 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         v.getWorld().playSound(v.getLocation(), Sound.ENTITY_ARROW_SHOOT, 1, 1);
     }
 
-    /** Ticks between pearls: the server's own pearl rule (pvp-limits.ender-pearl-cooldown-seconds, 7 s), like a player. */
-    int pearlTicks() { return Math.max(20, (int) Math.round(plugin.getConfig().getDouble("pvp-limits.ender-pearl-cooldown-seconds", 7) * 20)); }
+    /** Ticks between pearls: the server's own pearl rule (pvp-limits.ender-pearl-cooldown-seconds, 5 s), like a player. */
+    int pearlTicks() { return Math.max(20, (int) Math.round(Balance.num(plugin, "pvp-limits.ender-pearl-cooldown-seconds", 7, 5) * 20)); }
 
     record Shot(Vector vel, Location land, double err) { }
 

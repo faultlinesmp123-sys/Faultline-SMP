@@ -80,7 +80,7 @@ final class LanternNight extends Ev {
         for (Wisp w : wisps) if (w.d.isValid()) w.d.remove();
         wisps.clear();
         for (var e : collected.entrySet()) { Player p = Bukkit.getPlayer(e.getKey()); if (p != null) pl.stat(p, "lantern_wisps", e.getValue()); }
-        if (natural) Bukkit.broadcastMessage(ChatColor.GOLD + "✦ " + ChatColor.YELLOW + "The lanterns burn out. Lantern Night is over.");
+        if (natural) pl.say(ChatColor.GOLD + "✦ " + ChatColor.YELLOW + "The lanterns burn out. Lantern Night is over.");
     }
 
     // ---------------------------------------------------------------- calm
@@ -157,7 +157,7 @@ final class LanternNight extends Ev {
         if (!showDone && b("fireworks.enabled", true) && w.getTime() >= i("fireworks.at-time", 18000)) {
             showDone = true;
             showUntil = System.currentTimeMillis() + i("fireworks.seconds", 40) * 1000L;
-            Bukkit.broadcastMessage(ChatColor.GOLD + "✦ " + ChatColor.YELLOW + "Midnight! Look up.");
+            pl.say(ChatColor.GOLD + "✦ " + ChatColor.YELLOW + "Midnight! Look up.");
         }
     }
 

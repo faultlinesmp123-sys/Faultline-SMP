@@ -74,7 +74,7 @@ final class Fog extends Ev {
         fogged.clear();
         for (Shade s : new ArrayList<>(shades.values())) s.vanish(false);
         shades.clear();
-        if (natural) Bukkit.broadcastMessage(ChatColor.GRAY + "☁ The fog lifts.");
+        if (natural) pl.say(ChatColor.GRAY + "☁ The fog lifts.");
     }
 
     @Override void joined(Player p) { fogIn(p); }

@@ -1,9 +1,11 @@
-# FaultlineEvents 2.0.0: sky events in the main world (and the worlds in extra-worlds).
+# FaultlineEvents 2.1.1: sky events in the main world (and the worlds in extra-worlds).
 # One event at a time. Night events last until dawn; day events run for their minutes.
 # The running event is written on the main world as faultlineevents:active_event (BLOOD_MOON, FOG, LANTERN_NIGHT,
 # WINDY): FaultlineItems (Blood Moon sky pack, vampires, Lantern Night drops x2 + villager discount) and FaultlineRaids
 # (Blood Moon raids) read it.
 enabled: true
+announcements: false       # 2.1.1: true = chat lines, titles and fanfare when events start / end (off = events just happen)
+boss-bar: false            # 2.1.1: true = the event boss bar (and the Nether / End night bar); /fevent still says what's on
 extra-worlds: []
 min-players: 1              # survival players online for an event to roll
 schedule:
@@ -97,8 +99,9 @@ realms:
     events: {void-storm: 0.3, starfall: 0.3}
   ember-storm:
     enabled: true
-    burn-chance: 0.12        # per second in the open (no roof within 6, no Fire Resistance)
-    burn-ticks: 60
+    burn-chance: 0.12        # per second in the open (no Fire Resistance, NO block of any kind over your head)
+    damage: 2.0              # an ember's scorch (2.1.1: embers never set you or anything else on fire)
+    roof-height: 32          # any block up to this many blocks over your head = safe
     mob-health: 1.25
     mob-damage: 1.25
     bonus-loot-chance: 0.25

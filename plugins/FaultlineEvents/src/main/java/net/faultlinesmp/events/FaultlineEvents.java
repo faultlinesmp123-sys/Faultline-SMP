@@ -102,6 +102,13 @@ public final class FaultlineEvents extends JavaPlugin implements Listener, TabEx
         return out;
     }
 
+    /** announcements: true = chat lines / titles / fanfare when events start, end and happen (2.1.1: off by default). */
+    boolean loud() { return getConfig().getBoolean("announcements", false); }
+    /** boss-bar: true = the event's boss bar (2.1.1: off by default; /fevent still tells what's on). */
+    boolean showBar() { return getConfig().getBoolean("boss-bar", false); }
+    /** A whole-server chat line, only when announcements are on. */
+    void say(String msg) { if (loud()) Bukkit.broadcastMessage(msg); }
+
     static boolean survival(Player p) { return p.getGameMode() == GameMode.SURVIVAL || p.getGameMode() == GameMode.ADVENTURE; }
 
     static boolean night(World w) { long t = w.getTime(); return t >= 13000 && t < 23000; }
@@ -201,8 +208,10 @@ public final class FaultlineEvents extends JavaPlugin implements Listener, TabEx
         w.getPersistentDataContainer().set(ACTIVE, PersistentDataType.STRING, e.id());
         if (ends > 0) w.getPersistentDataContainer().set(ENDS, PersistentDataType.LONG, ends);
         else w.getPersistentDataContainer().remove(ENDS);
-        bar = Bukkit.createBossBar(e.color() + e.title(), e.barColor(), BarStyle.SEGMENTED_10);
-        for (Player p : players()) bar.addPlayer(p);
+        if (showBar()) {
+            bar = Bukkit.createBossBar(e.color() + e.title(), e.barColor(), BarStyle.SEGMENTED_10);
+            for (Player p : players()) bar.addPlayer(p);
+        }
         try { e.start(announce); } catch (RuntimeException ex) { problem("start", ex); }
         updateBar();
     }

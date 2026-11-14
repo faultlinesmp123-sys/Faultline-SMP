@@ -471,6 +471,8 @@ kraken-gear:
 # (1.2.67: the Aurora and the Locust Swarm were removed.)
 weather:
   enabled: true
+  announcements: false     # 1.3.17: true = chat lines + titles when a sandstorm / blizzard / eclipse starts and ends
+  boss-bar: false          # 1.3.17: true = the Eclipse boss bar
   sandstorm: {enabled: true, chance-per-minute: 0.006, minutes: 6, radius: 110, husks-per-player: 4, treasure-chance: 0.04, treasure-per-player: 3,
               treasure: ["GOLD_INGOT:2-6", "EMERALD:1-4", "DIAMOND:1-2:25", "GOLDEN_APPLE:1:15", "RABBIT_FOOT:1:30"]}
   blizzard: {enabled: true, chance-per-minute: 0.006, minutes: 6, radius: 110, cold-per-half-second: 26, strays-per-player: 6}

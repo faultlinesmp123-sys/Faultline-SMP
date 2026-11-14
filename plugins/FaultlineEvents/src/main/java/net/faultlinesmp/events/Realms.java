@@ -141,7 +141,7 @@ final class Realms implements Listener {
 
     private static String blurb(String ev) {
         return switch (ev) {
-            case "ember-storm" -> "burning embers fall on anyone in the open (Fire Resistance or a roof keeps you safe), the Nether's monsters are stronger and drop more.";
+            case "ember-storm" -> "embers scorch anyone in the open (Fire Resistance or anything over your head keeps you safe; nothing is set alight), the Nether's monsters are stronger and drop more.";
             case "soul-tide" -> "piglins give double when you barter, quartz and gold ore drop more, wither skeletons drop more skulls, and lost souls drift by: catch them.";
             case "void-storm" -> "endermen hunt you without being looked at and hit harder. They drop twice the pearls.";
             default -> "stars fall on the islands: reach one before it fades. More XP, and your elytra doesn't wear out.";
@@ -184,6 +184,12 @@ final class Realms implements Listener {
     }
 
     private void bar(Realm r, List<Player> here, int asleep, int need) {
+        if (!pl.showBar()) {
+            if (r.bar != null) { r.bar.removeAll(); r.bar = null; }
+            if (asleep > 0) for (Player p : here) if (p.isSleeping() || p.hasMetadata(REST))
+                p.spigot().sendMessage(net.md_5.bungee.api.ChatMessageType.ACTION_BAR, net.md_5.bungee.api.chat.TextComponent.fromLegacyText(ChatColor.AQUA + "" + asleep + "/" + need + " asleep"));
+            return;
+        }
         if (r.bar == null) r.bar = Bukkit.createBossBar("", r.nether ? BarColor.RED : BarColor.PURPLE, BarStyle.SEGMENTED_10);
         int left = Math.max(0, r.dayLen() + r.nightLen() - r.clock);
         r.bar.setProgress(Math.max(0, Math.min(1, left / (double) r.nightLen())));
@@ -208,7 +214,7 @@ final class Realms implements Listener {
             if (pl.random.nextDouble() < cfgD(r.key() + ".events." + ev, 0.3)) { r.event = ev; break; }
         }
         r.save();
-        if (!announce) return;
+        if (!announce || !pl.loud()) return;
         String sub = r.event == null ? ChatColor.GRAY + "Its monsters stir. A Blue Obsidian Bed lets you sleep through it." : evColor(r.event) + title(r.event);
         for (Player p : r.players()) {
             p.sendTitle(r.color() + "" + ChatColor.BOLD + "Night falls over the " + r.name(), sub, 10, 70, 20);
@@ -235,7 +241,7 @@ final class Realms implements Listener {
         if (!was) return;
         for (Player p : r.players()) {
             if (slept && (p.isSleeping() || p.hasMetadata(REST))) { try { if (p.isSleeping()) p.wakeup(true); } catch (RuntimeException ignored) { } }
-            if (announce) {
+            if (announce && pl.loud()) {
                 p.sendMessage(r.color() + "☀ " + (slept ? "The night passes over the " + r.name() + " while its people sleep." : "Dawn in the " + r.name() + ".")
                         + (ev == null ? "" : ChatColor.GRAY + " The " + title(ev) + " is over."));
                 p.playSound(p.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_CHIME, 0.9f, 1.2f);
@@ -433,16 +439,36 @@ final class Realms implements Listener {
 
     // ---------------------------------------------------------------- Ember Storm
 
-    private static boolean roofed(Player p) {
-        Block b = p.getEyeLocation().getBlock();
-        for (int k = 1; k <= 6; k++) if (b.getRelative(0, k, 0).getType().isSolid()) return true;
+    /** 2.1.1: ANY block over your head counts (glass, leaves, slabs, carpet, fences...), up to ember-storm.roof-height blocks
+     *  up (32; the Nether's caverns are tall), over any of the 4 corners of your hitbox or your middle. */
+    private boolean roofed(Player p) {
+        int h = Math.max(2, cfgI("ember-storm.roof-height", 32));
+        org.bukkit.util.BoundingBox bb = p.getBoundingBox();
+        double[][] at = {{p.getLocation().getX(), p.getLocation().getZ()}, {bb.getMinX() + 0.05, bb.getMinZ() + 0.05}, {bb.getMinX() + 0.05, bb.getMaxZ() - 0.05},
+                {bb.getMaxX() - 0.05, bb.getMinZ() + 0.05}, {bb.getMaxX() - 0.05, bb.getMaxZ() - 0.05}};
+        World w = p.getWorld();
+        int y0 = (int) Math.floor(bb.getMaxY() - 0.01), top = Math.min(w.getMaxHeight() - 1, y0 + h);
+        for (double[] c : at) {
+            int x = (int) Math.floor(c[0]), z = (int) Math.floor(c[1]);
+            for (int y = y0; y <= top; y++) if (roof(w.getBlockAt(x, y, z).getType())) return true;
+        }
         return false;
+    }
+
+    private static boolean roof(Material m) {
+        return !m.isAir() && m != Material.FIRE && m != Material.SOUL_FIRE && m != Material.LIGHT && m != Material.LAVA && m != Material.WATER && m != Material.BUBBLE_COLUMN;
     }
 
     private void ember(Player p) {
         if (roofed(p) || p.hasPotionEffect(PotionEffectType.FIRE_RESISTANCE) || p.isInWater()) return;
         if (pl.random.nextDouble() >= cfgD("ember-storm.burn-chance", 0.12)) return;
-        p.setFireTicks(Math.max(p.getFireTicks(), cfgI("ember-storm.burn-ticks", 60)));
+        // 2.1.1: embers never set anything alight (no fire ticks, so nothing you carry, drop or touch burns): a scorch instead
+        double dmg = cfgD("ember-storm.damage", 2.0);
+        if (dmg > 0) {
+            try { p.damage(dmg, org.bukkit.damage.DamageSource.builder(org.bukkit.damage.DamageType.IN_FIRE).build()); }
+            catch (RuntimeException | LinkageError e) { p.damage(dmg); }
+        }
+        p.getWorld().spawnParticle(Particle.FLAME, p.getLocation().add(0, 1, 0), 8, 0.3, 0.5, 0.3, 0.01);
         p.playSound(p.getLocation(), Sound.BLOCK_FIRE_AMBIENT, 0.8f, 1.4f);
         p.spigot().sendMessage(net.md_5.bungee.api.ChatMessageType.ACTION_BAR, net.md_5.bungee.api.chat.TextComponent.fromLegacyText(ChatColor.GOLD + "An ember lands on you! " + ChatColor.GRAY + "Get under a roof."));
     }

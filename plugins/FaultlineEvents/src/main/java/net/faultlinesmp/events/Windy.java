@@ -85,7 +85,7 @@ final class Windy extends Ev {
             PotionEffect l = p.getPotionEffect(PotionEffectType.LUCK);
             if (l != null && l.isAmbient() && l.getAmplifier() == 0 && l.getDuration() <= 200) p.removePotionEffect(PotionEffectType.LUCK);
         }
-        if (natural) Bukkit.broadcastMessage(ChatColor.AQUA + "≋ " + ChatColor.GRAY + "The wind dies down.");
+        if (natural) pl.say(ChatColor.AQUA + "≋ " + ChatColor.GRAY + "The wind dies down.");
     }
 
     private double gustGap() {

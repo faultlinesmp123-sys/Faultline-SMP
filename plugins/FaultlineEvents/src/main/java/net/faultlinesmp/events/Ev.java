@@ -50,6 +50,7 @@ abstract class Ev implements Listener {
 
     /** Title + chat line + sound for everyone in the event's worlds; the chat line goes to the whole server. */
     void announce(String title, String sub, String chat, Sound sound, float pitch) {
+        if (!pl.loud()) return;
         org.bukkit.Bukkit.broadcastMessage(chat);
         for (Player p : pl.players()) {
             p.sendTitle(title, sub, 10, 70, 20);

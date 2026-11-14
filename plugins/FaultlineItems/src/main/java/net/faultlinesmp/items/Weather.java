@@ -100,6 +100,9 @@ final class Weather implements Listener, CommandExecutor, org.bukkit.command.Tab
         Bukkit.getScheduler().runTaskTimer(plugin, this::tick, 40L, 1L);
     }
 
+    /** 1.3.17: weather.announcements (false) = no chat lines, titles or fanfare; weather.boss-bar (false) = no Eclipse bar. */
+    boolean loud() { return plugin.getConfig().getBoolean("weather.announcements", false); }
+    void say(String m) { if (loud()) Bukkit.broadcastMessage(m); }
     double cfg(String path, double def) { return plugin.getConfig().getDouble("weather." + path, def); }
 
     boolean on(String kind) { return plugin.getConfig().getBoolean("weather." + kind + ".enabled", true); }
@@ -201,12 +204,12 @@ final class Weather implements Listener, CommandExecutor, org.bukkit.command.Tab
         }
 
         @Override void begin() {
-            for (Player p : world.getPlayers()) if (inside(p)) {
+            if (loud()) for (Player p : world.getPlayers()) if (inside(p)) {
                 p.showTitle(net.kyori.adventure.title.Title.title(Meteor.legacy(ChatColor.GOLD + "" + ChatColor.BOLD + "SANDSTORM"),
                         Meteor.legacy(ChatColor.YELLOW + "Husks ride the wind. Dig the sand for treasure.")));
                 p.playSound(p.getLocation(), Sound.ITEM_ELYTRA_FLYING, SoundCategory.AMBIENT, 1f, 0.5f);
             }
-            Bukkit.broadcastMessage(ChatColor.GOLD + "A sandstorm sweeps the desert" + where() + ChatColor.GRAY + " (husks, and buried treasure)");
+            say(ChatColor.GOLD + "A sandstorm sweeps the desert" + where() + ChatColor.GRAY + " (husks, and buried treasure)");
         }
 
         @Override boolean tick() {
@@ -289,9 +292,9 @@ final class Weather implements Listener, CommandExecutor, org.bukkit.command.Tab
         }
 
         @Override void begin() {
-            for (Player p : world.getPlayers()) if (inside(p)) p.showTitle(net.kyori.adventure.title.Title.title(Meteor.legacy(ChatColor.AQUA + "" + ChatColor.BOLD + "BLIZZARD"),
+            if (loud()) for (Player p : world.getPlayers()) if (inside(p)) p.showTitle(net.kyori.adventure.title.Title.title(Meteor.legacy(ChatColor.AQUA + "" + ChatColor.BOLD + "BLIZZARD"),
                     Meteor.legacy(ChatColor.WHITE + "Stay by a fire, or wear leather.")));
-            Bukkit.broadcastMessage(ChatColor.AQUA + "A blizzard howls over the snow" + where() + ChatColor.GRAY + " (keep warm: fire or leather)");
+            say(ChatColor.AQUA + "A blizzard howls over the snow" + where() + ChatColor.GRAY + " (keep warm: fire or leather)");
         }
 
         boolean warm(Player p) {
@@ -348,7 +351,7 @@ final class Weather implements Listener, CommandExecutor, org.bukkit.command.Tab
         @Override void finish(boolean natural) {
             for (UUID u : weathered) { Player p = Bukkit.getPlayer(u); if (p != null) p.resetPlayerWeather(); }
             weathered.clear();
-            if (natural) Bukkit.broadcastMessage(ChatColor.AQUA + "The blizzard blows itself out.");
+            if (natural) say(ChatColor.AQUA + "The blizzard blows itself out.");
             for (Entity e : world.getEntities()) if (e.getScoreboardTags().contains(STRAY_TAG) && e.getLocation().distanceSquared(center) < sq(200)) e.remove();
         }
     }
@@ -370,20 +373,22 @@ final class Weather implements Listener, CommandExecutor, org.bukkit.command.Tab
         Eclipse(World w) { super("eclipse", w, Weather.this.cfg("eclipse.minutes", 5)); }
 
         @Override void begin() {
-            bar = Bukkit.createBossBar(ChatColor.DARK_RED + "" + ChatColor.BOLD + "☀ ECLIPSE", BarColor.RED, BarStyle.SOLID);
+            if (plugin.getConfig().getBoolean("weather.boss-bar", false))
+                bar = Bukkit.createBossBar(ChatColor.DARK_RED + "" + ChatColor.BOLD + "☀ ECLIPSE", BarColor.RED, BarStyle.SOLID);
             for (Player p : world.getPlayers()) {
                 darken(p);
+                if (!loud()) continue;
                 p.showTitle(net.kyori.adventure.title.Title.title(Meteor.legacy(ChatColor.DARK_RED + "" + ChatColor.BOLD + "ECLIPSE"),
                         Meteor.legacy(ChatColor.GRAY + "The sun goes black. Every beast turns on you.")));
                 p.playSound(p.getLocation(), Sound.AMBIENT_CAVE, SoundCategory.AMBIENT, 1f, 0.5f);
                 p.playSound(p.getLocation(), Sound.ENTITY_WITHER_SPAWN, SoundCategory.AMBIENT, 0.4f, 0.5f);
             }
-            Bukkit.broadcastMessage(ChatColor.DARK_RED + "" + ChatColor.BOLD + "The sun turns black! " + ChatColor.GRAY + "Wolves, bees, golems, endermen and bears turn hostile for " + (int) cfg("eclipse.minutes", 5) + " minutes.");
+            say(ChatColor.DARK_RED + "" + ChatColor.BOLD + "The sun turns black! " + ChatColor.GRAY + "Wolves, bees, golems, endermen and bears turn hostile for " + (int) cfg("eclipse.minutes", 5) + " minutes.");
         }
 
         void darken(Player p) {
             p.setPlayerTime(18000, false); // only their sky; the world's own clock runs on
-            bar.addPlayer(p);
+            if (bar != null) bar.addPlayer(p);
         }
 
         void lighten(Player p) {
@@ -450,7 +455,7 @@ final class Weather implements Listener, CommandExecutor, org.bukkit.command.Tab
                 Player p = Bukkit.getPlayer(e.getKey());
                 if (p == null || !p.getWorld().equals(world)) { if (e.getValue().isValid()) e.getValue().remove(); if (p != null) lighten(p); it.remove(); }
             }
-            if (t % 20 == 0) bar.setProgress(Math.max(0, Math.min(1, left / (cfg("eclipse.minutes", 5) * 60000))));
+            if (t % 20 == 0 && bar != null) bar.setProgress(Math.max(0, Math.min(1, left / (cfg("eclipse.minutes", 5) * 60000))));
             if (t % 60 == 0) for (Player p : world.getPlayers()) {
                 if (!survival(p)) continue;
                 for (Entity e : p.getNearbyEntities(24, 12, 24)) {
@@ -473,7 +478,7 @@ final class Weather implements Listener, CommandExecutor, org.bukkit.command.Tab
             for (ItemDisplay d : suns.values()) if (d.isValid()) d.remove();
             suns.clear();
             if (bar != null) bar.removeAll();
-            if (natural) Bukkit.broadcastMessage(ChatColor.YELLOW + "The eclipse passes. The sun returns.");
+            if (natural) say(ChatColor.YELLOW + "The eclipse passes. The sun returns.");
         }
     }
 

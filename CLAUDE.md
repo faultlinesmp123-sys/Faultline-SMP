@@ -2563,6 +2563,15 @@ Notes:
   chests win over a main-hand shield; a usable main-hand item (food, bow, pearl, blocks...) wins over an off-hand one. Sneak
   blocking (Geyser's) still works. The third-party BedrockShield plugin does the same thing: run only one. Tested (scratch
   `bs/BsTest`: Java untouched, raise, held 40 ticks, release, axe cooldown, the 7 -> 5 read). UNTESTED with a real Bedrock client.
+- **Quiet events + Ember Storm fix (Events 2.1.1, Items 1.3.17)**: events just happen, nobody is told. FaultlineEvents
+  `announcements: false` (`FaultlineEvents.loud()`, `say()`; `Ev.announce` returns early): no start/end chat lines, titles or
+  fanfare for the Blood Moon, Fog, Lantern Night, Windy, the Crimson Champion (its fight bar near it stays) or the Nether / End
+  nights; `boss-bar: false` (`showBar()`) = no event bar and no realm night bar (sleepers get "n/m asleep" in the action bar).
+  `/fevent` still says what's on. Items `weather.announcements` / `weather.boss-bar` (both false) do the same for the sandstorm,
+  blizzard and eclipse. EMBER STORM: embers never set anything on fire (no fire ticks; a scorch of `realms.ember-storm.damage`
+  2 as IN_FIRE damage), and ANY block over your head (glass, leaves, slabs, carpet; not fire / light / liquids) up to
+  `realms.ember-storm.roof-height` 32 over your hitbox's middle or corners keeps you safe (was: a solid block within 6).
+  Tested (scratch `rl/RlTest`).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

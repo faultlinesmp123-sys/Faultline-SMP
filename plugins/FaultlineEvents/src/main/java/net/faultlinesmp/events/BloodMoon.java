@@ -98,11 +98,11 @@ final class BloodMoon extends Ev {
         if (!natural) return;
         List<Map.Entry<UUID, Integer>> top = new ArrayList<>(kills.entrySet());
         top.sort((a, b) -> b.getValue() - a.getValue());
-        Bukkit.broadcastMessage(ChatColor.DARK_RED + "☾ " + ChatColor.RED + "The Blood Moon sets. " + ChatColor.GRAY + "The night is over.");
+        pl.say(ChatColor.DARK_RED + "☾ " + ChatColor.RED + "The Blood Moon sets. " + ChatColor.GRAY + "The night is over.");
         String[] medal = {ChatColor.GOLD + "1st", ChatColor.GRAY + "2nd", ChatColor.RED + "3rd"};
         for (int k = 0; k < Math.min(3, top.size()); k++) {
             String name = Bukkit.getOfflinePlayer(top.get(k).getKey()).getName();
-            Bukkit.broadcastMessage("  " + medal[k] + " " + ChatColor.WHITE + name + ChatColor.GRAY + " - " + top.get(k).getValue() + " kills");
+            pl.say("  " + medal[k] + " " + ChatColor.WHITE + name + ChatColor.GRAY + " - " + top.get(k).getValue() + " kills");
         }
         int min = i("dawn-rewards.min-kills", 10);
         for (var e : kills.entrySet()) {
@@ -119,7 +119,7 @@ final class BloodMoon extends Ev {
             Player best = Bukkit.getPlayer(top.get(0).getKey());
             if (best != null) for (String c : list("dawn-rewards.top-commands")) pl.console(c, best);
         }
-        for (Player p : pl.players()) p.playSound(p.getLocation(), Sound.BLOCK_BELL_RESONATE, 0.6f, 1.2f);
+        if (pl.loud()) for (Player p : pl.players()) p.playSound(p.getLocation(), Sound.BLOCK_BELL_RESONATE, 0.6f, 1.2f);
     }
 
     // ---------------------------------------------------------------- every second
@@ -286,11 +286,11 @@ final class BloodMoon extends Ev {
         Location l = z.getLocation();
         try { l.getWorld().strikeLightningEffect(l); } catch (RuntimeException ignored) { }
         l.getWorld().spawnParticle(Particle.DUST, l.clone().add(0, 1, 0), 80, 0.8, 1.2, 0.8, 0, new Particle.DustOptions(RED, 2f));
-        for (Player p : pl.players()) {
+        if (pl.loud()) for (Player p : pl.players()) {
             p.playSound(p.getLocation(), Sound.ENTITY_RAVAGER_ROAR, 0.7f, 0.6f);
             p.sendTitle(ChatColor.DARK_RED + "" + ChatColor.BOLD + "The Crimson Champion", ChatColor.RED + "hunts " + target.getName(), 10, 60, 20);
         }
-        Bukkit.broadcastMessage(ChatColor.DARK_RED + "☾ " + ChatColor.BOLD + "The Crimson Champion" + ChatColor.RED + " walks the Blood Moon, hunting " + target.getName() + "!");
+        pl.say(ChatColor.DARK_RED + "☾ " + ChatColor.BOLD + "The Crimson Champion" + ChatColor.RED + " walks the Blood Moon, hunting " + target.getName() + "!");
     }
 
     private static void set(LivingEntity e, Attribute a, double v) { AttributeInstance in = e.getAttribute(a); if (in != null) in.setBaseValue(v); }
@@ -403,7 +403,7 @@ final class BloodMoon extends Ev {
             Location l = body.getLocation();
             l.getWorld().spawnParticle(Particle.DUST, l.clone().add(0, 1, 0), 120, 1, 1.4, 1, 0, new Particle.DustOptions(RED, 2.2f));
             l.getWorld().playSound(l, Sound.ENTITY_WITHER_DEATH, 0.8f, 1.4f);
-            Bukkit.broadcastMessage(ChatColor.DARK_RED + "☾ " + ChatColor.RED + "The Crimson Champion has fallen" + (killer != null ? " to " + ChatColor.WHITE + killer.getName() : "") + ChatColor.RED + "!");
+            pl.say(ChatColor.DARK_RED + "☾ " + ChatColor.RED + "The Crimson Champion has fallen" + (killer != null ? " to " + ChatColor.WHITE + killer.getName() : "") + ChatColor.RED + "!");
         }
 
         void gone() { bar.removeAll(); champ = null; }

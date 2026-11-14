@@ -1,0 +1,16 @@
+name: FAULTLINESMPJAR
+version: 1.0.0
+main: net.faultlinesmp.bundle.Bundle
+api-version: '1.21'
+load: STARTUP
+author: Faultline SMP
+description: Every Faultline SMP plugin in one jar. Loads the 11 plugins inside it (their data stays in plugins/<Name>/).
+softdepend: [floodgate, Geyser-Spigot, DonutCombat]
+commands:
+  faultlinesmpjar:
+    description: Shows which bundled Faultline plugins are running.
+    permission: faultlinesmpjar.admin
+    aliases: [fsmp]
+permissions:
+  faultlinesmpjar.admin:
+    default: op

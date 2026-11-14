@@ -2608,6 +2608,15 @@ Notes:
   museum, daily, weakness, watch, reports, suggestions); salvage now goes one level down (`CHILD`: a `players:` section loses
   only the cut-off player). `SafeYaml.diskCheck` (Items on enable, Index on enable + every 10 min) warns the console and ops
   under 500 MB free. A failed write leaves the old file whole (temp file first).
+- **FAULTLINESMPJAR (one jar for everything, `plugins/FAULTLINESMPJAR`, built by `tools/build_bundle.sh` into
+  `release/FAULTLINESMPJAR.jar`)**: a loader plugin (`load: STARTUP`) carrying the 11 plugin jars as `bundled/<Name>.jar`.
+  On start each is copied to `plugins/FAULTLINESMPJAR/jars/` (only when changed, temp + atomic move) and loaded with
+  `PluginManager.loadPlugin` in dependency order (`Bundle.ORDER`); Paper enables them in its normal POSTWORLD pass (loaded
+  after the worlds = enabled by hand). Names, commands, PDC namespaces and DATA FOLDERS are unchanged: Paper's
+  `SpigotPluginProvider` puts the data folder at `server.getPluginsFolder()/<name>` whatever the jar's location. A plugin
+  also installed as its own jar wins (the bundled one is skipped). `/faultlinesmpjar` (`/fsmp`) = status. Tested in
+  MockBukkit (all 11 load + enable); the real Paper runtime-load path was read from Paper's source, not run (no PaperMC
+  download here). RULE: after changing any plugin, rerun `tools/build_bundle.sh` too.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.
@@ -2630,7 +2639,7 @@ Notes:
 | `FaultlineBloodMoon.zip` | Blood Moon pack: replaces moon phase textures (sent by FaultlineItems' EventPacks during a Blood Moon) |
 | `FaultlineEclipse.zip`, `FaultlineAurora.zip` | Eclipse / Aurora sky packs (`tools/event_packs.py`, sent by EventPacks during those events) |
 | `FaultlineBosses.zip` | Very old zip of the FaultlineBosses source (Demon Eye only). Ignore it; the live copy is `plugins/FaultlineBosses/` |
-| `plugins/` | Source code for all eleven custom plugins (edit these) |
+| `plugins/` | Source code for all eleven custom plugins (edit these) + `FAULTLINESMPJAR` (the one-jar loader) |
 | `FaultlineEmotes.zip` | Third Java pack: the bendy emote body (26.2 core shader + body part models, `tools/emote_pack.py`; sent to 26.2 games beside FaultlineSMP.zip) |
 | `FaultlineDeepMusic.zip` | Second Java pack: the Dark Ocean's three music tracks (sunken, abyss, acid; sent beside FaultlineSMP.zip) |
 | `bedrock/` | Bedrock (Geyser) packs + custom item mappings: cosmetics (`tools/cosmetics_assets.py`), ships (`tools/ship_assets.py --bedrock`), wild models (`tools/wild_assets.py`) |

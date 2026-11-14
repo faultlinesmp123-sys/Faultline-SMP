@@ -80,7 +80,7 @@ final class Journey implements Listener {
     Journey(FaultlineDeep pl) {
         this.pl = pl;
         file = new File(pl.getDataFolder(), "whirlpool.yml");
-        data = YamlConfiguration.loadConfiguration(file);
+        data = SafeYaml.load(pl, file).yaml;
         nextAt = data.getLong("next-at", 0);
         if (nextAt <= 0) { nextAt = System.currentTimeMillis() + (long) (cfg("first-after-minutes", 10) * 60000); save(); }
         Bukkit.getScheduler().runTaskTimer(pl, this::tick, 20L, 1L);
@@ -90,7 +90,7 @@ final class Journey implements Listener {
 
     void save() {
         data.set("next-at", nextAt);
-        try { data.save(file); } catch (Exception e) { pl.getLogger().warning("[Whirlpool] couldn't save whirlpool.yml: " + e); }
+        try { SafeYaml.save(pl, data, file); } catch (Exception e) { pl.getLogger().warning("[Whirlpool] couldn't save whirlpool.yml: " + e); }
     }
 
     // =========================================================================================== places

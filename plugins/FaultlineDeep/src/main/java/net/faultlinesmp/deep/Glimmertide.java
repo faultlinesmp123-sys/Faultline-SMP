@@ -161,7 +161,7 @@ final class Glimmertide implements Listener {
     // =========================================================================================== saving
     void load() {
         if (!file.exists()) return;
-        YamlConfiguration y = YamlConfiguration.loadConfiguration(file);
+        YamlConfiguration y = SafeYaml.load(pl, file).yaml;
         forced = y.getString("forced", "auto");
         season = y.getString("season", "");
         var s = y.getConfigurationSection("collected");
@@ -173,7 +173,7 @@ final class Glimmertide implements Listener {
         y.set("forced", forced);
         y.set("season", season);
         for (var e : collected.entrySet()) y.set("collected." + e.getKey(), e.getValue());
-        try { y.save(file); } catch (IOException e) { pl.getLogger().warning("Couldn't save glimmertide.yml: " + e.getMessage()); }
+        try { SafeYaml.save(pl, y, file); } catch (IOException e) { pl.getLogger().warning("Couldn't save glimmertide.yml: " + e.getMessage()); }
     }
 
     // =========================================================================================== the pearl

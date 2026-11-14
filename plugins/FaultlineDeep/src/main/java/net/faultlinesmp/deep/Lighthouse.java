@@ -91,7 +91,7 @@ final class Lighthouse implements Listener {
     void load() {
         lamps.clear();
         if (!file.exists()) return;
-        YamlConfiguration y = YamlConfiguration.loadConfiguration(file);
+        YamlConfiguration y = SafeYaml.load(pl, file).yaml;
         for (String s : y.getStringList("lamps")) {
             String[] p = s.split(",");
             if (p.length < 5) continue;
@@ -109,7 +109,7 @@ final class Lighthouse implements Listener {
         List<String> out = new ArrayList<>();
         for (Lamp l : lamps) out.add(l.world + "," + l.x + "," + l.y + "," + l.z + "," + l.owner + "," + l.radius);
         y.set("lamps", out);
-        try { y.save(file); } catch (IOException e) { pl.getLogger().warning("Couldn't save lighthouses.yml: " + e.getMessage()); }
+        try { SafeYaml.save(pl, y, file); } catch (IOException e) { pl.getLogger().warning("Couldn't save lighthouses.yml: " + e.getMessage()); }
     }
 
     /** Is this spot within a lighthouse's light? (Ocean.darkZone) */

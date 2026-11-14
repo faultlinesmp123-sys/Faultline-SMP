@@ -87,7 +87,7 @@ final class HalcyonCity implements Listener {
     HalcyonCity(FaultlineDeep pl) {
         this.pl = pl;
         file = new File(pl.getDataFolder(), "halcyon.yml");
-        YamlConfiguration y = YamlConfiguration.loadConfiguration(file);
+        YamlConfiguration y = SafeYaml.load(pl, file).yaml;
         for (String s : y.getStringList("visited")) try { visited.add(UUID.fromString(s)); } catch (IllegalArgumentException ignored) { }
         citizens = new Citizens(pl, this);
         fleet = new SubFleet(pl, this);
@@ -181,7 +181,7 @@ final class HalcyonCity implements Listener {
     void save() {
         YamlConfiguration y = new YamlConfiguration();
         y.set("visited", visited.stream().map(UUID::toString).toList());
-        try { y.save(file); } catch (Exception e) { pl.getLogger().warning("[Halcyon] couldn't save halcyon.yml: " + e); }
+        try { SafeYaml.save(pl, y, file); } catch (Exception e) { pl.getLogger().warning("[Halcyon] couldn't save halcyon.yml: " + e); }
     }
 
     // =========================================================================================== the wanted level

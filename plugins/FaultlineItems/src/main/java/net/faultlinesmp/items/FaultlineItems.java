@@ -4582,7 +4582,7 @@ public final class FaultlineItems extends JavaPlugin {
         NecromancerManager(FaultlineItems plugin) {
             this.plugin = plugin;
             this.unlockFile = new File(plugin.getDataFolder(), "necromancer_unlocks.yml");
-            YamlConfiguration yaml = YamlConfiguration.loadConfiguration(unlockFile);
+            YamlConfiguration yaml = SafeYaml.load(plugin, unlockFile).yaml;
             for (String id : yaml.getStringList("unlocked")) {
                 try {
                     unlocked.add(UUID.fromString(id));
@@ -4604,7 +4604,7 @@ public final class FaultlineItems extends JavaPlugin {
             YamlConfiguration yaml = new YamlConfiguration();
             yaml.set("unlocked", unlocked.stream().map(UUID::toString).toList());
             try {
-                yaml.save(unlockFile);
+                SafeYaml.save(plugin, yaml, unlockFile);
             } catch (IOException e) {
                 plugin.getLogger().log(Level.SEVERE, "Failed to save necromancer_unlocks.yml", e);
             }

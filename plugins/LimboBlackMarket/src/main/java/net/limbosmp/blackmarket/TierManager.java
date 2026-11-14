@@ -30,7 +30,7 @@ public class TierManager {
         if (!file.exists()) {
             return;
         }
-        YamlConfiguration yaml = YamlConfiguration.loadConfiguration(file);
+        YamlConfiguration yaml = SafeYaml.load(plugin, file).yaml;
         for (String key : yaml.getKeys(false)) {
             try {
                 tiers.put(UUID.fromString(key), yaml.getString(key));
@@ -46,7 +46,7 @@ public class TierManager {
             yaml.set(entry.getKey().toString(), entry.getValue());
         }
         try {
-            yaml.save(file);
+            SafeYaml.save(plugin, yaml, file);
         } catch (IOException e) {
             plugin.getLogger().log(Level.SEVERE, "Failed to save tiers.yml", e);
         }

@@ -363,7 +363,7 @@ final class DenRep {
     // =========================================================================================== saving
     void load() {
         if (!file.exists()) return;
-        YamlConfiguration y = YamlConfiguration.loadConfiguration(file);
+        YamlConfiguration y = SafeYaml.load(pl, file).yaml;
         var r = y.getConfigurationSection("rep");
         if (r != null) for (String k : r.getKeys(false)) try { rep.put(UUID.fromString(k), r.getInt(k)); } catch (IllegalArgumentException ignored) { }
         var h = y.getConfigurationSection("house");
@@ -374,6 +374,6 @@ final class DenRep {
         YamlConfiguration y = new YamlConfiguration();
         for (var e : rep.entrySet()) y.set("rep." + e.getKey(), e.getValue());
         for (var e : house.entrySet()) y.set("house." + e.getKey(), e.getValue());
-        try { y.save(file); dirty = false; } catch (IOException e) { pl.getLogger().warning("[Den] couldn't save den_rep.yml: " + e); }
+        try { SafeYaml.save(pl, y, file); dirty = false; } catch (IOException e) { pl.getLogger().warning("[Den] couldn't save den_rep.yml: " + e); }
     }
 }

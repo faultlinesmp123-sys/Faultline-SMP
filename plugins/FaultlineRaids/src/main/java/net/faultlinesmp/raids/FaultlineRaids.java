@@ -282,6 +282,7 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
         for (ZombieRaid raid : new ArrayList<>(raids)) endRaid(raid, false, null);
         bosses.values().forEach(b -> b.bar.removeAll());
         saveOmens();
+        SafeYaml.flush(); // let data files still being written finish
     }
 
     private double cfg(String key, double def) {
@@ -2445,7 +2446,7 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
     // ===================== SAVE / LOAD =====================
 
     private void loadOmens() {
-        YamlConfiguration yaml = YamlConfiguration.loadConfiguration(omenFile);
+        YamlConfiguration yaml = SafeYaml.load(this, omenFile).yaml;
         for (String key : yaml.getKeys(false)) {
             try {
                 Omen omen = new Omen();
@@ -2468,7 +2469,7 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
             yaml.set(entry.getKey() + ".piglin", entry.getValue().piglin);
         }
         try {
-            yaml.save(omenFile);
+            SafeYaml.save(this, yaml, omenFile);
         } catch (IOException e) {
             getLogger().log(Level.SEVERE, "Failed to save omens.yml", e);
         }

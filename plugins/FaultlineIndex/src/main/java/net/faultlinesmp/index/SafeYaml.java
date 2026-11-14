@@ -155,6 +155,12 @@ final class SafeYaml {
         return y;
     }
 
+    /** {@link #write} for code that used yaml.save(file) inside a try/catch(IOException). */
+    static void save(Plugin plugin, YamlConfiguration y, File file) throws IOException { write(plugin, file, y.saveToString()); }
+
+    /** Written now, on this thread (data that must be on the disk before the next line runs, e.g. an inventory about to be cleared). */
+    static void saveNow(YamlConfiguration y, File file) throws IOException { PENDING.remove(file.getAbsoluteFile()); atomic(file, y.saveToString()); }
+
     static void atomic(File file, String text) throws IOException {
         File dir = file.getParentFile();
         if (dir != null && !dir.exists()) dir.mkdirs();

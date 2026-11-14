@@ -84,6 +84,7 @@ public final class FaultlineCosmetics extends JavaPlugin implements Listener {
     public void onDisable() {
         if (renderer != null) renderer.stop();
         if (dirty) saveData();
+        SafeYaml.flush(); // let data files still being written finish
     }
 
     // ------------------------------------------------------------------ API (other plugins / console)
@@ -218,7 +219,7 @@ public final class FaultlineCosmetics extends JavaPlugin implements Listener {
 
     private void loadData() {
         data.clear();
-        YamlConfiguration y = YamlConfiguration.loadConfiguration(dataFile);
+        YamlConfiguration y = SafeYaml.load(this, dataFile).yaml;
         for (String key : y.getKeys(false)) {
             UUID id;
             try { id = UUID.fromString(key); } catch (IllegalArgumentException e) { continue; }
@@ -243,7 +244,7 @@ public final class FaultlineCosmetics extends JavaPlugin implements Listener {
             y.set(k + ".unlocked", new ArrayList<>(d.unlocked));
             for (Map.Entry<Slot, String> q : d.equipped.entrySet()) y.set(k + ".equipped." + q.getKey().name(), q.getValue());
         }
-        try { y.save(dataFile); dirty = false; }
+        try { SafeYaml.save(this, y, dataFile); dirty = false; }
         catch (IOException ex) { getLogger().warning("Couldn't save players.yml: " + ex.getMessage()); }
     }
 

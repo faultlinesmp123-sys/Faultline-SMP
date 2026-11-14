@@ -161,6 +161,7 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
             s.despawn();
         }
         saveNow();
+        SafeYaml.flush(); // let data files still being written finish
     }
 
     double cfg(String key, double def) { return getConfig().getDouble(key, def); }
@@ -1723,7 +1724,7 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
         }
         try {
             getDataFolder().mkdirs();
-            y.save(dataFile);
+            SafeYaml.save(this, y, dataFile);
         } catch (IOException ex) {
             getLogger().warning("Couldn't save ships.yml: " + ex.getMessage());
         }
@@ -1731,7 +1732,7 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
 
     void load() {
         if (!dataFile.exists()) return;
-        YamlConfiguration y = YamlConfiguration.loadConfiguration(dataFile);
+        YamlConfiguration y = SafeYaml.load(this, dataFile).yaml;
         ConfigurationSection sec = y.getConfigurationSection("ships");
         if (sec != null) for (String id : sec.getKeys(false)) {
             try {

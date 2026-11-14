@@ -100,6 +100,7 @@ public final class LimboBlackMarket extends JavaPlugin {
         if (bounties != null) {
             bounties.save();
         }
+        SafeYaml.flush(); // let data files still being written finish
     }
 
     public TierManager getTierManager() {

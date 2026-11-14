@@ -141,6 +141,7 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
         if (glimmer != null) glimmer.shutdown();
         if (festival != null) festival.shutdown();
         if (lighthouse != null) lighthouse.save();
+        SafeYaml.flush(); // let data files still being written finish
     }
 
     String worldName() { return getConfig().getString("world", DEFAULT_WORLD); }

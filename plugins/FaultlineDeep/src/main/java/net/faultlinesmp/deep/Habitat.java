@@ -745,7 +745,7 @@ final class Habitat implements Listener {
             y.set(p + "skin", h.skin.stream().map(String::valueOf).toList());
             y.set(p + "before", befores(h));
         }
-        try { y.save(file); } catch (IOException e) { pl.getLogger().warning("Couldn't save domes.yml: " + e.getMessage()); }
+        try { SafeYaml.save(pl, y, file); } catch (IOException e) { pl.getLogger().warning("Couldn't save domes.yml: " + e.getMessage()); }
     }
 
     static List<String> befores(Piece d) {
@@ -763,7 +763,7 @@ final class Habitat implements Listener {
 
     void load() {
         if (!file.exists()) return;
-        YamlConfiguration y = YamlConfiguration.loadConfiguration(file);
+        YamlConfiguration y = SafeYaml.load(pl, file).yaml;
         nextId = y.getInt("next", 1);
         String deep = pl.world != null ? pl.world.getName() : pl.worldName();
         ConfigurationSection s = y.getConfigurationSection("domes");

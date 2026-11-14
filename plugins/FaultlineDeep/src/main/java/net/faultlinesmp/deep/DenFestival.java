@@ -65,7 +65,7 @@ final class DenFestival {
 
     void load() {
         if (!file.exists()) return;
-        YamlConfiguration y = YamlConfiguration.loadConfiguration(file);
+        YamlConfiguration y = SafeYaml.load(pl, file).yaml;
         forced = y.getString("forced", "auto");
         festival = y.getString("festival", "");
         for (String s : y.getStringList("gifted")) try { gifted.add(UUID.fromString(s)); } catch (IllegalArgumentException ignored) { }
@@ -78,7 +78,7 @@ final class DenFestival {
         List<String> g = new ArrayList<>();
         for (UUID u : gifted) g.add(u.toString());
         y.set("gifted", g);
-        try { y.save(file); } catch (IOException e) { pl.getLogger().warning("Couldn't save den_festival.yml: " + e.getMessage()); }
+        try { SafeYaml.save(pl, y, file); } catch (IOException e) { pl.getLogger().warning("Couldn't save den_festival.yml: " + e.getMessage()); }
     }
 
     private void tick() {

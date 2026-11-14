@@ -42,7 +42,7 @@ public class StatsManager {
 
     private void load() {
         if (!file.exists()) return;
-        YamlConfiguration yaml = YamlConfiguration.loadConfiguration(file);
+        YamlConfiguration yaml = SafeYaml.load(plugin, file).yaml;
         for (String key : yaml.getKeys(false)) {
             try {
                 UUID uuid = UUID.fromString(key);

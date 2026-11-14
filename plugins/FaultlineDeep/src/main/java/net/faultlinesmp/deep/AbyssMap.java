@@ -77,7 +77,7 @@ final class AbyssMap implements Listener {
     // =========================================================================================== saving
     void load() {
         if (!file.exists()) return;
-        YamlConfiguration y = YamlConfiguration.loadConfiguration(file);
+        YamlConfiguration y = SafeYaml.load(pl, file).yaml;
         var sec = y.getConfigurationSection("seen");
         if (sec != null) for (String k : sec.getKeys(false)) {
             try { seen.put(UUID.fromString(k), BitSet.valueOf(Base64.getDecoder().decode(sec.getString(k, "")))); }
@@ -92,7 +92,7 @@ final class AbyssMap implements Listener {
         YamlConfiguration y = new YamlConfiguration();
         if (view != null) y.set("view-id", view.getId());
         for (var e : seen.entrySet()) y.set("seen." + e.getKey(), Base64.getEncoder().encodeToString(e.getValue().toByteArray()));
-        try { y.save(file); } catch (IOException e) { pl.getLogger().warning("Couldn't save abyss_map.yml: " + e.getMessage()); }
+        try { SafeYaml.save(pl, y, file); } catch (IOException e) { pl.getLogger().warning("Couldn't save abyss_map.yml: " + e.getMessage()); }
         dirty = false;
     }
 

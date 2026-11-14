@@ -2612,6 +2612,16 @@ Notes:
   save could miss it (two /report or /suggest in a row lost one; emote / camera crash data on join). `SafeYaml.write` now
   keeps the queued text in `PENDING` (several saves in a row = only the newest is written) and `SafeYaml.fresh(file)` /
   `load` read it first. RULE: re-read a SafeYaml file with `SafeYaml.fresh`, never `YamlConfiguration.loadConfiguration`.
+- **Audit: safe data files in EVERY plugin (Deep 1.18.1, Bosses 2.1.2, Ships 1.6.13, Skills 1.0.2, Raids 1.3.2, Kingdoms
+  1.4.3, Cosmetics 1.1.6, LimboBlackMarket 1.2.3, Items 1.3.22)**: `YamlConfiguration.loadConfiguration` returns an EMPTY
+  config for a file it can't parse, and the next save wrote that over the real file (a full disk = every tier, ship,
+  kingdom member, cosmetic unlock, skill, bounty, dome, den rep gone after one restart). Each plugin now has its own
+  `SafeYaml` copy (same code as Index's + `save(plugin, y, file)` that keeps the old try/catch(IOException) and
+  `saveNow(y, file)` = atomic on this thread, used for Bosses' boss form inventory and Jacob cutscene crash files); every
+  data load is `SafeYaml.load(...).yaml`, every save atomic, `SafeYaml.flush()` at the end of each onDisable. Tested: a cut
+  Kingdoms data.yml keeps 5 of 6 players (scratch `kcut/KCut`). Also audited, clean: async code (only file/HTTP work off
+  the main thread), every getCommand() has its plugin.yml entry, 26.2-only crash patterns (particle data, velocity, slime
+  class spawns). RULE: new data files in any plugin go through that plugin's `SafeYaml`.
 - **FAULTLINESMPJAR (one jar for everything, `plugins/FAULTLINESMPJAR`, built by `tools/build_bundle.sh` into
   `release/FAULTLINESMPJAR.jar`)**: a loader plugin (`load: STARTUP`) carrying the 11 plugin jars as `bundled/<Name>.jar`.
   On start each is copied to `plugins/FAULTLINESMPJAR/jars/` (only when changed, temp + atomic move) and loaded with

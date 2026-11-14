@@ -301,6 +301,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         safely("shutdown: Wild bosses", () -> { if (wild != null) wild.shutdown(); });
         kraken = null; jacob = null;
         proxies.clear();
+        SafeYaml.flush(); // let data files still being written finish
     }
 
     private double cfg(String key, double def) {
@@ -2723,7 +2724,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 saved.set(k + ".yaw", l.getYaw()); saved.set(k + ".pitch", l.getPitch()); saved.set(k + ".mode", p.getGameMode().name());
                 viewers.add(p.getUniqueId());
             }
-            try { saved.save(jacobCutFile()); } catch (Exception ignored) { }
+            try { SafeYaml.saveNow(saved, jacobCutFile()); } catch (Exception ignored) { }
             for (UUID id : viewers) {
                 Player p = Bukkit.getPlayer(id);
                 if (p == null) continue;
@@ -2753,7 +2754,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             p.setFallDistance(0); p.setFireTicks(0);
             saved.set(k, null);
             viewers.remove(p.getUniqueId());
-            try { if (saved.getKeys(false).isEmpty()) jacobCutFile().delete(); else saved.save(jacobCutFile()); } catch (Exception ignored) { }
+            try { if (saved.getKeys(false).isEmpty()) jacobCutFile().delete(); else SafeYaml.saveNow(saved, jacobCutFile()); } catch (Exception ignored) { }
         }
         void finish() {
             for (UUID id : new ArrayList<>(viewers)) { Player p = Bukkit.getPlayer(id); if (p != null) restore(p); }
@@ -2773,7 +2774,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         if (!f.exists()) return;
         Player p = event.getPlayer();
         if (jacob != null && jacob.cut != null && jacob.cut.viewers.contains(p.getUniqueId())) return;
-        org.bukkit.configuration.file.YamlConfiguration y = org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(f);
+        org.bukkit.configuration.file.YamlConfiguration y = SafeYaml.load(this, f).yaml;
         String k = p.getUniqueId().toString();
         if (!y.contains(k + ".x")) return;
         World w = Bukkit.getWorld(y.getString(k + ".world", p.getWorld().getName()));
@@ -2783,7 +2784,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         try { p.setGameMode(GameMode.valueOf(y.getString(k + ".mode", "SURVIVAL"))); } catch (IllegalArgumentException e) { p.setGameMode(GameMode.SURVIVAL); }
         p.setFallDistance(0);
         y.set(k, null);
-        try { if (y.getKeys(false).isEmpty()) f.delete(); else y.save(f); } catch (Exception ignored) { }
+        try { if (y.getKeys(false).isEmpty()) f.delete(); else SafeYaml.saveNow(y, f); } catch (Exception ignored) { }
     }
 
     @EventHandler
@@ -4867,7 +4868,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         y.set("flying", p.isFlying());
         y.set("invulnerable", p.isInvulnerable());
         y.set("collidable", p.isCollidable());
-        try { getDataFolder().mkdirs(); y.save(morphFile()); } catch (Exception e) { p.sendMessage(ChatColor.RED + "Couldn't save your inventory, so boss form was cancelled."); return; }
+        try { getDataFolder().mkdirs(); SafeYaml.saveNow(y, morphFile()); } catch (Exception e) { p.sendMessage(ChatColor.RED + "Couldn't save your inventory, so boss form was cancelled."); return; }
 
         MORPHED.add(p.getUniqueId());
         morph = new Morph(p.getUniqueId(), kind);
@@ -4916,7 +4917,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
     void restoreMorphed(Player p) {
         java.io.File f = morphFile();
         if (!f.exists()) return;
-        org.bukkit.configuration.file.YamlConfiguration y = org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(f);
+        org.bukkit.configuration.file.YamlConfiguration y = SafeYaml.load(this, f).yaml;
         if (!p.getUniqueId().toString().equals(y.getString("uuid"))) return;
         MORPHED.remove(p.getUniqueId());
         p.getInventory().clear();

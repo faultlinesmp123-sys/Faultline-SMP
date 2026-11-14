@@ -398,12 +398,12 @@ final class Volcano implements Listener {
         List<String> s = new ArrayList<>(scar.size());
         for (Map.Entry<Long, String> en : scar.entrySet()) s.add(en.getKey() + "|" + en.getValue());
         y.set("scar", s);
-        try { y.save(file); } catch (IOException e) { pl.getLogger().warning("Couldn't save volcano.yml: " + e.getMessage()); }
+        try { SafeYaml.save(pl, y, file); } catch (IOException e) { pl.getLogger().warning("Couldn't save volcano.yml: " + e.getMessage()); }
     }
 
     void load() {
         if (!file.exists()) return;
-        YamlConfiguration y = YamlConfiguration.loadConfiguration(file);
+        YamlConfiguration y = SafeYaml.load(pl, file).yaml;
         state = y.getString("state", "none");
         cx = y.getInt("x"); cz = y.getInt("z"); floorY = y.getInt("floor"); peakY = y.getInt("peak");
         healAt = y.getLong("heal-at");

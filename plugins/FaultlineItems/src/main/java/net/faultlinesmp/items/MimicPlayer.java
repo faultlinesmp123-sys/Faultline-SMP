@@ -358,7 +358,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         try { loadMemory(); } catch (RuntimeException ignored) { }
         gearFile = new java.io.File(plugin.getDataFolder(), "mimic_gear.yml");
         if (!gearFile.exists()) return;
-        var y = org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(gearFile);
+        var y = SafeYaml.load(plugin, gearFile).yaml;
         for (String k : y.getKeys(false)) {
             try {
                 var c = y.getConfigurationSection(k);
@@ -407,7 +407,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             y.set(k + "buffs", new ArrayList<>(g.buffs)); y.set(k + "debuffs", new ArrayList<>(g.debuffs));
             y.set(k + "rod", g.rod); y.set(k + "flint", g.flint); y.set(k + "elytra", g.elytra); y.set(k + "block", g.block.name());
         }
-        try { y.save(gearFile); } catch (java.io.IOException ex) { plugin.getLogger().warning("[MimicPlayer] couldn't save mimic_gear.yml: " + ex.getMessage()); }
+        try { SafeYaml.save(plugin, y, gearFile); } catch (java.io.IOException ex) { plugin.getLogger().warning("[MimicPlayer] couldn't save mimic_gear.yml: " + ex.getMessage()); }
     }
 
     @EventHandler
@@ -2231,7 +2231,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
     void loadMemory() {
         java.io.File f = new java.io.File(plugin.getDataFolder(), "mimic_memory.yml");
         if (!f.exists()) return;
-        var y = org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(f);
+        var y = SafeYaml.load(plugin, f).yaml;
         for (String k : y.getKeys(false)) {
             try {
                 Profile pr = new Profile();

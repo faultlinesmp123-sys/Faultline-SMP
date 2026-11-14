@@ -54,7 +54,7 @@ public class QuestDataManager {
 
     private void load() {
         if (!file.exists()) return;
-        YamlConfiguration yaml = YamlConfiguration.loadConfiguration(file);
+        YamlConfiguration yaml = SafeYaml.load(plugin, file).yaml;
         ConfigurationSection root = yaml.getConfigurationSection("players");
         if (root == null) return;
 
@@ -101,7 +101,7 @@ public class QuestDataManager {
             }
         }
         try {
-            yaml.save(file);
+            SafeYaml.save(plugin, yaml, file);
             dirty = false;
         } catch (IOException e) {
             plugin.getLogger().log(Level.SEVERE, "Failed to save quest_data.yml", e);

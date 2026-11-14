@@ -368,7 +368,7 @@ final class Den {
     // =========================================================================================== saving
     void load() {
         if (!file.exists()) return;
-        YamlConfiguration y = YamlConfiguration.loadConfiguration(file);
+        YamlConfiguration y = SafeYaml.load(pl, file).yaml;
         List<Integer> d = y.getIntegerList("dead");
         for (int i : d) if (i >= 0 && i < MERMAIDS) dead[i] = true;
         restockAt = y.getLong("restock-at", 0);
@@ -380,7 +380,7 @@ final class Den {
         for (int i = 0; i < MERMAIDS; i++) if (dead[i]) d.add(i);
         y.set("dead", d);
         y.set("restock-at", restockAt);
-        try { y.save(file); } catch (IOException e) { pl.getLogger().warning("[Den] couldn't save den.yml: " + e); }
+        try { SafeYaml.save(pl, y, file); } catch (IOException e) { pl.getLogger().warning("[Den] couldn't save den.yml: " + e); }
     }
 
     void reset() {

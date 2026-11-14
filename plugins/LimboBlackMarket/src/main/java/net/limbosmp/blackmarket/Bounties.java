@@ -68,7 +68,7 @@ public class Bounties implements Listener, TabExecutor {
     // ============================================================================================ saving
     private void load() {
         if (!file.exists()) return;
-        YamlConfiguration y = YamlConfiguration.loadConfiguration(file);
+        YamlConfiguration y = SafeYaml.load(plugin, file).yaml;
         ConfigurationSection b = y.getConfigurationSection("bounties");
         if (b != null) for (String k : b.getKeys(false)) {
             try {
@@ -106,7 +106,7 @@ public class Bounties implements Listener, TabExecutor {
             }
         }
         for (var e : pending.entrySet()) y.set("pending." + e.getKey(), new ArrayList<>(e.getValue()));
-        try { y.save(file); } catch (IOException e) { plugin.getLogger().log(Level.SEVERE, "Couldn't save bounties.yml", e); }
+        try { SafeYaml.save(plugin, y, file); } catch (IOException e) { plugin.getLogger().log(Level.SEVERE, "Couldn't save bounties.yml", e); }
     }
 
     // ============================================================================================ heads

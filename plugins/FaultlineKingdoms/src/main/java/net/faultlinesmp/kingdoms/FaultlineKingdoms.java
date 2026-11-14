@@ -104,6 +104,7 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
         if (gateway != null) gateway.stop();
         if (chat != null) chat.stop();
         save();
+        SafeYaml.flush(); // let data files still being written finish
     }
 
     // ================================================================= data
@@ -111,7 +112,7 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
     void load() {
         members.clear(); grace.clear(); ffForced.clear(); treatyForced.clear(); treaties.clear();
         if (!dataFile.exists()) return;
-        YamlConfiguration y = YamlConfiguration.loadConfiguration(dataFile);
+        YamlConfiguration y = SafeYaml.load(this, dataFile).yaml;
         ConfigurationSection ps = y.getConfigurationSection("players");
         if (ps != null) for (String id : ps.getKeys(false)) {
             try {
@@ -151,7 +152,7 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
         for (var e : ffForced.entrySet()) y.set("ff-forced." + e.getKey(), e.getValue());
         for (var e : treatyForced.entrySet()) y.set("treaty-forced." + e.getKey(), e.getValue());
         y.set("treaties", new ArrayList<>(treaties));
-        try { y.save(dataFile); } catch (IOException ex) { getLogger().warning("Couldn't save data.yml: " + ex.getMessage()); }
+        try { SafeYaml.save(this, y, dataFile); } catch (IOException ex) { getLogger().warning("Couldn't save data.yml: " + ex.getMessage()); }
     }
 
     Member member(Player p) {

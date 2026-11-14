@@ -141,6 +141,7 @@ public final class FaultlineSkills extends JavaPlugin implements Listener {
     public void onDisable() {
         for (Player p : Bukkit.getOnlinePlayers()) strip(p);
         save();
+        SafeYaml.flush(); // let data files still being written finish
     }
 
     double cfg(String path, double def) { return getConfig().getDouble(path, def); }
@@ -701,12 +702,12 @@ public final class FaultlineSkills extends JavaPlugin implements Listener {
             for (Tree t : Tree.values()) if (d.xp[t.ordinal()] > 0) y.set(p + "xp." + t.key(), d.xp[t.ordinal()]);
             if (!d.perks.isEmpty()) y.set(p + "perks", new ArrayList<>(d.perks));
         }
-        try { y.save(file); } catch (IOException e) { getLogger().warning("Couldn't save players.yml: " + e.getMessage()); }
+        try { SafeYaml.save(this, y, file); } catch (IOException e) { getLogger().warning("Couldn't save players.yml: " + e.getMessage()); }
     }
 
     void load() {
         if (!file.exists()) return;
-        YamlConfiguration y = YamlConfiguration.loadConfiguration(file);
+        YamlConfiguration y = SafeYaml.load(this, file).yaml;
         for (String k : y.getKeys(false)) try {
             Data d = data(UUID.fromString(k));
             d.name = y.getString(k + ".name", "?");

@@ -99,7 +99,7 @@ final class LandCannons implements Listener {
 
     void load() {
         if (!file.exists()) return;
-        YamlConfiguration y = YamlConfiguration.loadConfiguration(file);
+        YamlConfiguration y = SafeYaml.load(pl, file).yaml;
         ConfigurationSection cs = y.getConfigurationSection("cannons");
         if (cs == null) return;
         for (String k : cs.getKeys(false)) {
@@ -123,7 +123,7 @@ final class LandCannons implements Listener {
             if (c.owner != null) y.set(b + "owner", c.owner.toString());
             y.set(b + "yaw", c.yaw); y.set(b + "pitch", c.pitch);
         }
-        try { y.save(file); } catch (IOException e) { pl.getLogger().warning("Couldn't save cannons.yml: " + e.getMessage()); }
+        try { SafeYaml.save(pl, y, file); } catch (IOException e) { pl.getLogger().warning("Couldn't save cannons.yml: " + e.getMessage()); }
     }
 
     void shutdown() {

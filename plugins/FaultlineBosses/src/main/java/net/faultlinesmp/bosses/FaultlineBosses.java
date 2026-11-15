@@ -2962,6 +2962,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         Pose pose = standPose(), shown = standPose();
         // 2.2.0: springs for every joint (a little overshoot = weight), hit-stop, the cape, weapon trails
         final float[][] jvel = new float[6][3]; float dropVel;
+        float lastTurnYaw, turnAmt, turnPh; int recoverT;
         int hitStop;
         ItemDisplay capeTop, capeLow;
         float capeA = 8, capeV, capeB = 4, capeBV, capeSide, capeSideV, lastYawSeen;
@@ -3478,7 +3479,8 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         void end(int rest) {
             attack = -1; t = 0;
             recover = (int) Math.round(rest * (phase() == 4 ? 0.6 : phase() == 3 ? 0.8 : 1.0) * jcfg("rest-multiplier", 1.0));
-            pose = state == P1 ? riderPose(false) : readyPose();
+            if (state == P1) pose = riderPose(false);
+            else recoverT = 14; // no snapping back to the idle: he comes out of the move over ~3/4 s (walk/idle ease toward it)
         }
 
         // ---------- phase 1: the hawk ----------
@@ -3519,19 +3521,56 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
 
         /** Combat-ready idle: feet apart, weight shifting, breathing, weapon up. Ablaze: hunched forward, blade low. */
         Pose readyPose() {
-            float b = (float) Math.sin(ticks * 0.09), w = (float) Math.sin(ticks * 0.045);
-            Pose p = new Pose().set(LEG_R, -8, 0, -7).set(LEG_L, 10, 0, 7).drop(-0.06f + b * 0.015f).set(HEAD, -6 - b, -6, 0);
-            if (ablaze) return p.set(BODY, 16 + b * 2, 10 + w * 3, 0).set(ARM_R, -40 + b * 3, -10, -16).set(ARM_L, -18 - b * 3, 0, 22);
-            return p.set(BODY, 7 + b * 1.5f, 6 + w * 3, 0).set(ARM_R, -32 + b * 2, 0, -10).set(ARM_L, -16 - b * 2, 18, 14);
+            float b = breath(), w = (float) (Math.sin(ticks * 0.031) * 0.7 + Math.sin(ticks * 0.0137 + 1.3) * 0.3); // breath, weight
+            Pose p = new Pose().set(LEG_R, -8 + w * 3, 0, -7 - w * 2).set(LEG_L, 10 - w * 3, 0, 7 - w * 2).drop(-0.06f + b * 0.015f).set(HEAD, -6 - b * 1.5f, -6, w * 2);
+            if (ablaze) p.set(BODY, 16 + b * 2.5f, 10 + w * 3, w * 3).set(ARM_R, -40 + b * 3, -10, -16).set(ARM_L, -18 - b * 2, 0, 22 + b * 2);
+            else p.set(BODY, 7 + b * 2, 6 + w * 3, w * 3).set(ARM_R, -32 + b * 2, 0, -10).set(ARM_L, -16 - b * 2, 18, 14 + b * 2);
+            return idleBeat(p);
+        }
+
+        /** Breathing: a slow in, a quicker out, a short pause; it never loops quite the same. */
+        float breath() {
+            double ph = (ticks * 0.075 + Math.sin(ticks * 0.0071) * 1.4) % (Math.PI * 2);
+            return (float) (ph < 3.6 ? Math.sin(ph / 3.6 * Math.PI / 2) : ph < 5.4 ? Math.cos((ph - 3.6) / 1.8 * Math.PI / 2) : 0) * 2 - 1;
+        }
+
+        int beatAt = 120, beatKind = -1, beatT;
+        /** Every 4-9 seconds of standing around he does something small: rolls his neck, glances away, rests the weapon,
+            settles his shoulders, shifts his feet. One at a time, eased in and out. */
+        Pose idleBeat(Pose p) {
+            if (attack >= 0 || cut != null || state == DEFEAT) { beatKind = -1; return p; }
+            if (beatKind < 0 && ticks >= beatAt) { beatKind = random.nextInt(5); beatT = 0; }
+            if (beatKind < 0) return p;
+            int len = beatKind == 2 ? 50 : 34;
+            float k = (float) Math.sin(Math.min(1, beatT / (float) len) * Math.PI); k = k * k * (3 - 2 * k);
+            if (++beatT > len) { beatKind = -1; beatAt = ticks + 80 + random.nextInt(100); }
+            float sd = (beatAt & 1) == 0 ? 1 : -1;
+            switch (beatKind) {
+                case 0 -> p.add(HEAD, 10 * k, 0, 16 * k * sd).add(BODY, 0, 0, -3 * k * sd);                 // rolls his neck
+                case 1 -> p.add(HEAD, 4 * k, 34 * k * sd, 0).add(BODY, 0, 6 * k * sd, 0);                  // glances to one side
+                case 2 -> p.add(ARM_R, 22 * k, 0, 6 * k).add(BODY, 4 * k, -4 * k, 2 * k).add(HEAD, 6 * k, -8 * k, 0); // lets the weapon sag, then up again
+                case 3 -> p.add(ARM_R, -8 * k, 0, -10 * k).add(ARM_L, -6 * k, 0, 10 * k).add(BODY, -5 * k, 0, 0).add(HEAD, -6 * k, 0, 0).drop(p.drop + 0.04f * k); // squares his shoulders
+                default -> p.add(LEG_R, 10 * k * sd, 0, -4 * k).add(LEG_L, -8 * k * sd, 0, 4 * k).add(BODY, 0, 0, 4 * k * sd);   // shifts his feet
+            }
+            return p;
+        }
+
+        /** A held pose that keeps moving: the body sinks into it and starts coming back, instead of freezing. */
+        Pose settled(Pose a) {
+            Pose s = Pose.lerp(a, readyPose(), 0.2f);
+            s.add(BODY, 3, 0, 0).drop(a.drop - 0.03f);
+            return s;
         }
 
         /** A heavy armored stride, synced to the ground he covers (no sliding feet). a > 1 = a sprint. */
         Pose stridePose(float a) {
-            float sn = (float) Math.sin(stride), cs = (float) Math.cos(stride);
-            return new Pose().set(LEG_R, sn * 34 * a, 0, -3).set(LEG_L, -sn * 34 * a, 0, 3)
-                    .set(ARM_R, (ablaze ? -46 : -30) - sn * 10 * a, 0, -12).set(ARM_L, sn * 32 * a - 8, 0, 12)
-                    .set(BODY, 9 * a + 2, -sn * 7 * a, 0).set(HEAD, -7 * a, sn * 5 * a, 0)
-                    .drop(-(float) Math.abs(cs) * 0.08f * a);
+            float sn = (float) Math.sin(stride), lag = (float) Math.sin(stride - 0.55f), cs = (float) Math.cos(stride);
+            float lift = Math.max(0, cs) * 10 * a;                         // the swinging foot lifts a little as it passes
+            return new Pose().set(LEG_R, sn * 32 * a - (sn < 0 ? lift : 0), 0, -3).set(LEG_L, -sn * 32 * a - (sn > 0 ? lift : 0), 0, 3)
+                    .set(ARM_R, (ablaze ? -46 : -30) - lag * 9 * a, 0, -12 - Math.abs(lag) * 2).set(ARM_L, lag * 28 * a - 8, 0, 12 + Math.abs(lag) * 3)
+                    .set(BODY, 9 * a + 2 + Math.abs(sn) * 2.5f * a, -sn * 7 * a, sn * 3.5f * a)        // hips roll onto the planted leg
+                    .set(HEAD, -7 * a - Math.abs(sn) * 2 * a, sn * 6 * a, -sn * 2.5f * a)              // the head stays level and forward
+                    .drop(-(float) Math.abs(sn) * 0.1f * a + 0.02f * a);
         }
 
         Pose p(float[]... parts) { // compact builder: {part, x, y, z}..., last {-1, drop}
@@ -3634,16 +3673,17 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             if (attack < 0 && d > 18 && pearlCd <= 0) { pearlCd = 80; attack = 11; t = 0; return; } // far away: he pearls toward you
             if (attack < 0 && d > 3.2) {
                 stepTo(safeDir(to, fwd()).multiply(Math.min(speed(), d - 3)));
-                pose = Pose.lerp(pose, stridePose(phase() == 4 ? 1.3f : 1f), 0.35f);
+                pose = Pose.lerp(pose, stridePose(phase() == 4 ? 1.3f : 1f), recoverT > 0 ? 0.14f : 0.35f);
                 // blocked by a wall or cliff for a moment: he pearls over it (and lands behind you)
                 if (blocked > 15 && pearlCd <= 0) { blocked = 0; pearlCd = 80; attack = 11; t = 0; return; }
-            } else if (attack < 0) pose = Pose.lerp(pose, readyPose(), 0.2f);
+            } else if (attack < 0) pose = Pose.lerp(pose, readyPose(), recoverT > 0 ? 0.11f : 0.2f);
+            if (recoverT > 0) recoverT--;
             settle();
         }
 
         void hammerSlam(List<Player> a) {
             int w = 18;
-            pose = anim(t, new int[]{0, 7, 14, 16, 18, 30, 44}, new Pose[]{readyPose(), liftPose(), overheadPose(), overheadPose().add(BODY, -3, 0, 0), slamPose(), slamPose(), readyPose()});
+            pose = anim(t, new int[]{0, 7, 14, 16, 18, 30, 44}, new Pose[]{readyPose(), liftPose(), overheadPose(), overheadPose().add(BODY, -5, 0, 0).add(HEAD, -4, 0, 0).drop(0.08f), slamPose(), settled(slamPose()), readyPose()});
             if (t < w) { }
             else if (t == w) {
                 lock = pos.clone();
@@ -3764,7 +3804,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             if (t == 0) hold(model(Material.STICK, "spider_staff", false)); // his staff
             Pose raise = readyPose().set(ARM_R, -165, 0, -10).set(HEAD, -20, 0, 0).set(BODY, -6, 0, 0); // staff to the sky...
             Pose plant = crouchPose().set(ARM_R, -52, 0, -6).set(ARM_L, -30, 0, 20);                    // ...and driven into the ground
-            pose = anim(t, new int[]{0, 7, 10, 22, 30}, new Pose[]{readyPose(), raise, plant, plant, readyPose()});
+            pose = anim(t, new int[]{0, 7, 10, 22, 30}, new Pose[]{readyPose(), raise, plant, settled(plant), readyPose()});
             if (t == 10) {
                 world.playSound(loc(), Sound.ENTITY_SPIDER_AMBIENT, 2f, 0.6f);
                 for (int i = 0; i < 3 && minions.size() < (int) jcfg("max-spiders", 6); i++) {
@@ -3830,7 +3870,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                            new float[]{LEG_R, 0, 0, -10}, new float[]{LEG_L, 0, 0, 10});                                   // weapon raised: "CHARGE!"
             Pose lead = p(new float[]{ARM_R, -108, 0, -6}, new float[]{ARM_L, 12, 0, 20}, new float[]{BODY, 14, 0, 0}, new float[]{HEAD, -6, 0, 0},
                           new float[]{LEG_R, -24, 0, -4}, new float[]{LEG_L, 20, 0, 4});                                     // pointing them at you
-            pose = anim(t, new int[]{0, 9, 15, 44, 55}, new Pose[]{readyPose(), rally, lead, lead, readyPose()});
+            pose = anim(t, new int[]{0, 9, 15, 44, 55}, new Pose[]{readyPose(), rally, lead, settled(lead), readyPose()});
             if (t == 12) {
                 world.playSound(loc(), Sound.ITEM_GOAT_HORN_SOUND_2, 3f, 0.9f); say(ChatColor.AQUA + "CHARGE!", 30);
                 // his army thinned out: the horn calls reinforcements (so the charge always has riders)
@@ -3857,7 +3897,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         void spearWall(Player target, List<Player> a) {
             Pose thrust = p(new float[]{ARM_R, -84, 0, -4}, new float[]{ARM_L, 24, 0, 18}, new float[]{BODY, 22, -12, 0}, new float[]{HEAD, 2, 10, 0},
                             new float[]{LEG_R, -36, 0, -6}, new float[]{LEG_L, 26, 0, 6}, new float[]{-1, -0.2f});
-            pose = anim(t, new int[]{0, 12, 20, 22, 30, 40}, new Pose[]{readyPose(), chopWindupPose(), chopWindupPose().add(BODY, -4, 4, 0), thrust, thrust, readyPose()});
+            pose = anim(t, new int[]{0, 12, 20, 22, 30, 40}, new Pose[]{readyPose(), chopWindupPose(), chopWindupPose().add(BODY, -7, 8, 0).add(ARM_R, -6, 0, 0), thrust, settled(thrust), readyPose()});
             if (t == 0) {
                 Vector dir = safeDir(target.getLocation().toVector().subtract(pos).setY(0), fwd());
                 for (int s = -1; s <= 1; s++) marks.add(dir.clone().rotateAroundY(Math.toRadians(s * 22)));
@@ -3936,7 +3976,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         }
 
         void infernoPillar(List<Player> a) {
-            pose = anim(t, new int[]{0, 10, 24, 26, 36, 44}, new Pose[]{readyPose(), skyPose(), skyPose().add(BODY, -4, 0, 0), slamPose(), slamPose(), readyPose()}); // calls the fire down
+            pose = anim(t, new int[]{0, 10, 24, 26, 36, 44}, new Pose[]{readyPose(), skyPose(), skyPose().add(BODY, -6, 0, 0).add(HEAD, -6, 0, 0), slamPose(), settled(slamPose()), readyPose()}); // calls the fire down
             if (t == 0) for (Player p : a) { marks.add(p.getLocation().toVector()); marks.add(p.getLocation().toVector().add(new Vector(random.nextGaussian() * 3, 0, random.nextGaussian() * 3))); if (marks.size() >= 6) break; }
             if (t < 26 && t % 3 == 0) for (Vector m : marks) ring(m, 1.8, Color.fromRGB(80, 180, 255));
             if (t >= 26 && t < 40) {
@@ -3950,7 +3990,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         }
 
         void burningBrand(Player target) {
-            pose = anim(t, new int[]{0, 8, 20}, new Pose[]{readyPose(), pointPose(), pointPose()});
+            pose = anim(t, new int[]{0, 8, 20}, new Pose[]{readyPose(), pointPose(), settled(pointPose())});
             if (t == 8) {
                 branded = target.getUniqueId(); brandT = 70;
                 target.sendActionBar(legacy(ChatColor.GOLD + "" + ChatColor.BOLD + "BRANDED! " + ChatColor.GRAY + "Get away from everyone: it's about to explode!"));
@@ -4444,7 +4484,19 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             }
             lastDrawPos = pos.clone();
             Pose p = pose.copy();
-            p.add(BODY, (float) Math.sin(ticks * 0.08) * 1.5f, 0, 0);
+            // a little life on top of every pose: slow, uneven drift (never a clean sine)
+            float n1 = (float) (Math.sin(ticks * 0.053) + Math.sin(ticks * 0.0217 + 2.1) * 0.6), n2 = (float) (Math.sin(ticks * 0.041 + 0.7) + Math.sin(ticks * 0.0173) * 0.5);
+            p.add(BODY, n1 * 0.9f, n2 * 1.2f, n2 * 0.6f).add(HEAD, n2 * 1.1f, n1 * 1.6f, 0).add(ARM_L, n1 * 1.5f, 0, n2);
+            // turning on the spot: he steps round (feet shuffle, body leans into the turn) instead of spinning like a statue
+            float yawVel = ((yaw - lastTurnYaw) % 360 + 540) % 360 - 180; lastTurnYaw = yaw;
+            turnAmt += (Math.min(1f, Math.abs(yawVel) / 8f) - turnAmt) * 0.25f;
+            boolean walking = lastDrawPos != null && Math.hypot(pos.getX() - lastDrawPos.getX(), pos.getZ() - lastDrawPos.getZ()) > 0.05;
+            if (!walking && cut == null && state >= P2 && state != DEFEAT) {
+                turnPh += Math.abs(yawVel) * 0.09f;
+                float st = (float) Math.sin(turnPh) * turnAmt;
+                p.add(LEG_R, st * 18, 0, 0).add(LEG_L, -st * 18, 0, 0).add(BODY, 0, -Math.signum(yawVel) * 6 * turnAmt, -Math.signum(yawVel) * 4 * turnAmt)
+                 .drop(p.drop - Math.abs(st) * 0.05f);
+            }
             if (flinch > 0) p.add(BODY, -flinch * 2f, 0, 0).add(HEAD, -flinch * 2f, 0, 0);
             if (recoilT > 0) { p = Pose.lerp(p, recoilPose(), recoilT / 14f * 0.85f); recoilT--; } // a pink orb rocks him back
             // he watches whoever he's fighting: head (and a little of his chest) turn toward them
@@ -4464,7 +4516,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             else { // every joint on a spring: quick, weighty, a little overshoot on big swings
                 Pose n = shown.copy();
                 for (int i = 0; i < 6; i++) for (int k = 0; k < 3; k++) {
-                    jvel[i][k] += (p.r[i][k] - n.r[i][k]) * 1.1f; jvel[i][k] *= 0.38f; n.r[i][k] += jvel[i][k];
+                    jvel[i][k] += (p.r[i][k] - n.r[i][k]) * STIFF[i]; jvel[i][k] *= DAMP[i]; n.r[i][k] += jvel[i][k];
                 }
                 dropVel += (p.drop - n.drop) * 1.1f; dropVel *= 0.38f; n.drop += dropVel;
                 shown = n;
@@ -4622,6 +4674,9 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
     // Joints in skin pixels relative to his feet. He faces +Z, so +X is HIS left.
     private static final float[][] JOINT = {{-2, 12, 0}, {2, 12, 0}, {0, 12, 0}, {-5.5f, 24, 0}, {5.5f, 24, 0}, {0, 24, 0}}; // slim (3-pixel) arms
     static final int LEG_R = 0, LEG_L = 1, BODY = 2, ARM_R = 3, ARM_L = 4, HEAD = 5;
+    /** Diamond Jacob's joint springs (per part: legs, body, weapon arm, off arm, head). The body leads, the feet stay planted,
+        the arms and head arrive a tick or two later and overshoot a little: overlapping action, so he moves like one heavy body. */
+    static final float[] STIFF = {1.3f, 1.3f, 1.15f, 0.85f, 0.6f, 0.55f}, DAMP = {0.33f, 0.33f, 0.38f, 0.46f, 0.55f, 0.55f};
 
     /** A pose: rotation (degrees x/y/z) per part, plus how far the whole rig sinks (for kneeling). */
     static final class Pose {

@@ -2686,6 +2686,18 @@ Notes:
   `speed-boost` 1.2, only that player as his target), an arm grabs within reach and REELS them to his beak (`reel` in
   `gripTick`): bite `damage.snatch-bite` 12 unblockable + knockback; 3 hits (1 with eelskin) or 6 s break free; gives up
   after `max-seconds` 9; `cooldown-seconds` 12. Starts even mid-rest. Not at sea. Tested (scratch `kt/ch/KrakenChaseTest`).
+- **Jacob animation pass (Bosses 2.2.1)**: what made him look stiff/generated, fixed in the Jacob class: (1) every joint
+  had the same spring, so nothing overlapped: now per-part springs `STIFF`/`DAMP` (legs 1.3/0.33 planted, body 1.15/0.38
+  leads, weapon arm 0.85/0.46, off arm 0.6/0.55, head 0.55/0.55 arrive later and overshoot a little); (2) moves SNAPPED back
+  to the idle on `end()`: now `recoverT` 14 = he eases out of the move (idle lerp 0.11, walk 0.14 while it runs); (3) holds
+  were frozen copies (`slamPose, slamPose`): `settled(p)` = a moving hold that sinks in and starts coming back; (4) the idle
+  was a clean sine loop: `breath()` (slow in, quick out, a pause, drifting), uneven weight shifts between the legs, and
+  `idleBeat` every 4-9 s while idle (neck roll, glance, weapon sags, shoulders squared, feet shift); a little uneven drift
+  on every pose (`n1`/`n2` in render); (5) the walk bob was backwards (highest at the footfall): `stridePose` is lowest at
+  the footfall, hips roll onto the planted leg, the passing foot lifts, arms trail the legs (`lag`), head stays level;
+  (6) turning on the spot shuffles his feet and leans into the turn (`turnAmt`, `turnPh`). Previews: scratch `ja/`
+  (`JacobAnim` dumps his real `shown` pose per tick from MockBukkit, `render.py` draws it; ZombieMock#setShouldBurnInDay
+  stubbed with `kt/Patch`).
 - **FAULTLINESMPJAR (one jar for everything, `plugins/FAULTLINESMPJAR`, built by `tools/build_bundle.sh` into
   `release/FAULTLINESMPJAR.jar`)**: a loader plugin (`load: STARTUP`) carrying the 11 plugin jars as `bundled/<Name>.jar`.
   On start each is copied to `plugins/FAULTLINESMPJAR/jars/` (only when changed, temp + atomic move) and loaded with

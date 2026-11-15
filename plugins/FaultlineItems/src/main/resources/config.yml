@@ -934,7 +934,9 @@ unholy-arrows:
 
 # 1.3.4: carrying the Dragon Egg (inventory, hotbar or off hand) gives these ("EFFECT:level"; strength, speed, ...)
 bedrock-shield:
-  enabled: true          # Bedrock players raise their shield with right-click (hold), not only by sneaking
+  # 1.3.36: off. It put a fake block in front of Bedrock players (they saw it and bumped into it = lag).
+  # Bedrock players block by sneaking (Geyser). The old `enabled` key is ignored.
+  right-click: false
   hold-grace-ticks: 6    # no right-click for this long = the shield comes down
 
 dragon-egg:

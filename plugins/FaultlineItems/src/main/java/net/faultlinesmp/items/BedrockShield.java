@@ -50,7 +50,9 @@ final class BedrockShield implements Listener {
         Bukkit.getScheduler().runTaskTimer(plugin, this::tick, 1L, 1L);
     }
 
-    boolean on() { return plugin.getConfig().getBoolean("bedrock-shield.enabled", true); }
+    // 1.3.36: OFF by default. Bedrock clients drew the fake barrier in front of them and collided with it (rubberbanding).
+    // A new key, so a server config still saying `enabled: true` doesn't keep it on. Bedrock players block by sneaking.
+    boolean on() { return plugin.getConfig().getBoolean("bedrock-shield.right-click", false); }
 
     static EquipmentSlot shieldHand(Player p) {
         if (p.getInventory().getItemInMainHand().getType() == Material.SHIELD) return EquipmentSlot.HAND;

@@ -2815,6 +2815,10 @@ Notes:
   0.35 reads as 0.42; ~2.2 blocks). Maces may carry DENSITY I and FIRE ASPECT II too (`mace-enchants.allowed`; a server config
   still holding exactly the old three-key list gets both added in `MaceEnchants.allowed()`). Density over I is capped to I,
   Fire Aspect III (books) to II; everything else is still stripped. Tested (scratch `ng/MaceT`).
+- **Bedrock right-click shield OFF (Items 1.3.36)**: Bedrock clients DREW 1.3.16's fake barrier in front of them and collided
+  with it (rubberbanding = "laggy"). New key `bedrock-shield.right-click` (default false; the old `enabled: true` in server
+  configs is ignored). Bedrock players block by sneaking (Geyser). The third-party BedrockShield plugin uses the same fake
+  barrier trick: remove it too.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

@@ -242,7 +242,7 @@ final class Pirates implements Listener {
     public void onEgg(PlayerInteractEvent event) {
         ItemStack it = event.getItem();
         if (it == null || !it.hasItemMeta()) return;
-        String k = it.getItemMeta().getPersistentDataContainer().get(eggKey, PersistentDataType.STRING);
+        String k = it.getPersistentDataContainer().get(eggKey, PersistentDataType.STRING);
         if (k == null) return;
         event.setCancelled(true); // never the vanilla mob
         if (event.getAction() != Action.RIGHT_CLICK_BLOCK || event.getClickedBlock() == null || event.getHand() != EquipmentSlot.HAND) return;

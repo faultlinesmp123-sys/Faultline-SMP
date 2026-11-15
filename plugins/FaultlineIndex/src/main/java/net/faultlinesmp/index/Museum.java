@@ -152,7 +152,7 @@ final class Museum implements Listener {
 
     @EventHandler
     public void onClick(InventoryClickEvent e) {
-        if (!(e.getInventory().getHolder() instanceof Hall h)) return;
+        if (!(e.getInventory().getHolder(false) instanceof Hall h)) return;
         e.setCancelled(true);
         if (!(e.getWhoClicked() instanceof Player p) || e.getRawSlot() >= 54) return;
         switch (e.getRawSlot()) {
@@ -164,5 +164,5 @@ final class Museum implements Listener {
     }
 
     @EventHandler
-    public void onDrag(InventoryDragEvent e) { if (e.getInventory().getHolder() instanceof Hall) e.setCancelled(true); }
+    public void onDrag(InventoryDragEvent e) { if (e.getInventory().getHolder(false) instanceof Hall) e.setCancelled(true); }
 }

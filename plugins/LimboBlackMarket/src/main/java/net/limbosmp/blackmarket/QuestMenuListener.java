@@ -29,7 +29,7 @@ public class QuestMenuListener implements Listener {
 
     @EventHandler
     public void onClick(InventoryClickEvent event) {
-        InventoryHolder holder = event.getInventory().getHolder();
+        InventoryHolder holder = event.getInventory().getHolder(false);
         if (!(holder instanceof QuestMenuHolder) && !(holder instanceof QuestConfirmHolder)) return;
 
         // Nothing in these menus can be moved, including shift-clicks from the player's own inventory.
@@ -46,7 +46,7 @@ public class QuestMenuListener implements Listener {
 
     @EventHandler
     public void onDrag(InventoryDragEvent event) {
-        InventoryHolder holder = event.getInventory().getHolder();
+        InventoryHolder holder = event.getInventory().getHolder(false);
         if (holder instanceof QuestMenuHolder || holder instanceof QuestConfirmHolder) {
             event.setCancelled(true);
         }

@@ -47,9 +47,14 @@ final class DenFestival {
         Bukkit.getScheduler().runTaskTimer(pl, this::tick, 60L, 10L);
     }
 
-    LocalDate today() {
-        try { return LocalDate.now(ZoneId.of(pl.getConfig().getString("den.festival.zone", "America/New_York"))); }
-        catch (RuntimeException e) { return LocalDate.now(); }
+    private LocalDate todayCache; private long todayAt;
+
+    LocalDate today() { // asked every tick: the zone lookup + clock read once a second is plenty
+        long now = System.currentTimeMillis();
+        if (todayCache != null && now - todayAt < 1000) return todayCache;
+        todayAt = now;
+        try { return todayCache = LocalDate.now(ZoneId.of(pl.getConfig().getString("den.festival.zone", "America/New_York"))); }
+        catch (RuntimeException e) { return todayCache = LocalDate.now(); }
     }
 
     boolean active() {

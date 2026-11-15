@@ -520,7 +520,7 @@ final class Watch implements Listener, CommandExecutor, TabCompleter {
         if (!enabled("nuker") || !judged(p) || b.getType().getHardness() < 0.5f) return;
         ItemStack tool = p.getInventory().getItemInMainHand();
         if (tool.hasItemMeta()) {
-            String fe = tool.getItemMeta().getPersistentDataContainer().get(new NamespacedKey("faultlineitems", "fenchants"), PersistentDataType.STRING);
+            String fe = tool.getPersistentDataContainer().get(new NamespacedKey("faultlineitems", "fenchants"), PersistentDataType.STRING);
             if (fe != null && fe.contains("veinminer")) return;
         }
         Mover mv = movers.computeIfAbsent(p.getUniqueId(), k -> new Mover());

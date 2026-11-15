@@ -242,7 +242,7 @@ final class Wardrobe implements Listener {
     // ============================================================================================ clicks
     @EventHandler(priority = EventPriority.HIGH)
     public void onClick(InventoryClickEvent e) {
-        if (!(e.getInventory().getHolder() instanceof Menu m) || !(e.getWhoClicked() instanceof Player p)) return;
+        if (!(e.getInventory().getHolder(false) instanceof Menu m) || !(e.getWhoClicked() instanceof Player p)) return;
         Inventory top = e.getView().getTopInventory();
         if (e.getClickedInventory() == null) return;
         if (e.getClickedInventory() != top) { // their own inventory
@@ -406,20 +406,20 @@ final class Wardrobe implements Listener {
     private void refreshLater(Player p, Menu m) {
         Bukkit.getScheduler().runTask(plugin, () -> {
             Inventory t = p.isOnline() ? p.getOpenInventory().getTopInventory() : null;
-            if (t != null && t.getHolder() == m) fill(p, m);
+            if (t != null && t.getHolder(false) == m) fill(p, m);
         });
     }
 
     @EventHandler(priority = EventPriority.HIGH)
     public void onDrag(InventoryDragEvent e) {
-        if (!(e.getInventory().getHolder() instanceof Menu)) return;
+        if (!(e.getInventory().getHolder(false) instanceof Menu)) return;
         int size = e.getView().getTopInventory().getSize();
         for (int raw : e.getRawSlots()) if (raw < size) { e.setCancelled(true); return; } // only drags inside your own inventory
     }
 
     @EventHandler
     public void onClose(InventoryCloseEvent e) {
-        if (e.getInventory().getHolder() instanceof Menu m && e.getPlayer() instanceof Player p) saveAccessories(p, m);
+        if (e.getInventory().getHolder(false) instanceof Menu m && e.getPlayer() instanceof Player p) saveAccessories(p, m);
     }
 
     /** Saves what's in the accessory slots (only while the Accessories tab is open: the other tabs don't hold them). */

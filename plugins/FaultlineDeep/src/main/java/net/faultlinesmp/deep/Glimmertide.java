@@ -138,11 +138,16 @@ final class Glimmertide implements Listener {
         return null;
     }
 
+    private long activeAt = -1; private boolean activeWas;
+
     boolean active() {
         if (!pl.getConfig().getBoolean("glimmertide.enabled", true)) return false;
         if (forced.equals("on")) return true;
         if (forced.equals("off")) return false;
-        return window(today()) != null;
+        long now = System.currentTimeMillis(); // the date check parses every window: once a second is plenty
+        if (now - activeAt < 1000 && activeAt >= 0) return activeWas;
+        activeAt = now;
+        return activeWas = window(today()) != null;
     }
 
     /** Days left (1 = the last day), or -1 when it's forced on. */
@@ -190,7 +195,7 @@ final class Glimmertide implements Listener {
         return it;
     }
 
-    boolean isPearl(ItemStack s) { return s != null && s.getType() == Material.PAPER && s.hasItemMeta() && s.getItemMeta().getPersistentDataContainer().has(key, PersistentDataType.BYTE); }
+    boolean isPearl(ItemStack s) { return s != null && s.getType() == Material.PAPER && s.hasItemMeta() && s.getPersistentDataContainer().has(key, PersistentDataType.BYTE); }
 
     int count(Player p) { int n = 0; for (ItemStack s : p.getInventory().getStorageContents()) if (isPearl(s)) n += s.getAmount(); return n; }
 
@@ -424,7 +429,7 @@ final class Glimmertide implements Listener {
 
     @EventHandler
     public void onClick(InventoryClickEvent e) {
-        if (!(e.getInventory().getHolder() instanceof Shop shop)) return;
+        if (!(e.getInventory().getHolder(false) instanceof Shop shop)) return;
         e.setCancelled(true);
         if (!(e.getWhoClicked() instanceof Player p) || e.getClickedInventory() != e.getView().getTopInventory()) return;
         List<Offer> list = offers();
@@ -437,7 +442,7 @@ final class Glimmertide implements Listener {
     }
 
     @EventHandler
-    public void onDrag(InventoryDragEvent e) { if (e.getInventory().getHolder() instanceof Shop) e.setCancelled(true); }
+    public void onDrag(InventoryDragEvent e) { if (e.getInventory().getHolder(false) instanceof Shop) e.setCancelled(true); }
 
     String next() {
         LocalDate d = today();

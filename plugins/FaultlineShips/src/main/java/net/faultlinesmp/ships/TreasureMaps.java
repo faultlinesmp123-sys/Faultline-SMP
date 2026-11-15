@@ -82,12 +82,12 @@ final class TreasureMaps implements Listener {
 
     static int roughly(int v) { return Math.round(v / 50f) * 50; }
 
-    boolean isMap(ItemStack it) { return it != null && it.hasItemMeta() && it.getItemMeta().getPersistentDataContainer().has(mapKey, PersistentDataType.STRING); }
+    boolean isMap(ItemStack it) { return it != null && it.hasItemMeta() && it.getPersistentDataContainer().has(mapKey, PersistentDataType.STRING); }
 
     /** {world, x, z, id} or null. */
     String[] spot(ItemStack it) {
         if (!isMap(it)) return null;
-        String[] p = it.getItemMeta().getPersistentDataContainer().get(mapKey, PersistentDataType.STRING).split(";");
+        String[] p = it.getPersistentDataContainer().get(mapKey, PersistentDataType.STRING).split(";");
         return p.length == 4 ? p : null;
     }
 
@@ -112,7 +112,7 @@ final class TreasureMaps implements Listener {
             int x = Integer.parseInt(s[1]), z = Integer.parseInt(s[2]);
             double dx = x + 0.5 - p.getLocation().getX(), dz = z + 0.5 - p.getLocation().getZ();
             double dist = Math.sqrt(dx * dx + dz * dz);
-            if (dist < 48 && p.getWorld().isChunkLoaded(x >> 4, z >> 4) && !held.getItemMeta().getPersistentDataContainer().has(yKey, PersistentDataType.INTEGER)) {
+            if (dist < 48 && p.getWorld().isChunkLoaded(x >> 4, z >> 4) && !held.getPersistentDataContainer().has(yKey, PersistentDataType.INTEGER)) {
                 ItemMeta m = held.getItemMeta();
                 m.getPersistentDataContainer().set(yKey, PersistentDataType.INTEGER, surface(p.getWorld(), x, z));
                 held.setItemMeta(m);
@@ -122,7 +122,7 @@ final class TreasureMaps implements Listener {
                 p.sendActionBar(ChatColor.GOLD + "🗺 Treasure: " + ChatColor.WHITE + (int) dist + " blocks " + compass(dx, dz)
                         + (dist < 40 ? ChatColor.YELLOW + "  (you're close...)" : ""));
             } else {
-                Integer y = held.getItemMeta().getPersistentDataContainer().get(yKey, PersistentDataType.INTEGER);
+                Integer y = held.getPersistentDataContainer().get(yKey, PersistentDataType.INTEGER);
                 int top = y != null ? y : surface(p.getWorld(), x, z);
                 p.sendActionBar(ChatColor.RED + "" + ChatColor.BOLD + "✖ " + ChatColor.GOLD + (dist < 2.5 ? "Dig right here!" : "X marks the spot: " + (int) dist + " blocks " + compass(dx, dz)));
                 Particle.DustOptions red = new Particle.DustOptions(Color.RED, 1.4f);
@@ -145,7 +145,7 @@ final class TreasureMaps implements Listener {
             if (s == null || !b.getWorld().getName().equals(s[0])) continue;
             int x = Integer.parseInt(s[1]), z = Integer.parseInt(s[2]);
             if (Math.abs(b.getX() - x) > 1 || Math.abs(b.getZ() - z) > 1) continue;
-            Integer y = it.getItemMeta().getPersistentDataContainer().get(yKey, PersistentDataType.INTEGER);
+            Integer y = it.getPersistentDataContainer().get(yKey, PersistentDataType.INTEGER);
             int top = y != null ? y : surface(b.getWorld(), x, z) + 1;
             if (b.getY() > top + 1 || b.getY() < top - 5) continue;
             inv.setItem(slot, null);

@@ -230,7 +230,7 @@ final class Windy extends Ev {
         if (!on() || e.getState() != PlayerFishEvent.State.CAUGHT_FISH || !(e.getCaught() instanceof Item item)) return;
         if (!pl.eventWorld(e.getPlayer().getWorld())) return;
         ItemStack it = item.getItemStack();
-        if (it.getMaxStackSize() <= 1 || it.hasItemMeta() && !it.getItemMeta().getPersistentDataContainer().getKeys().isEmpty()) return; // our custom fish keep their one
+        if (it.getMaxStackSize() <= 1 || it.hasItemMeta() && !it.getPersistentDataContainer().getKeys().isEmpty()) return; // our custom fish keep their one
         if (pl.random.nextDouble() < d("loot-multiplier", 1.2) - 1) {
             ItemStack extra = it.clone();
             extra.setAmount(1);

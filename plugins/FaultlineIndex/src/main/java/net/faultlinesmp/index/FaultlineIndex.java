@@ -365,7 +365,7 @@ public final class FaultlineIndex extends JavaPlugin implements Listener {
 
     private boolean isIndexBook(ItemStack item) {
         return item != null && item.getType() == Material.BOOK && item.hasItemMeta()
-                && item.getItemMeta().getPersistentDataContainer().has(bookKey, PersistentDataType.BYTE);
+                && item.getPersistentDataContainer().has(bookKey, PersistentDataType.BYTE);
     }
 
     @EventHandler

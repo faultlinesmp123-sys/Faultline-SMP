@@ -457,7 +457,7 @@ final class DomeUpgrades implements Listener {
 
     @EventHandler
     public void onClick(InventoryClickEvent e) {
-        if (!(e.getInventory().getHolder() instanceof Menu menu)) return;
+        if (!(e.getInventory().getHolder(false) instanceof Menu menu)) return;
         e.setCancelled(true);
         if (!(e.getWhoClicked() instanceof Player p) || e.getClickedInventory() != e.getView().getTopInventory()) return;
         int slot = e.getRawSlot();
@@ -469,7 +469,7 @@ final class DomeUpgrades implements Listener {
     }
 
     @EventHandler
-    public void onDrag(InventoryDragEvent e) { if (e.getInventory().getHolder() instanceof Menu) e.setCancelled(true); }
+    public void onDrag(InventoryDragEvent e) { if (e.getInventory().getHolder(false) instanceof Menu) e.setCancelled(true); }
 
     /** Install an upgrade (or, for the Stained Shell, the next colour). */
     void pick(Player p, Habitat.Dome d, Up u) {

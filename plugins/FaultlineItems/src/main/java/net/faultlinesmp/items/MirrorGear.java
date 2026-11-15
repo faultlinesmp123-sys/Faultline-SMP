@@ -86,7 +86,7 @@ final class MirrorGear implements Listener {
         boolean found = false;
         for (int i = 0; slots != null && i < slots.length; i++) if (is(slots[i])) found = true;
         if (!found) return;
-        if (top != null && top.getHolder() instanceof FaultlineItems.AccessoryGuiHolder) p.closeInventory();
+        if (top != null && top.getHolder(false) instanceof FaultlineItems.AccessoryGuiHolder) p.closeInventory();
         slots = am.getSlots(p.getUniqueId());
         for (int i = 0; slots != null && i < slots.length; i++) {
             if (!is(slots[i])) continue;

@@ -363,13 +363,13 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
 
     private int skeletonOmenLevel(ItemStack item) {
         if (item == null || item.getType() != Material.POTION || !item.hasItemMeta()) return 0;
-        Integer level = item.getItemMeta().getPersistentDataContainer().get(skeletonOmenKey, PersistentDataType.INTEGER);
+        Integer level = item.getPersistentDataContainer().get(skeletonOmenKey, PersistentDataType.INTEGER);
         return level == null ? 0 : level;
     }
 
     private int omenLevel(ItemStack item) {
         if (item == null || item.getType() != Material.POTION || !item.hasItemMeta()) return 0;
-        Integer level = item.getItemMeta().getPersistentDataContainer().get(omenKey, PersistentDataType.INTEGER);
+        Integer level = item.getPersistentDataContainer().get(omenKey, PersistentDataType.INTEGER);
         return level == null ? 0 : level;
     }
 
@@ -2111,7 +2111,7 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
 
     private Egg eggOf(ItemStack item) {
         if (item == null || !item.hasItemMeta()) return null;
-        String name = item.getItemMeta().getPersistentDataContainer().get(eggKey, PersistentDataType.STRING);
+        String name = item.getPersistentDataContainer().get(eggKey, PersistentDataType.STRING);
         return name == null ? null : Egg.byName(name);
     }
 
@@ -2181,7 +2181,7 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onMenuClick(InventoryClickEvent event) {
-        if (!(event.getInventory().getHolder() instanceof RaidMenuHolder holder)) return;
+        if (!(event.getInventory().getHolder(false) instanceof RaidMenuHolder holder)) return;
         event.setCancelled(true); // it's a catalog; nothing in it can be moved
         if (!(event.getWhoClicked() instanceof Player player) || event.getClickedInventory() != event.getInventory()) return;
         if (!player.hasPermission("zraid.admin")) return;
@@ -2197,7 +2197,7 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onMenuDrag(InventoryDragEvent event) {
-        if (event.getInventory().getHolder() instanceof RaidMenuHolder) event.setCancelled(true);
+        if (event.getInventory().getHolder(false) instanceof RaidMenuHolder) event.setCancelled(true);
     }
 
     // ===================== RAID RULES: no sleeping, wipe = loss =====================

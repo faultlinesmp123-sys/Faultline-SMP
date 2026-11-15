@@ -817,7 +817,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
     @EventHandler(ignoreCancelled = true)
     public void onWormDrop(org.bukkit.event.player.PlayerDropItemEvent event) {
         ItemStack s = event.getItemDrop().getItemStack();
-        if (!s.hasItemMeta() || !s.getItemMeta().getPersistentDataContainer().has(WORM_KEY, org.bukkit.persistence.PersistentDataType.BYTE)) return;
+        if (!s.hasItemMeta() || !s.getPersistentDataContainer().has(WORM_KEY, org.bukkit.persistence.PersistentDataType.BYTE)) return;
         if (s.getAmount() > 1) { // drop one worm at a time: the rest go back in your hand
             ItemStack rest = s.clone(); rest.setAmount(s.getAmount() - 1);
             s.setAmount(1); event.getItemDrop().setItemStack(s);
@@ -2775,7 +2775,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
 
     String jacobItemType(ItemStack s) {
         if (s == null || !s.hasItemMeta()) return null;
-        return s.getItemMeta().getPersistentDataContainer().get(JACOB_ITEM_KEY, org.bukkit.persistence.PersistentDataType.STRING);
+        return s.getPersistentDataContainer().get(JACOB_ITEM_KEY, org.bukkit.persistence.PersistentDataType.STRING);
     }
 
     void registerJacobRecipe() {
@@ -5316,7 +5316,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         if (event.getAction() != Action.RIGHT_CLICK_AIR && event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
         ItemStack it = event.getItem();
         if (it == null || !it.hasItemMeta()) return;
-        Integer id = it.getItemMeta().getPersistentDataContainer().get(MORPH_MOVE_KEY, PersistentDataType.INTEGER);
+        Integer id = it.getPersistentDataContainer().get(MORPH_MOVE_KEY, PersistentDataType.INTEGER);
         if (id == null) return;
         if (id == -2) { endMorph(true, ChatColor.GREEN + "You're yourself again."); return; }
         morph.queued = id;

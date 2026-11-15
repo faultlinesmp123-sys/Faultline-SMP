@@ -114,7 +114,7 @@ public class Bounties implements Listener, TabExecutor {
     boolean currency(ItemStack s) {
         if (s == null || s.getType() != Material.PLAYER_HEAD || s.getAmount() <= 0) return false;
         if (!plugin.getConfig().getBoolean("bounty.tagged-heads-only", true)) return true;
-        return s.hasItemMeta() && s.getItemMeta().getPersistentDataContainer().has(plugin.getHeadTierKey(), PersistentDataType.STRING);
+        return s.hasItemMeta() && s.getPersistentDataContainer().has(plugin.getHeadTierKey(), PersistentDataType.STRING);
     }
 
     /** Gives items, and whatever doesn't fit waits for /bounty claim. True if anything had to wait. */
@@ -285,7 +285,7 @@ public class Bounties implements Listener, TabExecutor {
                 sender.sendMessage(ChatColor.DARK_RED + "Bounty on " + b.name + ": " + ChatColor.GOLD + plural(b.heads()));
                 Map<String, Integer> tiers = new LinkedHashMap<>();
                 for (Stake s : b.stakes) {
-                    String t = s.heads.hasItemMeta() ? s.heads.getItemMeta().getPersistentDataContainer().get(plugin.getHeadTierKey(), PersistentDataType.STRING) : null;
+                    String t = s.heads.hasItemMeta() ? s.heads.getPersistentDataContainer().get(plugin.getHeadTierKey(), PersistentDataType.STRING) : null;
                     tiers.merge(t == null ? "untagged" : plugin.getMarketConfig().getDisplayName(t), s.heads.getAmount(), Integer::sum);
                 }
                 for (var t : tiers.entrySet()) sender.sendMessage(ChatColor.GRAY + " - " + ChatColor.translateAlternateColorCodes('&', t.getKey()) + ChatColor.GRAY + ": " + t.getValue());

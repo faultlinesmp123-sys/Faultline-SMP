@@ -171,8 +171,8 @@ final class NestGuard implements Listener {
     }
 
     private static boolean realStorage(Inventory inv) {
-        if (inv == null || inv.getHolder() == null) return false;
-        Object h = inv.getHolder();
+        if (inv == null || inv.getHolder(false) == null) return false;
+        Object h = inv.getHolder(false);
         return h instanceof org.bukkit.block.BlockState || h instanceof org.bukkit.block.DoubleChest
                 || h instanceof org.bukkit.entity.Entity && !(h instanceof HumanEntity);
     }

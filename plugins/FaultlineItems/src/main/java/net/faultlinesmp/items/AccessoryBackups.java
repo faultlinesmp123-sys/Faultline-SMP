@@ -117,7 +117,7 @@ final class AccessoryBackups implements Listener, TabExecutor {
     private ItemStack[] current(Player p) {
         ItemStack[] out = new ItemStack[FaultlineItems.AccessoryManager.SLOT_COUNT];
         Inventory top = p.getOpenInventory().getTopInventory();
-        if (top != null && top.getHolder() instanceof FaultlineItems.AccessoryGuiHolder h && h.live()) {
+        if (top != null && top.getHolder(false) instanceof FaultlineItems.AccessoryGuiHolder h && h.live()) {
             for (int i = 0; i < FaultlineItems.AccessoryGuiHolder.SLOTS.length && i < out.length; i++) {
                 ItemStack it = top.getItem(FaultlineItems.AccessoryGuiHolder.SLOTS[i]);
                 out[i] = FaultlineItems.AccessoryManager.isAccessory(plugin, it) ? it.clone() : null;
@@ -208,7 +208,7 @@ final class AccessoryBackups implements Listener, TabExecutor {
     void restore(Player p, Snap s) {
         // an open /accessories menu would save its own slots back over this when it closes
         Inventory top = p.getOpenInventory().getTopInventory();
-        if (top != null && top.getHolder() instanceof FaultlineItems.AccessoryGuiHolder) p.closeInventory();
+        if (top != null && top.getHolder(false) instanceof FaultlineItems.AccessoryGuiHolder) p.closeInventory();
         snapshot(p, "before restore"); // so a wrong restore can be undone
         ItemStack[] copy = new ItemStack[s.slots.length];
         for (int i = 0; i < copy.length; i++) copy[i] = s.slots[i] == null ? null : s.slots[i].clone();

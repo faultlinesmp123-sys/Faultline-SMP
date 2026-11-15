@@ -251,7 +251,7 @@ final class UpgradedGrindstone implements Listener {
         for (Map<Long, ItemDisplay> m : overlays.values()) for (ItemDisplay d : m.values()) if (d != null && d.isValid()) d.remove();
         overlays.clear();
         for (Player p : Bukkit.getOnlinePlayers())
-            if (p.getOpenInventory().getTopInventory().getHolder() instanceof Menu) p.closeInventory();
+            if (p.getOpenInventory().getTopInventory().getHolder(false) instanceof Menu) p.closeInventory();
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -411,7 +411,7 @@ final class UpgradedGrindstone implements Listener {
 
     @EventHandler(priority = EventPriority.HIGH)
     public void onClick(InventoryClickEvent e) {
-        if (!(e.getView().getTopInventory().getHolder() instanceof Menu m) || !(e.getWhoClicked() instanceof Player p)) return;
+        if (!(e.getView().getTopInventory().getHolder(false) instanceof Menu m) || !(e.getWhoClicked() instanceof Player p)) return;
         if (e.getAction() == InventoryAction.COLLECT_TO_CURSOR) { e.setCancelled(true); return; }
         int raw = e.getRawSlot();
         if (raw >= 54) { // their own inventory
@@ -448,14 +448,14 @@ final class UpgradedGrindstone implements Listener {
 
     @EventHandler(priority = EventPriority.HIGH)
     public void onDrag(InventoryDragEvent e) {
-        if (!(e.getView().getTopInventory().getHolder() instanceof Menu m)) return;
+        if (!(e.getView().getTopInventory().getHolder(false) instanceof Menu m)) return;
         for (int s : e.getRawSlots()) if (s < 54 && s != INPUT) { e.setCancelled(true); return; }
         if (e.getRawSlots().contains(INPUT)) later(m);
     }
 
     @EventHandler
     public void onClose(InventoryCloseEvent e) {
-        if (!(e.getInventory().getHolder() instanceof Menu m) || !(e.getPlayer() instanceof Player p)) return;
+        if (!(e.getInventory().getHolder(false) instanceof Menu m) || !(e.getPlayer() instanceof Player p)) return;
         m.done = true;
         ItemStack in = m.inv.getItem(INPUT);
         m.inv.clear();

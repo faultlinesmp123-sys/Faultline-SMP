@@ -234,7 +234,7 @@ final class Wild implements Listener {
 
     String itemType(ItemStack s) {
         if (s == null || !s.hasItemMeta()) return null;
-        return s.getItemMeta().getPersistentDataContainer().get(itemKey, PersistentDataType.STRING);
+        return s.getPersistentDataContainer().get(itemKey, PersistentDataType.STRING);
     }
 
     void giveItem(Player p, String which, int amount) { for (int i = 0; i < amount; i++) { ItemStack it = item(which); if (it != null) pl.give(p, it); } }

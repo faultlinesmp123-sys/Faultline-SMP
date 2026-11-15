@@ -86,7 +86,7 @@ final class Lighthouse implements Listener {
         return it;
     }
 
-    boolean isLamp(ItemStack s) { return s != null && s.getType() == Material.PAPER && s.hasItemMeta() && s.getItemMeta().getPersistentDataContainer().has(key, PersistentDataType.BYTE); }
+    boolean isLamp(ItemStack s) { return s != null && s.getType() == Material.PAPER && s.hasItemMeta() && s.getPersistentDataContainer().has(key, PersistentDataType.BYTE); }
 
     void load() {
         lamps.clear();

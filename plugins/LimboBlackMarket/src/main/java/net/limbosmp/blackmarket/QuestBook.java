@@ -51,7 +51,7 @@ public class QuestBook implements Listener {
 
     public static boolean isQuestBook(LimboBlackMarket plugin, ItemStack item) {
         if (item == null || item.getType() != Material.BOOK || !item.hasItemMeta()) return false;
-        Byte tag = item.getItemMeta().getPersistentDataContainer().get(plugin.getQuestBookKey(), PersistentDataType.BYTE);
+        Byte tag = item.getPersistentDataContainer().get(plugin.getQuestBookKey(), PersistentDataType.BYTE);
         return tag != null && tag == (byte) 1;
     }
 

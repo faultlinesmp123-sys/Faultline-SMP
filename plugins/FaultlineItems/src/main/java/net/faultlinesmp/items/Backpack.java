@@ -171,7 +171,7 @@ final class Backpack implements Listener, CommandExecutor {
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onClick(InventoryClickEvent e) {
-        if (!(e.getView().getTopInventory().getHolder() instanceof Holder h) || !(e.getWhoClicked() instanceof Player p)) return;
+        if (!(e.getView().getTopInventory().getHolder(false) instanceof Holder h) || !(e.getWhoClicked() instanceof Player p)) return;
         boolean top = e.getRawSlot() >= 0 && e.getRawSlot() < SIZE;
         ItemStack incoming = null;
         if (top) {
@@ -185,7 +185,7 @@ final class Backpack implements Listener, CommandExecutor {
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onDrag(InventoryDragEvent e) {
-        if (!(e.getView().getTopInventory().getHolder() instanceof Holder h) || !(e.getWhoClicked() instanceof Player p)) return;
+        if (!(e.getView().getTopInventory().getHolder(false) instanceof Holder h) || !(e.getWhoClicked() instanceof Player p)) return;
         boolean intoTop = e.getRawSlots().stream().anyMatch(s -> s < SIZE);
         if (intoTop && refused(e.getOldCursor())) { e.setCancelled(true); return; }
         Bukkit.getScheduler().runTask(plugin, () -> { if (p.getOpenInventory().getTopInventory() == h.inv) saveFrom(p, h.inv); });
@@ -193,7 +193,7 @@ final class Backpack implements Listener, CommandExecutor {
 
     @EventHandler
     public void onClose(InventoryCloseEvent e) {
-        if (e.getInventory().getHolder() instanceof Holder h && e.getPlayer() instanceof Player p && p.getUniqueId().equals(h.owner)) {
+        if (e.getInventory().getHolder(false) instanceof Holder h && e.getPlayer() instanceof Player p && p.getUniqueId().equals(h.owner)) {
             if (h.inv == null) return;
             saveFrom(p, h.inv);
             h.inv = null; // closed: later events for it are ignored
@@ -202,7 +202,7 @@ final class Backpack implements Listener, CommandExecutor {
 
     @EventHandler public void onQuit(PlayerQuitEvent e) {
         Inventory top = e.getPlayer().getOpenInventory().getTopInventory();
-        if (top != null && top.getHolder() instanceof Holder h && h.inv != null) { saveFrom(e.getPlayer(), h.inv); h.inv = null; }
+        if (top != null && top.getHolder(false) instanceof Holder h && h.inv != null) { saveFrom(e.getPlayer(), h.inv); h.inv = null; }
     }
 
     /** Dying drops what's in the backpack (keepInventory keeps it). Runs before the accessory drops. */
@@ -212,7 +212,7 @@ final class Backpack implements Listener, CommandExecutor {
         if (e.getKeepInventory() || !plugin.getConfig().getBoolean("backpack.drop-on-death", true)) return;
         ItemStack[] items;
         Inventory top = p.getOpenInventory().getTopInventory();
-        if (top != null && top.getHolder() instanceof Holder h && h.inv != null) {
+        if (top != null && top.getHolder(false) instanceof Holder h && h.inv != null) {
             items = Arrays.copyOf(h.inv.getContents(), SIZE);
             h.inv.clear();
             h.inv = null;

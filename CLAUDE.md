@@ -2775,6 +2775,20 @@ Notes:
   view for ~1 s and burns out in a firework puff, sometimes a far twinkle). The XP x1.5 and no elytra wear stay. Tested
   (scratch `rl/RlTest`: 0 displays after a starfall; its "void storm enderman" check fails in this MockBukkit because the mock
   enderman has 20 max health, buff 20 -> 25 works).
+- **Lag pass (every plugin bumped: Items 1.3.31, Bosses 2.3.1, Ships 1.6.14, Kingdoms 1.4.4, Index 1.9.17, Deep 1.18.2,
+  Raids 1.3.3, Cosmetics 1.1.7, Events 2.1.3, Skills 1.0.3, LimboBlackMarket 1.2.4)**: measured with a sampling profiler on
+  all 11 plugins in one MockBukkit server, 20 moving players, a base of 400 chests / signs / shelves (scratch `prof/Prof.java`:
+  a sampler thread reads the main thread's stack every 0.5 ms, buckets by outermost + innermost plugin frame; mock players
+  override getTrackedBy / addResourcePack): 0.64-0.68 -> 0.20 ms a tick. Fixes: (1) `X.getItemMeta().getPersistentDataContainer()
+  .has/get/getKeys` (a full meta copy) -> Paper's read-only `X.getPersistentDataContainer()` in every plugin (35 places; Ships'
+  `has()` = isBall/isCannon/isHammer checked every tick per player was 34% of all samples); (2) `getHolder() instanceof` ->
+  `getHolder(false)` everywhere (39 places + the quest menu / NestGuard / Wardrobe / accessory-menu clicks): getHolder() COPIES a
+  chest's block state, and `AccessoryManager.hasEquipped` (asked many times a tick per player) called it on whatever the player
+  had open; (3) head tags only move every 2 ticks (teleport duration 2 keeps it smooth) and once a second while nobody is shown
+  the tag; `spot()` uses getHeight (no BoundingBox); (4) Glimmertide `active()` and DenFestival `today()` cached a second (date
+  parsing + zone lookup every tick); (5) SaveGuard skips the serialize round trip for an item hash that already passed (`okHashes`);
+  (6) Halcyon's flow guard tests the world + distance before reading config (every water/lava flow on the server hits it).
+  RULE: read item PDC through `ItemStack#getPersistentDataContainer()`, and use `getHolder(false)` unless you need a snapshot.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

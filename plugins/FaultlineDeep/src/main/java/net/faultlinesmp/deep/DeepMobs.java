@@ -2007,7 +2007,7 @@ final class DeepMobs implements Listener {
 
     String eggOf(ItemStack it) {
         if (it == null || !it.hasItemMeta()) return null;
-        return it.getItemMeta().getPersistentDataContainer().get(eggKey, PersistentDataType.STRING);
+        return it.getPersistentDataContainer().get(eggKey, PersistentDataType.STRING);
     }
 
     void shutdown() {

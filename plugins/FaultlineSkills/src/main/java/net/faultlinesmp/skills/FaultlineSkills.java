@@ -581,7 +581,7 @@ public final class FaultlineSkills extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onClick(InventoryClickEvent e) {
-        if (!(e.getInventory().getHolder() instanceof Menu m)) return;
+        if (!(e.getInventory().getHolder(false) instanceof Menu m)) return;
         e.setCancelled(true);
         if (!m.mine || !(e.getWhoClicked() instanceof Player p) || e.getClickedInventory() != e.getInventory()) return;
         int slot = e.getRawSlot(), row = slot / 9, col = slot % 9;
@@ -593,7 +593,7 @@ public final class FaultlineSkills extends JavaPlugin implements Listener {
     }
 
     @EventHandler
-    public void onDrag(InventoryDragEvent e) { if (e.getInventory().getHolder() instanceof Menu) e.setCancelled(true); }
+    public void onDrag(InventoryDragEvent e) { if (e.getInventory().getHolder(false) instanceof Menu) e.setCancelled(true); }
 
     // =========================================================================================== Bedrock
     void forms(Player p) {

@@ -161,7 +161,7 @@ final class DivingGear implements Listener {
         var am = plugin.getAccessoryManager();
         // an open Wardrobe saves its slots when it closes: close it FIRST, or it would put the suit back (a dupe)
         var top = p.getOpenInventory() == null ? null : p.getOpenInventory().getTopInventory();
-        if (top != null && top.getHolder() instanceof FaultlineItems.AccessoryGuiHolder) p.closeInventory();
+        if (top != null && top.getHolder(false) instanceof FaultlineItems.AccessoryGuiHolder) p.closeInventory();
         ItemStack[] slots = am.getSlots(p.getUniqueId());
         boolean moved = false;
         for (int i = 0; slots != null && i < slots.length; i++) {

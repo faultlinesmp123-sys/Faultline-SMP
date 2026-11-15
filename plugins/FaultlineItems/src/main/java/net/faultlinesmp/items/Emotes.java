@@ -314,7 +314,7 @@ final class Emotes implements Listener, CommandExecutor, TabCompleter {
 
     @EventHandler(priority = EventPriority.LOW)
     public void onMenuClick(InventoryClickEvent e) {
-        if (!(e.getView().getTopInventory().getHolder() instanceof Menu h)) return;
+        if (!(e.getView().getTopInventory().getHolder(false) instanceof Menu h)) return;
         e.setCancelled(true);
         if (!(e.getWhoClicked() instanceof Player p) || e.getClickedInventory() != e.getView().getTopInventory()) return;
         int s = e.getRawSlot();
@@ -326,7 +326,7 @@ final class Emotes implements Listener, CommandExecutor, TabCompleter {
 
     @EventHandler(priority = EventPriority.LOW)
     public void onMenuDrag(InventoryDragEvent e) {
-        if (e.getView().getTopInventory().getHolder() instanceof Menu) e.setCancelled(true);
+        if (e.getView().getTopInventory().getHolder(false) instanceof Menu) e.setCancelled(true);
     }
 
     // ================================================================ starting

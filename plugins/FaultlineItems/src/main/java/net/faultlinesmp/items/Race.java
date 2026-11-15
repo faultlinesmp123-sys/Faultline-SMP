@@ -529,7 +529,7 @@ final class Race implements Listener, CommandExecutor, TabCompleter {
 
     @EventHandler(ignoreCancelled = true)
     public void onMountOpen(org.bukkit.event.inventory.InventoryOpenEvent e) {
-        if (e.getInventory().getHolder() instanceof org.bukkit.entity.Entity en && en.getScoreboardTags().contains(MOUNT_TAG)) e.setCancelled(true); // no stealing the saddle
+        if (e.getInventory().getHolder(false) instanceof org.bukkit.entity.Entity en && en.getScoreboardTags().contains(MOUNT_TAG)) e.setCancelled(true); // no stealing the saddle
     }
 
     /** A lent mount left over (unloaded mid-race, a crash with persistence off is already handled) is removed on sight. */

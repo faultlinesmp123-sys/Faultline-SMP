@@ -126,7 +126,7 @@ final class AbyssMap implements Listener {
     }
 
     boolean isChart(ItemStack s) {
-        return s != null && s.getType() == Material.FILLED_MAP && s.hasItemMeta() && s.getItemMeta().getPersistentDataContainer().has(itemKey, PersistentDataType.BYTE);
+        return s != null && s.getType() == Material.FILLED_MAP && s.hasItemMeta() && s.getPersistentDataContainer().has(itemKey, PersistentDataType.BYTE);
     }
 
     void give(Player p) {

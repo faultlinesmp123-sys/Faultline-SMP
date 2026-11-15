@@ -132,7 +132,7 @@ final class Piglins implements Listener {
 
     int hornLevel(ItemStack item) {
         if (item == null || item.getType() != Material.GOAT_HORN || !item.hasItemMeta()) return 0;
-        Integer l = item.getItemMeta().getPersistentDataContainer().get(hornKey, PersistentDataType.INTEGER);
+        Integer l = item.getPersistentDataContainer().get(hornKey, PersistentDataType.INTEGER);
         return l == null ? 0 : l;
     }
 

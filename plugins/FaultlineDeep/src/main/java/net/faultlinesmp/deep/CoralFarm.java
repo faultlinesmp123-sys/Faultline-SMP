@@ -76,7 +76,7 @@ final class CoralFarm implements Listener {
         return it;
     }
 
-    boolean isFragment(ItemStack s) { return s != null && s.getType() == Material.PAPER && s.hasItemMeta() && s.getItemMeta().getPersistentDataContainer().has(fragKey, PersistentDataType.BYTE); }
+    boolean isFragment(ItemStack s) { return s != null && s.getType() == Material.PAPER && s.hasItemMeta() && s.getPersistentDataContainer().has(fragKey, PersistentDataType.BYTE); }
 
     int count(Player p) { int n = 0; for (ItemStack s : p.getInventory().getStorageContents()) if (isFragment(s)) n += s.getAmount(); return n; }
 

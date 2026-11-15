@@ -374,8 +374,21 @@ final class SaveGuard implements Listener {
         return changed;
     }
 
+    /** Items (by hash) that already passed the round trip: an identical item passes again, so the sweep doesn't
+     *  re-serialize every enchanted item every few seconds (1.9.17). Cleared when it grows past 20000. */
+    private final java.util.Set<Integer> okHashes = new java.util.HashSet<>();
+
     /** Null = it saves fine; else why not. */
     private String unsaveable(ItemStack it) {
+        int h;
+        try { h = it.hashCode(); } catch (Throwable t) { h = 0; }
+        if (h != 0 && okHashes.contains(h)) return null;
+        String why = roundTrip(it);
+        if (why == null && h != 0) { if (okHashes.size() > 20000) okHashes.clear(); okHashes.add(h); }
+        return why;
+    }
+
+    private String roundTrip(ItemStack it) {
         try {
             byte[] raw = it.serializeAsBytes();
             // 1.9.8: it must also READ back. A file that saves but can't be loaded makes the game fall back to the

@@ -475,12 +475,12 @@ public final class FaultlineCosmetics extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onClick(InventoryClickEvent e) {
-        if (e.getInventory().getHolder() instanceof Shop shop) {
+        if (e.getInventory().getHolder(false) instanceof Shop shop) {
             e.setCancelled(true);
             if (e.getWhoClicked() instanceof Player p && e.getClickedInventory() == e.getView().getTopInventory()) shopClick(p, shop, e.getRawSlot());
             return;
         }
-        if (!(e.getInventory().getHolder() instanceof Menu m)) return;
+        if (!(e.getInventory().getHolder(false) instanceof Menu m)) return;
         e.setCancelled(true);
         if (!(e.getWhoClicked() instanceof Player p) || e.getClickedInventory() != e.getView().getTopInventory()) return;
         int raw = e.getRawSlot();
@@ -518,7 +518,7 @@ public final class FaultlineCosmetics extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onDrag(InventoryDragEvent e) {
-        if (e.getInventory().getHolder() instanceof Menu || e.getInventory().getHolder() instanceof Shop) e.setCancelled(true);
+        if (e.getInventory().getHolder(false) instanceof Menu || e.getInventory().getHolder(false) instanceof Shop) e.setCancelled(true);
     }
 
     @EventHandler

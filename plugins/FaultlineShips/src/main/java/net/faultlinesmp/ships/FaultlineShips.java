@@ -252,7 +252,7 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
 
     ShipType builtOf(ItemStack it) {
         if (it == null || !it.hasItemMeta()) return null;
-        String t = it.getItemMeta().getPersistentDataContainer().get(builtKey, PersistentDataType.STRING);
+        String t = it.getPersistentDataContainer().get(builtKey, PersistentDataType.STRING);
         return t == null ? null : ShipType.of(t);
     }
 
@@ -463,7 +463,7 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
     }
 
     static boolean has(ItemStack it, NamespacedKey key) {
-        return it != null && it.hasItemMeta() && it.getItemMeta().getPersistentDataContainer().has(key, PersistentDataType.BYTE);
+        return it != null && it.hasItemMeta() && it.getPersistentDataContainer().has(key, PersistentDataType.BYTE);
     }
 
     void recipes() {
@@ -1195,7 +1195,7 @@ public final class FaultlineShips extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onHoldClose(InventoryCloseEvent event) {
-        if (event.getInventory().getHolder() instanceof Ship.Hold h) {
+        if (event.getInventory().getHolder(false) instanceof Ship.Hold h) {
             h.ship.cargo = event.getInventory().getContents();
             dirty = true;
         }

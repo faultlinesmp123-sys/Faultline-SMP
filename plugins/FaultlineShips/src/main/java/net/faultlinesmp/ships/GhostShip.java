@@ -105,7 +105,7 @@ final class GhostShip implements Listener {
         return it;
     }
 
-    boolean isBell(ItemStack it) { return it != null && it.hasItemMeta() && it.getItemMeta().getPersistentDataContainer().has(bellKey, PersistentDataType.BYTE); }
+    boolean isBell(ItemStack it) { return it != null && it.hasItemMeta() && it.getPersistentDataContainer().has(bellKey, PersistentDataType.BYTE); }
 
     /**
      * Call her to a player at sea (the bell and /ship pirates ghost): from their ship if they're on one, else the water
@@ -154,7 +154,7 @@ final class GhostShip implements Listener {
     boolean lantern(Player p) {
         for (ItemStack it : new ItemStack[]{p.getInventory().getItemInMainHand(), p.getInventory().getItemInOffHand()}) {
             if (it == null || !it.hasItemMeta()) continue;
-            if ("lantern_of_souls".equals(it.getItemMeta().getPersistentDataContainer().get(gearKey, PersistentDataType.STRING))) return true;
+            if ("lantern_of_souls".equals(it.getPersistentDataContainer().get(gearKey, PersistentDataType.STRING))) return true;
         }
         return false;
     }

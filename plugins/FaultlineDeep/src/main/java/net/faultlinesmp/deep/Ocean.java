@@ -224,7 +224,7 @@ final class Ocean implements Listener {
         var h = p.getInventory().getHelmet();
         if (h == null || !h.hasItemMeta()) return 0;
         NamespacedKey k = NamespacedKey.fromString("faultlineitems:oxygen_helmet");
-        Integer t = k == null ? null : h.getItemMeta().getPersistentDataContainer().get(k, org.bukkit.persistence.PersistentDataType.INTEGER);
+        Integer t = k == null ? null : h.getPersistentDataContainer().get(k, org.bukkit.persistence.PersistentDataType.INTEGER);
         return t == null ? 0 : t;
     }
 
@@ -316,7 +316,7 @@ final class Ocean implements Listener {
         NamespacedKey k = NamespacedKey.fromString("faultlineitems:gear");
         for (ItemStack it : new ItemStack[]{p.getInventory().getItemInMainHand(), p.getInventory().getItemInOffHand()}) {
             if (it == null || it.getType().isAir() || !it.hasItemMeta()) continue;
-            if ("lantern_of_souls".equals(it.getItemMeta().getPersistentDataContainer().get(k, PersistentDataType.STRING))) return true;
+            if ("lantern_of_souls".equals(it.getPersistentDataContainer().get(k, PersistentDataType.STRING))) return true;
         }
         return false;
     }
@@ -554,7 +554,7 @@ final class Ocean implements Listener {
             Object am = items.getClass().getMethod("getAccessoryManager").invoke(items);
             NamespacedKey k = NamespacedKey.fromString("faultlineitems:abyssal_diving_suit");
             var chest = p.getInventory().getChestplate(); // worn as a chestplate counts too
-            if (chest != null && chest.hasItemMeta() && chest.getItemMeta().getPersistentDataContainer().has(k)) return true;
+            if (chest != null && chest.hasItemMeta() && chest.getPersistentDataContainer().has(k)) return true;
             for (var m : am.getClass().getMethods())
                 if (m.getName().equals("hasEquipped") && m.getParameterCount() == 2) {
                     m.setAccessible(true); // AccessoryManager is package-private: without this every call threw (the suit never helped)

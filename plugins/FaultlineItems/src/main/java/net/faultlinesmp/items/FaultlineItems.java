@@ -1116,7 +1116,7 @@ public final class FaultlineItems extends JavaPlugin {
             // update when it closes). Taking an accessory out onto the cursor (or into your inventory, or dropping it
             // for a friend) kept its powers until the menu was closed.
             var top = player.getOpenInventory() == null ? null : player.getOpenInventory().getTopInventory();
-            if (top != null && top.getHolder() instanceof AccessoryGuiHolder h && h.live()) {
+            if (top != null && top.getHolder(false) instanceof AccessoryGuiHolder h && h.live()) {
                 items = new ItemStack[AccessoryGuiHolder.SLOTS.length];
                 for (int i = 0; i < AccessoryGuiHolder.SLOTS.length; i++) items[i] = top.getItem(AccessoryGuiHolder.SLOTS[i]);
             }
@@ -1212,7 +1212,7 @@ public final class FaultlineItems extends JavaPlugin {
             // event fires AFTER this and would re-save the items as still equipped,
             // even though they were just dropped. Wipe the open menu's slots first
             // so the close event saves them as empty.
-            if (player.getOpenInventory().getTopInventory() != null && player.getOpenInventory().getTopInventory().getHolder() instanceof AccessoryGuiHolder h && h.live()) {
+            if (player.getOpenInventory().getTopInventory() != null && player.getOpenInventory().getTopInventory().getHolder(false) instanceof AccessoryGuiHolder h && h.live()) {
                 var top = player.getOpenInventory().getTopInventory();
                 ItemStack[] live = new ItemStack[AccessoryManager.SLOT_COUNT];
                 for (int i = 0; i < AccessoryGuiHolder.SLOTS.length; i++) {
@@ -1412,12 +1412,12 @@ public final class FaultlineItems extends JavaPlugin {
 
         @EventHandler
         public void onGuiClick(InventoryClickEvent event) {
-            if (!(event.getInventory().getHolder() instanceof MagicMirrorGuiHolder)) return;
+            if (!(event.getInventory().getHolder(false) instanceof MagicMirrorGuiHolder)) return;
 
             event.setCancelled(true); // never let items be taken from this GUI
 
             // Ignore clicks in the player's own inventory while this GUI is open
-            if (event.getClickedInventory() == null || event.getClickedInventory().getHolder() != event.getInventory().getHolder()) {
+            if (event.getClickedInventory() == null || event.getClickedInventory().getHolder(false) != event.getInventory().getHolder(false)) {
                 return;
             }
 
@@ -1457,7 +1457,7 @@ public final class FaultlineItems extends JavaPlugin {
         // BUG FIX: only clicks were cancelled; dragging a stack across the menu dropped it into slots that vanish on close
         @EventHandler
         public void onGuiDrag(org.bukkit.event.inventory.InventoryDragEvent event) {
-            if (event.getInventory().getHolder() instanceof MagicMirrorGuiHolder) event.setCancelled(true);
+            if (event.getInventory().getHolder(false) instanceof MagicMirrorGuiHolder) event.setCancelled(true);
         }
     }
 
@@ -7602,7 +7602,7 @@ public final class FaultlineItems extends JavaPlugin {
 
         @EventHandler
         public void onClick(InventoryClickEvent event) {
-            if (!(event.getInventory().getHolder() instanceof ItemsMenuHolder holder)) return;
+            if (!(event.getInventory().getHolder(false) instanceof ItemsMenuHolder holder)) return;
             event.setCancelled(true); // the menu is a catalog, nothing in it can be moved
             if (!(event.getWhoClicked() instanceof Player player)) return;
             if (event.getClickedInventory() != event.getInventory()) return;
@@ -7623,7 +7623,7 @@ public final class FaultlineItems extends JavaPlugin {
 
         @EventHandler
         public void onDrag(InventoryDragEvent event) {
-            if (event.getInventory().getHolder() instanceof ItemsMenuHolder) event.setCancelled(true);
+            if (event.getInventory().getHolder(false) instanceof ItemsMenuHolder) event.setCancelled(true);
         }
     }
 

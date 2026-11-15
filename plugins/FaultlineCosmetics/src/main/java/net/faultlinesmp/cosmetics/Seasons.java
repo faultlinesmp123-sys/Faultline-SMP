@@ -137,7 +137,7 @@ final class Seasons implements Listener {
     }
 
     boolean isToken(ItemStack it, Season s) {
-        return it != null && it.hasItemMeta() && it.getItemMeta().getPersistentDataContainer().has(key(s), PersistentDataType.BYTE);
+        return it != null && it.hasItemMeta() && it.getPersistentDataContainer().has(key(s), PersistentDataType.BYTE);
     }
 
     int count(Player p, Season s) {

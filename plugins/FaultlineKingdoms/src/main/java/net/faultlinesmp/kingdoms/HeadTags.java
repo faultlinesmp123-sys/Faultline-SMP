@@ -63,7 +63,7 @@ final class HeadTags implements Listener {
     static double offset = 0.45;
 
     static Location spot(Player p) {
-        double h = p.getBoundingBox().getHeight();
+        double h = p.getHeight(); // no BoundingBox copy every tick
         if (!(h > 0) || h > 4) h = p.isSneaking() ? 1.5 : 1.8;
         Location l = p.getLocation();
         return new Location(l.getWorld(), l.getX(), l.getY() + h + offset, l.getZ());
@@ -139,7 +139,10 @@ final class HeadTags implements Listener {
             TextDisplay d = tags.get(p.getUniqueId());
             if (d == null || !d.isValid() || d.getWorld() != p.getWorld()) { refresh(p); continue; }
             Location to = spot(p), was = last.get(p.getUniqueId());
-            if (was == null || was.getWorld() != to.getWorld() || was.distanceSquared(to) > 0.0004) {
+            Set<UUID> viewers = shown.get(p.getUniqueId());
+            boolean seen = viewers != null && !viewers.isEmpty();
+            // nobody is shown this tag (alone, everyone far): move it only once a second instead of every tick
+            if ((seen ? ticks % 2 == 0 : ticks % 20 == 0) && (was == null || was.getWorld() != to.getWorld() || was.distanceSquared(to) > 0.0004)) {
                 d.teleport(to);
                 last.put(p.getUniqueId(), to);
             }

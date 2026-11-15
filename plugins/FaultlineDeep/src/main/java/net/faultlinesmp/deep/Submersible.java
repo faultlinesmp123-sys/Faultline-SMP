@@ -116,7 +116,7 @@ final class Submersible implements Listener {
         return it;
     }
 
-    boolean isItem(ItemStack it) { return it != null && it.hasItemMeta() && it.getItemMeta().getPersistentDataContainer().has(itemKey, PersistentDataType.BYTE); }
+    boolean isItem(ItemStack it) { return it != null && it.hasItemMeta() && it.getPersistentDataContainer().has(itemKey, PersistentDataType.BYTE); }
 
     static boolean water(Block b) {
         Material m = b.getType();

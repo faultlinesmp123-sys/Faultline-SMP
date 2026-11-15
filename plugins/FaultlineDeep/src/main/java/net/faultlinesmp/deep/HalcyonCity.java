@@ -324,9 +324,9 @@ final class HalcyonCity implements Listener {
     /** Water from outside never runs in (a hole someone made); water already inside (the fountain, the tanks) behaves. */
     @EventHandler(ignoreCancelled = true)
     public void onFlow(BlockFromToEvent e) {
-        if (!protect()) return;
         Block to = e.getToBlock(), from = e.getBlock();
-        if (pl.world == null || !to.getWorld().equals(pl.world)) return;
+        if (pl.world == null || to.getWorld() != pl.world) return; // every flow on the server lands here: cheapest test first
+        if (!Halcyon.near(to.getX(), to.getZ(), 0) || !protect()) return;
         if (Halcyon.inside(to.getX() + 0.5, to.getY() + 0.5, to.getZ() + 0.5) && !Halcyon.inside(from.getX() + 0.5, from.getY() + 0.5, from.getZ() + 0.5)) e.setCancelled(true);
     }
 

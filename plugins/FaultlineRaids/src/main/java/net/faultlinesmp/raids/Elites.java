@@ -221,7 +221,7 @@ final class Elites implements Listener {
     /** Lent race gear, the Faultline Index and the Quest Book stay with their owner. */
     static boolean protectedItem(ItemStack it) {
         if (!it.hasItemMeta()) return false;
-        for (NamespacedKey k : it.getItemMeta().getPersistentDataContainer().getKeys()) {
+        for (NamespacedKey k : it.getPersistentDataContainer().getKeys()) {
             String n = k.getKey();
             if (n.contains("race_lent") || n.equals("index_book") || n.contains("quest_book")) return true;
         }

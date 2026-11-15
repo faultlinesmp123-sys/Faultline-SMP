@@ -3068,6 +3068,15 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             for (ItemDisplay d : new ItemDisplay[]{bird, birdHead, birdTail, birdWingR, birdWingL}) d.setViewRange(8f);
             hold(new ItemStack(Material.BOW));
             proxy(hitbox, parts[2], EntityType.ZOMBIE, 1.0);
+            // Bedrock can't draw his model: at least his stand-in is a diamond knight, not a bare zombie
+            Proxy jpx = proxies.get(hitbox.getUniqueId());
+            if (jpx != null && jpx.stand.getEquipment() != null) {
+                org.bukkit.inventory.EntityEquipment eq = jpx.stand.getEquipment();
+                eq.setHelmet(new ItemStack(Material.DIAMOND_HELMET)); eq.setChestplate(new ItemStack(Material.DIAMOND_CHESTPLATE));
+                eq.setLeggings(new ItemStack(Material.DIAMOND_LEGGINGS)); eq.setBoots(new ItemStack(Material.DIAMOND_BOOTS));
+                eq.setItemInMainHand(new ItemStack(Material.DIAMOND_SWORD));
+                for (org.bukkit.inventory.EquipmentSlot sl : org.bukkit.inventory.EquipmentSlot.values()) try { eq.setDropChance(sl, 0f); } catch (RuntimeException ignored) { }
+            }
             proxy(birdBox, bird, EntityType.PHANTOM, 4.0);
             bar = Bukkit.createBossBar(ChatColor.AQUA + "" + ChatColor.BOLD + "Diamond Jacob", BarColor.BLUE, BarStyle.SEGMENTED_20);
             orbTimer = (int) (jcfg("orb-every-seconds", 20) * 20);

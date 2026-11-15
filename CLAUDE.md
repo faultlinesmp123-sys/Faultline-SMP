@@ -2707,6 +2707,9 @@ Notes:
   jet is a quick 3-tick squeeze and a slow release (was a symmetric sine); the head NODS forward on each jet on a spring
   (`nod` in `rotBase`/`rotModel`); breathing is two sines. Checked in scratch `ka/` (`KrakenAnim` dumps the joints from
   MockBukkit with `EntityData#getHeight` stubbed, `draw.py`): worst tip jump 7.5 -> 3.0 blocks/tick^2, no NaN.
+- **Bosses 2.2.3**: Diamond Jacob's Bedrock stand-in (the zombie from `proxy`) wears a full diamond set + a diamond sword
+  (drop chance 0). Bedrock still can't see his model, cape or animations (display entities), nor the Kraken's new model (a
+  glow squid stand-in; his arms reach Bedrock as BedrockFx dust, so the new arm motion shows there).
 - **FAULTLINESMPJAR (one jar for everything, `plugins/FAULTLINESMPJAR`, built by `tools/build_bundle.sh` into
   `release/FAULTLINESMPJAR.jar`)**: a loader plugin (`load: STARTUP`) carrying the 11 plugin jars as `bundled/<Name>.jar`.
   On start each is copied to `plugins/FAULTLINESMPJAR/jars/` (only when changed, temp + atomic move) and loaded with

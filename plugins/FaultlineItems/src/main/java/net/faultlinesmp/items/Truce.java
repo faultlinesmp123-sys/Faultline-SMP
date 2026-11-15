@@ -26,7 +26,7 @@ import java.util.*;
  * Opponents = player-vs-player hits (melee, their projectiles, their pets) within the combat window (DonutCombat's
  * combat-duration when it's installed, else `mimic-player.combat-tag.seconds`). Hitting each other again starts a new fight.
  */
-final class Truce implements Listener {
+final class Truce implements Listener, org.bukkit.command.CommandExecutor {
 
     private final FaultlineItems plugin;
     /** a -> (b -> last hit between them, either way). */
@@ -103,6 +103,33 @@ final class Truce implements Listener {
         if (!words().contains(msg)) return;
         UUID id = e.getPlayer().getUniqueId();
         Bukkit.getScheduler().runTask(plugin, () -> mb(id));
+    }
+
+    /** 1.3.32: /mball (/mb) is handled here, before any combat plugin sees it: DonutCombat blocks every command but
+     *  /msg /r /tell while you're in combat (HIGHEST, ignoreCancelled), which is exactly when you'd type it. */
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onMbCommand(org.bukkit.event.player.PlayerCommandPreprocessEvent e) {
+        String cmd = e.getMessage().trim().toLowerCase(Locale.ROOT);
+        int sp = cmd.indexOf(' ');
+        String head = sp < 0 ? cmd : cmd.substring(0, sp);
+        if (!head.equals("/mball") && !head.equals("/mb") && !head.equals("/faultlineitems:mball") && !head.equals("/faultlineitems:mb")) return;
+        e.setCancelled(true);
+        run(e.getPlayer());
+    }
+
+    /** 1.3.32: /mball (and /mb) = saying "mb all" in chat. */
+    @Override
+    public boolean onCommand(org.bukkit.command.CommandSender sender, org.bukkit.command.Command cmd, String label, String[] args) {
+        if (!(sender instanceof Player p)) { sender.sendMessage("Players only."); return true; }
+        run(p);
+        return true;
+    }
+
+    private void run(Player p) {
+        if (!on()) { p.sendMessage(Component.text("Truces are off on this server.", NamedTextColor.GRAY)); return; }
+        if (opponents(p.getUniqueId()).isEmpty()) { p.sendMessage(Component.text("You're not fighting anyone right now.", NamedTextColor.GRAY)); return; }
+        Bukkit.broadcast(Component.text("<" + p.getName() + "> mb all")); // everyone sees it like the chat line
+        mb(p.getUniqueId());
     }
 
     /** `id` said mb to everyone they're fighting. */

@@ -457,6 +457,7 @@ public final class FaultlineItems extends JavaPlugin {
         combatTag = new CombatTag(this, mimics);
         getServer().getPluginManager().registerEvents(combatTag, this);
         truce = new Truce(this); // 1.3.20: both say mb = the fight stops
+        if (getCommand("mball") != null) getCommand("mball").setExecutor(truce); // 1.3.32: /mball = "mb all"
         getServer().getPluginManager().registerEvents(truce, this);
         haunted = new HauntedVillage(this);
         getServer().getPluginManager().registerEvents(haunted, this);

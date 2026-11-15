@@ -916,6 +916,8 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         final Map<UUID, Integer> outTicks = new HashMap<>(), hitCooldown = new HashMap<>();
         final BossBar bar;
         UUID gripped; int gripArm = -1, gripHits, gripT;
+        // 2.2.0: swim away and he comes for you (Riptide Snatch): a jet after you, then an arm that reels you back to his beak
+        boolean reel; int snatchArm = -1, chaseCd = 200; UUID chaseTarget;
         Vector lockPoint, inkCenter; int inkT;
         final List<Vector> barrageTargets = new ArrayList<>();
         long musicStart = -1;
@@ -1164,6 +1166,24 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
 
         double surface() { return surfaceY(pos.getX(), pos.getZ(), pos.getY()); }
 
+        /** How far off before he comes after you (the giant hangs well off on purpose). */
+        double chaseFrom() { return colossal ? acfg("station", 50, 20) + kcfg("abyssal.chase-distance", 30) : kcfg("chase.distance", 20); }
+        /** The full reach of one arm. */
+        double armReach() { double r = 0; for (double l : arms[0].len) r += l; return r; }
+        Vector beakAt() { return pos.clone().add(vec(rotBase().transform(new Vector3f(0, -12.5f, 6).mul(scale / 16f), new Vector3f()))); }
+        /** A fighter who swam away from the fight (still close enough to hunt down), in the water. The farthest goes first. */
+        Player runner() {
+            if (!getConfig().getBoolean("kraken.chase.enabled", true)) return null;
+            double from = chaseFrom(), max = far(kcfg("chase.max-distance", 120));
+            Player best = null; double bd = 0;
+            for (Player p : world.getPlayers()) {
+                if (!survival(p) || p.isDead() || down.contains(p.getUniqueId()) || !fighters.contains(p.getUniqueId())) continue;
+                double d = p.getLocation().toVector().distance(pos);
+                if (d > from && d < max && d > bd && (p.isInWater() || p.getEyeLocation().getBlock().isLiquid())) { bd = d; best = p; }
+            }
+            return best;
+        }
+
         List<Player> active() {
             List<Player> a = new ArrayList<>();
             for (Player p : world.getPlayers()) {
@@ -1205,6 +1225,12 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             if (leaving) { bossPart("Kraken", "leaving", this::leaveTick); if (kraken != this) return; renderAll(); return; }
             for (Player p : world.getPlayers()) if (survival(p) && !p.isDead() && p.getLocation().toVector().distanceSquared(pos) < far(48) * far(48)) join(p);
             List<Player> a = active();
+            if (chaseCd > 0) chaseCd--;
+            if (a.isEmpty() && !atSea && intro <= 0 && pilot(this) == null) { // everyone swam off: he goes after one of them
+                Player run = runner();
+                if (run != null) a = new ArrayList<>(List.of(run));
+            }
+            final List<Player> fa = a;
             if (atSea && intro <= 0 && !vessel.alive()) { lostAtSea(); return; } // the ship's gone under: he's won
             if (a.isEmpty() && pilot(this) == null) {
                 if (++lonely > 400) { leave(ChatColor.DARK_AQUA + "The Kraken sinks back into the abyss..."); return; }
@@ -1220,16 +1246,16 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 releaseGrip();
                 if (++failStreak > 100) { leave(ChatColor.DARK_AQUA + "The Kraken sinks back into the abyss..."); return; }
             }
-            bossPart("Kraken", "swimming", () -> swim(a));
-            if (!atSea) bossPart("Kraken", "out of the water", () -> outOfWater(a)); // at sea you're meant to be on deck
-            if (!atSea) bossPart("Kraken", "air bubbles", () -> airTick(a));
+            bossPart("Kraken", "swimming", () -> swim(fa));
+            if (!atSea) bossPart("Kraken", "out of the water", () -> outOfWater(fa)); // at sea you're meant to be on deck
+            if (!atSea) bossPart("Kraken", "air bubbles", () -> airTick(fa));
             bossPart("Kraken", "pink bubble", this::pinkTick);
-            bossPart("Kraken", "barnacles", () -> barnacleTick(a));
-            if (!atSea) bossPart("Kraken", "eels", () -> eelTick(a));
-            bossPart("Kraken", "ink", () -> inkTick(a));
+            bossPart("Kraken", "barnacles", () -> barnacleTick(fa));
+            if (!atSea) bossPart("Kraken", "eels", () -> eelTick(fa));
+            bossPart("Kraken", "ink", () -> inkTick(fa));
             bossPart("Kraken", "grip", this::gripTick);
-            if (colossal) bossPart("Kraken", "arm contact", () -> armTouch(a));
-            if (pilot(this) == null) bossPart("Kraken", "watchdog", () -> watchdog(a));
+            if (colossal) bossPart("Kraken", "arm contact", () -> armTouch(fa));
+            if (pilot(this) == null) bossPart("Kraken", "watchdog", () -> watchdog(fa));
             renderAll();
             minions.removeIf(m -> !m.isValid() || m.isDead());
             hitCooldown.replaceAll((k, v) -> v - 1);
@@ -1310,6 +1336,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         // ---------- swimming: slow jet pulses, and he never leaves the water ----------
         void swim(List<Player> a) {
             Player target = nearest(a);
+            if (attack == 14 && chaseTarget != null) { Player run = Bukkit.getPlayer(chaseTarget); if (run != null) target = run; } // he only has eyes for the runner
             double sp = speed();
             Player pl = pilot(this);
             if (pl != null) target = pilotTarget(pl, a);
@@ -1378,7 +1405,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 }
             }
             if (!finite(vel)) vel = new Vector();
-            double cap = (0.9 * sp + (attack == 5 ? (atSea ? 1.8 : 1.0) : 0)) * ms;
+            double cap = (0.9 * sp + (attack == 5 ? (atSea ? 1.8 : 1.0) : 0) + (attack == 14 && sub == 0 ? 0.9 * sp * kcfg("chase.speed-boost", 1.2) : 0)) * ms;
             if (vel.length() > cap) vel = vel.normalize().multiply(cap);
             pos.add(vel);
             if (vel.lengthSquared() > 0.0004) moveDir = vel.clone().normalize();
@@ -1660,6 +1687,11 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 runKrakenMove(target, a);
                 return;
             }
+            if (attack < 0 && !atSea && chaseCd <= 0 && intro <= 0) { // swam away? he comes for you (even mid-rest)
+                Player run = runner();
+                if (run != null) { attack = 14; lastAttack = 14; t = 0; sub = 0; count = 0; recover = 0; chaseTarget = run.getUniqueId(); }
+            }
+            if (attack == 14) { Player run = chaseTarget == null ? null : Bukkit.getPlayer(chaseTarget); if (run == null || !run.isValid()) { endAttack(20); return; } runKrakenMove(run, a); return; }
             if (recover > 0) { recover--; return; }
             Player target = nearest(a);
             if (target == null) return;
@@ -1692,6 +1724,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 case 11 -> crushingDepths(a);
                 case 12 -> abyssalClap(target, a);
                 case 13 -> inkStorm(a);
+                case 14 -> riptideSnatch(target);
                 default -> endAttack(10);
             }
             t++;
@@ -1795,6 +1828,27 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             for (Bubble b : airs) { double d = b.pos.distanceSquared(eye(p)); if (d < bd) { bd = d; near = b; } }
             if (near != null) away.add(safeDir(eye(p).subtract(near.pos), new Vector()).multiply(0.8));
             if (atSea) away = safeDir(pos.clone().subtract(eye(p)).setY(0), new Vector(0, 0, 1)).add(new Vector(0, eye(p).getY() > surface() + 0.5 ? 0.35 : -0.2, 0)); // off the deck and into the sea
+            if (reel) { // Riptide Snatch: hauled back to his beak, then bitten
+                Vector beak = beakAt();
+                Vector to = beak.clone().subtract(eye(p));
+                if (to.length() < 2.6 * Math.max(1, k * 0.5)) {
+                    beakOpen = 1f; jigV += 0.1f;
+                    world.playSound(beak.toLocation(world), Sound.ENTITY_PLAYER_ATTACK_CRIT, 2f, 0.5f);
+                    world.playSound(beak.toLocation(world), Sound.ENTITY_EVOKER_FANGS_ATTACK, 2f, 0.6f);
+                    strike(p, kcfg("damage.snatch-bite", 12), Guard.UNBLOCKABLE, beak);
+                    Safe.vel(p, safeDir(eye(p).subtract(pos), new Vector(0, 1, 0)).multiply(0.9));
+                    releaseGrip();
+                    return;
+                }
+                arm.goal = eye(p); arm.follow = 0.45;
+                Safe.vel(p, safeDir(to, new Vector(0, -1, 0)).multiply(colossal ? 0.9 : 0.55));
+                if (++gripT % 20 == 0) strike(p, kcfg("damage.grip-per-second", 4) * 0.5, Guard.UNBLOCKABLE, arm.tipPos());
+                if (gripHits >= (counter(p, "eelskin_wrap") ? 1 : 3) || gripT > 120) {
+                    p.sendActionBar(legacy(ChatColor.GREEN + "You broke free!"));
+                    releaseGrip();
+                }
+                return;
+            }
             // the tip wraps around you (circling your body) while the arm drags you down and away from the air
             arm.goal = eye(p).add(new Vector(Math.cos(gripT * 0.45) * 0.9 * hs, -0.4, Math.sin(gripT * 0.45) * 0.9 * hs)); arm.follow = 0.35;
             Safe.vel(p, safeDir(away, new Vector(0, -1, 0)).multiply(colossal ? 0.4 : 0.28));
@@ -1808,7 +1862,43 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
 
         void releaseGrip() {
             if (gripArm >= 0) arms[gripArm].busy = false;
-            gripped = null; gripArm = -1; gripHits = 0;
+            gripped = null; gripArm = -1; gripHits = 0; reel = false;
+        }
+
+        /**
+         * 14) Riptide Snatch: you swam away. He jets after you (twice his usual top speed, a stream of bubbles), and the
+         * moment you're within an arm's length one arm shoots out, wraps you and REELS you back to his beak for a bite.
+         * Hit the tentacle to break free like any grab. Never at sea; at most once every chase.cooldown-seconds.
+         */
+        void riptideSnatch(Player target) {
+            if (t == 0) {
+                chaseCd = (int) (kcfg("chase.cooldown-seconds", 12) * 20);
+                world.playSound(target.getLocation(), Sound.ENTITY_ELDER_GUARDIAN_CURSE, 1.4f, 0.6f);
+                world.playSound(pos.toLocation(world), Sound.ENTITY_WARDEN_ROAR, 2.5f, 0.5f);
+                target.sendActionBar(legacy(ChatColor.DARK_AQUA + "" + ChatColor.BOLD + "The Kraken is coming for you!"));
+            }
+            if (count == 1) { if (gripped == null) endAttack(rest()); return; } // grabbed and done (or broke free)
+            double reach = armReach() * 0.85;
+            double dist = eye(target).distance(pos);
+            if (sub == 0) { // the chase: a hard jet straight at you
+                Vector dir = safeDir(eye(target).subtract(pos), moveDir);
+                vel.add(dir.multiply(kcfg("chase.push", 0.16) * speed() * ms));
+                thrusting = true;
+                pulse = (float) Math.max(0, Math.sin(t * 0.5));
+                if (t % 2 == 0) world.spawnParticle(Particle.BUBBLE_COLUMN_UP, siphon().toLocation(world), colossal ? 30 : 10, 0.3 * k, 0.3 * k, 0.3 * k, 0.05);
+                if (dist <= reach) { sub = 1; t = 1; Arm arm = armNear(eye(target)); arm.busy = true; snatchArm = arm.index;
+                    world.playSound(arm.tipPos().toLocation(world), Sound.ENTITY_SQUID_SQUIRT, 2f, 0.4f); }
+                else if (t > kcfg("chase.max-seconds", 9) * 20) { endAttack(rest()); return; }
+                return;
+            }
+            Arm arm = arms[snatchArm];
+            arm.goal = eye(target); arm.follow = 0.5; arm.wave = 0.08;
+            if (arm.tipPos().distanceSquared(eye(target)) < 2.8 * hs * 2.8 * hs) {
+                count = 1;
+                gripped = target.getUniqueId(); gripArm = snatchArm; gripHits = 0; gripT = 0; reel = true;
+                world.playSound(target.getLocation(), Sound.ENTITY_SLIME_SQUISH, 2f, 0.5f);
+                target.sendActionBar(legacy(ChatColor.RED + "" + ChatColor.BOLD + "SNATCHED! " + ChatColor.GRAY + "Hit the tentacle before he pulls you in!"));
+            } else if (t > 50) { arm.busy = false; endAttack(rest()); }
         }
 
         /** 3) Ink Cloud: a jet of ink smothers the water around you (Darkness + Blindness). */
@@ -2731,8 +2821,37 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 p.setGameMode(GameMode.SPECTATOR);
                 p.setSpectatorTarget(cam);
             }
+            hideBoxes(j);
+            this.j = j;
+        }
+        final Jacob j;
+        /** viewer -> the entities we hid from them (to show again after). */
+        final Map<UUID, Set<Entity>> hid = new HashMap<>();
+        int sinceHide;
+        /**
+         * Spectators SEE invisible mobs (translucent): his hitbox slimes, the hawk's, the orbs', minions' stand-ins all showed
+         * up in his cutscenes. Every invisible living thing near him is hidden from the camera viewers until they're back.
+         */
+        void hideBoxes(Jacob j) {
+            List<Entity> boxes = new ArrayList<>();
+            for (Entity e : j.world.getNearbyEntities(j.loc(), 80, 80, 80)) {
+                if (e instanceof Player) continue;
+                if (e instanceof LivingEntity le && le.isInvisible()) boxes.add(e);
+                else if (e.getScoreboardTags().contains(BedrockFx.MIRROR_TAG)) boxes.add(e);
+            }
+            for (UUID id : viewers) {
+                Player p = Bukkit.getPlayer(id);
+                if (p == null) continue;
+                Set<Entity> set = hid.computeIfAbsent(id, k -> new HashSet<>());
+                for (Entity e : boxes) if (!set.contains(e) && p.canSee(e)) { p.hideEntity(FaultlineBosses.this, e); set.add(e); }
+            }
+        }
+        void showBoxes(Player p) {
+            Set<Entity> set = hid.remove(p.getUniqueId());
+            if (set != null) for (Entity e : set) if (e.isValid()) p.showEntity(FaultlineBosses.this, e);
         }
         void shot(Location at) {
+            if (++sinceHide >= 10 && j != null) { sinceHide = 0; hideBoxes(j); } // new orbs / minions since
             cam.teleport(at);
             for (UUID id : viewers) {
                 Player p = Bukkit.getPlayer(id);
@@ -2751,6 +2870,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             p.setSpectatorTarget(null);
             allowTeleport = true; p.teleport(l); allowTeleport = false;
             try { p.setGameMode(GameMode.valueOf(saved.getString(k + ".mode", "SURVIVAL"))); } catch (IllegalArgumentException e) { p.setGameMode(GameMode.SURVIVAL); }
+            showBoxes(p);
             p.setFallDistance(0); p.setFireTicks(0);
             saved.set(k, null);
             viewers.remove(p.getUniqueId());
@@ -2840,6 +2960,12 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         }
         double circle;
         Pose pose = standPose(), shown = standPose();
+        // 2.2.0: springs for every joint (a little overshoot = weight), hit-stop, the cape, weapon trails
+        final float[][] jvel = new float[6][3]; float dropVel;
+        int hitStop;
+        ItemDisplay capeTop, capeLow;
+        float capeA = 8, capeV, capeB = 4, capeBV, capeSide, capeSideV, lastYawSeen;
+        Vector lastCapePos, lastTip;
         JCut cut;
         final Set<UUID> fighters = new HashSet<>();
         final Map<UUID, Integer> hitCooldown = new HashMap<>();
@@ -2897,6 +3023,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             AttributeInstance bs0 = birdBox.getAttribute(Attribute.SCALE);
             if (bs0 != null) bs0.setBaseValue(jcfg("bird-hitbox-scale", 1.4)); // ~3.6 blocks: its whole body, not just the middle
             parts = rig("jacob_armor", true);
+            makeCape("jacob_armor", true);
             float bs = (float) jcfg("bird-scale", 5.0);
             bird = spawnDisplay(birdPos.toLocation(world), "jacob_bird_body", bs, 2, Display.Billboard.FIXED);
             birdHead = spawnDisplay(birdPos.toLocation(world), "jacob_bird_head", bs, 2, Display.Billboard.FIXED);
@@ -2915,6 +3042,67 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                     p.showTitle(Title.title(legacy(ChatColor.AQUA + "" + ChatColor.BOLD + "DIAMOND JACOB"), legacy(ChatColor.GRAY + "answers the horn"),
                             Title.Times.times(java.time.Duration.ofMillis(300), java.time.Duration.ofMillis(2500), java.time.Duration.ofMillis(700))));
             }
+        }
+
+        void makeCape(String prefix, boolean glint) {
+            for (ItemDisplay d : new ItemDisplay[]{capeTop, capeLow}) if (d != null && d.isValid()) d.remove();
+            capeTop = spawnDisplay(pos.toLocation(world), prefix + "_cape_top", scale, 2, Display.Billboard.FIXED);
+            capeLow = spawnDisplay(pos.toLocation(world), prefix + "_cape_low", scale, 2, Display.Billboard.FIXED);
+            for (ItemDisplay d : new ItemDisplay[]{capeTop, capeLow}) {
+                d.setViewRange(6f);
+                if (glint) { ItemStack st = d.getItemStack(); org.bukkit.inventory.meta.ItemMeta m = st.getItemMeta(); m.setEnchantmentGlintOverride(true); st.setItemMeta(m); d.setItemStack(st); }
+            }
+        }
+
+        /**
+         * The cape: two pieces hanging from his shoulders on damped springs. It hangs straight down whatever his lean,
+         * trails behind him as he moves (more the faster he goes), sways as he turns and flutters when he runs.
+         */
+        void renderCape(Location root, float yaw, float scale, Pose pose) {
+            if (capeTop == null || !capeTop.isValid()) return;
+            double speed = 0;
+            if (lastCapePos != null) speed = Math.min(1.5, Math.hypot(pos.getX() - lastCapePos.getX(), pos.getZ() - lastCapePos.getZ()));
+            double rise = lastCapePos == null ? 0 : pos.getY() - lastCapePos.getY();
+            lastCapePos = pos.clone();
+            float bodyX = pose.r[BODY][0];
+            float hang = Math.max(-bodyX, -22f);                                      // gravity: straight down in the world
+            float want = (float) Math.max(2, Math.min(88, hang + 4 + speed * 95 + Math.max(0, -rise) * 60)); // falls = billows up
+            capeV += (want - capeA) * 0.12f; capeV *= 0.78f; capeA += capeV;
+            float flutter = (float) (Math.sin(ticks * 0.42) * speed * 18 + Math.sin(ticks * 0.06) * 2.5);
+            float wantB = (float) Math.max(-6, Math.min(45, speed * 40 + flutter - capeV * 1.6));
+            capeBV += (wantB - capeB) * 0.16f; capeBV *= 0.74f; capeB += capeBV;
+            float dYaw = ((yaw - lastYawSeen) % 360 + 540) % 360 - 180; lastYawSeen = yaw;
+            float wantS = Math.max(-28, Math.min(28, dYaw * 1.4f));
+            capeSideV += (wantS - capeSide) * 0.12f; capeSideV *= 0.75f; capeSide += capeSideV;
+            Quaternionf qYaw = new Quaternionf().rotateY((float) -Math.toRadians(yaw));
+            Quaternionf qBody = euler(pose.r[BODY]);
+            Vector3f hips = new Vector3f(0, 12, 0);
+            float px = scale / 16f;
+            Quaternionf qTop = new Quaternionf(qBody).rotateX((float) Math.toRadians(capeA)).rotateZ((float) Math.toRadians(capeSide));
+            Vector3f top = new Vector3f(0, 23.6f, -3.1f).sub(hips); qBody.transform(top); top.add(hips);
+            Vector3f low = qTop.transform(new Vector3f(0, -12.0f, 0)).add(top);
+            Quaternionf qLow = new Quaternionf(qTop).rotateX((float) Math.toRadians(capeB)).rotateZ((float) Math.toRadians(capeSide * 0.5f));
+            Quaternionf flip = facing(0);
+            for (int i = 0; i < 2; i++) {
+                ItemDisplay d = i == 0 ? capeTop : capeLow;
+                if (d == null || !d.isValid()) continue;
+                Vector3f j = new Vector3f(i == 0 ? top : low).mul(px); qYaw.transform(j);
+                Location at = root.clone().add(j.x, j.y + pose.drop, j.z); at.setYaw(0); at.setPitch(0);
+                d.teleport(at);
+                d.setInterpolationDelay(0);
+                Quaternionf rot = new Quaternionf(qYaw).mul(i == 0 ? qTop : qLow).mul(flip);
+                d.setTransformation(new Transformation(new Vector3f(), rot, new Vector3f(scale, scale, scale), new Quaternionf()));
+            }
+        }
+
+        /** A readable tell before every move: his visor flashes and a high chime rings (the fight is about reading him). */
+        void telegraph() {
+            Location head = loc().add(0, 2.15 * scale / 1.15, 0).add(fwd().multiply(0.35 * scale));
+            Color c = ablaze ? Color.fromRGB(120, 230, 255) : Color.fromRGB(220, 250, 255);
+            world.spawnParticle(Particle.END_ROD, head, 6, 0.05, 0.05, 0.05, 0.06);
+            world.spawnParticle(Particle.DUST, head, 8, 0.12, 0.06, 0.12, 0, new Particle.DustOptions(c, 1.6f));
+            world.playSound(head, Sound.BLOCK_AMETHYST_BLOCK_RESONATE, 1.2f, 1.7f);
+            world.playSound(head, Sound.BLOCK_NOTE_BLOCK_BELL, 0.7f, 2.0f);
         }
 
         ItemDisplay[] rig(String prefix, boolean glint) {
@@ -2988,6 +3176,24 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             held.teleport(at);
             held.setInterpolationDelay(0);
             held.setTransformation(new Transformation(new Vector3f(), new Quaternionf(rot).mul(facing(0)), new Vector3f(size, size, size), new Quaternionf()));
+            // a slash trail: the weapon's head leaves a streak of light when it moves fast (his swings read at a glance)
+            Vector3f tipL = rot.transform(new Vector3f(grip.axis()).mul(11f * size / 16f));
+            Vector tip = new Vector(root.getX() + hand.x + tipL.x, root.getY() + hand.y + tipL.y + pose.drop, root.getZ() + hand.z + tipL.z);
+            if (lastTip != null && attack >= 0 && cut == null && state != P1) {
+                Vector d = tip.clone().subtract(lastTip);
+                double len = d.length();
+                if (len > 0.55 && len < 6) {
+                    Color c1 = ablaze ? Color.fromRGB(90, 200, 255) : Color.fromRGB(190, 250, 255);
+                    Color c2 = ablaze ? Color.fromRGB(20, 70, 220) : Color.fromRGB(60, 170, 220);
+                    int n = (int) Math.min(14, Math.ceil(len / 0.22));
+                    for (int i = 0; i <= n; i++) {
+                        Location l = lastTip.clone().add(d.clone().multiply(i / (double) n)).toLocation(world);
+                        world.spawnParticle(Particle.DUST_COLOR_TRANSITION, l, 1, 0.02, 0.02, 0.02, 0, new Particle.DustTransition(c1, c2, 1.25f));
+                    }
+                    if (len > 1.2) world.spawnParticle(ablaze ? Particle.SOUL_FIRE_FLAME : Particle.END_ROD, tip.toLocation(world), 2, 0.1, 0.1, 0.1, 0.01);
+                }
+            }
+            lastTip = tip;
         }
 
         ItemStack model(Material base, String name, boolean glint) {
@@ -3064,6 +3270,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             if (fire && ward) dmg *= 0.75;     // Ember Ward: 25% less from his flames
             if (mounted && banner) dmg *= 0.7; // Banner of Defiance: his army deals 30% less
             hurt(p, dmg, hitbox, from, guard);
+            if (dmg >= 6) { hitStop = dmg >= 14 ? 3 : 2; world.spawnParticle(Particle.CRIT, p.getLocation().add(0, 1.1, 0), 14, 0.3, 0.4, 0.3, 0.35); }
             if (fire && !ward) p.setFireTicks(Math.max(p.getFireTicks(), 60));
             if (mounted && banner) steady(p);
         }
@@ -3219,6 +3426,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 int pick;
                 do pick = pool.get(random.nextInt(pool.size())); while (pick == lastAttack && pool.size() > 1);
                 attack = pick; lastAttack = pick; t = 0; lock = null; marks.clear();
+                if (state != P1) telegraph();
             }
             switch (attack) {
                 case 1 -> piercingArrow(target);
@@ -3698,11 +3906,11 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 if (to.length() > 2) stepTo(safeDir(to, fwd()).multiply(0.9)); // (steps up a block at most, stops at walls)
                 else settle();
                 pose = Pose.lerp(stridePose(1.5f), n % 2 == 0 ? foreWindup() : backWindup(), c / 6f); // dash in, blade drawn back
-                world.spawnParticle(Particle.FLAME, loc().add(0, 0.6, 0), 4, 0.3, 0.3, 0.3, 0.01);
+                world.spawnParticle(Particle.SOUL_FIRE_FLAME, loc().add(0, 0.6, 0), 4, 0.3, 0.3, 0.3, 0.01);
             } else if (c == 6) {
                 pose = n % 2 == 0 ? foreSlash() : backSlash(); // forehand, backhand, forehand
                 world.playSound(loc(), Sound.ENTITY_PLAYER_ATTACK_SWEEP, 1.6f, 0.8f);
-                world.spawnParticle(Particle.FLAME, loc().add(fwd().multiply(1.5)).add(0, 1, 0), 20, 0.8, 0.4, 0.8, 0.02);
+                world.spawnParticle(Particle.SOUL_FIRE_FLAME, loc().add(fwd().multiply(1.5)).add(0, 1, 0), 20, 0.8, 0.4, 0.8, 0.02);
                 for (Player p : a) if (inFront(p, 3.4)) strike(p, jcfg("damage.ember-flurry", 9), Guard.BLOCKABLE, pos, true, false);
             } else pose = Pose.lerp(pose, n % 2 == 0 ? foreSlash() : backSlash(), 0.3f); // holds the follow-through
         }
@@ -3717,12 +3925,12 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 double ground = floorY(pos.getX(), pos.getZ(), pos.getY() + 6);
                 pos.setY(ground + Math.sin(f * Math.PI) * 7);
                 pose = jumpPose();
-                world.spawnParticle(Particle.FLAME, loc().add(0, 1, 0), 6, 0.3, 0.5, 0.3, 0.02);
+                world.spawnParticle(Particle.SOUL_FIRE_FLAME, loc().add(0, 1, 0), 6, 0.3, 0.5, 0.3, 0.02);
             } else if (t == 32) {
                 pos.setY(floorY(pos.getX(), pos.getZ(), pos.getY() + 1));
                 pose = landPose().set(ARM_R, -40, 0, -6).set(HEAD, 14, 0, 0); // lands blade-first
                 world.playSound(loc(), Sound.ENTITY_GENERIC_EXPLODE, 2f, 0.7f);
-                for (int i = 0; i < 30; i++) { double ang = Math.PI * 2 * i / 30; world.spawnParticle(Particle.FLAME, loc().add(Math.cos(ang) * 4, 0.3, Math.sin(ang) * 4), 3, 0.2, 0.2, 0.2, 0.02); }
+                for (int i = 0; i < 30; i++) { double ang = Math.PI * 2 * i / 30; world.spawnParticle(Particle.SOUL_FIRE_FLAME, loc().add(Math.cos(ang) * 4, 0.3, Math.sin(ang) * 4), 3, 0.2, 0.2, 0.2, 0.02); }
                 for (Player p : a) if (p.getLocation().toVector().distanceSquared(pos) < 5 * 5) strike(p, jcfg("damage.phoenix-leap", 18), Guard.HEAVY, pos, true, false);
             } else if (t > 46) end(30);
         }
@@ -3730,9 +3938,9 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         void infernoPillar(List<Player> a) {
             pose = anim(t, new int[]{0, 10, 24, 26, 36, 44}, new Pose[]{readyPose(), skyPose(), skyPose().add(BODY, -4, 0, 0), slamPose(), slamPose(), readyPose()}); // calls the fire down
             if (t == 0) for (Player p : a) { marks.add(p.getLocation().toVector()); marks.add(p.getLocation().toVector().add(new Vector(random.nextGaussian() * 3, 0, random.nextGaussian() * 3))); if (marks.size() >= 6) break; }
-            if (t < 26 && t % 3 == 0) for (Vector m : marks) ring(m, 1.8, Color.fromRGB(255, 120, 30));
+            if (t < 26 && t % 3 == 0) for (Vector m : marks) ring(m, 1.8, Color.fromRGB(80, 180, 255));
             if (t >= 26 && t < 40) {
-                for (Vector m : marks) world.spawnParticle(Particle.FLAME, m.toLocation(world).add(0, (t - 26) * 0.5, 0), 12, 0.5, 0.6, 0.5, 0.02);
+                for (Vector m : marks) world.spawnParticle(Particle.SOUL_FIRE_FLAME, m.toLocation(world).add(0, (t - 26) * 0.5, 0), 12, 0.5, 0.6, 0.5, 0.02);
                 if (t == 26) {
                     world.playSound(loc(), Sound.ENTITY_BLAZE_SHOOT, 2f, 0.5f);
                     for (Vector m : marks) for (Player p : a) if (p.getLocation().toVector().setY(0).distanceSquared(m.clone().setY(0)) < 2 * 2) strike(p, jcfg("damage.inferno-pillar", 12), Guard.UNBLOCKABLE, m, true, false);
@@ -3756,12 +3964,12 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             Player b = Bukkit.getPlayer(branded);
             if (b == null || b.isDead()) { branded = null; return; }
             brandT--;
-            if (brandT % 4 == 0) for (int i = 0; i < 10; i++) { double ang = Math.PI * 2 * i / 10 + brandT * 0.2; world.spawnParticle(Particle.FLAME, b.getLocation().add(Math.cos(ang) * 0.7, 2.4, Math.sin(ang) * 0.7), 1, 0, 0, 0, 0); }
+            if (brandT % 4 == 0) for (int i = 0; i < 10; i++) { double ang = Math.PI * 2 * i / 10 + brandT * 0.2; world.spawnParticle(Particle.SOUL_FIRE_FLAME, b.getLocation().add(Math.cos(ang) * 0.7, 2.4, Math.sin(ang) * 0.7), 1, 0, 0, 0, 0); }
             if (brandT <= 0) {
                 Location at = b.getLocation();
                 world.playSound(at, Sound.ENTITY_GENERIC_EXPLODE, 2f, 0.9f);
                 world.spawnParticle(Particle.EXPLOSION, at, 3, 1, 0.5, 1, 0);
-                world.spawnParticle(Particle.FLAME, at, 60, 2, 1, 2, 0.05);
+                world.spawnParticle(Particle.SOUL_FIRE_FLAME, at, 60, 2, 1, 2, 0.05);
                 for (Player p : a) if (p.getLocation().distanceSquared(at) < 3 * 3) { hitCooldown.remove(p.getUniqueId()); strike(p, jcfg("damage.burning-brand", 14), Guard.UNBLOCKABLE, at.toVector(), true, false); }
                 branded = null;
             }
@@ -4067,11 +4275,12 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                     ablaze = true;
                     for (ItemDisplay d : parts) if (d != null && d.isValid()) d.remove();
                     parts = rig("jacob_blaze", false);
+                    makeCape("jacob_blaze", false);
                     hold(model(Material.NETHERITE_SWORD, "jacob_sword", false));
                 }
                 if (m % 3 == 0) flash(random.nextBoolean());
-                world.spawnParticle(Particle.FLAME, loc().add(0, 0.5, 0), 12, 0.8, 0.3, 0.8, 0.02);
-                world.spawnParticle(Particle.LAVA, loc().add(0, 0.5, 0), 2, 0.6, 0.2, 0.6, 0);
+                world.spawnParticle(Particle.SOUL_FIRE_FLAME, loc().add(0, 0.5, 0), 12, 0.8, 0.3, 0.8, 0.02);
+                world.spawnParticle(Particle.SOUL, loc().add(0, 0.5, 0), 2, 0.6, 0.2, 0.6, 0);
                 Location shake = camAt(pos, 4, 1.6, 30 + random.nextGaussian() * 6);
                 shake.add(random.nextGaussian() * 0.2, random.nextGaussian() * 0.2, random.nextGaussian() * 0.2);
                 cut.shot(shake);
@@ -4082,7 +4291,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             if (m >= 300) { // 0:15: he's back, standing, ablaze
                 pose = powerPose();
                 world.playSound(loc(), Sound.ENTITY_WITHER_SPAWN, 2f, 1.2f);
-                for (int i = 0; i < 40; i++) { double ang = Math.PI * 2 * i / 40; world.spawnParticle(Particle.FLAME, loc().add(Math.cos(ang) * 3, 0.3, Math.sin(ang) * 3), 3, 0.1, 0.3, 0.1, 0.02); }
+                for (int i = 0; i < 40; i++) { double ang = Math.PI * 2 * i / 40; world.spawnParticle(Particle.SOUL_FIRE_FLAME, loc().add(Math.cos(ang) * 3, 0.3, Math.sin(ang) * 3), 3, 0.1, 0.3, 0.1, 0.02); }
                 endCut(P4);
                 track = 2;
             }
@@ -4250,10 +4459,20 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             }
             headYaw += (wantHead - headYaw) * 0.18f;
             p.add(HEAD, 0, -headYaw * 0.8f, 0).add(BODY, 0, -headYaw * 0.2f, 0);
-            shown = Pose.lerp(shown, p, 0.45f);
+            if (hitStop > 0) hitStop--; // the blow lands: everything holds for a beat
+            else if (cut != null || state == DEFEAT) shown = Pose.lerp(shown, p, 0.45f);
+            else { // every joint on a spring: quick, weighty, a little overshoot on big swings
+                Pose n = shown.copy();
+                for (int i = 0; i < 6; i++) for (int k = 0; k < 3; k++) {
+                    jvel[i][k] += (p.r[i][k] - n.r[i][k]) * 1.1f; jvel[i][k] *= 0.38f; n.r[i][k] += jvel[i][k];
+                }
+                dropVel += (p.drop - n.drop) * 1.1f; dropVel *= 0.38f; n.drop += dropVel;
+                shown = n;
+            }
             renderRig(parts, null, pos.toLocation(world), yaw, scale, shown);
             renderWeapon(pos.toLocation(world), yaw, scale, shown);
-            if (ablaze && state != DEFEAT && ticks % 2 == 0) world.spawnParticle(Particle.FLAME, loc().add(0, 1.1, 0), 3, 0.35, 0.8, 0.35, 0.01);
+            renderCape(pos.toLocation(world), yaw, scale, shown);
+            if (ablaze && state != DEFEAT && ticks % 2 == 0) world.spawnParticle(Particle.SOUL_FIRE_FLAME, loc().add(0, 1.1, 0), 3, 0.35, 0.8, 0.35, 0.01);
         }
 
         void updateBar() {
@@ -4276,6 +4495,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             for (JOrb o : orbs) o.remove();
             orbs.clear();
             for (ItemDisplay d : parts) if (d != null && d.isValid()) d.remove();
+            for (ItemDisplay d : new ItemDisplay[]{capeTop, capeLow}) if (d != null && d.isValid()) d.remove();
             if (held != null && held.isValid()) held.remove();
             removeBird();
             if (birdBox != null && birdBox.isValid()) birdBox.remove();

@@ -16,6 +16,14 @@ kraken:
   health: 2200
   defense: 0.3
   damage-multiplier: 1.2      # all his damage (+20%)
+  chase:                      # Riptide Snatch: swim away and he jets after you, grabs you and reels you to his beak
+    enabled: true
+    distance: 20              # farther than this from him = a runner (the Abyssal Kraken: abyssal.chase-distance 30)
+    max-distance: 120         # nobody farther than this is chased
+    cooldown-seconds: 12
+    push: 0.16                # how hard he jets
+    speed-boost: 1.2
+    max-seconds: 9            # gives up after this
   scale: 4.0                  # model size (4 = a head about 9 blocks tall)
   min-depth: 15               # blocks of water needed to summon him
   overworld: true             # 2.0.2: the normal Kraken again: a Bait Worm in an Overworld Deep Ocean (or /kraken summon in Overworld water)

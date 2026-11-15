@@ -116,17 +116,18 @@ def cracks(reg, pal, rng, n=3):
 DIAMOND = dict(base=(74, 208, 208), light=(170, 250, 240), dark=(22, 110, 122), hi=(235, 255, 252),
                gold=(226, 178, 40), gold_hi=(255, 236, 130), gold_dark=(140, 92, 12),
                under=(48, 62, 84), under_hi=(80, 96, 120), slit=(8, 14, 24), eye=(120, 240, 255),
-               cape=(30, 48, 128), cape_hi=(52, 80, 180), cape_dark=(16, 24, 70), lining=(130, 20, 30),
+               cape=(30, 48, 128), cape_hi=(52, 80, 180), cape_dark=(16, 24, 70), lining=(70, 140, 225),
                leather=(98, 60, 32), leather_hi=(136, 88, 48),
-               plume=(186, 24, 36), plume_hi=(236, 70, 70), plume_dark=(110, 10, 22))
+               plume=(40, 96, 230), plume_hi=(140, 205, 255), plume_dark=(18, 40, 140))
 
-BLAZE = dict(base=(48, 40, 42), light=(96, 78, 70), dark=(18, 14, 16), hi=(255, 140, 40),
-             gold=(232, 96, 16), gold_hi=(255, 196, 60), gold_dark=(120, 30, 6),
-             under=(30, 22, 22), under_hi=(60, 40, 34), slit=(40, 10, 0), eye=(255, 230, 90),
-             cape=(70, 14, 10), cape_hi=(140, 34, 12), cape_dark=(30, 6, 6), lining=(40, 8, 8),
-             leather=(46, 30, 24), leather_hi=(70, 44, 32),
-             plume=(255, 120, 10), plume_hi=(255, 230, 90), plume_dark=(200, 40, 0),
-             glow=(255, 190, 50), glow_dim=(200, 70, 10))
+# phase 4: the same knight burning with BLUE soul fire (no red anywhere: he's the DIAMOND knight)
+BLAZE = dict(base=(36, 40, 50), light=(70, 80, 98), dark=(12, 14, 20), hi=(110, 225, 255),
+             gold=(40, 150, 255), gold_hi=(175, 240, 255), gold_dark=(12, 50, 140),
+             under=(22, 24, 32), under_hi=(40, 46, 60), slit=(0, 18, 40), eye=(175, 245, 255),
+             cape=(14, 22, 58), cape_hi=(30, 60, 140), cape_dark=(6, 10, 30), lining=(10, 20, 50),
+             leather=(30, 30, 40), leather_hi=(50, 54, 70),
+             plume=(40, 140, 255), plume_hi=(195, 250, 255), plume_dark=(20, 60, 200),
+             glow=(110, 230, 255), glow_dim=(30, 120, 230))
 
 # ------------------------------------------------------------------ the knight
 
@@ -193,18 +194,91 @@ def knight(pal, blaze, seed):
             for x in range(w):
                 if rng.random() < 0.35: reg[0, x, 3] = 0
 
+    # ---------------- the viking helm (diamond): a segmented dome, eye-and-nose guard, curved horns, mail behind
+    def knot(reg, face, wu, hu):  # the brow band: gold with an interlaced knot pattern
+        h, w = reg.shape[:2]
+        noise_fill(reg, pal["gold"], rng, 8)
+        reg[0, :, :3] = pal["gold_hi"]; reg[-1, :, :3] = pal["gold_dark"]
+        for x in range(w):
+            y = 1 + int(round((h - 3) * (0.5 + 0.5 * math.sin(x * 0.9))))
+            y2 = 1 + int(round((h - 3) * (0.5 - 0.5 * math.sin(x * 0.9))))
+            if 0 <= y < h: reg[y, x, :3] = pal["gold_dark"]
+            if 0 <= y2 < h: reg[y2, x, :3] = pal["gold_hi"]
+
+    def horn(reg, face, wu, hu, ring=False):
+        h, w = reg.shape[:2]
+        noise_fill(reg, pal["gold"] if ring else pal["light"], rng, 6)
+        if not ring:
+            for y in range(h): reg[y, :, :3] = np.clip(reg[y, :, :3] * (1.08 - 0.25 * y / max(1, h - 1)), 0, 255)
+            for y in range(0, h, 3): reg[y, :, :3] = shade(reg[y, 0, :3], 0.85)   # growth ridges
+            if blaze: cracks(reg, pal, rng, 1)
+        else:
+            reg[0, :, :3] = pal["gold_hi"]
+
+    def visor(reg, face, wu, hu):  # the spectacle guard: two mirrored almond eye holes, his eyes glowing inside
+        plate(reg, pal, rng, sparkle=0)
+        if blaze: cracks(reg, pal, rng, 1)
+        if face != "south": return
+        h, w = reg.shape[:2]
+        reg[0, :, :3] = pal["gold"]; reg[0, ::3, :3] = pal["gold_hi"]           # gold brow line
+        reg[-1, :, :3] = shade(pal["base"], 0.7)
+        glow = (60, 225, 255) if not blaze else (90, 200, 255); core = (235, 255, 255)
+        L = [(2, 1, 4), (3, 1, 5), (4, 2, 5)]  # (row, first col, last col) of the left hole; the right one mirrors it
+        for row, c0, c1 in L:
+            if row >= h - 1: continue
+            for c in range(c0, c1 + 1):
+                reg[row, c, :3] = pal["slit"]; reg[row, w - 1 - c, :3] = pal["slit"]
+        for c in (3, 4):  # the eyes: a 2-px glow, brighter towards the nose
+            reg[3, c, :3] = glow; reg[3, w - 1 - c, :3] = glow
+        reg[3, 4, :3] = core; reg[3, w - 5, :3] = core
+        for c in (1, 5):   # a bevel round each hole
+            reg[1, c + 1 if c == 1 else c, :3] = shade(pal["base"], 1.25)
+            reg[1, w - 1 - (c + 1 if c == 1 else c), :3] = shade(pal["base"], 1.25)
+
+    def guard(reg, face, wu, hu):  # the mouth guard: a plate with vertical breathing slits
+        plate(reg, pal, rng, sparkle=0)
+        if blaze: cracks(reg, pal, rng, 1)
+        if face != "south": return
+        h, w = reg.shape[:2]
+        for c in range(2, w - 2, 2):
+            if abs(c - (w - 1) / 2) < 1.5: continue
+            reg[1:h - 1, c, :3] = pal["slit"]
+        reg[-1, :, :3] = pal["gold_dark"]
+
+    def shadow(reg, face, wu, hu):  # under the helm: just dark, darker at the top
+        h, w = reg.shape[:2]
+        for y in range(h): reg[y, :, :3] = shade(pal["slit"], 0.7 + 0.5 * y / max(1, h - 1))
+        reg[:, :, 3] = 255
+
     head = [
-        box(atlas, (-4.5, 0.6, -4.5), (4.5, 9.4, 4.5), armor, trims=[helm_front]),
-        box(atlas, (-4.75, 0, -4.75), (4.75, 1.1, 4.75), gold),                      # gold rim
-        box(atlas, (-3.6, 1.6, 4.5), (3.6, 7.2, 5.3), faceplate),                   # faceplate
-        box(atlas, (-0.6, 9.4, -4.2), (0.6, 10.3, 4.2), gold),                       # crest ridge
-        box(atlas, (-0.8, 10.3, -2.2), (0.8, 12.3, 2.0), plume),                     # plume, sweeping back
-        box(atlas, (-0.8, 12.3, -3.8), (0.8, 13.8, 0.4), plume),
-        box(atlas, (-0.7, 13.8, -5.4), (0.7, 14.8, -1.6), plume),
+        box(atlas, (-3.9, 0, -3.9), (3.9, 3.0, 3.9), shadow),                        # the face in shadow
+        box(atlas, (-4.6, 2.4, -4.6), (4.6, 7.6, 4.6), armor, trims=[helm_front]),  # dome, lower
+        box(atlas, (-4.2, 7.6, -4.2), (4.2, 9.0, 4.2), armor),                       # dome, upper
+        box(atlas, (-3.2, 9.0, -3.2), (3.2, 10.0, 3.2), armor),
+        box(atlas, (-0.7, 10.0, -0.7), (0.7, 11.0, 0.7), gold),                      # top spike
+        box(atlas, (-0.45, 6.6, -4.5), (0.45, 10.1, 4.5), gold),                     # spangen ribs
+        box(atlas, (-4.5, 6.6, -0.45), (4.5, 9.1, 0.45), gold),
+        box(atlas, (-4.85, 5.5, -4.85), (4.85, 6.7, 4.85), knot),                    # knotwork brow band
+        box(atlas, (-4.0, 2.5, 4.6), (4.0, 5.5, 5.5), visor),                        # eye guard
+        box(atlas, (-3.5, 0.3, 4.3), (3.5, 2.5, 5.0), guard),                       # mouth guard
+        box(atlas, (-0.5, 0.6, 4.6), (0.5, 5.6, 5.9), armor),                       # nasal
+        box(atlas, (-4.9, 0.6, 0.4), (-4.4, 5.5, 4.6), armor),                       # cheek plates
+        box(atlas, (4.4, 0.6, 0.4), (4.9, 5.5, 4.6), armor),
+        box(atlas, (-4.7, -1.4, -4.9), (4.7, 2.6, -4.2), under),                     # mail aventail behind
+        box(atlas, (-4.9, -1.0, -4.2), (-4.3, 2.6, 0.4), under),
+        box(atlas, (4.3, -1.0, -4.2), (4.9, 2.6, 0.4), under),
     ]
-    if blaze:  # horns
-        head += [box(atlas, (-5.4, 6, -0.6), (-4.5, 8, 0.6), gold), box(atlas, (-5.9, 8, -0.5), (-5.0, 10.5, 0.5), gold),
-                 box(atlas, (4.5, 6, -0.6), (5.4, 8, 0.6), gold), box(atlas, (5.0, 8, -0.5), (5.9, 10.5, 0.5), gold)]
+    # the horns: out, forward a touch, then sweeping up, ringed in gold
+    for sg in (-1, 1):
+        def X(a, b, sg=sg): return (a, b) if sg > 0 else (-b, -a)
+        segs = [((4.4, 6.2), (4.6, 6.6), (-1.2, 1.2)), ((6.2, 8.0), (5.2, 7.2), (-1.0, 1.1)), ((7.6, 9.2), (6.4, 8.4), (-0.6, 1.4)),
+                ((8.6, 10.0), (8.0, 10.2), (-0.2, 1.6)), ((9.0, 10.0), (10.2, 12.0), (0.2, 1.6)), ((9.2, 9.9), (12.0, 13.4), (0.5, 1.4))]
+        for i, (xr, yr, zr) in enumerate(segs):
+            x1, x2 = X(*xr)
+            head.append(box(atlas, (x1, yr[0], zr[0]), (x2, yr[1], zr[1]), horn))
+            if i in (0, 2):
+                xa, xb = X(xr[0] - 0.05, xr[0] + 0.5)
+                head.append(box(atlas, (xa, yr[0] - 0.2, zr[0] - 0.2), (xb, yr[1] + 0.2, zr[1] + 0.2), horn, ring=True))
     parts["head"] = head
 
     # ---------------- body
@@ -226,21 +300,85 @@ def knight(pal, blaze, seed):
     def tasset(reg, face, wu, hu):
         armor(reg, face, wu, hu, trims=[lambda r, f: trim(r, pal, rows=[-1])])
 
-    def cape(reg, face, wu, hu):
+    def fur(reg, face, wu, hu):
+        h, w = reg.shape[:2]
+        base = (60, 56, 60) if blaze else (196, 202, 210)
+        noise_fill(reg, base, rng, 22)
+        for y in range(h):
+            for x in range(w):
+                r = rng.random()
+                if r < 0.22: reg[y, x, :3] = shade(base, 0.72)
+                elif r < 0.32: reg[y, x, :3] = shade(base, 1.12)
+        if blaze:
+            for _ in range(max(1, w * h // 20)): reg[rng.randrange(h), rng.randrange(w), :3] = pal["glow"]
+        if face in ("north", "south", "east", "west"):  # ragged hanging tips
+            for x in range(w):
+                for y in range(h - rng.randrange(0, 2), h): reg[y, x, 3] = 0
+
+    def scales(reg, face, wu, hu):  # overlapping diamond scales (and a round boss on the outer face)
+        plate(reg, pal, rng, sparkle=0)
+        if blaze: cracks(reg, pal, rng, 1)
+        h, w = reg.shape[:2]
+        if face in ("up", "down"): return
+        for y in range(0, h, 3):
+            for x in range(-(y // 3 % 2) * 2, w, 4):
+                for d in range(2):
+                    for xx in (x + d, x + 3 - d):
+                        if 0 <= xx < w and 0 <= y + d < h: reg[y + d, xx, :3] = pal["dark"]
+                if 0 <= x + 1 < w and y + 2 < h: reg[y + 2, x + 1:x + 3, :3] = pal["light"]
+        trim(reg, pal, rows=[-1])
+        if face in ("east", "west"):
+            cx, cy = w // 2, h // 2
+            for y in range(h):
+                for x in range(w):
+                    dd = math.hypot(x - cx, y - cy)
+                    if dd < 2.2: reg[y, x, :3] = pal["gold_hi"] if dd < 1 else pal["gold"]
+                    elif dd < 2.9: reg[y, x, :3] = pal["gold_dark"]
+
+    def tabard(reg, face, wu, hu):
+        h, w = reg.shape[:2]
+        noise_fill(reg, pal["cape"], rng, 6)
+        trim(reg, pal, cols=[0, -1], rows=[-1])
+        if face == "south":
+            m, cy = w // 2, h // 2
+            for d in range(3):
+                reg[cy - 2 + d, m - 1 - d:m + 1 + d, :3] = pal["gold"]; reg[cy + 3 - d, m - 1 - d:m + 1 + d, :3] = pal["gold"]
+            reg[cy:cy + 2, m - 1:m + 1, :3] = pal["eye"] if not blaze else pal["glow"]
+        if blaze and face in ("north", "south") and h > 4:
+            for x in range(w):
+                for y in range(h - rng.randrange(1, 4), h): reg[y, x, 3] = 0
+
+    def cape(reg, face, wu, hu, top=True):
         h, w = reg.shape[:2]
         noise_fill(reg, pal["cape"] if face != "south" else pal["lining"], rng, 6)
         if face == "north":  # the outside
             for x in range(0, w, 4): reg[:, x, :3] = pal["cape_dark"]   # folds
             for x in range(2, w, 4): reg[:, x, :3] = pal["cape_hi"]
-            trim(reg, pal, cols=[0, -1], rows=[-1, -2])
-            m, cy = w // 2, h // 3
-            for d in range(3):
-                reg[cy - 2 + d, m - 1 - d:m + 1 + d, :3] = pal["gold"]; reg[cy + 3 - d, m - 1 - d:m + 1 + d, :3] = pal["gold"]
-        if blaze and face in ("north", "south"):  # burnt, tattered hem with embers
+            trim(reg, pal, cols=[0, -1], rows=[0, 1] if top else [-1, -2])
+            if top:
+                m, cy = w // 2, h // 2
+                for d in range(4):
+                    reg[cy - 3 + d, m - 1 - d:m + 1 + d, :3] = pal["gold"]; reg[cy + 4 - d, m - 1 - d:m + 1 + d, :3] = pal["gold"]
+                reg[cy - 1:cy + 3, m - 1:m + 1, :3] = pal["eye"] if not blaze else pal["glow"]
+        if face == "south" and not blaze:  # the silk lining's sheen
+            for x in range(1, w, 5): reg[:, x, :3] = shade(pal["lining"], 1.2)
+        if blaze and not top and face in ("north", "south"):  # burnt, tattered hem with embers
             for x in range(w):
                 for y in range(h - rng.randrange(1, 6), h): reg[y, x, 3] = 0
                 yy = h - 6 - rng.randrange(0, 3)
                 if 0 <= yy < h: reg[yy, x, :3] = pal["glow"]
+        elif not top and face in ("north", "south"):  # a swallow-tailed hem
+            for x in range(w):
+                cut = abs(x - w / 2) < w / 6
+                for y in range(h - (3 if cut else 0), h): reg[y, x, 3] = 0
+
+    # the cape is its own two pieces now (it swings and trails behind him): joint at the TOP of each piece
+    parts["cape_top"] = [
+        box(atlas, (-4.7, -12.4, -0.35), (4.7, 0, 0.35), cape, top=True),
+    ]
+    parts["cape_low"] = [
+        box(atlas, (-5.3, -12.6, -0.35), (5.3, 0, 0.35), cape, top=False),
+    ]
 
     parts["body"] = [
         box(atlas, (-4.2, 0, -2.2), (4.2, 12, 2.2), under),                             # chainmail under it all
@@ -249,7 +387,10 @@ def knight(pal, blaze, seed):
         box(atlas, (-4.65, 1.4, -2.65), (4.65, 2.8, 2.65), leather),                    # belt + buckle
         box(atlas, (-4.1, -1.6, 2.1), (-0.3, 1.6, 2.9), tasset),                        # tassets
         box(atlas, (0.3, -1.6, 2.1), (4.1, 1.6, 2.9), tasset),
-        box(atlas, (-4.3, -4.5, -3.35), (4.3, 12.2, -2.6), cape),                       # cape
+        box(atlas, (-1.9, -5.2, 2.55), (1.9, 1.4, 3.05), tabard),                       # tabard hanging from the belt
+        box(atlas, (-4.9, 11.0, -2.9), (4.9, 12.6, -2.4), gold),                        # cape bar across the shoulders
+        box(atlas, (-5.9, 11.4, -3.4), (5.9, 13.6, 3.2), fur),                          # a thick fur mantle over the shoulders
+        box(atlas, (-4.6, 13.2, -3.0), (4.6, 14.4, 2.2), fur),
         box(atlas, (-2.6, 12, -2.2), (2.6, 12.8, 2.2), gold),                           # gorget
     ]
 
@@ -269,8 +410,12 @@ def knight(pal, blaze, seed):
         box(atlas, (-1.8, -11.5, -1.8), (1.8, 0.5, 1.8), armor),                     # vambrace
         box(atlas, (-1.95, -6.9, -1.95), (1.95, -5.3, 1.95), gold),                 # elbow band
         box(atlas, (-2.15, -12.4, -2.15), (2.15, -8.6, 2.15), gauntlet),
-        box(atlas, (-2.75, -3.2, -2.75), (2.75, 1.6, 2.75), pauldron),
+        box(atlas, (-2.75, -3.2, -2.75), (2.75, 1.6, 2.75), scales),
         box(atlas, (-2.3, 1.6, -2.3), (2.3, 2.4, 2.3), armor),                       # pauldron dome
+        box(atlas, (-3.05, -4.4, -3.05), (3.05, -3.0, 3.05), armor, trims=[lambda r, f: trim(r, pal, rows=[-1]) if f not in ("up", "down") else None]),  # second lame
+        box(atlas, (-0.5, 2.4, -2.0), (0.5, 3.4, 2.0), gold),                       # ridge
+        box(atlas, (-1.4, -7.4, -2.6), (1.4, -4.8, -1.95), armor),                  # couter fan behind the elbow
+        box(atlas, (-2.3, -9.6, -2.3), (2.3, -8.9, 2.3), gold),                     # gauntlet cuff
     ]
 
     # ---------------- legs (one model, used for both)
@@ -286,6 +431,10 @@ def knight(pal, blaze, seed):
         box(atlas, (-2.15, -9.2, -2.15), (2.15, -6.6, 2.15), armor),                 # greave
         box(atlas, (-2.35, -12, -2.35), (2.35, -9.2, 2.35), sabaton),                # boot
         box(atlas, (-2.0, -12, 2.35), (2.0, -10.7, 3.4), sabaton),                   # toe
+        box(atlas, (-1.2, -12, 3.4), (1.2, -11.1, 4.2), sabaton),                    # pointed toe
+        box(atlas, (-2.4, -7.9, 2.2), (2.4, -4.6, 2.5), armor),                      # poleyn wings round the knee
+        box(atlas, (-0.4, -9.2, 2.15), (0.4, -6.6, 2.5), gold),                      # greave ridge
+        box(atlas, (-2.6, -2.2, -2.6), (2.6, -1.4, 2.6), gold),                      # thigh band
     ]
     return atlas, parts
 
@@ -628,7 +777,8 @@ def render(placed, yaw, pitch, scale, size):
     return Image.fromarray(out.astype(np.uint8), "RGBA")
 
 
-JOINT = {"leg_r": (-2, 12, 0), "leg_l": (2, 12, 0), "body": (0, 12, 0), "arm_r": (-5.5, 24, 0), "arm_l": (5.5, 24, 0), "head": (0, 24, 0)}
+JOINT = {"leg_r": (-2, 12, 0), "leg_l": (2, 12, 0), "body": (0, 12, 0), "arm_r": (-5.5, 24, 0), "arm_l": (5.5, 24, 0), "head": (0, 24, 0),
+         "cape_top": (0, 23.6, -3.1), "cape_low": (0, 11.3, -3.3)}
 BIRD_JOINT = {"body": (0, 0, 0), "head": (0, 2, 7), "tail": (0, 0.5, -7), "wing_r": (3, 2.5, 1), "wing_l": (-3, 2.5, 1)}
 
 
@@ -655,12 +805,15 @@ def main():
         atlas, parts = knight(pal, blaze, seed)
         tex = "jacob_" + form
         img = write_tex(pack, tex, atlas)
-        names = {"head": "head", "body": "body", "arm_r": "arm", "arm_l": "arm", "leg_r": "leg", "leg_l": "leg"}
+        names = {"head": "head", "body": "body", "arm_r": "arm", "arm_l": "arm", "leg_r": "leg", "leg_l": "leg",
+                 "cape_top": "cape_top", "cape_low": "cape_low"}
         for part, src in names.items(): write_model(pack, f"jacob_{form}_{part}", tex, parts[src])
         if prev:
             set_anchor(0.97)
             preview(prev, "jacob_" + form, {k: parts[v] for k, v in names.items()}, img, JOINT,
                     [(20, 12), (160, 12), (-35, 25)], 9, (360, 520))
+            preview(prev, "jacob_" + form + "_face", {"head": parts["head"]}, img, {"head": (0, 0, 0)},
+                    [(0, 4), (25, 8), (-40, 6)], 26, (380, 420))
     atlas, el = mace(13)
     img = write_tex(pack, "jacob_hammer", atlas)
     write_model(pack, "jacob_hammer", "jacob_hammer", el, MACE_DISPLAY)

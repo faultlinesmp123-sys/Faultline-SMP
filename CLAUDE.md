@@ -2733,6 +2733,18 @@ Notes:
   music pack changed on GitHub, everyone online is sent the new one (`item-textures.resend-on-change`, true). Before, players
   kept the old pack (cached by hash) until a rejoin after the 10-minute check, and new boss parts (Jacob's cape) showed as
   missing-texture blocks.
+- **Bedrock models for Jacob + the Kraken, the red Kraken (Bosses 2.3.0, Items 1.3.27, FaultlineSMP.zip)**: Diamond Jacob's
+  and the Kraken's Bedrock stand-ins are now ARMOR STANDS (invisible, not markers: Geyser draws helmets only on real stands)
+  wearing PAPER with item model `faultline:<item>` (`proxyModel`, set only when it changes; `proxyPlace` moves it), which
+  `bedrock/faultline_bosses_mappings.json` maps to helmet attachables in `bedrock/FaultlineBossModels.mcpack`: a whole
+  jointed rig with looping animations. Stands only yaw, so each state is its own item: `jacob_b_<armor|blaze>_<idle|walk|
+  swing|slam|ride>` (`bedrockState()`: P1 = ride, cutscene/defeat = idle, moves 10/32/34/99 = slam, any other move = swing,
+  moving = walk), `kraken_b_<1|2|3|dead>_<idle|swim|attack>` (stand at his middle minus 1.5 x scale, his yaw). Made by
+  `python3 tools/bedrock_bosses.py <unpacked FaultlineSMP.zip> bedrock --preview tools/previews` (reuses the Java textures;
+  Java px -> Bedrock (x, y, -z); previews `bedrock_jacob_b.png`, `bedrock_kraken_b.png`; stamps `bedrock_packs.yml`).
+  `/bedrockcheck` knows the new mappings file. BedrockFx `BODY` skips `kraken_tentacle*` (the stand draws his arms now).
+  UNTESTED on a real Bedrock client: rotation signs / UV orientation are best guesses. THE KRAKEN IS RED (`tools/kraken_models.py`
+  palettes: deep reds, gold veins from phase 2, yellow-gold eyes, cream suckers).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.
@@ -2774,7 +2786,8 @@ Bedrock players are detected in every plugin by `bedrock(p)` → each plugin's `
 Cosmetics): a Floodgate UUID (top half 0), OR Floodgate's / Geyser's API (by reflection; softdepend `floodgate`, `Geyser-Spigot`).
 Before 1.2.2 only the UUID was checked, so a Bedrock player who LINKED a Java account (Java UUID) got none of the Bedrock
 stand-ins, models or effects. A yes is cached; a no is re-asked after 5 s. What each needs:
-- **Boss bodies**: a vanilla stand-in mob per boss (`FaultlineBosses.proxy(...)`), shown only to Bedrock players.
+- **Boss bodies**: a vanilla stand-in mob per boss (`FaultlineBosses.proxy(...)`), shown only to Bedrock players; Diamond Jacob
+  and the Kraken get a full animated model on an armor stand instead (`tools/bedrock_bosses.py`, `FaultlineBossModels.mcpack`).
 - **Boss moves** (`BedrockFx.java`, ticked by FaultlineBosses): Geyser can't draw display entities, so every item/block
   display near a Bedrock player (any plugin: boss moves, piglin balloons, ...) is traced in particles for them only:
   block displays in that block's crack particles, vanilla items in item bits, custom models in dust (glow colour, or a

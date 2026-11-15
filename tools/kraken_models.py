@@ -20,17 +20,17 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import jacob_models as J
 from jacob_models import Atlas, box, noise_fill, shade, write_model, write_tex
 
-SKIN = {  # a slate blue-grey giant (rough, knobbly skin); phases 2-3: glowing amber veins like his eyes
-    1: dict(base=(64, 82, 96), light=(118, 140, 152), dark=(34, 44, 56), spot=(26, 34, 44), belly=(132, 156, 164),
-            wart=(92, 112, 124), vein=None),
-    2: dict(base=(58, 74, 90), light=(110, 132, 146), dark=(30, 40, 52), spot=(22, 30, 40), belly=(124, 148, 158),
-            wart=(86, 106, 118), vein=((255, 170, 60), (170, 80, 20)), veins=0.6),
-    3: dict(base=(50, 64, 80), light=(100, 120, 136), dark=(26, 34, 46), spot=(18, 24, 34), belly=(114, 138, 150),
-            wart=(78, 96, 110), vein=((255, 210, 90), (220, 110, 30)), veins=1.3),
+SKIN = {  # a deep crimson giant (rough, knobbly skin, a paler coral underside); phases 2-3: glowing ember veins
+    1: dict(base=(138, 30, 34), light=(196, 72, 64), dark=(78, 14, 20), spot=(58, 10, 16), belly=(214, 128, 110),
+            wart=(166, 50, 48), vein=None),
+    2: dict(base=(128, 26, 30), light=(186, 64, 56), dark=(70, 12, 18), spot=(50, 8, 14), belly=(204, 118, 100),
+            wart=(156, 44, 42), vein=((255, 196, 70), (200, 90, 20)), veins=0.6),
+    3: dict(base=(116, 20, 26), light=(174, 54, 48), dark=(62, 8, 14), spot=(44, 6, 10), belly=(194, 106, 90),
+            wart=(144, 36, 36), vein=((255, 236, 120), (240, 130, 30)), veins=1.3),
     "dead": dict(base=(110, 114, 118), light=(150, 154, 156), dark=(70, 72, 76), spot=(56, 58, 62), belly=(160, 162, 160),
                  wart=(126, 128, 130), vein=None),
 }
-EYE = dict(white=(255, 176, 40), ring=(255, 120, 20), rim=(16, 20, 26), lid=(34, 44, 56))
+EYE = dict(white=(255, 214, 60), ring=(255, 150, 20), rim=(20, 8, 8), lid=(70, 12, 18))
 
 
 def skin_painter(P, rng):
@@ -146,15 +146,15 @@ def tentacle(P, seed):
 
     def sucker(reg, face, wu, hu):
         h, w = reg.shape[:2]
-        noise_fill(reg, (120, 160, 168), rng, 6)
+        noise_fill(reg, (226, 160, 140), rng, 6)
         if face == "down":
             cx, cy = (w - 1) / 2, (h - 1) / 2
             for y in range(h):
                 for x in range(w):
                     d = math.hypot(x - cx, y - cy) / (min(w, h) / 2)
-                    if d < 0.35: reg[y, x, :3] = (36, 56, 66)
-                    elif d < 0.7: reg[y, x, :3] = (80, 120, 132)
-                    elif d < 0.85: reg[y, x, :3] = (158, 196, 200)
+                    if d < 0.35: reg[y, x, :3] = (96, 22, 26)
+                    elif d < 0.7: reg[y, x, :3] = (178, 96, 88)
+                    elif d < 0.85: reg[y, x, :3] = (244, 196, 176)
 
     seg, tip = [], []
     # a tapered, bevelled segment along +z (0..16), centre (8, 8)

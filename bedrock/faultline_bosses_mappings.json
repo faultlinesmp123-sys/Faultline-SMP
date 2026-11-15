@@ -1,0 +1,359 @@
+{
+ "format_version": 2,
+ "items": {
+  "minecraft:paper": [
+   {
+    "type": "definition",
+    "model": "faultline:jacob_b_armor_idle",
+    "bedrock_identifier": "faultline:jacob_b_armor_idle",
+    "display_name": "jacob_b_armor_idle",
+    "bedrock_options": {
+     "icon": "faultline.jacob_b_armor",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:jacob_b_armor_walk",
+    "bedrock_identifier": "faultline:jacob_b_armor_walk",
+    "display_name": "jacob_b_armor_walk",
+    "bedrock_options": {
+     "icon": "faultline.jacob_b_armor",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:jacob_b_armor_swing",
+    "bedrock_identifier": "faultline:jacob_b_armor_swing",
+    "display_name": "jacob_b_armor_swing",
+    "bedrock_options": {
+     "icon": "faultline.jacob_b_armor",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:jacob_b_armor_slam",
+    "bedrock_identifier": "faultline:jacob_b_armor_slam",
+    "display_name": "jacob_b_armor_slam",
+    "bedrock_options": {
+     "icon": "faultline.jacob_b_armor",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:jacob_b_armor_ride",
+    "bedrock_identifier": "faultline:jacob_b_armor_ride",
+    "display_name": "jacob_b_armor_ride",
+    "bedrock_options": {
+     "icon": "faultline.jacob_b_armor",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:jacob_b_blaze_idle",
+    "bedrock_identifier": "faultline:jacob_b_blaze_idle",
+    "display_name": "jacob_b_blaze_idle",
+    "bedrock_options": {
+     "icon": "faultline.jacob_b_blaze",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:jacob_b_blaze_walk",
+    "bedrock_identifier": "faultline:jacob_b_blaze_walk",
+    "display_name": "jacob_b_blaze_walk",
+    "bedrock_options": {
+     "icon": "faultline.jacob_b_blaze",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:jacob_b_blaze_swing",
+    "bedrock_identifier": "faultline:jacob_b_blaze_swing",
+    "display_name": "jacob_b_blaze_swing",
+    "bedrock_options": {
+     "icon": "faultline.jacob_b_blaze",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:jacob_b_blaze_slam",
+    "bedrock_identifier": "faultline:jacob_b_blaze_slam",
+    "display_name": "jacob_b_blaze_slam",
+    "bedrock_options": {
+     "icon": "faultline.jacob_b_blaze",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:jacob_b_blaze_ride",
+    "bedrock_identifier": "faultline:jacob_b_blaze_ride",
+    "display_name": "jacob_b_blaze_ride",
+    "bedrock_options": {
+     "icon": "faultline.jacob_b_blaze",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:kraken_b_1_idle",
+    "bedrock_identifier": "faultline:kraken_b_1_idle",
+    "display_name": "kraken_b_1_idle",
+    "bedrock_options": {
+     "icon": "faultline.kraken_b_1",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:kraken_b_1_swim",
+    "bedrock_identifier": "faultline:kraken_b_1_swim",
+    "display_name": "kraken_b_1_swim",
+    "bedrock_options": {
+     "icon": "faultline.kraken_b_1",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:kraken_b_1_attack",
+    "bedrock_identifier": "faultline:kraken_b_1_attack",
+    "display_name": "kraken_b_1_attack",
+    "bedrock_options": {
+     "icon": "faultline.kraken_b_1",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:kraken_b_2_idle",
+    "bedrock_identifier": "faultline:kraken_b_2_idle",
+    "display_name": "kraken_b_2_idle",
+    "bedrock_options": {
+     "icon": "faultline.kraken_b_2",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:kraken_b_2_swim",
+    "bedrock_identifier": "faultline:kraken_b_2_swim",
+    "display_name": "kraken_b_2_swim",
+    "bedrock_options": {
+     "icon": "faultline.kraken_b_2",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:kraken_b_2_attack",
+    "bedrock_identifier": "faultline:kraken_b_2_attack",
+    "display_name": "kraken_b_2_attack",
+    "bedrock_options": {
+     "icon": "faultline.kraken_b_2",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:kraken_b_3_idle",
+    "bedrock_identifier": "faultline:kraken_b_3_idle",
+    "display_name": "kraken_b_3_idle",
+    "bedrock_options": {
+     "icon": "faultline.kraken_b_3",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:kraken_b_3_swim",
+    "bedrock_identifier": "faultline:kraken_b_3_swim",
+    "display_name": "kraken_b_3_swim",
+    "bedrock_options": {
+     "icon": "faultline.kraken_b_3",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:kraken_b_3_attack",
+    "bedrock_identifier": "faultline:kraken_b_3_attack",
+    "display_name": "kraken_b_3_attack",
+    "bedrock_options": {
+     "icon": "faultline.kraken_b_3",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:kraken_b_dead_idle",
+    "bedrock_identifier": "faultline:kraken_b_dead_idle",
+    "display_name": "kraken_b_dead_idle",
+    "bedrock_options": {
+     "icon": "faultline.kraken_b_dead",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:kraken_b_dead_swim",
+    "bedrock_identifier": "faultline:kraken_b_dead_swim",
+    "display_name": "kraken_b_dead_swim",
+    "bedrock_options": {
+     "icon": "faultline.kraken_b_dead",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:kraken_b_dead_attack",
+    "bedrock_identifier": "faultline:kraken_b_dead_attack",
+    "display_name": "kraken_b_dead_attack",
+    "bedrock_options": {
+     "icon": "faultline.kraken_b_dead",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   }
+  ]
+ }
+}

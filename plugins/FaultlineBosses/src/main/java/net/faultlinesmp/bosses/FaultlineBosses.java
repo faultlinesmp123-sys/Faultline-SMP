@@ -563,6 +563,8 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         final LivingEntity stand;
         final LivingEntity anchor;   // the real hitbox (damage goes here)
         final Entity look;           // whose facing to copy (the Java model), may be null
+        Location want;               // set by a boss that places its stand-in itself (feet + yaw), else it follows the anchor
+        String model;                // the Bedrock model it wears (an armor stand stand-in: FaultlineBossModels.mcpack)
         Proxy(LivingEntity stand, LivingEntity anchor, Entity look) { this.stand = stand; this.anchor = anchor; this.look = look; }
     }
     private final Map<UUID, Proxy> proxies = new HashMap<>(); // keyed by the anchor's UUID
@@ -614,6 +616,11 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             if (e instanceof org.bukkit.entity.Mob mob) mob.setAI(false);
             if (e instanceof Zombie z) { z.setShouldBurnInDay(false); z.setCanPickupItems(false); }
             if (e instanceof LivingEntity le) { le.getEquipment().clear(); le.setCanPickupItems(false); }
+            if (e instanceof org.bukkit.entity.ArmorStand a) { // a Bedrock boss model is a helmet on an invisible stand
+                a.setInvisible(true); a.setBasePlate(false); a.setArms(false); a.setMarker(false); // Geyser only draws helmets on real stands
+                for (org.bukkit.inventory.EquipmentSlot sl : org.bukkit.inventory.EquipmentSlot.values())
+                    try { a.addEquipmentLock(sl, org.bukkit.entity.ArmorStand.LockType.REMOVING_OR_CHANGING); } catch (RuntimeException ignored) { }
+            }
         };
         Entity raw = anchor.getWorld().spawn(anchor.getLocation(), cls, init);
         if (!(raw instanceof LivingEntity stand)) { raw.remove(); return; }
@@ -628,6 +635,24 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         AttributeInstance sc = stand.getAttribute(Attribute.SCALE);
         if (sc != null) sc.setBaseValue(scale);
         proxies.put(anchor.getUniqueId(), new Proxy(stand, anchor, look));
+    }
+
+    /** A boss puts its own stand-in somewhere exact (feet, facing): its Bedrock model is drawn from there. */
+    void proxyPlace(LivingEntity anchor, Location at) {
+        Proxy px = anchor == null ? null : proxies.get(anchor.getUniqueId());
+        if (px != null) px.want = at;
+    }
+
+    /** Dresses an armor stand stand-in in a Bedrock boss model (paper with item model faultline:<model>; changed only when it changes). */
+    void proxyModel(LivingEntity anchor, String model) {
+        Proxy px = anchor == null ? null : proxies.get(anchor.getUniqueId());
+        if (px == null || model.equals(px.model) || !px.stand.isValid() || px.stand.getEquipment() == null) return;
+        px.model = model;
+        ItemStack it = new ItemStack(Material.PAPER);
+        org.bukkit.inventory.meta.ItemMeta m = it.getItemMeta();
+        m.setItemModel(new org.bukkit.NamespacedKey("faultline", model));
+        it.setItemMeta(m);
+        px.stand.getEquipment().setHelmet(it);
     }
 
     /** The real thing behind a Bedrock stand-in (null if it isn't one): a click on the stand-in counts as a click on it. */
@@ -659,9 +684,9 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 it.remove();
                 continue;
             }
-            Location at = px.anchor.getLocation();
-            if (px.look != null && px.look.isValid()) { at.setYaw(px.look.getLocation().getYaw()); at.setPitch(0); }
-            px.stand.teleport(at);
+            Location at = px.want != null ? px.want.clone() : px.anchor.getLocation();
+            if (px.want == null && px.look != null && px.look.isValid()) { at.setYaw(px.look.getLocation().getYaw()); at.setPitch(0); }
+            if (Double.isFinite(at.getX() + at.getY() + at.getZ())) px.stand.teleport(at);
         }
     }
 
@@ -1162,7 +1187,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 for (ItemDisplay d : new ItemDisplay[]{mantle, beakTop, beakBottom, pupilL, pupilR}) { d.setViewRange(6f); d.setDisplayWidth(scale * 2.5f); d.setDisplayHeight(scale * 2.5f); }
                 for (Arm a : arms) for (ItemDisplay d : a.segs) if (d != null) { d.setViewRange(5f); d.setDisplayWidth(scale); d.setDisplayHeight(scale); }
             }
-            proxy(hitbox, mantle, EntityType.GLOW_SQUID, colossal ? 8 : kcfg("bedrock.squid-scale", 10)); // Bedrock: a giant glow squid
+            proxy(hitbox, mantle, EntityType.ARMOR_STAND, Math.max(0.0625, Math.min(16, scale))); // Bedrock: his whole model (FaultlineBossModels.mcpack)
             bar = Bukkit.createBossBar(ChatColor.DARK_AQUA + "" + ChatColor.BOLD + title(), colossal ? BarColor.PURPLE : BarColor.BLUE, BarStyle.SEGMENTED_6);
             pinkTimer = (int) kcfg("pink-bubble-seconds", 15) * 20;
             playMusic();
@@ -2333,6 +2358,11 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         // ---------- drawing ----------
         void render() {
             hitbox.teleport(pos.toLocation(world).subtract(0, hitbox.getHeight() / 2, 0));
+            // Bedrock: the stand-in's feet sit 24 model pixels under his middle; it wears his skin (phase / dead) and what he's doing
+            Location bl = pos.toLocation(world).subtract(0, 1.5 * Math.min(16, scale), 0); bl.setYaw(yaw); bl.setPitch(0);
+            proxyPlace(hitbox, bl);
+            proxyModel(hitbox, "kraken_b_" + (dying ? "dead" : String.valueOf(Math.max(1, Math.min(3, phase)))) + "_"
+                    + (dying ? "idle" : attack >= 0 ? "attack" : thrusting ? "swim" : "idle"));
             flinch *= 0.85f;
             float breath = (float) (Math.sin(ticks * 0.06) + Math.sin(ticks * 0.023 + 1.3) * 0.4) * 0.024f; // never the same breath twice
             nodV += ((thrusting ? pulse * 0.16f : (float) Math.sin(ticks * 0.031) * 0.025f) - nod) * 0.18f; nodV *= 0.78f; nod += nodV; // the jet tips his head forward, it bobs back
@@ -3067,16 +3097,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             birdWingL = spawnDisplay(birdPos.toLocation(world), "jacob_bird_wing_l", bs, 2, Display.Billboard.FIXED);
             for (ItemDisplay d : new ItemDisplay[]{bird, birdHead, birdTail, birdWingR, birdWingL}) d.setViewRange(8f);
             hold(new ItemStack(Material.BOW));
-            proxy(hitbox, parts[2], EntityType.ZOMBIE, 1.0);
-            // Bedrock can't draw his model: at least his stand-in is a diamond knight, not a bare zombie
-            Proxy jpx = proxies.get(hitbox.getUniqueId());
-            if (jpx != null && jpx.stand.getEquipment() != null) {
-                org.bukkit.inventory.EntityEquipment eq = jpx.stand.getEquipment();
-                eq.setHelmet(new ItemStack(Material.DIAMOND_HELMET)); eq.setChestplate(new ItemStack(Material.DIAMOND_CHESTPLATE));
-                eq.setLeggings(new ItemStack(Material.DIAMOND_LEGGINGS)); eq.setBoots(new ItemStack(Material.DIAMOND_BOOTS));
-                eq.setItemInMainHand(new ItemStack(Material.DIAMOND_SWORD));
-                for (org.bukkit.inventory.EquipmentSlot sl : org.bukkit.inventory.EquipmentSlot.values()) try { eq.setDropChance(sl, 0f); } catch (RuntimeException ignored) { }
-            }
+            proxy(hitbox, parts[2], EntityType.ARMOR_STAND, Math.max(0.0625, Math.min(16, scale))); // Bedrock: his whole model (FaultlineBossModels.mcpack)
             proxy(birdBox, bird, EntityType.PHANTOM, 4.0);
             bar = Bukkit.createBossBar(ChatColor.AQUA + "" + ChatColor.BOLD + "Diamond Jacob", BarColor.BLUE, BarStyle.SEGMENTED_20);
             orbTimer = (int) (jcfg("orb-every-seconds", 20) * 20);
@@ -4565,9 +4586,24 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                 shown = n;
             }
             renderRig(parts, null, pos.toLocation(world), yaw, scale, shown);
+            bedrockState();
             renderWeapon(pos.toLocation(world), yaw, scale, shown);
             renderCape(pos.toLocation(world), yaw, scale, shown);
             if (ablaze && state != DEFEAT && ticks % 2 == 0) world.spawnParticle(Particle.SOUL_FIRE_FLAME, loc().add(0, 1.1, 0), 3, 0.35, 0.8, 0.35, 0.01);
+        }
+
+        Vector lastBPos;
+        /** Bedrock: his stand-in stands where he stands and wears the model of what he's doing (each state loops in the pack). */
+        void bedrockState() {
+            Location at = pos.toLocation(world); at.setYaw(yaw); at.setPitch(0);
+            proxyPlace(hitbox, at);
+            boolean moving = lastBPos != null && Math.hypot(pos.getX() - lastBPos.getX(), pos.getZ() - lastBPos.getZ()) > 0.04;
+            lastBPos = pos.clone();
+            String st = state == P1 ? "ride"
+                    : cut != null || state == DEFEAT ? "idle"
+                    : attack == 10 || attack == 32 || attack == 34 || attack == 99 ? "slam"
+                    : attack >= 0 ? "swing" : moving ? "walk" : "idle";
+            proxyModel(hitbox, "jacob_b_" + (ablaze ? "blaze" : "armor") + "_" + st);
         }
 
         void updateBar() {

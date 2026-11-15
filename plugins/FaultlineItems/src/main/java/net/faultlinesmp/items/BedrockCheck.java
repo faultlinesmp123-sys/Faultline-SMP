@@ -40,7 +40,7 @@ import java.util.zip.ZipFile;
 final class BedrockCheck implements CommandExecutor {
     static final String REPO = "https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/";
     static final List<String> MAPPINGS = List.of("faultline_items_mappings.json", "faultline_wild_mappings.json",
-            "faultline_ships_mappings.json", "faultline_cosmetics_mappings.json", "faultline_deep_mappings.json");
+            "faultline_ships_mappings.json", "faultline_cosmetics_mappings.json", "faultline_deep_mappings.json", "faultline_bosses_mappings.json");
 
     private final FaultlineItems plugin;
     BedrockCheck(FaultlineItems plugin) { this.plugin = plugin; }

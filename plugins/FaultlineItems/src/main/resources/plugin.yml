@@ -1,5 +1,5 @@
 name: FaultlineItems
-version: '1.3.32'
+version: '1.3.33'
 main: net.faultlinesmp.items.FaultlineItems
 api-version: '1.21'
 softdepend: [floodgate, Geyser-Spigot, DonutCombat]
@@ -7,6 +7,12 @@ author: FaultlineSMP
 description: Custom items for Faultline SMP — Magic Mirror, Cloud Potion, Darkness Potion, Golden Ring, Goodie Bag
 
 commands:
+  adminmenu:
+    description: Admin menu (ability items, remove abilities)
+    permission: items.abilities.admin
+  ability:
+    description: Your ability (admins - list, remove, give)
+    aliases: [abilities]
   mball:
     description: Says "mb all" to everyone you're fighting (both say it = the fight stops)
     aliases: [mb]
@@ -242,6 +248,9 @@ commands:
     usage: /givedisc <id|random> [player]
     permission: items.fgear
 permissions:
+  items.abilities.admin:
+    description: /adminmenu and /ability list/remove/give
+    default: op
   faultline.emote:
     description: Use emotes (/emote)
     default: true

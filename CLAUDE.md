@@ -2794,6 +2794,23 @@ Notes:
   PlayerCommandPreprocessEvent handler is HIGHEST + ignoreCancelled), so `Truce.onMbCommand` catches `/mball` / `/mb` (and the
   `faultlineitems:` forms) at LOW, runs it and cancels the event: DonutCombat never sees it, other commands stay blocked.
   Tested with the real DonutCombat 1.1.0 jar (scratch `tc/TcTest`).
+- **Personal abilities (Items 1.3.33, Index 1.9.18, `Items/Abilities.java`, `abilities:`, data `abilities.yml`)**: admin-only
+  items (`/adminmenu`, perm `items.abilities.admin` op: top row = click to get one of the 5 items, heads below = players with
+  an ability, click = REMOVE it; also `/ability list | remove <player> | give <player> <id> | item <id>`, players `/ability` =
+  theirs). Item = PAPER + vanilla item model + glint, stack 1, PDC `faultlineitems:ability_item` = id (+ `ability_<id>` for the
+  Index). Right-click = that ability bound to the UUID FOREVER (item used up, saved via SafeYaml), ONE per player (a second one
+  is refused). FROST (Star; `frost.*`): melee / arrow hits 50% Slowness II 3 s + freeze overlay (freeze ticks below the damage
+  line), 1.5 s per victim (server ticks). AIM (Lucian; `aim.*`): an arrow he shoots locks onto the living thing nearest his aim
+  (`pick`: 14 degree cone, 64 blocks, in sight by a block walk, players first; never invisible / creative / his pets / boss
+  hitboxes) and turns toward it every tick keeping its speed (`steer`, `turn` 0.35, Safe.vel); shields block it as normal; an
+  arrow hitting a block bounces at its target (or anyone in sight within 32) up to 2 times: a new arrow of the same type with
+  the same damage / crit / pierce / fire / pickup / potion, the old one removed (no extra arrow). SPEED (Voise): MOVEMENT_SPEED
+  modifier `faultlineitems:ability_speed` x2 (`speed.multiplier`). HOPS (Zombie): JUMP_STRENGTH +35% (`ability_jump`) +
+  SAFE_FALL_DISTANCE +50% (`ability_fall`). SHADE (Sin): endless ambient Strength II, Swiftness II, Fire Resistance, and
+  Invisibility until a totem pops (EntityResurrectEvent MONITOR); it comes back `shade.invis-return-seconds` 300 later or on
+  respawn. Re-applied every second; removed abilities strip only their own modifiers / endless ambient effects. Index: 5
+  entries (weapons) with existing icons. Tested (scratch `ng/AbTest`; MockBukkit needed `InventoryMock.getHolder(boolean)`
+  patched to getHolder() (`hp/Patch2`) and has no JUMP_STRENGTH or arrow flight).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

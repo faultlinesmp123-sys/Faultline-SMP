@@ -145,6 +145,21 @@ entries:
   - {chapter: weapons, name: "Upgraded Grindstone", icon: upgraded_grindstone, detect: "faultlineitems:upgraded_grindstone",
      how: "Craft it: 8 Blue Obsidian around a Grindstone.",
      does: "A blue grindstone that takes enchants off your gear, BOSS ENCHANTS too. Place it and right-click it, put an item in the middle, then click any one enchant to take just that one off, or take off every boss enchant, every normal enchant, or everything. Boss enchants come back to you as their book. Normal enchants give XP like a grindstone. Curses stay on."}
+  - {chapter: weapons, id: ability_frost, name: "Ability: Frostbite", icon: frost_flare, detect: "faultlineitems:ability_frost",
+     how: "Admins only (/adminmenu). Right-click it and the ability is yours forever (one ability each).",
+     does: "Star's ability: your hits (melee and arrows) can frostbite whoever you hit, slowing them down (Slowness II and the freezing chill for 3 seconds). Made for winning team fights."}
+  - {chapter: weapons, id: ability_aim, name: "Ability: Hawkeye", icon: hawkeye_monocle, detect: "faultlineitems:ability_aim",
+     how: "Admins only (/adminmenu). Right-click it and the ability is yours forever (one ability each).",
+     does: "Lucian's ability: your arrows lock onto whoever you aim at and curve to them. A shield still blocks them. An arrow that hits a wall bounces off it at someone in sight (twice)."}
+  - {chapter: weapons, id: ability_speed, name: "Ability: Swiftwind", icon: harpy_ring, detect: "faultlineitems:ability_speed",
+     how: "Admins only (/adminmenu). Right-click it and the ability is yours forever (one ability each).",
+     does: "Voise's ability: you move twice as fast. Good luck catching him."}
+  - {chapter: weapons, id: ability_hops, name: "Ability: Skyhop", icon: windrunner_band, detect: "faultlineitems:ability_hops",
+     how: "Admins only (/adminmenu). Right-click it and the ability is yours forever (one ability each).",
+     does: "Zombie's ability: you jump higher (about 2 blocks), so mace slams come from higher and hit harder. A little more safe fall too."}
+  - {chapter: weapons, id: ability_shade, name: "Ability: Shade", icon: shrieking_phantom, detect: "faultlineitems:ability_shade",
+     how: "Admins only (/adminmenu). Right-click it and the ability is yours forever (one ability each).",
+     does: "Sin's ability: Strength II, Swiftness II and Fire Resistance forever, and Invisibility until a totem pops. It comes back 5 minutes after the pop, or when you respawn."}
   - {chapter: weapons, name: "Blue Obsidian Bed", icon: blue_obsidian, detect: "faultlineitems:blue_bed",
      how: "Craft it: 3 Wool (any colour) over 3 Blue Obsidian.",
      does: "A bed that works in the Nether and the End. It never explodes. Right-click it there to set your respawn point (a normal bed or respawn anchor used later takes over). The Nether and the End have their own day and night now: at night you can sleep in it, and once half the players there are asleep the night passes. In the Overworld it's a normal bed."}

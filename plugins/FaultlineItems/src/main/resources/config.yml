@@ -576,6 +576,28 @@ vanish:
 # Hot air balloons (1.2.24): craft (5 wool around a campfire, string, barrel, string), set up, fly. Fuel: coal/charcoal 60 s,
 # blaze rod 150 s, coal block 600 s, burned while in the air.
 # PvP limits (1.2.37). Creative / spectator players are never limited.
+abilities:                         # 1.3.33: personal abilities. Admins: /adminmenu. Right-clicking the item = yours forever
+  enabled: true
+  frost:                           # Star
+    chance: 0.5                    # per hit (melee or arrow)
+    seconds: 3
+    slowness-level: 2
+    cooldown-seconds: 1.5          # per victim
+  aim:                             # Lucian
+    cone-degrees: 14               # how close to your aim a target must be to lock on
+    range: 64
+    turn: 0.35                     # how hard arrows curve each tick (0.05-1)
+    bounces: 2                     # wall bounces per arrow
+    bounce-range: 32
+  speed:                           # Voise
+    multiplier: 2.0
+  hops:                            # Zombie
+    jump-bonus: 0.35               # +35% jump strength (~2 blocks high instead of 1.25)
+    safe-fall-bonus: 0.5
+  shade:                           # Sin
+    strength-level: 2
+    swiftness-level: 2
+    invis-return-seconds: 300      # invisibility comes back this long after a totem pop (0 = only after respawning)
 ghost-fix:                         # 1.3.30: after every right-click on a block (and a cancelled place / break) the real blocks are
   enabled: true                    #   re-sent to that player, so trapdoors / doors / shelves / placed blocks never stay ghosts
   delay-ticks: 2

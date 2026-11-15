@@ -456,6 +456,9 @@ public final class FaultlineItems extends JavaPlugin {
         if (getCommand("mimicplayer") != null) { getCommand("mimicplayer").setExecutor(mimics); getCommand("mimicplayer").setTabCompleter(mimics); }
         combatTag = new CombatTag(this, mimics);
         getServer().getPluginManager().registerEvents(combatTag, this);
+        abilities = new Abilities(this); // 1.3.33: personal abilities (/adminmenu)
+        getServer().getPluginManager().registerEvents(abilities, this);
+        for (String c : new String[]{"adminmenu", "ability"}) if (getCommand(c) != null) { getCommand(c).setExecutor(abilities); getCommand(c).setTabCompleter(abilities); }
         truce = new Truce(this); // 1.3.20: both say mb = the fight stops
         if (getCommand("mball") != null) getCommand("mball").setExecutor(truce); // 1.3.32: /mball = "mb all"
         getServer().getPluginManager().registerEvents(truce, this);
@@ -673,6 +676,7 @@ public final class FaultlineItems extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (abilities != null) try { abilities.disable(); } catch (RuntimeException ignored) { }
         if (blueObsidian != null) try { blueObsidian.shutdown(); } catch (RuntimeException ignored) { }
         if (upgradedGrindstone != null) try { upgradedGrindstone.shutdown(); } catch (RuntimeException ignored) { }
         if (blueBed != null) try { blueBed.shutdown(); } catch (RuntimeException ignored) { }
@@ -970,6 +974,7 @@ public final class FaultlineItems extends JavaPlugin {
     MimicPlayer mimics;
     CombatTag combatTag;
     Truce truce;
+    Abilities abilities;
     HauntedVillage haunted;
     Krampus krampus;
     Holidays holidays;

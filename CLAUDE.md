@@ -2660,6 +2660,12 @@ Notes:
   HIGHEST), plugin menus (Wardrobe preview, shops, ship holds) are never scanned, smithing / anvils / dyeing keep the serial
   and consume the input. Known gap: a staff `/accrestore` that puts back an accessory the player had since stored elsewhere
   counts as a copy once it's taken out of the slots.
+- **Audit (Items 1.3.24)**: nine Items data files were still LOADED with `YamlConfiguration.loadConfiguration` (balloons,
+  races, fishing, coords, offline spots, vanish, mimic world, blue portals, totems): a cut-off file came back empty and the next
+  save wrote that over it. All load through `SafeYaml.load` now (salvage + `.broken-<time>` copy); `mimic_memory.yml` was still
+  saved with `y.save` on the main thread, now `SafeYaml.write`. Checked and fine: no direct `setVelocity` without a finite check,
+  no `Slime.class` spawns, every FLASH / EFFECT particle has its data, SaveGuard's logout copy vs DonutCombat's combat-log kill
+  (the copy is taken after the death, so it's already empty), the bundle loader's order and enable path.
 - **FAULTLINESMPJAR (one jar for everything, `plugins/FAULTLINESMPJAR`, built by `tools/build_bundle.sh` into
   `release/FAULTLINESMPJAR.jar`)**: a loader plugin (`load: STARTUP`) carrying the 11 plugin jars as `bundled/<Name>.jar`.
   On start each is copied to `plugins/FAULTLINESMPJAR/jars/` (only when changed, temp + atomic move) and loaded with

@@ -41,7 +41,7 @@ final class Vanish implements Listener, CommandExecutor {
     Vanish(FaultlineItems plugin) {
         this.plugin = plugin;
         file = new File(plugin.getDataFolder(), "vanished.yml");
-        if (file.exists()) for (String s : YamlConfiguration.loadConfiguration(file).getStringList("vanished")) {
+        if (file.exists()) for (String s : SafeYaml.load(plugin, file).yaml.getStringList("vanished")) {
             try { hidden.add(UUID.fromString(s)); } catch (IllegalArgumentException ignored) { }
         }
         Bukkit.getScheduler().runTaskTimer(plugin, this::tick, 40L, 40L);

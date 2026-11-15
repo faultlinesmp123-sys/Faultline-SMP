@@ -37,7 +37,7 @@ final class OfflineTp implements Listener, TabExecutor {
     OfflineTp(FaultlineItems plugin) {
         this.plugin = plugin;
         this.file = new File(plugin.getDataFolder(), "offline_spots.yml");
-        this.data = YamlConfiguration.loadConfiguration(file);
+        this.data = SafeYaml.load(plugin, file).yaml;
     }
 
     @EventHandler(priority = EventPriority.MONITOR)

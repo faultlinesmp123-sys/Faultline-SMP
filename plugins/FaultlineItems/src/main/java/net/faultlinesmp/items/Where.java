@@ -50,7 +50,7 @@ final class Where implements Listener, CommandExecutor, TabCompleter {
         this.plugin = plugin;
         file = new File(plugin.getDataFolder(), "coords.yml");
         if (file.exists()) {
-            YamlConfiguration y = YamlConfiguration.loadConfiguration(file);
+            YamlConfiguration y = SafeYaml.load(plugin, file).yaml;
             for (String s : y.getStringList("on")) try { showing.add(UUID.fromString(s)); } catch (IllegalArgumentException ignored) { }
             for (String s : y.getStringList("off")) try { hidden.add(UUID.fromString(s)); } catch (IllegalArgumentException ignored) { }
         }

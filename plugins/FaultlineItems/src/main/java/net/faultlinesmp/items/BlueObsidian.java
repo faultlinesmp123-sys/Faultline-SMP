@@ -755,7 +755,7 @@ final class BlueObsidian implements Listener {
 
     void load() {
         if (!file.exists()) return;
-        YamlConfiguration y = YamlConfiguration.loadConfiguration(file);
+        YamlConfiguration y = SafeYaml.load(plugin, file).yaml;
         ConfigurationSection s = y.getConfigurationSection("portals");
         if (s == null) return;
         for (String id : s.getKeys(false)) {

@@ -688,7 +688,7 @@ final class Balloons implements Listener, org.bukkit.command.CommandExecutor {
 
     void load() {
         if (!file.exists()) return;
-        YamlConfiguration y = YamlConfiguration.loadConfiguration(file);
+        YamlConfiguration y = SafeYaml.load(plugin, file).yaml;
         ConfigurationSection rs = y.getConfigurationSection("returns");
         if (rs != null) for (String k : rs.getKeys(false)) try { returns.put(UUID.fromString(k), new ArrayList<>(rs.getStringList(k))); } catch (IllegalArgumentException ignored) { }
         ConfigurationSection s = y.getConfigurationSection("balloons");

@@ -54,7 +54,7 @@ final class TotemLimit implements Listener, CommandExecutor, TabCompleter {
     TotemLimit(FaultlineItems plugin) {
         this.plugin = plugin;
         file = new File(plugin.getDataFolder(), "totems.yml");
-        YamlConfiguration y = YamlConfiguration.loadConfiguration(file);
+        YamlConfiguration y = SafeYaml.load(plugin, file).yaml;
         for (String k : y.getKeys(false)) try { pops.put(UUID.fromString(k), y.getInt(k)); } catch (IllegalArgumentException ignored) { }
         var hits = y.getConfigurationSection("last-hit");
         if (hits != null) for (String k : hits.getKeys(false)) try { lastAt.put(UUID.fromString(k), hits.getLong(k)); } catch (IllegalArgumentException ignored) { }

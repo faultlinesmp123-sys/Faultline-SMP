@@ -120,7 +120,7 @@ final class Fishing implements Listener, CommandExecutor, TabCompleter {
 
     void load() {
         if (!file.exists()) return;
-        YamlConfiguration y = YamlConfiguration.loadConfiguration(file);
+        YamlConfiguration y = SafeYaml.load(plugin, file).yaml;
         for (String id : SPECIES.keySet()) {
             String b = "records." + id;
             if (y.contains(b + ".kg")) records.put(id, new Record(y.getDouble(b + ".kg"), y.getString(b + ".name", "?"), y.getLong(b + ".when")));

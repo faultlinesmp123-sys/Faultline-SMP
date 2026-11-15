@@ -2225,7 +2225,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             String k = e.getKey() + ".";
             y.set(k + "ticks", e.getValue().ticks); y.set(k + "shield", e.getValue().shield); y.set(k + "bow", e.getValue().bow); y.set(k + "eat", e.getValue().eat);
         }
-        try { y.save(new java.io.File(plugin.getDataFolder(), "mimic_memory.yml")); } catch (java.io.IOException ignored) { }
+        SafeYaml.write(plugin, new java.io.File(plugin.getDataFolder(), "mimic_memory.yml"), y.saveToString());
     }
 
     void loadMemory() {

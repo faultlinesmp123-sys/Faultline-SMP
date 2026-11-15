@@ -121,7 +121,7 @@ final class Race implements Listener, CommandExecutor, TabCompleter {
     void load() {
         courses.clear();
         if (!file.exists()) return;
-        YamlConfiguration y = YamlConfiguration.loadConfiguration(file);
+        YamlConfiguration y = SafeYaml.load(plugin, file).yaml;
         ConfigurationSection cs = y.getConfigurationSection("courses");
         if (cs != null) for (String key : cs.getKeys(false)) {
             ConfigurationSection c = cs.getConfigurationSection(key);

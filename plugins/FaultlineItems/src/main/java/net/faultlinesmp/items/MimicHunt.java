@@ -196,7 +196,7 @@ final class MimicHunt implements Listener {
 
     void load() {
         if (!file.exists()) return;
-        YamlConfiguration y = YamlConfiguration.loadConfiguration(file);
+        YamlConfiguration y = SafeYaml.load(plugin, file).yaml;
         ConfigurationSection wm = y.getConfigurationSection("worlds");
         if (wm != null) for (String k : wm.getKeys(false)) worldMinutes.put(k, wm.getDouble(k));
         ConfigurationSection cs = y.getConfigurationSection("cells");

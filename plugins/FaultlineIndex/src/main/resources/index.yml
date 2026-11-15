@@ -156,7 +156,7 @@ entries:
      does: "Voise's ability: you move 20% faster. Good luck catching him."}
   - {chapter: weapons, id: ability_hops, name: "Ability: Skyhop", icon: windrunner_band, detect: "faultlineitems:ability_hops",
      how: "Admins only (/adminmenu). Right-click it and the ability is yours forever (one ability each).",
-     does: "Zombie's ability: you jump higher (about 2 blocks), so mace slams come from higher and hit harder. A little more safe fall too."}
+     does: "Zombie's ability: you jump higher (about 2.2 blocks), so mace slams come from higher and hit harder. A little more safe fall too."}
   - {chapter: weapons, id: ability_shade, name: "Ability: Shade", icon: shrieking_phantom, detect: "faultlineitems:ability_shade",
      how: "Admins only (/adminmenu). Right-click it and the ability is yours forever (one ability each).",
      does: "Sin's ability: Strength II, Swiftness II and Fire Resistance forever, and Invisibility until a totem pops. It comes back 5 minutes after the pop, or when you respawn."}

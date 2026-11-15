@@ -2811,6 +2811,10 @@ Notes:
   respawn. Re-applied every second; removed abilities strip only their own modifiers / endless ambient effects. Index: 5
   entries (weapons) with existing icons. Tested (scratch `ng/AbTest`; MockBukkit needed `InventoryMock.getHolder(boolean)`
   patched to getHolder() (`hp/Patch2`) and has no JUMP_STRENGTH or arrow flight).
+- **Skyhop + mace enchants (Items 1.3.35, Index 1.9.20)**: Skyhop's JUMP_STRENGTH bonus 0.35 -> 0.42 (`Balance.num`: an old
+  0.35 reads as 0.42; ~2.2 blocks). Maces may carry DENSITY I and FIRE ASPECT II too (`mace-enchants.allowed`; a server config
+  still holding exactly the old three-key list gets both added in `MaceEnchants.allowed()`). Density over I is capped to I,
+  Fire Aspect III (books) to II; everything else is still stripped. Tested (scratch `ng/MaceT`).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

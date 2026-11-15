@@ -380,7 +380,7 @@ public final class FaultlineItems extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new AccessoryStacks(this), this); // 1.2.12: accessories don't stack
         getServer().getPluginManager().registerEvents(new MaceRules(this), this);
         getServer().getPluginManager().registerEvents(new OldGear(this), this); // 1.2.65: the removed bosses' items and trophies
-        getServer().getPluginManager().registerEvents(new MaceEnchants(this), this); // 1.2.55: Unbreaking III, Wind Burst II, Mending only
+        getServer().getPluginManager().registerEvents(new MaceEnchants(this), this); // 1.2.55: Unbreaking III, Wind Burst II, Mending (+ Density I, Fire Aspect II since 1.3.35)
         enchants = new Enchants(this);
         getServer().getPluginManager().registerEvents(enchants, this); // 1.2.17: boss enchant books
         getCommand("fenchant").setExecutor(enchants);

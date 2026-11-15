@@ -23,7 +23,7 @@ import java.util.Map;
 
 /**
  * MACE ENCHANTMENTS (Items 1.2.55, config mace-enchants:). Maces are allowed again, but a mace can only carry
- * Unbreaking III, Wind Burst II and Mending (`allowed`): anything else is stripped and levels are capped, wherever the
+ * Unbreaking III, Wind Burst II, Mending, Density I and Fire Aspect II (`allowed`, 1.3.35 added the last two): anything else is stripped and levels are capped, wherever the
  * mace gets them: the enchanting table, the anvil (books or another mace), and maces players already have (their
  * inventories are checked every 2 s, on pickup and when held). Enchanted books of Wind Burst are capped to II too, so
  * nobody can get Wind Burst III at all. faultline.mace.bypass skips it.
@@ -48,6 +48,10 @@ final class MaceEnchants implements Listener {
         Map<String, Object> m = new HashMap<>();
         if (s != null) m.putAll(s.getValues(false));
         if (m.isEmpty()) { m.put("unbreaking", 3); m.put("wind_burst", 2); m.put("mending", 1); }
+        // 1.3.35: Density I and Fire Aspect II are allowed too. A server config still holding the old list gets them.
+        if (m.size() == 3 && m.keySet().containsAll(java.util.List.of("unbreaking", "wind_burst", "mending"))) {
+            m.put("density", 1); m.put("fire_aspect", 2);
+        }
         for (var e : m.entrySet()) {
             int lvl = e.getValue() instanceof Number n ? n.intValue() : parse(String.valueOf(e.getValue()));
             if (lvl > 0) out.put(id(e.getKey()), lvl);

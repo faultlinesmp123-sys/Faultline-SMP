@@ -234,7 +234,7 @@ final class Abilities implements Listener, CommandExecutor, TabCompleter {
     void apply(Player p) {
         Kind k = of(p);
         modifier(p, Attribute.MOVEMENT_SPEED, speedKey, k == Kind.SPEED ? Balance.num(plugin, "abilities.speed.multiplier", 2.0, 1.2) - 1 : 0 /* 1.3.34: x1.2 (an old config's 2.0 reads as 1.2) */);
-        modifier(p, Attribute.JUMP_STRENGTH, jumpKey, k == Kind.HOPS ? cfg("hops.jump-bonus", 0.35) : 0);
+        modifier(p, Attribute.JUMP_STRENGTH, jumpKey, k == Kind.HOPS ? Balance.num(plugin, "abilities.hops.jump-bonus", 0.35, 0.42) : 0);
         modifier(p, Attribute.SAFE_FALL_DISTANCE, fallKey, k == Kind.HOPS ? cfg("hops.safe-fall-bonus", 0.5) : 0);
         if (k == Kind.SHADE && p.getGameMode() != GameMode.SPECTATOR && !p.isDead()) {
             effect(p, PotionEffectType.STRENGTH, (int) cfg("shade.strength-level", 2) - 1);

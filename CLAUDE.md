@@ -2652,6 +2652,14 @@ Notes:
   restored). Items 1.3.23: `/totems` name lookup tries `getOfflinePlayerIfCached` before scanning every player file.
   Tested (scratch `dg/DgTest`: serials, string/dirt untouched, legit chest hand-off, copy to another player, two in one
   inventory, copy in a chest, copy inside a shulker, creative, op, mob drops, save).
+- **DupeGuard audit (Index 1.9.14)**: shulker boxes / bundles are first read through their data component
+  (`DataComponentTypes.CONTAINER` / `BUNDLE_CONTENTS`, `anySerialInside`, no meta copy); only a box holding a serial gets the
+  slow getItemMeta read (every player's shulkers were copied once a second). Players who were online at an unclean stop
+  (`SaveGuard.crashVictim`, first 2 hours after the restart) still lose a copy but are NOT kicked: a crash rollback makes copies
+  that aren't their fault. Checked and fine: mimic drops are re-serialed (its drops are added at NORMAL, DupeGuard runs at
+  HIGHEST), plugin menus (Wardrobe preview, shops, ship holds) are never scanned, smithing / anvils / dyeing keep the serial
+  and consume the input. Known gap: a staff `/accrestore` that puts back an accessory the player had since stored elsewhere
+  counts as a copy once it's taken out of the slots.
 - **FAULTLINESMPJAR (one jar for everything, `plugins/FAULTLINESMPJAR`, built by `tools/build_bundle.sh` into
   `release/FAULTLINESMPJAR.jar`)**: a loader plugin (`load: STARTUP`) carrying the 11 plugin jars as `bundled/<Name>.jar`.
   On start each is copied to `plugins/FAULTLINESMPJAR/jars/` (only when changed, temp + atomic move) and loaded with

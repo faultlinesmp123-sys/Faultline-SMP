@@ -124,16 +124,39 @@ final class DupeGuard implements Listener, CommandExecutor {
     /** One serial's copy found during a scan. */
     private record Hit(String uid, Inventory inv, int slot, int nested) { } // nested = index inside a shulker/bundle in that slot, -1 = the slot itself
 
-    private static List<ItemStack> inside(ItemStack it) {
+    private List<ItemStack> inside(ItemStack it) {
         if (it == null || !it.hasItemMeta()) return List.of();
         String n = it.getType().name();
         if (!n.endsWith("SHULKER_BOX") && !n.endsWith("BUNDLE")) return List.of();
+        if (!anySerialInside(it)) return List.of(); // cheap read first: getItemMeta copies the whole box
         try {
             ItemMeta m = it.getItemMeta();
             if (m instanceof BlockStateMeta b && b.hasBlockState() && b.getBlockState() instanceof ShulkerBox box) return Arrays.asList(box.getInventory().getContents());
             if (m instanceof BundleMeta bm) return bm.getItems();
         } catch (Throwable ignored) { }
         return List.of();
+    }
+
+    /**
+     * Quick look through the item's container / bundle component (no meta copy). True when something inside has a serial, or
+     * when the component can't be read (then the slow path decides). Its list may leave out empty slots, so positions come from
+     * the meta path.
+     */
+    private boolean anySerialInside(ItemStack it) {
+        try {
+            List<ItemStack> list = null;
+            if (it.getType().name().endsWith("SHULKER_BOX")) {
+                io.papermc.paper.datacomponent.item.ItemContainerContents c = it.getData(io.papermc.paper.datacomponent.DataComponentTypes.CONTAINER);
+                if (c == null) return true; // no component read: the slow path decides
+                list = c.contents();
+            } else {
+                io.papermc.paper.datacomponent.item.BundleContents c = it.getData(io.papermc.paper.datacomponent.DataComponentTypes.BUNDLE_CONTENTS);
+                if (c == null) return true; // no component read: the slow path decides
+                list = c.contents();
+            }
+            for (ItemStack in : list) if (uid(in) != null) return true;
+            return false;
+        } catch (Throwable t) { return true; }
     }
 
     /** Every serial in these inventories (slots + one level of shulker / bundle contents). Gives untagged tracked items a serial. */
@@ -281,9 +304,11 @@ final class DupeGuard implements Listener, CommandExecutor {
         String who = culprit != null ? culprit.getName() : "?";
         String text = Watch.b(who) + " had a DUPED " + what + " (the same item " + how + "). The copy was deleted"
                 + (culprit != null && owner != null && kick() ? " and they were kicked." : ".");
+        boolean crash = culprit != null && index.saveGuard != null && index.saveGuard.crashVictim(culprit.getUniqueId());
+        if (crash) text = text.replace(" and they were kicked.", ". Not kicked: they were online when the server crashed, so a rollback can have made it.");
         if (culprit != null) index.watch.record(culprit, "dupe", Watch.Sev.ALERT, text);
         index.getLogger().warning("[DupeGuard] " + ChatColor.stripColor(text));
-        if (owner != null && kick()) {
+        if (owner != null && kick() && !crash) {
             String msg = index.getConfig().getString("dupe-guard.kick-message", "Duped item detected and removed. Duping gets you kicked.");
             Bukkit.getScheduler().runTask(index, () -> { if (owner.isOnline()) owner.kickPlayer(msg); });
         }

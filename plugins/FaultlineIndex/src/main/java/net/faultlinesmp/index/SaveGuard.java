@@ -23,6 +23,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -68,6 +69,13 @@ final class SaveGuard implements Listener {
         Bukkit.getScheduler().runTaskTimer(index, this::sweep, 200L, 100L);
     }
 
+    /** Players who were online when the server last crashed (their save can be behind the world: a rollback copy isn't their fault). */
+    private final Set<UUID> crashed = new HashSet<>();
+    private final long startedAt = System.currentTimeMillis();
+
+    /** True for a player online at the last crash, during the first 2 hours after the restart. */
+    boolean crashVictim(UUID id) { return crashed.contains(id) && System.currentTimeMillis() - startedAt < 2L * 3600000; }
+
     private boolean on() { return index.getConfig().getBoolean("save-guard.enabled", true); }
 
     // ---------------------------------------------------------------- file
@@ -92,7 +100,7 @@ final class SaveGuard implements Listener {
             // whoever was online never had a clean quit: their record can't be trusted, and their save may be minutes old
             for (String entry : was) {
                 int bar = entry.indexOf('|');
-                try { UUID id = UUID.fromString(bar < 0 ? entry : entry.substring(0, bar)); prints.remove(id); snapFile(id).delete(); } catch (IllegalArgumentException ignored) { }
+                try { UUID id = UUID.fromString(bar < 0 ? entry : entry.substring(0, bar)); prints.remove(id); snapFile(id).delete(); crashed.add(id); } catch (IllegalArgumentException ignored) { }
             }
             List<String> names = new ArrayList<>();
             for (String entry : was) { int bar = entry.indexOf('|'); names.add(bar < 0 ? entry : entry.substring(bar + 1)); }

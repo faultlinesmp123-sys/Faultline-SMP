@@ -903,6 +903,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         float roll, deathFade = 1;                                    // banking into turns; shrinking away at the very end
         int blinkT, nextBlink = 100, hurtT, recoilT, squashT;           // blinks, hit flash, arm recoil, impact squash
         boolean thrusting, rewarded, flashing;
+        int sinceJet = 99; float nod, nodV;
         Vector moveDir = new Vector(0, 0, 1);
         final Slime hitbox;
         ItemDisplay mantle, beakTop, beakBottom, pupilL, pupilR;
@@ -945,9 +946,13 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
             double follow = 0.15, wave = 0.35, curl = 0.5;
             boolean busy;
             Slime tip;
+            final Vector[] prev = new Vector[SEGS + 1];          // last tick's pose: the water drags the arm behind its root
+            final double rate, off; // every arm keeps its own time (never all in step)
+            double curlNow = 0.5;
 
             Arm(int index) {
                 this.index = index;
+                rate = 0.82 + ((index * 37) % 9) / 22.0; off = index * 2.39;
                 // about 22 blocks long and 2.3 wide at the base (an octopus's arms are ~3x its head), tapering to 0.7
                 for (int j = 0; j < SEGS; j++) { len[j] = (3.2 - j * 0.18) * scale / 4; width[j] = (2.3 - j * 0.2) * scale / 4; }
                 Vector root = root();
@@ -993,24 +998,46 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                         for (int j = 0; j < SEGS; j++) p[j + 1] = p[j].clone().add(safeDir(p[j + 1].clone().subtract(p[j]), new Vector(0, -1, 0)).multiply(len[j]));
                     }
                 }
-                // a traveling wave down the arm, so it never looks stiff (stronger toward the tip)
-                double sp = speed();
+                // a bend that travels from the root to the tip, sideways AND up/down a quarter beat apart (a slow corkscrew,
+                // not a flat wiggle), each arm on its own clock, its strength swelling and fading so it never repeats
+                double sp = speed(), s4 = scale / 4.0;
+                double amp = wave * (0.65 + 0.35 * Math.sin(ticks * 0.017 * rate + off)) * s4;
                 for (int j = 1; j <= SEGS; j++) {
                     Vector dir = safeDir(p[j].clone().subtract(p[j - 1]), new Vector(0, -1, 0));
                     Vector side = safeDir(dir.getCrossProduct(new Vector(0, 1, 0)), new Vector(1, 0, 0));
-                    double w = Math.sin(ticks * 0.12 * sp + j * 0.8 + index * 1.7) * wave * (j / (double) SEGS) * scale / 4;
-                    p[j].add(side.multiply(w));
+                    Vector up = safeDir(side.getCrossProduct(dir), new Vector(0, 1, 0));
+                    double ph = ticks * 0.11 * sp * rate - j * 0.75 + off;
+                    double reach = Math.pow(j / (double) SEGS, 1.4); // the root barely moves, the tip the most
+                    p[j].add(side.multiply(Math.sin(ph) * amp * reach)).add(up.multiply(Math.sin(ph * 0.83 + 1.1) * amp * 0.55 * reach));
                 }
-                // the tips curl inward, like a real octopus's (not while the arm is attacking: it has to aim)
-                double c = (busy && !dying) ? 0 : curl; // BUG FIX: dying arms are all "busy", so the death clutch never coiled
+                // the tips coil inward, more and more toward the end (not while the arm is attacking: it has to aim)
+                curlNow += (((busy && !dying) ? 0 : curl) - curlNow) * 0.15; // BUG FIX: dying arms are all "busy", so the death clutch never coiled
+                double c = curlNow; // eased: switching an attack on/off used to snap the whole tip in one tick
                 if (c > 0.01) {
-                    Vector center = pos.clone().add(new Vector(0, -2 * scale / 4, 0));
-                    for (int j = SEGS - 3; j <= SEGS; j++) {
-                        double kk = (j - (SEGS - 3)) / 3.0;
-                        p[j].add(safeDir(center.clone().subtract(p[j]), new Vector(0, 1, 0)).multiply(c * kk * 1.2 * scale / 4));
+                    Vector center = pos.clone().add(new Vector(0, -2 * s4, 0));
+                    for (int j = SEGS - 4; j <= SEGS; j++) {
+                        double kk = (j - (SEGS - 4)) / 4.0;
+                        p[j].add(safeDir(center.clone().subtract(p[j]), new Vector(0, 1, 0)).multiply(c * kk * kk * 1.9 * s4));
                     }
                 }
                 for (int j = 0; j < SEGS; j++) p[j + 1] = p[j].clone().add(safeDir(p[j + 1].clone().subtract(p[j]), new Vector(0, -1, 0)).multiply(len[j]));
+                // water drag: each joint keeps some of where it was, more toward the tip, so the arm trails and whips
+                // behind his moves instead of moving like a rod (less while it strikes: it still has to land)
+                if (prev[0] != null && prev[0].distanceSquared(p[0]) > 36 * k * k) java.util.Arrays.fill(prev, null); // he was moved: no smear
+                double drag = dying ? 0.2 : busy ? 0.22 : 0.42;
+                // and no joint jumps further in a tick than the arm could really move (the reach solver can flip from a
+                // straight arm to a bent one when a goal changes): strikes get a loose cap so they still land on time
+                double cap = (busy && !dying ? 2.6 : 1.1) * s4 * Math.max(1, ms);
+                Vector rootMove = prev[0] == null ? new Vector() : p[0].clone().subtract(prev[0]);
+                for (int j = 1; j <= SEGS; j++) {
+                    if (prev[j] == null) continue;
+                    double d = drag * Math.pow(j / (double) SEGS, 1.3);
+                    p[j] = p[j].clone().multiply(1 - d).add(prev[j].clone().multiply(d));
+                    Vector moved = p[j].clone().subtract(prev[j]).subtract(rootMove);
+                    if (moved.length() > cap) p[j] = prev[j].clone().add(rootMove).add(moved.normalize().multiply(cap));
+                }
+                for (int j = 0; j < SEGS; j++) p[j + 1] = p[j].clone().add(safeDir(p[j + 1].clone().subtract(p[j]), new Vector(0, -1, 0)).multiply(len[j]));
+                for (int j = 0; j <= SEGS; j++) prev[j] = p[j].clone();
             }
 
             void render() {
@@ -1156,9 +1183,9 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
          * Positions were computed with it too, which mirrored them front-to-back: his pupils sat on the BACK of his head,
          * his beak behind it, and his siphon bubbled out of the wrong side. Offsets use this (no flip) instead.
          */
-        Quaternionf rotBase() { return new Quaternionf().rotateY((float) -Math.toRadians(yaw)).rotateX(lean - swell * 0.22f).rotateZ(roll); }
+        Quaternionf rotBase() { return new Quaternionf().rotateY((float) -Math.toRadians(yaw)).rotateX(lean - swell * 0.22f + nod).rotateZ(roll); }
 
-        Quaternionf rotModel() { return new Quaternionf().rotateY((float) -Math.toRadians(yaw)).rotateX(lean - swell * 0.22f).rotateZ(roll).mul(facing(0)); } // swell: leans back
+        Quaternionf rotModel() { return new Quaternionf().rotateY((float) -Math.toRadians(yaw)).rotateX(lean - swell * 0.22f + nod).rotateZ(roll).mul(facing(0)); } // swell: leans back
 
         /** The tip of his siphon (the funnel on his side): his jets and his ink come out of here. */
         Vector siphon() { return pos.clone().add(vec(rotBase().transform(new Vector3f(19, -3, 2).mul(scale / 16f), new Vector3f()))); }
@@ -1392,8 +1419,9 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                         station.add(away.multiply(sd));
                     } else if (flat > 0.1) station.subtract(new Vector(to.getX(), 0, to.getZ()).multiply(Math.min(1, sd / flat))); // ~10 blocks away
                     thrusting = c < 10;
-                    if (c < 10) { // the jet: contracts, pushes, and a stream of bubbles shoots out of his siphon
-                        pulse = (float) Math.sin(c / 10.0 * Math.PI);
+                    if (c < 10) { // the jet: a quick squeeze (3 ticks), then he lets go slowly, pushing and blowing bubbles out of his siphon
+                        pulse = (float) (c < 3 ? Math.sin(c / 3.0 * Math.PI / 2) : Math.pow(1 - (c - 3) / 7.0, 1.6));
+                        sinceJet = 0;
                         Vector push = safeDir(station.subtract(pos), new Vector()).multiply(0.06 * sp * ms);
                         vel.add(push);
                         if (c % 2 == 0) {
@@ -1401,7 +1429,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                             Location sl = siphon().toLocation(world);
                             for (int i = 0; i < 4; i++) world.spawnParticle(Particle.BUBBLE, sl.clone().add(back.clone().multiply(i * 0.8 * k)), colossal ? 12 : 3, 0.2 * k, 0.2 * k, 0.2 * k, 0.02);
                         }
-                    } else pulse *= 0.85f;
+                    } else { pulse *= 0.85f; sinceJet++; }
                 }
             }
             if (!finite(vel)) vel = new Vector();
@@ -1748,10 +1776,15 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
                     g = arm.root().subtract(moveDir.clone().multiply(17 * s)).add(arm.outward().multiply(2.5 * s));
                     arm.follow = 0.22; arm.wave = 0.15; arm.curl = 0.1;
                 } else { // gliding: they flare back out and drift, tips curled in
-                    g = arm.root().add(arm.outward().multiply(13 * s)).add(new Vector(0, -11 * s, 0)); // ~17 of its 22 blocks: extended, not crumpled
-                    g.add(new Vector(Math.sin(ticks * 0.03 + arm.index) * 2.5 * s, Math.sin(ticks * 0.05 + arm.index * 2) * 1.5 * s, Math.cos(ticks * 0.03 + arm.index) * 2.5 * s));
+                    // right after a jet the arms open out wide like an umbrella and then slowly fall back in as he glides
+                    double flare = sinceJet < 30 ? Math.sin(Math.min(1, sinceJet / 6.0) * Math.PI / 2) * (1 - sinceJet / 30.0) : 0;
+                    g = arm.root().add(arm.outward().multiply((13 + flare * 5) * s)).add(new Vector(0, (-11 + flare * 4) * s, 0)); // ~17 of its 22 blocks: extended, not crumpled
+                    double r = arm.rate, o = arm.off;
+                    g.add(new Vector((Math.sin(ticks * 0.029 * r + o) + Math.sin(ticks * 0.071 * r + o * 1.7) * 0.3) * 2.3 * s,
+                            (Math.sin(ticks * 0.047 * r + o * 2) + Math.sin(ticks * 0.013 + o) * 0.5) * 1.4 * s,
+                            (Math.cos(ticks * 0.029 * r + o) + Math.cos(ticks * 0.061 * r + o * 0.6) * 0.3) * 2.3 * s));
                     arm.follow = 0.08; arm.wave = 0.4;
-                    arm.curl = 0.45 + 0.35 * Math.sin(ticks * 0.035 + arm.index * 1.3); // each arm curls and uncurls on its own rhythm
+                    arm.curl = 0.45 + 0.35 * Math.sin(ticks * 0.035 * r + o) - flare * 0.3; // each arm curls and uncurls on its own rhythm
                     if (near != null && (arm.index == first || arm.index == second)) { g = g.multiply(0.65).add(eye(near).multiply(0.35)); arm.curl = 0.3; } // lazily reaching for you
                 }
                 if (recoilT > 0) g.add(arm.outward().multiply(recoilT * 0.8 * k)); // flinches away when he's hit
@@ -2301,7 +2334,8 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         void render() {
             hitbox.teleport(pos.toLocation(world).subtract(0, hitbox.getHeight() / 2, 0));
             flinch *= 0.85f;
-            float breath = (float) Math.sin(ticks * 0.06) * 0.03f;
+            float breath = (float) (Math.sin(ticks * 0.06) + Math.sin(ticks * 0.023 + 1.3) * 0.4) * 0.024f; // never the same breath twice
+            nodV += ((thrusting ? pulse * 0.16f : (float) Math.sin(ticks * 0.031) * 0.025f) - nod) * 0.18f; nodV *= 0.78f; nod += nodV; // the jet tips his head forward, it bobs back
             float sq = squashT > 0 ? squashT * 0.04f : 0; if (squashT > 0) squashT--; // the jolt of a slam landing
             // he swells up and leans back before his big attacks, so you can read them coming
             // BUG FIX: when he died mid-wind-up, attack and t froze, so his head stayed swollen through the whole death

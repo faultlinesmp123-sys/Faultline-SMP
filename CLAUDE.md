@@ -2698,6 +2698,15 @@ Notes:
   (6) turning on the spot shuffles his feet and leans into the turn (`turnAmt`, `turnPh`). Previews: scratch `ja/`
   (`JacobAnim` dumps his real `shown` pose per tick from MockBukkit, `render.py` draws it; ZombieMock#setShouldBurnInDay
   stubbed with `kt/Patch`).
+- **Kraken animation pass (Bosses 2.2.2)**: `Kraken.Arm.solve()`: the bend wave runs root to tip SIDEWAYS and UP/DOWN a
+  quarter beat apart (a slow corkscrew), each arm on its own clock (`rate`, `off`) with its strength swelling and fading;
+  the tip coil grows over the last 5 segments (quadratic) and eases in/out (`curlNow`, attacks used to snap it); WATER DRAG
+  (`prev`: each joint keeps 42% of last tick's spot toward the tip, 22% while striking) so arms trail and whip; a per-tick
+  move cap per joint (1.1 x scale/4 idle, 2.6 striking; the reach solver flips straight <-> bent and snapped all 8 arms).
+  Idle arms drift on uneven per-arm sums of sines and FLARE out like an umbrella right after each jet (`sinceJet`). The
+  jet is a quick 3-tick squeeze and a slow release (was a symmetric sine); the head NODS forward on each jet on a spring
+  (`nod` in `rotBase`/`rotModel`); breathing is two sines. Checked in scratch `ka/` (`KrakenAnim` dumps the joints from
+  MockBukkit with `EntityData#getHeight` stubbed, `draw.py`): worst tip jump 7.5 -> 3.0 blocks/tick^2, no NaN.
 - **FAULTLINESMPJAR (one jar for everything, `plugins/FAULTLINESMPJAR`, built by `tools/build_bundle.sh` into
   `release/FAULTLINESMPJAR.jar`)**: a loader plugin (`load: STARTUP`) carrying the 11 plugin jars as `bundled/<Name>.jar`.
   On start each is copied to `plugins/FAULTLINESMPJAR/jars/` (only when changed, temp + atomic move) and loaded with

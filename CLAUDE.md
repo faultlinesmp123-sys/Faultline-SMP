@@ -374,7 +374,7 @@ Notes:
   Blackstone) on top, guards: 4 Molten Husks, 4 Meteor Crawlers (endermites), 1 Star Sentinel (blaze) (tags
   `faultline_meteor_*`, `faultline_star_sentinel`). First to break the core gets `meteor.loot` (locked to them) +
   `index stat <p> meteors 1`. Unclaimed after 30 min = obsidian. Tested in the items harness (`EventsTest`).
-- **The Caravan** (`FaultlineItems/Caravan.java`, config `caravan:`): every 3 h (first 30 min after start) a Wandering Trader
+- **The Caravan** (`FaultlineItems/Caravan.java`, config `caravan:`; NERFED in 1.3.29, see below): every 3 h (first 30 min after start) a Wandering Trader
   "Caravan Merchant" (tag `faultline_caravan`, 2 trader llamas, a camel) camps 40-100 blocks from a random survival player for
   60 min (announced). 8 offers from `caravan.stock` (`id:emeralds:diamonds:netherite:weight:uses`; prices only in diamonds,
   emeralds, netherite). Trades = `index stat <p> caravan_trades 1` (Paper `PlayerTradeEvent`). His chunk has a plugin chunk ticket while he's there
@@ -2752,6 +2752,12 @@ Notes:
   = the CONTAINER / BUNDLE_CONTENTS component, meta only when it's missing; `strip`): players every `sweep-seconds` 5, on join,
   pickup and opening anything; real storage on open / close. Taken-out boxes keep their contents and go back to the player
   (full = dropped), never deleted; logged "[NestGuard]". Tested (scratch `ng/NgTest`).
+- **The Caravan nerfed hard (Items 1.3.29, Index 1.9.15)**: every 8 h (was 3), stays 20 min (was 60), first one 2 h after a
+  start, 4 offers (was 8), each offer sells ONCE (a trader's uses are shared by the whole server), and each player gets ONE
+  trade per visit (`caravan.trades-per-player` 1; `onTradeLimit` cancels PlayerTradeEvent, reset each camp). New
+  `DEFAULT_STOCK` ~3x the prices; GONE: elytra, Ankh, Cross, nether star, enchanted golden apple, wither skull (the Mythic Bag
+  is 24 diamonds + 1 netherite, weight 1). `cfg()` reads 1.2.x's defaults (180 / 60 / 8 / 30) as the new ones (`Balance.num`)
+  and a server `caravan.stock` still equal to the old list (`OLD_STOCK`) as the new list. Tested (scratch `ng/CvTest`).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

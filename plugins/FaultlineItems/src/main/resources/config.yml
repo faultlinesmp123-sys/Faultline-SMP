@@ -375,17 +375,19 @@ dark-loot:
 # (1.2.68: meteors were removed; a server config's old meteor: section is ignored.)
 
 # ---------------- The Caravan (a traveling merchant) ----------------
-# Every 3 hours he sets up camp 40-100 blocks from a random survival player for one hour (everyone is told where), and
-# sells rare things for diamonds, emeralds and netherite. stock lines: id:emeralds:diamonds:netherite:weight:uses
-# (a trade takes at most two of the three). /caravan now | here | stop | reroll
+# Every 8 hours he sets up camp 40-100 blocks from a random survival player for 20 minutes (everyone is told where), and
+# sells things for diamonds, emeralds and netherite. stock lines: id:emeralds:diamonds:netherite:weight:uses
+# (a trade takes at most two of the three; uses are shared by the whole server). /caravan now | here | stop | reroll
+# 1.3.29: nerfed hard (was every 3 h for 1 h, 8 offers, cheap, elytra / Ankh / Cross / nether stars).
 caravan:
   enabled: true
-  first-minutes: 30
-  every-minutes: 180
-  stay-minutes: 60
+  first-minutes: 120
+  every-minutes: 480
+  stay-minutes: 20
   min-distance: 40
   max-distance: 100
-  offers: 8
+  offers: 4
+  trades-per-player: 1               # trades each player may make per visit (0 = no limit)
 
 # ---------------- The Skeleton Wanderer (a cave trader who sells accessories) ----------------
 cave-trader:

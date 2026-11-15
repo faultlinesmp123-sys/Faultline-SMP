@@ -747,8 +747,8 @@ entries:
      does: "Villager-piloted subs that explore, scan creatures, capture harmless ones for the Aquarium and torpedo dangerous ones. Their RADAR finds anyone wanted within 400 blocks: they close in and fire homing torpedoes. 120 health (a bar over each); at 0 it sinks, its pilot bails out and it drops salvage. Sinking one makes you wanted 3.",
      drops: ["Iron Ingots, Copper Ingots|100%", "Dark Loot Bag|30%"]}
   - {chapter: friends, id: caravan_merchant, name: "Caravan Merchant", icon: caravan_merchant, detect-tag: faultline_caravan,
-     where: "Every 3 hours the Caravan sets up camp 40-100 blocks from a random player for one hour (the whole server is told where; /caravan says where he is or when he's back).",
-     does: "Sells rare things for diamonds, emeralds and netherite: Totems, Elytra, Mythic Goodie Bags, top enchanted books, smithing templates, a Nether Star, a Bait Worm, sometimes even the Ankh or the Cross. 8 offers each visit, a few of each."}
+     where: "Every 8 hours the Caravan sets up camp 40-100 blocks from a random player for 20 minutes (the whole server is told where; /caravan says where he is or when he's back).",
+     does: "Sells things for diamonds, emeralds and netherite, and he isn't cheap: Goodie Bags, a rare Mythic Goodie Bag, Totems, top enchanted books, smithing templates, a Bait Worm. 4 offers each visit, one of each, and he sells each player only one thing per visit."}
   - {chapter: consumables, name: "Candy", icon: season_candy, detect: "faultlinecosmetics:candy",
      how: "Halloween only (October 1 - November 2): hostile mobs you kill sometimes drop 1-2.",
      does: "Spend it on Halloween cosmetics in the Seasonal Shop (/cosmetics): Pumpkin Head, Witch Hat, Bat Wings, Skeleton Suit. They're yours forever."}

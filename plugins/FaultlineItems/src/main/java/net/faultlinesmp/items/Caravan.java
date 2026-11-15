@@ -38,9 +38,9 @@ import java.util.*;
 import java.util.function.Supplier;
 
 /**
- * THE CARAVAN: a traveling merchant who rolls in every few hours near a random player, stays for one hour, and sells
- * rare things for diamonds, emeralds and netherite: totems, elytra, mythic bags, top enchanted books, templates, a
- * Kraken bait worm, even the Ankh and the Cross. Everyone is told where he's set up. Right-click him to trade (Java and
+ * THE CARAVAN: a traveling merchant who rolls in every few hours near a random player, stays a while, and sells
+ * things for diamonds, emeralds and netherite (1.3.29: nerfed hard: every 8 h, 20 min, 4 offers, ~3x prices, one trade per
+ * player per visit, no elytra / Ankh / Cross / nether star / god apple). Everyone is told where he's set up. Right-click him to trade (Java and
  * Bedrock: he's a real Wandering Trader, with two trader llamas and a camel).
  */
 final class Caravan implements Listener, CommandExecutor {
@@ -69,17 +69,25 @@ final class Caravan implements Listener, CommandExecutor {
     Caravan(FaultlineItems plugin) {
         this.plugin = plugin;
         for (World w : Bukkit.getWorlds()) for (Entity e : w.getEntities()) if (e.getScoreboardTags().contains(TAG)) e.remove();
-        nextAt = System.currentTimeMillis() + (long) (cfg("first-minutes", 30) * 60000);
+        nextAt = System.currentTimeMillis() + (long) (cfg("first-minutes", 120) * 60000);
         Bukkit.getScheduler().runTaskTimer(plugin, this::tick, 40L, 20L);
     }
 
-    private double cfg(String path, double def) { return plugin.getConfig().getDouble("caravan." + path, def); }
+    private double cfg(String path, double def) {
+        return switch (path) { // 1.3.29 nerf: a server config still holding the old default reads as the new one
+            case "every-minutes" -> Balance.num(plugin, "caravan.every-minutes", 180, 480);
+            case "stay-minutes" -> Balance.num(plugin, "caravan.stay-minutes", 60, 20);
+            case "offers" -> Balance.num(plugin, "caravan.offers", 8, 4);
+            case "first-minutes" -> Balance.num(plugin, "caravan.first-minutes", 30, 120);
+            default -> plugin.getConfig().getDouble("caravan." + path, def);
+        };
+    }
 
     private void tick() {
         try {
             if (camp == null) {
                 if (plugin.getConfig().getBoolean("caravan.enabled", true) && System.currentTimeMillis() >= nextAt) {
-                    nextAt = System.currentTimeMillis() + (long) (cfg("every-minutes", 180) * 60000);
+                    nextAt = System.currentTimeMillis() + (long) (cfg("every-minutes", 480) * 60000);
                     arrive(null);
                 }
                 return;
@@ -136,7 +144,7 @@ final class Caravan implements Listener, CommandExecutor {
         setUp(spot);
         String where = ChatColor.WHITE + "X " + spot.getBlockX() + ", Z " + spot.getBlockZ();
         Bukkit.broadcastMessage(ChatColor.GOLD + "" + ChatColor.BOLD + "The Caravan has arrived! " + ChatColor.YELLOW + "A traveling merchant set up camp at "
-                + where + ChatColor.YELLOW + " for one hour. He takes diamonds, emeralds and netherite.");
+                + where + ChatColor.YELLOW + " for " + (int) cfg("stay-minutes", 20) + " minutes. He takes diamonds, emeralds and netherite, one trade each.");
         for (Player o : Bukkit.getOnlinePlayers()) o.playSound(o.getLocation(), Sound.ENTITY_WANDERING_TRADER_YES, 0.8f, 0.9f);
         return true;
     }
@@ -147,7 +155,7 @@ final class Caravan implements Listener, CommandExecutor {
         World w = at.getWorld();
         Camp c = new Camp();
         c.at = at.clone();
-        c.leavesAt = System.currentTimeMillis() + (long) (cfg("stay-minutes", 60) * 60000);
+        c.leavesAt = System.currentTimeMillis() + (long) (cfg("stay-minutes", 20) * 60000);
         c.merchant = w.spawn(at, WanderingTrader.class, v -> {
             v.setAI(false);
             v.setInvulnerable(true);
@@ -182,6 +190,7 @@ final class Caravan implements Listener, CommandExecutor {
         }));
         w.spawnParticle(Particle.CLOUD, at.clone().add(0, 1, 0), 30, 1.5, 0.5, 1.5, 0.02);
         camp = c;
+        traded.clear(); // a new visit: everyone gets their trade back
         // BUG FIX: when nobody was near, his chunk unloaded and took him with it (he's not saved), so whoever came looking
         // found nothing. His chunk now stays loaded until he leaves.
         w.addPluginChunkTicket(at.getBlockX() >> 4, at.getBlockZ() >> 4, plugin);
@@ -208,8 +217,19 @@ final class Caravan implements Listener, CommandExecutor {
 
     record Ware(String id, int emeralds, int diamonds, int netherite, int weight, int uses) {}
 
+    /** 1.3.29: nerfed hard. No elytra, Ankh, Cross, nether star, god apple or wither skull any more; everything costs ~3x and
+     *  sells once per visit (the trader's uses are shared by the whole server). */
     private static final List<String> DEFAULT_STOCK = List.of(
             // id:emeralds:diamonds:netherite:weight:uses
+            "goodie_bags:48:0:0:6:1", "mythic_bag:0:24:1:1:1", "totem:0:24:0:3:1", "shulker_shells:32:0:0:5:1",
+            "mending:64:4:0:4:1", "unbreaking:40:0:0:5:1", "protection:48:0:0:5:1", "sharpness:56:0:0:4:1",
+            "efficiency:48:0:0:4:1", "fortune:0:12:0:2:1", "looting:0:12:0:2:1", "sniffer_egg:48:0:0:3:1",
+            "silence_trim:0:24:1:1:1", "eye_trim:0:16:0:2:1", "spire_trim:0:16:0:2:1", "trident:0:32:0:1:1",
+            "heart_of_the_sea:0:32:0:1:1", "netherite_template:0:32:1:1:1", "pigstep:32:0:0:3:1",
+            "golden_carrots:24:0:0:6:1", "experience_bottles:40:0:0:5:1", "netherite_scrap:0:24:0:2:1", "kraken_worm:0:32:0:1:1");
+
+    /** The 1.2.x stock list, so a server config that still holds it gets the nerfed one. */
+    private static final List<String> OLD_STOCK = List.of(
             "mythic_bag:24:4:0:5:2", "goodie_bags:16:0:0:6:3", "totem:12:2:0:6:2", "enchanted_golden_apple:0:8:1:3:1",
             "elytra:0:16:2:1:1", "netherite_template:0:12:0:4:2", "heart_of_the_sea:0:8:0:4:1", "nether_star:0:12:1:2:1",
             "shulker_shells:10:0:0:6:3", "trident:0:10:0:3:1", "mending:24:0:0:6:2", "unbreaking:14:0:0:6:3",
@@ -262,6 +282,7 @@ final class Caravan implements Listener, CommandExecutor {
 
     List<Ware> wares() {
         List<String> lines = plugin.getConfig().isList("caravan.stock") ? plugin.getConfig().getStringList("caravan.stock") : DEFAULT_STOCK;
+        if (lines.equals(OLD_STOCK)) lines = DEFAULT_STOCK;
         List<Ware> out = new ArrayList<>();
         for (String line : lines) {
             String[] f = line.split(":");
@@ -284,7 +305,7 @@ final class Caravan implements Listener, CommandExecutor {
             else plugin.getLogger().warning("[Caravan] unknown item in stock: " + w.id());
         }
         List<MerchantRecipe> recipes = new ArrayList<>();
-        int offers = (int) cfg("offers", 8);
+        int offers = (int) cfg("offers", 4);
         while (recipes.size() < offers && !pool.isEmpty()) {
             int total = 0;
             for (Ware w : pool) total += Math.max(1, w.weight());
@@ -322,6 +343,24 @@ final class Caravan implements Listener, CommandExecutor {
     @EventHandler(priority = EventPriority.LOWEST)
     public void onAnimalClick(PlayerInteractEntityEvent e) {
         if (ours(e.getRightClicked()) && !(e.getRightClicked() instanceof WanderingTrader)) e.setCancelled(true);
+    }
+
+    private final Map<UUID, Integer> traded = new HashMap<>();
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onTradeLimit(PlayerTradeEvent e) {
+        if (!ours(e.getVillager())) return;
+        int max = plugin.getConfig().getInt("caravan.trades-per-player", 1);
+        if (max <= 0) return;
+        Player p = e.getPlayer();
+        int n = traded.getOrDefault(p.getUniqueId(), 0);
+        if (n >= max) {
+            e.setCancelled(true);
+            p.sendMessage(ChatColor.GOLD + "The Caravan Merchant: " + ChatColor.YELLOW + "That's all I'll sell you this visit. Come back next time.");
+            p.playSound(p.getLocation(), Sound.ENTITY_WANDERING_TRADER_NO, 0.8f, 1f);
+            return;
+        }
+        traded.put(p.getUniqueId(), n + 1);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -367,7 +406,7 @@ final class Caravan implements Listener, CommandExecutor {
         switch (sub) {
             case "now" -> {
                 if (camp != null) { sender.sendMessage(ChatColor.RED + "The Caravan is already here (/caravan stop)."); return true; }
-                nextAt = System.currentTimeMillis() + (long) (cfg("every-minutes", 180) * 60000);
+                nextAt = System.currentTimeMillis() + (long) (cfg("every-minutes", 480) * 60000);
                 sender.sendMessage(arrive(null) ? ChatColor.GREEN + "The Caravan is on its way." : ChatColor.RED + "No survival player in the Overworld with room around them.");
             }
             case "here" -> {

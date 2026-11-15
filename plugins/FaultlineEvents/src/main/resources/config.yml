@@ -125,8 +125,5 @@ realms:
     enabled: true
     xp-multiplier: 1.5
     elytra-no-wear: true
-    stars:
-      every-seconds: 25
-      per-player: 2
-      rewards: ["1.0;xp:35", "0.5;item:ENDER_PEARL:2-5", "0.3;item:CHORUS_FRUIT:4-10", "0.2;item:AMETHYST_SHARD:4-8", "0.12;item:DIAMOND:1-2",
-                "0.04;item:SHULKER_SHELL:1", "0.03;item:FIREWORK_ROCKET:8-16"]
+    shooting-stars:          # 2.1.2: stars no longer land: shooting stars across each player's sky, decoration only
+      every-seconds: 3

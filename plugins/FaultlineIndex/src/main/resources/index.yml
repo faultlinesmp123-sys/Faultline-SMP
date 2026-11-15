@@ -1415,8 +1415,6 @@ achievements:
      stat: lantern_wisps, count: 25, reward: {items: ["EMERALD:16", "GOLDEN_CARROT:16"], xp: 300}}
   - {id: soul_catcher, name: "Soul Catcher", icon: lantern_of_souls, desc: "Catch 25 lost souls during Soul Tides in the Nether.",
      stat: lost_souls, count: 25, reward: {items: ["GOLD_INGOT:16", "QUARTZ:32"], xp: 300}}
-  - {id: star_catcher, name: "Star Catcher", icon: blue_obsidian, desc: "Reach 25 fallen stars during Starfalls in the End.",
-     stat: star_shards, count: 25, reward: {items: ["ENDER_PEARL:16", "DIAMOND:4"], xp: 300}}
   - {id: night_shift, name: "Night Shift", icon: blue_obsidian, desc: "Stay awake through 10 nights in the Nether or the End.",
      stat: realm_nights, count: 10, reward: {items: ["GOLDEN_APPLE:4"], xp: 500}}
   - {id: mutant_hunter, name: "Mutant Hunter", icon: twin_zombie, desc: "Kill 25 mutants (Plague Zombies, Storm Creepers, Broodmothers...).",

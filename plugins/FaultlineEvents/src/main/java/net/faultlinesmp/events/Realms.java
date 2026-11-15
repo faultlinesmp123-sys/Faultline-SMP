@@ -144,7 +144,7 @@ final class Realms implements Listener {
             case "ember-storm" -> "embers scorch anyone in the open (Fire Resistance or anything over your head keeps you safe; nothing is set alight), the Nether's monsters are stronger and drop more.";
             case "soul-tide" -> "piglins give double when you barter, quartz and gold ore drop more, wither skeletons drop more skulls, and lost souls drift by: catch them.";
             case "void-storm" -> "endermen hunt you without being looked at and hit harder. They drop twice the pearls.";
-            default -> "stars fall on the islands: reach one before it fades. More XP, and your elytra doesn't wear out.";
+            default -> "shooting stars streak across the sky. More XP, and your elytra doesn't wear out.";
         };
     }
 
@@ -274,7 +274,7 @@ final class Realms implements Listener {
                 case "ember-storm" -> ember(p);
                 case "soul-tide" -> { if (r.clock % Math.max(5, cfgI("soul-tide.souls.every-seconds", 25)) == slot % 5) pickup(r, p, "soul"); p.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 60, 0, true, false, true)); }
                 case "void-storm" -> { if (r.clock % Math.max(5, cfgI("void-storm.hunt-every-seconds", 15)) == slot % 5) hunt(p); }
-                case "starfall" -> { if (r.clock % Math.max(5, cfgI("starfall.stars.every-seconds", 25)) == slot % 5) pickup(r, p, "star"); }
+                case "starfall" -> { if (r.clock % Math.max(1, cfgI("starfall.shooting-stars.every-seconds", 3)) == slot % Math.max(1, cfgI("starfall.shooting-stars.every-seconds", 3))) shootingStar(p); }
                 default -> { }
             }
         }
@@ -556,6 +556,36 @@ final class Realms implements Listener {
                 }
             } else p.playSound(at, Sound.PARTICLE_SOUL_ESCAPE, 1f, 0.6f);
         } catch (RuntimeException | LinkageError e) { pl.problem("pickup", e); }
+    }
+
+    // ---------------------------------------------------------------- Starfall: shooting stars (2.1.2: decoration only)
+
+    /** A shooting star across this player's sky: only they see it, nothing lands, nothing to pick up. */
+    private void shootingStar(Player p) {
+        Location eye = p.getEyeLocation();
+        double yaw = pl.random.nextDouble() * Math.PI * 2, dist = 40 + pl.random.nextDouble() * 50;
+        Location start = eye.clone().add(Math.cos(yaw) * dist, 35 + pl.random.nextDouble() * 30, Math.sin(yaw) * dist);
+        double dir = yaw + Math.PI / 2 + (pl.random.nextDouble() - 0.5) * 1.2; // mostly across the view, a bit toward / away
+        org.bukkit.util.Vector step = new org.bukkit.util.Vector(Math.cos(dir), -0.25 - pl.random.nextDouble() * 0.35, Math.sin(dir)).normalize().multiply(1.6);
+        int life = 14 + pl.random.nextInt(10);
+        boolean gold = pl.random.nextInt(4) == 0;
+        Color tail = gold ? Color.fromRGB(255, 220, 120) : Color.fromRGB(200, 170, 255);
+        if (pl.random.nextInt(3) == 0) p.playSound(start, Sound.ENTITY_FIREWORK_ROCKET_TWINKLE_FAR, 0.35f, 1.4f + pl.random.nextFloat() * 0.4f);
+        new org.bukkit.scheduler.BukkitRunnable() {
+            int t = 0;
+            final Location head = start.clone();
+            @Override public void run() {
+                if (!p.isOnline() || p.getWorld() != start.getWorld() || t++ >= life) { cancel(); return; }
+                for (int k = 0; k < 3; k++) {
+                    Location at = head.clone().add(step.clone().multiply(k / 3.0));
+                    p.spawnParticle(Particle.END_ROD, at, 1, 0, 0, 0, 0, null, true);
+                    p.spawnParticle(Particle.DUST, at.clone().subtract(step.clone().multiply(0.6)), 1, 0.05, 0.05, 0.05, 0,
+                            new Particle.DustOptions(tail, t > life - 5 ? 0.8f : 1.6f), true);
+                }
+                if (t == life) p.spawnParticle(Particle.FIREWORK, head, 6, 0.2, 0.2, 0.2, 0.02, null, true); // it burns out up there
+                head.add(step);
+            }
+        }.runTaskTimer(pl, 0L, 1L);
     }
 
     // ---------------------------------------------------------------- Void Storm

@@ -2768,6 +2768,13 @@ Notes:
   (`send`: one multi-block packet + block entity data for shelves / signs / chests...), so trapdoors / doors / placed blocks
   can't stay ghosts whatever caused them (cancelled clicks, ViaVersion translating 26.2 blocks for older clients). `/ghost`
   re-sends everything within `command-radius` 6 (once every 3 s).
+- **Starfall is decoration (Events 2.1.2, Index 1.9.16)**: no more fallen stars to walk into (no sea-lantern displays, no
+  rewards, stat `star_shards` never counts; the Star Catcher achievement is gone). Instead every
+  `realms.starfall.shooting-stars.every-seconds` 3 each player in the End gets a private SHOOTING STAR (`Realms.shootingStar`:
+  END_ROD head + violet / gold DUST tail, forced long-distance particles 40-90 blocks out and 35-65 up, streaks across the
+  view for ~1 s and burns out in a firework puff, sometimes a far twinkle). The XP x1.5 and no elytra wear stay. Tested
+  (scratch `rl/RlTest`: 0 displays after a starfall; its "void storm enderman" check fails in this MockBukkit because the mock
+  enderman has 20 max health, buff 20 -> 25 works).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

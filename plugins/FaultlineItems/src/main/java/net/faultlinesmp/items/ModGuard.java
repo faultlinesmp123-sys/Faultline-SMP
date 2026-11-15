@@ -372,13 +372,23 @@ final class ModGuard implements Listener {
         long eyeKey = pack(eye.getBlockX(), eye.getBlockY(), eye.getBlockZ());
         Long was = lastEye.put(id, eyeKey);
         if (was != null && was == eyeKey && tick % 4 != 0) budget = 0;
-        for (int dx = -reach; dx <= reach && checks < budget; dx++) for (int dz = -reach; dz <= reach && checks < budget; dz++) {
-            Set<Long> set = h.get(chunkKey(pcx + dx, pcz + dz));
+        // nearest chunks first, and anything within touch distance is shown without spending the sight budget: a base
+        // full of chests / signs / shelves used to spend all 96 checks on far chunks, so the shelf beside you stayed fake
+        double touch = plugin.getConfig().getDouble("pie-limit.touch-distance", 6), t2 = touch * touch;
+        List<long[]> order = new ArrayList<>();
+        for (int dx = -reach; dx <= reach; dx++) for (int dz = -reach; dz <= reach; dz++) order.add(new long[]{dx * dx + dz * dz, dx, dz});
+        order.sort((x, y) -> Long.compare(x[0], y[0]));
+        for (long[] o : order) {
+            Set<Long> set = h.get(chunkKey(pcx + (int) o[1], pcz + (int) o[2]));
             if (set == null || set.isEmpty()) continue;
-            for (Iterator<Long> it = set.iterator(); it.hasNext() && checks < budget; ) {
+            for (Iterator<Long> it = set.iterator(); it.hasNext(); ) {
                 long k = it.next();
+                double ddx = ux(k) + 0.5 - eye.getX(), ddy = uy(k) + 0.5 - eye.getY(), ddz = uz(k) + 0.5 - eye.getZ();
+                boolean near = ddx * ddx + ddy * ddy + ddz * ddz <= t2;
+                if (!near && checks >= budget) continue;
                 Block b = w.getBlockAt(ux(k), uy(k), uz(k));
                 if (!hide.contains(b.getType())) { it.remove(); continue; } // broken: the server already sent the truth
+                if (near) { it.remove(); reveal.add(b); continue; }
                 checks++;
                 if (may(p, eye, b)) { it.remove(); reveal.add(b); }
             }

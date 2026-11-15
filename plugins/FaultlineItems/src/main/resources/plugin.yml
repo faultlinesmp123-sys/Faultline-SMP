@@ -1,5 +1,5 @@
 name: FaultlineItems
-version: '1.3.29'
+version: '1.3.30'
 main: net.faultlinesmp.items.FaultlineItems
 api-version: '1.21'
 softdepend: [floodgate, Geyser-Spigot, DonutCombat]
@@ -7,6 +7,9 @@ author: FaultlineSMP
 description: Custom items for Faultline SMP — Magic Mirror, Cloud Potion, Darkness Potion, Golden Ring, Goodie Bag
 
 commands:
+  ghost:
+    description: Re-sends the blocks around you (fixes ghost blocks)
+    aliases: [fixblocks, ghostblocks]
   bedrockcheck:
     description: "Admin: why can't Bedrock players see the packs? Checks Geyser, its packs and mappings, and who is detected as Bedrock; 'install' fetches the files"
     usage: /bedrockcheck [install [branch]]

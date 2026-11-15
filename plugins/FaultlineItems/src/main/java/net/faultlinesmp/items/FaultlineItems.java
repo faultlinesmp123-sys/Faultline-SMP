@@ -399,6 +399,7 @@ public final class FaultlineItems extends JavaPlugin {
         camera = new Camera(this); // 1.2.23: free camera for recording
         getServer().getPluginManager().registerEvents(camera, this);
         getCommand("camera").setExecutor(camera);
+        getServer().getPluginManager().registerEvents(new NestGuard(this), this); // 1.3.28: no shulker boxes inside shulker boxes
         pvpLimits = new PvpLimits(this); // 1.2.37: spear lunge cooldown, cobweb place rate
         getServer().getPluginManager().registerEvents(pvpLimits, this);
         totemLimit = new TotemLimit(this); // 1.2.69: totems popped by players count, 4 max (per life)

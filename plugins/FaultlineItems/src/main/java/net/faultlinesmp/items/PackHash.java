@@ -31,8 +31,8 @@ final class PackHash {
     }
 
     /** Fetch (or re-check) a url. Blocking: call it off the main thread. */
-    static void refresh(String url, Logger log) {
-        if (url == null || url.isBlank()) return;
+    static boolean refresh(String url, Logger log) {
+        if (url == null || url.isBlank()) return false;
         try {
             Known was = KNOWN.get(url);
             HttpURLConnection c = (HttpURLConnection) URI.create(url).toURL().openConnection();
@@ -41,8 +41,8 @@ final class PackHash {
             c.setRequestProperty("User-Agent", "FaultlineItems");
             if (was != null && was.etag != null) c.setRequestProperty("If-None-Match", was.etag);
             int code = c.getResponseCode();
-            if (code == 304) return;
-            if (code != 200) { log.warning("[Resource pack] couldn't check " + url + " (HTTP " + code + "): using the hash in config.yml"); return; }
+            if (code == 304) return false;
+            if (code != 200) { log.warning("[Resource pack] couldn't check " + url + " (HTTP " + code + "): using the hash in config.yml"); return false; }
             MessageDigest md = MessageDigest.getInstance("SHA-1");
             long size = 0;
             try (InputStream in = c.getInputStream()) {
@@ -53,8 +53,10 @@ final class PackHash {
             KNOWN.put(url, new Known(sha, c.getHeaderField("ETag")));
             if (was == null || !was.sha1.equals(sha))
                 log.info("[Resource pack] " + url.substring(url.lastIndexOf('/') + 1) + ": " + (size / 1024) + " KB, SHA-1 " + sha + (was == null ? "" : " (it changed)"));
+            return was != null && !was.sha1.equals(sha);
         } catch (Exception e) {
             log.warning("[Resource pack] couldn't download " + url + " to check its hash (" + e + "): using the hash in config.yml");
+            return false;
         }
     }
 
@@ -76,8 +78,15 @@ final class PackHash {
         if (!plugin.getConfig().getBoolean("item-textures.auto-hash", true)) return;
         long every = Math.max(1, plugin.getConfig().getLong("item-textures.auto-hash-minutes", 10)) * 60 * 20;
         Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, () -> {
-            refresh(plugin.getConfig().getString("item-textures.url", ""), plugin.getLogger());
-            refresh(plugin.getConfig().getString("item-textures.music-url", ""), plugin.getLogger());
+            boolean changed = refresh(plugin.getConfig().getString("item-textures.url", ""), plugin.getLogger());
+            changed |= refresh(plugin.getConfig().getString("item-textures.music-url", ""), plugin.getLogger());
+            // a new pack went up on GitHub while players were on: give it to them now. Otherwise they keep the OLD one (their
+            // game caches packs by hash) until they rejoin after this check, and new boss parts show as missing-texture blocks.
+            if (changed && plugin.getConfig().getBoolean("item-textures.resend-on-change", true))
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    for (org.bukkit.entity.Player p : Bukkit.getOnlinePlayers()) plugin.getItemTextureManager().applyTextures(p);
+                    plugin.getLogger().info("[Resource pack] the pack changed on GitHub: sent the new one to " + Bukkit.getOnlinePlayers().size() + " online");
+                });
             refresh(plugin.getConfig().getString("item-textures.emotes-url", Emotes.DEFAULT_PACK_URL), plugin.getLogger());
             for (String id : EventPacks.EVENT_IDS.keySet()) // the event sky packs (1.2.59)
                 refresh(plugin.getConfig().getString("event-packs." + id + ".url", EventPacks.DEFAULTS.get(id)[0]), plugin.getLogger());

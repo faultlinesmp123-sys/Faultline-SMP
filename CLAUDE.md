@@ -2719,6 +2719,20 @@ Notes:
   also installed as its own jar wins (the bundled one is skipped). `/faultlinesmpjar` (`/fsmp`) = status. Tested in
   MockBukkit (all 11 load + enable); the real Paper runtime-load path was read from Paper's source, not run (no PaperMC
   download here). RULE: after changing any plugin, rerun `tools/build_bundle.sh` too.
+- **/faultline reload (FAULTLINESMPJAR 1.1.0) + pack resend (Items 1.3.26)**: `/faultline reload [force]` (`faultlinesmpjar.admin`)
+  swaps every bundled plugin for the copy inside the FAULTLINESMPJAR.jar NOW on disk (read fresh with a ZipFile on `getFile()`),
+  no restart: nothing changed = refused (`force` anyway); anyone in `faultline_deep` = refused (the Dark Ocean's generator is
+  FaultlineDeep's code), else that world is saved + unloaded after Deep disables and Deep makes it again on enable. All 11 go
+  together (they cache each other: mixing old/new isn't safe): inventories closed, disabled newest first (each saves like a
+  shutdown), `forget()` = their commands out of the command map + out of Paper's `PaperPluginManagerImpl.instanceManager`
+  (`plugins`, `lookupNames`, `dependencyTree.remove(meta)`, reflection; plain `plugins`/`lookupNames` fields as a fallback), new
+  jars written (temp + atomic), loaded, enabled in `ORDER`, `syncCommands` + `updateCommands`. A plugin installed as its own
+  jar is never touched (`ours`). The loader itself can't swap its own code: a new loader needs a restart. Tested (scratch
+  `rld/ReloadTest`: 11/11 new instances, 12 plugins listed, commands on the new copies); the Paper-internal path is from
+  Paper's source, not run on a real server. PACK RESEND: `PackHash.refresh` returns whether the hash CHANGED; when the main or
+  music pack changed on GitHub, everyone online is sent the new one (`item-textures.resend-on-change`, true). Before, players
+  kept the old pack (cached by hash) until a rejoin after the 10-minute check, and new boss parts (Jacob's cape) showed as
+  missing-texture blocks.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

@@ -2805,7 +2805,7 @@ Notes:
   hitboxes) and turns toward it every tick keeping its speed (`steer`, `turn` 0.35, Safe.vel); shields block it as normal; an
   arrow hitting a block bounces at its target (or anyone in sight within 32) up to 2 times: a new arrow of the same type with
   the same damage / crit / pierce / fire / pickup / potion, the old one removed (no extra arrow). SPEED (Voise): MOVEMENT_SPEED
-  modifier `faultlineitems:ability_speed` x2 (`speed.multiplier`). HOPS (Zombie): JUMP_STRENGTH +35% (`ability_jump`) +
+  modifier `faultlineitems:ability_speed` x1.2 since 1.3.34 (`speed.multiplier`; was 2.0, an old config's 2.0 reads as 1.2). HOPS (Zombie): JUMP_STRENGTH +35% (`ability_jump`) +
   SAFE_FALL_DISTANCE +50% (`ability_fall`). SHADE (Sin): endless ambient Strength II, Swiftness II, Fire Resistance, and
   Invisibility until a totem pops (EntityResurrectEvent MONITOR); it comes back `shade.invis-return-seconds` 300 later or on
   respawn. Re-applied every second; removed abilities strip only their own modifiers / endless ambient effects. Index: 5

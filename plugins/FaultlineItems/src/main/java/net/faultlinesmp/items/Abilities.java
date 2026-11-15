@@ -64,7 +64,7 @@ import java.util.*;
  *  - FROST (Star):     your hits (melee and your arrows) can frostbite: Slowness + the freezing overlay.
  *  - AIM (Lucian):     your arrows lock onto the player / mob closest to where you aim (in sight) and curve to them; a shield
  *                      still blocks them. An arrow that hits a wall bounces off it at someone in sight (up to 2 bounces).
- *  - SPEED (Voise):    move 2x as fast.
+ *  - SPEED (Voise):    move 1.2x as fast (was 2x until 1.3.34).
  *  - HOPS (Zombie):    jump higher (mace slams hit harder from higher), a little more safe fall.
  *  - SHADE (Sin):      Strength II, Swiftness II, Fire Resistance forever, and Invisibility until a totem pops; it comes back
  *                      `shade.invis-return-seconds` (300) later, or when you respawn.
@@ -77,7 +77,7 @@ final class Abilities implements Listener, CommandExecutor, TabCompleter {
         AIM("aim", "Hawkeye", "Lucian", Material.PAPER, "spectral_arrow", ChatColor.GOLD,
                 "Your arrows lock onto whoever you aim at and curve to them.", "Arrows bounce off walls at someone in sight. Shields still block."),
         SPEED("speed", "Swiftwind", "Voise", Material.PAPER, "feather", ChatColor.WHITE,
-                "You move twice as fast.", "Perfect for getting away."),
+                "You move 20% faster.", "Perfect for getting away."),
         HOPS("hops", "Skyhop", "Zombie", Material.PAPER, "rabbit_foot", ChatColor.GREEN,
                 "You jump higher (and slam harder with a mace).", "A little more safe fall too."),
         SHADE("shade", "Shade", "Sin", Material.PAPER, "echo_shard", ChatColor.DARK_PURPLE,
@@ -233,7 +233,7 @@ final class Abilities implements Listener, CommandExecutor, TabCompleter {
     /** Puts this player's ability on (and nothing else). Every second. */
     void apply(Player p) {
         Kind k = of(p);
-        modifier(p, Attribute.MOVEMENT_SPEED, speedKey, k == Kind.SPEED ? cfg("speed.multiplier", 2.0) - 1 : 0);
+        modifier(p, Attribute.MOVEMENT_SPEED, speedKey, k == Kind.SPEED ? Balance.num(plugin, "abilities.speed.multiplier", 2.0, 1.2) - 1 : 0 /* 1.3.34: x1.2 (an old config's 2.0 reads as 1.2) */);
         modifier(p, Attribute.JUMP_STRENGTH, jumpKey, k == Kind.HOPS ? cfg("hops.jump-bonus", 0.35) : 0);
         modifier(p, Attribute.SAFE_FALL_DISTANCE, fallKey, k == Kind.HOPS ? cfg("hops.safe-fall-bonus", 0.5) : 0);
         if (k == Kind.SHADE && p.getGameMode() != GameMode.SPECTATOR && !p.isDead()) {

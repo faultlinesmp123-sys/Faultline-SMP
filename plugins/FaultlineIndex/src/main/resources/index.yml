@@ -153,7 +153,7 @@ entries:
      does: "Lucian's ability: your arrows lock onto whoever you aim at and curve to them. A shield still blocks them. An arrow that hits a wall bounces off it at someone in sight (twice)."}
   - {chapter: weapons, id: ability_speed, name: "Ability: Swiftwind", icon: harpy_ring, detect: "faultlineitems:ability_speed",
      how: "Admins only (/adminmenu). Right-click it and the ability is yours forever (one ability each).",
-     does: "Voise's ability: you move twice as fast. Good luck catching him."}
+     does: "Voise's ability: you move 20% faster. Good luck catching him."}
   - {chapter: weapons, id: ability_hops, name: "Ability: Skyhop", icon: windrunner_band, detect: "faultlineitems:ability_hops",
      how: "Admins only (/adminmenu). Right-click it and the ability is yours forever (one ability each).",
      does: "Zombie's ability: you jump higher (about 2 blocks), so mace slams come from higher and hit harder. A little more safe fall too."}

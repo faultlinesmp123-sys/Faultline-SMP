@@ -260,7 +260,11 @@ final class DarkLoot implements Listener, CommandExecutor {
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onOpen(InventoryOpenEvent e) {
-        InventoryHolder h = e.getInventory().getHolder();
+        // 1.3.37: world check first, and no block-state copy (getHolder() copied a chest on EVERY container opened server-wide)
+        Location at = e.getInventory().getLocation();
+        if (at == null || at.getWorld() == null || !deep(at.getBlock())) return;
+        InventoryHolder h;
+        try { h = e.getInventory().getHolder(false); } catch (Throwable t) { h = e.getInventory().getHolder(); }
         List<Chest> sides = new ArrayList<>();
         if (h instanceof Chest c) sides.add(c);
         else if (h instanceof DoubleChest dc) { if (dc.getLeftSide() instanceof Chest l) sides.add(l); if (dc.getRightSide() instanceof Chest r) sides.add(r); }

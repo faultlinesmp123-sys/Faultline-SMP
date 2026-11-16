@@ -2819,6 +2819,11 @@ Notes:
   with it (rubberbanding = "laggy"). New key `bedrock-shield.right-click` (default false; the old `enabled: true` in server
   configs is ignored). Bedrock players block by sneaking (Geyser). The third-party BedrockShield plugin uses the same fake
   barrier trick: remove it too.
+- **Audit (Items 1.3.37)**: `DarkLoot.onOpen` copied a block state (`getHolder()`) for EVERY container opened on the server before
+  checking the world: now the world check comes first and it uses `getHolder(false)`. `Abilities.frostReady` is pruned every
+  minute (mobs Star hit never "quit"). Checked clean: no unguarded `setVelocity`, no `Slime.class` spawns, no meta-copy PDC
+  reads, FLASH / EFFECT particles all carry data, data files all load through SafeYaml (the remaining loadConfiguration calls
+  read jar resources / third-party or old files), NestGuard, Abilities (strip / grant / Shade pop / Aim bounce), GhostFix.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

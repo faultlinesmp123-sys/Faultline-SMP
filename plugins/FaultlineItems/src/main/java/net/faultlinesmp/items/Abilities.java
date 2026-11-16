@@ -228,6 +228,7 @@ final class Abilities implements Listener, CommandExecutor, TabCompleter {
             try { apply(p); } catch (RuntimeException ex) { if (tick % 1200 == 0) plugin.getLogger().warning("[Abilities] " + p.getName() + ": " + ex); }
         }
         if (!homing.isEmpty()) steer();
+        if (tick % 1200 == 0) frostReady.values().removeIf(t -> t < tick); // mobs Star hit (they never "quit")
     }
 
     /** Puts this player's ability on (and nothing else). Every second. */

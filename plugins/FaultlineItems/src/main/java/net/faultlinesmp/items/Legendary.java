@@ -199,6 +199,7 @@ final class Legendary implements Listener, CommandExecutor, TabCompleter {
         Kind k = recipeKind(e.getRecipe());
         if (k == null) return;
         boolean ok = on() && e.getView().getPlayer().hasPermission(CRAFT) && !crafted.containsKey(k);
+        for (ItemStack it : e.getInventory().getMatrix()) if (guarded(it)) ok = false; // never a legendary into a legendary
         e.getInventory().setResult(ok ? item(k) : null);
     }
 
@@ -206,7 +207,9 @@ final class Legendary implements Listener, CommandExecutor, TabCompleter {
     public void onCraft(CraftItemEvent e) {
         Kind k = recipeKind(e.getRecipe());
         if (k == null) return;
-        if (!(e.getWhoClicked() instanceof Player p) || !on() || !p.hasPermission(CRAFT) || crafted.containsKey(k)) {
+        boolean bad = false;
+        for (ItemStack it : e.getInventory().getMatrix()) if (guarded(it)) bad = true;
+        if (bad || !(e.getWhoClicked() instanceof Player p) || !on() || !p.hasPermission(CRAFT) || crafted.containsKey(k)) {
             e.setCancelled(true);
             e.getInventory().setResult(null);
             if (e.getWhoClicked() instanceof Player p2) p2.sendMessage(ChatColor.RED + (crafted.containsKey(k) ? k.title + " has already been crafted. There is only one." : "Only admins can forge legendary weapons."));
@@ -228,7 +231,30 @@ final class Legendary implements Listener, CommandExecutor, TabCompleter {
 
     @EventHandler(ignoreCancelled = true)
     public void onCrafter(org.bukkit.event.block.CrafterCraftEvent e) {
-        if (recipeKind(e.getRecipe()) != null) e.setCancelled(true);
+        if (recipeKind(e.getRecipe()) != null) { e.setCancelled(true); return; }
+        if (e.getBlock().getState(false) instanceof org.bukkit.block.Crafter c)
+            for (ItemStack it : c.getInventory().getContents()) if (guarded(it)) { e.setCancelled(true); return; }
+    }
+
+    /** 1.3.39: our one-of-a-kind items are never a crafting ingredient (a legendary into another legendary or the mace
+     *  repair recipe, the Chrono Spine into a spyglass, the Overclocked Chip into a recovery compass...). */
+    boolean guarded(ItemStack it) {
+        if (it == null || it.getType().isAir() || !it.hasItemMeta()) return false;
+        var pdc = it.getPersistentDataContainer();
+        return pdc.has(key, PersistentDataType.STRING)
+                || pdc.has(new NamespacedKey(plugin, "chrono_spine"), PersistentDataType.BYTE)
+                || pdc.has(new NamespacedKey(plugin, "overclocked_chip"), PersistentDataType.BYTE)
+                || pdc.has(new NamespacedKey(plugin, "golden_plunger"), PersistentDataType.BYTE);
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onGuard(PrepareItemCraftEvent e) {
+        for (ItemStack it : e.getInventory().getMatrix()) if (guarded(it)) { e.getInventory().setResult(null); return; }
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onGuardCraft(CraftItemEvent e) {
+        for (ItemStack it : e.getInventory().getMatrix()) if (guarded(it)) { e.setCancelled(true); return; }
     }
 
     // ================================================================= cooldowns

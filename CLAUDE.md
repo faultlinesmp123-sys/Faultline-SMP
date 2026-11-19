@@ -2856,6 +2856,13 @@ Notes:
   (slots 10-16). Index: 14 entries, achievements Flushed / Flatlined. Tested (scratch `lg/LgTest`: recipes, slam 4 HP, cooldown,
   blink, fire res, earthshatter, burn through fire res, raid waves, Colossus griefs (chest kept) + restore, rewards, Chrome
   Runner + spine, non-admin plunger).
+- **Audit (Items 1.3.39)**: the new one-of-a-kind items were plain vanilla materials to recipes: a legendary sword could be the
+  netherite sword in another legendary recipe, Stormbreaker went into the mace repair recipe, the Chrono Spine (amethyst
+  shard) into a spyglass, the Overclocked Chip (echo shard) into a recovery compass. `Legendary.guarded` (legendary /
+  chrono_spine / overclocked_chip / golden_plunger PDC) clears the result in PrepareItemCraftEvent, cancels CraftItemEvent
+  and the Crafter. The Colossus's broken blocks are saved to `toilet_grief.yml` (SafeYaml, every minute + shutdown;
+  "world;x;y;z;blockdata"), so `/toiletraid restore` works after a restart or crash. A Colossus with nobody within 80 for
+  2 minutes (and no raid) flushes itself away. No resource pack change (vanilla models). Tested (scratch `lg/LgTest`).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

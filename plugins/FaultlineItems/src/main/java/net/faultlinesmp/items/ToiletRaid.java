@@ -78,7 +78,7 @@ final class ToiletRaid implements Listener, CommandExecutor, TabCompleter {
 
     final class Colossus {
         Unit u; BossBar bar; int tick, nextMove = 80, move, moveT, phase = 1; Player target; Vector charge; Location beam;
-        final Map<UUID, Double> damage = new HashMap<>(); final Set<UUID> fighters = new HashSet<>(); boolean leaping;
+        final Map<UUID, Double> damage = new HashMap<>(); final Set<UUID> fighters = new HashSet<>(); boolean leaping; int alone;
     }
 
     private final FaultlineItems plugin;
@@ -91,9 +91,14 @@ final class ToiletRaid implements Listener, CommandExecutor, TabCompleter {
     private final LinkedHashMap<Location, BlockData> griefed = new LinkedHashMap<>();
     private long tick;
 
+    private final java.io.File griefFile;
+    private boolean griefDirty;
+
     ToiletRaid(FaultlineItems plugin) {
         this.plugin = plugin;
         plungerKey = new NamespacedKey(plugin, "golden_plunger");
+        griefFile = new java.io.File(plugin.getDataFolder(), "toilet_grief.yml");
+        loadGrief();
         Bukkit.getScheduler().runTaskTimer(plugin, this::tick, 1L, 1L);
         Bukkit.getScheduler().runTask(plugin, () -> {
             for (World w : Bukkit.getWorlds()) for (Entity e : w.getEntities())
@@ -102,6 +107,32 @@ final class ToiletRaid implements Listener, CommandExecutor, TabCompleter {
     }
 
     double cfg(String k, double d) { return plugin.getConfig().getDouble("toilet-raid." + k, d); }
+
+    /** 1.3.39: what the Colossus broke survives restarts and crashes (saved every minute), so /toiletraid restore still works. */
+    private void loadGrief() {
+        if (!griefFile.exists()) return;
+        for (String line : SafeYaml.load(plugin, griefFile).yaml.getStringList("blocks")) {
+            try {
+                String[] a = line.split(";", 5);
+                World w = Bukkit.getWorld(a[0]);
+                if (w == null) continue;
+                griefed.putIfAbsent(new Location(w, Integer.parseInt(a[1]), Integer.parseInt(a[2]), Integer.parseInt(a[3])), Bukkit.createBlockData(a[4]));
+            } catch (RuntimeException ignored) { }
+        }
+    }
+
+    void saveGrief() {
+        if (!griefDirty) return;
+        griefDirty = false;
+        org.bukkit.configuration.file.YamlConfiguration y = new org.bukkit.configuration.file.YamlConfiguration();
+        List<String> out = new ArrayList<>(griefed.size());
+        for (var e : griefed.entrySet()) {
+            Location l = e.getKey();
+            out.add(l.getWorld().getName() + ";" + l.getBlockX() + ";" + l.getBlockY() + ";" + l.getBlockZ() + ";" + e.getValue().getAsString());
+        }
+        y.set("blocks", out);
+        SafeYaml.write(plugin, griefFile, y.saveToString());
+    }
 
     // ================================================================= the Golden Plunger
 
@@ -485,6 +516,7 @@ final class ToiletRaid implements Listener, CommandExecutor, TabCompleter {
         if (b.getState(false) instanceof org.bukkit.block.TileState) return false;
         Location key = b.getLocation();
         griefed.putIfAbsent(key, b.getBlockData());
+        griefDirty = true;
         if (griefed.size() > 200_000) griefed.remove(griefed.keySet().iterator().next());
         if (random.nextInt(4) == 0) b.getWorld().spawnParticle(Particle.BLOCK, key.clone().add(0.5, 0.5, 0.5), 6, 0.3, 0.3, 0.3, 0, b.getBlockData());
         b.setType(Material.AIR, false);
@@ -516,7 +548,14 @@ final class ToiletRaid implements Listener, CommandExecutor, TabCompleter {
         }
         List<Player> ps = near(z.getLocation(), 80);
         for (Player p : ps) c.fighters.add(p.getUniqueId());
-        if (ps.isEmpty()) return;
+        if (ps.isEmpty()) {
+            if (++c.alone > 20 * 120 && raid == null) { // 1.3.39: nobody came back for 2 minutes = it flushes itself away
+                boss = null; c.bar.removeAll(); removeUnit(c.u);
+                Bukkit.broadcastMessage(ChatColor.GRAY + "🚽 The Porcelain Colossus flushed itself away.");
+            }
+            return;
+        }
+        c.alone = 0;
         int phase = z.getHealth() < max * 0.3 ? 3 : z.getHealth() < max * 0.6 ? 2 : 1;
         if (phase != c.phase) {
             c.phase = phase;
@@ -682,6 +721,8 @@ final class ToiletRaid implements Listener, CommandExecutor, TabCompleter {
             if (b.getType().isAir() || b.isLiquid()) { b.setBlockData(e.getValue(), false); n++; }
         }
         griefed.clear();
+        griefDirty = true;
+        saveGrief();
         return n;
     }
 
@@ -797,6 +838,7 @@ final class ToiletRaid implements Listener, CommandExecutor, TabCompleter {
     private void tick() {
         tick++;
         try {
+            if (tick % 1200 == 0) saveGrief();
             Raid r = raid;
             if (r != null) raidTick(r);
             Colossus c = boss;
@@ -817,6 +859,7 @@ final class ToiletRaid implements Listener, CommandExecutor, TabCompleter {
     void shutdown() {
         stop();
         if (plugin.getConfig().getBoolean("toilet-raid.boss.restore-after-fight", false)) restore();
+        saveGrief();
     }
 
     // ================================================================= /toiletraid

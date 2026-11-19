@@ -479,6 +479,10 @@ final class Abilities implements Listener, CommandExecutor, TabCompleter {
                 ChatColor.GRAY + "Heads below: players with an ability.", ChatColor.RED + "Click a head to REMOVE their ability."));
         info.setItemMeta(im);
         m.inv.setItem(8, info);
+        // 1.3.38: row 2 = the legendary weapons + the admin-only bosses
+        if (plugin.legendary != null) { int ls = 10; for (Legendary.Kind k : Legendary.Kind.values()) m.inv.setItem(ls++, plugin.legendary.item(k)); }
+        if (plugin.toiletRaid != null) m.inv.setItem(14, plugin.toiletRaid.plunger(1));
+        if (plugin.chromeRunner != null) { m.inv.setItem(15, plugin.chromeRunner.chip(1)); m.inv.setItem(16, plugin.chromeRunner.spine()); }
         int s = 18;
         List<Map.Entry<UUID, Kind>> list = new ArrayList<>(owned.entrySet());
         list.sort(Comparator.comparing(e -> names.getOrDefault(e.getKey(), "?").toLowerCase(Locale.ROOT)));
@@ -509,6 +513,12 @@ final class Abilities implements Listener, CommandExecutor, TabCompleter {
             for (ItemStack left : p.getInventory().addItem(item(k)).values()) p.getWorld().dropItem(p.getLocation(), left);
             p.sendMessage(ChatColor.GREEN + "Got the " + k.title + " ability item.");
             plugin.getLogger().info("[Abilities] " + p.getName() + " took a " + k.title + " item from /adminmenu");
+        } else if (slot >= 10 && slot <= 16) {
+            ItemStack it = m.inv.getItem(slot);
+            if (it == null || it.getType().isAir()) return;
+            for (ItemStack left : p.getInventory().addItem(it.clone()).values()) p.getWorld().dropItem(p.getLocation(), left);
+            p.sendMessage(ChatColor.GREEN + "Got it.");
+            plugin.getLogger().info("[Abilities] " + p.getName() + " took slot " + slot + " from /adminmenu");
         } else if (slot >= 18 && slot - 18 < m.heads.size()) {
             UUID id = m.heads.get(slot - 18);
             String n = names.getOrDefault(id, "?");

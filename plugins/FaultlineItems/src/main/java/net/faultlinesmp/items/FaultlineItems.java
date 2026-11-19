@@ -459,6 +459,15 @@ public final class FaultlineItems extends JavaPlugin {
         abilities = new Abilities(this); // 1.3.33: personal abilities (/adminmenu)
         getServer().getPluginManager().registerEvents(abilities, this);
         for (String c : new String[]{"adminmenu", "ability"}) if (getCommand(c) != null) { getCommand(c).setExecutor(abilities); getCommand(c).setTabCompleter(abilities); }
+        legendary = new Legendary(this); // 1.3.38: the legendary weapons, the Toilet Raid, the Chrome Runner (admin only)
+        getServer().getPluginManager().registerEvents(legendary, this);
+        if (getCommand("legendary") != null) { getCommand("legendary").setExecutor(legendary); getCommand("legendary").setTabCompleter(legendary); }
+        toiletRaid = new ToiletRaid(this);
+        getServer().getPluginManager().registerEvents(toiletRaid, this);
+        if (getCommand("toiletraid") != null) { getCommand("toiletraid").setExecutor(toiletRaid); getCommand("toiletraid").setTabCompleter(toiletRaid); }
+        chromeRunner = new ChromeRunner(this);
+        getServer().getPluginManager().registerEvents(chromeRunner, this);
+        if (getCommand("chromerunner") != null) { getCommand("chromerunner").setExecutor(chromeRunner); getCommand("chromerunner").setTabCompleter(chromeRunner); }
         truce = new Truce(this); // 1.3.20: both say mb = the fight stops
         if (getCommand("mball") != null) getCommand("mball").setExecutor(truce); // 1.3.32: /mball = "mb all"
         getServer().getPluginManager().registerEvents(truce, this);
@@ -677,6 +686,9 @@ public final class FaultlineItems extends JavaPlugin {
     @Override
     public void onDisable() {
         if (abilities != null) try { abilities.disable(); } catch (RuntimeException ignored) { }
+        if (legendary != null) try { legendary.disable(); } catch (RuntimeException ignored) { }
+        if (toiletRaid != null) try { toiletRaid.shutdown(); } catch (RuntimeException ignored) { }
+        if (chromeRunner != null) try { chromeRunner.shutdown(); } catch (RuntimeException ignored) { }
         if (blueObsidian != null) try { blueObsidian.shutdown(); } catch (RuntimeException ignored) { }
         if (upgradedGrindstone != null) try { upgradedGrindstone.shutdown(); } catch (RuntimeException ignored) { }
         if (blueBed != null) try { blueBed.shutdown(); } catch (RuntimeException ignored) { }
@@ -975,6 +987,9 @@ public final class FaultlineItems extends JavaPlugin {
     CombatTag combatTag;
     Truce truce;
     Abilities abilities;
+    Legendary legendary;
+    ToiletRaid toiletRaid;
+    ChromeRunner chromeRunner;
     HauntedVillage haunted;
     Krampus krampus;
     Holidays holidays;
@@ -7110,6 +7125,12 @@ public final class FaultlineItems extends JavaPlugin {
                 pl -> pl.blueBed.item(1), // 1.3.11
                 pl -> pl.backpack.item(), // 1.2.78
                 pl -> pl.krampus.bell(1), // 1.2.78: summons Krampus
+                pl -> pl.toiletRaid.plunger(1), // 1.3.38: starts the Toilet Raid (admins)
+                pl -> pl.chromeRunner.chip(1), // 1.3.38: summons the Chrome Runner (admins)
+                pl -> pl.chromeRunner.spine(),
+                pl -> pl.legendary.item(Legendary.Kind.STORMBREAKER),
+                pl -> pl.legendary.item(Legendary.Kind.VOID_PIERCER),
+                pl -> pl.legendary.item(Legendary.Kind.INFERNAL_REAPER),
                 pl -> pl.holidays.lantern(1), // 1.2.78: haunts the nearest village
                 // ranger gear (1.2.27)
                 pl -> pl.getRangerGear().item(RangerGear.Piece.MONOCLE),

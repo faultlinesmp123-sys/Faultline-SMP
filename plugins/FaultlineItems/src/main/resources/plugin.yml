@@ -1,5 +1,5 @@
 name: FaultlineItems
-version: '1.3.37'
+version: '1.3.38'
 main: net.faultlinesmp.items.FaultlineItems
 api-version: '1.21'
 softdepend: [floodgate, Geyser-Spigot, DonutCombat]
@@ -13,6 +13,15 @@ commands:
   ability:
     description: Your ability (admins - list, remove, give)
     aliases: [abilities]
+  legendary:
+    description: Legendary weapons (admins) - list, give, reset
+    permission: items.legendary.admin
+  toiletraid:
+    description: The Toilet Raid (admins) - start, boss, spawn, stop, restore, plunger
+    permission: items.adminbosses
+  chromerunner:
+    description: The Chrome Runner boss (admins) - summon, kill, chip, spine
+    permission: items.adminbosses
   mball:
     description: Says "mb all" to everyone you're fighting (both say it = the fight stops)
     aliases: [mb]
@@ -250,6 +259,15 @@ commands:
 permissions:
   items.abilities.admin:
     description: /adminmenu and /ability list/remove/give
+    default: op
+  items.legendary.craft:
+    description: Craft a legendary weapon (each one only once on the server)
+    default: op
+  items.legendary.admin:
+    description: /legendary list, give, reset
+    default: op
+  items.adminbosses:
+    description: Start the Toilet Raid and summon the Chrome Runner
     default: op
   faultline.emote:
     description: Use emotes (/emote)

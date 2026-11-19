@@ -1399,6 +1399,42 @@ entries:
   - {chapter: enemies, name: "Krampus' Imp", icon: krampus_imp, detect-tag: faultline_krampus_imp,
      where: "Krampus calls them, three at a time.",
      does: "Small, fast and furry. 16 health."}
+  - {chapter: weapons, name: "Stormbreaker", icon: jacob_hammer, detect: "faultlineitems:legendary_stormbreaker",
+     how: "LEGENDARY, only one can ever exist. Only an admin can craft it, once: a Mace, 2 Breeze Rods, 3 Wind Charges and a Heavy Core.",
+     does: "A legendary mace. Right-click to leap up and slam down in a huge wind blast that reaches 4 blocks: 2 hearts right next to you, 1 heart a block out, half a heart further, and everyone it hits is thrown about 4 blocks up. 30 second cooldown. Every hit you land with it gives you a little hop."}
+  - {chapter: weapons, name: "Void Piercer", icon: jacob_sword, detect: "faultlineitems:legendary_void_piercer",
+     how: "LEGENDARY, only one can ever exist. Only an admin can craft it, once: a Netherite Sword, 4 End Crystals, 2 Dragon Heads and an Elytra.",
+     does: "A legendary sword. Right-click to blink up to 12 blocks where you look, in a purple blast where you leave and where you land (hurts everyone close), then Speed II for 10 seconds. 35 second cooldown."}
+  - {chapter: weapons, name: "Infernal Reaper", icon: inferno_mob, detect: "faultlineitems:legendary_infernal_reaper",
+     how: "LEGENDARY, only one can ever exist. Only an admin can craft it, once: a Netherite Sword, 4 Nether Stars, 2 Magma Cream and a Wither Skeleton Skull.",
+     does: "A legendary sword. Carry it and you never burn (endless Fire Resistance). Its hits burn like Fire Aspect III, and that fire burns through Fire Resistance. Right-click for EARTHSHATTER: spikes burst out of the ground round you (2 hearts each) and 1 in 4 of them are frozen in place for a second. 25 second cooldown."}
+  - {chapter: weapons, name: "Chrono Spine", icon: gravity_stone, detect: "faultlineitems:chrono_spine",
+     how: "Torn from the Chrome Runner: the one who hurt him most always gets one, everyone else in the fight has a 1 in 4 chance.",
+     does: "A spinal implant. Right-click: for 6 seconds you move like lightning and everything within 16 blocks crawls (Slowness III). 90 second cooldown, costs a little hunger."}
+  - {chapter: weapons, name: "Golden Plunger", icon: iron_stick, detect: "faultlineitems:golden_plunger",
+     how: "Admins only (/itemsmenu, /adminmenu, /toiletraid plunger).",
+     does: "Starts the Toilet Raid right where you stand: 10 waves of toilets, then the Porcelain Colossus."}
+  - {chapter: weapons, name: "Overclocked Chip", icon: gravity_stone, detect: "faultlineitems:overclocked_chip",
+     how: "Admins only (/itemsmenu, /adminmenu, /chromerunner chip).",
+     does: "Calls the Chrome Runner."}
+  - {chapter: bosses, name: "The Porcelain Colossus", icon: bomber_zombie, detect-tag: faultline_toilet_colossus, weakness: "Keep moving and spread out: the laser and the charge go through walls, so hiding inside a build only gets the build wrecked.",
+     where: "Comes after the last wave of the Toilet Raid (admins start it).",
+     does: "A giant toilet with a head, 12000 health (+40% per extra fighter) and it takes 25% less damage. It WRECKS BUILDS: it walks through walls, and its Lid Slam leaves craters, its Eye Laser and Rampage cut through blocks. Also the Flush (pulls everyone in), summons toilets, and below 60% Sludge Barrages, below 30% Toxic Overflow.", drops: ["4 Mythic Bags, 8 Goodie Bags, 3 Dark Loot Bags each|100%", "2 boss enchant books each|100%", "Netherite, Diamond Blocks, God Apples, Totems, a Nether Star each|100%"]}
+  - {chapter: bosses, name: "The Chrome Runner", icon: mimic_player, detect-tag: faultline_chrome_runner, weakness: "When time slows, stand back to back: he blinks behind each of you in turn.",
+     where: "Admins only call him (/chromerunner summon, the Overclocked Chip).",
+     does: "Kade Voss, a chromed-up merc. 7000 health (+35% per extra fighter), takes 20% less and dodges some hits. Overclock (time slows while he cuts everyone), Gorilla Punch (breaks shields), Monowire, Smart Barrage (homing shots), Missiles, and below 30% Cyberpsychosis.", drops: ["Chrono Spine|top damager 100%, others 25%", "3 Mythic Bags, 6 Goodie Bags, 2 Dark Loot Bags each|100%", "Netherite, Diamond Blocks, God Apples, a Totem each|100%"]}
+  - {chapter: enemies, name: "Toilet Grunt", icon: bomber_zombie, detect-tag: faultline_toilet_grunt,
+     where: "The Toilet Raid.", does: "A head sticking out of a toilet. 34 health, hits hard."}
+  - {chapter: enemies, name: "Speed Flusher", icon: bomber_zombie, detect-tag: faultline_toilet_speeder,
+     where: "The Toilet Raid, from wave 2.", does: "Small and very fast. 20 health."}
+  - {chapter: enemies, name: "Plunger Toilet", icon: bomber_zombie, detect-tag: faultline_toilet_plunger,
+     where: "The Toilet Raid, from wave 3.", does: "Throws sludge from range: damage, nausea and poison. 30 health."}
+  - {chapter: enemies, name: "Tank Toilet", icon: bomber_zombie, detect-tag: faultline_toilet_tank,
+     where: "The Toilet Raid, from wave 4.", does: "Big, armoured and slow. 140 health."}
+  - {chapter: enemies, name: "Bomb Toilet", icon: bomber_zombie, detect-tag: faultline_toilet_bomb,
+     where: "The Toilet Raid, from wave 5.", does: "Runs up to you and blows up after a second and a half (no block damage)."}
+  - {chapter: enemies, name: "Golden Toilet", icon: bomber_zombie, detect-tag: faultline_toilet_golden,
+     where: "The Toilet Raid, waves 7+.", does: "220 health, makes every toilet near it faster and stronger. Drops gold."}
   - {chapter: bosses, name: "The Lantern Wraith", icon: lantern_wraith, detect-tag: faultline_lantern_wraith, weakness: "When it wails, back off and kill the spirits it calls. Look behind you after it vanishes.",
      where: "Halloween only (October 1 - November 2): the end of a village haunting.",
      does: "A mini boss, 160 health (+20% per extra defender). Soul Flames along the ground, a Wail that blinds and calls spirits, and it blinks behind you. Beat it and the village is at peace.", drops: ["6 Candy each|100%", "A Goodie Bag each|100%", "Diamonds, Jack o'Lanterns|100%"]}
@@ -1531,6 +1567,10 @@ achievements:
      stat: blind_king, count: 1, reward: {items: ["NETHERITE_INGOT:1", "HEART_OF_THE_SEA:1"], xp: 3000}}
   - {id: silent_night, name: "Silent Night", icon: krampus, desc: "Beat Krampus.",
      stat: krampus, count: 1, reward: {items: ["DIAMOND:5"], xp: 800}}
+  - {id: flushed, name: "Flushed", icon: bomber_zombie, desc: "Beat the Porcelain Colossus.",
+     stat: toilet_colossus, count: 1, reward: {items: ["DIAMOND:10"], xp: 2000}}
+  - {id: chrome_down, name: "Flatlined", icon: mimic_player, desc: "Beat the Chrome Runner.",
+     stat: chrome_runner, count: 1, reward: {items: ["DIAMOND:10"], xp: 2000}}
   - {id: ghostbuster, name: "Ghostbuster", icon: lantern_wraith, desc: "Lift a village's haunting.",
      stat: haunted_villages, count: 1, reward: {items: ["JACK_O_LANTERN:8", "DIAMOND:3"], xp: 500}}
   - {id: festival_goer, name: "Festival Goer", icon: deep_mermaid, desc: "Get a gift at the Den Festival.",

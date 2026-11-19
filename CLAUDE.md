@@ -2824,6 +2824,38 @@ Notes:
   minute (mobs Star hit never "quit"). Checked clean: no unguarded `setVelocity`, no `Slime.class` spawns, no meta-copy PDC
   reads, FLASH / EFFECT particles all carry data, data files all load through SafeYaml (the remaining loadConfiguration calls
   read jar resources / third-party or old files), NestGuard, Abilities (strip / grant / Shade pop / Aim bounce), GhostFix.
+- **Legendary weapons, the Toilet Raid, the Chrome Runner (Items 1.3.38, Index 1.9.21; all ADMIN ONLY)**:
+  `Items/Legendary.java` (`legendary:`, `legendaries.yml`, `/legendary [list|give <id> [player]|reset <id>]`, perms
+  `items.legendary.craft` / `items.legendary.admin`, op): three shapeless recipes, each craftable ONCE on the whole server and
+  only by `items.legendary.craft` (PrepareItemCraftEvent clears the result otherwise; CraftItemEvent records it, no shift-click,
+  Crafter blocks cancelled; `/legendary reset` allows one more). Item PDC `faultlineitems:legendary` = id + `legendary_<id>`,
+  unbreakable, vanilla models. STORMBREAKER (mace + 2 breeze rods + 3 wind charges + heavy core; Unbreaking III / Mending /
+  Density I so MaceEnchants keeps them): right-click = launch (vy 1.5), dive, blast on landing: 4 HP within 1.5, 2 within 2.5,
+  1 out to 4, thrown ~4 up, no fall damage, 30 s; every melee hit = a hop (vy 0.42). VOID PIERCER (netherite sword + 4 end
+  crystals + 2 dragon heads + elytra): blink 12 along the look (own block walk; MockBukkit has no rayTraceBlocks), purple blast
+  (3 dmg r 3.5) at both ends, Speed II 10 s, 35 s. INFERNAL REAPER (netherite sword + 4 nether stars + 2 magma cream + wither
+  skeleton skull): Fire Resistance while carried; hits = 12 s of fire, and while the victim has Fire Resistance it takes 1 a
+  second of plain damage (burns through it); right-click EARTHSHATTER (the owner listed it after the Reaper with no recipe, so
+  it's the Reaper's ability): rings of basalt/blackstone display spikes r 6, 4 dmg, 25% frozen 1 s (held in place), 25 s.
+  `Items/ToiletRaid.java` (`toilet-raid:`, `/toiletraid [start [waves]|boss|spawn <kind> [n]|stop|restore|plunger]`, perm
+  `items.adminbosses`; Golden Plunger LIGHTNING_ROD + PDC `golden_plunger`, admins only): 10 waves round the spot (6 + 3/wave,
+  +40%/extra fighter, max 45; health +6%/wave), kinds Grunt / Speed Flusher / Plunger (sludge snowballs) / Tank / Bomb (fuse
+  1.5 s, no block damage) / Golden (buffs). A toilet = invisible zombie (tags `faultline_toilet`, `faultline_toilet_<kind>`)
+  wearing a player head (random online player or `head-skin`) + 7-9 block displays (`faultline_toilet_part`) teleported every 2
+  ticks (k = zombie scale x 2.05). Then THE PORCELAIN COLOSSUS (`faultline_toilet_colossus`, scale-4 zombie, 12000 +40%,
+  -25% damage): Lid Slam (crater), Flush (pull), Eye Laser + Rampage (cut blocks), summons, Sludge Barrage, Toxic Overflow; it
+  breaks blocks in front of it every 4 ticks (`wreck`: never block entities / TOUGH / liquids / faultline_deep; first BlockData
+  per spot kept in `griefed` for `/toiletraid restore`, lost on restart; `boss.restore-after-fight` false). `ToiletRaid.rewards`
+  = shared reward runner ("item MAT n" or a console command, {player}/{enchant}). `Items/ChromeRunner.java` (`chrome-runner:`,
+  `/chromerunner [summon [player]|kill|chip|spine [player]]`, Overclocked Chip ECHO_SHARD + PDC `overclocked_chip`): Kade Voss,
+  an ORIGINAL cyber-merc (the owner asked for a David Martinez boss + Sandevistan; that's a real franchise's character, so it's
+  an original one and the drop is the CHRONO SPINE): invisible zombie in dyed leather + a player head, 7000 +35%, -20%, 15%
+  dodge; Overclock (Slowness IV on everyone, blinks behind each), Gorilla Punch (shield cooldown), Monowire, Smart Barrage
+  (homing snowballs), Missiles, Cyberpsychosis < 30%. Chrono Spine (AMETHYST_SHARD, PDC `chrono_spine`): top damager always,
+  others 25%; right-click = 6 s Speed IV / Haste II, everything within 16 Slowness III, 90 s. /itemsmenu + /adminmenu row 2
+  (slots 10-16). Index: 14 entries, achievements Flushed / Flatlined. Tested (scratch `lg/LgTest`: recipes, slam 4 HP, cooldown,
+  blink, fire res, earthshatter, burn through fire res, raid waves, Colossus griefs (chest kept) + restore, rewards, Chrome
+  Runner + spine, non-admin plunger).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

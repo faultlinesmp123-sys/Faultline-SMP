@@ -1033,6 +1033,12 @@ public final class FaultlineItems extends JavaPlugin {
         return itemTextureManager;
     }
 
+    /**
+     * 1.3.43: does the main resource pack on GitHub (as PackHash last downloaded it) contain this path? null = not known yet.
+     * Other plugins ask by reflection before showing a model the pack might not have (FaultlineShips' far ship models).
+     */
+    public Boolean packHas(String path) { return PackHash.has(getConfig().getString("item-textures.url", ""), path); }
+
     // ===================== ACCESSORY SYSTEM =====================
 
     static class AccessoryManager {

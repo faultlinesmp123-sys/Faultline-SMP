@@ -597,6 +597,12 @@ entries:
   - {chapter: armor, name: "Iron Ram", icon: shipwright_hammer, detect: "faultlineships:upgrade_ram",
      how: "Craft it: Iron Blocks in the corners, Iron Ingots on the sides, an Anvil in the middle.",
      does: "A ship upgrade: right-click your own finished ship with it. Ramming another ship (or the shore) hurts yours half as much and the ship you hit 50% more."}
+  - {chapter: armor, name: "Fishing Net", icon: shipwright_hammer, detect: "faultlineships:upgrade_net",
+     how: "Craft it: 8 String round a Fishing Rod.",
+     does: "A ship upgrade for a ship with a hold (Dinghy, Brigantine, Galleon, Pirate Ship). While you sail, it nets a catch into the hold every 30 seconds: fish, ink, kelp, and now and then a treasure (nautilus shells, name tags, saddles, prismarine, XP bottles)."}
+  - {chapter: armor, name: "Lookout's Spyglass", icon: shipwright_hammer, detect: "faultlineships:upgrade_nest",
+     how: "Craft it: Gold Ingots in the corners, Copper Ingots on the sides, a Spyglass in the middle.",
+     does: "A ship upgrade: the nearest other ship within 160 blocks shows on the captain's bar, with its distance and direction (red = a skeleton ship)."}
   - {chapter: weapons, name: "Cannonball", icon: cannonball, detect: "faultlineships:cannonball",
      how: "Craft it: an Iron Ingot and Gunpowder make 4.",
      does: "On a ship with cannons, right-click while looking over the side: the nearest loaded cannon on that side fires (aim up to 35 degrees either way, 3 second reload per cannon). It blows up where it lands without breaking blocks, does 45 damage to a ship it hits, and hurts whatever's near."}

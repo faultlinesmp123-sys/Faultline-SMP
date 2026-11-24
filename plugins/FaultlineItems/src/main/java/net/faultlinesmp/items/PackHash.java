@@ -23,6 +23,14 @@ final class PackHash {
 
     private record Known(String sha1, String etag) { }
     private static final Map<String, Known> KNOWN = new ConcurrentHashMap<>();
+    /** 1.3.43: the file names inside each downloaded pack (other plugins ask whether the live pack has a model yet). */
+    private static final Map<String, java.util.Set<String>> ENTRIES = new ConcurrentHashMap<>();
+
+    /** Does the pack at this url (as last downloaded) contain this path? null = not downloaded yet. */
+    static Boolean has(String url, String path) {
+        java.util.Set<String> e = url == null ? null : ENTRIES.get(url);
+        return e == null ? null : e.contains(path);
+    }
 
     /** The url's real hash, if it has been worked out (null = not yet / couldn't download: use the config's). */
     static String of(String url) {
@@ -45,10 +53,17 @@ final class PackHash {
             if (code != 200) { log.warning("[Resource pack] couldn't check " + url + " (HTTP " + code + "): using the hash in config.yml"); return false; }
             MessageDigest md = MessageDigest.getInstance("SHA-1");
             long size = 0;
-            try (InputStream in = c.getInputStream()) {
+            java.io.File tmp = java.io.File.createTempFile("faultline-pack", ".zip");
+            try (InputStream in = c.getInputStream(); java.io.OutputStream out = new java.io.FileOutputStream(tmp)) {
                 byte[] buf = new byte[65536];
-                for (int n; (n = in.read(buf)) > 0; ) { md.update(buf, 0, n); size += n; }
+                for (int n; (n = in.read(buf)) > 0; ) { md.update(buf, 0, n); out.write(buf, 0, n); size += n; }
             }
+            try (java.util.zip.ZipFile z = new java.util.zip.ZipFile(tmp)) { // the names only (the central directory)
+                java.util.Set<String> names = new java.util.HashSet<>();
+                z.stream().forEach(en -> names.add(en.getName()));
+                ENTRIES.put(url, names);
+            } catch (Exception ignored) { // not a zip?
+            } finally { tmp.delete(); }
             String sha = HexFormat.of().formatHex(md.digest());
             KNOWN.put(url, new Known(sha, c.getHeaderField("ETag")));
             if (was == null || !was.sha1.equals(sha))

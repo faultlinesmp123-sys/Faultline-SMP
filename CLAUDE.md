@@ -2914,6 +2914,37 @@ Notes:
   a whirlpool with nobody within 320 blocks skips its particles, sounds and moving displays (`Vortex.watched`, checked
   every second; tickets keep up to 4 loaded); a regular whirlpool only hurts at the water (feet at most surf + 1.6, not
   someone flying over it). Tested (scratch `sp/SpTest`, `wp/Whirl2`).
+- **THE SHIPS OVERHAUL (Ships 1.7.0, Items 1.3.43, Index 1.9.24, FaultlineSMP.zip)**: LAG: a ship is one display per block
+  (Galleon 754, Pirate Ship 882) and every turn sent a rotation packet for each one to everyone tracking it. LOD now
+  (`Ship.lodTick`, every 10 ticks): every block display (and cannon) is `setVisibleByDefault(false)` and shown only to Java
+  players within `lod.near` 48 (+10 to let go) or aboard (seated / walking the deck) = `Ship.near`; everyone else gets ONE
+  ItemDisplay (`Ship.far`, rides the root, same yaw/pitch) with item model `faultline:ship_far/<type>[_wreck]` (PAPER,
+  custom_model_data string 0 = the hull's majority wood, colour 0 = the majority sail wool: `refreshFar`, `farKey`; skeleton
+  ships dark_oak/black, the Ghost Ship pale_oak). Bedrock players get neither (they have the stand-in). With nobody near,
+  `sendRotation` turns only the far model and marks `rotStale`; the blocks catch up when someone comes near. The models come
+  from `python3 tools/ship_far_models.py <unpacked-pack> [--preview tools/previews]` (from tools/ships/layouts.json: one element
+  per visible cell, hidden faces culled, texture VARIABLES; per type a base + a wreck base + 12 tiny wood children
+  (`_oak`... `_warped`); the item definition selects the wood and tints the sails (tintindex 0); units: `f = 23.5 / half the
+  largest span`, the plugin scales by 16 / f and puts the centre at Q0 * centre: `Ship.farTransform`, `lod.flip-far-model`
+  true = Q0 * FLIP since item displays draw turned half way round). LOD switches on ONLY once the main pack on GitHub has the
+  models: FaultlineItems' new public `packHas(path)` (PackHash now keeps each downloaded pack's entry names), asked by reflection
+  every minute (`FaultlineShips.lodOn`, `lod.wait-for-pack` true); a spawned ship whose lod differs is respawned once nobody is
+  aboard. FEATURES (`Ships/ShipFeatures.java`, `features:`): ABILITIES (F = PlayerSwapHandItemsEvent at the helm, or `/ship
+  ability`; `Ship.abilityReady` cooldowns `features.abilities.<type>.cooldown-seconds`): Dinghy ROW HARD (x1.7 speed 6 s / 30 s),
+  Sloop TAILWIND (x1.4 speed, x1.6 turning 10 s / 45 s), Brigantine SMOKE SCREEN (12 s: damage x0.5, non-crew within radius + 10
+  blinded / 60 s), Galleon BROADSIDE (every gun on the side you look fires, reload ignored, a ball each / 40 s), Pirate Ship
+  GRAPPLE (nearest non-wrecked ship within 24 + its radius held to 0.02 speed 15 s, chain particles, non-crew within 20 get
+  Weakness + Slowness / 90 s). PASSIVES: Galleon -15% damage (`galleon-armor`), Pirate Ship guns reload 15% faster
+  (`pirate-reload`), Sloop turns x1.15, the Dinghy is rowed (no wind). WIND per world (veers 1.5 deg/s), `wind.effect` 0.15 =
+  +-15% speed by cos(heading - wind), x1.6 in a FaultlineEvents WINDY event, x1.3 in thunder; on the captain's bar.
+  CRUISE CONTROL: double-tap W (within 8 ticks) or `/ship cruise`; S / Jump / leaving the helm ends it. UPGRADES `net` (Fishing
+  Net: 8 string round a fishing rod; ships with a hold; a catch into the hold every `net.seconds` 30 while sailing faster than
+  0.05, `treasure-chance` 5%) and `nest` (Lookout's Spyglass: gold / copper / spyglass; nearest ship within 160 on the bar,
+  red = skeleton). `/ship locate` (`where`): your ships + a 30 s pointer to the nearest. `Ship.distance` (blocks sailed, saved
+  as `ships.<id>.distance`, in /ship info). Index: Fishing Net + Lookout's Spyglass entries, guide line. Tested (scratch
+  `sh/ShipTest`: 754 displays, near/far visibility both ways, rotation skipped when nobody near and caught up, every ability,
+  F key, cruise, wind, broadside 4 guns, galleon armour, smoke, net catch, grapple, locate; MockBukkit needed
+  EntityMock#setVisibleByDefault / DisplayMock#setBillboard stubbed and BlockMock#isPassable = true: `sh/patched`).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

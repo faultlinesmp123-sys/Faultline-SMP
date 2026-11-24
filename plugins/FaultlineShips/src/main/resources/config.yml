@@ -17,6 +17,34 @@ spawn-range: 128
 # Walk around on a ship while it sails: the deck stays solid and carries you along. Fall off? Swim to the hull and
 # hold Jump (or right-click the hull) to climb back aboard. false = the old way (everyone sits while it sails).
 walkable-deck: true
+
+# 1.7.0 LOD: players further than lod.near see each ship as ONE item model instead of a display per block (a Pirate Ship
+# is 882 of them). Turned on only once the main resource pack on GitHub has the models (wait-for-pack); flip-far-model
+# turns the far model round if it ever shows backwards.
+lod:
+  enabled: true
+  near: 48
+  wait-for-pack: true
+  flip-far-model: true
+
+# 1.7.0: abilities (F at the helm, or /ship ability), wind, the Fishing Net and the Lookout's Spyglass
+features:
+  galleon-armor: 0.15        # the Galleon takes this much less damage
+  pirate-reload: 0.15        # the Pirate Ship's guns reload this much faster
+  wind:
+    enabled: true
+    effect: 0.15             # sailing with the wind: up to +15%, into it: -15% (not the Dinghy: it's rowed)
+  abilities:
+    enabled: true
+    dinghy: {cooldown-seconds: 30}
+    sloop: {cooldown-seconds: 45}
+    brigantine: {cooldown-seconds: 60}
+    galleon: {cooldown-seconds: 40}
+    pirate: {cooldown-seconds: 90, range: 24}
+  net:
+    enabled: true
+    seconds: 30
+    treasure-chance: 0.05
 deck-radius: 3.5              # 1.6.4: under sail, the deck barriers are only laid this close to someone standing on it (lag)
 spawn-blocks-per-tick: 120   # ship blocks spawned per tick across all ships (a fleet appears over a second or two instead of freezing clients)
 

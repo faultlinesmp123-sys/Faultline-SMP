@@ -117,6 +117,19 @@ final class Ship {
     final java.util.Map<UUID, Integer> climbing = new java.util.HashMap<>(); // swimmers holding Jump against the hull
     long lastRam, lastHurtFx;
     int filled;
+    // ---- 1.7.0: LOD (far players see one model), features ----
+    ItemDisplay far;                                        // the whole ship as one item model, for Java players far off
+    final Set<UUID> near = new HashSet<>();                 // Java players who see the block displays
+    boolean lod;                                            // decided when it spawned (FaultlineShips.lodOn)
+    String farKey;
+    boolean rotStale;                                       // turned while nobody near could see the blocks
+    long abilityReady, boostUntil, smokeUntil, grappledUntil;
+    double boostMult = 1, turnMult = 1;
+    Ship grappledTo;
+    boolean cruise;
+    long lastWTap = -99;
+    double distance;                                        // blocks sailed (saved)
+    int netTimer;
 
     Ship(FaultlineShips pl, UUID id, ShipType type, UUID owner) {
         this.pl = pl; this.id = id; this.type = type; this.owner = owner;
@@ -141,7 +154,8 @@ final class Ship {
     /** Top speed: the layout's, the config's multiplier, and Swift Sails. */
     double maxSpeed() {
         double m = type.speed * pl.getConfig().getDouble("ships." + type.size + ".speed-multiplier", 1.0);
-        return ai != null ? m : m * (1 + upgrade("sails") * pl.getConfig().getDouble("upgrades.sails.per-level", 0.10));
+        if (ai != null) return m;
+        return m * (1 + upgrade("sails") * pl.getConfig().getDouble("upgrades.sails.per-level", 0.10)) * (pl.features == null ? 1 : pl.features.speedMult(this));
     }
 
     static double fx(float yaw) { return -Math.sin(Math.toRadians(yaw)); }
@@ -250,6 +264,18 @@ final class Ship {
         displays = new Display[type.cells.size()];
         spawnCursor = 0;
         sentYaw = yaw;
+        near.clear();
+        lod = pl.lodOn();
+        farKey = null;
+        if (lod) far = w.spawn(base, ItemDisplay.class, d -> {
+            d.setPersistent(false);
+            d.addScoreboardTag(TAG);
+            d.setVisibleByDefault(false);
+            d.setTeleportDuration(ai != null ? 5 : 3);
+            d.setViewRange(4f);
+            d.setTransformation(farTransform());
+        });
+        if (far != null) { root.addPassenger(far); refreshFar(); }
         spawnFlag();
         if (!building) { spawnSeats(); spawnStand(); }
         if (!reconciled) { reconciled = true; reconcileBarriers(); }
@@ -274,6 +300,7 @@ final class Ship {
                 d.addScoreboardTag(TAG);
                 d.setTeleportDuration(ai != null ? 5 : 3); // turning is the entity's yaw: this smooths it, the same for every block
                 d.setTransformation(transform(idx));
+                if (lod) d.setVisibleByDefault(false); // 1.7.0: only players near it get the blocks (lodTick)
                 if (blocks[idx] == null) { d.setGlowing(true); d.setGlowColorOverride(Color.fromRGB(150, 220, 255)); }
             };
             if (type.cells.get(idx).need() == ShipType.Need.CANNON)
@@ -281,6 +308,7 @@ final class Ship {
             else
                 displays[idx] = w.spawn(base, BlockDisplay.class, d -> { d.setBlock(dataOf(idx)); setup.accept(d); });
             root.addPassenger(displays[idx]);
+            if (lod) for (UUID u : near) { Player v = Bukkit.getPlayer(u); if (v != null) v.showEntity(pl, displays[idx]); }
             done++;
         }
         if (spawnCursor >= displays.length) spawnCursor = -1;
@@ -365,6 +393,9 @@ final class Ship {
         if (displays != null) for (Display d : displays) if (d != null && d.isValid()) d.remove();
         spawnCursor = -1;
         if (flag != null && flag.isValid()) flag.remove();
+        if (far != null && far.isValid()) far.remove();
+        far = null;
+        near.clear();
         if (flagStand != null && flagStand.isValid()) flagStand.remove();
         flag = null; flagStand = null;
         if (root != null && root.isValid()) { root.eject(); root.remove(); }
@@ -422,6 +453,9 @@ final class Ship {
     /** Turn the whole ship: every display (and the flag) gets the ship's yaw; the client smooths it. */
     void sendRotation() {
         float pt = pitch();
+        if (far != null && far.isValid()) far.setRotation(yaw, pt);
+        if (lod && near.isEmpty()) { rotStale = true; if (flag != null && flag.isValid()) flag.setRotation(yaw, pt); sentYaw = yaw; return; } // nobody sees the blocks: they catch up when someone comes near
+        rotStale = false;
         if (displays != null) for (Display d : displays) if (d != null && d.isValid()) d.setRotation(yaw, pt);
         if (flag != null && flag.isValid()) flag.setRotation(yaw, pt);
         sentYaw = yaw;
@@ -665,6 +699,110 @@ final class Ship {
         if (ticks % 10 == 0) {
             effects();
             hud();
+            try { lodTick(); } catch (RuntimeException e) { pl.getLogger().warning("[Ships] LOD: " + e); }
+            if (ticks % 40 == 0) refreshFar();
+        }
+        if (Math.abs(x - ox) + Math.abs(z - oz) > 0) distance += Math.hypot(x - ox, z - oz);
+    }
+
+    // =====================================================================================================
+    //  1.7.0 LOD: block displays for players near it, one item model for everyone else
+    // =====================================================================================================
+    /** Where the far model sits: the same frame as the blocks (Q0), scaled up from the model's units (ship_far_models.py). */
+    Transformation farTransform() {
+        double[] lo = {Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE}, hi = {-Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE};
+        for (ShipType.Cell c : type.cells) {
+            lo[0] = Math.min(lo[0], c.x() - 0.5); hi[0] = Math.max(hi[0], c.x() + 0.5);
+            lo[1] = Math.min(lo[1], c.y()); hi[1] = Math.max(hi[1], c.y() + 1);
+            lo[2] = Math.min(lo[2], c.z() - 0.5); hi[2] = Math.max(hi[2], c.z() + 0.5);
+        }
+        double half = 0;
+        for (int k = 0; k < 3; k++) half = Math.max(half, (hi[k] - lo[k]) / 2);
+        double f = 23.5 / half, sc = 16 / f;
+        Vector3f t = new Vector3f((float) ((lo[0] + hi[0]) / 2), (float) ((lo[1] + hi[1]) / 2), (float) ((lo[2] + hi[2]) / 2));
+        Q0.transform(t);
+        Quaternionf q = new Quaternionf(Q0);
+        if (pl.getConfig().getBoolean("lod.flip-far-model", true)) q.mul(FLIP); // item displays draw their model turned half way round
+        return new Transformation(t, q, new Vector3f((float) sc, (float) sc, (float) sc), new Quaternionf());
+    }
+
+    /** The far model's item: its wood (most of the hull) and sail colour. */
+    void refreshFar() {
+        if (far == null || !far.isValid()) return;
+        String wood = "oak";
+        org.bukkit.Color sail = org.bukkit.Color.WHITE;
+        if (ai != null) { wood = ai.ghost ? "pale_oak" : "dark_oak"; sail = ai.ghost ? org.bukkit.Color.fromRGB(205, 235, 240) : org.bukkit.Color.fromRGB(40, 40, 44); }
+        else {
+            java.util.Map<String, Integer> woods = new java.util.HashMap<>(), wools = new java.util.HashMap<>();
+            for (int i = 0; i < blocks.length; i++) {
+                if (blocks[i] == null) continue;
+                String b = blocks[i].replace("minecraft:", "");
+                int br = b.indexOf('['); if (br >= 0) b = b.substring(0, br);
+                ShipType.Need n = type.cells.get(i).need();
+                if (n == ShipType.Need.WOOL && b.endsWith("_wool")) wools.merge(b.substring(0, b.length() - 5), 1, Integer::sum);
+                else if (n == ShipType.Need.PLANKS || n == ShipType.Need.LOG) {
+                    String w = b.replace("stripped_", "").replaceAll("_(planks|log|wood|stem|hyphae|block)$", "");
+                    if (w.equals("bamboo_mosaic")) w = "bamboo";
+                    woods.merge(w, 1, Integer::sum);
+                }
+            }
+            String bw = woods.entrySet().stream().max(java.util.Map.Entry.comparingByValue()).map(java.util.Map.Entry::getKey).orElse("oak");
+            if (List.of("oak", "spruce", "birch", "jungle", "acacia", "dark_oak", "mangrove", "cherry", "pale_oak", "bamboo", "crimson", "warped").contains(bw)) wood = bw;
+            String sw = wools.entrySet().stream().max(java.util.Map.Entry.comparingByValue()).map(java.util.Map.Entry::getKey).orElse("white");
+            try { sail = org.bukkit.DyeColor.valueOf(sw.toUpperCase(java.util.Locale.ROOT)).getColor(); } catch (IllegalArgumentException ignored) { }
+            if (sw.equals("black")) sail = org.bukkit.Color.fromRGB(40, 40, 44);
+        }
+        String model = "ship_far/" + type.name().toLowerCase(java.util.Locale.ROOT) + (wrecked ? "_wreck" : "");
+        String key = model + "|" + wood + "|" + sail.asRGB();
+        if (key.equals(farKey)) return;
+        farKey = key;
+        ItemStack it = new ItemStack(Material.PAPER);
+        org.bukkit.inventory.meta.ItemMeta m = it.getItemMeta();
+        m.setItemModel(new NamespacedKey("faultline", model));
+        try {
+            var cmd = m.getCustomModelDataComponent();
+            cmd.setStrings(List.of(wood));
+            cmd.setColors(List.of(sail));
+            m.setCustomModelDataComponent(cmd);
+        } catch (RuntimeException | LinkageError ignored) { }
+        it.setItemMeta(m);
+        far.setItemStack(it);
+    }
+
+    /**
+     * Every half second: Java players within lod.near (48, +10 to let go) and everyone aboard get the block displays; the
+     * rest get the one far model (none while it's being built). Bedrock players get neither (Geyser can't draw displays:
+     * they have the stand-in).
+     */
+    void lodTick() {
+        if (!lod || displays == null) return;
+        World w = world();
+        if (w == null) return;
+        double in = pl.cfg("lod.near", 48), out = in + 10;
+        Location c = center();
+        Set<UUID> want = new HashSet<>();
+        for (Player p : w.getPlayers()) {
+            if (FaultlineShips.bedrock(p)) continue;
+            boolean was = near.contains(p.getUniqueId());
+            double lim = was ? out : in;
+            if (p.getLocation().distanceSquared(c) < lim * lim || seatOf(p) >= 0 || walkers.containsKey(p.getUniqueId())) want.add(p.getUniqueId());
+        }
+        for (UUID u : new ArrayList<>(near)) if (!want.contains(u)) {
+            near.remove(u);
+            Player p = Bukkit.getPlayer(u);
+            if (p != null) for (Display d : displays) if (d != null && d.isValid()) p.hideEntity(pl, d);
+        }
+        for (UUID u : want) if (!near.contains(u)) {
+            Player p = Bukkit.getPlayer(u);
+            if (p == null) continue;
+            if (rotStale) { near.add(u); sendRotation(); near.remove(u); }
+            near.add(u);
+            for (Display d : displays) if (d != null && d.isValid()) p.showEntity(pl, d);
+        }
+        if (far != null && far.isValid()) for (Player p : w.getPlayers()) {
+            boolean see = !building && !near.contains(p.getUniqueId()) && !FaultlineShips.bedrock(p);
+            if (see && !p.canSee(far)) p.showEntity(pl, far);
+            else if (!see && p.canSee(far)) p.hideEntity(pl, far);
         }
     }
 
@@ -732,6 +870,15 @@ final class Ship {
         boolean f = false, b = false, l = false, r = false, sp = false, j = false;
         if (in != null) { f = in.isForward(); b = in.isBackward(); l = in.isLeft(); r = in.isRight(); sp = in.isSprint(); j = in.isJump(); }
         if (wrecked) { f = b = l = r = sp = j = false; }
+        // 1.7.0 cruise control: double-tap W (players' ships); S, Jump or nobody at the helm ends it
+        if (ai == null) {
+            if (f && !prevForward) {
+                if (ticks - lastWTap <= 8 && !cruise && cap != null) { cruise = true; cap.sendActionBar(Component.text("Cruise control on (S to stop)", NamedTextColor.AQUA)); }
+                lastWTap = ticks;
+            }
+            if (b || j || cap == null) cruise = false;
+            if (cruise) f = true;
+        }
         boolean jumped = j && !prevJump;
         boolean backPressed = b && !prevBack;
         prevJump = j;
@@ -760,9 +907,10 @@ final class Ship {
         else if (target == 0) { speed *= 0.975; if (Math.abs(speed) < 0.004) speed = 0; }
         else speed += Math.max(-acc, Math.min(acc, target - speed));
         double steer = (r ? 1 : 0) - (l ? 1 : 0);
-        double rate = steer * type.turn * (0.35 + 0.65 * Math.min(1, Math.abs(speed) / max));
+        double rate = steer * type.turn * (pl.features == null ? 1 : pl.features.turnMult(this)) * (0.35 + 0.65 * Math.min(1, Math.abs(speed) / max));
         turnRate += Math.max(-0.25, Math.min(0.25, rate - turnRate));
         if (Math.abs(turnRate) < 0.01) turnRate = 0;
+        if (grappledUntil > pl.now) speed = Math.max(-0.02, Math.min(0.02, speed)); // 1.7.0: grappled by a Pirate Ship
         if (speed == 0 && turnRate == 0) return;
         float ny = (float) (yaw + turnRate);
         double nx = x + fx(ny) * speed, nz = z + fz(ny) * speed;
@@ -1114,6 +1262,7 @@ final class Ship {
     void damage(double amount, Player by, Location at) {
         if (building || wrecked || amount <= 0) return;
         if (ai != null && ai.ghost && !anchored) return; // the Ghost Ship: nothing touches her until a lantern makes her solid
+        if (pl.features != null) amount *= pl.features.damageMult(this);
         hp = Math.max(0, hp - amount);
         pl.dirty = true;
         breakAcc += amount;
@@ -1305,8 +1454,9 @@ final class Ship {
         Player cap = rider(0);
         if (cap != null && sailing() && !pl.repairing(cap)) {
             double ms = Math.abs(speed) * 20;
+            Component extra = pl.features == null ? Component.empty() : pl.features.captainBar(this, cap);
             cap.sendActionBar(Component.text(String.format("⚓ %.1f m/s", ms), NamedTextColor.AQUA)
-                    .append(Component.text(braking ? "   BRAKING" : anchorQueued ? "   dropping anchor..." : "   W sail · S brake · A/D steer · Sprint full sail · Jump anchor", braking || anchorQueued ? NamedTextColor.YELLOW : NamedTextColor.GRAY)));
+                    .append(braking || anchorQueued ? Component.text(braking ? "   BRAKING" : "   dropping anchor...", NamedTextColor.YELLOW) : extra));
         }
     }
 

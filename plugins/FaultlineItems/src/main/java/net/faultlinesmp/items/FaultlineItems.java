@@ -459,6 +459,7 @@ public final class FaultlineItems extends JavaPlugin {
         abilities = new Abilities(this); // 1.3.33: personal abilities (/adminmenu)
         getServer().getPluginManager().registerEvents(abilities, this);
         for (String c : new String[]{"adminmenu", "ability"}) if (getCommand(c) != null) { getCommand(c).setExecutor(abilities); getCommand(c).setTabCompleter(abilities); }
+        getServer().getPluginManager().registerEvents(new GlideGuard(this), this); // 1.3.40: no gliding without an elytra
         legendary = new Legendary(this); // 1.3.38: the legendary weapons, the Toilet Raid, the Chrome Runner (admin only)
         getServer().getPluginManager().registerEvents(legendary, this);
         if (getCommand("legendary") != null) { getCommand("legendary").setExecutor(legendary); getCommand("legendary").setTabCompleter(legendary); }

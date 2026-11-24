@@ -2863,6 +2863,13 @@ Notes:
   and the Crafter. The Colossus's broken blocks are saved to `toilet_grief.yml` (SafeYaml, every minute + shutdown;
   "world;x;y;z;blockdata"), so `/toiletraid restore` works after a restart or crash. A Colossus with nobody within 80 for
   2 minutes (and no raid) flushes itself away. No resource pack change (vanilla models). Tested (scratch `lg/LgTest`).
+- **Glide guard (Items 1.3.40, `Items/GlideGuard.java`, `glide-guard.enabled`)**: the "fly like creative in survival" glitch
+  (a player's report): glide with an elytra, swap a chestplate on mid-air, log out; the player file is saved still gliding and they
+  come back gliding with no elytra = free flight. Not our code (nothing of ours keeps a PLAYER gliding; Raids only holds its
+  Flying Zombies' glides). Every 2 ticks, 1 / 10 / 40 ticks after join and at quit (LOWEST, before the save) a survival /
+  adventure player gliding without a working glider (`canGlide`: elytra or GLIDER component in an armour slot, not at 1
+  durability) gets `setGliding(false)`; logged "[GlideGuard]" once a minute per player. FlightGuard still covers allowFlight.
+  Tested (scratch `gg/GgTest`).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

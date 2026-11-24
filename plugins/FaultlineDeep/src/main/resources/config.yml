@@ -185,22 +185,36 @@ acid-rain:
 # 1.16.0 THE WHIRLPOOL (Lucki is gone): every hour one opens in an Overworld ocean under a light-blue beam in the sky,
 # the coordinates go out in chat. Swim into its eye = down to the Dark Ocean. /whirlpool = where / when; admins:
 # /whirlpool here|random|at <x> <z>|stop|next <minutes> (free, any time).
+# 1.19.0: whirlpools are SILENT (no announcement). Regular ones only hurt you and spit you out; the Depths (purple beam)
+# is the only way down to the Dark Ocean. Find them with the Whirlpool Radar.
 whirlpool:
   enabled: true
-  every-minutes: 60
-  first-after-minutes: 10   # after the very first start (later restarts keep the saved timer: whirlpool.yml)
-  open-minutes: 10
+  depths:                   # the way down (one at a time)
+    min-minutes: 10
+    max-minutes: 20
+  regular:                  # the decoys: they hurt
+    min-minutes: 15
+    max-minutes: 45
+    max-open: 3
+    open-minutes: 10
+    radius: 8
+    depth: 12
+    damage: 2               # every second inside one
+    spit-damage: 4          # its eye throws you back out
+  radar:
+    range: 2000
+    identify-distance: 120  # closer than this, the radar says which kind it is
+  open-minutes: 10          # the Depths
   retry-minutes: 5          # nobody in the Overworld / no open ocean found: try again this soon
   world: ""                 # empty = the first Overworld
   min-distance: 150         # from a random survival player
   max-distance: 450
   min-depth: 10             # blocks of water under the middle
   search-tries: 16
-  radius: 11
+  radius: 11                # the Depths
   depth: 18                 # down to the eye (or the sea floor if it's shallower)
   debris: 14                # planks, barrels, kelp... spinning down the walls
   beam-height: 160
-  pointer-distance: 400     # an action bar arrow for anyone this close
   needs-jacob: false        # true = only players who beat Diamond Jacob can go down
 
 journey:

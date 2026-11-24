@@ -37,6 +37,7 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
     CaveCaches caves;
     DeepMobs mobs;
     Journey journey;
+    Radar radar;
     Ocean ocean;
     AcidRain acidRain;
     Den den;
@@ -63,6 +64,7 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
         world = loadWorld();
         mobs = new DeepMobs(this);
         journey = new Journey(this);
+        radar = new Radar(this); // 1.19.0: finds whirlpools
         ocean = new Ocean(this);
         acidRain = new AcidRain(this);
         den = new Den(this);
@@ -410,9 +412,10 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
                     case "glimmer", "pearl", "glimmer_pearl" -> glimmer.pearl(n);
                     case "fragment", "coral_fragment" -> coralFarm.fragment(n);
                     case "lighthouse", "lamp" -> lighthouse.lamp(n);
+                    case "radar", "whirlpool_radar" -> radar.item();
                     default -> null;
                 };
-                if (it == null || to == null) { sender.sendMessage(ChatColor.YELLOW + "/deep give <coral|dome_small|dome_large|vault_key|cache_key|fossil|chart|glimmer|fragment|lighthouse> [amount] [player]"); return true; }
+                if (it == null || to == null) { sender.sendMessage(ChatColor.YELLOW + "/deep give <coral|dome_small|dome_large|vault_key|cache_key|fossil|chart|glimmer|fragment|lighthouse|radar> [amount] [player]"); return true; }
                 Player dest = to;
                 dest.getInventory().addItem(it).values().forEach(x -> dest.getWorld().dropItemNaturally(dest.getLocation(), x));
                 sender.sendMessage(ChatColor.GREEN + "Gave " + dest.getName() + " " + what + ".");
@@ -435,7 +438,7 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
             case "whirlpool" -> journey.command(sender, java.util.Arrays.copyOfRange(args, 1, args.length));
             case "info", "" -> {
                 sender.sendMessage(ChatColor.DARK_AQUA + "" + ChatColor.BOLD + "The Dark Ocean " + ChatColor.GRAY + "(" + worldName() + (world == null ? ", NOT LOADED" : "") + ")");
-                sender.sendMessage(ChatColor.GRAY + "Mirror's way up: " + spot(journey.place("kingdom")) + "  Whirlpool: " + (journey.pool != null ? spot(journey.pool.v.center) : "next in " + journey.minutesToNext() + " min"));
+                sender.sendMessage(ChatColor.GRAY + "Mirror's way up: " + spot(journey.place("kingdom")) + "  Whirlpools open: " + journey.pools.size() + (journey.depths() != null ? " (the Depths at " + spot(journey.depths().v.center) + ")" : ", the Depths in " + journey.minutesTo(journey.nextDepths) + " min"));
                 sender.sendMessage(ChatColor.GRAY + "Creatures out: " + mobs.live.size() + "   Event: " + (ocean.event == null ? "none" : ocean.event) + "   Acid Rain: " + (acidRain.active ? "falling" : "no"));
                 if (self != null && world != null && self.getWorld().equals(world)) sender.sendMessage(ChatColor.GRAY + "You're in: " + zone(self.getLocation()));
                 sender.sendMessage(ChatColor.YELLOW + "/deep set kingdom, whirlpool [here|random|at|stop|next], tp [player], town [player], sulphur [player], trench [maw] [player], spawn <mob>, egg <mob> [n] [player], event <pressure|undertow|stop>, acidrain [start|stop|goblin], den [info|tp|raid|stop|reset|rise], eclipse, redtide, frenzy, volcano, region <name>, give <item>, domes");
@@ -452,7 +455,7 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
         List<String> out = new ArrayList<>();
         if (args.length == 1) out.addAll(List.of("info", "set", "tp", "halcyon", "town", "sulphur", "trench", "spawn", "egg", "event", "acidrain", "den", "bloom", "migration", "sub", "whirlpool", "eclipse", "redtide", "frenzy", "volcano", "domes", "give", "region", "season"));
         else if (args.length == 2 && args[0].equalsIgnoreCase("season")) out.addAll(List.of("start", "stop", "auto", "shoal"));
-        else if (args.length == 2 && args[0].equalsIgnoreCase("give")) out.addAll(List.of("coral", "dome_small", "dome_large", "vault_key", "cache_key", "fossil", "chart", "glimmer", "fragment", "lighthouse"));
+        else if (args.length == 2 && args[0].equalsIgnoreCase("give")) out.addAll(List.of("coral", "dome_small", "dome_large", "vault_key", "cache_key", "fossil", "chart", "glimmer", "fragment", "lighthouse", "radar"));
         else if (args.length == 2 && args[0].equalsIgnoreCase("region")) out.addAll(List.of("frozen", "city", "glass", "bones"));
         else if (args.length == 2 && args[0].equalsIgnoreCase("volcano")) out.addAll(List.of("where", "start", "here", "cool", "heal"));
         else if (args.length == 2 && args[0].equalsIgnoreCase("set")) out.addAll(List.of("kingdom"));

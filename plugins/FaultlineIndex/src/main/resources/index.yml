@@ -160,6 +160,9 @@ entries:
   - {chapter: weapons, id: ability_shade, name: "Ability: Shade", icon: shrieking_phantom, detect: "faultlineitems:ability_shade",
      how: "Admins only (/adminmenu). Right-click it and the ability is yours forever (one ability each).",
      does: "Sin's ability: Strength II, Swiftness II and Fire Resistance forever, and Invisibility until a totem pops. It comes back 5 minutes after the pop, or when you respawn."}
+  - {chapter: weapons, name: "Whirlpool Radar", icon: umbral_sonar, detect: "faultlinedeep:whirlpool_radar",
+     how: "Craft it: Copper Ingot, Amethyst Shard, Copper Ingot / Redstone, Compass, Redstone / Copper Ingot, Amethyst Shard, Copper Ingot.",
+     does: "Hold it to find whirlpools out in the ocean: an arrow, the distance and a ping that speeds up as you get close. Whirlpools open quietly all the time. Regular ones (white beam) hurt you and spit you back out. Only THE DEPTHS (purple beam) takes you down to the Dark Ocean. Within 120 blocks the radar tells you which one it is."}
   - {chapter: weapons, name: "Spawn Pad", icon: blue_obsidian, detect: "faultlineitems:spawn_pad",
      how: "Craft it: Diamond Block, Totem of Undying, Diamond Block / Crying Obsidian, Respawn Anchor, Crying Obsidian / Netherite Ingot, Recovery Compass, Netherite Ingot.",
      does: "A round respawn pad. Place it, stand on it and right-click (or crouch on it): you respawn on it when you die, in any dimension. Right-click it with a dye to change its colour. Anyone can break it, and then your spawn is gone. A bed or respawn anchor used later takes over."}

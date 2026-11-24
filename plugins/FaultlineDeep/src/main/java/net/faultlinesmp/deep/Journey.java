@@ -61,35 +61,41 @@ final class Journey implements Listener {
     private final File file;
     private final YamlConfiguration data;
     private int ticks;
-    long nextAt;
+    long nextDepths, nextRegular;
     boolean searching;
-    Pool pool;
+    final List<Pool> pools = new ArrayList<>();
 
     final class Pool {
         final Vortex v;
         final long endsAt;
-        final boolean admin;
+        final boolean admin, depths;
         final Map<UUID, Long> sent = new HashMap<>(); // who went down, when (they can come back up and go again)
         final List<Chunk> tickets = new ArrayList<>();
         boolean warned;
         int errors;
         boolean logged;
-        Pool(Vortex v, long endsAt, boolean admin) { this.v = v; this.endsAt = endsAt; this.admin = admin; }
+        Pool(Vortex v, long endsAt, boolean admin, boolean depths) { this.v = v; this.endsAt = endsAt; this.admin = admin; this.depths = depths; }
     }
 
     Journey(FaultlineDeep pl) {
         this.pl = pl;
         file = new File(pl.getDataFolder(), "whirlpool.yml");
         data = SafeYaml.load(pl, file).yaml;
-        nextAt = data.getLong("next-at", 0);
-        if (nextAt <= 0) { nextAt = System.currentTimeMillis() + (long) (cfg("first-after-minutes", 10) * 60000); save(); }
+        nextDepths = data.getLong("next-depths", 0);
+        nextRegular = data.getLong("next-regular", 0);
+        long now = System.currentTimeMillis();
+        if (nextDepths <= 0) nextDepths = now + between(true);
+        if (nextRegular <= 0) nextRegular = now + between(false);
+        save();
         Bukkit.getScheduler().runTaskTimer(pl, this::tick, 20L, 1L);
     }
 
     double cfg(String k, double def) { return pl.getConfig().getDouble("whirlpool." + k, def); }
 
     void save() {
-        data.set("next-at", nextAt);
+        data.set("next-at", null);
+        data.set("next-depths", nextDepths);
+        data.set("next-regular", nextRegular);
         try { SafeYaml.save(pl, data, file); } catch (Exception e) { pl.getLogger().warning("[Whirlpool] couldn't save whirlpool.yml: " + e); }
     }
 
@@ -163,9 +169,12 @@ final class Journey implements Listener {
         e.setCancelled(true);
         if (channeling.containsKey(p.getUniqueId())) return;
         boolean inDeep = pl.world != null && p.getWorld().equals(pl.world);
-        if (!inDeep) { // on the surface: it shows you the way
+        if (!inDeep) { // on the surface: a vague hint toward the Depths (the Whirlpool Radar finds it properly)
             p.playSound(p.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_RESONATE, 0.8f, 0.7f);
-            for (String line : status(p)) p.sendMessage(line);
+            Pool d = depths();
+            if (d != null && d.v.center.getWorld().equals(p.getWorld()))
+                p.sendMessage(ChatColor.LIGHT_PURPLE + "The Mirror swirls purple. " + ChatColor.GRAY + "The way down is open, somewhere " + away(p, d.v.center).replaceAll("^[0-9]+ blocks ", "to the ") + ".");
+            else p.sendMessage(ChatColor.GRAY + "The Mirror shows a calm sea. The way down isn't open right now.");
             return;
         }
         Location up = upTop(p);
@@ -196,31 +205,47 @@ final class Journey implements Listener {
         }, 1L, 1L);
     }
 
-    // =========================================================================================== the hourly whirlpool
+    // =========================================================================================== the whirlpools (1.19.0)
+    /*
+     * Two kinds, both silent (no announcement): REGULAR whirlpools (every whirlpool.regular.min..max-minutes, 15-45) just hurt,
+     * spin you and spit you back out; THE DEPTHS (every whirlpool.depths.min..max-minutes, 10-20) is the only one whose eye
+     * drops you into the Dark Ocean. Find them with the Whirlpool Radar (Radar.java) or by their beams (white = regular,
+     * purple = the Depths).
+     */
     void tick() {
         ticks++;
-        Pool p = pool;
-        if (p != null) {
+        for (Pool p : new ArrayList<>(pools)) {
             try { poolTick(p); p.errors = 0; }
             catch (Throwable ex) { // one bad tick doesn't close it; 100 in a row do
                 if (!p.logged) { p.logged = true; pl.getLogger().log(java.util.logging.Level.WARNING, "[Whirlpool] tick failed", ex); }
                 p.errors++;
-                if (p.errors >= 100) close();
+                if (p.errors >= 100) close(p);
             }
-            return;
         }
         if (ticks % 20 != 0 || searching || !pl.getConfig().getBoolean("whirlpool.enabled", true)) return;
-        if (System.currentTimeMillis() >= nextAt) {
-            nextAt = System.currentTimeMillis() + (long) (cfg("retry-minutes", 5) * 60000); // if it finds nowhere
-            save();
-            startRandom(null, false);
+        long now = System.currentTimeMillis();
+        if (now >= nextDepths && depths() == null) {
+            nextDepths = now + (long) (cfg("retry-minutes", 5) * 60000); save();
+            startRandom(null, false, true);
+        } else if (now >= nextRegular && regulars() < (int) cfg("regular.max-open", 3)) {
+            nextRegular = now + (long) (cfg("retry-minutes", 5) * 60000); save();
+            startRandom(null, false, false);
         }
     }
 
-    long minutesToNext() { return Math.max(0, (nextAt - System.currentTimeMillis() + 59999) / 60000); }
+    Pool depths() { for (Pool p : pools) if (p.depths) return p; return null; }
+    int regulars() { int n = 0; for (Pool p : pools) if (!p.depths) n++; return n; }
+
+    long between(boolean depths) {
+        String k = depths ? "depths." : "regular.";
+        double a = cfg(k + "min-minutes", depths ? 10 : 15), b = cfg(k + "max-minutes", depths ? 20 : 45);
+        return (long) ((a + random.nextDouble() * Math.max(0, b - a)) * 60000);
+    }
+
+    long minutesTo(long at) { return Math.max(0, (at - System.currentTimeMillis() + 59999) / 60000); }
 
     /** Near a random survival player in the surface world, in an ocean. */
-    void startRandom(CommandSender by, boolean admin) {
+    void startRandom(CommandSender by, boolean admin, boolean depths) {
         World w = surface();
         if (w == null) { if (by != null) by.sendMessage(ChatColor.RED + "No Overworld to open it in."); return; }
         List<Player> who = new ArrayList<>();
@@ -230,14 +255,13 @@ final class Journey implements Listener {
         Player near = who.get(random.nextInt(who.size()));
         searching = true;
         if (by != null) by.sendMessage(ChatColor.GRAY + "Looking for open ocean near " + near.getName() + "...");
-        tryAt(w, near.getLocation(), 0, by, admin);
+        tryAt(w, near.getLocation(), 0, by, admin, depths);
     }
 
-    private void tryAt(World w, Location around, int attempt, CommandSender by, boolean admin) {
+    private void tryAt(World w, Location around, int attempt, CommandSender by, boolean admin, boolean depths) {
         int tries = (int) cfg("search-tries", 16);
         if (attempt >= tries) {
             searching = false;
-            pl.getLogger().info("[Whirlpool] no open ocean found near " + around.getBlockX() + " " + around.getBlockZ() + "; trying again later");
             if (by != null) by.sendMessage(ChatColor.RED + "Couldn't find open ocean there (" + tries + " tries). Try /whirlpool here in the sea.");
             return;
         }
@@ -247,12 +271,17 @@ final class Journey implements Listener {
         List<CompletableFuture<Chunk>> loads = new ArrayList<>();
         for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) loads.add(chunkAsync(w, cx + dx, cz + dz));
         CompletableFuture.allOf(loads.toArray(new CompletableFuture[0])).whenComplete((ok, err) -> Bukkit.getScheduler().runTask(pl, () -> {
-            if (pool != null) { searching = false; return; }
             Location spot = err == null ? openSea(w, x, z) : null;
-            if (spot == null) { tryAt(w, around, attempt + 1, by, admin); return; }
+            if (spot != null) for (Pool o : pools) if (o.v.center.getWorld().equals(w) && o.v.center.distanceSquared(spot) < 48 * 48) spot = null; // not on top of another
+            if (spot == null) { tryAt(w, around, attempt + 1, by, admin, depths); return; }
             searching = false;
-            open(spot, admin);
-            if (!admin) { nextAt = System.currentTimeMillis() + (long) (cfg("every-minutes", 60) * 60000); save(); }
+            Pool p = open(spot, admin, depths);
+            if (p != null && by != null) by.sendMessage(ChatColor.GREEN + (depths ? "The Depths whirlpool" : "A whirlpool") + " opened at " + spot.getBlockX() + ", " + spot.getBlockZ() + ".");
+            if (!admin) {
+                if (depths) nextDepths = System.currentTimeMillis() + between(true);
+                else nextRegular = System.currentTimeMillis() + between(false);
+                save();
+            }
         }));
     }
 
@@ -281,38 +310,22 @@ final class Journey implements Listener {
         return new Location(w, x + 0.5, y, z + 0.5);
     }
 
-    /** Opens one here (water under it). False = no water. */
-    boolean open(Location spot, boolean admin) {
-        if (pool != null) close();
-        if (!Vortex.water(spot.getBlock()) && !Vortex.water(spot.getBlock().getRelative(0, -1, 0))) return false;
-        Vortex v = new Vortex(spot, cfg("radius", 11), cfg("depth", 18), (int) cfg("debris", 14), cfg("beam-height", 160));
-        Pool p = new Pool(v, System.currentTimeMillis() + (long) (cfg("open-minutes", 10) * 60000), admin);
+    /** Opens one here (water under it). Null = no water. Only one Depths whirlpool at a time. */
+    Pool open(Location spot, boolean admin, boolean depths) {
+        if (!Vortex.water(spot.getBlock()) && !Vortex.water(spot.getBlock().getRelative(0, -1, 0))) return null;
+        if (depths) { Pool old = depths(); if (old != null) close(old); }
+        double radius = depths ? cfg("radius", 11) : cfg("regular.radius", 8), depth = depths ? cfg("depth", 18) : cfg("regular.depth", 12);
+        Vortex v = new Vortex(spot, radius, depth, (int) cfg("debris", 14), cfg("beam-height", 160), depths);
+        double mins = depths ? cfg("open-minutes", 10) : cfg("regular.open-minutes", 10);
+        Pool p = new Pool(v, System.currentTimeMillis() + (long) (mins * 60000), admin, depths);
         World w = spot.getWorld();
         for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) {
             Chunk c = w.getChunkAt((spot.getBlockX() >> 4) + dx, (spot.getBlockZ() >> 4) + dz);
             try { if (c.addPluginChunkTicket(pl)) p.tickets.add(c); } catch (Throwable ignored) { } // keeps it loaded while it's open
         }
-        pool = p;
-        announce(p);
-        pl.getLogger().info("[Whirlpool] opened at " + w.getName() + " " + v.center.getBlockX() + " " + v.center.getBlockZ() + (admin ? " (admin)" : ""));
-        return true;
-    }
-
-    void announce(Pool p) {
-        Location c = p.v.center;
-        int mins = (int) Math.round(cfg("open-minutes", 10));
-        String where = c.getBlockX() + ", " + c.getBlockZ();
-        Bukkit.broadcastMessage(ChatColor.AQUA + "" + ChatColor.BOLD + "A whirlpool has opened " + ChatColor.GRAY + "in the ocean at "
-                + ChatColor.WHITE + ChatColor.BOLD + where + ChatColor.GRAY + " (" + c.getWorld().getName() + ")"); // (also the Index's Discord forward)
-        for (Player o : Bukkit.getOnlinePlayers()) {
-            o.sendMessage(ChatColor.GRAY + "  Follow the beam of light. Swim into its eye to go down to the " + ChatColor.DARK_AQUA + "Dark Ocean" + ChatColor.GRAY
-                    + ". It closes in " + mins + " minutes." + (o.getWorld().equals(c.getWorld()) ? ChatColor.DARK_GRAY + " (" + away(o, c) + ")" : ""));
-            o.playSound(o.getLocation(), Sound.ENTITY_ELDER_GUARDIAN_CURSE, SoundCategory.AMBIENT, 0.6f, 0.5f);
-            o.playSound(o.getLocation(), Sound.BLOCK_BUBBLE_COLUMN_WHIRLPOOL_AMBIENT, SoundCategory.AMBIENT, 1f, 0.5f);
-            if (o.getWorld().equals(c.getWorld()))
-                o.showTitle(Title.title(Component.text("A Whirlpool Opens", NamedTextColor.AQUA), Component.text(where + "  (" + away(o, c) + ")", NamedTextColor.GRAY),
-                        Title.Times.times(Duration.ofMillis(400), Duration.ofMillis(3000), Duration.ofMillis(800))));
-        }
+        pools.add(p);
+        pl.getLogger().info("[Whirlpool] " + (depths ? "the Depths" : "a regular one") + " opened at " + w.getName() + " " + v.center.getBlockX() + " " + v.center.getBlockZ() + (admin ? " (admin)" : ""));
+        return p;
     }
 
     static final String[] ARROWS = {"↑", "↗", "→", "↘", "↓", "↙", "←", "↖"};
@@ -335,17 +348,25 @@ final class Journey implements Listener {
         return ARROWS[(int) Math.floorMod(Math.round(rel / 45.0), 8)];
     }
 
-    List<String> status(Player p) {
+    /** Players get a hint; admins (faultlinedeep.whirlpool) get every open one and the timers. */
+    List<String> status(CommandSender s) {
         List<String> out = new ArrayList<>();
-        Pool c = pool;
-        if (c != null) {
+        if (!pl.getConfig().getBoolean("whirlpool.enabled", true)) { out.add(ChatColor.GRAY + "The whirlpools are switched off."); return out; }
+        Player p = s instanceof Player x ? x : null;
+        if (s == null || !s.hasPermission("faultlinedeep.whirlpool")) {
+            out.add(ChatColor.AQUA + "Whirlpools open and close out in the ocean all the time. " + ChatColor.GRAY + "Most just tear you up;");
+            out.add(ChatColor.GRAY + "one of them, " + ChatColor.LIGHT_PURPLE + "the Depths" + ChatColor.GRAY + " (purple beam), leads down to the Dark Ocean. Craft a "
+                    + ChatColor.WHITE + "Whirlpool Radar" + ChatColor.GRAY + " to find them.");
+            return out;
+        }
+        if (pools.isEmpty()) out.add(ChatColor.GRAY + "No whirlpool is open.");
+        for (Pool c : pools) {
             Location at = c.v.center;
             long left = Math.max(0, (c.endsAt - System.currentTimeMillis()) / 60000);
-            out.add(ChatColor.AQUA + "The Whirlpool is open at " + ChatColor.WHITE + at.getBlockX() + ", " + at.getBlockZ() + ChatColor.GRAY + " (" + at.getWorld().getName()
-                    + (p != null && p.getWorld().equals(at.getWorld()) ? ", " + away(p, at) : "") + "), closing in about " + (left + 1) + " min.");
-        } else if (pl.getConfig().getBoolean("whirlpool.enabled", true)) {
-            out.add(ChatColor.AQUA + "The next Whirlpool opens in about " + ChatColor.WHITE + minutesToNext() + " min" + ChatColor.GRAY + " somewhere in the ocean. Watch for the beam.");
-        } else out.add(ChatColor.GRAY + "The whirlpools are switched off.");
+            out.add((c.depths ? ChatColor.LIGHT_PURPLE + "The Depths" : ChatColor.AQUA + "Regular") + ChatColor.GRAY + " at " + ChatColor.WHITE + at.getBlockX() + ", " + at.getBlockZ()
+                    + ChatColor.GRAY + " (" + at.getWorld().getName() + (p != null && p.getWorld().equals(at.getWorld()) ? ", " + away(p, at) : "") + "), closing in ~" + (left + 1) + " min.");
+        }
+        out.add(ChatColor.GRAY + "Next: the Depths in " + minutesTo(nextDepths) + " min" + (depths() != null ? " (after this one)" : "") + ", a regular one in " + minutesTo(nextRegular) + " min.");
         return out;
     }
 
@@ -354,40 +375,37 @@ final class Journey implements Listener {
         long now = System.currentTimeMillis();
         if (!v.closing && now >= p.endsAt) {
             v.closing = true;
-            for (Player o : v.center.getWorld().getPlayers()) if (o.getLocation().distanceSquared(v.center) < 200 * 200)
-                o.sendMessage(ChatColor.AQUA + "The Whirlpool is closing...");
-        }
-        if (!v.closing && !p.warned && p.endsAt - now < 60000) {
-            p.warned = true;
-            Bukkit.broadcastMessage(ChatColor.AQUA + "The Whirlpool at " + v.center.getBlockX() + ", " + v.center.getBlockZ() + ChatColor.GRAY + " closes in 1 minute!");
+            for (Player o : v.center.getWorld().getPlayers()) if (o.getLocation().distanceSquared(v.center) < 48 * 48)
+                o.sendActionBar(Component.text("The whirlpool is closing...", NamedTextColor.AQUA));
         }
         v.tick();
         pull(p);
-        if (ticks % 10 == 0) for (Player o : v.center.getWorld().getPlayers()) { // a pointer for anyone heading there
-            double dd = o.getLocation().distance(v.center);
-            if (dd < 12 || dd > cfg("pointer-distance", 400) || v.closing) continue;
-            o.sendActionBar(Component.text("Whirlpool  " + arrow(o, v.center) + "  " + (int) dd + " blocks", NamedTextColor.AQUA));
-        }
-        if (v.closed()) close();
+        if (v.closed()) close(p);
     }
 
-    void close() {
-        Pool p = pool;
-        pool = null;
-        if (p == null) return;
+    void close(Pool p) {
+        if (!pools.remove(p)) return;
         p.v.clear();
         for (Chunk c : p.tickets) try { c.removePluginChunkTicket(pl); } catch (Throwable ignored) { }
     }
 
+    void closeAll() { for (Pool p : new ArrayList<>(pools)) close(p); }
+
+    /** The open whirlpools (for the radar). */
+    List<Pool> open() { return pools; }
+
     /**
-     * Anyone near it is dragged round and in; inside the funnel they slide round its walls and down into the eye, and the eye
-     * sends them down. A boat is dragged in with its rider, and throws them out at the edge of the funnel.
+     * Anyone near it is dragged round and in. In THE DEPTHS they slide down the walls into the eye, and the eye sends them down.
+     * A REGULAR one hurts (whirlpool.regular.damage every second inside it) and its eye spits you out, up and away
+     * (regular.spit-damage). A boat is dragged in with its rider and throws them out at the edge of the funnel.
      */
     void pull(Pool pl0) {
         Vortex v = pl0.v;
         if (v.r < 1) return;
+        long now = System.currentTimeMillis();
         for (Player p : v.center.getWorld().getPlayers()) {
-            if (System.currentTimeMillis() - pl0.sent.getOrDefault(p.getUniqueId(), 0L) < 10000 || p.getGameMode() == GameMode.SPECTATOR) continue;
+            long cool = pl0.depths ? 10000 : 2500;
+            if (now - pl0.sent.getOrDefault(p.getUniqueId(), 0L) < cool || p.getGameMode() == GameMode.SPECTATOR) continue;
             Location l = p.getLocation();
             double dx = v.center.getX() - l.getX(), dz = v.center.getZ() - l.getZ(), d = Math.hypot(dx, dz);
             if (d > v.r + 4 || l.getY() > v.surf + 5 || l.getY() < v.surf - v.d - 4) continue;
@@ -398,14 +416,37 @@ final class Journey implements Listener {
                 if (v.inside(ride.getLocation()) || d < v.r - 1) { p.leaveVehicle(); }
                 else { Edition.vel(ride, in.clone().multiply(0.25).add(round.clone().multiply(0.3)).setY(0)); continue; }
             }
-            if (!earned(p)) {
+            if (pl0.depths && !earned(p)) {
                 if (ticks % 20 == 0) { Edition.vel(p, in.clone().multiply(-0.9).setY(0.5)); p.sendActionBar(Component.text("The water won't take you. (Beat Diamond Jacob.)", NamedTextColor.GRAY)); }
                 continue;
             }
-            if (v.inside(l)) Edition.vel(p, in.multiply(0.14).add(round.multiply(0.22)).setY(-0.45)); // down the wall
-            else Edition.vel(p, in.multiply(0.2).add(round.multiply(0.25)).setY(-0.04));             // in the water at the rim
-            if (v.atEye(l)) { pl0.sent.put(p.getUniqueId(), System.currentTimeMillis()); send(p); }
+            boolean inFunnel = v.inside(l);
+            if (inFunnel) Edition.vel(p, in.clone().multiply(0.14).add(round.clone().multiply(pl0.depths ? 0.22 : 0.3)).setY(-0.45)); // down the wall
+            else Edition.vel(p, in.clone().multiply(0.2).add(round.clone().multiply(0.25)).setY(-0.04));                               // in the water at the rim
+            if (!pl0.depths && (inFunnel || d < v.r) && p.getGameMode() != GameMode.CREATIVE) {
+                if (ticks % 20 == 0) {
+                    p.damage(cfg("regular.damage", 2));
+                    p.getWorld().spawnParticle(Particle.SPLASH, l.clone().add(0, 1, 0), 12, 0.3, 0.4, 0.3, 0.1);
+                    p.sendActionBar(Component.text("The whirlpool is tearing you apart!", NamedTextColor.RED));
+                }
+            }
+            if (v.atEye(l)) {
+                pl0.sent.put(p.getUniqueId(), now);
+                if (pl0.depths) send(p);
+                else spit(p, in);
+            }
         }
+    }
+
+    /** A regular whirlpool's eye throws you back up and out. */
+    void spit(Player p, Vector in) {
+        Vector out = in.lengthSquared() < 0.01 ? new Vector(random.nextDouble() - 0.5, 0, random.nextDouble() - 0.5).normalize() : in.clone().multiply(-1);
+        if (p.getGameMode() != GameMode.CREATIVE) p.damage(cfg("regular.spit-damage", 4));
+        Bukkit.getScheduler().runTask(pl, () -> { if (p.isOnline()) Edition.vel(p, out.multiply(1.3).setY(1.35)); });
+        p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_SPLASH_HIGH_SPEED, 1.2f, 0.6f);
+        p.getWorld().spawnParticle(Particle.SPLASH, p.getLocation(), 60, 0.6, 1.2, 0.6, 0.3);
+        p.getWorld().spawnParticle(Particle.BUBBLE_POP, p.getLocation(), 30, 0.5, 0.8, 0.5, 0.1);
+        p.sendActionBar(Component.text("Spat back out. This isn't the way down.", NamedTextColor.GRAY));
     }
 
     /** Down into the Dark Ocean. */
@@ -433,49 +474,61 @@ final class Journey implements Listener {
         boolean admin = s.hasPermission("faultlinedeep.whirlpool");
         Player self = s instanceof Player p ? p : null;
         if (sub.isEmpty() || sub.equals("where") || !admin) {
-            for (String line : status(self)) s.sendMessage(line);
-            if (admin && sub.isEmpty()) s.sendMessage(ChatColor.YELLOW + "/whirlpool [here|random|at <x> <z> [world]|stop|next <minutes>]");
+            for (String line : status(s)) s.sendMessage(line);
+            if (admin && sub.isEmpty()) s.sendMessage(ChatColor.YELLOW + USAGE);
             return true;
         }
+        boolean depthsKind = !java.util.Arrays.asList(a).contains("regular"); // admin opens: the Depths unless "regular" is given
         switch (sub) {
             case "here" -> {
                 if (self == null) { s.sendMessage("Players only."); return true; }
-                if (!open(self.getLocation().getBlock().getLocation().add(0.5, 0, 0.5), true)) s.sendMessage(ChatColor.RED + "Stand in the sea (water under you).");
+                if (open(self.getLocation().getBlock().getLocation().add(0.5, 0, 0.5), true, depthsKind) == null) s.sendMessage(ChatColor.RED + "Stand in the sea (water under you).");
+                else s.sendMessage(ChatColor.GREEN + (depthsKind ? "The Depths whirlpool" : "A regular whirlpool") + " opened here.");
             }
-            case "random" -> { if (pool != null) close(); startRandom(s, true); }
+            case "random" -> startRandom(s, true, depthsKind);
             case "at" -> {
-                if (a.length < 3) { s.sendMessage(ChatColor.YELLOW + "/whirlpool at <x> <z> [world]"); return true; }
-                World w = a.length > 3 ? Bukkit.getWorld(a[3]) : self != null ? self.getWorld() : surface();
+                if (a.length < 3) { s.sendMessage(ChatColor.YELLOW + "/whirlpool at <x> <z> [world] [depths|regular]"); return true; }
+                World w = a.length > 3 && Bukkit.getWorld(a[3]) != null ? Bukkit.getWorld(a[3]) : self != null ? self.getWorld() : surface();
                 int x, z;
                 try { x = Integer.parseInt(a[1]); z = Integer.parseInt(a[2]); } catch (NumberFormatException e) { s.sendMessage(ChatColor.RED + "Numbers, please."); return true; }
                 if (w == null) { s.sendMessage(ChatColor.RED + "No such world."); return true; }
-                chunkAsync(w, x >> 4, z >> 4).thenAccept(c -> {
+                chunkAsync(w, x >> 4, z >> 4).thenAccept(c -> Bukkit.getScheduler().runTask(pl, () -> {
                     Location at = new Location(w, x + 0.5, w.getSeaLevel() - 1, z + 0.5);
-                    if (!open(at, true)) s.sendMessage(ChatColor.RED + "There's no sea at " + x + ", " + z + ".");
-                });
+                    if (open(at, true, depthsKind) == null) s.sendMessage(ChatColor.RED + "There's no sea at " + x + ", " + z + ".");
+                    else s.sendMessage(ChatColor.GREEN + "Opened at " + x + ", " + z + ".");
+                }));
             }
-            case "stop" -> { if (pool == null) s.sendMessage(ChatColor.GRAY + "None is open."); else { pool.v.closing = true; s.sendMessage(ChatColor.GREEN + "It's closing."); } }
+            case "stop" -> {
+                if (pools.isEmpty()) { s.sendMessage(ChatColor.GRAY + "None is open."); return true; }
+                for (Pool p : pools) p.v.closing = true;
+                s.sendMessage(ChatColor.GREEN + "Closing " + pools.size() + ".");
+            }
             case "next" -> {
                 double m = 0;
                 try { m = Double.parseDouble(a.length > 1 ? a[1] : "0"); } catch (NumberFormatException ignored) { }
-                nextAt = System.currentTimeMillis() + (long) (m * 60000); save();
-                s.sendMessage(ChatColor.GREEN + "The next hourly whirlpool opens in " + (int) m + " min.");
+                long at = System.currentTimeMillis() + (long) (m * 60000);
+                if (depthsKind) nextDepths = at; else nextRegular = at;
+                save();
+                s.sendMessage(ChatColor.GREEN + "The next " + (depthsKind ? "Depths" : "regular") + " whirlpool opens in " + (int) m + " min.");
             }
-            default -> s.sendMessage(ChatColor.YELLOW + "/whirlpool [here|random|at <x> <z> [world]|stop|next <minutes>]");
+            default -> s.sendMessage(ChatColor.YELLOW + USAGE);
         }
         return true;
     }
 
+    static final String USAGE = "/whirlpool [where|here|random|at <x> <z> [world]|stop|next <minutes>] [depths|regular]";
+
     List<String> tab(String[] a) {
         if (a.length == 1) return List.of("where", "here", "random", "at", "stop", "next").stream().filter(x -> x.startsWith(a[0].toLowerCase())).toList();
+        if (a.length >= 2) return List.of("depths", "regular").stream().filter(x -> x.startsWith(a[a.length - 1].toLowerCase())).toList();
         return List.of();
     }
 
     @EventHandler
     public void onChunk(ChunkLoadEvent e) {
         for (Entity en : e.getChunk().getEntities()) if (en.getScoreboardTags().contains("faultline_lucki") || en.getScoreboardTags().contains("faultline_lucki_boat")
-                || (en.getScoreboardTags().contains(Vortex.TAG) && pool == null)) en.remove(); // leftovers (Lucki is gone since 1.16.0)
+                || (en.getScoreboardTags().contains(Vortex.TAG) && pools.isEmpty())) en.remove(); // leftovers (Lucki is gone since 1.16.0)
     }
 
-    void shutdown() { close(); save(); }
+    void shutdown() { closeAll(); save(); }
 }

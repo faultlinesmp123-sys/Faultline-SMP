@@ -36,7 +36,7 @@ import java.util.UUID;
  * the eye.
  *
  * What makes it its own thing (1.16.0):
- *  - THE BEAM: a fake beacon under the sea floor below the eye (3x3 iron base, light blue glass in the floor over it), so
+ *  - THE BEAM: a fake beacon under the sea floor below the eye (3x3 iron base, purple glass over it for the Depths, white for a regular one), so
  *    every client draws a real light-blue beacon beam up into the sky, seen from as far as their render distance. Plus a
  *    column of long-distance dust for anyone whose game doesn't draw it (Bedrock).
  *  - DEBRIS: planks, logs, barrels, kelp and coral tumbling round the walls, faster and faster, down into the eye.
@@ -63,6 +63,11 @@ final class Vortex {
     private BlockDisplay eye;
     final int debrisCount;
     final double beamHeight;
+    /** 1.19.0: THE DEPTHS (purple beam, purple eye, the way down) or a regular whirlpool (white beam, it only hurts). */
+    final boolean depths;
+    private final List<BlockDisplay> foam = new ArrayList<>(), bands = new ArrayList<>();
+    private final Particle.DustOptions beamDust, armDust;
+    private final Color eyeGlow;
 
     private static final Material[] DEBRIS = {Material.OAK_PLANKS, Material.SPRUCE_PLANKS, Material.DARK_OAK_LOG, Material.BARREL,
             Material.OAK_FENCE, Material.KELP_PLANT, Material.TUBE_CORAL_BLOCK, Material.BRAIN_CORAL_BLOCK, Material.PRISMARINE,
@@ -74,7 +79,13 @@ final class Vortex {
         Debris(double s) { this.s = s; this.a = random.nextDouble() * Math.PI * 2; this.speed = 0.004 + random.nextDouble() * 0.005; this.spin = 0.06 + random.nextDouble() * 0.05; }
     }
 
-    Vortex(Location spot, double radius, double depth, int debrisCount, double beamHeight) {
+    Vortex(Location spot, double radius, double depth, int debrisCount, double beamHeight) { this(spot, radius, depth, debrisCount, beamHeight, true); }
+
+    Vortex(Location spot, double radius, double depth, int debrisCount, double beamHeight, boolean depths) {
+        this.depths = depths;
+        beamDust = new Particle.DustOptions(depths ? Color.fromRGB(190, 110, 255) : Color.fromRGB(235, 245, 255), 3.0f);
+        armDust = new Particle.DustOptions(depths ? Color.fromRGB(150, 90, 230) : Color.fromRGB(60, 200, 230), 1.3f);
+        eyeGlow = depths ? Color.fromRGB(190, 90, 255) : Color.fromRGB(70, 230, 255);
         World w = spot.getWorld();
         int x = spot.getBlockX(), z = spot.getBlockZ(), y = spot.getBlockY();
         // the surface: the top water block of this column (from a little above the spot)
@@ -94,7 +105,7 @@ final class Vortex {
         this.beamHeight = beamHeight;
         // the beam: beacon in the ground under the eye, light blue glass in the floor above it, a 3x3 iron base under it
         if (w.getBlockAt(x, f, z).getType().isSolid() && w.getBlockAt(x, f - 1, z).getType().isSolid()) {
-            beam.put(Position.block(x, f, z), Material.LIGHT_BLUE_STAINED_GLASS.createBlockData());
+            beam.put(Position.block(x, f, z), (depths ? Material.PURPLE_STAINED_GLASS : Material.WHITE_STAINED_GLASS).createBlockData());
             beam.put(Position.block(x, f - 1, z), Material.BEACON.createBlockData());
             for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++)
                 beam.put(Position.block(x + dx, f - 2, z + dz), Material.IRON_BLOCK.createBlockData());
@@ -139,6 +150,7 @@ final class Vortex {
         if (changed || t % 10 == 0) send();
         draw();
         moveDebris();
+        moveDetail();
         sound();
     }
 
@@ -222,6 +234,9 @@ final class Vortex {
         debris.clear();
         if (eye != null && eye.isValid()) eye.remove();
         eye = null;
+        for (BlockDisplay b : foam) if (b.isValid()) b.remove();
+        for (BlockDisplay b : bands) if (b.isValid()) b.remove();
+        foam.clear(); bands.clear();
     }
 
     boolean closed() { return closing && r <= 0.01; }
@@ -283,7 +298,7 @@ final class Vortex {
                     e.addScoreboardTag("faultline_no_bedrock_fx");
                     e.setBlock(Material.BLACK_CONCRETE.createBlockData());
                     e.setGlowing(true);
-                    e.setGlowColorOverride(Color.fromRGB(70, 230, 255));
+                    e.setGlowColorOverride(eyeGlow);
                     e.setBrightness(new Display.Brightness(15, 15));
                     e.setTeleportDuration(2);
                     e.setViewRange(1.5f);
@@ -293,18 +308,80 @@ final class Vortex {
         } else if (eye != null && eye.isValid()) { eye.remove(); eye = null; }
     }
 
+    // ------------------------------------------------------------------------------------------- 1.19.0 detail
+    /**
+     * A ring of churning foam slabs turning round the rim, and translucent bands of water (stained glass sheets) spiralling
+     * down the walls into the eye: the funnel reads as moving water, not just particles. Purple-tinged in the Depths.
+     */
+    private void moveDetail() {
+        if (t % 2 != 0) return;
+        World w = center.getWorld();
+        boolean show = r >= 2.5 && !(closing && r < 2);
+        int nf = 18, arms = 4, per = 6;
+        if (!show) {
+            for (BlockDisplay b : foam) if (b.isValid()) b.remove();
+            for (BlockDisplay b : bands) if (b.isValid()) b.remove();
+            foam.clear(); bands.clear();
+            return;
+        }
+        while (foam.size() < nf) foam.add(sheet(center, Material.WHITE_CONCRETE_POWDER, 1.5f, 0.12f, 0.9f));
+        while (bands.size() < arms * per) {
+            int i = bands.size();
+            Material m = depths ? (i % 3 == 0 ? Material.PURPLE_STAINED_GLASS : Material.LIGHT_BLUE_STAINED_GLASS)
+                    : (i % 3 == 0 ? Material.WHITE_STAINED_GLASS : Material.LIGHT_BLUE_STAINED_GLASS);
+            bands.add(sheet(center, m, 1.6f, 0.06f, 0.7f));
+        }
+        double spin = t * 0.22;
+        for (int i = 0; i < nf; i++) {
+            BlockDisplay b = foam.get(i);
+            if (!b.isValid()) continue;
+            double a = -spin * 0.6 + i * Math.PI * 2 / nf;
+            Location l = center.clone().add(Math.cos(a) * (r - 0.2), 1.0 + Math.sin(t * 0.3 + i) * 0.08, Math.sin(a) * (r - 0.2));
+            l.setYaw((float) Math.toDegrees(a));
+            l.setPitch(0);
+            b.teleport(l);
+        }
+        for (int arm = 0; arm < arms; arm++) for (int k = 0; k < per; k++) {
+            BlockDisplay b = bands.get(arm * per + k);
+            if (!b.isValid()) continue;
+            double s = (k + 0.5) / per, x = r * (1 - s * 0.9), a = spin * (1 + s * 1.4) + arm * Math.PI / 2 + s * 4.5;
+            Location l = onWall(x, a);
+            l.add(0, 0.05, 0);
+            // lie along the wall: facing round the funnel, tilted down by the wall's slope there
+            double slope = Math.toDegrees(Math.atan2(depthAt(Math.max(0, x - 0.5)) - depthAt(x + 0.5), 1.0));
+            l.setYaw((float) Math.toDegrees(a) + 90); // long side pointing in, down the wall
+            l.setPitch((float) Math.max(-70, Math.min(70, slope)));
+            b.teleport(l);
+        }
+    }
+
+    /** A flat sheet display centred on its spot (turned by the entity's yaw/pitch). */
+    private BlockDisplay sheet(Location at, Material m, float w, float h, float dpt) {
+        Location l = at.clone(); l.setYaw(0); l.setPitch(0);
+        return at.getWorld().spawn(l, BlockDisplay.class, d -> {
+            d.setPersistent(false);
+            d.addScoreboardTag(TAG);
+            d.addScoreboardTag("faultline_no_bedrock_fx");
+            d.setBlock(m.createBlockData());
+            d.setTeleportDuration(2);
+            d.setViewRange(1.5f);
+            if (depths && m == Material.PURPLE_STAINED_GLASS) d.setBrightness(new Display.Brightness(12, 12));
+            d.setTransformation(new Transformation(new Vector3f(-dpt / 2, -h / 2, -w / 2), new AxisAngle4f(), new Vector3f(dpt, h, w), new AxisAngle4f()));
+        });
+    }
+
     // ------------------------------------------------------------------------------------------- the look
     private static final Particle.DustOptions FOAM = new Particle.DustOptions(Color.fromRGB(235, 245, 255), 1.6f),
             TEAL = new Particle.DustOptions(Color.fromRGB(60, 200, 230), 1.3f),
             DEEP = new Particle.DustOptions(Color.fromRGB(8, 14, 40), 2.4f),
-            BEAM = new Particle.DustOptions(Color.fromRGB(120, 215, 255), 3.0f);
+            RIFT = new Particle.DustOptions(Color.fromRGB(170, 80, 255), 1.5f);
 
     private void draw() {
         World w = center.getWorld();
         // the beam for anyone far off (and for games that don't draw the fake beacon): long-distance dust up into the sky
         if (t % 5 == 0 && (!closing || r > 1)) try {
             for (double y = surf + 2; y < surf + 2 + beamHeight; y += 2.5)
-                w.spawnParticle(Particle.DUST, center.getX(), y, center.getZ(), 1, 0.12, 0.6, 0.12, 0, BEAM, true);
+                w.spawnParticle(Particle.DUST, center.getX(), y, center.getZ(), 1, 0.12, 0.6, 0.12, 0, beamDust, true);
         } catch (RuntimeException ignored) { } // (test servers without long-distance particles)
         if (r < 0.5) return;
         double spin = t * 0.22;
@@ -313,7 +390,7 @@ final class Vortex {
             double s = k / 14.0, x = r * (1 - s) + 0.5, a = spin * (1 + s * 1.5) + arm * Math.PI * 2 / 5 + s * 5;
             Location l = onWall(x, a);
             w.spawnParticle(k % 3 == 0 ? Particle.BUBBLE_POP : Particle.SPLASH, l, 2, 0.12, 0.05, 0.12, 0.02);
-            if (k % 2 == 1) w.spawnParticle(Particle.DUST, l, 1, 0.1, 0.05, 0.1, 0, TEAL);
+            if (k % 2 == 1) w.spawnParticle(Particle.DUST, l, 1, 0.1, 0.05, 0.1, 0, armDust);
             if (k % 5 == 2) w.spawnParticle(Particle.FALLING_WATER, l.clone().add(0, 0.6, 0), 1, 0.2, 0.1, 0.2, 0);
         }
         // the foaming rim, turning the other way
@@ -333,6 +410,23 @@ final class Vortex {
         Location eyeAt = center.clone().add(0, 1 - d, 0);
         w.spawnParticle(Particle.DUST, eyeAt, 10, 0.9, 0.3, 0.9, 0, DEEP);
         if (t % 3 == 0) w.spawnParticle(Particle.BUBBLE_COLUMN_UP, eyeAt, 6, 0.6, 0.4, 0.6, 0.05);
+        if (depths) { // THE DEPTHS: a purple rift turning over it, sparks climbing the beam, the eye breathing portal light
+            if (t % 2 == 0) for (int i = 0; i < 16; i++) {
+                double a = -spin * 1.3 + i * Math.PI / 8, rr = r * 0.45 + Math.sin(t * 0.05) * 0.6;
+                w.spawnParticle(Particle.DUST, center.clone().add(Math.cos(a) * rr, 5.5 + Math.sin(a * 3 + t * 0.1) * 0.3, Math.sin(a) * rr), 1, 0, 0, 0, 0, RIFT);
+            }
+            if (t % 3 == 0) for (int k = 0; k < 6; k++) {
+                double y = (t * 0.6 + k * 9) % 40, a = y * 0.5 + k;
+                w.spawnParticle(Particle.END_ROD, center.clone().add(Math.cos(a) * 0.8, 1 - d + y, Math.sin(a) * 0.8), 1, 0, 0, 0, 0);
+            }
+            w.spawnParticle(Particle.PORTAL, eyeAt.clone().add(0, 0.6, 0), 8, 0.8, 0.4, 0.8, 0.6);
+        } else if (t % 25 == 0 && r > 3) { // a regular one: spouts of spray bursting up round the rim
+            double a = random.nextDouble() * Math.PI * 2;
+            Location sp = center.clone().add(Math.cos(a) * r * 0.9, 1, Math.sin(a) * r * 0.9);
+            for (int k = 0; k < 8; k++) w.spawnParticle(Particle.SPLASH, sp.clone().add(0, k * 0.4, 0), 6, 0.2, 0.2, 0.2, 0.1);
+            w.spawnParticle(Particle.CLOUD, sp.clone().add(0, 2.5, 0), 6, 0.3, 0.3, 0.3, 0.02);
+            w.playSound(sp, Sound.ENTITY_GENERIC_SPLASH, SoundCategory.AMBIENT, 1.5f, 0.8f);
+        }
         // while it opens, the water rushes in from all round
         if (!closing && r < maxR) for (int i = 0; i < 16; i++) {
             double a = random.nextDouble() * Math.PI * 2, x = r + 1 + random.nextDouble() * 3;

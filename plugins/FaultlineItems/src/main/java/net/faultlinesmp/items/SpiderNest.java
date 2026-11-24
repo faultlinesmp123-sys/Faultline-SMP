@@ -127,6 +127,7 @@ final class SpiderNest implements Listener {
         final List<Room> rooms = new ArrayList<>();
         final List<Tunnel> tunnels = new ArrayList<>();
         final long seed;
+        int surface = Integer.MIN_VALUE; // the ground the way in comes up to (MIN = none)
         int minX = Integer.MAX_VALUE, minY = Integer.MAX_VALUE, minZ = Integer.MAX_VALUE, maxX = Integer.MIN_VALUE, maxY = Integer.MIN_VALUE, maxZ = Integer.MIN_VALUE;
         Plan(long seed) { this.seed = seed; }
 
@@ -205,6 +206,7 @@ final class SpiderNest implements Listener {
             Room a = placed.get(1 + r.nextInt(placed.size() - 1)), b = placed.get(1 + r.nextInt(placed.size() - 1));
             if (a != b && Math.hypot(a.x - b.x, a.z - b.z) < 40) p.tunnels.add(new Tunnel(a.x, a.y - a.ry * 0.4, a.z, b.x, b.y - b.ry * 0.4, b.z, 2.2));
         }
+        p.surface = surface;
         if (surface != Integer.MIN_VALUE) { // the way in: from the room nearest the admin, sloping up to where they stood
             Room best = throne; double bd = Double.MAX_VALUE;
             for (Room o : placed) { double d = Math.hypot(o.x - sx, o.z - sz); if (d < bd && o != throne) { bd = d; best = o; } }
@@ -226,6 +228,25 @@ final class SpiderNest implements Listener {
             Material.DIRT, Material.GRAVEL, Material.TUFF, Material.CALCITE, Material.COBBLESTONE, Material.SAND, Material.SANDSTONE,
             Material.CLAY, Material.SMOOTH_BASALT, Material.COARSE_DIRT, Material.ROOTED_DIRT, Material.MOSS_BLOCK, Material.DRIPSTONE_BLOCK,
             Material.GRASS_BLOCK, Material.PODZOL, Material.MUD, Material.INFESTED_STONE, Material.INFESTED_DEEPSLATE, Material.COBBLED_DEEPSLATE, Material.MOSSY_COBBLESTONE);
+
+    /**
+     * 1.3.45: what carving may remove: natural stone, ores, dirt and gravel, fluids, plants, amethyst, dripstone, sculk...
+     * NEVER bedrock, players' builds, chests or other block entities, or other structures (trial chambers, mineshafts,
+     * strongholds, ancient cities): those stay standing inside the cave. (1.3.44 turned every block in the way into air.)
+     */
+    static boolean carvable(Material m) {
+        if (NATURAL.contains(m) || m.isAir()) return true;
+        if (m == Material.WATER || m == Material.LAVA || m == Material.BUBBLE_COLUMN) return true;
+        String n = m.name();
+        if (n.endsWith("_ORE")) return true;
+        if (n.startsWith("AMETHYST") || n.endsWith("_AMETHYST_BUD") || n.equals("BUDDING_AMETHYST") || n.equals("AMETHYST_CLUSTER")) return true;
+        if (n.contains("DRIPSTONE") || n.startsWith("SCULK") && !n.equals("SCULK_SHRIEKER") || n.equals("GLOW_LICHEN") || n.equals("MOSS_CARPET")
+                || n.equals("MAGMA_BLOCK") || n.equals("POWDER_SNOW") || n.equals("PACKED_ICE") || n.equals("ICE") || n.equals("SNOW_BLOCK")
+                || n.equals("RED_SAND") || n.equals("TERRACOTTA") || n.endsWith("_TERRACOTTA") && !n.contains("GLAZED")) return true;
+        // plants and other soft natural things (vines, roots, kelp, grass...): anything not solid
+        return !m.isSolid() && !m.isInteractable() && !n.contains("RAIL") && !n.contains("TORCH") && !n.contains("SIGN") && !n.contains("BANNER")
+                && !n.contains("CARPET") && !n.contains("PRESSURE_PLATE") && !n.contains("BUTTON") && !n.contains("REDSTONE") && !n.equals("COBWEB") && !n.contains("LADDER");
+    }
 
     /** /queenspider nest (or the admin menu): makes one under this player. */
     void create(Player p) {
@@ -273,7 +294,7 @@ final class SpiderNest implements Listener {
                     while (idx[0] < air.size() && done < per) {
                         int[] c = air.get(idx[0]++);
                         Block b = w.getBlockAt(c[0], c[1], c[2]);
-                        if (b.getType() != Material.AIR && b.getType() != Material.CAVE_AIR) b.setType(Material.CAVE_AIR, false);
+                        if (b.getType() != Material.AIR && b.getType() != Material.CAVE_AIR && carvable(b.getType())) b.setType(Material.CAVE_AIR, false);
                         done++;
                     }
                     if (idx[0] >= air.size()) { stage[0] = 1; idx[0] = 0; }
@@ -286,7 +307,7 @@ final class SpiderNest implements Listener {
                             Block b = w.getBlockAt(x, y, z);
                             Material m = b.getType();
                             if (b.isLiquid() || m == Material.WATER || m == Material.LAVA) b.setType(Material.TUFF, false);
-                            else if (m.isAir()) { if (y < plan.maxY - 6) b.setType(Material.DEEPSLATE, false); } // a natural cave next door: wall it (not the way in)
+                            else if (m.isAir()) { if (plan.surface == Integer.MIN_VALUE || y < plan.surface - 4) b.setType(Material.DEEPSLATE, false); } // a natural cave next door: wall it (never the way in at the surface)
                             else if (NATURAL.contains(m)) {
                                 double nv = plan.noise(x / 4.0, y / 4.0, z / 4.0);
                                 b.setType(nv > 0.35 ? Material.TUFF : nv < -0.4 ? Material.COBBLED_DEEPSLATE : r.nextDouble() < 0.05 ? Material.DEEPSLATE_TILES : Material.DEEPSLATE, false);
@@ -322,6 +343,7 @@ final class SpiderNest implements Listener {
 
     private void decorate(World w, Plan plan, Set<Long> air, int[] c, Random r, Map<String, List<Integer>> webs, Map<String, List<Integer>> bodies) {
         int x = c[0], y = c[1], z = c[2];
+        if (plan.surface != Integer.MIN_VALUE && y >= plan.surface - 1) return; // nothing in the open air at the way in
         boolean floor = !air.contains(key(x, y - 1, z)), ceil = !air.contains(key(x, y + 1, z));
         int walls = 0;
         for (int[] d : SIX) if (d[1] == 0 && !air.contains(key(x + d[0], y, z + d[2]))) walls++;

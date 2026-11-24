@@ -2980,6 +2980,14 @@ Notes:
   `queen_spider_rig.png` (`tools/nest_preview.py <dump> <out>`). Tested (scratch `nest/NestTest`: build, 26k cave blocks,
   2270 webs, pots/bodies/chests/spawners, silk, sleeping queen + 32 parts, loot webs ~20%, body + pot loot, potions and
   accessories in rolls, wake, 7 moves, phase 3, death roll, staff + rewards, respawn timer; `tr/TrTest` trial raiders).
+- **Audit (Items 1.3.45)**: SPIDER NEST CARVING turned EVERY block in the cave's shape into air (players' bases, chests,
+  bedrock at the bottom of the world, trial chambers / mineshafts / ancient cities): `SpiderNest.carvable(m)` now only lets
+  natural stone, ores, dirt/gravel/sand, fluids, amethyst, dripstone, sculk (not shriekers), ice and soft plants go; anything
+  else stays standing inside the cave. The walling pass filled the open air round the way in at the surface (it walls off
+  neighbouring caves): now only below `Plan.surface` - 4; and nothing is decorated at or above the surface - 1 (webs hung in
+  the open air at the tunnel mouth). QueenRig poses every 2 ticks close up (was every tick: 32 metadata packets a tick).
+  PackHash's temp file is deleted when a download fails. Tested (`nest/NestTest`: a chest + planks in the throne cavern and
+  a bedrock floor survive, the way in stays open).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

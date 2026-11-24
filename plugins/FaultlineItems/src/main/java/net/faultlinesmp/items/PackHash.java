@@ -54,10 +54,11 @@ final class PackHash {
             MessageDigest md = MessageDigest.getInstance("SHA-1");
             long size = 0;
             java.io.File tmp = java.io.File.createTempFile("faultline-pack", ".zip");
+            tmp.deleteOnExit();
             try (InputStream in = c.getInputStream(); java.io.OutputStream out = new java.io.FileOutputStream(tmp)) {
                 byte[] buf = new byte[65536];
                 for (int n; (n = in.read(buf)) > 0; ) { md.update(buf, 0, n); out.write(buf, 0, n); size += n; }
-            }
+            } catch (Exception e) { tmp.delete(); throw e; }
             try (java.util.zip.ZipFile z = new java.util.zip.ZipFile(tmp)) { // the names only (the central directory)
                 java.util.Set<String> names = new java.util.HashSet<>();
                 z.stream().forEach(en -> names.add(en.getName()));

@@ -192,7 +192,7 @@ final class QueenRig {
         Location to = at.clone(); to.setYaw(0); to.setPitch(0);
         boolean near = false;
         for (Player p : at.getWorld().getPlayers()) if (p.getLocation().distanceSquared(at) < 96 * 96) { near = true; break; }
-        if (!near && t % 10 != 0) return; // nobody close: a pose every half second is enough
+        if (near ? t % 2 != 0 : t % 10 != 0) return; // a pose every 2 ticks close up (interpolated), every half second otherwise
         for (int k = 0; k < parts.size(); k++) {
             ItemDisplay d = parts.get(k);
             Matrix4f m = pending.get(k);

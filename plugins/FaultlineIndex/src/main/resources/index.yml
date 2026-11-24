@@ -134,7 +134,7 @@ entries:
      how: "Craft it: an Iron Ingot above a Stick.",
      does: "An ingredient for the Necromancer Staff."}
   - {chapter: weapons, name: "Spider Staff", icon: spider_staff, detect: "faultlineitems:spider_staff",
-     how: "10% from the Queen Spider. Very rarely from Spiders (0.01%).",
+     how: "Always from the Queen Spider. Very rarely from Spiders (0.01%).",
      does: "Summons 3-5 spiders that fight for you for 30 seconds. 60 second cooldown."}
   - {chapter: weapons, name: "Hot Air Balloon", icon: hot_air_balloon, detect: "faultlineitems:balloon_item",
      how: "Craft it: 5 wool across the top and sides, a Campfire in the middle, String, a Barrel, String along the bottom.",
@@ -215,7 +215,7 @@ entries:
      does: "Blow it, then go near a village in the Overworld to start a Piglin Raid: 15 piglins a wave (III: 6 waves, IV: 8, V: 10) from 13 kinds of units, The Bulwark in wave 5, and The Great Hog at the end. Win for big rewards."}
 
   - {chapter: consumables, name: "Ankh", icon: ankh_piece, detect: "faultlineitems:ankh_piece",
-     how: "50% from Diamond Jacob (each fighter rolls).",
+     how: "50% from Diamond Jacob (each fighter rolls), 2% from the Queen Spider.",
      does: "A piece of the Ankh Shield: it goes right below the Cross in the recipe."}
   - {chapter: consumables, name: "Cross", icon: ankh_cross, detect: "faultlineitems:ankh_cross",
      how: "50% from the Abyssal Kraken (each fighter rolls).",
@@ -235,9 +235,9 @@ entries:
 
   # ---------------------------------------------------------------- BOSSES
   - {chapter: bosses, weakness: "Fight her away from her webs (a sword cuts them, fire burns them) and kill the brood as it hatches, or it swarms you.", name: "Queen Spider", icon: queen_spider, detect-tag: faultline_queen_spider,
-     where: "Deep in caves: 1% of spiders spawning underground. 500 health.",
-     does: "Poison bites, Venom Spit, a pounce, a ground stomp, webs around every player, swarms of brood, and egg sacs (big eggs in a web: break the web before they hatch into Cave Spiders). Enrages at half health.",
-     drops: ["10 Spider Eyes|100%", "5-10 Diamonds|50%", "Spider Staff|10%", "Queen's Silk|5%", "300 XP|100%"]}
+     where: "Rarely, deep in caves (0.25% of spiders spawning underground; 900 health). The QUEEN OF THE NEST sleeps on her throne in a Spider Nest: hitting her wakes her (3600 health, +30% for every extra fighter, much harder).",
+     does: "Three phases. Bites that lunge and poison, a pounce, a leg sweep that throws you back, Venom Spit (three globs later), Web Shot (a web cage where it lands), brood. From 60%: Silk Pull reels you in, a stomp that rings her with webs, egg sacs (break them before they hatch). From 30% she's frenzied: Ceiling Drop (she leaps out of sight and lands on the red circle) and Venom Rain. Her music is the Demon Eye's.",
+     drops: ["Spider Staff|100%", "Ankh|2%", "10 Spider Eyes|100%", "5-10 Diamonds|50%", "Queen's Silk|5% (nest: 20%)", "Nest queen, every fighter: 14 Diamonds, 3 Netherite Scrap, 2 Goodie Bags, a Mythic Bag, a boss enchant book, 1500 XP|100%"]}
   - {chapter: bosses, weakness: "Unbreakable: he takes 80% less damage from the FRONT. Spread out so he can only face one of you, and hit him from behind. Jump his Ground Slam.", name: "The Bulwark", icon: the_bulwark, detect-tag: faultline_bulwark,
      where: "Wave 5 of every Piglin Raid. A giant Piglin Brute in netherite with a tower shield. 220 health (+60 per raid level above III).",
      does: "Shield Bash (a red line shows where it'll charge: get out of it), Ground Slam (jump before the red rings hit), and Unbreakable: it raises its shield and takes 80% less damage from the front for 4 seconds. Hit it from behind.",

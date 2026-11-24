@@ -264,30 +264,71 @@ spider-staff:
 
 # Queen Spider — cave boss. (This section replaces the old "queen-spider" one;
 # a leftover old section on your server is simply ignored.)
+# 1.3.44 THE QUEEN SPIDER OVERHAUL: her own jointed model (QueenRig), 3 phases (60% / 30%), new moves (bite, pounce, leg sweep,
+# venom spit, web shot, brood, silk pull, stomp, egg sacs, ceiling drop, venom rain), the Demon Eye's music. An old config's
+# 0.01 spawn-chance / 500 health / 0.10 staff chance read as the new values.
 queen-spider-boss:
-  spawn-chance: 0.01           # of spiders spawning underground (no sky above)
+  spawn-chance: 0.0025         # of spiders spawning underground (no sky above): 4x rarer than before
   max-alive: 2
-  health: 500
-  bite-damage: 12
-  poison-seconds: 7            # Poison II on every bite
-  brood-seconds: 8             # calls 3 Cave Spiders + 2 Spiders this often
-  max-brood: 14
-  stomp-cooldown-seconds: 7
-  stomp-radius: 6
-  stomp-damage: 10
-  pounce-cooldown-seconds: 9   # leaps onto you from 6-16 blocks away
+  scale: 3.0
+  health: 900
+  armor: 6
+  bite-damage: 13
+  sweep-damage: 8
   pounce-damage: 10
-  spit-cooldown-seconds: 5     # Venom Spit: Poison III + Nausea
+  stomp-damage: 11
+  stomp-radius: 7
+  drop-damage: 14
+  rain-damage: 6
   spit-damage: 4
-  web-cooldown-seconds: 14     # Web Trap: webs all around you
+  poison-seconds: 6
   web-seconds: 5
-  egg-sac-cooldown-seconds: 22 # sacs hatch into 3 Cave Spiders after 6s unless broken
-  egg-sacs: 3                  # egg sacs per lay (big eggs in a web, 3-7 blocks from her: break the web)
+  max-brood: 12
+  egg-sacs: 3
   egg-sac-hatch-seconds: 6
-  # Enraged at half health: faster, and every cooldown above is halved.
-  xp: 300
+  phase2-at: 0.6
+  phase3-at: 0.3
+  music: true                  # the Demon Eye's music (faultline:demon_eye.music) while she's awake
+  music-seconds: 316.4
+  xp: 400
   diamond-chance: 0.5          # 5-10 diamonds
-  spider-staff-chance: 0.10
+  spider-staff-chance: 1.0     # always
+  ankh-chance: 0.02
+  creative-wakes: true         # a creative player's hit wakes a nest queen too
+  # the QUEEN OF THE NEST (asleep in a Spider Nest): much harder, much better loot (every fighter gets it)
+  nest:
+    scale: 4.2
+    health: 3600
+    per-fighter: 0.3           # +30% health for every fighter after the first (counted when she wakes)
+    armor: 12
+    bite-damage: 20
+    sweep-damage: 13
+    pounce-damage: 15
+    stomp-damage: 16
+    drop-damage: 20
+    rain-damage: 9
+    spit-damage: 6
+    xp: 1500
+    spider-staff-chance: 1.0
+    ankh-chance: 0.02
+    queen-silk-chance: 0.20
+    rewards:                   # "item MATERIAL n", or a console command ({player}, {enchant} = a random boss enchant)
+      - item DIAMOND 14
+      - item NETHERITE_SCRAP 3
+      - item SPIDER_EYE 16
+      - item EXPERIENCE_BOTTLE 24
+      - givegoodiebag 2 {player}
+      - givemythicbag 1 {player}
+      - fenchant give {enchant} 1 1 {player}
+
+# 1.3.44 SPIDER NESTS (/adminmenu cobweb, /queenspider nest): a web cave network carved under an admin, the Queen asleep in it.
+spider-nest:
+  depth: 34                    # the throne cavern this far under the surface
+  blocks-per-tick: 20000
+  respawn-minutes: 120         # the Queen comes back asleep this long after she dies
+  web-loot-chance: 0.18        # the nest's own cobwebs: a loot roll this often when broken
+  spider-spawn-chance: 0.12    # extra spiders round a player inside, every 2 s
+  spider-cap: 6
 
 # Boss-only loot.
 boss-loot:
@@ -328,7 +369,7 @@ wardrobe:
 item-textures:
   enabled: true
   url: "https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/main/FaultlineSMP.zip"
-  hash: "4a52078f7769da96cff1bc66bfdadf095e4c37aa"
+  hash: "1f6f69ae680734a190baa2a5cfa3b253a350e93d"
   # The Dark Ocean's music, a second pack sent beside the main one (empty url = not sent)
   music-url: "https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/main/FaultlineDeepMusic.zip"
   music-hash: "fe1e702bb464149a532e861bce70c1b22511b861"

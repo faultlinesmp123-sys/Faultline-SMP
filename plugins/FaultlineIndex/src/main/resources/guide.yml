@@ -98,6 +98,8 @@ chapters:
 
       # Ships
       Craft a ship Blueprint, right-click water, then place every glowing block. Sail with W A S D, Jump drops the anchor, double-tap W for cruise control. Every ship has its own ability (F at the helm): the Dinghy rows hard, the Sloop catches a tailwind, the Brigantine lays a smoke screen, the Galleon fires a broadside, the Pirate Ship grapples. Sail with the wind for more speed. /ship locate finds your ships. Watch out for skeleton ships and the Pirate Invasion.
+      # Spider Nests
+      Somewhere under the world are Spider Nests: web-choked caves where the Queen of the Nest sleeps. Webs, dead bodies and pots down there hide iron, copper, diamonds, potions and accessories. Hitting the Queen wakes her.
 
       # Elite mobs and mutants
       Some monsters spawn as a gold-named ELITE (tougher, double drops, bonus loot), a LOOTER ZOMBIE (steals a stack from your backpack: kill it to get it back), a BLAZING SKELETON (fire arrows) or a SPLITTING CREEPER (splits into minis). They turn up in raids too.

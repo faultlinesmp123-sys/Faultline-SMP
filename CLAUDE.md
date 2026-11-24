@@ -2945,6 +2945,41 @@ Notes:
   `sh/ShipTest`: 754 displays, near/far visibility both ways, rotation skipped when nobody near and caught up, every ability,
   F key, cruise, wind, broadside 4 guns, galleon armour, smoke, net catch, grapple, locate; MockBukkit needed
   EntityMock#setVisibleByDefault / DisplayMock#setBillboard stubbed and BlockMock#isPassable = true: `sh/patched`).
+- **THE QUEEN SPIDER OVERHAUL + SPIDER NESTS (Items 1.3.44, Raids 1.4.0, Index 1.9.25, FaultlineSMP.zip)**: the Queen moved
+  out of FaultlineItems.java into `Items/QueenSpiderManager.java` (same name/API: isQueen, isBrood, makeQueen, removeAll, tick =
+  EVERY tick now). Her body is the hitbox Spider made INVISIBLE (scale `scale` 3 / nest 4.2) drawn by `Items/QueenRig.java`:
+  32 ItemDisplays (models `faultline:queen/<thorax|head|eyes|abdomen|fang|palp|femur|tibia|tarsus>` from
+  `python3 tools/queen_spider_models.py <unpacked-pack> --preview tools/previews` (an ORIGINAL blocky purple-black design:
+  the owner asked for a 1:1 copy of someone's model, which we don't do), each modelled round its joint at model (8,8,8)),
+  posed every tick with `setTransformationMatrix` (part frame x16, then rotY(PI): item displays draw turned round); k =
+  0.026 x scale blocks per pixel; joints/rest angles in QueenRig match the python preview (HIPS, ELEV/KNEE/FOOT, sleep S_*).
+  Animations (eased): idle breath, an alternating-tetrapod walk driven by how far she moved, sleep (curled, dim eyes),
+  wake, bite, rear, slam, spit, brood, crouch, death (rolls over, curls, 3 s, then removed). Every 2 ticks with a player
+  within 96, else every 10. Bedrock: a stand-in Spider only they see (`faultline_queen_standin`), its hits go to her.
+  RARER: `spawn-chance` 0.0025 (old 0.01 reads as it). HARDER: 900 hp (old 500 reads 900), armor 6; 3 phases (60/30%, each a
+  2 s invulnerable shriek + brood); moves picked from a pool by range / line of sight / phase: bite, pounce, sweep, spit (x3
+  from p2), web shot (`faultline_queen_web` snowball: a 3x3x2 web cage + Slowness III), brood, p2 silk pull / stomp (web
+  ring) / egg sacs, p3 (or p2 for a nest queen) ceiling drop (red circle, she lands on it), p3 venom rain. Music: the Demon
+  Eye's `faultline:demon_eye.music` (316.4 s, RECORDS) for everyone within 48, stopped past 80 / on death. Drops: the Spider
+  Staff ALWAYS (old 0.10 reads 1.0), `ankh-chance` 2% = `giveaccessory ankhpiece` (the Index's "Ankh"). SPIDER NESTS
+  (`Items/SpiderNest.java`, `spider-nest:`, `spider_nests.yml`): /adminmenu slot 17 (cobweb) or `/queenspider nest
+  [here|list|tp|respawn|remove]` carves a Terraria-style web cave network under the admin (`plan()`: a throne cavern + 10-14
+  chambers by random walk + tunnels + loops + a sloped tunnel up to where they stood; walls only replace natural stone,
+  fluids next to it are walled off; chunks loaded async, then carve / walls / decorate a slice a tick, `blocks-per-tick`
+  20000). Decor: cobwebs (corners, ceilings, hanging columns), silk threads (persistent BlockDisplays `faultline_nest_silk`),
+  ochre froglight egg clutches, soul lanterns on chains, bones, sniffer eggs, white carpet silk, cave spider spawners, 6
+  chests (3 body rolls each). LOOT: the nest's own cobwebs (chunk PDC `faultlineitems:nest_webs`) 18% a roll; bodies
+  (skeleton skulls, PDC `nest_bodies`) a big roll; decorated pots hold a roll (snapshot inventory + update). `roll(r, tier)`:
+  iron, copper, gold, diamonds, emeralds, Cloud Potions, Darkness Potions, accessories (ACCESSORIES list), golden apples.
+  The QUEEN OF THE NEST sleeps on her throne (AI off; only a player's hit wakes her: title, roar, music, +30% hp per extra
+  fighter); 3600 hp, armor 12, x1.5 damage, faster moves; every fighter gets `nest.rewards` + staff + 2% Ankh + 20% silk +
+  Index stat `nest_queens`; she respawns asleep `respawn-minutes` 120 later; her chunk unloading takes her away. Players
+  inside: a title, ambience, extra spiders (`spider-cap` 6). RAIDS 1.4.0: a trial spawner's spawn has `trial-chambers.chance`
+  0.2 to bring a Zombie / Skeleton Raid unit (mages most often; `TRIAL_KINDS`, `kinds`, max 4 nearby, tag
+  `faultline_trial_raider`). Previews: `tools/previews/nest_map.png`, `nest_cutaway.png`, `nest_slice.png`,
+  `queen_spider_rig.png` (`tools/nest_preview.py <dump> <out>`). Tested (scratch `nest/NestTest`: build, 26k cave blocks,
+  2270 webs, pots/bodies/chests/spawners, silk, sleeping queen + 32 parts, loot webs ~20%, body + pot loot, potions and
+  accessories in rolls, wake, 7 moves, phase 3, death roll, staff + rewards, respawn timer; `tr/TrTest` trial raiders).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

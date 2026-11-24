@@ -483,6 +483,7 @@ final class Abilities implements Listener, CommandExecutor, TabCompleter {
         if (plugin.legendary != null) { int ls = 10; for (Legendary.Kind k : Legendary.Kind.values()) m.inv.setItem(ls++, plugin.legendary.item(k)); }
         if (plugin.toiletRaid != null) m.inv.setItem(14, plugin.toiletRaid.plunger(1));
         if (plugin.chromeRunner != null) { m.inv.setItem(15, plugin.chromeRunner.chip(1)); m.inv.setItem(16, plugin.chromeRunner.spine()); }
+        if (plugin.spiderNest != null) m.inv.setItem(17, plugin.spiderNest.menuItem()); // 1.3.44: carve a Spider Nest under you
         int s = 18;
         List<Map.Entry<UUID, Kind>> list = new ArrayList<>(owned.entrySet());
         list.sort(Comparator.comparing(e -> names.getOrDefault(e.getKey(), "?").toLowerCase(Locale.ROOT)));
@@ -519,6 +520,9 @@ final class Abilities implements Listener, CommandExecutor, TabCompleter {
             for (ItemStack left : p.getInventory().addItem(it.clone()).values()) p.getWorld().dropItem(p.getLocation(), left);
             p.sendMessage(ChatColor.GREEN + "Got it.");
             plugin.getLogger().info("[Abilities] " + p.getName() + " took slot " + slot + " from /adminmenu");
+        } else if (slot == 17 && plugin.spiderNest != null) {
+            p.closeInventory();
+            plugin.spiderNest.create(p);
         } else if (slot >= 18 && slot - 18 < m.heads.size()) {
             UUID id = m.heads.get(slot - 18);
             String n = names.getOrDefault(id, "?");

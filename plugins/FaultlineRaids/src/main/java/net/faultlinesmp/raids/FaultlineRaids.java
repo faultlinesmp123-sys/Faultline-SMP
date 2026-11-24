@@ -835,6 +835,47 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
 
     // ===================== MOB TYPES =====================
 
+    // ===================== 1.4.0: raid units in TRIAL CHAMBERS =====================
+    static final String TRIAL_TAG = "faultline_trial_raider";
+    static final Kind[] TRIAL_KINDS = {Kind.MAGE, Kind.MAGE, Kind.ARCHER, Kind.BRUTE, Kind.BOMBER, Kind.WITCH, Kind.HORSEMAN,
+            Kind.SKEL_SOLDIER, Kind.FROST_ARCHER, Kind.BOG_ARCHER, Kind.SHIELDBEARER, Kind.WITHER_BRUTE};
+    private boolean trialSpawning;
+
+    /**
+     * Whenever a trial spawner spawns a mob, `trial-chambers.chance` (0.2) a Zombie / Skeleton Raid unit comes with it
+     * (Zombie Mages most often), at most `trial-chambers.max-nearby` (4) round that spot. Their abilities run like any raid
+     * mob's (the `special` tick); tagged faultline_trial_raider.
+     */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onTrialSpawn(org.bukkit.event.entity.CreatureSpawnEvent e) {
+        if (trialSpawning || e.getSpawnReason() != org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.TRIAL_SPAWNER) return;
+        if (!getConfig().getBoolean("trial-chambers.enabled", true)) return;
+        if (random.nextDouble() >= getConfig().getDouble("trial-chambers.chance", 0.2)) return;
+        Location at = e.getLocation();
+        int near = 0;
+        for (Entity x : at.getWorld().getNearbyEntities(at, 16, 8, 16)) if (x.getScoreboardTags().contains(TRIAL_TAG)) near++;
+        if (near >= getConfig().getInt("trial-chambers.max-nearby", 4)) return;
+        List<String> allowed = getConfig().getStringList("trial-chambers.kinds");
+        Kind k = null;
+        for (int i = 0; i < 6 && k == null; i++) {
+            Kind c = TRIAL_KINDS[random.nextInt(TRIAL_KINDS.length)];
+            if (allowed.isEmpty() || allowed.contains(c.name().toLowerCase())) k = c;
+        }
+        if (k == null) return;
+        Kind kind = k;
+        Bukkit.getScheduler().runTask(this, () -> {
+            trialSpawning = true;
+            try {
+                LivingEntity mob = spawnKind(kind, at);
+                if (mob == null) return;
+                mob.addScoreboardTag(TRIAL_TAG);
+                at.getWorld().spawnParticle(Particle.TRIAL_SPAWNER_DETECTION, at.clone().add(0, 0.5, 0), 20, 0.4, 0.6, 0.4, 0.02);
+                at.getWorld().spawnParticle(Particle.SMOKE, at.clone().add(0, 0.8, 0), 15, 0.4, 0.6, 0.4, 0.02);
+            } catch (RuntimeException ex) { logPart("trial chamber raider", ex); }
+            finally { trialSpawning = false; }
+        });
+    }
+
     LivingEntity spawnKind(Kind kind, Location at) {
         if (Piglins.isPiglinKind(kind)) return piglins.spawn(kind, at);
         World world = at.getWorld();

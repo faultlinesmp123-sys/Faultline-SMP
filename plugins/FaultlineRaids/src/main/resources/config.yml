@@ -175,3 +175,10 @@ elites:
     gravecaller: {every-ticks: 200, max: 4}
     magnetic: {radius: 7, pull: 0.18}
     rampager: {charge: 1.4}
+
+# 1.4.0: Zombie / Skeleton Raid units in TRIAL CHAMBERS: every mob a trial spawner spawns has this chance to bring one
+trial-chambers:
+  enabled: true
+  chance: 0.2
+  max-nearby: 4                # raid units at most round one spot
+  kinds: []                    # empty = all of: mage, archer, brute, bomber, witch, horseman, skel_soldier, frost_archer, bog_archer, shieldbearer, wither_brute

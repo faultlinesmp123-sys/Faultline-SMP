@@ -423,7 +423,7 @@ final class Journey implements Listener {
             boolean inFunnel = v.inside(l);
             if (inFunnel) Edition.vel(p, in.clone().multiply(0.14).add(round.clone().multiply(pl0.depths ? 0.22 : 0.3)).setY(-0.45)); // down the wall
             else Edition.vel(p, in.clone().multiply(0.2).add(round.clone().multiply(0.25)).setY(-0.04));                               // in the water at the rim
-            if (!pl0.depths && (inFunnel || d < v.r) && p.getGameMode() != GameMode.CREATIVE) {
+            if (!pl0.depths && (inFunnel || d < v.r) && l.getY() <= v.surf + 1.6 && p.getGameMode() != GameMode.CREATIVE) {
                 if (ticks % 20 == 0) {
                     p.damage(cfg("regular.damage", 2));
                     p.getWorld().spawnParticle(Particle.SPLASH, l.clone().add(0, 1, 0), 12, 0.3, 0.4, 0.3, 0.1);

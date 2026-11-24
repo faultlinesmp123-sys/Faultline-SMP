@@ -148,11 +148,18 @@ final class Vortex {
         else { r = Math.min(maxR, maxR * t / 80.0); d = Math.min(maxD, maxD * Math.max(0, t - 10) / 90.0); }
         if (Math.abs(or - r) > 0.25 || Math.abs(od - d) > 0.25 || t % 40 == 0) { rebuild(); changed = true; }
         if (changed || t % 10 == 0) send();
+        if (t % 20 == 1) { // 1.19.1: nobody within 320 blocks = no particles, sounds or moving displays (it's kept loaded by tickets)
+            watched = false;
+            for (Player p : center.getWorld().getPlayers()) if (p.getLocation().distanceSquared(center) < 320 * 320) { watched = true; break; }
+        }
+        if (!watched && !closing) return;
         draw();
         moveDebris();
         moveDetail();
         sound();
     }
+
+    private boolean watched = true;
 
     private boolean sent;
 

@@ -30,7 +30,6 @@ import org.bukkit.event.block.BlockPistonExtendEvent;
 import org.bukkit.event.block.BlockPistonRetractEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
-import org.bukkit.event.entity.ItemSpawnEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
@@ -125,7 +124,7 @@ final class SpawnPad implements Listener {
     }
 
     ItemStack item(DyeColor color, int amount) {
-        ItemStack it = new ItemStack(carpet(color), Math.max(1, amount));
+        ItemStack it = new ItemStack(carpet(color), 1);
         ItemMeta m = it.getItemMeta();
         m.setDisplayName(ChatColor.AQUA + "" + ChatColor.BOLD + "Spawn Pad " + ChatColor.GRAY + "(" + nice(color) + ")");
         m.setLore(List.of(ChatColor.GRAY + "Place it, stand on it and right-click:",
@@ -134,6 +133,7 @@ final class SpawnPad implements Listener {
                 ChatColor.DARK_GRAY + "Right-click a placed pad with a dye to recolour it."));
         try { m.setEnchantmentGlintOverride(true); } catch (RuntimeException | LinkageError ignored) { }
         m.getPersistentDataContainer().set(itemKey, PersistentDataType.STRING, color.name());
+        try { m.setMaxStackSize(1); } catch (RuntimeException | LinkageError ignored) { } // valuable: one per slot (DupeGuard serials it)
         it.setItemMeta(m);
         return it;
     }
@@ -160,7 +160,12 @@ final class SpawnPad implements Listener {
     void convertItems(Inventory inv) {
         if (inv == null) return;
         ItemStack[] all = inv.getContents();
-        for (int i = 0; i < all.length; i++) if (oldBed(all[i])) inv.setItem(i, item(DyeColor.WHITE, all[i].getAmount()));
+        for (int i = 0; i < all.length; i++) if (oldBed(all[i])) {
+            int n = all[i].getAmount();
+            inv.setItem(i, item(DyeColor.WHITE, 1));
+            for (int k = 1; k < n; k++) for (ItemStack left : inv.addItem(item(DyeColor.WHITE, 1)).values())
+                if (inv.getLocation() != null) inv.getLocation().getWorld().dropItemNaturally(inv.getLocation(), left);
+        }
     }
 
     // ---------------------------------------------------------------- placed pads
@@ -342,19 +347,6 @@ final class SpawnPad implements Listener {
         if (padAt(up) != null) destroy(up, true);
     }
 
-    /** Anything else that knocks the carpet off (a fluid it was missed by, a support pulled away...) drops the pad. */
-    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
-    public void onItem(ItemSpawnEvent e) {
-        ItemStack it = e.getEntity().getItemStack();
-        if (!it.getType().name().endsWith("_CARPET") || colorOf(it) != null) return;
-        Block b = e.getLocation().getBlock();
-        DyeColor col = padAt(b);
-        if (col == null || it.getType() != carpet(col)) return;
-        e.getEntity().setItemStack(item(col, 1));
-        mark(b, null);
-        unshow(key(b));
-    }
-
     private void blast(List<Block> list) {
         for (Block b : new ArrayList<>(list)) if (padAt(b) != null) { list.remove(b); destroy(b, true); }
     }
@@ -451,6 +443,26 @@ final class SpawnPad implements Listener {
         return c == DyeColor.BLACK ? Color.fromRGB(60, 60, 70) : f;
     }
 
+    /**
+     * A pad whose carpet is gone without us breaking it (its support blown up, ...): if its own carpet item is lying right
+     * there (it popped off), that carpet becomes the pad again. Never from just any carpet (1.3.41 turned any carpet that
+     * landed on a pad's block into a pad: a free pad from one carpet), and nothing drops when it was simply replaced.
+     */
+    private void popped(Block b) {
+        DyeColor col = padAt(b);
+        mark(b, null);
+        unshow(key(b));
+        if (col == null) return;
+        Location c = center(b, 0.2);
+        for (org.bukkit.entity.Item it : b.getWorld().getNearbyEntitiesByType(org.bukkit.entity.Item.class, c, 1.5)) {
+            ItemStack st = it.getItemStack();
+            if (st.getType() != carpet(col) || colorOf(st) != null || it.getTicksLived() > 60) continue;
+            if (st.getAmount() > 1) { st.setAmount(st.getAmount() - 1); it.setItemStack(st); b.getWorld().dropItemNaturally(c, item(col, 1)); }
+            else it.setItemStack(item(col, 1));
+            return;
+        }
+    }
+
     /** Pads near players: a slow swirl of their colour (Bedrock sees the pad's shape this way too). */
     private int t;
     private void tick() {
@@ -461,7 +473,7 @@ final class SpawnPad implements Listener {
             World w = Bukkit.getWorld(k[0]);
             if (w == null) continue;
             Block b = w.getBlockAt(Integer.parseInt(k[1]), Integer.parseInt(k[2]), Integer.parseInt(k[3]));
-            if (!b.getType().name().endsWith("_CARPET")) { mark(b, null); unshow(en.getKey()); continue; } // gone (no drop: we never saw how)
+            if (!b.getType().name().endsWith("_CARPET")) { popped(b); continue; }
             Location c = center(b, 0.12);
             boolean near = false, bedrock = false;
             for (Player p : w.getPlayers()) if (p.getLocation().distanceSquared(c) < 24 * 24) { near = true; if (Edition.bedrock(p)) bedrock = true; }

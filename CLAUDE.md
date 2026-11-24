@@ -2906,6 +2906,14 @@ Notes:
   within `whirlpool.radar.range` 2000 (arrow, distance, signal count) + a ping that speeds up; within `identify-distance` 120
   it says THE DEPTHS or "a whirlpool". Index entry (weapons, icon umbral_sonar). The Index's Discord forward regex for
   "whirlpool has opened" never matches now (harmless). Tested (scratch `wp/Whirl2`).
+- **Audit (Items 1.3.42, Deep 1.19.1)**: SPAWN PAD DUPE: 1.3.41 turned ANY carpet item of the pad's colour that spawned in a
+  pad's block (a dropper, a hopper spill) into a Spawn Pad item (a free pad from one carpet, and the real pad lost its mark).
+  The ItemSpawnEvent swap is gone; a pad whose carpet vanished without our break handler (`popped`, from the 10-tick upkeep)
+  turns ITS OWN freshly popped carpet (same colour, under 60 ticks old, within 1.5) into the pad, else drops nothing (a
+  /setblock). Pads are max stack 1 now (valuable: DupeGuard serials them; old beds in a stack become separate pads). Deep:
+  a whirlpool with nobody within 320 blocks skips its particles, sounds and moving displays (`Vortex.watched`, checked
+  every second; tickets keep up to 4 loaded); a regular whirlpool only hurts at the water (feet at most surf + 1.6, not
+  someone flying over it). Tested (scratch `sp/SpTest`, `wp/Whirl2`).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

@@ -79,8 +79,8 @@ windy:
   particles: 5
 
 # 2.1.0: DAY AND NIGHT IN THE NETHER AND THE END. Each has its own clock (it only runs while someone is there).
-# Night = more of that dimension's monsters come for you, and one of its night events may start. A Blue Obsidian Bed
-# (FaultlineItems) lets players sleep through it. /fevent realm <nether|end> <day|night|event>.
+# Night = more of that dimension's monsters come for you, and one of its night events may start.
+# /fevent realm <nether|end> <day|night|event>.
 realms:
   enabled: true
   skip-worlds: []            # Nether / End worlds that should have no cycle

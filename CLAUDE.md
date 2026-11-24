@@ -2870,6 +2870,24 @@ Notes:
   adventure player gliding without a working glider (`canGlide`: elytra or GLIDER component in an armour slot, not at 1
   durability) gets `setGliding(false)`; logged "[GlideGuard]" once a minute per player. FlightGuard still covers allowFlight.
   Tested (scratch `gg/GgTest`).
+- **Spawn Pads + no Riptide in combat (Items 1.3.41, Index 1.9.22, Events 2.1.4)**: THE BLUE OBSIDIAN BED IS GONE (`BlueBed.java`
+  deleted, its recipe removed on enable). `Items/SpawnPad.java` (`spawn-pad.enabled`): a round respawn pad in any of the 16
+  colours. Real block = that colour's CARPET (Bedrock sees it + a ring of coloured dust); Java sees a metal-rimmed disc with
+  glowing rings (~48 non-persistent BlockDisplays, tag `faultline_spawn_pad` + `faultline_no_bedrock_fx`, spawned with the
+  chunk). Chunk PDC `faultlineitems:spawn_pads` = pairs (packed local position, DyeColor ordinal). Item = the carpet + glint +
+  PDC `faultlineitems:spawn_pad` (STRING colour). Recipe DTD/CRC/NKN (diamond blocks, totem, crying obsidian, respawn anchor,
+  netherite ingots, recovery compass) = white. Standing on it (within 1.05 of the middle) and right-clicking anything, clicking
+  the pad within 1.6, or starting to sneak on it = your spawn (player PDC `faultlineitems:spawn_pad` "world;x;y;z"; the vanilla
+  respawn point is cleared); PlayerRespawnEvent (DEATH) puts you on it in any dimension, blocked = normal spawn, gone = forgotten
+  + "Your Spawn Pad was destroyed". A bed / anchor set later takes over. Anyone can break it (drops itself; creative no drop),
+  its support breaking drops it, explosions destroy + drop it, pistons can't move it, water can't wash it. A dye on a placed
+  pad recolours it. `/givespawnpad [colour] [amount] [player]` (alias givebluebed, `items.givespawnpad`). OLD BEDS: items
+  -> white pads (join, any inventory opened, every 10 s); placed ones -> a white pad at the head on chunk load; a
+  `blue_bed_spawn` moves to the pad key on join. The Nether / End nights can't be slept through any more (Events text
+  updated). `Items/RiptideLock.java` (`riptide-lock.enabled`): a Riptide trident can't be charged (PlayerInteractEvent
+  useItemInHand DENY) and its launch is cancelled (PlayerRiptideEvent) while in combat = DonutCombat's private `combatLog`
+  map (reflection), the built-in CombatTag, or a Truce opponent in the window; creative/spectator never. Tested (scratch
+  `sp/SpTest`, `sp/DcTest` with the real DonutCombat jar).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

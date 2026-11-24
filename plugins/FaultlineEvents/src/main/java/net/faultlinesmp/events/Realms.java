@@ -215,11 +215,11 @@ final class Realms implements Listener {
         }
         r.save();
         if (!announce || !pl.loud()) return;
-        String sub = r.event == null ? ChatColor.GRAY + "Its monsters stir. A Blue Obsidian Bed lets you sleep through it." : evColor(r.event) + title(r.event);
+        String sub = r.event == null ? ChatColor.GRAY + "Its monsters stir." : evColor(r.event) + title(r.event);
         for (Player p : r.players()) {
             p.sendTitle(r.color() + "" + ChatColor.BOLD + "Night falls over the " + r.name(), sub, 10, 70, 20);
             p.playSound(p.getLocation(), r.nether ? Sound.AMBIENT_NETHER_WASTES_MOOD : Sound.ENTITY_ENDER_DRAGON_GROWL, 0.7f, 0.6f);
-            p.sendMessage(r.color() + "☾ Night falls over the " + r.name() + "." + (r.event == null ? ChatColor.GRAY + " More monsters come out. Sleep in a Blue Obsidian Bed to skip it."
+            p.sendMessage(r.color() + "☾ Night falls over the " + r.name() + "." + (r.event == null ? ChatColor.GRAY + " More monsters come out."
                     : " " + evColor(r.event) + ChatColor.BOLD + title(r.event) + ChatColor.GRAY + ": " + blurb(r.event)));
         }
         pl.getLogger().info(r.name() + " night" + (r.event == null ? "" : " (" + title(r.event) + ")"));
@@ -625,7 +625,7 @@ final class Realms implements Listener {
         if (!r.night) { int left = Math.max(0, r.dayLen() - r.clock); return r.color() + "It's day in the " + r.name() + ChatColor.GRAY + ". Night falls in " + Math.max(1, (left + 59) / 60) + " min."; }
         int left = Math.max(0, r.dayLen() + r.nightLen() - r.clock);
         return r.color() + "" + ChatColor.BOLD + r.name() + " Night" + ChatColor.GRAY + (r.event == null ? "" : ", " + evColor(r.event) + ChatColor.BOLD + title(r.event) + ChatColor.GRAY + ": " + blurb(r.event))
-                + ChatColor.GRAY + " Dawn in " + Math.max(1, (left + 59) / 60) + " min (or sleep in a Blue Obsidian Bed).";
+                + ChatColor.GRAY + " Dawn in " + Math.max(1, (left + 59) / 60) + " min.";
     }
 
     /** what = day / night / an event of that realm. Null = done, else why not. */

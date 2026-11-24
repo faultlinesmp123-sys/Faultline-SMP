@@ -160,9 +160,9 @@ entries:
   - {chapter: weapons, id: ability_shade, name: "Ability: Shade", icon: shrieking_phantom, detect: "faultlineitems:ability_shade",
      how: "Admins only (/adminmenu). Right-click it and the ability is yours forever (one ability each).",
      does: "Sin's ability: Strength II, Swiftness II and Fire Resistance forever, and Invisibility until a totem pops. It comes back 5 minutes after the pop, or when you respawn."}
-  - {chapter: weapons, name: "Blue Obsidian Bed", icon: blue_obsidian, detect: "faultlineitems:blue_bed",
-     how: "Craft it: 3 Wool (any colour) over 3 Blue Obsidian.",
-     does: "A bed that works in the Nether and the End. It never explodes. Right-click it there to set your respawn point (a normal bed or respawn anchor used later takes over). The Nether and the End have their own day and night now: at night you can sleep in it, and once half the players there are asleep the night passes. In the Overworld it's a normal bed."}
+  - {chapter: weapons, name: "Spawn Pad", icon: blue_obsidian, detect: "faultlineitems:spawn_pad",
+     how: "Craft it: Diamond Block, Totem of Undying, Diamond Block / Crying Obsidian, Respawn Anchor, Crying Obsidian / Netherite Ingot, Recovery Compass, Netherite Ingot.",
+     does: "A round respawn pad. Place it, stand on it and right-click (or crouch on it): you respawn on it when you die, in any dimension. Right-click it with a dye to change its colour. Anyone can break it, and then your spawn is gone. A bed or respawn anchor used later takes over."}
   - {chapter: weapons, name: "Unholy Arrow", icon: unholy_arrow, detect: "faultlinebosses:unholy_arrow",
      how: "5% from Skeletons, Strays and Bogged you kill (1-2; never from spawners), or craft it: an Arrow, a Fermented Spider Eye, Glowstone Dust and Redstone make 2.",
      does: "A normal arrow's damage, but hit something with a full draw (crossbows always count) and YOU get Strength II and Swiftness II for 3 seconds. Once every 20 seconds. Infinity doesn't make them endless."}

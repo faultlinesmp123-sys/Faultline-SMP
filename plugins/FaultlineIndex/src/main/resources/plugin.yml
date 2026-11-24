@@ -1,5 +1,5 @@
 name: FaultlineIndex
-version: '1.9.21'
+version: '1.9.22'
 main: net.faultlinesmp.index.FaultlineIndex
 api-version: '1.21'
 author: FaultlineSMP

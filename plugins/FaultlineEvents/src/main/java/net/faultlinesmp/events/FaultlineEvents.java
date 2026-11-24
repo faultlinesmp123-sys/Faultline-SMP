@@ -275,7 +275,7 @@ public final class FaultlineEvents extends JavaPlugin implements Listener, TabEx
                     s.spigot().sendMessage(line);
                 }
                 s.sendMessage(ChatColor.RED + "" + ChatColor.BOLD + "The Nether" + ChatColor.GRAY + " and " + ChatColor.LIGHT_PURPLE + ChatColor.BOLD + "the End" + ChatColor.GRAY
-                        + " have their own day and night. Nights there can bring an Ember Storm or a Soul Tide (Nether), a Void Storm or a Starfall (End). Sleep through one in a Blue Obsidian Bed.");
+                        + " have their own day and night. Nights there can bring an Ember Storm or a Soul Tide (Nether), a Void Storm or a Starfall (End)..");
             }
             case "start" -> {
                 if (!admin) { s.sendMessage(ChatColor.RED + "You don't have permission."); return true; }

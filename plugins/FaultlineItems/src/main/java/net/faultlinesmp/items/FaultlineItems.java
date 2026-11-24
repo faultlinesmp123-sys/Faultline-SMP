@@ -428,10 +428,12 @@ public final class FaultlineItems extends JavaPlugin {
         try { accessoryManager.recoverFrom(accessoryBackups); } catch (RuntimeException e) { getLogger().log(Level.SEVERE, "accessory recovery failed", e); }
         getServer().getPluginManager().registerEvents(accessoryBackups, this);
         if (getCommand("accrestore") != null) { getCommand("accrestore").setExecutor(accessoryBackups); getCommand("accrestore").setTabCompleter(accessoryBackups); }
-        blueBed = new BlueBed(this); // 1.3.11: a bed for the Nether and the End
-        getServer().getPluginManager().registerEvents(blueBed, this);
-        if (getCommand("givebluebed") != null) getCommand("givebluebed").setExecutor(new GiveItemCommand(this, "items.givebluebed",
-                "/givebluebed [amount] [player]", ItemCatalog.single(pl -> pl.blueBed.item(1))));
+        spawnPad = new SpawnPad(this); // 1.3.41: spawn pads (replaced 1.3.11's Blue Obsidian Bed)
+        getServer().getPluginManager().registerEvents(spawnPad, this);
+        if (getCommand("givespawnpad") != null) getCommand("givespawnpad").setExecutor(new GiveItemCommand(this, "items.givespawnpad",
+                "/givespawnpad [colour] [amount] [player]", spawnPad.types(), "white"));
+        riptideLock = new RiptideLock(this); // 1.3.41: no Riptide in combat
+        getServer().getPluginManager().registerEvents(riptideLock, this);
         // 1.2.78: the backpack, creator mode, the admin player mimic, haunted villages (Halloween), Krampus (Christmas)
         backpack = new Backpack(this);
         getServer().getPluginManager().registerEvents(backpack, this);
@@ -692,7 +694,7 @@ public final class FaultlineItems extends JavaPlugin {
         if (chromeRunner != null) try { chromeRunner.shutdown(); } catch (RuntimeException ignored) { }
         if (blueObsidian != null) try { blueObsidian.shutdown(); } catch (RuntimeException ignored) { }
         if (upgradedGrindstone != null) try { upgradedGrindstone.shutdown(); } catch (RuntimeException ignored) { }
-        if (blueBed != null) try { blueBed.shutdown(); } catch (RuntimeException ignored) { }
+        if (spawnPad != null) try { spawnPad.shutdown(); } catch (RuntimeException ignored) { }
         if (bedrockShield != null) try { bedrockShield.disable(); } catch (RuntimeException ignored) { }
         if (accessoryBackups != null) try { accessoryBackups.save(); } catch (RuntimeException ignored) { }
         if (mimics != null) try { mimics.removeAll(); } catch (RuntimeException ignored) { }
@@ -977,7 +979,8 @@ public final class FaultlineItems extends JavaPlugin {
     TotemLimit totemLimit;
     BlueObsidian blueObsidian;
     UpgradedGrindstone upgradedGrindstone;
-    BlueBed blueBed;
+    SpawnPad spawnPad;
+    RiptideLock riptideLock;
     BedrockShield bedrockShield;
     AccessoryBackups accessoryBackups;
     Backpack backpack;
@@ -7123,7 +7126,7 @@ public final class FaultlineItems extends JavaPlugin {
                 pl -> pl.blueObsidian.item(16), // 1.2.75
                 pl -> UnholyArrows.item(16), // 1.3.8
                 pl -> pl.upgradedGrindstone.item(1), // 1.3.9
-                pl -> pl.blueBed.item(1), // 1.3.11
+                pl -> pl.spawnPad.item(org.bukkit.DyeColor.WHITE, 1), // 1.3.41
                 pl -> pl.backpack.item(), // 1.2.78
                 pl -> pl.krampus.bell(1), // 1.2.78: summons Krampus
                 pl -> pl.toiletRaid.plunger(1), // 1.3.38: starts the Toilet Raid (admins)

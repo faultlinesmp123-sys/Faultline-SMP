@@ -3124,6 +3124,11 @@ Notes:
   starts from the last living leg angles (`Leg.lY/lE/lK/lF`). Bedrock stand-ins die the vanilla way at once
   (`QueenSpiderManager.killStandin`). Bedrock "couldn't see the Queen" before 1.3.53: her setup threw on the health cap before
   her stand-in was made. Preview `tools/previews/spider_death.png` (scratch `nest/DeathTest` + `rigcheck2.py`).
+- **Bedrock stand-ins visible by default (Items 1.3.55)**: the Queen's and the brood's Bedrock stand-in spiders were
+  `setVisibleByDefault(false)` + `showEntity` for each player `Edition.bedrock` recognised; any miss = a Bedrock player saw no
+  Queen at all. `HitBox.bedrockOnly(e)`: visible by default, HIDDEN from Java players, re-checked every second (`standinUpkeep`)
+  and on join / world change (a miss now shows a Java player a plain spider instead). Tested (scratch `nest/d5/BedTest`: Java
+  can't see it, a Bedrock player there at spawn and one who arrives later can).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

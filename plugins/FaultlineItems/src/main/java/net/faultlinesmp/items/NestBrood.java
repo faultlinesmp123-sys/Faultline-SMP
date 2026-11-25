@@ -153,11 +153,10 @@ final class NestBrood implements Listener {
             if (w.spawnEntity(at, EntityType.SPIDER, false) instanceof Spider s2) {
                 s2.addScoreboardTag(STAND_TAG);
                 s2.setPersistent(false); s2.setAI(false); s2.setSilent(true); s2.setCollidable(false);
-                s2.setVisibleByDefault(false);
                 attr(s2, Attribute.SCALE, kind.hitbox);
                 b.standin = s2;
                 byStandin.put(s2.getUniqueId(), b);
-                for (Player p : w.getPlayers()) if (Edition.bedrock(p)) p.showEntity(plugin, s2);
+                HitBox.bedrockOnly(s2); // 1.3.55
             }
         } catch (RuntimeException ignored) { }
         brood.put(sp.getUniqueId(), b);

@@ -36,6 +36,32 @@ final class HitBox implements Listener {
     static void init(FaultlineItems p) {
         plugin = p;
         p.getServer().getPluginManager().registerEvents(new HitBox(), p);
+        Bukkit.getScheduler().runTaskTimer(p, HitBox::standinUpkeep, 20L, 20L);
+    }
+
+    // ---------------------------------------------------------------- 1.3.55: Bedrock stand-ins
+    // A stand-in used to be hidden from everyone and SHOWN to each player recognised as Bedrock: when that recognition missed
+    // (or the show didn't reach them), Bedrock players saw no Queen at all. Now it's visible by default and HIDDEN from Java
+    // players only, re-checked every second and on join / world change: a miss means a Java player sees a plain spider,
+    // never that a Bedrock player sees nothing.
+    private static final java.util.Set<org.bukkit.entity.Entity> STANDINS = new java.util.HashSet<>();
+
+    static void bedrockOnly(org.bukkit.entity.Entity e) {
+        if (plugin == null || e == null) return;
+        e.setVisibleByDefault(true);
+        STANDINS.add(e);
+        for (Player p : e.getWorld().getPlayers()) fixStandin(p, e);
+    }
+
+    private static void fixStandin(Player p, org.bukkit.entity.Entity e) {
+        boolean bedrock = Edition.bedrock(p);
+        if (bedrock && !p.canSee(e)) p.showEntity(plugin, e);
+        else if (!bedrock && p.canSee(e)) p.hideEntity(plugin, e);
+    }
+
+    private static void standinUpkeep() {
+        STANDINS.removeIf(e -> !e.isValid());
+        for (org.bukkit.entity.Entity e : STANDINS) for (Player p : e.getWorld().getPlayers()) fixStandin(p, e);
     }
 
     private HitBox() { body = null; }
@@ -95,5 +121,6 @@ final class HitBox implements Listener {
     private static void hideAll(Player p) {
         if (!p.isOnline()) return;
         for (HitBox h : BY_BODY.values()) if (h.body != null && h.body.getWorld() == p.getWorld()) h.hideFrom(p);
+        for (org.bukkit.entity.Entity e : STANDINS) if (e.isValid() && e.getWorld() == p.getWorld()) fixStandin(p, e);
     }
 }

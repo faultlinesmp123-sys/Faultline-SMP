@@ -199,10 +199,9 @@ final class QueenSpiderManager implements Listener {
                 s2.setSilent(true);
                 s2.setInvulnerable(false);
                 s2.setCollidable(false);
-                s2.setVisibleByDefault(false);
                 setAttr(s2, Attribute.SCALE, q.scale);
                 q.standin = s2;
-                for (Player p : spider.getWorld().getPlayers()) if (Edition.bedrock(p)) p.showEntity(plugin, s2);
+                HitBox.bedrockOnly(s2); // 1.3.55: hidden from Java players, not shown to Bedrock ones
             }
         } catch (RuntimeException ignored) { }
         queens.put(spider.getUniqueId(), q);
@@ -264,7 +263,6 @@ final class QueenSpiderManager implements Listener {
         }
         if (q.standin != null && q.standin.isValid()) {
             if (q.t % 2 == 0) q.standin.teleport(queen.getLocation());
-            if (q.t % 40 == 0) for (Player p : queen.getWorld().getPlayers()) if (Edition.bedrock(p) && !p.canSee(q.standin)) p.showEntity(plugin, q.standin);
         }
         if (q.asleep) {
             if (q.t % 30 == 0) queen.getWorld().spawnParticle(Particle.WHITE_ASH, queen.getLocation().add(0, q.scale * 0.6, 0), 6, 0.5, 0.3, 0.5, 0);

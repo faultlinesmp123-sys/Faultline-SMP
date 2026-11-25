@@ -17,9 +17,9 @@ museum:
 # Then /discord test in game (/discord status shows both).
 discord:
   enabled: true
-  webhook-url: ""
+  # 2.0.0: ONE webhook, the STAFF LOGS channel (TNT, whispers, grief, x-ray / cheat alerts, reports, suggestions, and
+  # chat / joins / deaths while logs.mirror-public is true). The public chat webhook is gone. THIS URL IS A SECRET.
   logs-webhook-url: ""
-  suggestions-webhook-url: ""    # /suggest posts here (make a #suggestions channel + webhook); "" = the public channel
   username: "Faultline SMP"
   public:
     chat: true

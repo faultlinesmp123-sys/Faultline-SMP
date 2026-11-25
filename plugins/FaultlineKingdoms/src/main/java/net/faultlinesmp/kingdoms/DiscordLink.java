@@ -48,7 +48,11 @@ final class DiscordLink {
         Bukkit.getScheduler().runTaskTimer(pl, this::syncAll, every, every);
     }
 
-    String token() { return pl.getConfig().getString("discord.bot-token", "").trim(); }
+    /** 2.0.0: the Kingdoms bot is switched off for good (the owner runs Discord separately): no linking, role sync,
+     *  /stats, chat bridge or kingdom channels. Staff put players in kingdoms with /kingdoms set. */
+    static final boolean OFF = true;
+
+    String token() { if (OFF) return ""; return pl.getConfig().getString("discord.bot-token", "").trim(); }
     String guild() { return pl.getConfig().getString("discord.guild-id", "").trim(); }
     String api() { return pl.getConfig().getString("discord.api-base", "https://discord.com/api/v10"); }
 

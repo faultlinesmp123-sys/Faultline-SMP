@@ -54,39 +54,7 @@ display:
 #    Server Settings > Roles > right-click each kingdom role > Copy Role ID.
 # Players link once: /kingdom link <their discord name>, the bot DMs them a code, /kingdom verify <code>.
 # KEEP THE TOKEN ONLY IN THE SERVER'S COPY OF THIS FILE (never in the GitHub repo: anyone with it controls the bot).
-discord:
-  bot-token: ""
-  guild-id: ""
-  roles:
-    1: "1553886942100328539"    # role ID for Kingdom 1
-    2: "1553986213311029338"    # Kingdom 2
-    3: "1557134028488843374"    # Kingdom 3
-    4: ""                       # Kingdom 4 (2.0.0: make the role in Discord and put its ID here)
-    5: ""                       # Kingdom 5
-  sync-minutes: 5               # re-check online players' roles this often (and always when they join)
-  slash-commands: true          # /stats <player> in your Discord server (the bot answers with their stats)
-  remove-when-role-gone: true   # lost the role / left the Discord = no kingdom
-  link-code-minutes: 10
-  # 1.2.0: messages typed in this Discord channel show up in game as "[Discord] name: message" (webhook posts and bots
-  # are skipped, so the logs/chat mirror never echoes). Needs the bot's MESSAGE CONTENT INTENT on (developer portal >
-  # your bot > Bot > Privileged Gateway Intents). Channel ID: right-click the channel > Copy Channel ID.
-  chat-bridge:
-    enabled: true
-    channel-id: ""
-    format: "&9[Discord] &f{name}&7: &f{message}"
-    max-length: 256
-  # 1.4.0: each kingdom's own Discord channel. /kc messages are posted there by the bot, and what's typed there shows up
-  # in game for that kingdom only. Needs the Message Content intent (like the chat bridge) and the bot needs View Channel
-  # + Send Messages in those channels. Make the channels visible only to that kingdom's role in Discord.
-  kingdom-chat:
-    enabled: true
-    channels:
-      1: ""
-      2: ""
-      3: ""
-      4: ""
-      5: ""
-    format: "&9[Discord] {kingdom} &f{name}&7: {color}{message}"
+# 2.0.0: the Discord bot is gone (no linking, role sync, /stats, chat bridge or kingdom channels).
+# Staff put players in kingdoms: /kingdoms set <player> <1-5|none>
 
-# Bedrock players get /kingdom as a menu (Floodgate/Geyser forms): link, verify, friendly fire, members.
 bedrock-forms: true

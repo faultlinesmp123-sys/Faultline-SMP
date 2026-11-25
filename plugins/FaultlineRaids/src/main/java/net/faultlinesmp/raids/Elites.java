@@ -108,10 +108,13 @@ final class Elites implements Listener {
             // 2.0.0: Elites only spawn naturally in the Farlands (a lot of them) and, rarely, in the Fibers
             String biome = biomeKey(m.getLocation());
             double elite = biome.equals("faultline:farlands") ? cfg("farlands-chance", 0.35)
-                    : biome.equals("faultline:fibers") ? cfg("fibers-chance", 0.04) : cfg("chance", 0.0);
+                    : biome.equals("faultline:fibers") ? cfg("fibers-chance", 0.04) : elsewhere();
             roll(m, elite, cfg("mutation-chance", 0.02));
         });
     }
+
+    /** Everywhere else: 0. A server config kept from before 2.0 still says 0.01 (the old default): that reads as 0 too. */
+    double elsewhere() { double c = cfg("chance", 0.0); return Math.abs(c - 0.01) < 1e-9 ? 0.0 : c; }
 
     /** The biome's key ("faultline:farlands"), or "" (the overworld generator's custom biomes come from its datapack). */
     static String biomeKey(org.bukkit.Location l) {

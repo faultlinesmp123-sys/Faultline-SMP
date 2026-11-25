@@ -44,12 +44,17 @@ final class Life implements Listener {
     final Set<UUID> wasteMusic = new HashSet<>();
     final Map<UUID, Long> musicAt = new HashMap<>();
     final NamespacedKey extraKey;
+    final NamespacedKey filledKey;
+    final Set<UUID> falling = new HashSet<>();
+    final Set<UUID> wasteRain = new HashSet<>();
+    final Map<Long, Long> cityWaveAt = new HashMap<>(), cityEvokerAt = new HashMap<>();
     final NamespacedKey umbrellaKey = new NamespacedKey("faultlineitems", "umbrella");
     final Giants giants;
 
     Life(FaultlineWorld plugin) {
         this.plugin = plugin;
         this.extraKey = new NamespacedKey(plugin, "extra_spawn");
+        this.filledKey = new NamespacedKey(plugin, "filled");
         this.giants = new Giants(plugin);
         tasks.add(Bukkit.getScheduler().runTaskTimer(plugin, this::second, 40, 20));
         tasks.add(Bukkit.getScheduler().runTaskTimer(plugin, this::spawns, 100, 100));
@@ -107,6 +112,23 @@ final class Life implements Listener {
         e.setCancelled(true);
     }
 
+    /** AUDIT: buckets (flooding the maze, lava) and mobs that change blocks (Withers, endermen, ravagers) were missed. */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onBucket(org.bukkit.event.player.PlayerBucketEmptyEvent e) {
+        if (!exempt(e.getPlayer()) && protectedAt(e.getBlock())) e.setCancelled(true);
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onBucketFill(org.bukkit.event.player.PlayerBucketFillEvent e) {
+        if (!exempt(e.getPlayer()) && protectedAt(e.getBlock())) e.setCancelled(true);
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onMobChange(org.bukkit.event.entity.EntityChangeBlockEvent e) {
+        if (e.getEntity() instanceof Player || e.getEntity() instanceof FallingBlock) return;
+        if (protectedAt(e.getBlock())) e.setCancelled(true);
+    }
+
     @EventHandler(ignoreCancelled = true)
     public void onExplode(EntityExplodeEvent e) { e.blockList().removeIf(this::protectedAt); }
 
@@ -123,13 +145,17 @@ final class Life implements Listener {
 
     @EventHandler
     public void onChunk(ChunkLoadEvent e) {
-        if (!e.isNewChunk() || !ours(e.getWorld())) return;
+        // AUDIT: this used to wait a tick and skip the chunk if it had unloaded again, which is exactly what a pregenerator
+        // (Chunky) does: every chest stayed empty and every spawner blank. Now: right away, once per chunk (a PDC mark),
+        // on ANY load of a chunk that hasn't been done yet.
+        if (!ours(e.getWorld())) return;
         Chunk ch = e.getChunk();
-        Bukkit.getScheduler().runTask(plugin, () -> fillChunk(ch));
+        if (ch.getPersistentDataContainer().has(filledKey, PersistentDataType.BYTE)) return;
+        try { fillChunk(ch); } catch (Throwable err) { plugin.getLogger().warning("[World] filling chunk " + ch.getX() + "," + ch.getZ() + ": " + err); }
+        ch.getPersistentDataContainer().set(filledKey, PersistentDataType.BYTE, (byte) 1);
     }
 
     void fillChunk(Chunk ch) {
-        if (!ch.isLoaded()) return;
         Terrain t = terrain(ch.getWorld());
         for (BlockState st : ch.getTileEntities(b -> {
             Material m = b.getType();
@@ -145,8 +171,8 @@ final class Life implements Listener {
                     barrel.setLootTable(ctx.loot, random.nextLong()); barrel.update(true, false);
                 } else if (st instanceof CreatureSpawner sp && sp.getSpawnedType() == null) {
                     sp.setSpawnedType(ctx.mobs[random.nextInt(ctx.mobs.length)]); sp.update(true, false);
-                } else if (st instanceof TrialSpawner ts) {
-                    trial(ts, ctx);
+                } else if (st instanceof TrialSpawner ts && ts.getNormalConfiguration().getSpawnedType() == null) {
+                    trial(ts, ctx);   // AUDIT: only blank ones (ours); a vanilla Trial Chamber's spawners keep their own setup
                 }
             } catch (Throwable err) {
                 plugin.getLogger().fine("[World] couldn't set up " + b.getType() + " at " + b.getLocation() + ": " + err);
@@ -173,9 +199,7 @@ final class Life implements Listener {
     /** What kind of place a container / spawner is in (only our structures; vanilla ones keep theirs). */
     Context context(Terrain t, Block b) {
         int x = b.getX(), y = b.getY(), z = b.getZ();
-        for (int i = 0; i < Layout.PYRAMIDS.length; i++) {
-            int[] bx = Structures.pyramidBox(t, i);
-            if (x >= bx[0] && x <= bx[3] && z >= bx[2] && z <= bx[5] && y >= bx[1] && y <= bx[4])
+        if (Structures.inPyramid(t, x, y, z)) {
                 return new Context(LootTables.DESERT_PYRAMID.getLootTable(), EntityType.HUSK, EntityType.SKELETON, EntityType.BOGGED, EntityType.CAVE_SPIDER);
         }
         for (Layout.Site s : Layout.SITES) {
@@ -226,6 +250,8 @@ final class Life implements Listener {
     /** The abyss: pitch black (hidden Darkness), its own music while you're in it (and only then). */
     void abyss(Player p, boolean in) {
         if (in) {
+            // FaultlineItems' diving gear / Mining Helmet hold their Night Vision off while this is set (else it flickers)
+            if (!p.hasMetadata("faultline_abyss_dark")) p.setMetadata("faultline_abyss_dark", new org.bukkit.metadata.FixedMetadataValue(plugin, true));
             if (plugin.getConfig().getBoolean("abyss.darkness", true)) {
                 PotionEffect cur = p.getPotionEffect(PotionEffectType.DARKNESS);
                 if (cur == null || cur.getDuration() < 60) p.addPotionEffect(new PotionEffect(PotionEffectType.DARKNESS, 220, 0, true, false, false));
@@ -233,6 +259,7 @@ final class Life implements Listener {
             }
             music(p, abyssMusic, plugin.getConfig().getString("abyss.music", "faultline:deep.abyss"), plugin.getConfig().getInt("abyss.music-seconds", 286));
         } else if (abyssMusic.remove(p.getUniqueId())) {
+            p.removeMetadata("faultline_abyss_dark", plugin);
             p.stopSound(plugin.getConfig().getString("abyss.music", "faultline:deep.abyss"), SoundCategory.MUSIC);
             PotionEffect cur = p.getPotionEffect(PotionEffectType.DARKNESS);
             if (cur != null && cur.isAmbient()) p.removePotionEffect(PotionEffectType.DARKNESS);
@@ -251,7 +278,10 @@ final class Life implements Listener {
     /** The bottom of each hole: the way down into the Dark Ocean. */
     void toTheDeep(Player p) {
         World deep = Bukkit.getWorld(plugin.getConfig().getString("holes.world", "faultline_deep"));
-        if (deep == null) return;
+        if (deep == null || !falling.add(p.getUniqueId())) return;   // one trip at a time
+        Bukkit.getScheduler().runTaskLater(plugin, () -> falling.remove(p.getUniqueId()), 100);
+        if (p.isInsideVehicle()) p.leaveVehicle();                    // a boat / horse would make the teleport fail
+        p.eject();
         Location to = new Location(deep, 0.5, plugin.getConfig().getInt("holes.arrive-y", 300), 0.5);
         p.teleportAsync(to).thenAccept(ok -> {
             if (!ok) return;
@@ -275,12 +305,14 @@ final class Life implements Listener {
     void wasteland(Player p, boolean in, Terrain.Col c) {
         String track = plugin.getConfig().getString("wasteland.music", "faultline:deep.acid");
         if (!in) {
-            if (wasteMusic.remove(p.getUniqueId())) { p.stopSound(track, SoundCategory.MUSIC); p.resetPlayerWeather(); }
+            if (wasteMusic.remove(p.getUniqueId())) { p.stopSound(track, SoundCategory.MUSIC); if (wasteRain.remove(p.getUniqueId())) p.resetPlayerWeather(); }
             return;
         }
         music(p, wasteMusic, track, plugin.getConfig().getInt("wasteland.music-seconds", 105));
         boolean rain = acidRainNow(p.getWorld());
-        if (rain) p.setPlayerWeather(WeatherType.DOWNFALL); else p.resetPlayerWeather();
+        // only on a change: resetting every second would wipe another plugin's weather for this player
+        if (rain) { if (wasteRain.add(p.getUniqueId())) p.setPlayerWeather(WeatherType.DOWNFALL); }
+        else if (wasteRain.remove(p.getUniqueId())) p.resetPlayerWeather();
         if (!survival(p) || p.hasPotionEffect(PotionEffectType.FIRE_RESISTANCE)) return;
         Block above = p.getWorld().getHighestBlockAt(p.getLocation());
         boolean exposed = above.getY() <= p.getLocation().getBlockY() + 1;
@@ -394,12 +426,21 @@ final class Life implements Listener {
             for (Entity e : w.getNearbyEntities(center, Structures.CITY_R, 30, Structures.CITY_R)) if (e instanceof Illager) have++;
             int cap = plugin.getConfig().getInt("illager-city.garrison", 12);
             if (have >= cap) continue;
-            EntityType[] pool = {EntityType.PILLAGER, EntityType.PILLAGER, EntityType.VINDICATOR, EntityType.VINDICATOR, EntityType.EVOKER, EntityType.ILLUSIONER};
+            // AUDIT: it refilled every 5 s, Evokers included = an endless Totem farm. Now one wave a minute, and one
+            // Evoker per city every 20 minutes.
+            long key = ((long) c[0] << 32) ^ (c[1] & 0xffffffffL), now = System.currentTimeMillis();
+            if (now < cityWaveAt.getOrDefault(key, 0L)) continue;
+            cityWaveAt.put(key, now + 1000L * plugin.getConfig().getInt("illager-city.wave-seconds", 60));
+            boolean evokerOk = now >= cityEvokerAt.getOrDefault(key, 0L);
+            EntityType[] pool = {EntityType.PILLAGER, EntityType.PILLAGER, EntityType.PILLAGER, EntityType.VINDICATOR, EntityType.VINDICATOR, EntityType.EVOKER};
             for (int i = 0; i < Math.min(3, cap - have); i++) {
                 int x = c[0] + random.nextInt(Structures.CITY_R * 2 - 8) - Structures.CITY_R + 4, z = c[1] + random.nextInt(Structures.CITY_R * 2 - 8) - Structures.CITY_R + 4;
                 Location at = w.getHighestBlockAt(x, z).getLocation().add(0.5, 1, 0.5);
                 EntityType type = pool[random.nextInt(pool.length)];
-                if (type == EntityType.ILLUSIONER && random.nextInt(4) != 0) type = EntityType.EVOKER;
+                if (type == EntityType.EVOKER) {
+                    if (!evokerOk) type = EntityType.VINDICATOR;
+                    else { evokerOk = false; cityEvokerAt.put(key, now + 60_000L * plugin.getConfig().getInt("illager-city.evoker-minutes", 20)); }
+                }
                 Entity e = w.spawnEntity(at, type);
                 if (e instanceof Raider r) r.setPatrolLeader(false);
                 if (e instanceof Mob m) m.setPersistent(false);
@@ -434,5 +475,7 @@ final class Life implements Listener {
         abyssMusic.remove(e.getPlayer().getUniqueId());
         wasteMusic.remove(e.getPlayer().getUniqueId());
         musicAt.remove(e.getPlayer().getUniqueId());
+        wasteRain.remove(e.getPlayer().getUniqueId());
+        e.getPlayer().removeMetadata("faultline_abyss_dark", plugin);
     }
 }

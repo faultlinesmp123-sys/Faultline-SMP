@@ -3199,6 +3199,22 @@ Notes:
   (827eeeb) API (its two `_` unnamed variables are renamed for JDK 21); all 13 compile on 1.21.11, 26.2 and 26.3. Marked for
   removal in 26.3 but still there: `RecipeChoice.ExactChoice(ItemStack)`, `PotionMix`/`getPotionBrewer`, `TeleportFlag.EntityState.RETAIN_PASSENGERS`,
   `GameRule.DO_DAYLIGHT_CYCLE`, `Structure#key`: the next Minecraft version will need those replaced.
+- **2.0 audit + Discord trimmed (same 2.0.0 jars, rebuilt)**: DISCORD: the owner keeps ONLY the staff logs. Index `Discord`: the
+  public webhook (`discord.webhook-url`) and `suggestions-webhook-url` are ignored (`pub.url` / `suggestUrl` always empty; /suggest,
+  /report, the daily stats and, with `logs.mirror-public`, chat / joins / deaths all go to `discord.logs-webhook-url`). Kingdoms:
+  the bot is OFF for good (`DiscordLink.OFF` true = `token()` empty = `on()` false: no linking, role sync, Discord /stats, chat
+  bridge, kingdom channels; the `discord:` section left the default config); staff use `/kingdoms set <player> <1-5>`. Don't
+  bring either back unless asked. AUDIT FIXES (FaultlineWorld `Life`): chests / spawners in new chunks were filled a tick after
+  the chunk loaded and SKIPPED if it had unloaded (what a pregenerator does: empty chests, blank spawners everywhere): now at
+  once, once per chunk (chunk PDC `faultlineworld:filled`), on any load; a vanilla Trial Chamber's spawners were overwritten
+  with ours (only blank ones now); the illager cities refilled every 5 s incl. Evokers (a Totem farm): one wave a minute
+  (`illager-city.wave-seconds`), one Evoker per city per 20 min (`evoker-minutes`), no Illusioners; pyramids / cores also refuse
+  buckets and mob block changes (Withers, endermen); the x/z test comes before any terrain maths in `inPyramid` / `inCore` (they
+  run for every block broken on the server); a hole takes you down even in a boat (`leaveVehicle`), one trip at a time; the Abyss sets
+  the `faultline_abyss_dark` metadata (Items' Night Vision gear holds off, no flicker); the Wasteland only touches player weather
+  on a change. `FaultlineWorld.setup` never edits an existing non-Faultline world or an unreadable bukkit.yml. Raids: an old
+  config's `elites.chance: 0.01` reads as 0 (`elsewhere()`). Datapack checked by script: every feature / carver id exists in
+  the vendored 26.3 biomes, feature lists are vanilla lists with entries only REMOVED (no feature-order cycle possible).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

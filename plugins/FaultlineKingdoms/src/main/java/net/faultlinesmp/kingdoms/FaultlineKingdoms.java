@@ -528,7 +528,7 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
         switch (sub) {
             case "link" -> {
                 if (p == null) return msg(sender, "Players only.");
-                if (!discord.on()) return msg(sender, ChatColor.RED + "Discord linking isn't set up on this server yet.");
+                if (!discord.on()) return msg(sender, ChatColor.RED + "Kingdoms are handed out by staff. Ask a staff member to put you in yours.");
                 if (args.length < 2) return msg(sender, ChatColor.RED + "/kingdom link <your Discord username>");
                 discord.startLink(p, String.join(" ", java.util.Arrays.copyOfRange(args, 1, args.length)));
             }
@@ -754,7 +754,7 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
             return null;
         }
         if (command.getName().equalsIgnoreCase("kc") || command.getName().equalsIgnoreCase("ac")) return null;
-        if (args.length == 1) return List.of("link", "verify", "unlink", "list", "ff", "ally");
+        if (args.length == 1) return List.of("list", "ff", "ally");
         if (args.length == 2 && args[0].equalsIgnoreCase("ally")) return List.of("1", "2", "3", "4", "5");
         if (args.length == 3 && args[0].equalsIgnoreCase("ally")) return List.of("yes", "no", "clear");
         if (args.length == 2 && args[0].equalsIgnoreCase("ff")) return List.of("on", "off", "clear");

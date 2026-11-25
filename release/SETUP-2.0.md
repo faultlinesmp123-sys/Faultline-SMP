@@ -4,8 +4,7 @@
 
 ## 0. Before anything: back up
 Copy somewhere safe (off the VPS if you can):
-- `plugins/FaultlineIndex/config.yml` (the Discord webhook URLs)
-- `plugins/FaultlineKingdoms/config.yml` (the bot token, role ids)
+- `plugins/FaultlineIndex/config.yml` (the staff logs webhook URL)
 - any other plugin config you changed by hand
 - the whole old server folder if you ever want to look at the old world again
 
@@ -48,10 +47,11 @@ The generator is heavier than vanilla (7-18 ms a chunk). Install Chunky and run:
 Let it finish before opening the server (it takes a while: 7500 x 7500 is ~220,000 chunks).
 
 ## 7. Config to set by hand
-- `plugins/FaultlineKingdoms/config.yml`: `discord.roles.4` and `.5` (the two new kingdoms' Discord role ids),
-  and `discord.kingdom-chat.channels.4` / `.5` if you use kingdom channels.
-- `plugins/FaultlineRaids/config.yml`: if the file is kept from before, set `elites.chance: 0.0`,
-  `elites.farlands-chance: 0.35`, `elites.fibers-chance: 0.04` (elites only in the Farlands, rare in the Fibers).
+- Kingdoms: the Discord bot is gone. Staff put players in kingdoms with `/kingdoms set <player> <1-5>`.
+- Staff logs: put your staff channel's webhook in `plugins/FaultlineIndex/config.yml` as `discord.logs-webhook-url: "https://..."`
+  (keep the quotes). That file only, never in chat or GitHub. `/discord status` and `/discord test` check it.
+- `plugins/FaultlineRaids/config.yml`: nothing to do (an old `elites.chance: 0.01` is read as 0). Optional:
+  `elites.farlands-chance: 0.35`, `elites.fibers-chance: 0.04` to tune the Farlands / Fibers.
 - Resource pack: FaultlineSMP.zip on `main` must be the new one (it has the Umbrella).
 
 ## Testing first

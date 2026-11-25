@@ -143,9 +143,9 @@ final class Discord implements Listener {
         }
         patterns = p;
         enabled = c.getBoolean("discord.enabled", true);
-        pub.url = cleanUrl(c.getString("discord.webhook-url", ""));
+        pub.url = "";   // 2.0.0: the public channel (chat mirror) is gone; only the STAFF LOGS webhook is used
         logs.url = cleanUrl(c.getString("discord.logs-webhook-url", ""));
-        suggestUrl = c.getString("discord.suggestions-webhook-url", "");
+        suggestUrl = "";   // 2.0.0: /suggest goes to the staff logs channel
         username = c.getString("discord.username", "Faultline SMP");
         chat = c.getBoolean("discord.public.chat", true);
         joins = c.getBoolean("discord.public.joins", true);
@@ -191,7 +191,7 @@ final class Discord implements Listener {
             return out;
         }
         if (!enabled) out.add("discord.enabled is false.");
-        for (String[] k : new String[][]{{"discord.webhook-url", pub.url}, {"discord.logs-webhook-url", logs.url}}) {
+        for (String[] k : new String[][]{{"discord.logs-webhook-url", logs.url}}) {
             String u = k[1] == null ? "" : k[1].trim();
             if (u.isEmpty()) { out.add(k[0] + " is empty."); continue; }
             if (!u.startsWith("https://")) {

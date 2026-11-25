@@ -208,8 +208,10 @@ final class Structures {
 
     static boolean inPyramid(Terrain t, int x, int y, int z) {
         for (int i = 0; i < Layout.PYRAMIDS.length; i++) {
+            // the cheap x/z test first: this runs for every block broken / placed / blown up on the server
+            if (Math.abs(x - Layout.PYRAMIDS[i][0]) > PH + 2 || Math.abs(z - Layout.PYRAMIDS[i][1]) > PH + 2) continue;
             int[] b = pyramidBox(t, i);
-            if (x >= b[0] && x <= b[3] && z >= b[2] && z <= b[5] && y >= b[1] && y <= b[4]) return true;
+            if (y >= b[1] && y <= b[4]) return true;
         }
         return false;
     }
@@ -325,8 +327,9 @@ final class Structures {
 
     static boolean inCore(Terrain t, int x, int y, int z) {
         for (Layout.Core c : Layout.CORES) {
+            if (Math.abs(x - c.x()) > 11 || Math.abs(z - c.z()) > 11) continue;
             int b = coreBase(t, c);
-            if (Math.abs(x - c.x()) <= 11 && Math.abs(z - c.z()) <= 11 && y >= b - 8 && y <= b + 13) return true;
+            if (y >= b - 8 && y <= b + 13) return true;
         }
         return false;
     }

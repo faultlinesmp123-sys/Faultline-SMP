@@ -71,8 +71,9 @@ final class Umbrella implements Listener {
     void tick() {
         for (Player p : Bukkit.getOnlinePlayers()) {
             boolean w = wearing(p);
-            if (w) p.getPersistentDataContainer().set(key, PersistentDataType.BYTE, (byte) 1);
-            else p.getPersistentDataContainer().remove(key);
+            boolean flag = p.getPersistentDataContainer().has(key, PersistentDataType.BYTE);   // only write on a change
+            if (w && !flag) p.getPersistentDataContainer().set(key, PersistentDataType.BYTE, (byte) 1);
+            else if (!w && flag) p.getPersistentDataContainer().remove(key);
             boolean show = w && wet(p) && p.getGameMode() != GameMode.SPECTATOR && !p.isInvisible() && !p.isGliding() && !p.isSwimming();
             ItemDisplay d = open.get(p.getUniqueId());
             if (!show) { if (d != null) { d.remove(); open.remove(p.getUniqueId()); } continue; }

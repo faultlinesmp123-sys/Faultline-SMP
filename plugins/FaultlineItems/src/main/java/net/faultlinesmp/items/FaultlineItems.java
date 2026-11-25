@@ -621,8 +621,9 @@ public final class FaultlineItems extends JavaPlugin {
                 int n = queenSpiderManager.queens.size();
                 queenSpiderManager.removeAll();
                 spiderNest.brood.removeAll();
+                int mobs = spiderNest.brood.clearNests(); // 1.3.50: and every mob in a nest
                 for (SpiderNest.Nest nest : spiderNest.nests.values()) nest.queen = null;
-                sender.sendMessage(ChatColor.GREEN + "Removed " + n + " Queen Spider(s). Nest queens come back asleep on their thrones.");
+                sender.sendMessage(ChatColor.GREEN + "Removed " + n + " Queen Spider(s) and " + mobs + " mobs in nests. Nest queens come back asleep on their thrones.");
                 return true;
             }
             if (args.length == 0 || !args[0].equalsIgnoreCase("spawn")) { sender.sendMessage(ChatColor.YELLOW + "/queenspider spawn [<world> <x> <y> <z>] | killall | nest [here|list|tp|respawn|delete|forget]"); return true; }

@@ -177,6 +177,15 @@ final class NestBrood implements Listener {
         if (b.standin != null) { byStandin.remove(b.standin.getUniqueId()); if (b.standin.isValid()) b.standin.remove(); }
     }
 
+    /** 1.3.50: every hostile mob inside a nest removed (`/queenspider killall`). */
+    int clearNests() {
+        int n = 0;
+        for (org.bukkit.World w : Bukkit.getWorlds()) for (LivingEntity e : w.getLivingEntities())
+            if (e instanceof org.bukkit.entity.Enemy && !(e instanceof Player) && nests.nestAt(e.getLocation()) != null
+                    && !e.getScoreboardTags().contains("faultline_queen_spider")) { e.remove(); n++; }
+        return n;
+    }
+
     void removeAll() {
         for (Brood b : new ArrayList<>(brood.values())) remove(b);
         for (Run r : runs.values()) for (UUID id : r.mobs) { Entity e = Bukkit.getEntity(id); if (e != null) e.remove(); }
@@ -337,9 +346,16 @@ final class NestBrood implements Listener {
     /** 1.3.49: the whole nest is dark, so vanilla filled it with mobs on top of ours: no NATURAL spawns inside a nest but ours. */
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onVanillaSpawn(org.bukkit.event.entity.CreatureSpawnEvent e) {
-        if (spawning || e.getSpawnReason() != org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.NATURAL) return;
-        if (!(e.getEntity() instanceof org.bukkit.entity.Enemy) || nests.nests.isEmpty()) return;
-        if (nests.nestAt(e.getLocation()) != null) e.setCancelled(true);
+        if (spawning || !(e.getEntity() instanceof org.bukkit.entity.Enemy) || nests.nests.isEmpty()) return;
+        org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason why = e.getSpawnReason();
+        boolean spawner = why == org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.SPAWNER;
+        if (!spawner && why != org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.NATURAL) return;
+        if (nests.nestAt(e.getLocation()) == null) return;
+        if (!spawner) { e.setCancelled(true); return; }
+        // 1.3.50: the nest's mob spawners piled spiders up (vanilla lets each one keep 6 alive): at most `spawner-cap` 2 mobs round one
+        int near = 0, cap = plugin.getConfig().getInt("spider-nest.spawner-cap", 2);
+        for (Entity n : e.getLocation().getWorld().getNearbyEntities(e.getLocation(), 16, 8, 16))
+            if (n instanceof org.bukkit.entity.Enemy && n instanceof LivingEntity && ++near >= cap) { e.setCancelled(true); return; }
     }
 
     // ============================================================================================ spawning round players

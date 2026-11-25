@@ -3083,6 +3083,13 @@ Notes:
   360 blocks) until clear. Right-click a web to take the item caught in it (`onWebPick`, the web stays); a caught item whose web was
   later built over is removed at the end of the build. Her bone bowl's rim slopes down outside too (it was a 5-block wall). Rig parts
   never go pitch black (min brightness 5). Tested: `nest/NestTest3` (walk in from a gateway's far end, 205 blocks out).
+- **Nest spawners + light (Items 1.3.50)**: the spiders piling up in a nest came from its MOB SPAWNERS (vanilla lets each keep 6
+  alive; 1.3.49 only capped the random spawns). `NestBrood.onVanillaSpawn` now cancels a SPAWNER spawn inside a nest while
+  `spider-nest.spawner-cap` 2 monsters are within 16 of it. `/queenspider killall` also removes every monster inside a nest
+  (`clearNests`). BLACK SCREEN: the nest had no real light (egg displays light nothing), and Darkness in light level 0 is pure
+  black whatever the brightness slider (only spider eyes, which glow, showed). Egg clutches now put an invisible LIGHT 7 block
+  (`light(n)`), den sacs LIGHT 9, soul lanterns 0.4% of ceiling cells (was 0.12%), glow lichen more often; old nests get LIGHT 7
+  at every froglight egg display once per chunk (`lightUp`, chunk PDC `faultlineitems:nest_v3`).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

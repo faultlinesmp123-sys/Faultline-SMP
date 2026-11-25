@@ -565,12 +565,12 @@ final class SpiderNest implements Listener {
             else if (roll < 0.1 + walls * 0.09) put(b, Material.WHITE_CARPET); // silk on the floor
         } else if (ceil) {
             double cocoon = kind.equals("larder") ? 0.05 : 0.008;
-            if (roll < 0.0012) { // a rare soul lantern on a chain (it's dark down here)
+            if (roll < 0.004) { // 1.3.50: a soul lantern on a chain (was 0.0012: pitch black + Darkness = a black screen) on a chain (it's dark down here)
                 Block l = b;
                 int len = 1 + r.nextInt(3);
                 for (int i = 0; i < len && air.contains(key(x, l.getY() - 1, z)); i++) { put(l, chain()); l = l.getRelative(0, -1, 0); }
                 put(l, hangingLantern());
-            } else if ((roll -= 0.0012) < cocoon && air.contains(key(x, y - 1, z)) && air.contains(key(x, y - 2, z)) && air.contains(key(x, y - 3, z)) && air.contains(key(x, y - 4, z))) {
+            } else if ((roll -= 0.004) < cocoon && air.contains(key(x, y - 1, z)) && air.contains(key(x, y - 2, z)) && air.contains(key(x, y - 3, z)) && air.contains(key(x, y - 4, z))) {
                 cocoon(b, r, bodies, webs, kind.equals("larder")); // a wrapped body hanging from the ceiling (cut it open: a body's loot)
             } else if ((roll -= cocoon) < 0.035) { // a hanging column of web
                 Block l = b;
@@ -580,7 +580,7 @@ final class SpiderNest implements Listener {
             else if (roll < 0.22 + walls * 0.1) web(b, r, webs, true);
         } else if (walls >= 2 && roll < 0.33) web(b, r, webs, true);
         else if (walls == 1 && roll < 0.04) web(b, r, webs, true);
-        else if (walls >= 1 && roll < 0.048 && wallFace != null) lichen(b, wallFace);
+        else if (walls >= 1 && roll < 0.075 && wallFace != null) lichen(b, wallFace);
     }
 
     /** A cobweb (a loot web); sometimes something is caught in it, and you can SEE it hanging in the web. */
@@ -611,6 +611,12 @@ final class SpiderNest implements Listener {
         return m != null ? m : Material.matchMaterial("CHAIN");
     }
 
+    static BlockData light(int level) {
+        BlockData d = Material.LIGHT.createBlockData();
+        if (d instanceof org.bukkit.block.data.Levelled lv) lv.setLevel(level);
+        return d;
+    }
+
     private static BlockData hangingLantern() {
         BlockData lan = Material.SOUL_LANTERN.createBlockData();
         if (lan instanceof org.bukkit.block.data.type.Lantern ln) ln.setHanging(true);
@@ -635,8 +641,11 @@ final class SpiderNest implements Listener {
             });
         }
         Block up = b.getRelative(0, 1, 0);
-        if (r.nextDouble() < 0.5 && up.getType().isAir() && air.contains(key(up.getX(), up.getY(), up.getZ()))) web(up, r, webs, false);
+        boolean upWeb = r.nextDouble() < 0.5 && up.getType().isAir() && air.contains(key(up.getX(), up.getY(), up.getZ()));
+        if (upWeb) web(up, r, webs, false);
         else if (r.nextDouble() < 0.6) web(b, r, webs, false);
+        if (b.getType().isAir()) put(b, light(7)); // 1.3.50: the eggs give a faint real light (the displays light nothing)
+        else if (!upWeb && up.getType().isAir() && air.contains(key(up.getX(), up.getY(), up.getZ()))) put(up, light(7));
     }
 
     /** A cocoon: a web strand, two blocks of wool (the wrapped body), in larders a head poking out of it. The lower wool is a body. */
@@ -974,6 +983,8 @@ final class SpiderNest implements Listener {
             d.setBrightness(new org.bukkit.entity.Display.Brightness(15, 0));
             d.setTransformation(new Transformation(new Vector3f(-0.4f, 0, -0.4f), new Quaternionf(), new Vector3f(0.8f, 0.8f, 0.8f), new Quaternionf()));
         });
+        Block heart = w.getBlockAt(f.getX(), f.getY() + 1, f.getZ());
+        if (heart.getType().isAir()) put(heart, light(9)); // 1.3.50: the sac's heart lights the den a little
         buildDens.add(new int[]{f.getX(), f.getY(), f.getZ()});
     }
 
@@ -1380,6 +1391,7 @@ final class SpiderNest implements Listener {
             if (!n.world.equals(c.getWorld().getName())) continue;
             int bx = c.getX() << 4, bz = c.getZ() << 4;
             if (bx + 16 < n.cx - n.radius || bx > n.cx + n.radius || bz + 16 < n.cz - n.radius || bz > n.cz + n.radius) continue;
+            lightUp(c);
             if (c.getPersistentDataContainer().has(done, PersistentDataType.BYTE)) return;
             c.getPersistentDataContainer().set(done, PersistentDataType.BYTE, (byte) 1);
             int lo = Math.max(c.getWorld().getMinHeight(), n.cy - 40), hi = Math.min(c.getWorld().getMaxHeight() - 1, n.cy + 40);
@@ -1391,6 +1403,22 @@ final class SpiderNest implements Listener {
             if (fixed > 0) plugin.getLogger().info("[SpiderNest] " + fixed + " sniffer eggs in " + n.id + " turned into egg clutches");
             return;
         }
+    }
+
+    /** 1.3.50: nests built before had no light at all (with the Darkness: a black screen): every egg clutch gets a faint LIGHT block, once. */
+    private void lightUp(Chunk c) {
+        NamespacedKey done = new NamespacedKey(plugin, "nest_v3");
+        if (c.getPersistentDataContainer().has(done, PersistentDataType.BYTE)) return;
+        c.getPersistentDataContainer().set(done, PersistentDataType.BYTE, (byte) 1);
+        int lit = 0;
+        for (org.bukkit.entity.Entity e : c.getEntities()) {
+            if (!(e instanceof BlockDisplay d) || !e.getScoreboardTags().contains(SILK_TAG)) continue;
+            Material m = d.getBlock().getMaterial();
+            if (m != Material.OCHRE_FROGLIGHT && m != Material.PEARLESCENT_FROGLIGHT && m != Material.VERDANT_FROGLIGHT) continue;
+            Block b = e.getLocation().getBlock();
+            if (b.getType() == Material.AIR || b.getType() == Material.CAVE_AIR) { b.setBlockData(light(7), false); lit++; }
+        }
+        if (lit > 0) plugin.getLogger().info("[SpiderNest] lit " + lit + " egg clutches in chunk " + c.getX() + "," + c.getZ());
     }
 
     // ============================================================================================ /queenspider nest

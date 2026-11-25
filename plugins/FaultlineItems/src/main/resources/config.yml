@@ -330,6 +330,7 @@ spider-nest:
   spawn-chance: 0.18           # every 2 s per player inside: a spider, cave spider, zombie, skeleton or brood comes out of the dark
   mob-cap: 9
   brood-cap: 6
+  spawner-cap: 2               # 1.3.50: a nest spawner only spawns while fewer than this many monsters are within 16 of it
   web-item-chance: 0.035       # loot webs with an item you can SEE caught in them
   den-trigger-radius: 7        # brood dens (trial-chamber waves) wake when someone comes this close
   den-cooldown-minutes: 30

@@ -408,9 +408,19 @@ final class SpawnPad implements Listener {
         if (pad != null) setSpawn(e.getPlayer(), pad);
     }
 
+    /** Worlds nobody may respawn in (the Dark Ocean). */
+    boolean noSpawnWorld(World w) {
+        return w != null && plugin.getConfig().getStringList("spawn-pad.no-spawn-worlds").stream().anyMatch(n -> n.equalsIgnoreCase(w.getName()))
+                || w != null && !plugin.getConfig().isSet("spawn-pad.no-spawn-worlds") && w.getName().equals("faultline_deep");
+    }
+
     /** True if it was a new spawn. */
     boolean setSpawn(Player p, Block pad) {
         if (!on()) return false;
+        if (noSpawnWorld(pad.getWorld())) { // the owner: no spawn points in the Dark Ocean
+            bar(p, ChatColor.RED + "You can't set your spawn in the Dark Ocean.");
+            return false;
+        }
         String spot = key(pad);
         if (spot.equals(p.getPersistentDataContainer().get(spawnKey, PersistentDataType.STRING))) {
             bar(p, ChatColor.GRAY + "This Spawn Pad is already your spawn.");
@@ -512,6 +522,7 @@ final class SpawnPad implements Listener {
         if (w == null) return;
         Block pad;
         try { pad = w.getBlockAt(Integer.parseInt(a[1]), Integer.parseInt(a[2]), Integer.parseInt(a[3])); } catch (NumberFormatException ex) { forget(p); return; }
+        if (noSpawnWorld(w)) { forget(p); return; }
         DyeColor col = padAt(pad);
         if (col == null || !pad.getType().name().endsWith("_CARPET")) {
             forget(p);

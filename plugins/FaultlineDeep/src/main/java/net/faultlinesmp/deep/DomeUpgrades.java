@@ -81,7 +81,7 @@ final class DomeUpgrades implements Listener {
             new Up("turret", "Defense Pulse", Material.CONDUIT, "HEART_OF_THE_SEA:1,PRISMARINE_SHARD:32", "Every 3 seconds, hostile creatures within 6 blocks of the glass take damage and are pushed away."),
             new Up("ward", "Mob Ward", Material.LODESTONE, "LODESTONE:1,ENDER_PEARL:8", "No hostile creature spawns within 24 blocks of the dome."),
             new Up("beacon", "Home Beacon", Material.RECOVERY_COMPASS, "ECHO_SHARD:4,COMPASS:1", "/dome home takes you (and your trusted players) back here. Every 5 minutes, never mid-fight."),
-            new Up("respawn", "Respawn Pod", Material.RED_BED, "NAUTILUS_SHELL:2,DIAMOND:2", "Die in this world and you wake up in the dome."),
+            new Up("respawn", "Respawn Pod", Material.RED_BED, "NAUTILUS_SHELL:2,DIAMOND:2", "Die in this world and you wake up in the dome (not in the Dark Ocean)."),
             new Up("dock", "Docking Bay", Material.IRON_TRAPDOOR, "IRON_BLOCK:4,COPPER_BLOCK:8", "Submersibles parked within 12 blocks slowly repair their hull."),
             new Up("pressure", "Pressure Hull", Material.NETHERITE_SCRAP, "NETHERITE_SCRAP:2,OBSIDIAN:16", "No Pressure Surge, hadal pressure or acid water within 16 blocks of the dome."),
             new Up("heat", "Heat Lamps", Material.CAMPFIRE, "BLAZE_ROD:6,MAGMA_BLOCK:4", "Nobody freezes inside the dome or within 8 blocks of it."),
@@ -379,6 +379,7 @@ final class DomeUpgrades implements Listener {
         World died = p.getWorld();
         for (Habitat.Dome d : hab.domes.values()) {
             if (!d.owner.equals(p.getUniqueId()) || !has(d, "respawn") || !d.world.equals(died.getName())) continue;
+            if (pl.world != null && d.world.equals(pl.world.getName())) continue; // 2.0: no spawn points in the Dark Ocean
             World w = Bukkit.getWorld(d.world);
             if (w == null) continue;
             e.setRespawnLocation(new Location(w, d.x + 0.5, d.y, d.z + 0.5, p.getLocation().getYaw(), 0));
@@ -477,6 +478,10 @@ final class DomeUpgrades implements Listener {
         if (d.ups.contains(u.id)) {
             if (u.id.equals("tint")) { int i = COLOURS.indexOf(d.tint == null ? "light_blue" : d.tint); tint(d, COLOURS.get((i + 1) % COLOURS.size())); p.sendActionBar(ChatColor.AQUA + "The glass turns " + d.tint.replace('_', ' ') + "."); }
             else p.sendMessage(ChatColor.AQUA + u.name + ChatColor.GRAY + ": " + u.desc);
+            return;
+        }
+        if (u.id.equals("respawn") && pl.world != null && d.world.equals(pl.world.getName())) { // 2.0: no spawn points in the Dark Ocean
+            p.sendMessage(ChatColor.RED + "A Respawn Pod doesn't work in the Dark Ocean: nobody respawns down here.");
             return;
         }
         Map<Material, Integer> need = parse(cost(u));

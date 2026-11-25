@@ -3353,6 +3353,11 @@ Notes:
   still holds open is written beside it as `<Name>-<hash>.jar` (the next start deletes those and rewrites `<Name>.jar`). Checked
   and fine on Windows: SafeYaml (`.tmp` + move with a non-atomic fallback; `.broken-yyyy-MM-dd_HH-mm-ss` has no colons), Watch log
   names, FaultlineWorld's first-start halt (start.bat's loop restarts it). Tested (scratch `rld/ReloadTest`: reload from update/).
+- **No spawn points in the Dark Ocean (Deep, Items; same 2.0.0)**: the owner: nobody ever respawns in `faultline_deep`.
+  `Ocean.onRespawn` (HIGHEST) moves any respawn landing there to the main world's spawn; `Ocean.onSetSpawn` cancels Paper's
+  PlayerSetSpawnEvent there (beds still let you sleep); the old entry / Halcyon plaza / Black Market / Den house respawns are
+  gone (`death.respawn` is ignored; `/den home` still works); the dome Respawn Pod can't be bought and doesn't work there;
+  Spawn Pads do nothing in `spawn-pad.no-spawn-worlds` [faultline_deep]. Don't add one back unless asked.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

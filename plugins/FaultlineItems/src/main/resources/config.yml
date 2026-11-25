@@ -1068,6 +1068,8 @@ accessory-backups:
 # 1.3.41: Spawn Pads (replaced the Blue Obsidian Bed; old ones turn into white pads)
 spawn-pad:
   enabled: true
+  # 2.0: no spawn points in these worlds (pads there do nothing)
+  no-spawn-worlds: [faultline_deep]
 
 # 1.3.41: a Riptide trident does nothing while you're in combat (DonutCombat's tag, our combat tag, or a recent player fight)
 riptide-lock:

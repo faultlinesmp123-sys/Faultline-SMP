@@ -55,7 +55,7 @@ import java.util.UUID;
  *      mining fatigue, the glass-creak sounds) unless you wear the Abyssal Diving Suit or have Conduit Power.
  *      UNDERTOW: a rip current sweeps across the Sunlit Sea in one direction, dragging swimmers and boats with it.
  *    One at a time, every events.every-minutes (45-90) while someone's down here; /deep event <pressure|undertow|stop>.
- *  - Respawning: back at the Dark Ocean's entry (0, 300, 0) unless you have a bed or anchor set (death.respawn).
+ *  - Respawning: never in the Dark Ocean (2.0): you come back at your bed / the surface world's spawn.
  */
 final class Ocean implements Listener {
 
@@ -438,27 +438,26 @@ final class Ocean implements Listener {
         if (e.getItem().getPersistentDataContainer().has(drownedKey, PersistentDataType.STRING) && !(e.getEntity() instanceof Player)) e.setCancelled(true);
     }
 
-    @EventHandler(priority = EventPriority.HIGH)
+    /**
+     * 2.0: NO SPAWN POINTS IN THE DARK OCEAN (the owner). Dying down there, or anywhere, never brings you back in it: whatever
+     * respawn the server picked (a bed someone slept in down there, another plugin's) is moved to the surface world's spawn.
+     * Beds there don't set a spawn ({@link #onSetSpawn}), domes' Respawn Pods only work outside it.
+     */
+    @EventHandler(priority = EventPriority.HIGHEST)
     public void onRespawn(PlayerRespawnEvent e) {
-        Player p = e.getPlayer();
-        if (pl.world == null || !p.getWorld().equals(pl.world)) return;
-        if (e.isBedSpawn() || e.isAnchorSpawn()) return;
-        if (!pl.getConfig().getString("death.respawn", "entry").equalsIgnoreCase("entry")) return;
-        Location died = p.getLocation(); // (still where they died)
-        if (Halcyon.inside(died.getX(), died.getY(), died.getZ())) { // 1.17.0: died in Halcyon: back on its plaza
-            int[] at = Halcyon.spawnSpot();
-            e.setRespawnLocation(new Location(pl.world, at[0] + 0.5, Halcyon.G, at[1] + 0.5, 180, 0));
-            return;
-        }
-        if (NestLink.inNest(died.getX(), died.getY(), died.getZ())) return; // 1.19.3: died in an abyssal Spider Nest: the normal respawn
-        if (Market.dry(died.getX(), died.getY(), died.getZ())) { // a fight in the Pit, or a fall in the town: back in front of the Black Market
-            int[] at = Town.plotSpawn();
-            e.setRespawnLocation(new Location(pl.world, at[0] + 0.5, at[1], at[2] + 0.5, 180, 0));
-            return;
-        }
-        Location house = pl.rep == null ? null : pl.rep.houseSpot(p); // Honored with the Mermaid Den: home to your house there (1.8.0)
-        if (house != null) { e.setRespawnLocation(house); return; }
-        e.setRespawnLocation(new Location(pl.world, 0.5, DeepGenerator.SEA, 0.5));
+        if (pl.world == null || e.getRespawnLocation().getWorld() == null || !e.getRespawnLocation().getWorld().equals(pl.world)) return;
+        World main = Bukkit.getWorlds().get(0);
+        if (main.equals(pl.world)) return;
+        e.setRespawnLocation(main.getSpawnLocation().add(0.5, 0, 0.5));
+    }
+
+    /** A bed (or anything else) in the Dark Ocean never becomes a spawn point; sleeping still works. */
+    @EventHandler(ignoreCancelled = true)
+    public void onSetSpawn(com.destroystokyo.paper.event.player.PlayerSetSpawnEvent e) {
+        if (pl.world == null || e.getLocation() == null || e.getLocation().getWorld() == null || !e.getLocation().getWorld().equals(pl.world)) return;
+        e.setCancelled(true);
+        if (e.getCause() == com.destroystokyo.paper.event.player.PlayerSetSpawnEvent.Cause.BED)
+            e.getPlayer().sendActionBar(Component.text("You can't set your spawn in the Dark Ocean.", NamedTextColor.RED));
     }
 
     // =========================================================================================== events

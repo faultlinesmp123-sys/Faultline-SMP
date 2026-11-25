@@ -260,7 +260,7 @@ final class DenRep {
             dirty = true;
             MermaidDen.House h = MermaidDen.HOUSES.get(i);
             p.sendMessage(ChatColor.GOLD + "" + ChatColor.BOLD + "The Den gives you a house of your own " + ChatColor.GRAY + "(" + h.x() + ", " + h.z()
-                    + "). You come back here when you die in the Dark Ocean. " + ChatColor.WHITE + "/den home");
+                    + "). " + ChatColor.WHITE + "/den home" + ChatColor.GRAY + " takes you there.");
             return;
         }
         p.sendMessage(ChatColor.GRAY + "(Every house in the Den is taken. You're still Honored.)");

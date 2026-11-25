@@ -151,7 +151,7 @@ den:
     gifts: ["PRISMARINE_CRYSTALS:4:12:30", "SEA_LANTERN:2:6:20", "NAUTILUS_SHELL:1:2:15", "GLOW_INK_SAC:4:10:15", "DIAMOND:1:3:10", "HEART_OF_THE_SEA:1:1:2", "TRIDENT:1:1:2", "SPONGE:2:4:6"]
   guard-respawn-seconds: 120
   # 1.8.0: the Den's trust (den_rep.yml). Earn it defending the Den (kills near it) and with gifts to the mermaids;
-  # FRIEND = mermaid trades, ALLY = guard trades + the guards fight beside you, HONORED = a house (/den home, respawn there).
+  # FRIEND = mermaid trades, ALLY = guard trades + the guards fight beside you, HONORED = a house (/den home). Nobody ever respawns in the Dark Ocean (2.0).
   rep:
     friend: 40
     ally: 120

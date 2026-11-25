@@ -1,5 +1,5 @@
 name: FaultlineItems
-version: 1.3.46
+version: 1.3.47
 main: net.faultlinesmp.items.FaultlineItems
 api-version: '1.21'
 softdepend: [floodgate, Geyser-Spigot, DonutCombat]
@@ -124,7 +124,7 @@ commands:
     permission: items.cavetrader
   queenspider:
     description: Spawn a Queen Spider (admin)
-    usage: /queenspider spawn [<world> <x> <y> <z>] | killall | nest [here [force]|list|tp [id] [entrance]|respawn [id]|delete [id]|forget [id]]
+    usage: /queenspider spawn [<world> <x> <y> <z>] | killall | brood <servant|venom|ember|swift> [n] [asleep] | quake | nest [here [force]|list|tp [id] [entrance]|respawn [id]|delete [id]|forget [id]]
     permission: items.queenspider
   totems:
     description: Totems popped by players (admins - set, reset, change or turn off the limit)

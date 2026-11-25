@@ -46,7 +46,7 @@ import java.util.function.Supplier;
 
 /**
  * The Skeleton Wanderer: a wandering trader who sets up shop in caves (5% every 2 minutes for anyone underground)
- * and sells accessories. Java players see an animated skeleton (6 model pieces + a lantern) and click an invisible
+ * and sells accessories (1.3.47: he wanders about his cave, crouches to look at the ground, holds his lantern up, stops for you). Java players see an animated skeleton (6 model pieces + a lantern) and click an invisible
  * box; Bedrock players (who can't see models) see a plain Wandering Trader with the same shop.
  */
 final class CaveTrader implements Listener, CommandExecutor {
@@ -68,7 +68,11 @@ final class CaveTrader implements Listener, CommandExecutor {
         Interaction click;
         final ItemDisplay[] parts = new ItemDisplay[6];
         ItemDisplay lantern;
-        Location home;
+        Location home;              // where he is now (1.3.47: he walks about)
+        Location origin, target;    // where he set up / where he's walking to
+        String state = "idle";      // idle, walk, inspect, lookup, trade
+        int stateT, stateLen = 60;
+        double walkPhase, walkAmt;
         float yaw, headYaw, headPitch;
         int age, wave, nod;
         final Set<UUID> greeted = new HashSet<>();
@@ -154,6 +158,7 @@ final class CaveTrader implements Listener, CommandExecutor {
         World w = at.getWorld();
         Trader t = new Trader();
         t.home = at.clone();
+        t.origin = at.clone();
         t.yaw = at.getYaw();
         t.core = w.spawn(at, WanderingTrader.class, v -> {
             v.setAI(false);
@@ -296,8 +301,99 @@ final class CaveTrader implements Listener, CommandExecutor {
             if (!t.valid()) { t.remove(); traders.remove(i); continue; } // e.g. his area unloaded
             t.age++;
             if (t.age > cfg("lifetime-minutes", 8) * 1200) { leave(t); traders.remove(i); continue; }
+            wander(t);
             render(t);
         }
+    }
+
+    // ================= 1.3.47: he wanders =================
+
+    /** Idle -> walk somewhere nearby -> inspect the ground / hold his lantern up -> ...; anyone close: he stops for them. */
+    private void wander(Trader t) {
+        t.stateT++;
+        boolean someone = false;
+        for (Player p : t.home.getWorld().getPlayers())
+            if (p.getGameMode() != GameMode.SPECTATOR && p.getLocation().distanceSquared(t.home) < cfg("stop-distance", 6) * cfg("stop-distance", 6)) { someone = true; break; }
+        if (someone) { if (!t.state.equals("trade")) { t.state = "trade"; t.stateT = 0; } }
+        else if (t.state.equals("trade") && t.stateT > 30) next(t, "idle");
+        switch (t.state) {
+            case "walk" -> {
+                if (t.target == null || t.stateT > 400) { next(t, "idle"); break; }
+                double dx = t.target.getX() - t.home.getX(), dz = t.target.getZ() - t.home.getZ(), d = Math.hypot(dx, dz);
+                if (d < 0.35) { next(t, random.nextDouble() < 0.4 ? "inspect" : random.nextDouble() < 0.5 ? "lookup" : "idle"); break; }
+                float want = (float) Math.toDegrees(Math.atan2(-dx, dz));
+                float diff = ((want - t.yaw) % 360 + 540) % 360 - 180;
+                t.yaw += Math.max(-9, Math.min(9, diff));
+                if (Math.abs(diff) > 50) break; // turn first
+                double sp = cfg("walk-speed", 0.06);
+                double nx = t.home.getX() + dx / d * sp, nz = t.home.getZ() + dz / d * sp;
+                Double ny = floor(t.home.getWorld(), nx, t.home.getY(), nz);
+                if (ny == null) { next(t, "idle"); break; } // a wall, a drop: stop and think again
+                double oldPhase = t.walkPhase;
+                t.home.setX(nx); t.home.setZ(nz); t.home.setY(t.home.getY() + (ny - t.home.getY()) * 0.5);
+                t.walkPhase += sp * 3.2;
+                if ((int) (oldPhase / Math.PI) != (int) (t.walkPhase / Math.PI))
+                    t.home.getWorld().playSound(t.home, Sound.ENTITY_SKELETON_STEP, 0.35f, 0.8f + random.nextFloat() * 0.2f);
+            }
+            default -> {
+                if (!t.state.equals("trade") && t.stateT >= t.stateLen) {
+                    if (pickTarget(t)) next(t, "walk"); else next(t, "idle");
+                }
+                if (t.state.equals("inspect") && t.stateT == 20) {
+                    t.home.getWorld().spawnParticle(Particle.BLOCK, t.home.clone().add(0, 0.1, 0), 8, 0.3, 0.05, 0.3, 0, t.home.getBlock().getRelative(0, -1, 0).getBlockData());
+                    t.home.getWorld().playSound(t.home, Sound.ENTITY_SKELETON_AMBIENT, 0.5f, 1.5f);
+                }
+            }
+        }
+        t.walkAmt += ((t.state.equals("walk") ? 1 : 0) - t.walkAmt) * 0.15;
+        if (t.age % 2 == 0) { // his trader and click box go with him
+            Location at = t.home.clone(); at.setYaw(t.yaw); at.setPitch(0);
+            if (t.core != null && t.core.isValid()) t.core.teleport(at);
+            if (t.click != null && t.click.isValid()) t.click.teleport(at);
+        }
+        if (t.age % 300 == 0 && random.nextDouble() < 0.4) t.home.getWorld().playSound(t.home, Sound.ENTITY_SKELETON_AMBIENT, 0.6f, 0.6f + random.nextFloat() * 0.3f);
+    }
+
+    private void next(Trader t, String state) {
+        t.state = state; t.stateT = 0;
+        t.stateLen = switch (state) { case "inspect" -> 70; case "lookup" -> 80; case "idle" -> 50 + random.nextInt(110); default -> 400; };
+    }
+
+    /** Somewhere 3-9 blocks away (never more than `wander-radius` 14 from where he set up) he can stand. */
+    private boolean pickTarget(Trader t) {
+        double max = cfg("wander-radius", 14);
+        for (int tries = 0; tries < 12; tries++) {
+            double a = random.nextDouble() * Math.PI * 2, d = 3 + random.nextDouble() * 6;
+            double x = t.home.getX() + Math.cos(a) * d, z = t.home.getZ() + Math.sin(a) * d;
+            if (Math.hypot(x - t.origin.getX(), z - t.origin.getZ()) > max) continue;
+            Double y = floor(t.home.getWorld(), x, t.home.getY(), z);
+            if (y == null || Math.abs(y - t.home.getY()) > 3) continue;
+            // a straight line he can walk (every half block a floor within a step)
+            boolean ok = true; double cy = t.home.getY();
+            int n = (int) Math.ceil(d / 0.5);
+            for (int i = 1; i <= n && ok; i++) {
+                double f = i / (double) n;
+                Double fy = floor(t.home.getWorld(), t.home.getX() + (x - t.home.getX()) * f, cy, t.home.getZ() + (z - t.home.getZ()) * f);
+                if (fy == null) ok = false; else cy = fy;
+            }
+            if (!ok) continue;
+            t.target = new Location(t.home.getWorld(), x, y, z);
+            return true;
+        }
+        return false;
+    }
+
+    /** The floor he'd stand on at (x, z): within one block up or down of y, two blocks of room, no sky (he keeps to caves). */
+    private static Double floor(World w, double x, double y, double z) {
+        int bx = (int) Math.floor(x), bz = (int) Math.floor(z), by = (int) Math.floor(y + 0.01);
+        for (int dy = 1; dy >= -1; dy--) {
+            Block feet = w.getBlockAt(bx, by + dy, bz);
+            if (!feet.isPassable() || feet.isLiquid() || !feet.getRelative(0, 1, 0).isPassable()) continue;
+            Block under = feet.getRelative(0, -1, 0);
+            if (!under.getType().isSolid()) continue;
+            return (double) feet.getY();
+        }
+        return null;
     }
 
     private void leave(Trader t) {
@@ -317,7 +413,7 @@ final class CaveTrader implements Listener, CommandExecutor {
             if (d < best) { best = d; look = p; }
         }
         // turns (slowly) to face whoever's closest, and beckons the first time someone walks up
-        if (look != null) {
+        if (look != null && !t.state.equals("walk")) {
             Vector to = look.getLocation().toVector().subtract(t.home.toVector());
             float want = (float) Math.toDegrees(Math.atan2(-to.getX(), to.getZ()));
             float diff = ((want - t.yaw) % 360 + 540) % 360 - 180;
@@ -339,6 +435,24 @@ final class CaveTrader implements Listener, CommandExecutor {
         r[ARM_L] = new float[]{-32 + sway * 4, 0, 8};                              // holds the lantern out
         r[ARM_R] = new float[]{6 + breath * 2, 0, -7};
         r[HEAD] = new float[]{t.headPitch + 4, t.headYaw, 6};                      // a curious head tilt
+        // 1.3.47: walking (legs and arms swing, a little bob), crouching to look at the ground, holding the lantern up high
+        if (t.walkAmt > 0.02) {
+            float sw = (float) Math.sin(t.walkPhase), a = (float) t.walkAmt;
+            r[LEG_R][0] += sw * 30 * a; r[LEG_L][0] -= sw * 30 * a;
+            r[ARM_R][0] -= sw * 22 * a; r[ARM_L][0] += sw * 8 * a;
+            r[BODY][0] += 6 * a;
+        }
+        float act = t.state.equals("inspect") || t.state.equals("lookup") ? (float) Math.min(1, Math.min(t.stateT, t.stateLen - t.stateT) / 12.0) : 0;
+        if (t.state.equals("inspect") && act > 0) {
+            r[BODY][0] += 30 * act; r[HEAD][0] += 25 * act;
+            r[ARM_L] = new float[]{-32 - 40 * act, 0, 8};
+            r[ARM_R] = new float[]{6 - 50 * act, 0, -7};
+        }
+        if (t.state.equals("lookup") && act > 0) {
+            r[ARM_L] = new float[]{-32 - 120 * act, 0, 8 + 10 * act};
+            r[HEAD][0] -= 25 * act; r[HEAD][1] += (float) Math.sin(t.stateT * 0.08) * 40 * act;
+            r[BODY][0] -= 4 * act;
+        }
         if (t.wave > 0) { // beckons you over
             float w = (float) Math.sin(t.wave * 0.45);
             r[ARM_R] = new float[]{-150 + w * 25, 0, -18};
@@ -355,7 +469,7 @@ final class CaveTrader implements Listener, CommandExecutor {
     /** Same joint math as Don Lorenzo's rig: arms and head follow the body's lean. */
     private void renderRig(Trader t, float[][] r) {
         float scale = (float) cfg("scale", 1.0);
-        Location root = t.home.clone();
+        Location root = t.home.clone().add(0, Math.abs(Math.sin(t.walkPhase)) * 0.05 * t.walkAmt, 0);
         Quaternionf qYaw = new Quaternionf().rotateY((float) -Math.toRadians(t.yaw));
         Quaternionf qBody = euler(r[BODY]);
         Quaternionf flip = new Quaternionf().rotateY((float) Math.PI);

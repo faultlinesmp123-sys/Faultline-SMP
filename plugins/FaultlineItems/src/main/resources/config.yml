@@ -269,6 +269,7 @@ spider-staff:
 # 0.01 spawn-chance / 500 health / 0.10 staff chance read as the new values.
 queen-spider-boss:
   spawn-chance: 0.0025         # of spiders spawning underground (no sky above): 4x rarer than before
+  brood-eye-chance: 0.025      # 1.3.47: the Broodmother's Eye (spider form); the nest queen: nest.brood-eye-chance, each fighter
   max-alive: 2
   scale: 3.0
   health: 900
@@ -323,7 +324,20 @@ queen-spider-boss:
 
 # 1.3.44 SPIDER NESTS (/adminmenu cobweb, /queenspider nest): a web cave network carved under an admin, the Queen asleep in it.
 spider-nest:
-  depth: 34                    # the throne cavern this far under the surface
+  min-y: -50                   # 1.3.47: the whole nest is carved between these heights (a spiral ramp leads down)
+  max-y: -1
+  darkness: true               # hidden Darkness inside: it's dark down there
+  spawn-chance: 0.18           # every 2 s per player inside: a spider, cave spider, zombie, skeleton or brood comes out of the dark
+  mob-cap: 9
+  brood-cap: 6
+  web-item-chance: 0.035       # loot webs with an item you can SEE caught in them
+  den-trigger-radius: 7        # brood dens (trial-chamber waves) wake when someone comes this close
+  den-cooldown-minutes: 30
+  bed-respawn-minutes: 10      # sleeping brood on the sleeping dens' silk beds
+  quake-min-minutes: 3         # the nest shakes (dripstone falls) every 3-6 min with someone inside
+  quake-max-minutes: 6
+  quake-drips: 5
+  music-seconds: 101           # faultline:nest.music (in FaultlineDeepMusic.zip)
   blocks-per-tick: 20000
   respawn-minutes: 120         # the Queen comes back asleep this long after she dies
   web-loot-chance: 0.18        # the nest's own cobwebs: a loot roll this often when broken
@@ -369,10 +383,10 @@ wardrobe:
 item-textures:
   enabled: true
   url: "https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/main/FaultlineSMP.zip"
-  hash: "1f6f69ae680734a190baa2a5cfa3b253a350e93d"
+  hash: "3ea651592e499747c61b7d967707cb4b7a5bba53"
   # The Dark Ocean's music, a second pack sent beside the main one (empty url = not sent)
   music-url: "https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/main/FaultlineDeepMusic.zip"
-  music-hash: "fe1e702bb464149a532e861bce70c1b22511b861"
+  music-hash: "d13735ff9b06f03f39d1e378f553927dbecfba04"
   # 1.2.72: the bendy emote body (core shader + body part models), only sent to 26.2 games (emotes.rig-protocols)
   emotes-url: "https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/main/FaultlineEmotes.zip"
   emotes-hash: ""             # empty = worked out from the file (auto-hash)
@@ -1055,3 +1069,9 @@ upgraded-grindstone:
   return-boss-books: true      # a boss enchant taken off comes back as its book
   return-vanilla-books: false  # true = normal enchants come back as enchanted books too (else XP, like a grindstone)
   remove-curses: false         # true = curses can be taken off too
+
+# 1.3.47: the Broodmother's Eye (Shift + F = spider form until something hits you)
+spider-form:
+  scale: 0.55
+  rig-scale: 1.5
+  cooldown-seconds: 20

@@ -49,6 +49,9 @@ entries:
   - {chapter: accessories, name: "Moon Stone", icon: moon_stone, detect: "faultlineitems:moon_stone",
      how: "1% from Bats, 2% from Phantoms, 2.5% from Vampires.",
      does: "You become a vampire. Always: hits heal you. Night: Strength and Regeneration. Day: Weakness, and sunlight burns you (rain stops it). Shift + F: turn into a bat and fly for 20 seconds (2 hearts, 2 minute cooldown)."}
+  - {chapter: accessories, name: "Broodmother's Eye", icon: queen_silk, detect: "faultlineitems:brood_eye",
+     how: "2.5% from the Queen Spider (in a Spider Nest, every fighter rolls).",
+     does: "Shift + F: become a SPIDER until something hits you. Others see a spider (never you or your gear); you climb walls (walk into one, sneak to cling), cobwebs never hold you, you see in the dark, your bites poison, and falls don't hurt. Any hit from a mob, a player, a projectile or an explosion turns you back (or Shift + F). 20 seconds before you can change again."}
   - {chapter: accessories, name: "Ranger Emblem", icon: ranger_emblem, detect: "faultlineitems:ranger_emblem",
      how: "2% from Pillagers.",
      does: "+1% bow and crossbow damage. Counts toward the Ranger's Oath Pendant."}
@@ -173,8 +176,8 @@ entries:
      how: "10% from Captain Rotbeard.",
      does: "Cast it at a wall, ceiling, or ledge, then reel in to launch yourself there. No fall damage from the landing. Never breaks."}
   - {chapter: weapons, name: "Queen's Silk", icon: queen_silk, detect: "faultlineitems:queen_silk",
-     how: "5% from the Queen Spider.",
-     does: "Shoots a glob of silk. Whatever it hits is webbed and slowed for 3 seconds. 8 second cooldown."}
+     how: "Always from the Queen Spider (every fighter, for the Queen of the Nest).",
+     does: "Carry it and COBWEBS NEVER HOLD YOU: webs part as you walk through and weave themselves back behind you; webs you cut give extra string. Right-click: shoots a glob of silk that webs whatever it hits (a bigger web, five blocks) and slows it for 3 seconds. 8 second cooldown."}
   - {chapter: weapons, name: "Quest Book", icon: quest_book, detect: "limboblackmarket:quest_book",
      how: "Craft it: a Book and an Iron Ingot.",
      does: "Opens the quest list. Take one quest at a time for rewards."}
@@ -237,7 +240,7 @@ entries:
   - {chapter: bosses, weakness: "Fight her away from her webs (a sword cuts them, fire burns them) and kill the brood as it hatches, or it swarms you.", name: "Queen Spider", icon: queen_spider, detect-tag: faultline_queen_spider,
      where: "Rarely, deep in caves (0.25% of spiders spawning underground; 900 health). The QUEEN OF THE NEST sleeps on her throne in a Spider Nest: hitting her wakes her (3600 health, +30% for every extra fighter, much harder).",
      does: "Three phases. Bites that lunge and poison, a pounce, a leg sweep that throws you back, Venom Spit (three globs later), Web Shot (a web cage where it lands), brood. From 60%: Silk Pull reels you in, a stomp that rings her with webs, egg sacs (break them before they hatch). From 30% she's frenzied: Ceiling Drop (she leaps out of sight and lands on the red circle) and Venom Rain. Her music is the Demon Eye's.",
-     drops: ["Spider Staff|100%", "Ankh|2%", "10 Spider Eyes|100%", "5-10 Diamonds|50%", "Queen's Silk|5% (nest: 20%)", "Nest queen, every fighter: 14 Diamonds, 3 Netherite Scrap, 2 Goodie Bags, a Mythic Bag, a boss enchant book, 1500 XP|100%"]}
+     drops: ["Spider Staff|100%", "Ankh|2%", "10 Spider Eyes|100%", "5-10 Diamonds|50%", "Queen's Silk|100%", "Broodmother's Eye|2.5%", "Nest queen, every fighter: 14 Diamonds, 3 Netherite Scrap, 2 Goodie Bags, a Mythic Bag, a boss enchant book, 1500 XP|100%"]}
   - {chapter: bosses, weakness: "Unbreakable: he takes 80% less damage from the FRONT. Spread out so he can only face one of you, and hit him from behind. Jump his Ground Slam.", name: "The Bulwark", icon: the_bulwark, detect-tag: faultline_bulwark,
      where: "Wave 5 of every Piglin Raid. A giant Piglin Brute in netherite with a tower shield. 220 health (+60 per raid level above III).",
      does: "Shield Bash (a red line shows where it'll charge: get out of it), Ground Slam (jump before the red rings hit), and Unbreakable: it raises its shield and takes 80% less damage from the front for 4 seconds. Hit it from behind.",
@@ -256,6 +259,22 @@ entries:
 
 
   # ---------------------------------------------------------------- ENEMIES
+  - {chapter: enemies, name: "Queen's Servant", icon: queen_spider, detect-tag: faultline_nest_servant,
+     where: "Spider Nests: in the dark, in the Brood Dens' waves, asleep on the silk beds of the sleeping dens.",
+     does: "The Queen's brood: her own shape, small. 32 health. Its bites poison and slow you. Asleep, it wakes when you come within 4 blocks (sneak past) or hit it, and wakes its bedmates.",
+     drops: ["1-3 String|100%", "Spider Eye|35%", "A nest loot roll|12%", "14 XP|100%"]}
+  - {chapter: enemies, name: "Venom Spider", icon: queen_spider, detect-tag: faultline_nest_venom,
+     where: "Spider Nests (with the Queen's other brood).",
+     does: "Black with glowing green markings. Its bites give Poison II, and when it dies it leaves a cloud of poison: step back.",
+     drops: ["1-3 String|100%", "Spider Eye|35%", "Fermented Spider Eye|30%", "9 XP|100%"]}
+  - {chapter: enemies, name: "Ember Spider", icon: queen_spider, detect-tag: faultline_nest_ember,
+     where: "Spider Nests (with the Queen's other brood).",
+     does: "Black with burning orange markings. Its bites set you on fire, fire and lava can't hurt it, and it bursts into flame when it dies.",
+     drops: ["1-3 String|100%", "Spider Eye|35%", "Blaze Powder|30%", "9 XP|100%"]}
+  - {chapter: enemies, name: "Swift Spider", icon: queen_spider, detect-tag: faultline_nest_swift,
+     where: "Spider Nests (with the Queen's other brood).",
+     does: "Black with blue markings: small, very fast, and it POUNCES on you from up to 9 blocks away. Its bites weaken you.",
+     drops: ["1-3 String|100%", "Spider Eye|35%", "1-2 Sugar|30%", "9 XP|100%"]}
   - {chapter: enemies, name: "Crimson Champion", icon: elite_mob, detect-tag: faultline_crimson_champion,
      where: "At midnight of a Blood Moon (an event), it comes for someone in survival.",
      does: "A mini boss, 150 health: a red knight with a fiery netherite sword. It leaps at you, heals itself with every hit it lands, and at half health 3 Bloodbound zombies rise to help it. It doesn't burn in the sun, but it crumbles at dawn.",
@@ -417,7 +436,7 @@ entries:
     icon: skeleton_wanderer
     detect-tag: faultline_cave_trader
     where: 'Sets up shop in caves: every 2 minutes, anyone underground (no sky above, below y=50) has a 5% chance of him appearing nearby. He stays for 8 minutes.'
-    does: 'Trades accessories for emeralds (rarer ones cost diamonds too): immunity charms, rings, the Spelunker Amulet, diving gear, and more. Five wares at a time, changing with every visit. He can''t be
+    does: 'Trades accessories for emeralds (rarer ones cost diamonds too): immunity charms, rings, the Spelunker Amulet, diving gear, and more. Five wares at a time, changing with every visit. He wanders about his cave with his lantern, stops to look at the ground or hold his lantern up, and stops for you when you come close. He can''t be
       hurt.'
   - chapter: bosses
     weakness: "Fight from solid ground or a boat, never deep in the water where he drags you down. Pop his pink bubble when it shows up."
@@ -1460,6 +1479,8 @@ achievements:
   - {id: first_blood, name: "First Blood", icon: demon_eye, desc: "Defeat any boss.",
      defeat: [queen_spider, diamond_jacob, the_abyssal_kraken, captain_rotbeard, the_great_hog, the_bulwark, the_skeleton_captain, ghost_captain, brine_scourge, umbral_leviathan, coralia, old_inkjaw, grandmaw_clam, the_lament, abyssal_titan, deep_goblin, deep_rimeback, deep_drownking],
      need: any, reward: {items: ["DIAMOND:8"], xp: 200}}
+  - {id: den_delver, name: "Den Delver", icon: queen_spider, desc: "Clear 5 Brood Dens in Spider Nests.",
+     stat: brood_dens, count: 5, reward: {items: ["DIAMOND:6", "GOLDEN_APPLE:2"], xp: 600}}
   - {id: raid_breaker, name: "Raid Breaker", icon: great_hog, desc: "Defeat Captain Rotbeard and the Great Hog (the Zombie and Piglin Raid bosses).",
      defeat: [captain_rotbeard, the_great_hog], need: all, reward: {items: ["DIAMOND:12"], xp: 300}}
   - {id: abyssal_kraken_slayer, name: "Bigger Fish", icon: kraken, desc: "Defeat the Abyssal Kraken in the Dark Ocean.",

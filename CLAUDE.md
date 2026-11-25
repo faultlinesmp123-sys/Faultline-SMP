@@ -3012,6 +3012,50 @@ Notes:
   feet (height, pitch, roll from where they stand), the head tracks her target, the abdomen lags turns, fangs chew, palps feel,
   idle front legs tap, `hurt()` = a flinch; sleep / rear / death blend over the IK. Test: feet within 0.08 blocks of flat ground,
   all 8 step along a walk (scratch `nest/NestTest2`).
+- **The nest v3, the brood, spider form, the walking Wanderer (Items 1.3.47, Index 1.9.26, FaultlineSMP.zip + FaultlineDeepMusic.zip)**:
+  THE NEST is carved between y `spider-nest.min-y` -50 and `max-y` -1 (whatever the admin stands on; the spiral ramp comes
+  down from the surface), 18-24 chambers out to 110 blocks (`plan(..., lo, hi)`, `clampY`), each `Room.kind`: `throne`, 6 `den`,
+  2 `larder`, 2 `sleep`, 2 `hatchery`, 3 `pillars` (the biggest rooms), the rest `plain`. It is DARK: eggs are froglight
+  BlockDisplays (brightness 10, they light nothing), soul lanterns are rare (the ramp keeps a few), hidden Darkness inside
+  (`spider-nest.darkness`). Decoration (`decorate` reads `roomAt`): dripstone hanging and standing (`dripstone(..., len)`,
+  block-state strings: MockBukkit can't make them, real Paper can), cocoons (larders: a mob head under each), hanging webs, bones,
+  bodies, pots; LOOT WEBS sometimes hold an item you can SEE (an ItemDisplay `faultline_nest_webitem`, `web-item-chance` 0.035):
+  breaking the web drops it (a web gone another way drops it too, `webItems`). Her throne is a BONE NEST: a bowl 19 across lined
+  with wool, a rim of bone with skulls and webs, a web canopy (a hemisphere of cobwebs r 13), 7 bone ribs, 8 bone pillars round it.
+  Pillar halls: bone pillars floor to ceiling (some snapped, skull on the stump). Larders: hanging cocoons with heads, bone piles
+  with scraps (ItemDisplays). Sleeping dens: silk beds (wool ring, carpet) under web hammocks (`Nest.sleeps`). Hatcheries: egg
+  clutches + wool egg sacs. Plain / sleep rooms: spawners of spiders, cave spiders, zombies or skeletons. Every display is tagged
+  `faultline_nest_silk` (+ `_<id>`), so delete takes them all. `NestBrood.java`: THE BROOD (`Kind`: SERVANT = the Queen's model
+  small, VENOM / EMBER / SWIFT = `tools/nest_spider_models.py` breeds `faultline:nestspider/<breed>/<part>`, same parts and joints
+  as the Queen) are invisible Spiders on a `QueenRig` (now `QueenRig(plugin, body, scale, prefix, glow)`), tags
+  `faultline_nest_brood` + `faultline_nest_<kind>`, a Bedrock-only stand-in spider (hits pass on). Servant: poison + slow, 32 hp;
+  venom: Poison II, a poison cloud on death; ember: sets you alight, fireproof, a flame burst on death; swift: fast, pounces
+  3-9 blocks. BROOD DENS (`Nest.dens`, `denReady`): a bone/polished-deepslate dais with a great egg sac (displays,
+  `faultline_nest_densac`); a survival player within `den-trigger-radius` 7 wakes it: 3 waves (+1 per 2 extra players) of
+  4+wave+2/extra mobs (spiders, cave spiders, zombies, skeletons, brood; tag `faultline_nest_den_mob`); nobody within 30 for 30 s =
+  reset; all waves dead = every fighter gets 2+ loot rolls (tier 2), maybe diamonds / a golden apple, XP, Index stat `brood_dens`
+  (achievement Den Delver, 5), then `den-cooldown-minutes` 30. SLEEPING BROOD on the beds (one per bed, `bed-respawn-minutes`
+  10, spawned when a player is 10-26 away): AI off + the rig's sleep pose, they wake (with their bedmates) when you come within
+  4 blocks (sneaking doesn't) or hit one. Players inside: every 2 s `spawn-chance` 0.18 a spider / cave spider / zombie / skeleton
+  / brood out of the dark (`mob-cap` 9, `brood-cap` 6); QUAKES every 3-6 min (rumble, Nausea for the shake, dust, `quake-drips` 5
+  dripstone FallingBlocks over each player, `faultline_nest_drip`, hurt like real ones and shatter on landing); MUSIC
+  `faultline:nest.music` (Terraria's "Dungeon", 101 s, `sounds/nest/music.ogg` in FaultlineDeepMusic.zip, the owner sent it),
+  silent while the Queen is awake within 64. `/queenspider brood <servant|venom|ember|swift> [n] [asleep]`, `/queenspider quake`.
+  THE QUEEN now always drops Queen's Silk (every nest fighter; `Balance.num` old 0.05 / 0.20 read as 1.0) and 2.5% the
+  BROODMOTHER'S EYE (`brood-eye-chance`, `nest.brood-eye-chance`). `SpiderForm.java`: QUEEN'S SILK carried (or spider form) =
+  cobwebs part for you (the web is set to air when your hitbox touches it and woven back 2 s after you've left it: no
+  rubber-banding, marks/items kept), +1-2 string per web you break; its shot webs 5 blocks. The BROODMOTHER'S EYE (accessory,
+  `/giveaccessory broodeye`, item model `faultline:brood_eye`): Shift + F (the Moon Stone's bat form wins if both are worn) =
+  SPIDER FORM until something hits you (any entity hit / projectile / explosion after 0.5 s; or Shift + F): SCALE x0.55
+  (`spider-form.scale`, modifier `faultlineitems:spider_form_scale`, removed on join after a crash), invisible, gear hidden, a
+  Queen-model rig (`rig-scale` 1.5, hidden from you) + a Bedrock stand-in, climb walls (walk into one; sneak = cling), Night
+  Vision, poison bites, no fall damage; `cooldown-seconds` 20. THE SKELETON WANDERER WALKS (`CaveTrader.wander`): idle ->
+  walk 3-9 blocks (a straight line he can step along, `floor()`: 1 up/down, 2 high, never the sky; within `wander-radius` 14 of
+  where he set up, `walk-speed` 0.06) -> inspect the ground (crouch, dust) / hold his lantern up and look round / idle; legs and
+  arms swing, footsteps; anyone within `stop-distance` 6 = he stops and faces them (trade); his trader and click box go with him.
+  Index: Queen's Servant, Venom / Ember / Swift Spider, Broodmother's Eye, Queen's Silk + Queen + Wanderer text. Tested: scratch
+  `nest/NestTest3` (layout, dark, dens, waves, loot, web items, brood bites, sleep/wake, quake, spider form, silk, Wanderer, delete
+  restores 0 differences). Previews `tools/previews/nest_spiders.png`, `nest_map.png`, `nest_cutaway.png`, `nest_slice.png`.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

@@ -269,6 +269,7 @@ public final class FaultlineItems extends JavaPlugin {
     private NamespacedKey queenEggKey;
     QueenSpiderManager queenSpiderManager;
     SpiderNest spiderNest;
+    SpiderForm spiderForm; // 1.3.47: the Broodmother's Eye + Queen's Silk web walking
     private BatFormManager batFormManager;
     private NamespacedKey grapplingHookKey;
     private NamespacedKey queenSilkKey;
@@ -585,10 +586,14 @@ public final class FaultlineItems extends JavaPlugin {
         this.queenSpiderManager = new QueenSpiderManager(this);
         getServer().getPluginManager().registerEvents(queenSpiderManager, this);
         getServer().getScheduler().runTaskTimer(this, queenSpiderManager::tick, 1L, 1L); // 1.3.44: every tick (the rig)
+        spiderForm = new SpiderForm(this);
+        getServer().getPluginManager().registerEvents(spiderForm, this);
         spiderNest = new SpiderNest(this, queenSpiderManager); // 1.3.44: the Spider Nest biome + the sleeping Queen
         getServer().getPluginManager().registerEvents(spiderNest, this);
+        getServer().getPluginManager().registerEvents(spiderNest.brood, this); // 1.3.47
         getCommand("queenspider").setTabCompleter((sender, cmd, label, args) -> { // 1.3.46
-            List<String> opts = args.length == 1 ? List.of("spawn", "nest", "killall")
+            List<String> opts = args.length == 1 ? List.of("spawn", "nest", "killall", "brood", "quake")
+                    : args.length == 2 && args[0].equalsIgnoreCase("brood") ? List.of("servant", "venom", "ember", "swift")
                     : args.length == 2 && args[0].equalsIgnoreCase("nest") ? List.of("here", "list", "tp", "respawn", "delete", "forget")
                     : args.length == 3 && args[0].equalsIgnoreCase("nest") ? new ArrayList<>(spiderNest.nests.keySet()) : List.of();
             String last = args.length == 0 ? "" : args[args.length - 1].toLowerCase();
@@ -596,9 +601,25 @@ public final class FaultlineItems extends JavaPlugin {
         });
         getCommand("queenspider").setExecutor((sender, cmd, label, args) -> { // /queenspider spawn [<world> <x> <y> <z>]
             if (args.length > 0 && args[0].equalsIgnoreCase("nest")) return spiderNest.command(sender, args); // 1.3.44
+            if (args.length > 0 && args[0].equalsIgnoreCase("brood")) { // 1.3.47: /queenspider brood <servant|venom|ember|swift> [n] [asleep]
+                if (!(sender instanceof Player p)) { sender.sendMessage("Players only."); return true; }
+                NestBrood.Kind kind;
+                try { kind = NestBrood.Kind.valueOf((args.length > 1 ? args[1] : "servant").toUpperCase()); }
+                catch (IllegalArgumentException e) { sender.sendMessage(ChatColor.RED + "/queenspider brood <servant|venom|ember|swift> [n] [asleep]"); return true; }
+                int n = 1; try { if (args.length > 2) n = Math.max(1, Math.min(10, Integer.parseInt(args[2]))); } catch (NumberFormatException ignored) { }
+                boolean asleep = args.length > 3 && args[3].equalsIgnoreCase("asleep");
+                for (int i = 0; i < n; i++) spiderNest.brood.spawn(kind, p.getLocation().add(p.getLocation().getDirection().setY(0).normalize().multiply(4)).add(i * 0.7, 0, 0), asleep, null);
+                sender.sendMessage(ChatColor.GREEN + "Spawned " + n + " " + kind.name + (asleep ? " (asleep)" : "") + ".");
+                return true;
+            }
+            if (args.length > 0 && args[0].equalsIgnoreCase("quake")) { // 1.3.47
+                if (sender instanceof Player p) spiderNest.brood.quake(List.of(p));
+                return true;
+            }
             if (args.length > 0 && args[0].equalsIgnoreCase("killall")) { // 1.3.46: every queen out there gone (nest queens come back asleep)
                 int n = queenSpiderManager.queens.size();
                 queenSpiderManager.removeAll();
+                spiderNest.brood.removeAll();
                 for (SpiderNest.Nest nest : spiderNest.nests.values()) nest.queen = null;
                 sender.sendMessage(ChatColor.GREEN + "Removed " + n + " Queen Spider(s). Nest queens come back asleep on their thrones.");
                 return true;
@@ -745,6 +766,7 @@ public final class FaultlineItems extends JavaPlugin {
             vampireManager.removeAll();
         }
         if (spiderNest != null) try { spiderNest.shutdown(); } catch (RuntimeException ignored) { }
+        if (spiderForm != null) try { spiderForm.endAll(); } catch (RuntimeException ignored) { }
         if (queenSpiderManager != null) {
             queenSpiderManager.removeAll();
         }
@@ -6132,6 +6154,8 @@ public final class FaultlineItems extends JavaPlugin {
             meta.setLore(List.of(
                     ChatColor.GRAY + "Right-click to shoot a glob of silk.",
                     ChatColor.GREEN + "Whatever it hits gets webbed and slowed.",
+                    ChatColor.LIGHT_PURPLE + "Carried: cobwebs never hold you,",
+                    ChatColor.LIGHT_PURPLE + "and webs you cut give more string.",
                     ChatColor.DARK_GRAY + "8 second cooldown. Taken from the Queen Spider."));
             meta.addEnchant(Enchantment.LURE, 1, true);
             meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
@@ -6270,6 +6294,8 @@ public final class FaultlineItems extends JavaPlugin {
             int seconds = (int) cfg("silk-web-seconds", 3);
             victim.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, seconds * 20, 2));
             placeWeb(victim.getLocation().getBlock(), seconds);
+            for (int[] d : new int[][]{{1, 0, 0}, {-1, 0, 0}, {0, 0, 1}, {0, 0, -1}, {0, 1, 0}}) // 1.3.47: a bigger web
+                placeWeb(victim.getLocation().getBlock().getRelative(d[0], d[1], d[2]), seconds);
             victim.getWorld().spawnParticle(Particle.ITEM, victim.getLocation().add(0, 1, 0), 12, 0.3, 0.4, 0.3, 0.05,
                     new ItemStack(Material.COBWEB));
         }
@@ -6600,6 +6626,7 @@ public final class FaultlineItems extends JavaPlugin {
             ACCESSORY_TYPES.put("lostmirror", pl -> pl.getMirrorGear().item()); // (not an accessory since 1.2.66; kept so old give commands still work)
             for (RangerGear.Piece rp : RangerGear.Piece.values()) ACCESSORY_TYPES.put(rp.command, pl -> pl.getRangerGear().item(rp)); // 1.2.27
             for (TrinketGear.Piece tp : TrinketGear.Piece.values()) ACCESSORY_TYPES.put(tp.command, pl -> pl.getTrinkets().item(tp)); // 1.2.28
+            ACCESSORY_TYPES.put("broodeye", pl -> pl.spiderForm.item()); // 1.3.47
 
             DARKNESS_TYPES.put("final", DarknessPotionItem::createFinal);
             DARKNESS_TYPES.put("stage1", DarknessPotionItem::createStage1);

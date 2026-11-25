@@ -60,6 +60,8 @@ final class QueenRig {
     private float eyeBright = -1;
     private final java.util.Random rnd = new java.util.Random();
     private boolean planted;
+    final String prefix;
+    final int glow;
 
     /** One leg: where its foot is in the world, and the step it's taking. */
     private static final class Leg {
@@ -72,8 +74,13 @@ final class QueenRig {
     }
     private final Leg[] legs = new Leg[8];
 
-    QueenRig(FaultlineItems plugin, LivingEntity body, double scale) {
+    QueenRig(FaultlineItems plugin, LivingEntity body, double scale) { this(plugin, body, scale, "queen/", -1); }
+
+    /** 1.3.47: any spider on this rig: `prefix` = its models (queen/, nestspider/venom/...), `glow` = a fixed brightness or -1. */
+    QueenRig(FaultlineItems plugin, LivingEntity body, double scale, String prefix, int glow) {
         this.plugin = plugin;
+        this.prefix = prefix;
+        this.glow = glow;
         this.body = body;
         this.k = 0.026 * scale;
         this.at = body.getLocation();
@@ -87,7 +94,8 @@ final class QueenRig {
                 e.setPersistent(false);
                 e.addScoreboardTag(TAG);
                 e.addScoreboardTag("faultline_no_bedrock_fx");
-                e.setItemStack(item(model));
+                e.setItemStack(item(prefix + model));
+                if (glow >= 0) e.setBrightness(new Display.Brightness(glow, glow));
                 e.setTeleportDuration(2);
                 e.setInterpolationDuration(2);
                 e.setViewRange(2f);
@@ -107,7 +115,7 @@ final class QueenRig {
     static ItemStack item(String model) {
         ItemStack it = new ItemStack(Material.PAPER);
         ItemMeta m = it.getItemMeta();
-        m.setItemModel(new NamespacedKey("faultline", "queen/" + model));
+        m.setItemModel(new NamespacedKey("faultline", model));
         it.setItemMeta(m);
         return it;
     }
@@ -264,7 +272,7 @@ final class QueenRig {
                 if (g.stepT >= g.stepLen) {
                     g.stepT = -1; g.fx = g.bx; g.fy = g.by; g.fz = g.bz;
                     if (speed > k * 0.3 && rnd.nextInt(3) == 0) at.getWorld().playSound(new Location(at.getWorld(), g.fx, g.fy, g.fz),
-                            org.bukkit.Sound.ENTITY_SPIDER_STEP, org.bukkit.SoundCategory.HOSTILE, 0.35f, 0.45f + rnd.nextFloat() * 0.2f);
+                            org.bukkit.Sound.ENTITY_SPIDER_STEP, org.bukkit.SoundCategory.HOSTILE, (float) Math.min(0.35, k * 3), (float) (0.45 + 0.08 / k * 0.0 + rnd.nextFloat() * 0.2 + (k < 0.05 ? 0.5 : 0)));
                 }
                 continue;
             }
@@ -380,7 +388,7 @@ final class QueenRig {
             set(i++, new Matrix4f(tibia).translate(0, 0, (float) TIBIA).rotateX((float) foot));
         }
         // the eyes glow when awake
-        float eb = fold > 0.6 ? 4 : 15;
+        float eb = glow >= 0 ? Math.max(glow, fold > 0.6 ? 4 : 15) : fold > 0.6 ? 4 : 15;
         if (eb != eyeBright && parts.size() > 2) { eyeBright = eb; parts.get(2).setBrightness(new Display.Brightness((int) eb, (int) eb)); }
         Location to = at.clone(); to.setYaw(0); to.setPitch(0);
         boolean near = false;

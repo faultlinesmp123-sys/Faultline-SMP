@@ -864,9 +864,13 @@ final class QueenSpiderManager implements Listener {
             Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "giveaccessory ankhpiece 1 " + killer.getName());
             Bukkit.broadcastMessage(ChatColor.GOLD + "" + ChatColor.BOLD + killer.getName() + " found an Ankh in the Queen's nest of bones!");
         }
-        if (random.nextDouble() < plugin.getConfig().getDouble("boss-loot.queen-silk-chance", 0.05) * plugin.eventDropMultiplier()) {
+        if (random.nextDouble() < Balance.num(plugin, "boss-loot.queen-silk-chance", 0.05, 1.0) * plugin.eventDropMultiplier()) { // 1.3.47: always
             event.getDrops().add(FaultlineItems.QueenSilkItem.create(plugin));
             Bukkit.broadcastMessage(ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + killer.getName() + " claimed the Queen's Silk!");
+        }
+        if (plugin.spiderForm != null && random.nextDouble() < cfg("brood-eye-chance", 0.025)) { // 1.3.47: become a spider
+            event.getDrops().add(plugin.spiderForm.item());
+            Bukkit.broadcastMessage(ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + killer.getName() + " tore out the Broodmother's Eye!");
         }
         Bukkit.broadcastMessage(ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + killer.getName() + " slew the Queen Spider!");
     }
@@ -888,7 +892,11 @@ final class QueenSpiderManager implements Listener {
                 Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "giveaccessory ankhpiece 1 " + p.getName());
                 Bukkit.broadcastMessage(ChatColor.GOLD + "" + ChatColor.BOLD + p.getName() + " found an Ankh in the Queen's nest!");
             }
-            if (random.nextDouble() < cfg("nest.queen-silk-chance", 0.20)) {
+            if (plugin.spiderForm != null && random.nextDouble() < cfg("nest.brood-eye-chance", 0.025)) { // 1.3.47
+                give(p, plugin.spiderForm.item());
+                Bukkit.broadcastMessage(ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + p.getName() + " tore out the Broodmother's Eye!");
+            }
+            if (random.nextDouble() < Balance.num(plugin, "queen-spider-boss.nest.queen-silk-chance", 0.20, 1.0)) { // 1.3.47: always
                 give(p, FaultlineItems.QueenSilkItem.create(plugin));
                 Bukkit.broadcastMessage(ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + p.getName() + " claimed the Queen's Silk!");
             }

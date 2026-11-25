@@ -74,11 +74,14 @@ final class SpiderNest implements Listener {
     private final Random random = new Random();
     private final NamespacedKey webKey, bodyKey;
     boolean building;
+    final NestBrood brood; // 1.3.47: the brood, dens, quakes, dark, music
 
     static final class Nest {
         String id, world;
         int cx, cy, cz, tx, ty, tz, radius;
         int minX, minY, minZ, maxX, maxY, maxZ; // the box it was carved in (0s for 1.3.44 nests)
+        final List<int[]> dens = new ArrayList<>(), sleeps = new ArrayList<>(); // 1.3.47: brood dens, sleeping beds
+        final Map<Integer, Long> denReady = new HashMap<>(); // den index -> when it can wake again
         int mouthX = Integer.MIN_VALUE, mouthZ;  // where the way in comes up
         long respawnAt;
         transient QueenSpiderManager.Queen queen;
@@ -89,6 +92,7 @@ final class SpiderNest implements Listener {
         this.plugin = plugin;
         this.queens = queens;
         queens.nests = this;
+        brood = new NestBrood(plugin, this);
         webKey = new NamespacedKey(plugin, "nest_webs");
         bodyKey = new NamespacedKey(plugin, "nest_bodies");
         file = new File(plugin.getDataFolder(), "spider_nests.yml");
@@ -104,6 +108,10 @@ final class SpiderNest implements Listener {
             n.minX = c.getInt("box.min-x"); n.minY = c.getInt("box.min-y"); n.minZ = c.getInt("box.min-z");
             n.maxX = c.getInt("box.max-x"); n.maxY = c.getInt("box.max-y"); n.maxZ = c.getInt("box.max-z");
             n.mouthX = c.getInt("mouth-x", Integer.MIN_VALUE); n.mouthZ = c.getInt("mouth-z");
+            for (String d : c.getStringList("dens")) n.dens.add(parse3(d));
+            for (String d : c.getStringList("sleeps")) n.sleeps.add(parse3(d));
+            var dr = c.getConfigurationSection("den-ready");
+            if (dr != null) for (String k : dr.getKeys(false)) try { n.denReady.put(Integer.parseInt(k), dr.getLong(k)); } catch (NumberFormatException ignored) { }
             nests.put(id, n);
         }
         Bukkit.getScheduler().runTaskTimer(plugin, this::tick, 60L, 40L);
@@ -123,15 +131,29 @@ final class SpiderNest implements Listener {
                 data.set(k + "box.max-x", n.maxX); data.set(k + "box.max-y", n.maxY); data.set(k + "box.max-z", n.maxZ);
             }
             if (n.mouthX != Integer.MIN_VALUE) { data.set(k + "mouth-x", n.mouthX); data.set(k + "mouth-z", n.mouthZ); }
+            data.set(k + "dens", n.dens.stream().map(d -> d[0] + "," + d[1] + "," + d[2]).toList());
+            data.set(k + "sleeps", n.sleeps.stream().map(d -> d[0] + "," + d[1] + "," + d[2]).toList());
+            for (var e : n.denReady.entrySet()) data.set(k + "den-ready." + e.getKey(), e.getValue());
         }
         SafeYaml.write(plugin, file, data.saveToString());
     }
+
+    static int[] parse3(String s) { String[] p = s.split(","); return new int[]{Integer.parseInt(p[0].trim()), Integer.parseInt(p[1].trim()), Integer.parseInt(p[2].trim())}; }
 
     double cfg(String k, double d) { return plugin.getConfig().getDouble("spider-nest." + k, d); }
 
     // ============================================================================================ the plan (pure)
     /** A room: an ellipsoid. A tunnel: a capsule between two room centres. */
-    record Room(double x, double y, double z, double rx, double ry, double rz) { }
+    record Room(double x, double y, double z, double rx, double ry, double rz, String kind) {
+        Room(double x, double y, double z, double rx, double ry, double rz) { this(x, y, z, rx, ry, rz, "plain"); }
+        Room kind(String k) { return new Room(x, y, z, rx, ry, rz, k); }
+        boolean holds(double px, double py, double pz, double pad) {
+            double dx = (px - x) / (rx + pad), dy = (py - y) / (ry + pad), dz = (pz - z) / (rz + pad);
+            return dx * dx + dy * dy + dz * dz < 1;
+        }
+    }
+    /** 1.3.47: what each chamber is for (the throne is "throne"). */
+    static final String[] KINDS = {"den", "den", "den", "den", "den", "den", "larder", "larder", "sleep", "sleep", "hatchery", "hatchery", "pillars", "pillars", "pillars"};
     record Tunnel(double ax, double ay, double az, double bx, double by, double bz, double r) { }
 
     static final class Plan {
@@ -198,36 +220,56 @@ final class SpiderNest implements Listener {
         }
     }
 
+    static double clampY(double y, double ry, int lo, int hi) { return Math.max(lo + ry + 2, Math.min(hi - ry - 2, y)); }
+
     /** The layout around (cx, cy, cz); `surface` = the y of the ground above for the way in (or Integer.MIN_VALUE). */
-    static Plan plan(long seed, int cx, int cy, int cz, int sx, int sz, int surface) {
+    static Plan plan(long seed, int cx, int cy, int cz, int sx, int sz, int surface) { return plan(seed, cx, cy, cz, sx, sz, surface, -50, -1); }
+
+    /**
+     * 1.3.47: bigger (18-24 chambers out to 110 blocks), every chamber between `lo` and `hi` (y -50 .. -1 by default), each
+     * with a job: brood dens (trial-chamber waves), larders, sleeping dens, hatcheries, bone-pillar halls.
+     */
+    static Plan plan(long seed, int cx, int cy, int cz, int sx, int sz, int surface, int lo, int hi) {
         Plan p = new Plan(seed);
         Random r = new Random(seed);
-        Room throne = new Room(cx + 0.5, cy + 5, cz + 0.5, 16, 9, 15);
+        Room throne = new Room(cx + 0.5, clampY(cy, 11, lo, hi), cz + 0.5, 20, 11, 19, "throne");
         p.rooms.add(throne);
-        p.grow(throne.x, throne.y, throne.z, 17);
-        int n = 10 + r.nextInt(5);
+        p.grow(throne.x, throne.y, throne.z, 21);
+        int n = 18 + r.nextInt(7);
         List<Room> placed = new ArrayList<>(List.of(throne));
-        for (int i = 0; i < n; i++) {
-            Room from = placed.get(r.nextInt(Math.min(placed.size(), 1 + i / 2 + 1)));
-            double rx = 6 + r.nextDouble() * 6, ry = 3.5 + r.nextDouble() * 3.5, rz = 6 + r.nextDouble() * 6;
+        for (int i = 0; i < n * 2 && placed.size() <= n; i++) {
+            Room from = placed.get(r.nextInt(placed.size()));
+            boolean big = r.nextDouble() < 0.3;
+            double rx = (big ? 10 : 6) + r.nextDouble() * 6, ry = (big ? 5.5 : 4) + r.nextDouble() * 3, rz = (big ? 10 : 6) + r.nextDouble() * 6;
             Room room = null;
-            for (int tries = 0; tries < 20 && room == null; tries++) {
-                double a = r.nextDouble() * Math.PI * 2, d = 20 + r.nextDouble() * 14;
-                double x = from.x + Math.cos(a) * d, z = from.z + Math.sin(a) * d, y = from.y + (r.nextDouble() - 0.5) * 14;
-                if (Math.hypot(x - cx, z - cz) > 72) continue;
+            for (int tries = 0; tries < 24 && room == null; tries++) {
+                double a = r.nextDouble() * Math.PI * 2, d = 22 + r.nextDouble() * 16;
+                double x = from.x + Math.cos(a) * d, z = from.z + Math.sin(a) * d, y = clampY(from.y + (r.nextDouble() - 0.5) * 16, ry, lo, hi);
+                if (Math.hypot(x - cx, z - cz) > 110) continue;
                 boolean overlaps = false;
-                for (Room o : placed) if (Math.hypot(o.x - x, o.z - z) < (o.rx + rx) * 0.75) overlaps = true;
+                for (Room o : placed) if (Math.hypot(o.x - x, o.z - z) < (o.rx + rx) * 0.8) overlaps = true;
                 if (!overlaps) room = new Room(x, y, z, rx, ry, rz);
             }
             if (room == null) continue;
             placed.add(room);
             p.rooms.add(room);
             p.grow(room.x, room.y, room.z, Math.max(room.rx, room.rz) + 1);
-            p.tunnels.add(new Tunnel(from.x, from.y - from.ry * 0.4, from.z, room.x, room.y - room.ry * 0.4, room.z, 2.4 + r.nextDouble() * 1.2));
+            p.tunnels.add(new Tunnel(from.x, from.y - from.ry * 0.4, from.z, room.x, room.y - room.ry * 0.4, room.z, 2.4 + r.nextDouble() * 1.4));
         }
-        for (int i = 0; i < 3 && placed.size() > 3; i++) { // a few loops, so it's a network, not a tree
+        for (int i = 0; i < 6 && placed.size() > 3; i++) { // loops, so it's a network, not a tree
             Room a = placed.get(1 + r.nextInt(placed.size() - 1)), b = placed.get(1 + r.nextInt(placed.size() - 1));
-            if (a != b && Math.hypot(a.x - b.x, a.z - b.z) < 40) p.tunnels.add(new Tunnel(a.x, a.y - a.ry * 0.4, a.z, b.x, b.y - b.ry * 0.4, b.z, 2.2));
+            if (a != b && Math.hypot(a.x - b.x, a.z - b.z) < 45) p.tunnels.add(new Tunnel(a.x, a.y - a.ry * 0.4, a.z, b.x, b.y - b.ry * 0.4, b.z, 2.3));
+        }
+        // the jobs: the biggest rooms get the pillar halls, the rest shuffled
+        List<Integer> idx = new ArrayList<>();
+        for (int i = 1; i < p.rooms.size(); i++) idx.add(i);
+        idx.sort((a, b) -> Double.compare(p.rooms.get(b).rx * p.rooms.get(b).rz, p.rooms.get(a).rx * p.rooms.get(a).rz));
+        List<String> jobs = new ArrayList<>(List.of(KINDS));
+        List<String> rest = new ArrayList<>(jobs.subList(0, jobs.size() - 3));
+        java.util.Collections.shuffle(rest, r);
+        for (int k = 0; k < idx.size(); k++) {
+            String kind = k < 3 ? "pillars" : k - 3 < rest.size() ? rest.get(k - 3) : "plain";
+            p.rooms.set(idx.get(k), p.rooms.get(idx.get(k)).kind(kind));
         }
         p.surface = surface;
         if (surface != Integer.MIN_VALUE && surface - cy < 150) {
@@ -303,13 +345,14 @@ final class SpiderNest implements Listener {
                 return;
             }
         int sx = l.getBlockX(), sz = l.getBlockZ();
-        boolean underground = l.getBlock().getLightFromSky() == 0;
         int surface = w.getHighestBlockYAt(sx, sz, org.bukkit.HeightMap.MOTION_BLOCKING_NO_LEAVES);
-        int cy = underground ? l.getBlockY() - 4 : Math.max(w.getMinHeight() + 20, surface - (int) cfg("depth", 34));
+        // 1.3.47: always between y -50 and -1 (`min-y` / `max-y`), whatever the admin stands on
+        int lo = Math.max(w.getMinHeight() + 4, (int) cfg("min-y", -50)), hi = Math.max(lo + 30, (int) cfg("max-y", -1));
+        int cy = (lo + hi) / 2 - 2;
         long seed = random.nextLong();
-        Plan plan = plan(seed, sx, cy, sz, sx, sz, surface);
+        Plan plan = plan(seed, sx, cy, sz, sx, sz, surface, lo, hi);
         building = true;
-        p.sendMessage(ChatColor.DARK_PURPLE + "Weaving a Spider Nest " + (underground ? "around you" : (l.getBlockY() - cy) + " blocks under you") + "...");
+        p.sendMessage(ChatColor.DARK_PURPLE + "Weaving a Spider Nest between y " + lo + " and " + hi + " under you (" + plan.rooms.size() + " chambers)...");
         List<java.util.concurrent.CompletableFuture<Chunk>> loads = new ArrayList<>();
         for (int x = plan.minX >> 4; x <= plan.maxX >> 4; x++) for (int z = plan.minZ >> 4; z <= plan.maxZ >> 4; z++) {
             try { loads.add(w.getChunkAtAsync(x, z, true)); } catch (RuntimeException e) { loads.add(java.util.concurrent.CompletableFuture.completedFuture(w.getChunkAt(x, z))); }
@@ -345,6 +388,7 @@ final class SpiderNest implements Listener {
     void build(CommandSender by, World w, Plan plan, int sx, int sz, List<Chunk> held) {
         Random r = new Random(plan.seed);
         undo = new LinkedHashMap<>();
+        buildId = "nest" + (nests.size() + 1) + "_" + Integer.toHexString(new Random(plan.seed ^ 77).nextInt(0xFFFF));
         List<int[]> air = new ArrayList<>();
         Set<Long> airSet = new HashSet<>();
         for (int x = plan.minX; x <= plan.maxX; x++) for (int z = plan.minZ; z <= plan.maxZ; z++) for (int y = plan.minY; y <= plan.maxY; y++) {
@@ -428,6 +472,16 @@ final class SpiderNest implements Listener {
 
     static long key(int x, int y, int z) { return ((long) (x & 0x3FFFFFF) << 38) | ((long) (z & 0x3FFFFFF) << 12) | (y & 0xFFF); }
 
+    // ---------------------------------------------------------------- 1.3.47: decoration (dark: the eggs glow but light nothing)
+    String buildId = "nest";
+    final List<int[]> buildDens = new ArrayList<>(), buildSleeps = new ArrayList<>();
+    static final String WEB_ITEM_TAG = "faultline_nest_webitem";
+
+    static Room roomAt(Plan plan, int x, int y, int z) {
+        for (Room rm : plan.rooms) if (rm.holds(x + 0.5, y + 0.5, z + 0.5, 1.5)) return rm;
+        return null;
+    }
+
     private void decorate(World w, Plan plan, Set<Long> air, int[] c, Random r, Map<String, List<Integer>> webs, Map<String, List<Integer>> bodies) {
         int x = c[0], y = c[1], z = c[2];
         if (plan.surface != Integer.MIN_VALUE && y >= plan.surface - 1) return; // nothing in the open air at the way in
@@ -441,41 +495,71 @@ final class SpiderNest implements Listener {
         Block b = w.getBlockAt(x, y, z);
         if (!b.getType().isAir()) return;
         double roll = r.nextDouble();
-        if (plan.inEntrance(x, y, z)) { // the way in: kept walkable, lit by soul lanterns, a few webs in the corners
-            if (ceil && roll < 0.035 && air.contains(key(x, y - 1, z)) && air.contains(key(x, y - 2, z))) {
+        if (plan.inEntrance(x, y, z)) { // the way in: kept walkable, a few soul lanterns, webs in the corners
+            if (ceil && roll < 0.03 && air.contains(key(x, y - 1, z)) && air.contains(key(x, y - 2, z))) {
                 put(b, chain());
                 put(b.getRelative(0, -1, 0), hangingLantern());
-            } else if (!floor && walls >= 2 && roll < 0.08) { put(b, Material.COBWEB); mark(webs, b); }
+            } else if (!floor && walls >= 2 && roll < 0.08) web(b, r, webs, false);
             else if (floor && walls >= 1 && roll < 0.01) put(b, Material.SKELETON_SKULL);
             return;
         }
+        Room rm = roomAt(plan, x, y, z);
+        String kind = rm == null ? "tunnel" : rm.kind();
+        if (kind.equals("throne") && Math.hypot(x + 0.5 - rm.x(), z + 0.5 - rm.z()) < 11) return; // her nest is built in finish()
         if (floor) {
             Block under = b.getRelative(0, -1, 0);
             if (under.getType().isAir() || !under.getType().isSolid()) return;
-            if (roll < 0.009) eggClutch(b, air, r, webs);
-            else if (roll < 0.015) put(b, Material.BONE_BLOCK);
-            else if (roll < 0.019) { body(b, r); mark(bodies, b); }
-            else if (roll < 0.024) pot(b, r);
-            else if (roll < 0.030) put(b, r.nextBoolean() ? Material.BROWN_MUSHROOM : Material.DEAD_BUSH);
-            else if (roll < 0.08 + walls * 0.09) { put(b, Material.COBWEB); mark(webs, b); }
-            else if (roll < 0.10 + walls * 0.09) put(b, Material.WHITE_CARPET); // silk on the floor
+            double egg = kind.equals("hatchery") ? 0.06 : kind.equals("sleep") ? 0.015 : 0.005;
+            double bones = kind.equals("larder") ? 0.05 : 0.006, corpse = kind.equals("larder") ? 0.025 : 0.004;
+            if (roll < egg) eggClutch(b, air, r, webs);
+            else if ((roll -= egg) < bones) put(b, Material.BONE_BLOCK);
+            else if ((roll -= bones) < corpse) { body(b, r); mark(bodies, b); }
+            else if ((roll -= corpse) < 0.005) pot(b, r);
+            else if ((roll -= 0.005) < 0.006) put(b, r.nextBoolean() ? Material.BROWN_MUSHROOM : Material.DEAD_BUSH);
+            else if ((roll -= 0.006) < 0.03) dripstone(w, air, b, false, 1 + r.nextInt(walls >= 1 ? 3 : 2));
+            else if ((roll -= 0.03) < 0.07 + walls * 0.09 + (kind.equals("sleep") ? 0.1 : 0)) web(b, r, webs, true);
+            else if (roll < 0.1 + walls * 0.09) put(b, Material.WHITE_CARPET); // silk on the floor
         } else if (ceil) {
-            if (roll < 0.005) { // a soul lantern on a chain
+            double cocoon = kind.equals("larder") ? 0.05 : 0.008;
+            if (roll < 0.0012) { // a rare soul lantern on a chain (it's dark down here)
                 Block l = b;
                 int len = 1 + r.nextInt(3);
                 for (int i = 0; i < len && air.contains(key(x, l.getY() - 1, z)); i++) { put(l, chain()); l = l.getRelative(0, -1, 0); }
                 put(l, hangingLantern());
-            } else if (roll < 0.013 && air.contains(key(x, y - 1, z)) && air.contains(key(x, y - 2, z)) && air.contains(key(x, y - 3, z)) && air.contains(key(x, y - 4, z))) {
-                cocoon(b, r, bodies, webs); // a wrapped body hanging from the ceiling (cut it open: a body's loot)
-            } else if (roll < 0.04) { // a hanging column of web
+            } else if ((roll -= 0.0012) < cocoon && air.contains(key(x, y - 1, z)) && air.contains(key(x, y - 2, z)) && air.contains(key(x, y - 3, z)) && air.contains(key(x, y - 4, z))) {
+                cocoon(b, r, bodies, webs, kind.equals("larder")); // a wrapped body hanging from the ceiling (cut it open: a body's loot)
+            } else if ((roll -= cocoon) < 0.035) { // a hanging column of web
                 Block l = b;
                 int len = 2 + r.nextInt(6);
-                for (int i = 0; i < len && l.getType().isAir() && air.contains(key(x, l.getY(), z)); i++) { put(l, Material.COBWEB); mark(webs, l); l = l.getRelative(0, -1, 0); }
-            } else if (roll < 0.06) dripstone(b);
-            else if (roll < 0.24 + walls * 0.1) { put(b, Material.COBWEB); mark(webs, b); }
-        } else if (walls >= 2 && roll < 0.33) { put(b, Material.COBWEB); mark(webs, b); }
-        else if (walls == 1 && roll < 0.04) { put(b, Material.COBWEB); mark(webs, b); }
-        else if (walls >= 1 && roll < 0.055 && wallFace != null) lichen(b, wallFace);
+                for (int i = 0; i < len && l.getType().isAir() && air.contains(key(x, l.getY(), z)); i++) { web(l, r, webs, false); l = l.getRelative(0, -1, 0); }
+            } else if ((roll -= 0.035) < 0.08) dripstone(w, air, b, true, 1 + r.nextInt(3));
+            else if (roll < 0.22 + walls * 0.1) web(b, r, webs, true);
+        } else if (walls >= 2 && roll < 0.33) web(b, r, webs, true);
+        else if (walls == 1 && roll < 0.04) web(b, r, webs, true);
+        else if (walls >= 1 && roll < 0.048 && wallFace != null) lichen(b, wallFace);
+    }
+
+    /** A cobweb (a loot web); sometimes something is caught in it, and you can SEE it hanging in the web. */
+    private void web(Block b, Random r, Map<String, List<Integer>> webs, boolean mayHold) {
+        put(b, Material.COBWEB);
+        mark(webs, b);
+        if (mayHold && r.nextDouble() < cfg("web-item-chance", 0.035)) {
+            List<ItemStack> l = roll(r, 0);
+            if (!l.isEmpty()) webItem(b, l.get(0), r);
+        }
+    }
+
+    void webItem(Block b, ItemStack item, Random r) {
+        Location at = new Location(b.getWorld(), b.getX() + 0.5, b.getY() + 0.5, b.getZ() + 0.5);
+        float yaw = (float) (r.nextDouble() * Math.PI * 2), tilt = (float) ((r.nextDouble() - 0.5) * 0.9);
+        b.getWorld().spawn(at, org.bukkit.entity.ItemDisplay.class, d -> {
+            d.setPersistent(true);
+            d.addScoreboardTag(SILK_TAG); d.addScoreboardTag(SILK_TAG + "_" + buildId); d.addScoreboardTag(WEB_ITEM_TAG);
+            d.setItemStack(item);
+            d.setBrightness(new org.bukkit.entity.Display.Brightness(7, 0));
+            d.setViewRange(0.35f);
+            d.setTransformation(new Transformation(new Vector3f(), new Quaternionf().rotateY(yaw).rotateZ(tilt), new Vector3f(0.42f, 0.42f, 0.42f), new Quaternionf()));
+        });
     }
 
     private static Material chain() {
@@ -489,20 +573,30 @@ final class SpiderNest implements Listener {
         return lan;
     }
 
-    /** A clutch of eggs: 1-3 glowing froglights in a little heap with web over it. */
+    /** A clutch of eggs: 2-5 glowing egg displays in a heap (they glow, but light nothing: the nest stays dark), web over it. */
     private void eggClutch(Block b, Set<Long> air, Random r, Map<String, List<Integer>> webs) {
-        Material egg = r.nextDouble() < 0.7 ? Material.OCHRE_FROGLIGHT : Material.PEARLESCENT_FROGLIGHT;
-        put(b, egg);
-        for (int[] d : new int[][]{{1, 0}, {0, 1}, {-1, 0}, {0, -1}}) {
-            Block n = b.getRelative(d[0], 0, d[1]);
-            if (r.nextDouble() < 0.4 && n.getType().isAir() && air.contains(key(n.getX(), n.getY(), n.getZ())) && n.getRelative(0, -1, 0).getType().isSolid()) put(n, egg);
+        Material egg = r.nextDouble() < 0.65 ? Material.OCHRE_FROGLIGHT : Material.PEARLESCENT_FROGLIGHT;
+        int n = 2 + r.nextInt(4);
+        for (int i = 0; i < n; i++) {
+            float s = 0.28f + r.nextFloat() * 0.22f;
+            double ox = 0.15 + r.nextDouble() * (0.7 - s), oz = 0.15 + r.nextDouble() * (0.7 - s), oy = i > 2 ? 0.25 : 0;
+            Location at = new Location(b.getWorld(), b.getX() + ox, b.getY() + oy, b.getZ() + oz);
+            b.getWorld().spawn(at, BlockDisplay.class, d -> {
+                d.setPersistent(true);
+                d.addScoreboardTag(SILK_TAG); d.addScoreboardTag(SILK_TAG + "_" + buildId);
+                d.setBlock(egg.createBlockData());
+                d.setBrightness(new org.bukkit.entity.Display.Brightness(10, 0));
+                d.setViewRange(0.4f);
+                d.setTransformation(new Transformation(new Vector3f(), new Quaternionf().rotateY(r.nextFloat()), new Vector3f(s, s * 1.15f, s), new Quaternionf()));
+            });
         }
         Block up = b.getRelative(0, 1, 0);
-        if (r.nextDouble() < 0.6 && up.getType().isAir() && air.contains(key(up.getX(), up.getY(), up.getZ()))) { put(up, Material.COBWEB); mark(webs, up); }
+        if (r.nextDouble() < 0.5 && up.getType().isAir() && air.contains(key(up.getX(), up.getY(), up.getZ()))) web(up, r, webs, false);
+        else if (r.nextDouble() < 0.6) web(b, r, webs, false);
     }
 
-    /** A cocoon: a chain or web strand, two blocks of wool (the wrapped body), a web drip under it. Its lower wool is a body. */
-    private void cocoon(Block top, Random r, Map<String, List<Integer>> bodies, Map<String, List<Integer>> webs) {
+    /** A cocoon: a web strand, two blocks of wool (the wrapped body), in larders a head poking out of it. The lower wool is a body. */
+    private void cocoon(Block top, Random r, Map<String, List<Integer>> bodies, Map<String, List<Integer>> webs, boolean head) {
         Block l = top;
         if (r.nextBoolean()) { put(l, Material.COBWEB); mark(webs, l); l = l.getRelative(0, -1, 0); }
         put(l, Material.WHITE_WOOL);
@@ -510,12 +604,29 @@ final class SpiderNest implements Listener {
         put(low, Material.WHITE_WOOL);
         mark(bodies, low);
         Block drip = low.getRelative(0, -1, 0);
-        if (r.nextDouble() < 0.5 && drip.getType().isAir()) { put(drip, Material.COBWEB); mark(webs, drip); }
+        if (head && drip.getType().isAir()) {
+            Material[] heads = {Material.ZOMBIE_HEAD, Material.SKELETON_SKULL, Material.CREEPER_HEAD, Material.PIGLIN_HEAD, Material.ZOMBIE_HEAD};
+            BlockData hd = heads[r.nextInt(heads.length)].createBlockData();
+            if (hd instanceof Rotatable rot) rot.setRotation(org.bukkit.block.BlockFace.values()[r.nextInt(4)]);
+            put(drip, hd);
+        } else if (r.nextDouble() < 0.5 && drip.getType().isAir()) { put(drip, Material.COBWEB); mark(webs, drip); }
     }
 
-    private void dripstone(Block b) {
-        try { put(b, Bukkit.createBlockData("minecraft:pointed_dripstone[vertical_direction=down,thickness=tip]")); }
-        catch (RuntimeException | LinkageError ignored) { }
+    /** A dripstone spike `len` long hanging down from a ceiling cell or standing up from a floor cell. */
+    private void dripstone(World w, Set<Long> air, Block start, boolean down, int len) {
+        String[] th = len >= 3 ? new String[]{"base", "middle", "frustum", "tip"} : len == 2 ? new String[]{"frustum", "tip"} : new String[]{"tip"};
+        int dir = down ? -1 : 1;
+        Block b = start;
+        for (int i = 0; i < th.length; i++) {
+            if (!b.getType().isAir() || !air.contains(key(b.getX(), b.getY(), b.getZ()))) return;
+            Block next = b.getRelative(0, dir, 0);
+            String t = th[i];
+            if (i < th.length - 1 && (!next.getType().isAir() || !air.contains(key(next.getX(), next.getY(), next.getZ())))) t = "tip";
+            try { put(b, Bukkit.createBlockData("minecraft:pointed_dripstone[vertical_direction=" + (down ? "down" : "up") + ",thickness=" + t + "]")); }
+            catch (RuntimeException | LinkageError e) { return; }
+            if (t.equals("tip")) return;
+            b = next;
+        }
     }
 
     private void lichen(Block b, org.bukkit.block.BlockFace face) {
@@ -554,71 +665,104 @@ final class SpiderNest implements Listener {
         } catch (RuntimeException | LinkageError ignored) { }
     }
 
+    /** The floor (top air cell over solid ground) of a column in the cave, scanning down from y. */
+    private static Block floorAt(World w, Set<Long> air, int x, int y, int z, int range) {
+        for (int yy = y; yy > y - range; yy--)
+            if (air.contains(key(x, yy, z)) && !air.contains(key(x, yy - 1, z)) && w.getBlockAt(x, yy - 1, z).getType().isSolid()) return w.getBlockAt(x, yy, z);
+        return null;
+    }
+
+    private void spawner(Block f, EntityType type) {
+        put(f, Material.SPAWNER);
+        try { if (f.getState() instanceof CreatureSpawner sp) { sp.setSpawnedType(type); sp.update(true, false); } } catch (RuntimeException ignored) { }
+    }
+
     private void finish(CommandSender by, World w, Plan plan, Set<Long> air, Random r, Map<String, List<Integer>> webs, Map<String, List<Integer>> bodies,
                         List<Chunk> held, int sx, int sz) {
         Room throne = plan.rooms.get(0);
-        String id = "nest" + (nests.size() + 1) + "_" + Integer.toHexString(r.nextInt(0xFFFF));
-        // the throne: a mound of web, wool and bones under her, a ribcage of bone arching over it, egg clutches round it
+        String id = buildId;
         int tx = (int) Math.floor(throne.x), tz = (int) Math.floor(throne.z);
         int ty = (int) Math.floor(throne.y);
         while (ty > plan.minY && air.contains(key(tx, ty - 1, tz))) ty--;
-        for (int dx = -7; dx <= 7; dx++) for (int dz = -7; dz <= 7; dz++) {
-            double d = Math.hypot(dx, dz);
-            if (d > 7) continue;
-            int h = (int) Math.round(2.2 * (1 - d / 7.5));
+        // THE QUEEN'S NEST: a bowl of bone 19 across, lined with silk, rim piled with skulls and webs; a web canopy over it
+        for (int dx = -10; dx <= 10; dx++) for (int dz = -10; dz <= 10; dz++) {
+            double d = Math.hypot(dx, dz) + plan.noise((tx + dx) / 3.0, ty, (tz + dz) / 3.0) * 0.8;
+            if (d > 9.6) continue;
+            int h = d < 5.5 ? 1 : 1 + (int) Math.round((d - 5.5) / 4.1 * 4);
+            Block floor = floorAt(w, air, tx + dx, ty + 3, tz + dz, 8);
+            int base = floor == null ? ty : floor.getY();
             for (int dy = 0; dy < h; dy++) {
-                Block b = w.getBlockAt(tx + dx, ty + dy, tz + dz);
+                Block b = w.getBlockAt(tx + dx, base + dy, tz + dz);
                 if (!air.contains(key(b.getX(), b.getY(), b.getZ()))) continue;
-                put(b, dy == h - 1 ? (r.nextDouble() < 0.6 ? Material.WHITE_WOOL : Material.BONE_BLOCK) : Material.WHITE_WOOL);
+                Material m = d < 5.5 ? (r.nextDouble() < 0.85 ? Material.WHITE_WOOL : Material.BONE_BLOCK)
+                        : dy == h - 1 && r.nextDouble() < 0.25 ? Material.WHITE_WOOL : Material.BONE_BLOCK;
+                put(b, m);
             }
-            if (d > 3.5 && r.nextDouble() < 0.35) {
-                Block top = w.getBlockAt(tx + dx, ty + Math.max(0, h), tz + dz);
+            if (d > 6.5) {
+                Block top = w.getBlockAt(tx + dx, base + h, tz + dz);
                 if (top.getType().isAir() && air.contains(key(top.getX(), top.getY(), top.getZ()))) {
-                    if (r.nextDouble() < 0.3) put(top, Material.SKELETON_SKULL); else { put(top, Material.COBWEB); mark(webs, top); }
+                    double q = r.nextDouble();
+                    if (q < 0.18) put(top, Material.SKELETON_SKULL); else if (q < 0.55) web(top, r, webs, true);
                 }
             }
         }
-        for (int i = 0; i < 7; i++) { // the ribs: bone arcs from the floor curling in over the throne
+        int throneY = ty + 1;
+        for (int dx = -14; dx <= 14; dx++) for (int dz = -14; dz <= 14; dz++) for (int dy = 4; dy <= 15; dy++) { // the canopy
+            double d = Math.sqrt(dx * dx + dz * dz + (dy - 1.0) * (dy - 1.0));
+            if (Math.abs(d - 13) > 0.6 || r.nextDouble() > 0.45) continue;
+            Block b = w.getBlockAt(tx + dx, ty + dy, tz + dz);
+            if (b.getType().isAir() && air.contains(key(b.getX(), b.getY(), b.getZ()))) web(b, r, webs, false);
+        }
+        for (int i = 0; i < 7; i++) { // the ribs: bone arcs from beyond the bowl curling in over her
             double a = i * Math.PI * 2 / 7 + r.nextDouble() * 0.3;
-            for (double s = 0; s <= 1.0; s += 0.04) {
-                double rr = 11 - 7 * s, hh = Math.sin(s * Math.PI * 0.62) * 11;
+            for (double s = 0; s <= 1.0; s += 0.035) {
+                double rr = 15 - 9 * s, hh = Math.sin(s * Math.PI * 0.62) * 12;
                 int bx = (int) Math.floor(tx + 0.5 + Math.cos(a) * rr), bz = (int) Math.floor(tz + 0.5 + Math.sin(a) * rr), byy = ty + (int) Math.round(hh);
                 Block b = w.getBlockAt(bx, byy, bz);
-                if (air.contains(key(bx, byy, bz)) && b.getType().isAir()) put(b, Material.BONE_BLOCK);
+                if (air.contains(key(bx, byy, bz)) && (b.getType().isAir() || b.getType() == Material.COBWEB)) put(b, Material.BONE_BLOCK);
             }
             double ea = a + Math.PI / 7; // an egg clutch between two ribs
-            Block e = w.getBlockAt((int) Math.floor(tx + 0.5 + Math.cos(ea) * 9), ty, (int) Math.floor(tz + 0.5 + Math.sin(ea) * 9));
-            for (int k = 0; k < 4 && e.getType().isAir() && e.getRelative(0, -1, 0).getType().isAir(); k++) e = e.getRelative(0, -1, 0);
-            if (e.getType().isAir() && air.contains(key(e.getX(), e.getY(), e.getZ())) && e.getRelative(0, -1, 0).getType().isSolid()) eggClutch(e, air, r, webs);
+            Block e = floorAt(w, air, (int) Math.floor(tx + 0.5 + Math.cos(ea) * 12), ty + 6, (int) Math.floor(tz + 0.5 + Math.sin(ea) * 12), 12);
+            if (e != null && e.getType().isAir()) eggClutch(e, air, r, webs);
         }
-        int throneY = ty + 2;
-        for (int dx = -3; dx <= 3; dx++) for (int dz = -3; dz <= 3; dz++) for (int dy = 0; dy <= 7; dy++) { // room for her
+        for (int dx = -4; dx <= 4; dx++) for (int dz = -4; dz <= 4; dz++) for (int dy = 0; dy <= 9; dy++) { // room for her
             Block b = w.getBlockAt(tx + dx, throneY + dy, tz + dz);
             Material m = b.getType();
-            if (m == Material.COBWEB || m == Material.SKELETON_SKULL || m == Material.BONE_BLOCK && dy > 0 || m == Material.WHITE_WOOL && dy > 0 && air.contains(key(b.getX(), b.getY(), b.getZ())))
+            if (m == Material.COBWEB || m == Material.SKELETON_SKULL || (m == Material.BONE_BLOCK || m == Material.WHITE_WOOL) && dy > 0)
                 put(b, Material.CAVE_AIR);
         }
-        // chests and spawners in the chambers
+        pillars(w, air, throne, r, webs, 8, 16);
+        // the chambers, each with its job
+        buildDens.clear(); buildSleeps.clear();
+        EntityType[] spawnTypes = {EntityType.SPIDER, EntityType.CAVE_SPIDER, EntityType.ZOMBIE, EntityType.SKELETON};
         for (int i = 1; i < plan.rooms.size(); i++) {
             Room room = plan.rooms.get(i);
+            switch (room.kind()) {
+                case "pillars" -> pillars(w, air, room, r, webs, 0, 0);
+                case "larder" -> larder(w, air, room, r, webs, bodies);
+                case "sleep" -> sleepDen(w, air, room, r, webs);
+                case "hatchery" -> hatchery(w, air, room, r, webs);
+                case "den" -> broodDen(w, air, room, r, webs);
+                default -> { }
+            }
             Block f = floorIn(w, air, room);
-            if (f == null) continue;
-            if (i % 2 == 1 && i <= 11) {
-                put(f, Material.CHEST);
-                if (f.getState() instanceof Chest ch) { // three rolls (a body's), scattered through the chest
-                    var inv = ch.getSnapshotInventory();
-                    for (int k = 0; k < 3; k++) for (ItemStack it : roll(r, 2)) inv.setItem(r.nextInt(inv.getSize()), it);
-                    ch.update(true, false);
+            if (f != null && !room.kind().equals("den")) {
+                if (i % 2 == 1) {
+                    put(f, Material.CHEST);
+                    if (f.getState() instanceof Chest ch) { // three rolls (a body's), scattered through the chest
+                        var inv = ch.getSnapshotInventory();
+                        for (int k = 0; k < 3; k++) for (ItemStack it : roll(r, 2)) inv.setItem(r.nextInt(inv.getSize()), it);
+                        ch.update(true, false);
+                    }
+                    for (int[] d : SIX) { Block n = f.getRelative(d[0], d[1], d[2]); if (d[1] == 0 && n.getType().isAir() && r.nextBoolean()) web(n, r, webs, false); }
+                } else if (room.kind().equals("plain") || room.kind().equals("sleep") || i % 4 == 0) {
+                    spawner(f, spawnTypes[r.nextInt(spawnTypes.length)]);
+                    for (int[] d : SIX) { Block n = f.getRelative(d[0], d[1], d[2]); if (n.getType().isAir() && d[1] >= 0) web(n, r, webs, false); }
                 }
-                for (int[] d : SIX) { Block n = f.getRelative(d[0], d[1], d[2]); if (d[1] == 0 && n.getType().isAir() && r.nextBoolean()) { put(n, Material.COBWEB); mark(webs, n); } }
-            } else if (i % 3 == 2) {
-                put(f, Material.SPAWNER);
-                if (f.getState() instanceof CreatureSpawner sp) { sp.setSpawnedType(EntityType.CAVE_SPIDER); sp.update(true, false); }
-                for (int[] d : SIX) { Block n = f.getRelative(d[0], d[1], d[2]); if (n.getType().isAir() && d[1] >= 0) { put(n, Material.COBWEB); mark(webs, n); } }
             }
             silk(w, air, room, r, id);
         }
-        for (int i = 0; i < 4; i++) silk(w, air, throne, r, id);
+        for (int i = 0; i < 6; i++) silk(w, air, throne, r, id);
         walkway(w, plan);
         mouth(w, plan, air, r, webs);
         // the loot marks into each chunk
@@ -633,6 +777,8 @@ final class SpiderNest implements Listener {
         n.minX = plan.minX; n.minY = plan.minY; n.minZ = plan.minZ; n.maxX = plan.maxX; n.maxY = plan.maxY; n.maxZ = plan.maxZ;
         n.mouthX = plan.surface != Integer.MIN_VALUE && !plan.entrance.isEmpty() ? plan.mouthX : Integer.MIN_VALUE;
         n.mouthZ = plan.mouthZ;
+        n.dens.addAll(buildDens);
+        n.sleeps.addAll(buildSleeps);
         n.respawnAt = 0;
         nests.put(n.id, n);
         save();
@@ -640,11 +786,148 @@ final class SpiderNest implements Listener {
         try { spawnQueen(n); } catch (RuntimeException e) { plugin.getLogger().log(java.util.logging.Level.WARNING, "[SpiderNest] the queen couldn't be placed (she'll try again)", e); }
         for (Chunk c : held) try { c.removePluginChunkTicket(plugin); } catch (RuntimeException ignored) { }
         building = false;
-        by.sendMessage(ChatColor.DARK_PURPLE + "The Spider Nest is done (" + air.size() + " blocks of cave, " + plan.rooms.size() + " chambers). "
+        by.sendMessage(ChatColor.DARK_PURPLE + "The Spider Nest is done (" + air.size() + " blocks of cave, " + plan.rooms.size() + " chambers, " + n.dens.size() + " brood dens). "
                 + ChatColor.GRAY + "Her throne is at " + tx + " " + throneY + " " + tz + ". Id: " + n.id
                 + (n.mouthX != Integer.MIN_VALUE ? ". The way in is at " + n.mouthX + " " + n.mouthZ + " (a spiral ramp)." : "."));
         plugin.getLogger().info("[SpiderNest] made " + n.id + " at " + w.getName() + " " + tx + " " + throneY + " " + tz);
     }
+
+    /** Bone pillars floor to ceiling (some snapped off, a skull on the stump), webs and bones round their feet. */
+    private void pillars(World w, Set<Long> air, Room room, Random r, Map<String, List<Integer>> webs, double minR, int count) {
+        int n = count > 0 ? count : (int) Math.max(4, Math.min(9, room.rx() * room.rz() / 22));
+        for (int i = 0, tries = 0; i < n && tries < n * 8; tries++) {
+            double a = r.nextDouble() * Math.PI * 2, d = minR > 0 ? minR + r.nextDouble() * 3 : r.nextDouble() * 0.8;
+            int x = (int) Math.floor(room.x() + Math.cos(a) * (minR > 0 ? d : d * room.rx())), z = (int) Math.floor(room.z() + Math.sin(a) * (minR > 0 ? d : d * room.rz()));
+            Block f = floorAt(w, air, x, (int) room.y() + 4, z, (int) room.ry() + 10);
+            if (f == null || !f.getType().isAir()) continue;
+            i++;
+            boolean broken = r.nextDouble() < 0.3;
+            int top = 0;
+            while (top < 22 && air.contains(key(x, f.getY() + top, z))) top++;
+            int h = broken ? Math.max(1, top / 2 + r.nextInt(2)) : top;
+            boolean thick = !broken && r.nextDouble() < 0.4;
+            for (int k = 0; k < h; k++) {
+                put(w.getBlockAt(x, f.getY() + k, z), Material.BONE_BLOCK);
+                if (thick && (k < 2 || k >= h - 2)) for (int[] dd : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
+                    Block s = w.getBlockAt(x + dd[0], f.getY() + k, z + dd[1]);
+                    if (s.getType().isAir() && air.contains(key(s.getX(), s.getY(), s.getZ()))) put(s, Material.BONE_BLOCK);
+                }
+            }
+            if (broken) { Block cap = w.getBlockAt(x, f.getY() + h, z); if (cap.getType().isAir()) put(cap, Material.SKELETON_SKULL); }
+            for (int[] dd : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}, {1, 1}, {-1, -1}}) {
+                Block s = w.getBlockAt(x + dd[0], f.getY(), z + dd[1]);
+                if (s.getType().isAir() && air.contains(key(s.getX(), s.getY(), s.getZ())) && r.nextDouble() < 0.45) web(s, r, webs, true);
+            }
+        }
+    }
+
+    /** The larder: cocooned prey hanging in rows (heads poking out), bone piles, scraps on the floor. */
+    private void larder(World w, Set<Long> air, Room room, Random r, Map<String, List<Integer>> webs, Map<String, List<Integer>> bodies) {
+        for (int i = 0; i < 12; i++) {
+            Location c = surface(w, air, room, r, 1);
+            if (c == null) continue;
+            Block top = c.getBlock().getRelative(0, -1, 0);
+            if (top.getType().isAir() && air.contains(key(top.getX(), top.getY() - 4, top.getZ()))) cocoon(top, r, bodies, webs, true);
+        }
+        Material[] scraps = {Material.ROTTEN_FLESH, Material.BONE, Material.ROTTEN_FLESH, Material.SPIDER_EYE, Material.BEEF, Material.LEATHER};
+        for (int i = 0; i < 9; i++) {
+            Block f = floorIn(w, air, room);
+            if (f == null) continue;
+            put(f, Material.BONE_BLOCK);
+            for (int k = 0; k < 3; k++) {
+                Location at = new Location(w, f.getX() + 0.2 + r.nextDouble() * 0.6, f.getY() + 1.02, f.getZ() + 0.2 + r.nextDouble() * 0.6);
+                Material m = scraps[r.nextInt(scraps.length)];
+                w.spawn(at, org.bukkit.entity.ItemDisplay.class, d -> {
+                    d.setPersistent(true);
+                    d.addScoreboardTag(SILK_TAG); d.addScoreboardTag(SILK_TAG + "_" + buildId);
+                    d.setItemStack(new ItemStack(m));
+                    d.setViewRange(0.35f);
+                    d.setTransformation(new Transformation(new Vector3f(), new Quaternionf().rotateX((float) (Math.PI / 2)).rotateZ(r.nextFloat() * 6f), new Vector3f(0.5f, 0.5f, 0.5f), new Quaternionf()));
+                });
+            }
+        }
+    }
+
+    /** A sleeping den: silk beds (a ring of wool round carpet) under web hammocks. Brood sleep here (they wake when you come close). */
+    private void sleepDen(World w, Set<Long> air, Room room, Random r, Map<String, List<Integer>> webs) {
+        for (int i = 0; i < 5; i++) {
+            Block f = floorIn(w, air, room);
+            if (f == null) continue;
+            buildSleeps.add(new int[]{f.getX(), f.getY(), f.getZ()});
+            for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) {
+                Block b = f.getRelative(dx, 0, dz);
+                if (!b.getType().isAir() || !air.contains(key(b.getX(), b.getY(), b.getZ())) || !b.getRelative(0, -1, 0).getType().isSolid()) continue;
+                put(b, dx == 0 && dz == 0 ? Material.WHITE_CARPET : Material.WHITE_WOOL);
+            }
+            for (int dx = -2; dx <= 2; dx++) for (int dz = -2; dz <= 2; dz++) { // the hammock over it
+                Block b = f.getRelative(dx, 3 + (Math.abs(dx) + Math.abs(dz) > 2 ? 1 : 0), dz);
+                if (b.getType().isAir() && air.contains(key(b.getX(), b.getY(), b.getZ())) && r.nextDouble() < 0.7) web(b, r, webs, false);
+            }
+        }
+    }
+
+    /** A hatchery: egg clutches everywhere, silk egg sacs (wool blobs in web) on the floor and the walls. */
+    private void hatchery(World w, Set<Long> air, Room room, Random r, Map<String, List<Integer>> webs) {
+        for (int i = 0; i < 14; i++) {
+            Block f = floorIn(w, air, room);
+            if (f != null && f.getType().isAir()) eggClutch(f, air, r, webs);
+        }
+        for (int i = 0; i < 5; i++) {
+            Block f = floorIn(w, air, room);
+            if (f == null) continue;
+            for (int dx = 0; dx <= 1; dx++) for (int dz = 0; dz <= 1; dz++) for (int dy = 0; dy <= 1; dy++) {
+                Block b = f.getRelative(dx, dy, dz);
+                if (b.getType().isAir() && air.contains(key(b.getX(), b.getY(), b.getZ())) && (dy == 0 || r.nextBoolean())) put(b, Material.WHITE_WOOL);
+            }
+            for (int[] d : new int[][]{{-1, 0}, {2, 0}, {0, -1}, {0, 2}}) {
+                Block b = f.getRelative(d[0], 0, d[1]);
+                if (b.getType().isAir() && air.contains(key(b.getX(), b.getY(), b.getZ()))) web(b, r, webs, false);
+            }
+        }
+    }
+
+    /**
+     * A BROOD DEN (trial-chamber style): a bone dais with a great egg sac on it. A player stepping near wakes it: waves of spiders,
+     * cave spiders, zombies, skeletons and the Queen's brood; clear them all and the den pays out (NestBrood).
+     */
+    private void broodDen(World w, Set<Long> air, Room room, Random r, Map<String, List<Integer>> webs) {
+        Block f = floorAt(w, air, (int) Math.floor(room.x()), (int) room.y() + 3, (int) Math.floor(room.z()), (int) room.ry() + 8);
+        if (f == null) f = floorIn(w, air, room);
+        if (f == null) return;
+        for (int dx = -2; dx <= 2; dx++) for (int dz = -2; dz <= 2; dz++) {
+            if (Math.abs(dx) + Math.abs(dz) > 3) continue;
+            Block b = f.getRelative(dx, -1, dz);
+            put(b, Math.abs(dx) == 2 || Math.abs(dz) == 2 ? Material.BONE_BLOCK : Material.POLISHED_DEEPSLATE);
+            Block a = f.getRelative(dx, 0, dz);
+            if (a.getType() != Material.CAVE_AIR && a.getType() != Material.AIR && air.contains(key(a.getX(), a.getY(), a.getZ()))) put(a, Material.CAVE_AIR);
+        }
+        for (int i = 0; i < 6; i++) { // bone candlesticks round the dais
+            double a = i * Math.PI / 3;
+            Block b = floorAt(w, air, (int) Math.floor(f.getX() + 0.5 + Math.cos(a) * 4.5), f.getY() + 2, (int) Math.floor(f.getZ() + 0.5 + Math.sin(a) * 4.5), 5);
+            if (b == null || !b.getType().isAir()) continue;
+            put(b, Material.BONE_BLOCK);
+            Block t = b.getRelative(0, 1, 0);
+            if (t.getType().isAir()) put(t, Material.SKELETON_SKULL);
+        }
+        Location sac = new Location(w, f.getX() + 0.5, f.getY(), f.getZ() + 0.5);
+        w.spawn(sac, BlockDisplay.class, d -> { // the great egg sac
+            d.setPersistent(true);
+            d.addScoreboardTag(SILK_TAG); d.addScoreboardTag(SILK_TAG + "_" + buildId); d.addScoreboardTag(DEN_SAC_TAG);
+            d.setBlock(Material.WHITE_WOOL.createBlockData());
+            d.setBrightness(new org.bukkit.entity.Display.Brightness(9, 0));
+            d.setTransformation(new Transformation(new Vector3f(-0.7f, 0, -0.7f), new Quaternionf(), new Vector3f(1.4f, 1.9f, 1.4f), new Quaternionf()));
+        });
+        w.spawn(sac.clone().add(0, 0.6, 0), BlockDisplay.class, d -> { // its glowing heart
+            d.setPersistent(true);
+            d.addScoreboardTag(SILK_TAG); d.addScoreboardTag(SILK_TAG + "_" + buildId); d.addScoreboardTag(DEN_SAC_TAG);
+            d.setBlock(Material.VERDANT_FROGLIGHT.createBlockData());
+            d.setBrightness(new org.bukkit.entity.Display.Brightness(15, 0));
+            d.setTransformation(new Transformation(new Vector3f(-0.4f, 0, -0.4f), new Quaternionf(), new Vector3f(0.8f, 0.8f, 0.8f), new Quaternionf()));
+        });
+        buildDens.add(new int[]{f.getX(), f.getY(), f.getZ()});
+    }
+
+    static final String DEN_SAC_TAG = "faultline_nest_densac";
 
     /**
      * The way in is always walkable: under the spiral's middle a floor 3 wide (where the ramp crosses a chamber or a lower turn
@@ -862,6 +1145,11 @@ final class SpiderNest implements Listener {
         Material m = b.getType();
         if (m != Material.COBWEB && m != Material.SKELETON_SKULL && m != Material.WHITE_WOOL) return;
         if (nests.isEmpty()) return;
+        if (m == Material.COBWEB) for (Entity en : b.getWorld().getNearbyEntities(b.getLocation().add(0.5, 0.5, 0.5), 0.55, 0.55, 0.55)) // the item you could see in it
+            if (en instanceof org.bukkit.entity.ItemDisplay d && en.getScoreboardTags().contains(WEB_ITEM_TAG)) {
+                if (e.getPlayer().getGameMode() != org.bukkit.GameMode.CREATIVE) b.getWorld().dropItemNaturally(d.getLocation(), d.getItemStack());
+                d.remove();
+            }
         NamespacedKey k = m == Material.COBWEB ? webKey : bodyKey;
         if (!takeMark(b, k)) return;
         if (e.getPlayer().getGameMode() == org.bukkit.GameMode.CREATIVE) return;
@@ -933,10 +1221,12 @@ final class SpiderNest implements Listener {
             }
         }
         // ambience and brood for players inside
+        Map<String, List<Player>> in = new HashMap<>();
         for (Player p : Bukkit.getOnlinePlayers()) {
             Nest n = nestAt(p.getLocation());
             String was = inside.get(p.getUniqueId());
-            if (n == null) { inside.remove(p.getUniqueId()); continue; }
+            if (n == null) { if (was != null) { inside.remove(p.getUniqueId()); brood.left(p); } continue; }
+            in.computeIfAbsent(n.id, k -> new ArrayList<>()).add(p);
             if (!n.id.equals(was)) {
                 inside.put(p.getUniqueId(), n.id);
                 p.sendTitle(ChatColor.DARK_PURPLE + "Spider Nest", ChatColor.GRAY + "Something very large is asleep down here.", 10, 50, 15);
@@ -944,17 +1234,24 @@ final class SpiderNest implements Listener {
             }
             if (random.nextDouble() < 0.25) p.playSound(p.getLocation().add(random.nextGaussian() * 8, random.nextGaussian() * 3, random.nextGaussian() * 8), Sound.ENTITY_SPIDER_AMBIENT, SoundCategory.HOSTILE, 0.5f, 0.6f + random.nextFloat() * 0.6f);
             p.spawnParticle(Particle.WHITE_ASH, p.getLocation().add(0, 1.5, 0), 10, 5, 2, 5, 0);
-            if (p.getGameMode() == org.bukkit.GameMode.SURVIVAL && random.nextDouble() < cfg("spider-spawn-chance", 0.12)) {
-                int near = 0;
-                for (Entity e : p.getNearbyEntities(20, 8, 20)) if (e.getType() == EntityType.SPIDER || e.getType() == EntityType.CAVE_SPIDER) near++;
-                if (near < cfg("spider-cap", 6)) {
-                    Location at = p.getLocation().add(random.nextGaussian() * 9, 0, random.nextGaussian() * 9);
-                    Block b = at.getBlock();
-                    for (int i = 0; i < 6 && !b.getType().isAir(); i++) b = b.getRelative(0, 1, 0);
-                    if (b.getType().isAir() && b.getRelative(0, -1, 0).getType().isSolid() && b.getLightFromBlocks() < 8 && b.getLocation().distanceSquared(p.getLocation()) > 25)
-                        b.getWorld().spawnEntity(b.getLocation().add(0.5, 0, 0.5), random.nextDouble() < 0.6 ? EntityType.CAVE_SPIDER : EntityType.SPIDER, org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.NATURAL);
-                }
-            }
+            try {
+                brood.insideTick(p, n, queens);
+                brood.ambient(p, n);
+                brood.beds(p, n);
+                webItems(p);
+            } catch (RuntimeException e) { plugin.getLogger().warning("[SpiderNest] " + e); }
+        }
+        for (Nest n : nests.values()) brood.quakeTick(n, in.getOrDefault(n.id, List.of()));
+    }
+
+    /** Items caught in webs whose web is gone (water, an explosion, a piston) drop where they hung. */
+    private void webItems(Player p) {
+        for (Entity e : p.getNearbyEntities(12, 8, 12)) {
+            if (!(e instanceof org.bukkit.entity.ItemDisplay d) || !e.getScoreboardTags().contains(WEB_ITEM_TAG)) continue;
+            if (d.getLocation().getBlock().getType() == Material.COBWEB) continue;
+            if (plugin.spiderForm != null && plugin.spiderForm.parted(d.getLocation().getBlock())) continue;
+            d.getWorld().dropItemNaturally(d.getLocation(), d.getItemStack());
+            d.remove();
         }
     }
 
@@ -1072,6 +1369,7 @@ final class SpiderNest implements Listener {
         if (w == null) { s.sendMessage(ChatColor.RED + "That world isn't loaded."); return; }
         deleting = true;
         for (QueenSpiderManager.Queen q : new ArrayList<>(queens.queens.values())) if (n.id.equals(q.nestId)) queens.remove(q);
+        brood.removeNest(n.id);
         n.queen = null;
         nests.remove(n.id);
         save();
@@ -1192,6 +1490,7 @@ final class SpiderNest implements Listener {
     }
 
     void shutdown() {
+        brood.removeAll();
         for (Nest n : nests.values()) if (n.queen != null) { queens.remove(n.queen); n.queen = null; }
         save();
     }

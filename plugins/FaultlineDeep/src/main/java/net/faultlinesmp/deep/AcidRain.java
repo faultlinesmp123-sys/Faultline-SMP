@@ -115,6 +115,8 @@ final class AcidRain {
     }
 
     void burn(Player p) {
+        // 2.0.0: the Umbrella (FaultlineItems, worn as an accessory) keeps the acid rain off
+        if (p.getPersistentDataContainer().has(new org.bukkit.NamespacedKey("faultlineitems", "umbrella"), org.bukkit.persistence.PersistentDataType.BYTE)) return;
         ItemStack helm = p.getInventory().getHelmet();
         if (helm != null && helm.getType().getMaxDurability() > 0 && helm.getItemMeta() instanceof Damageable d) { // the helmet takes it
             d.setDamage(Math.min(helm.getType().getMaxDurability() - 1, d.getDamage() + (int) cfg("helmet-wear", 2)));

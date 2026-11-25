@@ -358,7 +358,7 @@ final class DiscordGateway {
         } catch (ReflectiveOperationException | RuntimeException | LinkageError ignored) { }
         JsonObject e = new JsonObject();
         e.addProperty("title", real);
-        e.addProperty("color", switch (k) { case 1 -> 0xE53935; case 2 -> 0x1E88E5; case 3 -> 0x43A047; default -> 0x9E9E9E; });
+        e.addProperty("color", switch (k) { case 1 -> 0xE53935; case 2 -> 0x43A047; case 3 -> 0x4FC3F7; case 4 -> 0x8E24AA; case 5 -> 0xFDD835; default -> 0x9E9E9E; });
         JsonObject th = new JsonObject();
         th.addProperty("url", "https://mc-heads.net/avatar/" + real.replaceAll("[^A-Za-z0-9_]", "") + "/100");
         e.add("thumbnail", th);

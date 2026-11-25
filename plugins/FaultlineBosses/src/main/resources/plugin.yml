@@ -1,5 +1,5 @@
 name: FaultlineBosses
-version: '2.3.1'
+version: '2.0.0'
 main: net.faultlinesmp.bosses.FaultlineBosses
 api-version: '1.21'
 author: FaultlineSMP

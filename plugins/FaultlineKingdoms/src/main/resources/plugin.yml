@@ -1,7 +1,7 @@
 name: FaultlineKingdoms
-version: '1.4.4'
+version: '2.0.0'
 main: net.faultlinesmp.kingdoms.FaultlineKingdoms
-api-version: '1.21'
+api-version: '2.0.0'
 author: FaultlineSMP
 description: Kingdoms 1, 2 and 3 (assigned from Discord roles) and grace periods, server-wide or per kingdom
 softdepend: [floodgate, Geyser-Spigot, FaultlineIndex, LimboBlackMarket]
@@ -9,7 +9,7 @@ softdepend: [floodgate, Geyser-Spigot, FaultlineIndex, LimboBlackMarket]
 commands:
   kingdom:
     description: "Your kingdom and the grace periods; link your Discord: /kingdom link <discord name>, /kingdom verify <code>"
-    usage: /kingdom [link <discord name>|verify <code>|unlink|list <1|2|3>|ff <on|off|clear>|ally <1|2|3> <yes|no|clear>]
+    usage: /kingdom [link <discord name>|verify <code>|unlink|list <1-5>|ff <on|off|clear>|ally <1-5> <yes|no|clear>]
     aliases: [k]
   kc:
     description: "Kingdom chat: /kc <message>, or /kc alone to talk only to your kingdom until /kc again"
@@ -20,7 +20,7 @@ commands:
     usage: /ac [message]
     aliases: [allychat]
   kingdoms:
-    description: "Admin: /kingdoms grace <all|1|2|3> <on|off> [time], set <player> <1|2|3|none|auto>, tp <1|2|3|outlaws|all> [player], sync, reload"
+    description: "Admin: /kingdoms grace <all|1-5> <on|off> [time], set <player> <1-5|none|auto>, tp <1-5|outlaws|all> [player], sync, reload"
     usage: /kingdoms <grace|set|ff|treaty|tp|spy|sync|status|reload>
     permission: kingdoms.admin
 

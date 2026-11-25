@@ -1151,7 +1151,7 @@ final class Pirates implements Listener {
     }
 
     static boolean ocean(Location l) {
-        try { return l.getBlock().getBiome().getKey().getKey().contains("ocean"); }
+        try { return l.getBlock().getBiome().getKey().getKey().matches(".*(ocean|great_sea).*"); }
         catch (RuntimeException ex) { return false; }
     }
 

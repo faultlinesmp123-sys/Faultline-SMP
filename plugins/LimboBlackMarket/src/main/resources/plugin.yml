@@ -1,5 +1,5 @@
 name: LimboBlackMarket
-version: '1.2.4'
+version: '2.0.0'
 main: net.limbosmp.blackmarket.LimboBlackMarket
 api-version: '1.21'
 author: LimboSMP
@@ -33,6 +33,10 @@ commands:
     description: Put player heads on someone's name; whoever kills them gets the heads
     usage: /bounty <place <player> [amount]|list|info <player>|cancel <player>|claim>
     aliases: [bounties]
+  missions:
+    description: The Mission Board - post jobs for other players or take theirs
+    usage: /missions [post <item> <amount>|mine|cancel <id>|claim]
+    aliases: [mission, board]
   givequestbook:
     description: Give yourself or another player a Quest Book
     usage: /givequestbook [amount] [player]
@@ -47,4 +51,7 @@ permissions:
     default: op
   limbomarket.reload:
     description: Allows reloading config for all Faultline SMP plugins
+    default: op
+  limboblackmarket.missions.admin:
+    description: Take down anyone's Mission Board job
     default: op

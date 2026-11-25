@@ -29,8 +29,11 @@ public final class Bundle extends JavaPlugin {
 
     /** Load order = dependency order (each one's softdepends come before it). */
     static final List<String> ORDER = List.of(
-            "FaultlineItems", "FaultlineRaids", "FaultlineCosmetics", "FaultlineBosses", "FaultlineShips",
+            "FaultlineWorld", "FaultlineItems", "FaultlineRaids", "FaultlineCosmetics", "FaultlineBosses", "FaultlineShips",
             "FaultlineKingdoms", "LimboBlackMarket", "FaultlineDeep", "FaultlineEvents", "FaultlineSkills", "FaultlineIndex");
+
+    /** The main world's generator lives in this one: the world holds its code, so it can only change with a restart. */
+    static final Set<String> NO_RELOAD = Set.of("FaultlineWorld");
 
     private final Map<String, String> status = new LinkedHashMap<>();
 
@@ -61,6 +64,10 @@ public final class Bundle extends JavaPlugin {
                 if (p == null) { status.put(name, "NOT LOADED (Paper refused the jar)"); getLogger().severe("Paper refused " + name + ".jar"); continue; }
                 loaded.add(p);
                 status.put(name, "loaded " + p.getDescription().getVersion());
+                // 2.0: a load: STARTUP plugin (FaultlineWorld = the main world's generator) has to be ON before the worlds
+                // load, and Paper's startup pass already took its list of plugins: switch it on ourselves, now.
+                if (p.getDescription().getLoad() == org.bukkit.plugin.PluginLoadOrder.STARTUP && !p.isEnabled())
+                    Bukkit.getPluginManager().enablePlugin(p);
             } catch (Throwable t) {
                 status.put(name, "NOT LOADED (" + t + ")");
                 getLogger().log(java.util.logging.Level.SEVERE, "Couldn't load the bundled " + name + " (is the disk full?)", t);
@@ -105,6 +112,7 @@ public final class Bundle extends JavaPlugin {
         Map<String, byte[]> fresh = new LinkedHashMap<>();
         boolean changed = false;
         for (String name : ORDER) {
+            if (NO_RELOAD.contains(name)) continue; // needs a restart
             Plugin p = Bukkit.getPluginManager().getPlugin(name);
             if (p != null && !ours(p)) continue; // installed as its own jar: not ours to swap
             byte[] data;

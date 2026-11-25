@@ -53,6 +53,17 @@ public class QuestMenuListener implements Listener {
     }
 
     private void handleMenuClick(Player player, QuestMenuHolder menu, int slot) {
+        if (slot == QuestMenuHolder.PREV_SLOT || slot == QuestMenuHolder.NEXT_SLOT) {
+            if (noArrow(menu, slot)) return;
+            int to = menu.page() + (slot == QuestMenuHolder.NEXT_SLOT ? 1 : -1);
+            player.playSound(player.getLocation(), Sound.ITEM_BOOK_PAGE_TURN, 1f, 1f);
+            later(player, () -> player.openInventory(new QuestMenuHolder(to).build(service, player)));
+            return;
+        }
+        if (slot == QuestMenuHolder.BOARD_SLOT) {
+            later(player, () -> plugin.getMissionBoard().open(player, 0));
+            return;
+        }
         if (slot == QuestMenuHolder.ABANDON_SLOT) {
             Quest active = service.getActive(player.getUniqueId());
             if (active != null) open(player, new QuestConfirmHolder(QuestConfirmHolder.Action.ABANDON, active.id()), active);
@@ -76,6 +87,11 @@ public class QuestMenuListener implements Listener {
                     + QuestService.formatDuration(service.cooldownRemaining(player.getUniqueId(), quest)) + ".");
             case ALREADY_COMPLETED -> deny(player, "You've already completed " + quest.name() + ". It's one-time only.");
         }
+    }
+
+    private static boolean noArrow(QuestMenuHolder menu, int slot) {
+        org.bukkit.inventory.ItemStack it = menu.getInventory().getItem(slot);
+        return it == null || it.getType() != org.bukkit.Material.ARROW;
     }
 
     private void handleConfirmClick(Player player, QuestConfirmHolder confirm, int slot) {

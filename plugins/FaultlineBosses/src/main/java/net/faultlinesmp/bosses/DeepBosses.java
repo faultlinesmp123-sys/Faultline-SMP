@@ -69,7 +69,11 @@ final class DeepBosses {
 
     /** In the Sulphur Sea (FaultlineDeep paints its columns with the SWAMP biome: murky green water). */
     static boolean sulphur(Location l) {
-        try { return l.getBlock().getBiome() == org.bukkit.block.Biome.SWAMP; } catch (RuntimeException e) { return false; }
+        try {
+            org.bukkit.block.Biome b = l.getBlock().getBiome();
+            // 2.0.0: or the overworld's Wasteland (FaultlineWorld's datapack biome): the Scourge's second home
+            return b == org.bukkit.block.Biome.SWAMP && (FaultlineBosses.instance == null || l.getWorld().getName().equals(world(FaultlineBosses.instance))) || b.getKey().toString().equals("faultline:wasteland");
+        } catch (RuntimeException e) { return false; }
     }
 
     /** Sunlit Sea (y >= 35) or deeper. */

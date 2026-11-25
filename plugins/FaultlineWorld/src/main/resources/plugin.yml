@@ -1,0 +1,19 @@
+name: FaultlineWorld
+version: '2.0.0'
+main: net.faultlinesmp.world.FaultlineWorld
+api-version: '1.21'
+load: STARTUP
+author: Faultline SMP
+description: The Faultline SMP 2.0 overworld (3 islands, the Great Sea and the abyss, the new biomes, faction builds, pyramids, dungeons).
+softdepend: [FaultlineItems, FaultlineRaids, FaultlineBosses, FaultlineDeep, FaultlineIndex]
+commands:
+  fworld:
+    description: Faultline world admin tools (where am I, teleport to a site).
+    usage: /fworld [where|giant|tp <site|pyramid1-3|hole1-3>]
+    permission: faultlineworld.admin
+permissions:
+  faultlineworld.admin:
+    default: op
+  faultlineworld.build:
+    description: Break / place in protected places (pyramids, faction cores).
+    default: op

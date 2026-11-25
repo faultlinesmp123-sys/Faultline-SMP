@@ -3154,6 +3154,51 @@ Notes:
   then bursts). NERF: every `*-damage` read through `ncfg` x `queen-spider-boss.damage-nerf` 0.8 while it is still a default (the
   code default or the jar config's old number, `OLD_NEST_DAMAGE`); nest health 3600 -> 2600 and per-fighter 0.3 -> 0.2
   (`Balance.num`). Tested (scratch `nest/d6/MoveTest`: abyssal nest + queen + NestApi, all 10 moves run and end, no errors).
+- **FAULTLINE 2.0 (every plugin is version 2.0.0; `release/FAULTLINESMPJAR-2.0.jar`; setup guide `release/SETUP-2.0.md`; Paper 26.3)**:
+  NEW PLUGIN **FaultlineWorld** (`plugins/FaultlineWorld`, `net.faultlinesmp.world`, `load: STARTUP`, `/fworld [where|giant|tp <site|pyramid1-3|hole1-3>]`):
+  the MAIN world's `ChunkGenerator` (bukkit.yml `worlds.<level>.generator: FaultlineWorld`), pure functions of seed + position
+  (`Layout` = every fixed place, `Terrain` = heights/biomes, `WorldGen` = generateNoise + BiomeProvider, `Canvas` = drawing clipped to
+  a chunk, `Shapes` caverns/canyon, `Decor` biome ground + trees, `Structures` pyramids/dungeons/cores/sky isles/cities/villages,
+  `Schematic` + `Sites` = the owner's 16 .litematic builds in `resources/factions/`, `Life` = runtime rules, `Giants` = the Zombie
+  Giant). Sea level 200, spawn 250/250/-1250, border 7500 (`Layout.BORDER` 3750), three islands A (0,-1450) temperate,
+  B (-1300,900) hot, C (1300,900) cold, mountains to y 310, the Great Sea with the ABYSS (y -50..-1, pitch black, its own
+  music, diamonds round it) and 3 HOLES (`Layout.HOLES`) = the way down to `faultline_deep`, the FARLANDS past 3280.
+  Custom biomes come from the datapack `resources/faultline_world.zip` (built by `python3 tools/world_datapack.py` from the
+  vendored vanilla 26.3 JSON in `tools/world_datapack/vanilla_26.3/`; pack format 121; 14 biomes `faultline:great_sea, abyss,
+  wasteland, deep_desert, deep_forest, inferno_forest, dark_forest, wartsfield_valley, spider_woods, spider_caves, fibers, mire,
+  farlands, sky_isles`; noise settings sea_level 200; diamonds y 0-35); a missing biome falls back to a vanilla one (`B.java`).
+  FIRST START (`FaultlineWorld.setup`): on a FRESH server (no level.dat) it copies the datapack into `<world>/datapacks/`, adds the
+  bukkit.yml line (temp file + move, never over an unreadable bukkit.yml) and HALTS the server before any world exists; the
+  next start generates the world. An EXISTING world not made by it is never touched (a severe log line says to delete the
+  folder). The datapack in an existing Faultline world is never replaced by a newer jar. Faction builds (mountain, fibers,
+  jungle, ice, sky): ruined copies of the owner's builds (statues NOT ruined), each with a carved entrance, plus a protected
+  admin core per faction (bedrock, command/jigsaw/structure blocks, light). 3 unbreakable maze pyramids + an Egyptian
+  underworld; rare dungeons only in the ten new biomes (mostly trial spawners). `Life`: pyramid/core protection
+  (`faultlineworld.build`), Wasteland burn + acid rain + `faultline:deep.acid` music, Inferno/Farlands mobs don't burn, Fibers
+  rare spawns (wild Queen 5%, servants, the Zombie Giant 1% = `EntityType.GIANT` + our brain, 600 hp, in /itemsmenu + Index).
+  Previews: `tools/world_preview/WorldMap.java`, `WorldPreview.java`. NOT TESTED IN A REAL GAME: the datapack was built from real
+  26.3 files but never loaded by a client/server here.
+  **FAULTLINESMPJAR 2.0.0**: `Bundle.ORDER` starts with FaultlineWorld; a bundled `load: STARTUP` plugin is enabled the moment
+  it's loaded (the world generator must be on before the worlds load); `NO_RELOAD` = FaultlineWorld is skipped by
+  `/faultline reload` (the world holds its code: restart for it). `tools/build_bundle.sh` writes `FAULTLINESMPJAR-2.0.jar`.
+  **Kingdoms**: 5 kingdoms (`FaultlineKingdoms.MAX` 5: The Mountain, The Jungle, The Ice, The Fibers, The Sky; roles / channels
+  4-5 empty in the default config). **Raids**: Elites ONLY in the Farlands (`elites.farlands-chance` 0.35) and rarely the Fibers
+  (`fibers-chance` 0.04); `elites.chance` 0 elsewhere. **Bosses**: the Brine Scourge also fights in the overworld's
+  `faultline:wasteland` water. **Items**: the UMBRELLA accessory (`Umbrella.java`, `/giveaccessory umbrella`, recipe WWW/ S / SN,
+  models `faultline:umbrella` + `umbrella_open` from `tools/umbrella_assets.py`): worn = player PDC `faultlineitems:umbrella`,
+  which FaultlineWorld's Wasteland rain and Deep's Acid Rain check; opens over your head in rain. `queenspider brood` works from the
+  console with world coordinates. Ocean checks (whirlpools, pirates, the Ghost Ship, the Kraken's Deep Ocean) also accept
+  `faultline:great_sea`. **LimboBlackMarket**: 27 quests (16 new, incl. Elite Hunter / Farlands Legend / Queen Slayer / Giant
+  Killer by tag: `ELITE_TAG`, `QUEEN_TAG`, `NEST_BROOD_TAG`, `GIANT_TAG`); a MINE step counts the ore's deepslate twin
+  (`sameOre`); the Quest Book menu has pages (28 a page, `QuestMenuHolder(page)`) and a Mission Board button. THE MISSION BOARD
+  (`MissionBoard.java`, `missions:`, `missions.yml`, `/missions [post <item> <amount>|mine|cancel <id>|claim]`): the stack in
+  your hand is the reward (held by the board), anyone carrying that many PLAIN items (no name/lore/model/PDC) clicks the job:
+  items to the poster (owed list if offline / full, `/missions claim`), reward to them; own job clicked = cancelled; expires
+  after 7 days; max 5 each; player files saved with the board file. Index stat `missions_done`. Tested (scratch `ms/MsTest`).
+  The owner said NO to bigger bounties (don't change them). **26.3**: `PAPER=26.3 tools/compile_check.sh` builds Paper's `main`
+  (827eeeb) API (its two `_` unnamed variables are renamed for JDK 21); all 13 compile on 1.21.11, 26.2 and 26.3. Marked for
+  removal in 26.3 but still there: `RecipeChoice.ExactChoice(ItemStack)`, `PotionMix`/`getPotionBrewer`, `TeleportFlag.EntityState.RETAIN_PASSENGERS`,
+  `GameRule.DO_DAYLIGHT_CYCLE`, `Structure#key`: the next Minecraft version will need those replaced.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.
@@ -3163,7 +3208,7 @@ Notes:
 ## Standing rules when updating plugins
 0. **When sending a release, also give the terminal command to download it on the VPS** (owner's request), with the COMMIT
    SHA in the URL (a branch URL is cached by GitHub's CDN for ~5 min: the owner kept getting the previous jar), e.g.
-   `curl -L -o FAULTLINESMPJAR.jar https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/<commit sha>/release/FAULTLINESMPJAR.jar`
+   `curl -L -o FAULTLINESMPJAR-2.0.jar https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/<commit sha>/release/FAULTLINESMPJAR-2.0.jar`
    run inside the server's `plugins/` folder, then `/faultline reload`.
 1. **Every new item, boss, or enemy must be added to the Faultline Index.**
 2. **Every new boss must be added to `/itemsmenu`** (a spawn egg or summon item).
@@ -3180,7 +3225,7 @@ Notes:
 | `FaultlineBloodMoon.zip` | Blood Moon pack: replaces moon phase textures (sent by FaultlineItems' EventPacks during a Blood Moon) |
 | `FaultlineEclipse.zip`, `FaultlineAurora.zip` | Eclipse / Aurora sky packs (`tools/event_packs.py`, sent by EventPacks during those events) |
 | `FaultlineBosses.zip` | Very old zip of the FaultlineBosses source (Demon Eye only). Ignore it; the live copy is `plugins/FaultlineBosses/` |
-| `plugins/` | Source code for all eleven custom plugins (edit these) + `FAULTLINESMPJAR` (the one-jar loader) |
+| `plugins/` | Source code for all twelve custom plugins (edit these) + `FAULTLINESMPJAR` (the one-jar loader) |
 | `FaultlineEmotes.zip` | Third Java pack: the bendy emote body (26.2 core shader + body part models, `tools/emote_pack.py`; sent to 26.2 games beside FaultlineSMP.zip) |
 | `FaultlineDeepMusic.zip` | Second Java pack: the Dark Ocean's three music tracks (sunken, abyss, acid; sent beside FaultlineSMP.zip) |
 | `bedrock/` | Bedrock (Geyser) packs + custom item mappings: cosmetics (`tools/cosmetics_assets.py`), ships (`tools/ship_assets.py --bedrock`), wild models (`tools/wild_assets.py`) |

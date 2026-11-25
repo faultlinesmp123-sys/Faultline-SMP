@@ -1413,6 +1413,14 @@ entries:
   - {chapter: accessories, name: "Backpack", icon: backpack, detect: "faultlineitems:backpack",
      how: "Craft it: Leather, String, Leather / Leather, a Chest, Leather / Leather all along the bottom.",
      does: "Wear it in /accessories for 9 extra slots: /backpack (or sneak + right-click the air with an empty hand) opens them. What's inside is yours, not the bag's, and drops when you die (like the backpack itself). A backpack can't go inside a backpack."}
+  # ---------------------------------------------------------------- 2.0.0: the new overworld
+  - {chapter: accessories, name: "Umbrella", icon: backpack, detect: "faultlineitems:umbrella",
+     how: "Craft it: three Wool (any colour) along the top, a Stick in the middle, a Stick and an Iron Nugget along the bottom (the nugget on the right).",
+     does: "Wear it in /accessories and the acid rain can't touch you: the Wasteland's rain and the Dark Ocean's Acid Rain. It opens over your head whenever it rains or you're in the Wasteland, so everyone can see it. The Wasteland's burning sun still gets you."}
+  - {chapter: bosses, weakness: "It's huge and slow: keep moving round it, never stand still when it lifts a foot (the stomp throws you), and dodge the zombies it throws.", name: "Zombie Giant", icon: elite_mob, detect-tag: faultline_zombie_giant,
+     where: "Only in the Fibers (the giant root caverns under the islands): about a 1% chance every 10 minutes while you're down there, and only where a 12-block giant fits.",
+     does: "600 health. It walks after you and punches (huge knockback), stomps (a shockwave that throws everyone near), roars (Slowness and Nausea) and throws zombies at you.",
+     drops: ["4-8 Diamonds|100%", "8-16 Emeralds|100%", "32 Rotten Flesh|100%", "Totem of Undying|35%", "500 XP|100%"]}
   - {chapter: weapons, name: "Krampus' Bell", icon: krampus_bell, detect: "faultlineitems:krampus_bell",
      how: "Craft it: Coal Blocks in the corners, Iron Bars on the sides, a Bell in the middle.",
      does: "Ring it (right-click) between December 1 and January 6 and Krampus comes for you. Bring friends."}

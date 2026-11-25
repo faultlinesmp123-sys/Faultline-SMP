@@ -49,11 +49,11 @@ final class KingdomChat implements Listener {
         return c == null || !c.trim().matches("\\d{5,25}") ? "" : c.trim();
     }
 
-    boolean anyChannel() { for (int k = 1; k <= 3; k++) if (!channel(k).isEmpty()) return true; return false; }
+    boolean anyChannel() { for (int k = 1; k <= FaultlineKingdoms.MAX; k++) if (!channel(k).isEmpty()) return true; return false; }
 
     int kingdomOfChannel(String id) {
         if (id == null) return 0;
-        for (int k = 1; k <= 3; k++) if (id.equals(channel(k))) return k;
+        for (int k = 1; k <= FaultlineKingdoms.MAX; k++) if (id.equals(channel(k))) return k;
         return 0;
     }
 
@@ -70,7 +70,7 @@ final class KingdomChat implements Listener {
     void deliver(int k, boolean alliance, String line) {
         Set<Integer> to = new HashSet<>();
         to.add(k);
-        if (alliance) for (int o = 1; o <= 3; o++) if (o != k && pl.allied(k, o)) to.add(o);
+        if (alliance) for (int o = 1; o <= FaultlineKingdoms.MAX; o++) if (o != k && pl.allied(k, o)) to.add(o);
         for (Player p : Bukkit.getOnlinePlayers()) {
             int pk = FaultlineKingdoms.kingdomOf(p.getUniqueId());
             if (to.contains(pk)) p.sendMessage(line);
@@ -94,7 +94,7 @@ final class KingdomChat implements Listener {
         deliver(k, alliance, line);
         String post = (alliance ? "[Alliance] " : "") + "**" + esc(p.getName()) + "**: " + esc(text);
         queue(k, post);
-        if (alliance) for (int o = 1; o <= 3; o++) if (o != k && pl.allied(k, o)) queue(o, "[Alliance] [" + esc(tag(k)) + "] **" + esc(p.getName()) + "**: " + esc(text));
+        if (alliance) for (int o = 1; o <= FaultlineKingdoms.MAX; o++) if (o != k && pl.allied(k, o)) queue(o, "[Alliance] [" + esc(tag(k)) + "] **" + esc(p.getName()) + "**: " + esc(text));
     }
 
     static String esc(String s) { return s.replaceAll("([*_`~|>\\\\])", "\\\\$1").replace("@", "@​"); }

@@ -392,7 +392,7 @@ wardrobe:
 item-textures:
   enabled: true
   url: "https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/main/FaultlineSMP.zip"
-  hash: "3ea651592e499747c61b7d967707cb4b7a5bba53"
+  hash: "93d2e198227ab773de183982c40a2c3f043b46eb"
   # The Dark Ocean's music, a second pack sent beside the main one (empty url = not sent)
   music-url: "https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/main/FaultlineDeepMusic.zip"
   music-hash: "d13735ff9b06f03f39d1e378f553927dbecfba04"

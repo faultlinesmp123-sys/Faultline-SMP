@@ -148,7 +148,7 @@ public class QuestService {
 
     public void onMine(Player player, Material block) {
         Step step = currentStep(player);
-        if (step == null || step.objective() != Objective.MINE || step.block() != block) return;
+        if (step == null || step.objective() != Objective.MINE || !QuestRegistry.sameOre(step.block(), block)) return;
         addProgress(player);
     }
 

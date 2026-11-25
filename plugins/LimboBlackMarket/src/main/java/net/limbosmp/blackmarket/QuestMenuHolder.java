@@ -24,16 +24,25 @@ import net.limbosmp.blackmarket.QuestRegistry.Step;
 /**
  * Layout (54 slots):
  *   Row 0: border, slot 4 = "Your Quest" summary
- *   Row 1: the 7 regular quests
- *   Row 2: the last 3 quests, centered
- *   Row 5: slot 49 = Abandon button (only when you have an active quest)
+ *   Rows 1-4: up to 28 quests a page, in registry order
+ *   Row 5: 45 = previous page, 49 = Abandon (only with an active quest), 51 = Mission Board, 53 = next page
  */
 public class QuestMenuHolder implements InventoryHolder {
 
     public static final int INFO_SLOT = 4;
     public static final int ABANDON_SLOT = 49;
-    /** Quest icons fill these in registry order. Add a slot here when adding a quest. */
-    public static final int[] QUEST_SLOTS = {10, 11, 12, 13, 14, 15, 16, 20, 21, 22, 23, 24};
+    public static final int PREV_SLOT = 45, NEXT_SLOT = 53, BOARD_SLOT = 51;
+    /** Quest icons fill these in registry order, page by page. */
+    public static final int[] QUEST_SLOTS = {10, 11, 12, 13, 14, 15, 16, 19, 20, 21, 22, 23, 24, 25,
+            28, 29, 30, 31, 32, 33, 34, 37, 38, 39, 40, 41, 42, 43};
+
+    private int page;
+
+    public QuestMenuHolder() { this(0); }
+
+    public QuestMenuHolder(int page) { this.page = Math.max(0, page); }
+
+    public int page() { return page; }
 
     private static final int BAR_LENGTH = 20;
 
@@ -42,6 +51,7 @@ public class QuestMenuHolder implements InventoryHolder {
 
     public Inventory build(QuestService service, Player player) {
         inventory = Bukkit.createInventory(this, 54, ChatColor.DARK_GRAY + "" + ChatColor.BOLD + "Quests");
+        slotToQuest.clear();
         UUID id = player.getUniqueId();
         PlayerQuestData data = service.getData(id);
         Quest active = service.getActive(id);
@@ -50,13 +60,23 @@ public class QuestMenuHolder implements InventoryHolder {
         for (int i = 0; i < 54; i++) inventory.setItem(i, filler);
 
         List<Quest> quests = service.getRegistry().all();
-        for (int i = 0; i < quests.size() && i < QUEST_SLOTS.length; i++) {
-            Quest quest = quests.get(i);
+        int pages = Math.max(1, (quests.size() + QUEST_SLOTS.length - 1) / QUEST_SLOTS.length);
+        if (page >= pages) page = pages - 1;
+        int from = page * QUEST_SLOTS.length;
+        for (int i = 0; from + i < quests.size() && i < QUEST_SLOTS.length; i++) {
+            Quest quest = quests.get(from + i);
             inventory.setItem(QUEST_SLOTS[i], questIcon(service, id, data, quest, active));
             slotToQuest.put(QUEST_SLOTS[i], quest.id());
         }
 
         inventory.setItem(INFO_SLOT, infoIcon(data, active));
+        if (page > 0) inventory.setItem(PREV_SLOT, item(Material.ARROW, ChatColor.YELLOW + "Previous page",
+                List.of(ChatColor.GRAY + "Page " + page + "/" + pages)));
+        if (page < pages - 1) inventory.setItem(NEXT_SLOT, item(Material.ARROW, ChatColor.YELLOW + "Next page",
+                List.of(ChatColor.GRAY + "Page " + (page + 2) + "/" + pages)));
+        inventory.setItem(BOARD_SLOT, item(Material.OAK_HANGING_SIGN, ChatColor.GOLD + "" + ChatColor.BOLD + "Mission Board",
+                List.of(ChatColor.GRAY + "Jobs other players posted:", ChatColor.GRAY + "bring them what they ask,",
+                        ChatColor.GRAY + "take the reward they put up.", "", ChatColor.YELLOW + "Click to open (/missions)")));
 
         if (active != null) {
             inventory.setItem(ABANDON_SLOT, item(Material.BARRIER, ChatColor.RED + "" + ChatColor.BOLD + "Abandon Quest",

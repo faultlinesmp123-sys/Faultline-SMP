@@ -105,8 +105,17 @@ final class Elites implements Listener {
         Bukkit.getScheduler().runTask(plugin, () -> {
             if (!m.isValid()) return;
             for (String t : m.getScoreboardTags()) if (t.startsWith("faultline")) return;
-            roll(m, cfg("chance", 0.01), cfg("mutation-chance", 0.02));
+            // 2.0.0: Elites only spawn naturally in the Farlands (a lot of them) and, rarely, in the Fibers
+            String biome = biomeKey(m.getLocation());
+            double elite = biome.equals("faultline:farlands") ? cfg("farlands-chance", 0.35)
+                    : biome.equals("faultline:fibers") ? cfg("fibers-chance", 0.04) : cfg("chance", 0.0);
+            roll(m, elite, cfg("mutation-chance", 0.02));
         });
+    }
+
+    /** The biome's key ("faultline:farlands"), or "" (the overworld generator's custom biomes come from its datapack). */
+    static String biomeKey(org.bukkit.Location l) {
+        try { return l.getBlock().getBiome().getKey().toString(); } catch (Throwable e) { return ""; }
     }
 
     /** Raid waves: a few elites and mutants mixed in. */

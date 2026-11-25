@@ -87,7 +87,7 @@ final class DiscordLink {
     /** Kingdom for a set of roles: the lowest-numbered kingdom whose role they have, 0 for none. */
     int kingdomFor(List<String> roles) {
         if (roles == null) return 0;
-        for (int k = 1; k <= 3; k++) {
+        for (int k = 1; k <= FaultlineKingdoms.MAX; k++) {
             String id = pl.getConfig().getString("discord.roles." + k, "").trim();
             if (!id.isEmpty() && roles.contains(id)) return k;
         }

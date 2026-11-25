@@ -150,7 +150,11 @@ piglin-raid:
 # Elite mobs + mutations (1.2.0). Natural hostile spawns only (never spawners / eggs / other plugins' mobs), and raid waves.
 elites:
   enabled: true
-  chance: 0.01               # a natural spawn is an Elite: 2x health, +50% damage, +15% speed, double drops, 3x XP, bonus loot
+  # 2.0.0: Elites ONLY spawn naturally in the Farlands (a lot) and rarely in the Fibers. chance = everywhere else (0 = never).
+  # An Elite: 2x health, +50% damage, +15% speed, double drops, 3x XP, bonus loot
+  chance: 0.0
+  farlands-chance: 0.35
+  fibers-chance: 0.04
   mutation-chance: 0.02      # Looter Zombie (steals a stack from your backpack), Blazing Skeleton (fire arrows), Splitting Creeper
   raid-chance: 0.06          # the same in raid waves
   raid-mutation-chance: 0.05

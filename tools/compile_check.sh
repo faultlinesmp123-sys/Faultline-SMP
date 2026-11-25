@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Compiles every plugin in plugins/ against the real Paper API (default 26.2, what the server runs; PAPER=1.21.11
+# Compiles every plugin in plugins/ against the real Paper API (default 26.2; PAPER=26.3 = Paper's main branch, what 2.0 runs on; PAPER=1.21.11
 # for the version the poms target), for environments that can't reach
 # repo.papermc.io (Claude Code cloud sessions). It builds paper-api from PaperMC's GitHub source and pulls its
 # dependencies from Maven Central, caching everything in $CACHE. This only checks that the code compiles;
@@ -10,9 +10,10 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PAPER="${PAPER:-26.2}"
 case "$PAPER" in
+  26.3)    GUAVA=33.6.0-jre GSON=2.14.0 FASTUTIL=8.5.18 LOG4J=2.26.0 SLF4J=2.0.17 ADVENTURE=5.2.0 REF="${PAPER_REF:-main}" ;;
   26.2)    GUAVA=33.6.0-jre GSON=2.14.0 FASTUTIL=8.5.18 LOG4J=2.26.0 SLF4J=2.0.17 ADVENTURE=5.2.0 ;;
   1.21.11) GUAVA=33.3.1-jre GSON=2.11.0 FASTUTIL=8.5.15 LOG4J=2.24.1 SLF4J=2.0.16 ADVENTURE=4.26.1 ;;
-  *) echo "PAPER must be 26.2 or 1.21.11"; exit 2 ;;
+  *) echo "PAPER must be 26.3, 26.2 or 1.21.11"; exit 2 ;;
 esac
 CACHE="${CACHE:-${TMPDIR:-/tmp}/faultline-paper-api}/$PAPER"
 mkdir -p "$CACHE"
@@ -20,7 +21,7 @@ mkdir -p "$CACHE"
 if [ ! -f "$CACHE/papi.ok" ]; then
   echo "Building paper-api $PAPER into $CACHE (one time)..."
   rm -rf "$CACHE/paper" "$CACHE/brig" "$CACHE/papi" "$CACHE/deps"
-  git clone -q --depth 1 --filter=blob:none --sparse -b "ver/$PAPER" https://github.com/PaperMC/Paper.git "$CACHE/paper"
+  git clone -q --depth 1 --filter=blob:none --sparse -b "${REF:-ver/$PAPER}" https://github.com/PaperMC/Paper.git "$CACHE/paper"
   (cd "$CACHE/paper" && git sparse-checkout set paper-api)
   mkdir -p "$CACHE/deps"
   cat > "$CACHE/deps/pom.xml" <<EOF
@@ -56,6 +57,10 @@ EOF
   mkdir -p "$CACHE/brig/out"
   javac -nowarn -d "$CACHE/brig/out" $(find "$CACHE/brig/src/main/java" -name '*.java')
   (cd "$CACHE/brig/out" && jar cf "$CACHE/deps/lib/brigadier.jar" .)
+  # 26.3's API uses Java 22's unnamed variables (_); this box has JDK 21: give them names
+  grep -rlE 'catch \([A-Za-z.| ]+ _\)|\(_, |, _\)|, _, ' "$CACHE/paper/paper-api/src" --include='*.java' 2>/dev/null | while read -r f; do
+    sed -i -E 's/catch \(([A-Za-z.| ]+) _\)/catch (\1 ignored_)/g; s/\(_, /(unused_, /g; s/, _\)/, unused2_)/g; s/, _, /, unused3_, /g' "$f"
+  done
   find "$CACHE/paper/paper-api/src/main/java" "$CACHE/paper/paper-api/src/generated/java" -name '*.java' > "$CACHE/papi-src.txt"
   mkdir -p "$CACHE/papi"
   javac -J-Xmx3g -proc:none --release 21 -nowarn -encoding UTF-8 -d "$CACHE/papi" \

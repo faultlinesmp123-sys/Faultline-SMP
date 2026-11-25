@@ -1,0 +1,50 @@
+# FaultlineWorld: the Faultline SMP 2.0 overworld.
+# On a brand new server this plugin installs its datapack (world/datapacks/faultline_world.zip) and the bukkit.yml
+# generator line, then stops the server once. Start it again: the new world is generated on that start.
+stop-after-install: true
+set-spawn: true
+border-size: 7500
+
+protect:
+  pyramids: true        # the Deep Desert pyramids + their underworld can't be broken or blown up (chests/pots/webs can)
+  cores: true           # the faction admin-block halls
+
+abyss:
+  darkness: true        # pitch black down there
+  no-night-vision: true
+  music: faultline:deep.abyss
+  music-seconds: 286
+
+holes:
+  world: faultline_deep # the bottom of each Great Sea hole leads into the Dark Ocean
+  arrive-y: 300
+
+wasteland:
+  music: faultline:deep.acid
+  music-seconds: 105
+  burn-chance: 0.18     # each second exposed to the Wasteland sky
+  acid-rain-every-minutes: 25
+  acid-rain-minutes: 5
+  acid-rain-damage: 2.0
+  umbrella-protects: true          # the Umbrella keeps the acid rain off
+  umbrella-stops-burning: false
+
+spawns:                 # extra spawns every 5 s near each survival player there (until 'cap' monsters are within 40)
+  inferno: {cap: 10, per-wave: 2}   # day or night; they never burn
+  mire: {cap: 16, per-wave: 4}
+  farlands: {cap: 18, per-wave: 4}  # FaultlineRaids makes a lot of these Elite
+  fibers: {cap: 8, per-wave: 2}
+  spider: {cap: 8, per-wave: 2}
+
+fibers:
+  queen-chance: 0.05    # every 10 minutes per player in the Fibers: the wild Queen Spider
+  servant-chance: 0.12  # every minute: one of her servants
+  giant-chance: 0.01    # every 10 minutes: the Zombie Giant (only where it fits)
+
+giant:
+  health: 600
+  punch-damage: 14
+  stomp-damage: 10
+
+illager-city:
+  garrison: 12

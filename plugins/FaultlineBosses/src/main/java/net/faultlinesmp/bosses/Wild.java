@@ -262,6 +262,10 @@ final class Wild implements Listener {
             if (!deep) return "Only in the Dark Ocean's Trench.";
             return Math.hypot(l.getX() - mx, l.getZ() - mz) < c("titan.maw-radius", 70) ? null : "It only wakes in the Maw, at the Trench's end (" + (int) mx + ", " + (int) mz + ").";
         }
+        if (kind.equals("scourge") && !deep) { // 2.0.0: the overworld's Wasteland is a giant arena for it
+            if (!DeepBosses.sulphur(l)) return "Only in the Wasteland (the overworld's acid coast) or the Dark Ocean's Sulphur Sea.";
+            return RigMath.sea(l.getBlock()) || RigMath.sea(l.clone().add(0, -1, 0).getBlock()) ? null : "Only in the water.";
+        }
         if (DeepBosses.KINDS.contains(kind)) {
             if (!deep) return "Only in the Dark Ocean.";
             if (!RigMath.sea(l.getBlock()) && !RigMath.sea(l.clone().add(0, -1, 0).getBlock())) return "Only in the water.";

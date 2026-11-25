@@ -122,7 +122,7 @@ final class GhostShip implements Listener {
         if (on != null) s2 = spawn(p, on);
         else {
             String b = p.getLocation().getBlock().getBiome().getKey().getKey();
-            if (!b.contains("ocean")) return "Only out on the ocean.";
+            if (!b.contains("ocean") && !b.contains("great_sea")) return "Only out on the ocean.";
             double top = waterTop(p.isInsideVehicle() && p.getVehicle() != null ? p.getVehicle().getLocation() : p.getLocation());
             if (Double.isNaN(top)) return "Be on the water: on a ship, in a boat, or swimming.";
             s2 = spawnAt(p, p.getWorld().getName(), p.getLocation().getX(), top, p.getLocation().getZ());

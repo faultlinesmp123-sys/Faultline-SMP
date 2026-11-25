@@ -438,6 +438,8 @@ public final class FaultlineItems extends JavaPlugin {
         getServer().getPluginManager().registerEvents(riptideLock, this);
         // 1.2.78: the backpack, creator mode, the admin player mimic, haunted villages (Halloween), Krampus (Christmas)
         backpack = new Backpack(this);
+        umbrella = new Umbrella(this); // 2.0.0
+        getServer().getPluginManager().registerEvents(umbrella, this);
         getServer().getPluginManager().registerEvents(backpack, this);
         if (getCommand("backpack") != null) getCommand("backpack").setExecutor(backpack);
         creatorMode = new CreatorMode(this);
@@ -605,7 +607,18 @@ public final class FaultlineItems extends JavaPlugin {
         getCommand("queenspider").setExecutor((sender, cmd, label, args) -> { // /queenspider spawn [<world> <x> <y> <z>]
             if (args.length > 0 && args[0].equalsIgnoreCase("nest")) return spiderNest.command(sender, args); // 1.3.44
             if (args.length > 0 && args[0].equalsIgnoreCase("brood")) { // 1.3.47: /queenspider brood <servant|venom|ember|swift> [n] [asleep]
-                if (!(sender instanceof Player p)) { sender.sendMessage("Players only."); return true; }
+                if (!(sender instanceof Player p)) { // 2.0.0: from the console / FaultlineWorld: brood <kind> <n> <world> <x> <y> <z>
+                    if (args.length < 7) { sender.sendMessage("/queenspider brood <kind> <n> <world> <x> <y> <z>"); return true; }
+                    try {
+                        NestBrood.Kind k = NestBrood.Kind.valueOf(args[1].toUpperCase());
+                        World w = Bukkit.getWorld(args[3]);
+                        if (w == null) return true;
+                        int n = Math.max(1, Math.min(10, Integer.parseInt(args[2])));
+                        Location at = new Location(w, Double.parseDouble(args[4]) + 0.5, Double.parseDouble(args[5]), Double.parseDouble(args[6]) + 0.5);
+                        for (int i = 0; i < n; i++) spiderNest.brood.spawn(k, at.clone().add(i * 0.7, 0, 0), false, null);
+                    } catch (RuntimeException ex) { sender.sendMessage("Bad arguments: " + ex.getMessage()); }
+                    return true;
+                }
                 NestBrood.Kind kind;
                 try { kind = NestBrood.Kind.valueOf((args.length > 1 ? args[1] : "servant").toUpperCase()); }
                 catch (IllegalArgumentException e) { sender.sendMessage(ChatColor.RED + "/queenspider brood <servant|venom|ember|swift> [n] [asleep]"); return true; }
@@ -732,6 +745,7 @@ public final class FaultlineItems extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (umbrella != null) umbrella.removeAll(); // 2.0.0
         if (abilities != null) try { abilities.disable(); } catch (RuntimeException ignored) { }
         if (legendary != null) try { legendary.disable(); } catch (RuntimeException ignored) { }
         if (toiletRaid != null) try { toiletRaid.shutdown(); } catch (RuntimeException ignored) { }
@@ -1030,6 +1044,7 @@ public final class FaultlineItems extends JavaPlugin {
     BedrockShield bedrockShield;
     AccessoryBackups accessoryBackups;
     Backpack backpack;
+    Umbrella umbrella;
     CreatorMode creatorMode;
     OfflineTp offlineTp;
     ModGuard modGuard;
@@ -6619,6 +6634,7 @@ public final class FaultlineItems extends JavaPlugin {
             ACCESSORY_TYPES.put("ankhpiece", ImmunityCharms::ankhPiece); // the Ankh Shield's two boss pieces (given by FaultlineBosses)
             ACCESSORY_TYPES.put("cross", ImmunityCharms::cross);
             ACCESSORY_TYPES.put("backpack", pl -> pl.backpack.item()); // 1.2.78
+            ACCESSORY_TYPES.put("umbrella", pl -> pl.umbrella.item()); // 2.0.0
             // diving gear and the Kraken's counters (their objects are made in onEnable, so they're looked up when given)
             ACCESSORY_TYPES.put("divinghelmet", pl -> pl.getDivingGear().item(DivingGear.Piece.HELMET));
             ACCESSORY_TYPES.put("flipper", pl -> pl.getDivingGear().item(DivingGear.Piece.FLIPPER));
@@ -7001,6 +7017,8 @@ public final class FaultlineItems extends JavaPlugin {
                 list.add(external(icon(Material.LIGHT_GRAY_STAINED_GLASS, null, ChatColor.GRAY + "" + ChatColor.BOLD + "Event: Fog " + ChatColor.GRAY + "(starts it)", "FaultlineEvents"), "fevent start fog", "FaultlineEvents"));
                 list.add(external(icon(Material.LANTERN, null, ChatColor.GOLD + "" + ChatColor.BOLD + "Event: Lantern Night " + ChatColor.GRAY + "(starts it, turns it to dusk)", "FaultlineEvents"), "fevent start lantern-night", "FaultlineEvents"));
                 list.add(external(icon(Material.FEATHER, null, ChatColor.AQUA + "" + ChatColor.BOLD + "Event: Windy " + ChatColor.GRAY + "(starts it)", "FaultlineEvents"), "fevent start windy", "FaultlineEvents"));
+                // 2.0.0: the Zombie Giant (FaultlineWorld)
+                list.add(external(icon(Material.ZOMBIE_HEAD, null, ChatColor.DARK_GREEN + "" + ChatColor.BOLD + "Summon: Zombie Giant " + ChatColor.GRAY + "(where you stand)", "FaultlineWorld"), "fworld giant", "FaultlineWorld"));
                 // 1.3.11: the Nether's and the End's nights (FaultlineEvents 2.1.0)
                 list.add(external(icon(Material.MAGMA_BLOCK, null, ChatColor.RED + "" + ChatColor.BOLD + "Nether night: Ember Storm", "FaultlineEvents"), "fevent realm nether ember-storm", "FaultlineEvents"));
                 list.add(external(icon(Material.SOUL_LANTERN, null, ChatColor.AQUA + "" + ChatColor.BOLD + "Nether night: Soul Tide", "FaultlineEvents"), "fevent realm nether soul-tide", "FaultlineEvents"));

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds release/FAULTLINESMPJAR.jar: every Faultline plugin in one jar (see plugins/FAULTLINESMPJAR/.../Bundle.java).
+# Builds release/FAULTLINESMPJAR-2.0.jar: every Faultline plugin in one jar (see plugins/FAULTLINESMPJAR/.../Bundle.java).
 # Each plugin is compiled against Paper 1.21.11 (what the release jars use) by tools/compile_check.sh, jarred with its
 # resources (Items + Events carry the Mojang-mappings manifest line), and put inside the loader jar as bundled/<Name>.jar.
 set -euo pipefail
@@ -7,7 +7,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CACHE="${CACHE:-${TMPDIR:-/tmp}/faultline-paper-api}/1.21.11"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
-PLUGINS=(FaultlineItems FaultlineRaids FaultlineCosmetics FaultlineBosses FaultlineShips FaultlineKingdoms LimboBlackMarket FaultlineDeep FaultlineEvents FaultlineSkills FaultlineIndex)
+PLUGINS=(FaultlineWorld FaultlineItems FaultlineRaids FaultlineCosmetics FaultlineBosses FaultlineShips FaultlineKingdoms LimboBlackMarket FaultlineDeep FaultlineEvents FaultlineSkills FaultlineIndex)
 (cd "$ROOT/plugins" && PAPER=1.21.11 "$ROOT/tools/compile_check.sh" "${PLUGINS[@]}" FAULTLINESMPJAR)
 printf 'paperweight-mappings-namespace: mojang\n' > "$WORK/mojang.mf"
 mkdir -p "$WORK/outer/bundled"
@@ -25,5 +25,5 @@ done
 cp -r "$CACHE/build/FAULTLINESMPJAR/." "$WORK/outer/"
 cp -r "$ROOT/plugins/FAULTLINESMPJAR/src/main/resources/." "$WORK/outer/"
 mkdir -p "$ROOT/release"
-(cd "$WORK/outer" && jar cf "$ROOT/release/FAULTLINESMPJAR.jar" .)
-ls -la "$ROOT/release/FAULTLINESMPJAR.jar"
+(cd "$WORK/outer" && jar cf "$ROOT/release/FAULTLINESMPJAR-2.0.jar" .)
+ls -la "$ROOT/release/FAULTLINESMPJAR-2.0.jar"

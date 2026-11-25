@@ -1,5 +1,5 @@
 name: FaultlineSkills
-version: '1.0.3'
+version: '2.0.0'
 main: net.faultlinesmp.skills.FaultlineSkills
 api-version: '1.21'
 author: FaultlineSMP

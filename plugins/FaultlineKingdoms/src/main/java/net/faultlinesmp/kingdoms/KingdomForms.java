@@ -44,7 +44,7 @@ final class KingdomForms {
         if (k > 0 && pl.getConfig().getBoolean("pvp.friendly-fire-vote.enabled", true)) {
             buttons.add("Vote: friendly fire\n§8your vote: " + (m.ffVote == null ? "none" : m.ffVote ? "on" : "off")); actions.add(() -> vote(p));
         }
-        for (int i = 1; i <= 3; i++) {
+        for (int i = 1; i <= FaultlineKingdoms.MAX; i++) {
             int kk = i;
             int n = 0; for (FaultlineKingdoms.Member x : pl.members.values()) if (x.kingdom == kk) n++;
             buttons.add(c(pl.label(kk)) + "\n§8" + n + " members"); actions.add(() -> list(p, kk));

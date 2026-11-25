@@ -295,7 +295,7 @@ final class Journey implements Listener {
     Location openSea(World w, int x, int z) {
         int y = w.getSeaLevel() - 1;
         String biome = w.getBlockAt(x, y, z).getBiome().getKey().getKey();
-        if (!biome.contains("ocean")) return null;
+        if (!biome.contains("ocean") && !biome.contains("great_sea")) return null; // 2.0: the Great Sea is an ocean
         if (!Vortex.water(w.getBlockAt(x, y, z)) || !w.getBlockAt(x, y + 1, z).isEmpty()) return null;
         int deep = 0;
         while (deep < 40 && Vortex.water(w.getBlockAt(x, y - deep - 1, z))) deep++;

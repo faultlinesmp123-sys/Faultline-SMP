@@ -784,7 +784,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
 
     static boolean deepOcean(Location l) {
         String b = l.getBlock().getBiome().getKey().getKey();
-        return b.equals("deep_ocean") || b.equals("deep_cold_ocean") || b.equals("deep_lukewarm_ocean") || b.equals("deep_frozen_ocean");
+        return b.equals("great_sea") || b.equals("deep_ocean") || b.equals("deep_cold_ocean") || b.equals("deep_lukewarm_ocean") || b.equals("deep_frozen_ocean");
     }
 
     /** How many blocks of water are below (and including) this spot. */

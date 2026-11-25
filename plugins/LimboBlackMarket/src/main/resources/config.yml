@@ -19,6 +19,12 @@ anti-farm-cooldown-minutes: 10
 # Head bounties: /bounty place <player> [amount] puts the player heads in your hand on someone's name.
 # Whoever kills them gets every head on them. No payout for a kill the anti-farm cooldown flags, an
 # alt on the same connection, or (by default) your own kingdom: the bounty just stays up.
+# 2.0.0 Mission Board (/missions): players post jobs ("bring 64 iron ingots") with the reward held by the board.
+missions:
+  enabled: true
+  max-per-player: 5
+  expire-days: 7
+
 bounty:
   enabled: true
   tagged-heads-only: true     # only real heads (tagged with a tier when a player died), not decorative/mob heads

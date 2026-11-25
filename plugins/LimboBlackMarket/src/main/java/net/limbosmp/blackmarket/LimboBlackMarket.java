@@ -27,6 +27,7 @@ public final class LimboBlackMarket extends JavaPlugin {
     private AntiFarmManager antiFarmManager;
     private FriendlyFireLogger friendlyFireLogger;
     private Bounties bounties;
+    private MissionBoard missionBoard;
     private NamespacedKey headTierKey;
     private NamespacedKey questBookKey;
 
@@ -55,6 +56,10 @@ public final class LimboBlackMarket extends JavaPlugin {
         getServer().getPluginManager().registerEvents(bounties, this);
         getCommand("bounty").setExecutor(bounties);
         getCommand("bounty").setTabCompleter(bounties);
+        this.missionBoard = new MissionBoard(this); // 2.0.0: player-posted jobs
+        getServer().getPluginManager().registerEvents(missionBoard, this);
+        getCommand("missions").setExecutor(missionBoard);
+        getCommand("missions").setTabCompleter(missionBoard);
 
         // Quests — opened with the craftable Quest Book (the /quest command is gone).
         QuestMenuListener questMenu = new QuestMenuListener(this, questService);
@@ -88,6 +93,7 @@ public final class LimboBlackMarket extends JavaPlugin {
     @Override
     public void onDisable() {
         if (streakFx != null) try { streakFx.removeAll(); } catch (RuntimeException ignored) { }
+        if (missionBoard != null) try { missionBoard.save(); } catch (RuntimeException ignored) { }
         if (tierManager != null) {
             tierManager.save();
         }
@@ -137,6 +143,10 @@ public final class LimboBlackMarket extends JavaPlugin {
 
     public FriendlyFireLogger getFriendlyFireLogger() {
         return friendlyFireLogger;
+    }
+
+    public MissionBoard getMissionBoard() {
+        return missionBoard;
     }
 
     public Bounties getBounties() {

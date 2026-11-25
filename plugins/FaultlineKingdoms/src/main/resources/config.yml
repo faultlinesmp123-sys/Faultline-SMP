@@ -1,11 +1,14 @@
 # FaultlineKingdoms: Kingdom 1, 2 and 3, assigned from Discord roles, and grace periods.
 
+# 2.0.0: five factions, one per region of the new world (each has an abandoned castle to fix and an admin-block hall)
 kingdoms:
-  1: {name: "Kingdom 1", color: "RED"}
-  2: {name: "Kingdom 2", color: "BLUE"}
-  3: {name: "Kingdom 3", color: "GREEN"}
+  1: {name: "The Mountain", color: "RED"}
+  2: {name: "The Jungle", color: "GREEN"}
+  3: {name: "The Ice", color: "AQUA"}
+  4: {name: "The Fibers", color: "DARK_PURPLE"}
+  5: {name: "The Sky", color: "YELLOW"}
 
-# Grace periods: /kingdoms grace <all|1|2|3> <on|off> [time]  (time: 30m, 2h, 1d, 1h30m; nothing = until turned off)
+# Grace periods: /kingdoms grace <all|1-5> <on|off> [time]  (time: 30m, 2h, 1d, 1h30m; nothing = until turned off)
 grace:
   protected-can-attack: false   # can someone under grace hit other players? false = no (no hitting from safety)
   show-actionbar: true          # a reminder in the action bar while your grace is on
@@ -13,12 +16,12 @@ grace:
 pvp:
   friendly-fire: true           # can members of the same kingdom hurt each other? (the default; each kingdom can vote)
   # each kingdom votes its own friendly fire: /kingdom ff <on|off|clear>; the majority wins once enough have voted
-  # (a tie, or too few votes = friendly-fire above). Admins can fix it: /kingdoms ff <1|2|3> <on|off|vote>.
+  # (a tie, or too few votes = friendly-fire above). Admins can fix it: /kingdoms ff <1-5> <on|off|vote>.
   friendly-fire-vote:
     enabled: true
     min-votes: 3
 
-# 1.4.0 TREATIES: /kingdom ally <1|2|3> <yes|no|clear>. Two kingdoms are allied while BOTH want it: at least min-votes of
+# 1.4.0 TREATIES: /kingdom ally <1-5> <yes|no|clear>. Two kingdoms are allied while BOTH want it: at least min-votes of
 # each kingdom's members voted and more said yes than no. Allies can't hurt each other. When a treaty breaks, PvP between
 # them stays off for break-grace-minutes (no backstab mid-fight). Staff: /kingdoms treaty <a> <b> <on|off|vote>.
 treaties:
@@ -58,6 +61,8 @@ discord:
     1: "1553886942100328539"    # role ID for Kingdom 1
     2: "1553986213311029338"    # Kingdom 2
     3: "1557134028488843374"    # Kingdom 3
+    4: ""                       # Kingdom 4 (2.0.0: make the role in Discord and put its ID here)
+    5: ""                       # Kingdom 5
   sync-minutes: 5               # re-check online players' roles this often (and always when they join)
   slash-commands: true          # /stats <player> in your Discord server (the bot answers with their stats)
   remove-when-role-gone: true   # lost the role / left the Discord = no kingdom
@@ -79,6 +84,8 @@ discord:
       1: ""
       2: ""
       3: ""
+      4: ""
+      5: ""
     format: "&9[Discord] {kingdom} &f{name}&7: {color}{message}"
 
 # Bedrock players get /kingdom as a menu (Floodgate/Geyser forms): link, verify, friendly fire, members.

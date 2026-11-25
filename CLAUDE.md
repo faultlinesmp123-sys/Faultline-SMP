@@ -3347,6 +3347,12 @@ Notes:
   600 ticks): all 11 gameplay plugins load and tick with no errors (FaultlineWorld can't load in MockBukkit: no world
   container). The bundle's load error now prints the real cause. NOTE: `main` is BEHIND this branch: FaultlineSMP.zip (the
   Umbrella, max_format 97) and every bedrock/ pack + mapping differ; players and `/bedrockcheck install` read `main`.
+- **Windows audit (FAULTLINESMPJAR, same 2.0.0)**: the owner runs the server on Windows 10. Windows locks open jars:
+  `Bundle.freshSource()` = `plugins/update/<this jar's file name>` (Bukkit's update folder; Paper moves it in at restart), else the
+  newest `update/FAULTLINESMPJAR*.jar`, else the running jar; `/faultline reload` reads that. `writeJar`: a bundled jar the server
+  still holds open is written beside it as `<Name>-<hash>.jar` (the next start deletes those and rewrites `<Name>.jar`). Checked
+  and fine on Windows: SafeYaml (`.tmp` + move with a non-atomic fallback; `.broken-yyyy-MM-dd_HH-mm-ss` has no colons), Watch log
+  names, FaultlineWorld's first-start halt (start.bat's loop restarts it). Tested (scratch `rld/ReloadTest`: reload from update/).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.
@@ -3357,7 +3363,9 @@ Notes:
 0. **When sending a release, also give the terminal command to download it on the VPS** (owner's request), with the COMMIT
    SHA in the URL (a branch URL is cached by GitHub's CDN for ~5 min: the owner kept getting the previous jar), e.g.
    `curl -L -o FAULTLINESMPJAR-2.0.jar https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/<commit sha>/release/FAULTLINESMPJAR-2.0.jar`
-   run inside the server's `plugins/` folder, then `/faultline reload`.
+   run inside the server's `plugins/` folder, then `/faultline reload`. THE OWNER'S VPS IS WINDOWS 10 now (start.bat loop): Windows
+   locks a running server's jars, so the new jar goes in `plugins\update\` under the SAME name (PowerShell: `cd <server>\plugins\update;
+   curl.exe -L -o FAULTLINESMPJAR-2.0.jar <url>`), then `/faultline reload`; Paper moves it over the old jar at the next restart.
 1. **Every new item, boss, or enemy must be added to the Faultline Index.**
 2. **Every new boss must be added to `/itemsmenu`** (a spawn egg or summon item).
 3. If textures/models change, update the resource pack zip **and** its SHA-1 hash in config.

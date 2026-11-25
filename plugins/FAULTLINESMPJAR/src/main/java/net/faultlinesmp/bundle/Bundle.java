@@ -53,13 +53,10 @@ public final class Bundle extends JavaPlugin {
                 }
                 byte[] data = read("bundled/" + name + ".jar");
                 if (data == null) { status.put(name, "not in this jar"); continue; }
+                File[] side = jars.listFiles((d, n) -> n.startsWith(name + "-") && n.endsWith(".jar"));
+                if (side != null) for (File f : side) f.delete(); // copies a Windows /faultline reload left beside the locked jar
                 File jar = new File(jars, name + ".jar");
-                if (!jar.exists() || !Arrays.equals(sha1(Files.readAllBytes(jar.toPath())), sha1(data))) {
-                    Path tmp = new File(jars, name + ".jar.tmp").toPath();
-                    Files.write(tmp, data);
-                    try { Files.move(tmp, jar.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE); }
-                    catch (IOException e) { Files.move(tmp, jar.toPath(), StandardCopyOption.REPLACE_EXISTING); }
-                }
+                if (!jar.exists() || !Arrays.equals(sha1(Files.readAllBytes(jar.toPath())), sha1(data))) jar = writeJar(jars, name, data);
                 Plugin p = Bukkit.getPluginManager().loadPlugin(jar);
                 if (p == null) { status.put(name, "NOT LOADED (Paper refused the jar)"); getLogger().severe("Paper refused " + name + ".jar"); continue; }
                 loaded.add(p);
@@ -82,10 +79,51 @@ public final class Bundle extends JavaPlugin {
 
     /** The bundled jar out of the FAULTLINESMPJAR.jar that is on disk NOW (the one the owner just uploaded), not the one we started from. */
     private byte[] readFresh(String name) throws IOException {
-        try (java.util.zip.ZipFile z = new java.util.zip.ZipFile(getFile())) {
+        try (java.util.zip.ZipFile z = new java.util.zip.ZipFile(freshSource())) {
             java.util.zip.ZipEntry e = z.getEntry("bundled/" + name + ".jar");
             if (e == null) return null;
             try (InputStream in = z.getInputStream(e)) { return in.readAllBytes(); }
+        }
+    }
+
+
+    /**
+     * Where the new jar is. WINDOWS locks a running server's jars, so plugins/FAULTLINESMPJAR-2.0.jar can't be overwritten while it
+     * runs: the owner puts the new one in plugins/update/ under the SAME file name instead. We read that one now, and at the next
+     * restart Paper moves it over the old jar by itself (its update folder). On Linux overwriting the jar in place still works.
+     */
+    File freshSource() {
+        File dir = null;
+        try { dir = Bukkit.getUpdateFolderFile(); } catch (Throwable ignored) { }
+        if (dir == null) dir = new File(getFile().getParentFile(), "update");
+        File same = new File(dir, getFile().getName());
+        if (same.isFile()) return same;
+        File newest = null;
+        File[] list = dir.listFiles((d, n) -> n.toUpperCase(Locale.ROOT).startsWith("FAULTLINESMPJAR") && n.toLowerCase(Locale.ROOT).endsWith(".jar"));
+        if (list != null) for (File f : list) if (newest == null || f.lastModified() > newest.lastModified()) newest = f;
+        return newest != null ? newest : getFile();
+    }
+
+    /**
+     * Writes a bundled jar out. A jar the server still holds open (Windows, after /faultline reload) can't be replaced: then the
+     * new copy goes beside it as {@code <Name>-<hash>.jar}; the next start deletes those and writes {@code <Name>.jar} fresh.
+     */
+    static File writeJar(File jars, String name, byte[] data) throws IOException {
+        File jar = new File(jars, name + ".jar");
+        Path tmp = new File(jars, name + ".jar.tmp").toPath();
+        Files.write(tmp, data);
+        try { Files.move(tmp, jar.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE); return jar; }
+        catch (IOException e) {
+            try { Files.move(tmp, jar.toPath(), StandardCopyOption.REPLACE_EXISTING); return jar; }
+            catch (IOException locked) {
+                byte[] h = sha1(data);
+                StringBuilder hex = new StringBuilder();
+                for (int i = 0; i < 4 && i < h.length; i++) hex.append(String.format("%02x", h[i]));
+                File side = new File(jars, name + "-" + hex + ".jar");
+                if (side.isFile() && Arrays.equals(sha1(Files.readAllBytes(side.toPath())), h)) { Files.deleteIfExists(tmp); return side; }
+                Files.move(tmp, side.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                return side;
+            }
         }
     }
 
@@ -119,10 +157,11 @@ public final class Bundle extends JavaPlugin {
             try { data = readFresh(name); } catch (IOException e) { s.sendMessage(ChatColor.RED + "Couldn't read " + getFile().getName() + ": " + e.getMessage()); return; }
             if (data == null) continue;
             File jar = new File(new File(getDataFolder(), "jars"), name + ".jar");
+            try { jar = new File(p.getClass().getProtectionDomain().getCodeSource().getLocation().toURI()); } catch (Throwable ignored) { }
             try { if (!jar.exists() || !Arrays.equals(sha1(Files.readAllBytes(jar.toPath())), sha1(data))) changed = true; } catch (IOException e) { changed = true; }
             names.add(name); fresh.put(name, data);
         }
-        if (!changed && !force) { s.sendMessage(ChatColor.YELLOW + "Nothing changed in " + getFile().getName() + ". Put the new FAULTLINESMPJAR.jar in plugins/ first, or use /faultline reload force."); return; }
+        if (!changed && !force) { s.sendMessage(ChatColor.YELLOW + "Nothing changed in " + freshSource().getPath() + ". Put the new " + getFile().getName() + " in plugins/update/ (or over the old one on Linux) first, or use /faultline reload force."); return; }
         org.bukkit.World deep = Bukkit.getWorld("faultline_deep");
         if (names.contains("FaultlineDeep") && deep != null && !deep.getPlayers().isEmpty()) {
             StringBuilder who = new StringBuilder();
@@ -131,7 +170,7 @@ public final class Bundle extends JavaPlugin {
             return;
         }
         long t0 = System.currentTimeMillis();
-        s.sendMessage(ChatColor.GOLD + "Reloading " + names.size() + " Faultline plugins...");
+        s.sendMessage(ChatColor.GOLD + "Reloading " + names.size() + " Faultline plugins from " + freshSource().getPath() + "...");
         getLogger().info("[Reload] by " + s.getName() + ": " + names);
         for (org.bukkit.entity.Player p : Bukkit.getOnlinePlayers()) p.closeInventory(); // no plugin menu stays open on code that's going away
         // 1) off, newest first (Index first, Items last), like a shutdown
@@ -150,11 +189,7 @@ public final class Bundle extends JavaPlugin {
         List<Plugin> loaded = new ArrayList<>();
         for (String name : names) {
             try {
-                File jar = new File(jars, name + ".jar");
-                Path tmp = new File(jars, name + ".jar.tmp").toPath();
-                Files.write(tmp, fresh.get(name));
-                try { Files.move(tmp, jar.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE); }
-                catch (IOException e) { Files.move(tmp, jar.toPath(), StandardCopyOption.REPLACE_EXISTING); }
+                File jar = writeJar(jars, name, fresh.get(name));
                 Plugin p = Bukkit.getPluginManager().loadPlugin(jar);
                 if (p == null) { status.put(name, "NOT LOADED (Paper refused the jar)"); continue; }
                 loaded.add(p);

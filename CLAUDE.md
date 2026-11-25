@@ -3232,6 +3232,16 @@ Notes:
   longer deletes them. Mission Board: the poster receives the very stacks handed in (a worn tool used to come out new);
   deliveries may carry the Index's dupe serial (`faultlineindex:uid`; every totem / tool has one) but not damage. Guide + Kingdoms
   plugin.yml texts no longer mention Discord linking. The preview harness (`WorldPreview`) calls both generate steps.
+- **2.0 audit, round 3 (FaultlineWorld `Terrain`, Items)**: FLOODS: the dug-out faction sites (basins, the Greek statue's crater at
+  y 89-108, the cathedral canyon at y 2) are air below sea level 200. Rivers ran up to their edge, and on some seeds a bowl
+  reached the beach: a wall of water standing next to open air = the site floods at the first block update. Rivers now fade out
+  before a dry site / the canyon (`Terrain.riverFade`), and `landHeight` keeps a rim: nothing below sea level within ~24 blocks of
+  the shore, then at most one block down per block inland. Checked by brute force over 10 seeds (scratch `lk/Leak`: every dry
+  column vs its 4 neighbours, 115-224 leaks before, 0 after) and `lk/Fixed` (spawn height, the 3 pyramids on flat Deep Desert,
+  every site on its ground / seabed / under its roof, the 3 holes in the sea, on 13 seeds). RULE: the seed is random on the real
+  server, so check fixed places on several seeds. Items: sandstorms also start in `faultline:deep_desert` (`Weather.sandy`).
+  Known and accepted: the schematics' block ENTITIES aren't read (banners lose their patterns, signs their text, heads their
+  skin; chests get loot tables, the blank spawner gets a mob).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

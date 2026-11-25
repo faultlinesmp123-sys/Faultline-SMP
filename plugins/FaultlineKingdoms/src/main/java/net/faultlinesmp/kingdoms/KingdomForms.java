@@ -30,7 +30,7 @@ final class KingdomForms {
         int k = m.kingdom;
         StringBuilder s = new StringBuilder();
         s.append("§lYour kingdom:§r ").append(c(pl.label(k))).append(m.manual ? " §7(set by staff)" : "").append("\n");
-        s.append("§lDiscord:§r ").append(m.discordId != null ? "§2linked" : "§cnot linked").append("§r\n");
+        if (!DiscordLink.OFF) s.append("§lDiscord:§r ").append(m.discordId != null ? "§2linked" : "§cnot linked").append("§r\n");
         if (k > 0) s.append("§lFriendly fire:§r ").append(pl.friendlyFire(k) ? "§cON" : "§2OFF").append(" §7(").append(c(pl.ffWhy(k))).append(")§r\n");
         if (FaultlineKingdoms.protectedNow(p)) s.append("§2🛡 You're under a grace period.§r\n");
         List<String> buttons = new ArrayList<>();

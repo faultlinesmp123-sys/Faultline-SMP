@@ -98,7 +98,7 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
         gateway.start();
         getServer().getScheduler().runTaskTimer(this, this::tick, 20L, 20L);
         for (Player p : Bukkit.getOnlinePlayers()) { member(p); refreshName(p); }
-        getLogger().info("Faultline Kingdoms enabled: " + members.size() + " players known, Discord sync " + (discord.on() ? "ON" : "OFF (set discord.bot-token / guild-id)") + ".");
+        getLogger().info("Faultline Kingdoms enabled: " + members.size() + " players known, kingdoms set by staff" + (discord.on() ? "" : "") + ".");
     }
 
     @Override
@@ -566,7 +566,7 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
                 if (p != null) {
                     Member m = member(p);
                     msg(sender, ChatColor.GOLD + "Your kingdom: " + label(m.kingdom) + (m.manual ? ChatColor.GRAY + " (set by staff)" : "")
-                            + ChatColor.GRAY + "  ·  Discord: " + (m.discordId != null ? ChatColor.GREEN + "linked" : ChatColor.RED + "not linked (/kingdom link <name>)"));
+                            + (DiscordLink.OFF ? "" : ChatColor.GRAY + "  ·  Discord: " + (m.discordId != null ? ChatColor.GREEN + "linked" : ChatColor.RED + "not linked (/kingdom link <name>)")));
                 }
                 status(sender);
             }
@@ -593,7 +593,7 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
             for (String key : treaties) { String[] ab = key.split("-"); t.add(label(Integer.parseInt(ab[0])) + ChatColor.GRAY + " + " + label(Integer.parseInt(ab[1]))); }
             s.sendMessage(ChatColor.GOLD + "Treaties: " + String.join(ChatColor.GRAY + ", ", t));
         }
-        if (s.hasPermission("kingdoms.admin") && gateway != null) s.sendMessage(ChatColor.DARK_GRAY + "Discord /stats: " + gateway.status + ", chat bridge: " + gateway.bridgeStatus);
+        if (!DiscordLink.OFF && s.hasPermission("kingdoms.admin") && gateway != null) s.sendMessage(ChatColor.DARK_GRAY + "Discord /stats: " + gateway.status + ", chat bridge: " + gateway.bridgeStatus);
     }
 
     static int parseKingdom(String s) {
@@ -643,7 +643,7 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
                 Member m = members.computeIfAbsent(op.getUniqueId(), x -> new Member());
                 if (m.name == null) m.name = op.getName();
                 setKingdom(op.getUniqueId(), k, true, "set by staff");
-                msg(sender, ChatColor.GREEN + op.getName() + " is now in " + label(k) + ChatColor.GREEN + " (pinned: Discord roles won't change it; /kingdoms set " + op.getName() + " auto to undo).");
+                msg(sender, ChatColor.GREEN + op.getName() + " is now in " + label(k) + ChatColor.GREEN + " (/kingdoms set " + op.getName() + " auto to undo).");
             }
             case "sync" -> {
                 if (!discord.on()) return msg(sender, ChatColor.RED + "Discord isn't set up (discord.bot-token / guild-id in config.yml).");
@@ -727,7 +727,7 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
                 if (gateway != null) gateway.stop();
                 gateway = new DiscordGateway(this, discord);
                 gateway.start();
-                msg(sender, ChatColor.GREEN + "Reloaded. Discord sync " + (discord.on() ? "on." : "off (no token / guild id)."));
+                msg(sender, ChatColor.GREEN + "Reloaded.");
             }
             default -> {
                 status(sender);

@@ -137,12 +137,18 @@ final class Weather implements Listener, CommandExecutor, org.bukkit.command.Tab
         for (Player p : Bukkit.getOnlinePlayers()) {
             if (!survival(p) || !FaultlineItems.surfaceWorld(p.getWorld())) continue;
             Biome b = p.getLocation().getBlock().getBiome();
-            if (on("sandstorm") && !active.containsKey("sandstorm") && SANDS.contains(b) && random.nextDouble() < cfg("sandstorm.chance-per-minute", 0.006)) start("sandstorm", p.getWorld(), p.getLocation());
+            if (on("sandstorm") && !active.containsKey("sandstorm") && sandy(b) && random.nextDouble() < cfg("sandstorm.chance-per-minute", 0.006)) start("sandstorm", p.getWorld(), p.getLocation());
             else if (on("blizzard") && !active.containsKey("blizzard") && SNOWY.contains(b) && random.nextDouble() < cfg("blizzard.chance-per-minute", 0.006)) start("blizzard", p.getWorld(), p.getLocation());
         }
     }
 
     static boolean isDay(World w) { long t = w.getTime(); return t < 12000 || t > 23500; }
+
+    /** 2.0: the new world's Deep Desert is a datapack biome (not in the old list). */
+    static boolean sandy(Biome b) {
+        if (SANDS.contains(b)) return true;
+        try { return b.getKey().getKey().equals("deep_desert"); } catch (Throwable t) { return false; }
+    }
 
     static final Set<Biome> SANDS = new HashSet<>(List.of(Biome.DESERT, Biome.BADLANDS, Biome.ERODED_BADLANDS, Biome.WOODED_BADLANDS));
     static final Set<Biome> SNOWY = new HashSet<>(List.of(Biome.SNOWY_PLAINS, Biome.SNOWY_TAIGA, Biome.SNOWY_SLOPES, Biome.SNOWY_BEACH, Biome.GROVE,

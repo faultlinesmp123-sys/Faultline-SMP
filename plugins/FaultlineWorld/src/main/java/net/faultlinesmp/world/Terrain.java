@@ -128,7 +128,9 @@ final class Terrain {
             double rv = Math.abs(fbm(river, x / 900.0, z / 900.0, 2));
             if (co > 0.12 && rv < 0.03 && (blob == null || blob.biome() != B.DEEP_DESERT && blob.biome() != B.WASTELAND)) {
                 double t = 1 - rv / 0.03;
-                h = lerp(h, SEA - 4, smooth(0, 0.7, t) * smooth(250, 225, h));
+                // AUDIT: rivers fade out before the dug-out faction sites and the canyon. One running up to their edge left a
+                // wall of river water standing next to open air below sea level: the first block update floods the site.
+                h = lerp(h, SEA - 4, smooth(0, 0.7, t) * smooth(250, 225, h) * riverFade(x, z));
                 if (h < SEA - 1) c.river = true;
             }
             c.surface = (int) Math.round(h);
@@ -172,6 +174,10 @@ final class Terrain {
             if (p > 0.35) h += Math.min(24, (p - 0.35) * 90);
         }
         h = shapeSites(x, z, h, true);
+        // AUDIT: the coastline moves with the seed, and a site's dug-out bowl could reach the beach: land below sea level right
+        // next to the sea (it would pour in). A rim always stands: nothing is below sea level within ~24 blocks of the shore, and
+        // from there the ground may only drop one block per block.
+        h = Math.max(h, SEA + 1 - Math.max(0, (co - 0.15) * 160));
         return Math.min(310, h);
     }
 
@@ -247,6 +253,20 @@ final class Terrain {
         double ds = Layout.dist(x, z, Layout.SPAWN_X, Layout.SPAWN_Z);
         if (land && ds < 120) h = lerp(Layout.SPAWN_Y, h, smooth(40, 120, ds));
         return h;
+    }
+
+    /** 0 at (and inside) a dry site's edge or the canyon, 1 from a little further out. */
+    static double riverFade(int x, int z) {
+        double f = 1;
+        for (Layout.Site s : Layout.SITES) {
+            if (s.r() <= 0) continue;
+            Layout.Shape sh = s.shape();
+            if (sh != Layout.Shape.FLAT && sh != Layout.Shape.BASIN && sh != Layout.Shape.CRATER) continue;
+            f = Math.min(f, smooth(s.r() * 2.0 + 6, s.r() * 2.0 + 46, Layout.dist(x, z, s.x(), s.z())));
+        }
+        int ex = Math.abs(x - Layout.CANYON_X) - Layout.CANYON_HX, ez = Math.abs(z - Layout.CANYON_Z) - Layout.CANYON_HZ;
+        f = Math.min(f, smooth(6, 46, Math.max(ex, ez)));
+        return f;
     }
 
     /** Faction sites dug below sea level stay dry (they are surrounded by land). */

@@ -327,6 +327,7 @@ final class NestBrood implements Listener {
         Brood b = brood.get(e.getEntity().getUniqueId());
         if (b == null) return;
         if (b.rig != null) b.rig.die();
+        QueenSpiderManager.killStandin(b.standin);
         e.getDrops().clear();
         Location l = e.getEntity().getLocation();
         e.getDrops().add(new ItemStack(Material.STRING, 1 + random.nextInt(3)));

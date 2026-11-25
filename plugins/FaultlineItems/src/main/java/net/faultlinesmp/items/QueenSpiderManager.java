@@ -797,6 +797,12 @@ final class QueenSpiderManager implements Listener {
     }
 
     // ============================================================================================ being hit
+    /** 1.3.54: Bedrock players see their stand-in die the vanilla way (it used to stand there until the death was over). */
+    static void killStandin(Spider s) {
+        if (s == null || !s.isValid() || s.isDead()) return;
+        try { s.setInvulnerable(false); s.setHealth(0); } catch (RuntimeException e) { s.remove(); }
+    }
+
     Queen queenOf(Entity e) {
         if (e == null) return null;
         Queen q = queens.get(e.getUniqueId());
@@ -856,6 +862,7 @@ final class QueenSpiderManager implements Listener {
         event.setDroppedExp(0);
         if (q != null) {
             if (q.rig != null) q.rig.die();
+            killStandin(q.standin);
             dead.getWorld().playSound(dead.getLocation(), "faultline:demon_eye.death", SoundCategory.HOSTILE, 3f, 0.6f);
             end(q);
         }

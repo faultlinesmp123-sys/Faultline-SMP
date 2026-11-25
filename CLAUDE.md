@@ -3115,6 +3115,15 @@ Notes:
   the Lantern Wraith, toilets, every Dark Ocean creature (the Rimeback 1200, mutated x2). A setup that throws now removes the half-made
   queen (`cleanupHalf`) and the nest waits a minute before trying again. Raids' `Piglins.hp` clamps. RULE: never
   `setHealth(x)` with x from config; use `BigHealth.set` or clamp to `getAttribute(MAX_HEALTH).getValue()`.
+- **Spider deaths (Items 1.3.54)**: every QueenRig spider (the Queen, servants, venom / ember / swift brood) dies in stages
+  (`QueenRig.drawDeath` + `deathFx`, u = deathT / deathLen; the Queen 120 ticks, the brood 76): THROES until 0.14 (rears, legs
+  flail, fangs wide, head thrashes, ichor dust, rising screeches), COLLAPSE until 0.30 (legs give out one after another, slams onto
+  its belly splayed, block-crack dust + a bounce), ROLL onto its back until 0.55 (a rock), the DEATH CURL until 0.80 (legs curl over
+  the belly, fading kicks, eyes go dark, abdomen deflates), then it shrinks away (the whole chain scaled about its feet) into its
+  breed's particles (venom slime + green, ember flame + lava, swift sparks + blue, queen/servant ash + purple) and a last puff. It
+  starts from the last living leg angles (`Leg.lY/lE/lK/lF`). Bedrock stand-ins die the vanilla way at once
+  (`QueenSpiderManager.killStandin`). Bedrock "couldn't see the Queen" before 1.3.53: her setup threw on the health cap before
+  her stand-in was made. Preview `tools/previews/spider_death.png` (scratch `nest/DeathTest` + `rigcheck2.py`).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

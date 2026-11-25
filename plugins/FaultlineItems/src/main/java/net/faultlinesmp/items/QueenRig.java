@@ -71,6 +71,7 @@ final class QueenRig {
         int stepT = -1, stepLen;
         double tap;                 // a fidget: 0..1 lift
         int tapT = -1;
+        double lY, lE, lK, lF = FOOT; // 1.3.54: the last living angles (the death starts from them)
     }
     private final Leg[] legs = new Leg[8];
 
@@ -133,7 +134,18 @@ final class QueenRig {
     }
 
     /** She died: the body keeps going (rolls over, curls up) for 3 seconds, then it's gone. */
-    void die() { dying = true; deathT = 0; play("death", 60); }
+    void die() {
+        if (dying) return;
+        dying = true; deathT = 0; play("death", 60);
+        deathLen = k > 0.06 ? 120 : 76; // 1.3.54: the Queen dies slower and heavier
+        breed = prefix.contains("venom") ? "venom" : prefix.contains("ember") ? "ember" : prefix.contains("swift") ? "swift" : k > 0.06 ? "queen" : "servant";
+        dYaw0 = yaw;
+    }
+
+    private int deathLen = 76;
+    private String breed = "servant";
+    private float dYaw0;
+    private double lBodyY = BODY;
 
     private static double ease(double cur, double want, double rate) { return cur + (want - cur) * rate; }
     private static double clamp(double v, double lo, double hi) { return Math.max(lo, Math.min(hi, v)); }
@@ -169,7 +181,8 @@ final class QueenRig {
             walk = ease(walk, Math.min(1, Math.hypot(vx, vz) / (k * 1.2)), 0.25);
         } else {
             deathT++;
-            if (deathT > 70) { remove(); return; }
+            try { deathFx(); } catch (RuntimeException ignored) { }
+            if (deathT > deathLen) { remove(); return; }
         }
         turnRate = ease(turnRate, dYaw, 0.2);
         if (animT < animLen) animT++;
@@ -322,6 +335,160 @@ final class QueenRig {
         gRoll = ease(gRoll, still ? 0 : clamp(Math.atan2((right - left) / 4, 1.0) * 0.8, -0.35, 0.35), 0.15);
     }
 
+    // ============================================================================================ death (1.3.54)
+    // u = 0..1 through the death: THROES (rears, legs flail, screeching) until A, COLLAPSE (legs give out, slams onto its belly,
+    // splayed) until B, ROLL onto its back until C, the DEATH CURL (legs curl over the belly, twitches fading) until D, then it
+    // shrinks away into a burst of its breed's particles.
+    private static final double A = 0.14, B = 0.30, C = 0.55, D = 0.80;
+
+    private static double lerp(double a, double b, double f) { return a + (b - a) * f; }
+
+    private void drawDeath() {
+        double u = deathT / (double) deathLen;
+        double in = smooth(deathT / 5.0);                                   // blend in from the living pose
+        double throe = u < A ? 1 : 1 - smooth((u - A) / 0.07);
+        double m1 = smooth((u - A) / (B - A));                              // collapsed
+        double m2 = smooth((u - 0.32) / (C - 0.32));                        // rolled over
+        double curl = smooth((u - 0.30) / (0.52 - 0.30));
+        double sc = 1 - smooth((u - D) / (1 - D));                          // shrinking away
+        double twitchFade = 1 - smooth((u - C) / (D + 0.08 - C));
+        // the body
+        double yS = lerp(lBodyY, BODY + 5 + Math.sin(deathT * 1.7) * 0.6, in);
+        double bodyY = lerp(yS, S_BODY + 2, m1);
+        bodyY = lerp(bodyY, 12, m2);
+        double bt = (u - B) / 0.06;                                         // the bounce when it lands
+        if (bt > 0 && bt < 1) bodyY += Math.sin(Math.PI * bt) * 1.6 * (1 - m2);
+        double ct = (u - C) / 0.05;
+        if (ct > 0 && ct < 1) bodyY += Math.sin(Math.PI * ct) * 0.9;
+        double pitch = lerp(0, -0.38, in * throe) + 0.32 * m1 * (1 - m2) + Math.sin(deathT * 2.3) * 0.05 * throe;
+        double rocking = u > C ? Math.sin((u - C) * 40) * 0.16 * Math.max(0, 1 - (u - C) / 0.15) : 0;
+        double rl = Math.PI * m2 + rocking + Math.sin(deathT * 2.1) * 0.12 * throe;
+        double jy = Math.sin(deathT * 1.3) * 0.14 * throe + 0.3 * m1 * (1 - m2);
+        Matrix4f thorax = new Matrix4f().rotateY((float) Math.toRadians(-dYaw0)).scale((float) (k * sc))
+                .translate(0, (float) bodyY, 0).rotateY((float) jy).rotateX((float) pitch).rotateZ((float) rl);
+        int i = 0;
+        set(i++, thorax);
+        double hYaw = Math.sin(deathT * 0.9) * 0.5 * throe, hPitch = -0.35 * throe + 0.5 * curl;
+        Matrix4f head = new Matrix4f(thorax).translate(0, 1, 7).rotateY((float) hYaw).rotateX((float) hPitch);
+        set(i++, head);
+        set(i++, head);
+        double deflate = 1 - 0.18 * smooth((u - C) / (D - C));
+        Matrix4f abdomen = new Matrix4f(thorax).translate(0, 3, -6)
+                .rotateX((float) (-0.25 - 0.3 * throe + 0.3 * curl + Math.sin(deathT * 0.7) * 0.05 * throe)).translate(0, 2, -12)
+                .scale((float) ((1 + 0.09 * Math.sin(deathT * 1.4) * throe) * deflate));
+        set(i++, abdomen);
+        double fang = throe > 0.5 ? 1.1 + Math.sin(deathT * 1.9) * 0.25 : lerp(0.0, 0.3, curl);
+        for (int sd : new int[]{1, -1})
+            set(i++, new Matrix4f(head).translate(2.2f * sd, -2, 5).rotateY((float) ((0.18 + fang * 0.55) * sd)).rotateX((float) (0.25 + fang * 0.45)));
+        for (int sd : new int[]{1, -1}) {
+            double pa = throe > 0 ? Math.sin(deathT * 1.6 + sd) * 0.6 * throe : 0;
+            set(i++, new Matrix4f(head).translate(4f * sd, -2, 3).rotateY((float) (0.4 * sd)).rotateX((float) (lerp(0.9, -0.2 + pa, throe))));
+        }
+        for (Leg g : legs) {
+            int leg = g.idx, sd = g.sd;
+            double ph = leg * 1.3 + (sd > 0 ? 0 : 0.7);
+            // throes: flailing
+            double tY = HIPS[leg][1] * sd + Math.sin(deathT * 0.8 + ph) * 0.35;
+            double tE = -1.55 + Math.sin(deathT * 1.25 + ph) * 0.7, tK = 1.0 + Math.sin(deathT * 1.6 + ph * 1.3) * 0.6, tF = 0.4;
+            // collapsed: splayed flat
+            double pY = HIPS[leg][1] * sd * 1.05, pE = -0.4, pK = 0.75, pF = 0.35;
+            // dead: curled over the belly (it's on its back), tighter as it goes
+            double tight = smooth((u - C) / (1 - C));
+            double cY = HIPS[leg][1] * sd * 0.72, cE = 0.55 + 0.35 * tight, cK = 2.15 + 0.6 * tight, cF = 1.45 + 0.35 * tight;
+            double y = lerp(g.lY, tY, in), e = lerp(g.lE, tE, in), kk = lerp(g.lK, tK, in), f = lerp(g.lF, tF, in);
+            double ml = smooth((u - A - leg * 0.012) / (B - A)); // the legs give out one after another
+            y = lerp(y, pY, ml); e = lerp(e, pE, ml); kk = lerp(kk, pK, ml); f = lerp(f, pF, ml);
+            double cl = smooth((u - 0.30 - leg * 0.025 - (sd > 0 ? 0 : 0.012)) / 0.22);
+            y = lerp(y, cY, cl); e = lerp(e, cE, cl); kk = lerp(kk, cK, cl); f = lerp(f, cF, cl);
+            // twitches: a leg kicks now and then, fading
+            double kick = Math.pow(Math.max(0, Math.sin(deathT * 0.55 + leg * 2.3 + sd * 1.1)), 10) * twitchFade * cl;
+            kk -= kick * 1.3; e -= kick * 0.45;
+            Matrix4f femur = new Matrix4f(thorax).translate(6.5f * sd, 1, (float) HIPS[leg][0]).rotateY((float) y).rotateX((float) e);
+            set(i++, femur);
+            Matrix4f tibia = new Matrix4f(femur).translate(0, 0, (float) FEMUR).rotateX((float) kk);
+            set(i++, tibia);
+            set(i++, new Matrix4f(tibia).translate(0, 0, (float) TIBIA).rotateX((float) f));
+        }
+        // the eyes go out
+        float eb = (float) Math.round(15 * (1 - smooth((u - C) / (D - C))));
+        if (glow >= 0) eb = Math.min(Math.max(eb, 0), Math.max(glow, eb));
+        if (eb != eyeBright && parts.size() > 2) { eyeBright = eb; parts.get(2).setBrightness(new Display.Brightness((int) eb, (int) eb)); }
+    }
+
+    /** Sounds and particles of the death. */
+    private void deathFx() {
+        World w = at.getWorld();
+        if (w == null || nearD2 > 96 * 96) return;
+        boolean big = "queen".equals(breed);
+        float vol = big ? 2.2f : 0.9f;
+        double u = deathT / (double) deathLen;
+        int iB = (int) Math.round(B * deathLen), iC = (int) Math.round(C * deathLen), iD = (int) Math.round(D * deathLen);
+        double size = k * 40;                                               // roughly her width in blocks
+        Location mid = at.clone().add(0, Math.max(0.3, (u < B ? BODY : 6) * k), 0);
+        org.bukkit.Particle.DustOptions ichor = new org.bukkit.Particle.DustOptions(colour(), (float) Math.max(0.8, Math.min(2.2, size * 0.5)));
+        if (deathT == 1) {
+            w.playSound(mid, org.bukkit.Sound.ENTITY_SPIDER_DEATH, org.bukkit.SoundCategory.HOSTILE, vol, big ? 0.45f : 0.75f);
+            if (big) w.playSound(mid, org.bukkit.Sound.ENTITY_RAVAGER_HURT, org.bukkit.SoundCategory.HOSTILE, 1.6f, 0.5f);
+        }
+        if (u < A && deathT % 3 == 0) { // screeching, ichor spurting
+            w.playSound(mid, org.bukkit.Sound.ENTITY_SPIDER_HURT, org.bukkit.SoundCategory.HOSTILE, vol * 0.6f, (float) (0.55 + u * 3) * (big ? 0.7f : 1f));
+            w.spawnParticle(org.bukkit.Particle.DUST, mid, big ? 18 : 6, size * 0.2, size * 0.15, size * 0.2, 0, ichor);
+        }
+        if (deathT == iB) { // the slam onto the ground
+            org.bukkit.block.Block under = at.clone().add(0, -0.5, 0).getBlock();
+            org.bukkit.block.data.BlockData bd = under.getType().isSolid() ? under.getBlockData() : Material.DEEPSLATE.createBlockData();
+            w.spawnParticle(org.bukkit.Particle.BLOCK, at.clone().add(0, 0.2, 0), big ? 90 : 25, size * 0.45, 0.1, size * 0.45, 0.15, bd);
+            w.spawnParticle(org.bukkit.Particle.CLOUD, at.clone().add(0, 0.2, 0), big ? 24 : 6, size * 0.4, 0.05, size * 0.4, 0.02);
+            w.playSound(at, org.bukkit.Sound.ENTITY_GENERIC_BIG_FALL, org.bukkit.SoundCategory.HOSTILE, vol, big ? 0.5f : 0.9f);
+            w.playSound(at, org.bukkit.Sound.BLOCK_SLIME_BLOCK_FALL, org.bukkit.SoundCategory.HOSTILE, vol * 0.7f, 0.6f);
+        }
+        if (deathT == iC) { // over onto its back
+            w.playSound(at, org.bukkit.Sound.ENTITY_GENERIC_SMALL_FALL, org.bukkit.SoundCategory.HOSTILE, vol * 0.8f, 0.6f);
+            w.spawnParticle(org.bukkit.Particle.DUST, mid, big ? 20 : 6, size * 0.25, 0.1, size * 0.25, 0, ichor);
+        }
+        if (u > C && u < D && rnd.nextInt(big ? 7 : 10) == 0) // twitching
+            w.playSound(at, org.bukkit.Sound.ENTITY_SPIDER_STEP, org.bukkit.SoundCategory.HOSTILE, vol * 0.35f, 0.6f + rnd.nextFloat() * 0.3f);
+        if (deathT == iD) { // it starts to go
+            org.bukkit.Sound s = switch (breed) {
+                case "venom" -> org.bukkit.Sound.ENTITY_SLIME_SQUISH;
+                case "ember" -> org.bukkit.Sound.BLOCK_FIRE_EXTINGUISH;
+                case "swift" -> org.bukkit.Sound.BLOCK_AMETHYST_BLOCK_RESONATE;
+                case "queen" -> org.bukkit.Sound.ENTITY_WARDEN_DEATH;
+                default -> org.bukkit.Sound.BLOCK_HONEY_BLOCK_BREAK;
+            };
+            w.playSound(mid, s, org.bukkit.SoundCategory.HOSTILE, vol, big ? 0.6f : 0.9f);
+            w.playSound(mid, org.bukkit.Sound.BLOCK_HONEY_BLOCK_BREAK, org.bukkit.SoundCategory.HOSTILE, vol * 0.7f, 0.5f);
+        }
+        if (u >= D && deathT % 2 == 0) { // shrinking away into its breed's particles
+            double r = size * 0.3 * (1 - smooth((u - D) / (1 - D))) + 0.1;
+            int n = big ? 12 : 4;
+            w.spawnParticle(org.bukkit.Particle.SMOKE, mid, n, r, r * 0.5, r, 0.01);
+            w.spawnParticle(org.bukkit.Particle.DUST, mid, n, r, r * 0.6, r, 0, ichor);
+            switch (breed) {
+                case "ember" -> w.spawnParticle(org.bukkit.Particle.FLAME, mid, n, r, r * 0.5, r, 0.02);
+                case "swift" -> w.spawnParticle(org.bukkit.Particle.ELECTRIC_SPARK, mid, n, r, r * 0.5, r, 0.05);
+                case "venom" -> w.spawnParticle(org.bukkit.Particle.ITEM_SLIME, mid, n, r, r * 0.5, r, 0.02);
+                default -> w.spawnParticle(org.bukkit.Particle.WHITE_ASH, mid, n * 2, r, r * 0.6, r, 0.01);
+            }
+        }
+        if (deathT == deathLen) { // the last puff
+            w.spawnParticle(org.bukkit.Particle.POOF, mid, big ? 40 : 12, size * 0.2, size * 0.15, size * 0.2, 0.05);
+            w.spawnParticle(org.bukkit.Particle.BLOCK, mid, big ? 40 : 12, size * 0.2, size * 0.15, size * 0.2, 0.1, Material.COBWEB.createBlockData());
+            if ("ember".equals(breed)) w.spawnParticle(org.bukkit.Particle.LAVA, mid, 6, 0.3, 0.2, 0.3, 0);
+            w.playSound(mid, org.bukkit.Sound.ENTITY_SILVERFISH_DEATH, org.bukkit.SoundCategory.HOSTILE, vol * 0.5f, big ? 0.5f : 1.1f);
+        }
+    }
+
+    private org.bukkit.Color colour() {
+        return switch (breed) {
+            case "venom" -> org.bukkit.Color.fromRGB(110, 200, 40);
+            case "ember" -> org.bukkit.Color.fromRGB(255, 120, 20);
+            case "swift" -> org.bukkit.Color.fromRGB(90, 190, 255);
+            case "queen" -> org.bukkit.Color.fromRGB(120, 40, 160);
+            default -> org.bukkit.Color.fromRGB(150, 70, 190);
+        };
+    }
+
     /** Two-bone IK for a leg in its own plane: angles {yaw, elev, knee, foot}, or null when it can't. */
     private double[] solve(Leg g, Matrix4f thorax) {
         Matrix4f inv = new Matrix4f(thorax).invert();
@@ -343,6 +510,7 @@ final class QueenRig {
 
     /** Every part's matrix: thorax -> head/eyes/fangs/palps/abdomen; thorax -> 8 x femur -> tibia -> tarsus. */
     private void draw() {
+        if (dying) { drawDeath(); return; }
         double breath = Math.sin(t * (fold > 0.5 ? 0.04 : 0.09)) * (fold > 0.5 ? 0.6 : 0.3);
         int stepping = 0;
         for (Leg g : legs) if (g.stepT >= 0) stepping++;
@@ -350,6 +518,7 @@ final class QueenRig {
         double bodyY = BODY + gY + (S_BODY - BODY) * fold + bob + breath - slam * 3 + rear * 2.5 - flinch * 2;
         double p = pitch + gPitch * (1 - fold) - flinch * 0.25, rl = roll + gRoll * (1 - fold);
         Matrix4f thorax = thoraxFrame(bodyY, p, rl);
+        lBodyY = bodyY;
         int i = 0;
         set(i++, thorax);
         Matrix4f head = new Matrix4f(thorax).translate(0, 1, 7).rotateY((float) headYaw)
@@ -389,6 +558,7 @@ final class QueenRig {
             double twitch = fold > 0.5 ? Math.sin(t * 0.03 + leg * 1.7 + sd) * 0.03 : 0;
             elev += twitch;
             if (dying) { knee = Math.min(2.9, knee + deathT * 0.03); foot = Math.min(1.8, foot + deathT * 0.02); elev = Math.max(-1.2, elev - Math.sin(deathT * 0.6 + leg) * 0.05 * Math.max(0, 1 - deathT / 50.0)); }
+            g.lY = yawL; g.lE = elev; g.lK = knee; g.lF = foot;
             Matrix4f femur = new Matrix4f(thorax).translate(6.5f * sd, 1, (float) HIPS[leg][0]).rotateY((float) yawL).rotateX((float) elev);
             set(i++, femur);
             Matrix4f tibia = new Matrix4f(femur).translate(0, 0, (float) FEMUR).rotateX((float) knee);
@@ -402,6 +572,7 @@ final class QueenRig {
         // 1.3.48: how often a pose is sent (32 displays each) by the nearest player: 2 ticks under 24 blocks, 4 under 48, 8 under 96, else 20
         int every = nearD2 < 24 * 24 ? 2 : nearD2 < 48 * 48 ? 4 : nearD2 < 96 * 96 ? 8 : 20;
         if (body instanceof Player) every = 2; // a player's spider form: always smooth
+        if (dying && nearD2 < 128 * 128) every = 2; // 1.3.54: the death is always smooth
         boolean near = every <= 2;
         if (t % every != 0) return;
         for (int n = 0; n < parts.size(); n++) {

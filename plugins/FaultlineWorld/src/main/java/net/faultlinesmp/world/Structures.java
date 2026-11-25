@@ -293,37 +293,104 @@ final class Structures {
 
     static int coreBase(Terrain t, Layout.Core c) { return c.y() != 0 ? c.y() : t.column(c.x(), c.z()).surface + 1; }
 
-    /** A faction's protected hall: bedrock shell, command block pillars, a structure/jigsaw floor, lit by light blocks. */
+    /**
+     * A faction's SHRINE: an open temple of the faction's own stone on a stepped plinth, a colonnade, four corner towers,
+     * a rose window, a stepped roof with a lantern, and on the altar in the middle THE admin block: one command block,
+     * nothing else (2.0 round 7: the old shrine was a bedrock cube full of command / jigsaw / structure blocks).
+     */
     static void core(Canvas cv, Terrain t, Layout.Core c) {
-        int S = 11, H = 13;
-        if (!cv.touches(c.x() - S - 2, c.z() - S - 2, c.x() + S + 2, c.z() + S + 2)) return;
-        int y = coreBase(t, c);
-        BlockData bed = bd("minecraft:bedrock"), air = WorldGen.Blocks.AIR, light = bd("minecraft:light[level=15]");
-        for (int dx = -S; dx <= S; dx++) for (int dz = -S; dz <= S; dz++) {
+        int O = 11;
+        if (!cv.touches(c.x() - O - 8, c.z() - O - 8, c.x() + O + 8, c.z() + O + 8)) return;
+        int y = coreBase(t, c), F = y + 2;
+        String[] th = theme(c.faction());
+        BlockData wall = bd(th[0]), trim = bd(th[1]), roof = bd(th[2]), lamp = bd(th[4]), glass = bd(th[5]), cloth = bd(th[6]), air = WorldGen.Blocks.AIR;
+        BlockData stairN = bd(th[3] + "[facing=north]"), hang = bd(th[4] + "[hanging=true]"), glow = bd("minecraft:sea_lantern");
+        boolean cold = c.faction().equals("ice") || c.faction().equals("fibers");
+        if (c.y() != 0 && c.faction().equals("sky")) skyIsland(cv, t, c.x(), c.z(), y - 1, O + 9, 0x51C);
+        for (int dx = -O - 4; dx <= O + 4; dx++) for (int dz = -O - 4; dz <= O + 4; dz++) {
             int x = c.x() + dx, z = c.z() + dz;
-            boolean edge = Math.abs(dx) == S || Math.abs(dz) == S;
-            if (c.y() == 0) cv.column(x, z, y - 8, y - 1, bed);          // its foundation
-            for (int dy = 0; dy <= H; dy++) {
-                BlockData b;
-                if (dy == 0) b = (dx + dz & 1) == 0 ? bd("minecraft:structure_block") : bd("minecraft:jigsaw[orientation=up_north]");
-                else if (dy == H) b = bed;
-                else if (edge) {
-                    boolean window = dy >= 4 && dy <= 8 && (Math.abs(dx) % 4 == 2 || Math.abs(dz) % 4 == 2) && !(Math.abs(dx) == S && Math.abs(dz) == S);
-                    b = window ? bd("minecraft:command_block[facing=up]") : bed;
-                } else if ((Math.abs(dx) == S - 3 && Math.abs(dz) == S - 3)) {
-                    b = bd(dy % 3 == 0 ? "minecraft:repeating_command_block[facing=up]" : dy % 3 == 1 ? "minecraft:chain_command_block[facing=up]" : "minecraft:command_block[facing=up]");
-                } else b = dy == H - 1 && (dx % 3 == 0 && dz % 3 == 0) ? light : air;
-                cv.set(x, y + dy, z, b);
+            if (!cv.inXZ(x, z)) continue;
+            int ax = Math.abs(dx), az = Math.abs(dz), r = Math.max(ax, az);
+            boolean door = ax <= 2 && dz > 0;
+            cv.column(x, z, y, F + 24, air);
+            if (c.y() == 0) cv.column(x, z, y - 9, y - 1, wall);                       // footing down into the slope
+            else cv.column(x, z, y - 2, y - 1, wall);
+            // ---- the plinth: three steps up, real stairs in front of the doorway
+            if (r == O + 4) { if (door) cv.set(x, y, z, stairN); continue; }
+            if (r == O + 3) {
+                cv.set(x, y, z, trim);
+                if (door) cv.set(x, y + 1, z, stairN);
+                else if (ax == 4 && dz > 0) { cv.set(x, y + 1, z, trim); cv.set(x, y + 2, z, bd(cold ? "minecraft:soul_campfire" : "minecraft:campfire")); }   // braziers
+                continue;
+            }
+            cv.set(x, y, z, wall); cv.set(x, y + 1, z, r == O + 2 ? trim : wall);
+            if (r == O + 2) { if (door) cv.set(x, F, z, stairN); else if ((ax + az) % 5 == 0) cv.set(x, F, z, lamp); continue; }
+            // ---- the floor: a ring of the faction's glass lit from below, diagonals of trim
+            boolean ring = Math.abs(Math.hypot(dx, dz) - 7.5) < 0.6;
+            if (ring) { cv.set(x, F - 1, z, glow); cv.set(x, F, z, glass); }
+            else cv.set(x, F, z, r == O + 1 || ax == az || r == O ? trim : (dx + dz & 1) == 0 ? wall : roof);
+            // ---- corner towers
+            if (ax >= O - 1 && az >= O - 1) {
+                for (int dy = 1; dy <= 15; dy++) cv.set(x, F + dy, z, dy % 5 == 0 ? trim : ax == O && az == O && dy % 5 == 3 ? glass : wall);
+                if (ax == O && az == O) { cv.set(x, F + 16, z, trim); cv.set(x, F + 17, z, lamp); }
+                else if ((ax + az & 1) == 1) cv.set(x, F + 16, z, trim);              // battlements
+                continue;
+            }
+            if (r == O + 1) continue;                                                    // the walk round the colonnade
+            if (r == O) {
+                int along = ax == O ? az : ax;
+                boolean column = along % 4 == 3;
+                if (column) { for (int dy = 1; dy <= 9; dy++) cv.set(x, F + dy, z, dy == 1 || dy == 9 ? trim : wall); }
+                else if (dz == -O) {                                                    // the back wall and its rose window
+                    for (int dy = 1; dy <= 9; dy++) cv.set(x, F + dy, z, Math.hypot(dx, dy - 5.5) < 3.2 ? (Math.hypot(dx, dy - 5.5) < 1 ? glow : glass) : dy == 9 ? trim : wall);
+                } else if (!door) {
+                    cv.set(x, F + 1, z, wall);                                          // a low wall between the columns
+                    cv.set(x, F + 9, z, trim);
+                    if (along % 4 != 1) cv.set(x, F + 8, z, trim);                      // the arch's shoulders
+                } else { cv.set(x, F + 9, z, trim); if (ax == 2) cv.set(x, F + 8, z, trim); }
+            }
+            // ---- inside: four pillars, hanging lamps
+            if (ax == 5 && az == 5) for (int dy = 1; dy <= 10; dy++) cv.set(x, F + dy, z, dy == 1 || dy == 10 ? trim : dy == 5 ? glass : wall);
+            if (r < O && (ax == 5 && az == 0 || ax == 0 && az == 5)) cv.set(x, F + 10, z, hang);
+            // ---- the entablature and the ceiling
+            if (r == O) { cv.set(x, F + 10, z, trim); cv.set(x, F + 11, z, wall); }
+            else cv.set(x, F + 11, z, roof);
+        }
+        // the entablature overhangs the walk
+        for (int dx = -O - 1; dx <= O + 1; dx++) for (int dz = -O - 1; dz <= O + 1; dz++) {
+            int ax = Math.abs(dx), az = Math.abs(dz);
+            if (Math.max(ax, az) == O + 1 && !(ax >= O - 1 && az >= O - 1)) cv.set(c.x() + dx, F + 11, c.z() + dz, trim);
+        }
+        // the stepped roof and its lantern
+        int top = F + 11;
+        for (int k = 0; k <= 6; k++) {
+            int hs = O - 1 - k * 2;
+            if (hs < 1) break;
+            top = F + 12 + k;
+            for (int dx = -hs; dx <= hs; dx++) for (int dz = -hs; dz <= hs; dz++) {
+                boolean rim = Math.abs(dx) == hs || Math.abs(dz) == hs;
+                cv.set(c.x() + dx, top, c.z() + dz, rim && (dx + dz & 3) == 0 ? trim : roof);
             }
         }
-        // altar: jigsaw + structure blocks under a bedrock crown
-        for (int dy = 1; dy <= 3; dy++) cv.set(c.x(), y + dy, c.z(), bd(dy == 3 ? "minecraft:structure_block" : "minecraft:jigsaw[orientation=up_north]"));
-        cv.set(c.x(), y + 4, c.z(), bed);
-        // the entrance (south), 3 wide and 4 tall
-        for (int dx = -1; dx <= 1; dx++) for (int dy = 1; dy <= 4; dy++) cv.set(c.x() + dx, y + dy, c.z() + S, air);
-        // a floating core gets its own little island under it
-        if (c.y() != 0) skyIsland(cv, t, c.x(), c.z(), y - 1, S + 5, 0x51C);
-        shrine(cv, t, c, y, S, H);
+        for (int dy = 1; dy <= 3; dy++) for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) {
+            boolean mid = dx == 0 && dz == 0, corner = dx != 0 && dz != 0;
+            cv.set(c.x() + dx, top + dy, c.z() + dz, mid ? (dy == 3 ? trim : glow) : corner ? trim : dy == 3 ? trim : glass);
+        }
+        cv.set(c.x(), top + 4, c.z(), trim); cv.set(c.x(), top + 5, c.z(), bd("minecraft:lightning_rod"));
+        // the faction's colours down the towers beside the door
+        for (int side = -1; side <= 1; side += 2) for (int dy = 6; dy <= 13; dy++) cv.set(c.x() + side * O, F + dy, c.z() + O + 2, dy == 13 ? trim : cloth);
+        // ---- the altar: a dais, four lamps, and THE admin block
+        for (int dx = -2; dx <= 2; dx++) for (int dz = -2; dz <= 2; dz++) {
+            int ax = Math.abs(dx), az = Math.abs(dz);
+            String f = dz == 2 ? "north" : dz == -2 ? "south" : dx == 2 ? "west" : "east";
+            cv.set(c.x() + dx, F + 1, c.z() + dz, Math.max(ax, az) == 2 && ax != az ? bd(th[3] + "[facing=" + f + "]") : trim);
+            if (Math.max(ax, az) <= 1) cv.set(c.x() + dx, F + 2, c.z() + dz, ax == 1 && az == 1 ? trim : roof);
+            if (ax == 1 && az == 1) cv.set(c.x() + dx, F + 3, c.z() + dz, lamp);
+        }
+        cv.set(c.x(), F + 3, c.z(), bd("minecraft:command_block[facing=up]"));
+        // a pendant of light over it
+        cv.set(c.x(), F + 10, c.z(), trim); cv.set(c.x(), F + 9, c.z(), trim); cv.set(c.x(), F + 8, c.z(), glow);
+        for (int[] n : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) cv.set(c.x() + n[0], F + 8, c.z() + n[1], glass);
     }
 
     static boolean inCore(Terrain t, int x, int y, int z) {
@@ -346,75 +413,27 @@ final class Structures {
         };
     }
 
-    /**
-     * The faction's SHRINE round its admin core (2.0 audit: the core was a bare bedrock cube sticking out of the hillside).
-     * A skin of the faction's own stone over the bedrock with tall slits that show the command blocks behind, four corner
-     * towers with lamps, a plinth with steps up to the doorway, a porch, a stepped roof rising to a lit lantern of the
-     * faction's colour, and its colours hanging beside the door. The bedrock room inside is untouched.
-     */
-    static void shrine(Canvas cv, Terrain t, Layout.Core c, int y, int S, int H) {
-        String[] th = theme(c.faction());
-        BlockData wall = bd(th[0]), trim = bd(th[1]), roof = bd(th[2]), lamp = bd(th[4]), glass = bd(th[5]), cloth = bd(th[6]), air = WorldGen.Blocks.AIR;
-        int O = S + 1;
-        for (int dx = -O - 3; dx <= O + 3; dx++) for (int dz = -O - 3; dz <= O + 3; dz++) {
-            int x = c.x() + dx, z = c.z() + dz;
-            if (!cv.in(x, y, z)) continue;
-            int ax = Math.abs(dx), az = Math.abs(dz), r = Math.max(ax, az);
-            boolean door = ax <= 1 && dz > 0;
-            boolean tower = ax >= O - 1 && az >= O - 1 && r <= O + 1 && ax >= O - 1 && az >= O - 1;
-            if (r > O + 1 + (tower ? 0 : 2)) continue;
-            if (c.y() == 0 && r >= O) cv.column(x, z, y - 9, y - 1, r == O || tower ? wall : trim);                 // footing down into the slope
-            if (tower && r >= O) {                                               // the four corner towers
-                for (int dy = 0; dy <= H + 3; dy++) cv.set(x, y + dy, z, dy % 5 == 4 ? trim : wall);
-                if (ax == O && az == O) { cv.set(x, y + H + 4, z, trim); cv.set(x, y + H + 5, z, lamp); }
-                else cv.set(x, y + H + 4, z, (dx + dz & 1) == 0 ? trim : air);                                       // battlements
-                continue;
-            }
-            if (r == O) {                                                        // the skin, with slits over the command blocks
-                for (int dy = 0; dy <= H; dy++) {
-                    boolean slit = dy >= 4 && dy <= 8 && (ax == O ? az % 4 == 2 : ax % 4 == 2);
-                    if (door && dy >= 1 && dy <= 4) { cv.set(x, y + dy, z, air); continue; }
-                    if (door && dy == 5) { cv.set(x, y + dy, z, trim); continue; }
-                    cv.set(x, y + dy, z, slit ? air : dy == 0 || dy == H || dy == 3 || dy == 9 ? trim : wall);
-                }
-            } else if (r == O + 1) {                                             // the plinth
-                cv.set(x, y, z, trim);
-                if (door) { for (int dy = 1; dy <= 4; dy++) cv.set(x, y + dy, z, air); }
-                else if ((ax == 2 && dz > 0)) { for (int dy = 1; dy <= 5; dy++) cv.set(x, y + dy, z, trim); cv.set(x, y + 6, z, lamp); }   // porch posts
-                else if ((ax + az) % 6 == 0) cv.set(x, y + 1, z, trim);
-            } else if (r == O + 2 && c.y() == 0) {
-                cv.set(x, y - 1, z, trim);
-                if (door) for (int dy = 0; dy <= 4; dy++) cv.set(x, y + dy, z, air);
-            } else if (r == O + 3 && c.y() == 0 && door) {
-                for (int dy = -1; dy <= 3; dy++) cv.set(x, y + dy, z, air);
-                cv.set(x, y - 2, z, trim);
-            }
-        }
-        // the faction's colours beside the door
-        for (int side = -1; side <= 1; side += 2) for (int dy = 6; dy <= 10; dy++) cv.set(c.x() + side * 3, y + dy, c.z() + O + 1, dy == 10 ? bd(th[1]) : cloth);
-        // the stepped roof and its lantern
-        for (int k = 1; k <= 6; k++) {
-            int hs = O - k * 2 + 1;
-            if (hs < 1) break;
-            for (int dx = -hs; dx <= hs; dx++) for (int dz = -hs; dz <= hs; dz++) {
-                boolean rim = Math.abs(dx) == hs || Math.abs(dz) == hs;
-                cv.set(c.x() + dx, y + H + k, c.z() + dz, rim ? ((dx + dz & 3) == 0 ? trim : roof) : roof);
-            }
-        }
-        int top = y + H + 6;
-        for (int dy = 1; dy <= 3; dy++) for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) {
-            boolean mid = dx == 0 && dz == 0, corner = dx != 0 && dz != 0;
-            cv.set(c.x() + dx, top + dy, c.z() + dz, mid ? bd(dy == 3 ? th[1] : "minecraft:sea_lantern") : corner ? trim : dy == 3 ? trim : glass);
-        }
-        cv.set(c.x(), top + 4, c.z(), trim); cv.set(c.x(), top + 5, c.z(), bd("minecraft:lightning_rod"));
-    }
-
     // ================================================================== SKY ISLES
 
-    record Isle(int x, int z, int top, int r, long h) {}
+    record Isle(int x, int z, int top, int r, long h) {}   // also used by SkyCity
 
-    /** The designated islands (under the sky faction's builds), then the random ones round them. */
-    static final int[][] SKY_FIXED = {{1655, 160, 240, 60}, {1290, 120, 250, 38}, {1520, 380, 232, 22}};
+    /** The designated islands (under the sky faction's builds): castle, ballroom, the ship's mooring. Then the random ones. */
+    static final int[][] SKY_FIXED = {{2320, -1110, 252, 60}, {1940, -1160, 285, 38}, {2240, -850, 270, 24}};
+    /** The core's island (drawn by core()). */
+    static final int[] SKY_CORE = {2010, -830, 289, 20};
+    /** The bridges: a ring round the statue, island to island. Each {from isle, to isle} by index (3 = the core's). */
+    static final int[][] SKY_BRIDGES = {{1, 0}, {0, 2}, {2, 3}, {3, 1}};
+    /** The ladder pillar from the sea up to the castle island. */
+    static final int LADDER_X = 2320 + 81, LADDER_Z = -1110;
+
+    static int[] skyIsle(int i) { return i == 3 ? SKY_CORE : SKY_FIXED[i]; }
+
+    /** Where a bridge from island a toward island b leaves a: on its turf, 0.62 of the way out. */
+    static int[] bridgeEnd(int a, int b) {
+        int[] A = skyIsle(a), B2 = skyIsle(b);
+        double d = Layout.dist(A[0], A[1], B2[0], B2[1]), f = A[3] * 0.62 / d;
+        return new int[]{(int) Math.round(A[0] + (B2[0] - A[0]) * f), (int) Math.round(A[1] + (B2[1] - A[1]) * f), A[2] + 2};
+    }
 
     static List<Isle> isles(Terrain t, int x0, int z0, int x1, int z1) {
         List<Isle> out = new ArrayList<>();
@@ -426,12 +445,19 @@ final class Structures {
                 if ((h & 255) > 190) continue;
                 int x = ci * size + (int) ((h >>> 8) % size), z = cj * size + (int) ((h >>> 20) % size);
                 if (t.surfaceWeight(B.SKY_ISLES, x, z) < 0.6) continue;
+                int r = 9 + (int) ((h >>> 40) % 22);
                 boolean clash = false;
-                for (int[] f : SKY_FIXED) if (Layout.dist(x, z, f[0], f[1]) < f[3] + 34) clash = true;
-                if (Math.abs(x - 1450) < 130 && Math.abs(z - 240) < 135) clash = true;   // the Greek statue (206 x 213)
-                if (Layout.dist(x, z, 1380, 430) < 40) clash = true;                   // the sky core's island
+                for (int[] f : SKY_FIXED) if (Layout.dist(x, z, f[0], f[1]) < f[3] + r + 12) clash = true;
+                for (Layout.Site s : Layout.SITES) if (s.faction().equals("sky") && Math.abs(x - s.x()) < 120 + r && Math.abs(z - s.z()) < 125 + r
+                        && (s.shape() == Layout.Shape.SEABED || Layout.dist(x, z, s.x(), s.z()) < 50 + r)) clash = true;
+                if (Layout.dist(x, z, SKY_CORE[0], SKY_CORE[1]) < 34 + r) clash = true;
+                if (Layout.dist(x, z, LADDER_X, LADDER_Z) < 12 + r) clash = true;
+                if (Layout.dist(x, z, 2300, -1230) < 30 + r || Layout.dist(x, z, 1880, -900) < 30 + r) clash = true;   // SkyCity's airships
+                for (int[] br : SKY_BRIDGES) { int[] a = skyIsle(br[0]), b = skyIsle(br[1]); if (Layout.segDist(x, z, a[0], a[1], b[0], b[1], null) < r + 10) clash = true; }
+                int[] m = SKY_FIXED[2];
+                if (Layout.segDist(x, z, m[0], m[1], 2150, -790, null) < r + 10) clash = true;      // the ship's gangway
                 if (clash) continue;
-                out.add(new Isle(x, z, 226 + (int) ((h >>> 32) % 66), 9 + (int) ((h >>> 40) % 22), h));
+                out.add(new Isle(x, z, 236 + (int) ((h >>> 32) % 62), r, h));
             }
         return out;
     }
@@ -445,15 +471,57 @@ final class Structures {
     }
 
     static void skyIsles(Canvas cv, Terrain t) {
-        if (t.surfaceWeight(B.SKY_ISLES, cv.bx + 8, cv.bz + 8) < 0.2 && !cv.touches(1240, 70, 1730, 420)) return;
+        if (t.surfaceWeight(B.SKY_ISLES, cv.bx + 8, cv.bz + 8) < 0.2 && !cv.touches(1860, -1250, 2440, -740)) return;
         for (Isle i : isles(t, cv.bx, cv.bz, cv.bx + 15, cv.bz + 15)) {
             if (!cv.touches(i.x() - i.r() - 8, i.z() - i.r() - 8, i.x() + i.r() + 8, i.z() + i.r() + 8)) continue;
             skyIsland(cv, t, i.x(), i.z(), i.top(), i.r(), i.h());
         }
-        // the stair tower from the crater floor up to the castle island, and bridges between the fixed islands
-        stairTower(cv, t, 1588, 200, 108, 240);
-        bridge(cv, t, 1290 + 36, 120, 250, 1655 - 58, 160, 240);
-        bridge(cv, t, 1655 - 20, 160 + 56, 240, 1520, 380 - 20, 232);
+        // the old rope bridges: a ring round the statue, each one from the turf of one island to the turf of the next
+        for (int[] br : SKY_BRIDGES) {
+            int[] a = bridgeEnd(br[0], br[1]), b = bridgeEnd(br[1], br[0]);
+            bridge(cv, t, a[0], a[1], a[2], b[0], b[1], b[2]);
+        }
+        // the gangway from the mooring island to the ship's deck
+        for (Layout.Site s : Layout.SITES) if (s.file().equals("sky/ship")) {
+            int[] box = Sites.box(s); Schematic sc = Sites.LOADED.get(s.file());
+            if (box == null || sc == null) continue;
+            int[] m = SKY_FIXED[2];
+            bridge(cv, t, m[0] - 14, m[1] + 4, m[2] + 2, box[3] + 1, s.z(), s.y() + sc.floorY + 1);
+        }
+        ladderPillar(cv, t);
+        SkyCity.paint(cv, t);   // round 7: the abandoned steam city on every island, all joined by bridges
+    }
+
+    /** The way up from the sea: a stone pillar standing in the water beside the castle island, a ladder up its east face,
+     *  a landing at the top and a short bridge onto the island. A little dock at its foot. */
+    static void ladderPillar(Canvas cv, Terrain t) {
+        int x = LADDER_X, z = LADDER_Z, top = SKY_FIXED[0][2] + 2;
+        if (!cv.touches(x - 30, z - 6, x + 8, z + 6)) return;
+        BlockData brick = bd("minecraft:stone_bricks"), mossy = bd("minecraft:mossy_stone_bricks"), cracked = bd("minecraft:cracked_stone_bricks");
+        int bed = t.column(x, z).surface;
+        for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) for (int y = bed - 2; y <= top; y++) {
+            long h = hash3(t.seed, x + dx, y, z + dz, 0x1AD);
+            cv.set(x + dx, y, z + dz, y < Layout.SEA + 6 && (h & 3) == 0 ? mossy : (h & 15) == 1 ? cracked : y % 16 == 0 ? bd("minecraft:chiseled_stone_bricks") : brick);
+        }
+        for (int y = Layout.SEA + 1; y <= top; y++) cv.set(x + 2, y, z, bd("minecraft:ladder[facing=east]"));
+        // rest ledges every 24 rungs (a slab beside the ladder), lanterns on the pillar's corners
+        for (int y = Layout.SEA + 24; y < top - 6; y += 24) {
+            cv.set(x + 2, y, z - 1, bd("minecraft:stone_brick_slab[type=top]")); cv.set(x + 2, y, z + 1, bd("minecraft:stone_brick_slab[type=top]"));
+            cv.set(x + 3, y, z - 1, bd("minecraft:stone_brick_slab[type=top]")); cv.set(x + 3, y, z + 1, bd("minecraft:stone_brick_slab[type=top]"));
+            cv.set(x + 2, y + 1, z - 1, bd("minecraft:lantern"));
+        }
+        // the dock at the water
+        for (int dx = 2; dx <= 7; dx++) for (int dz = -2; dz <= 2; dz++) {
+            if (dx == 2 && dz == 0) continue;
+            cv.set(x + dx, Layout.SEA, z + dz, bd("minecraft:spruce_planks"));
+            if ((dx == 7) && Math.abs(dz) == 2) { cv.column(x + dx, z + dz, bed, Layout.SEA + 1, bd("minecraft:spruce_log")); cv.set(x + dx, Layout.SEA + 2, z + dz, bd("minecraft:lantern")); }
+        }
+        cv.set(x + 2, Layout.SEA, z, bd("minecraft:spruce_planks"));
+        // the landing and the bridge onto the island
+        for (int dx = -2; dx <= 3; dx++) for (int dz = -2; dz <= 2; dz++) if (!(dx == 2 && dz == 0)) cv.set(x + dx, top, z + dz, bd("minecraft:stone_brick_slab[type=top]"));
+        for (int dz = -2; dz <= 2; dz += 4) { cv.set(x + 3, top + 1, z + dz, brick); cv.set(x + 3, top + 2, z + dz, bd("minecraft:lantern")); }
+        int[] isle = SKY_FIXED[0];
+        bridge(cv, t, x - 3, z, top, isle[0] + (int) (isle[3] * 0.62), isle[1], isle[2] + 2);
     }
 
     static void skyIsland(Canvas cv, Terrain t, int x, int z, int top, int r, long h) {
@@ -469,7 +537,7 @@ final class Structures {
             int bottom = top - (int) Math.round(r * 1.25 * Math.pow(1 - d, 0.8)) - 2;
             for (int y = bottom; y <= surf; y++) cv.set(wx, y, wz, y == surf ? grass : y > surf - 3 ? dirt : ((hash3(h, wx, y, wz, 1) & 15) == 0 ? moss : stone));
             long hh = hash(h, wx, wz, 0x5F2);
-            if ((hh & 63) == 0 && d < 0.8) smallTree(cv, wx, surf + 1, wz, hh);
+            if ((hh & 63) == 0 && d < 0.8 && (r < 12 || d > 0.62)) smallTree(cv, wx, surf + 1, wz, hh);
             else if ((hh & 7) == 1) cv.air(wx, surf + 1, wz, bd("minecraft:short_grass"));
             else if ((hh & 31) == 2) cv.air(wx, surf + 1, wz, bd((hh >>> 8 & 1) == 0 ? "minecraft:cornflower" : "minecraft:oxeye_daisy"));
             if (d > 0.85 && (hh >>> 12 & 7) == 0) for (int k = 1; k <= 1 + (hh >>> 16 & 7); k++) cv.air(wx, bottom - k, wz, bd("minecraft:hanging_roots"));
@@ -486,40 +554,32 @@ final class Structures {
         }
     }
 
-    static void stairTower(Canvas cv, Terrain t, int x, int z, int y0, int y1) {
-        if (!cv.touches(x - 5, z - 5, x + 5, z + 5)) return;
-        BlockData brick = bd("minecraft:stone_bricks"), air = WorldGen.Blocks.AIR;
-        for (int y = y0; y <= y1; y++) {
-            for (int dx = -4; dx <= 4; dx++) for (int dz = -4; dz <= 4; dz++) {
-                double d = Math.hypot(dx, dz);
-                if (d > 4.4) continue;
-                if (d > 3.5) cv.set(x + dx, y, z + dz, (y % 6 == 0 && (dx == 0 || dz == 0)) ? bd("minecraft:tinted_glass") : brick);
-                else if (d < 1.2) cv.set(x + dx, y, z + dz, brick);
-                else {
-                    double a = Math.atan2(dz, dx); if (a < 0) a += Math.PI * 2;
-                    double step = ((y - y0) % 8) / 8.0 * Math.PI * 2;
-                    double diff = Math.abs(a - step);
-                    cv.set(x + dx, y, z + dz, diff < 0.8 || diff > Math.PI * 2 - 0.8 ? bd("minecraft:stone_brick_slab[type=top]") : air);
-                }
-            }
-        }
-        for (int dy = 1; dy <= 3; dy++) cv.set(x, y0 + dy, z - 4, air);  // door at the bottom
-        for (int dy = 1; dy <= 3; dy++) cv.set(x + 4, y1 + dy - 2, z, air); // and out at the top toward the island
-    }
-
+    /**
+     * An old plank bridge, 3 wide, sagging in the middle. Half-slab steps, so it is walked without jumping whatever the
+     * climb; log posts with lanterns along both sides (no fences: at world generation they don't join up).
+     */
     static void bridge(Canvas cv, Terrain t, int x0, int z0, int y0, int x1, int z1, int y1) {
-        int n = (int) Math.ceil(Math.hypot(x1 - x0, z1 - z0));
+        double len = Math.hypot(x1 - x0, z1 - z0);
+        int n = (int) Math.ceil(len * 1.5);
         int minX = Math.min(x0, x1) - 3, maxX = Math.max(x0, x1) + 3, minZ = Math.min(z0, z1) - 3, maxZ = Math.max(z0, z1) + 3;
-        if (!cv.touches(minX, minZ, maxX, maxZ)) return;
+        if (!cv.touches(minX, minZ, maxX, maxZ) || n == 0) return;
+        double ux = (x1 - x0) / len, uz = (z1 - z0) / len, sag = Math.min(4, len / 40);
         for (int i = 0; i <= n; i++) {
             double f = i / (double) n;
-            int x = (int) Math.round(x0 + (x1 - x0) * f), z = (int) Math.round(z0 + (z1 - z0) * f);
-            int y = (int) Math.round(y0 + (y1 - y0) * f - 3 * Math.sin(f * Math.PI));
-            for (int w = -1; w <= 1; w++) {
-                int bx = x + (Math.abs(x1 - x0) < Math.abs(z1 - z0) ? w : 0), bz = z + (Math.abs(x1 - x0) < Math.abs(z1 - z0) ? 0 : w);
-                cv.set(bx, y, bz, bd("minecraft:spruce_slab[type=top]"));
-                if (w != 0 && i % 2 == 0) cv.set(bx, y + 1, bz, bd("minecraft:spruce_fence"));
-                if (w != 0 && i % 10 == 0) { cv.set(bx, y + 2, bz, bd("minecraft:spruce_fence")); cv.set(bx, y + 3, bz, bd("minecraft:lantern")); }
+            double px = x0 + (x1 - x0) * f, pz = z0 + (z1 - z0) * f, py = y0 + (y1 - y0) * f - sag * Math.sin(f * Math.PI);
+            int yb = (int) Math.floor(py);
+            boolean upper = py - yb >= 0.5;
+            for (int w = -2; w <= 2; w++) {
+                int bx = (int) Math.round(px - uz * w * 0.9), bz = (int) Math.round(pz + ux * w * 0.9);
+                if (!cv.in(bx, yb, bz)) continue;
+                long h = hash(t.seed, bx, bz, 0xB21D);
+                cv.set(bx, yb, bz, bd(((h & 7) == 0 ? "minecraft:dark_oak_slab" : "minecraft:spruce_slab") + (upper ? "[type=top]" : "[type=bottom]")));
+                for (int dy = 1; dy <= 3; dy++) if (!cv.air(bx, yb + dy, bz) && Math.abs(w) < 2) cv.set(bx, yb + dy, bz, WorldGen.Blocks.AIR);   // through an island's lip
+            }
+            if (i % 18 == 0) for (int side = -1; side <= 1; side += 2) {
+                int bx = (int) Math.round(px - uz * side * 2.2), bz = (int) Math.round(pz + ux * side * 2.2);
+                cv.set(bx, yb, bz, bd("minecraft:spruce_log")); cv.set(bx, yb + 1, bz, bd("minecraft:spruce_log"));
+                if (i % 36 == 0) cv.set(bx, yb + 2, bz, bd("minecraft:lantern"));
             }
         }
     }

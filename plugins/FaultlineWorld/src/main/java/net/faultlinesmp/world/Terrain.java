@@ -199,6 +199,28 @@ final class Terrain {
             if (p > 0.35) h += Math.min(24, (p - 0.35) * 90);
         }
         h = shapeSites(x, z, h, true);
+        // faction roads: the ground along a road is evened out (the mean of the land up and down the road), so it climbs in
+        // a steady slope you can walk instead of the hillside's random steps
+        if (pads) for (Layout.Road r : Layout.ROADS) {
+            if (x < Math.min(r.x0(), r.x1()) - 14 || x > Math.max(r.x0(), r.x1()) + 14 || z < Math.min(r.z0(), r.z1()) - 14 || z > Math.max(r.z0(), r.z1()) + 14) continue;
+            double[] sp = new double[1];
+            double d = Layout.segDist(x, z, r.x0(), r.z0(), r.x1(), r.z1(), sp);
+            if (d >= 13) continue;
+            double len = Math.hypot(r.x1() - r.x0(), r.z1() - r.z0()), sum = 0;
+            int n = 0;
+            for (int k = -4; k <= 4; k++) {
+                double s = Math.max(0, Math.min(1, sp[0] + k * 5 / len));
+                double px = r.x0() + (r.x1() - r.x0()) * s, pz = r.z0() + (r.z1() - r.z0()) * s;
+                double pc = coast(px, pz);
+                if (pc <= 0) continue;
+                int pi = isle(px, pz);
+                sum += landHeight(px, pz, pc, pi >= 0 ? Layout.ISLES.get(pi).climate() : 0, pc > -0.45 ? surfaceBlob(px, pz) : null, false);
+                n++;
+            }
+            if (n > 0) h = lerp(sum / n, h, smooth(3, 13, d));
+        }
+        // the shrines' terraces come LAST: a road ending at a shrine used to lift the ground back over it (round 7: the
+        // mountain shrine was buried 40 blocks deep under the road's average of the peaks)
         if (pads) for (int i = 0; i < Layout.CORES.size(); i++) {
             Layout.Core k = Layout.CORES.get(i);
             if (k.y() != 0) continue;
@@ -322,8 +344,28 @@ final class Terrain {
         int ex = Layout.CANYON_HX - Math.abs(x - Layout.CANYON_X), ez = Layout.CANYON_HZ - Math.abs(z - Layout.CANYON_Z);
         int e = Math.min(ex, ez);
         if (e < 0) return Integer.MAX_VALUE;
-        if (e >= 14) return Layout.CANYON_FLOOR;
-        return Layout.CANYON_FLOOR + (14 - e) * 15;        // steep terraced walls
+        // a rough cliff, not ruler-straight terraces: the wall's foot wanders in and out by up to 4 blocks, and it climbs
+        // 22 a block so it reaches the real surface even under the mountains (the old 15 stopped at y 212: bare stone above)
+        double wob = 1.6 + 1.1 * Math.sin(x * 0.045 + z * 0.021) + 0.6 * Math.sin(x * 0.019 - z * 0.05);
+        double eff = e - Math.max(0, wob);
+        if (eff >= 10) return Layout.CANYON_FLOOR;
+        if (eff < 0) eff = 0;
+        double up = (10 - eff) * 31;
+        int ledge = (int) (up / 44) * 44;                    // broad ledges every 44 blocks of height
+        return Layout.CANYON_FLOOR + (int) Math.min(up, ledge + Math.max(0, (up - ledge) * 1.6 - 14));
+    }
+
+    /** The canyon staircase (north wall, going down east): {rim y, run length}. Step i is at {@link #rampY}. */
+    static int rampY(int rim, int i) {
+        int need = rim - Layout.CANYON_FLOOR - 1;
+        boolean landings = need * 19 / 16 + 8 < Layout.CANYON_HX * 2 - 34;
+        int drop = landings ? 16 * (i / 19) + Math.min(i % 19, 16) : i;
+        return rim - drop;
+    }
+
+    static boolean rampFlat(int rim, int i) {
+        int need = rim - Layout.CANYON_FLOOR - 1;
+        return need * 19 / 16 + 8 < Layout.CANYON_HX * 2 - 34 && i % 19 >= 16;
     }
 
     // ------------------------------------------------------------------ biomes

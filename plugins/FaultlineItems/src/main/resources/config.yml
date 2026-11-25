@@ -1084,3 +1084,14 @@ spider-form:
   scale: 0.55
   rig-scale: 1.5
   cooldown-seconds: 20
+
+# 2.0: Kingdom Compasses (/adminmenu row 3). Each points at its kingdom's abandoned home in the main world.
+# "x,y,z" per kingdom; leave empty for the built-in spots (the faction builds of the Faultline world).
+kingdom-compass:
+  world: ""
+  targets:
+    1: ""
+    2: ""
+    3: ""
+    4: ""
+    5: ""

@@ -46,7 +46,7 @@ final class Layout {
             new Blob(B.DEEP_FOREST, 900, 640, 250),
             new Blob(B.INFERNO_FOREST, 1950, 1850, 230),
             new Blob(B.FROZEN_PEAKS, 1480, 1450, 420),     // the ice faction
-            new Blob(B.SKY_ISLES, 1450, 240, 430));         // the sky faction (the islands float over a crater)
+            new Blob(B.SKY_ISLES, 2100, -1000, 430));      // the sky faction: islands over the open Great Sea, north-east of island C
 
     static final List<Blob> UNDERGROUND = List.of(
             new Blob(B.FIBERS, 300, -700, 340),
@@ -90,13 +90,42 @@ final class Layout {
             new Site("ice", "ice/cathedral", 1560, 3, 1450, 0, Shape.CANYON, true),
             new Site("ice", "ice/sightless_angel_statue", 1290, 190, 1660, 80, Shape.BASIN, false),
             new Site("ice", "ice/ocean_arena", 1790, 135, 1210, 50, Shape.CAVERN, true),
-            // SKY (island C, north: islands over a crater)
-            new Site("sky", "sky/greek_statue", 1450, 87, 240, 150, Shape.CRATER, false),   // 232 tall: y 87 keeps its top under the build limit
-            new Site("sky", "sky/factory_castle", 1655, 241, 160, 0, Shape.SKY, true),
-            new Site("sky", "sky/ship", 1560, 262, 360, 0, Shape.SKY, true),
-            new Site("sky", "sky/yellow_ballroom", 1290, 251, 120, 0, Shape.SKY, true));
+            // SKY (over the open Great Sea: the statue stands in the water, the islands ring it high above)
+            new Site("sky", "sky/greek_statue", 2100, 87, -1000, 150, Shape.SEABED, false),   // 232 tall: its head is at the build limit
+            new Site("sky", "sky/factory_castle", 2320, 253, -1110, 0, Shape.SKY, true),
+            new Site("sky", "sky/ship", 2150, 268, -790, 0, Shape.SKY, true),
+            new Site("sky", "sky/yellow_ballroom", 1940, 286, -1160, 0, Shape.SKY, true));
 
     /** Each faction's admin-block hall (bedrock + command/structure/jigsaw blocks, lit by light blocks). */
+    /** A faction road: a straight path between two of its places (x0, z0) -> (x1, z1). */
+    record Road(String faction, int x0, int z0, int x1, int z1) {}
+
+    /** 2.0 (the owner: "all the paths have to connect to the statue and everything for each faction"). */
+    static final List<Road> ROADS = List.of(
+            new Road("mountain", -800, -1650, -620, -1520),      // castle - angel statue
+            new Road("mountain", -800, -1650, -940, -1542),      // castle - shrine (its door faces south)
+            new Road("mountain", -620, -1520, -940, -1542),      // statue - shrine
+            new Road("jungle", -1500, 1360, -1230, 1180),        // Himeji - ghost statue
+            new Road("jungle", -1500, 1360, -1310, 1560),        // Himeji - the town
+            new Road("jungle", -1500, 1360, -1720, 1268),        // Himeji - shrine
+            new Road("jungle", -1230, 1180, -1310, 1560),        // statue - the town
+            new Road("ice", 1345, 1356, 1300, 1438),             // the canyon's ramp - shrine
+            new Road("ice", 1300, 1438, 1290, 1660),             // shrine - sightless angel
+            new Road("ice", 1345, 1356, 1742, 1210),             // the ramp - the way down to the arena
+            new Road("fibers", 453, -690, 360, -690),            // (surface) the way down - over the base
+            new Road("spawn", 250, -1250, 440, -690));           // spawn - the way down to the Fibers
+
+    /** Paths on the floor of the Fibers' great cavern (y 41): the way down, the base, the hall, the statue, the shrine. */
+    static final int[][] FIBER_PATHS = {{449, -690, 360, -690}, {360, -690, 220, -760}, {360, -690, 290, -600}, {290, -600, 430, -592}, {430, -592, 449, -690}, {220, -760, 290, -600}};
+
+    /** Distance from (x, z) to a segment, and how far along it (out[0] = 0..1). */
+    static double segDist(double x, double z, double x0, double z0, double x1, double z1, double[] out) {
+        double vx = x1 - x0, vz = z1 - z0, l2 = vx * vx + vz * vz;
+        double s = l2 == 0 ? 0 : Math.max(0, Math.min(1, ((x - x0) * vx + (z - z0) * vz) / l2));
+        if (out != null) out[0] = s;
+        return Math.hypot(x - (x0 + vx * s), z - (z0 + vz * s));
+    }
+
     /** 2.0: the owner took the abyss and its three holes back out of the overworld ("just the Great Sea, with the whirlpool"):
      *  the way down to the Dark Ocean is FaultlineDeep's whirlpool. true brings the abyss layer and the holes back. */
     static final boolean ABYSS = false;
@@ -108,7 +137,7 @@ final class Layout {
             new Core("fibers", 430, -610, 41),
             new Core("jungle", -1720, 1250, 0),
             new Core("ice", 1300, 1420, 0),
-            new Core("sky", 1380, 430, 282));        // floats over the crater
+            new Core("sky", 2010, -830, 290));        // floats over the crater
 
     /** Big caverns carved for the Fibers sites and the arena (centre, floor y, ceiling y, radius). */
     record Cavern(int x, int z, int floor, int ceil, int r) {}

@@ -3288,6 +3288,27 @@ Notes:
   `/fworld tp <faction>core`. FIBERS: `Decor.cavernFloors` (mounds, mud hollows, root pillars floor to roof, glowing mushroom
   clusters, boulders) over the caverns' flat floors. Quest "Abyss Gazer" is now "Sea Hunter". Faction coordinates: `Layout.SITES` /
   `CORES` (mountain castle -800,-1650; jungle Himeji -1500,1360; ice cathedral 1560,1450; fibers base 360,-690 y 41; sky statue 1450,240).
+- **2.0 round 7 (FaultlineWorld, Items, Index; same 2.0.0)**: THE SKY KINGDOM MOVED out over the open Great Sea, round
+  (2100, -1000): the Greek statue stands IN the sea (`Shape.SEABED`, no crater, no mountains), the islands are higher
+  (castle 252 at 2320,-1110; ballroom 285 at 1940,-1160; the ship's mooring 270 at 2240,-850; the shrine 289 at 2010,-830),
+  `Structures.SKY_FIXED` / `SKY_CORE` / `SKY_BRIDGES`. The way up is the LADDER PILLAR (`ladderPillar`, 2401,-1110: a dock at
+  sea level, rest ledges every 24 rungs, a bridge onto the castle island). `Structures.bridge` = 3-wide plank half-slab steps
+  (walked without jumping) with log posts + lanterns, no fences. `SkyCity.java` = THE ABANDONED STEAM CITY: every random island
+  gets a ruin by size (clock tower / factory hall / workshop / boiler tower / gear pylon / lamp post; brick, polished blackstone,
+  weathered copper, copper roofs + domes, lightning-rod pipes, gears, clock faces, chimneys (some still steaming), holes,
+  cobwebs, chests/barrels with village loot (`Life.context` SKY_ISLES)), a cobbled street round it, a mooring mast and two
+  derelict airships; `SkyCity.plan` (cached per seed) joins EVERY island with bridges (Kruskal, never through the statue,
+  slope <= 0.42). SHRINES rebuilt (`Structures.core`): an open temple of the faction's stone on a stepped plinth, colonnade,
+  corner towers, rose window, stepped roof + lantern, and ONE command block on the altar (no more bedrock / jigsaw /
+  structure blocks). The terraces are applied after road smoothing (the mountain shrine was buried under a road). JUNGLE:
+  `Decor.cells` / jungle ground skipped "dry" columns, and the whole jungle is inside Himeji's dry radius (bare stone):
+  now only the canyon is skipped. THE CANYON STAIRS (`Shapes`, `Terrain.rampY/rampFlat`) reach the floor on every seed
+  (landings every 16 steps), with a stepped way onto them from the land; the canyon walls are banded ice to the top
+  (Decor's mountain pass skips the canyon), the floor has ice spikes, boulders, a pillar ring, a lit path to the cathedral.
+  `Life.onStructure` also refuses a vanilla structure whose box touches one already placed (`claimed`, since start).
+  KINGDOM COMPASSES (Items `KingdomCompass.java`, /adminmenu row 3 slots 20-24, `kingdom-compass.targets.<1-5>` "x,y,z"):
+  a lodestone compass to the kingdom's abandoned home + action bar arrow/distance; PDC `faultlineitems:kingdom_compass`;
+  Index entry. Ability heads moved to row 4. Checks: `Leak` 0 on 4 seeds, `Scan`, side renders, shrine terraces clear on 5 seeds.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

@@ -476,7 +476,7 @@ final class Abilities implements Listener, CommandExecutor, TabCompleter {
         ItemMeta im = info.getItemMeta();
         im.setDisplayName(ChatColor.YELLOW + "How it works");
         im.setLore(List.of(ChatColor.GRAY + "Top row: click to get an ability item.", ChatColor.GRAY + "Right-clicking it gives that ability forever.",
-                ChatColor.GRAY + "Heads below: players with an ability.", ChatColor.RED + "Click a head to REMOVE their ability."));
+                ChatColor.GRAY + "Row 3: kingdom compasses (give one to each king).", ChatColor.GRAY + "Heads below: players with an ability.", ChatColor.RED + "Click a head to REMOVE their ability."));
         info.setItemMeta(im);
         m.inv.setItem(8, info);
         // 1.3.38: row 2 = the legendary weapons + the admin-only bosses
@@ -484,7 +484,9 @@ final class Abilities implements Listener, CommandExecutor, TabCompleter {
         if (plugin.toiletRaid != null) m.inv.setItem(14, plugin.toiletRaid.plunger(1));
         if (plugin.chromeRunner != null) { m.inv.setItem(15, plugin.chromeRunner.chip(1)); m.inv.setItem(16, plugin.chromeRunner.spine()); }
         if (plugin.spiderNest != null) m.inv.setItem(17, plugin.spiderNest.menuItem()); // 1.3.44: carve a Spider Nest under you
-        int s = 18;
+        // 2.0: row 3 = the kingdom compasses (give one to each king: it points to their abandoned kingdom)
+        if (plugin.kingdomCompass != null) for (int k = 1; k <= 5; k++) m.inv.setItem(18 + k + 1, plugin.kingdomCompass.item(k));
+        int s = 27;
         List<Map.Entry<UUID, Kind>> list = new ArrayList<>(owned.entrySet());
         list.sort(Comparator.comparing(e -> names.getOrDefault(e.getKey(), "?").toLowerCase(Locale.ROOT)));
         for (Map.Entry<UUID, Kind> e : list) {
@@ -523,8 +525,13 @@ final class Abilities implements Listener, CommandExecutor, TabCompleter {
         } else if (slot == 17 && plugin.spiderNest != null) {
             p.closeInventory();
             plugin.spiderNest.create(p);
-        } else if (slot >= 18 && slot - 18 < m.heads.size()) {
-            UUID id = m.heads.get(slot - 18);
+        } else if (slot >= 20 && slot <= 24 && plugin.kingdomCompass != null) {
+            int k = slot - 19;
+            for (ItemStack left : p.getInventory().addItem(plugin.kingdomCompass.item(k)).values()) p.getWorld().dropItem(p.getLocation(), left);
+            p.sendMessage(ChatColor.GREEN + "Got the " + KingdomCompass.NAMES[k - 1] + " Compass. Give it to their king.");
+            plugin.getLogger().info("[Abilities] " + p.getName() + " took the " + KingdomCompass.NAMES[k - 1] + " Compass from /adminmenu");
+        } else if (slot >= 27 && slot - 27 < m.heads.size()) {
+            UUID id = m.heads.get(slot - 27);
             String n = names.getOrDefault(id, "?");
             Kind k = owned.get(id);
             if (remove(id)) p.sendMessage(ChatColor.YELLOW + "Removed " + (k == null ? "the ability" : k.title) + " from " + n + ".");

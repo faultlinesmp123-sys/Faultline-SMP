@@ -153,24 +153,39 @@ final class Life implements Listener {
             org.bukkit.util.BoundingBox bb = e.getBoundingBox();
             if (bb == null) return;
             Terrain t = terrain(e.getWorld());
-            int pad = 6;
+            // by FOOTPRINT, at any height (a jungle temple had landed on a shrine's roof: vanilla sets a structure down on
+            // whatever is there), with a wide margin
+            int pad = 12;
             for (Layout.Site s : Layout.SITES) {
                 int[] b = Sites.box(s);
-                if (b != null && hits(bb, b[0] - pad, b[1] - pad, b[2] - pad, b[3] + pad, b[4] + pad, b[5] + pad)) { e.setCancelled(true); return; }
+                if (b != null && bb.getMaxX() >= b[0] - pad && bb.getMinX() <= b[3] + pad && bb.getMaxZ() >= b[2] - pad && bb.getMinZ() <= b[5] + pad) { e.setCancelled(true); return; }
             }
-            for (int i = 0; i < Layout.PYRAMIDS.length; i++) {
-                if (bb.getMaxX() < Layout.PYRAMIDS[i][0] - Structures.PH - 8 || bb.getMinX() > Layout.PYRAMIDS[i][0] + Structures.PH + 8
-                        || bb.getMaxZ() < Layout.PYRAMIDS[i][1] - Structures.PH - 8 || bb.getMinZ() > Layout.PYRAMIDS[i][1] + Structures.PH + 8) continue;
-                int[] b = Structures.pyramidBox(t, i);
-                if (hits(bb, b[0] - pad, b[1] - pad, b[2] - pad, b[3] + pad, b[4] + pad, b[5] + pad)) { e.setCancelled(true); return; }
+            for (int[] p : Layout.PYRAMIDS)
+                if (bb.getMaxX() >= p[0] - Structures.PH - pad && bb.getMinX() <= p[0] + Structures.PH + pad && bb.getMaxZ() >= p[1] - Structures.PH - pad && bb.getMinZ() <= p[1] + Structures.PH + pad) { e.setCancelled(true); return; }
+            for (Layout.Core c : Layout.CORES)
+                if (bb.getMaxX() >= c.x() - 30 && bb.getMinX() <= c.x() + 30 && bb.getMaxZ() >= c.z() - 30 && bb.getMinZ() <= c.z() + 30) { e.setCancelled(true); return; }
+            for (int[] c : Structures.cities())
+                if (bb.getMaxX() >= c[0] - Structures.CITY_R - pad && bb.getMinX() <= c[0] + Structures.CITY_R + pad && bb.getMaxZ() >= c[1] - Structures.CITY_R - pad && bb.getMinZ() <= c[1] + Structures.CITY_R + pad) { e.setCancelled(true); return; }
+            for (Layout.Cavern c : Layout.CAVERNS)
+                if (bb.getMaxX() >= c.x() - c.r() && bb.getMinX() <= c.x() + c.r() && bb.getMaxZ() >= c.z() - c.r() && bb.getMinZ() <= c.z() + c.r() && bb.getMaxY() >= c.floor() - 10 && bb.getMinY() <= c.ceil() + 10) { e.setCancelled(true); return; }
+            for (Layout.Road r : Layout.ROADS) {
+                double cx = (bb.getMinX() + bb.getMaxX()) / 2, cz = (bb.getMinZ() + bb.getMaxZ()) / 2, half = Math.max(bb.getWidthX(), bb.getWidthZ()) / 2;
+                if (Layout.segDist(cx, cz, r.x0(), r.z0(), r.x1(), r.z1(), null) < half + 6) { e.setCancelled(true); return; }
             }
-            for (Layout.Core c : Layout.CORES) {
-                if (bb.getMaxX() < c.x() - 16 || bb.getMinX() > c.x() + 16 || bb.getMaxZ() < c.z() - 16 || bb.getMinZ() > c.z() + 16) continue;
-                int y = Structures.coreBase(t, c);
-                if (bb.getMaxY() >= y - 12 && bb.getMinY() <= y + 18) { e.setCancelled(true); return; }
+            // round 7: vanilla structures landing IN each other (ancient cities through trial chambers through mineshafts;
+            // the deep underground here is 260 blocks tall and everything vanilla aims at the same few levels). The first
+            // one to claim a spot keeps it; anything whose box then touches it isn't built.
+            double[] box = {bb.getMinX() - 6, bb.getMinY() - 4, bb.getMinZ() - 6, bb.getMaxX() + 6, bb.getMaxY() + 4, bb.getMaxZ() + 6};
+            synchronized (claimed) {
+                for (double[] o : claimed)
+                    if (box[3] >= o[0] && box[0] <= o[3] && box[4] >= o[1] && box[1] <= o[4] && box[5] >= o[2] && box[2] <= o[5]) { e.setCancelled(true); return; }
+                claimed.add(box);
             }
         } catch (Throwable ignored) { }
     }
+
+    /** Boxes of the vanilla structures let through since the server started (see onStructure). */
+    private final java.util.List<double[]> claimed = new java.util.ArrayList<>();
 
     static boolean hits(org.bukkit.util.BoundingBox bb, int x0, int y0, int z0, int x1, int y1, int z1) {
         return bb.getMaxX() >= x0 && bb.getMinX() <= x1 && bb.getMaxY() >= y0 && bb.getMinY() <= y1 && bb.getMaxZ() >= z0 && bb.getMinZ() <= z1;
@@ -260,8 +275,10 @@ final class Life implements Listener {
             LootTable loot = b.getType() == Material.CHEST ? LootTables.TRIAL_CHAMBERS_CORRIDOR.getLootTable() : LootTables.SIMPLE_DUNGEON.getLootTable();
             return new Context(loot, mobs);
         }
+        if (here == B.SKY_ISLES) return new Context(b.getType() == Material.CHEST ? LootTables.VILLAGE_TOOLSMITH.getLootTable() : LootTables.VILLAGE_WEAPONSMITH.getLootTable(), EntityType.ZOMBIE, EntityType.SKELETON);   // the abandoned steam city
         if (here == B.JAGGED_PEAKS || here == B.STONY_PEAKS || here == B.WINDSWEPT_HILLS || here == B.FROZEN_PEAKS || here == B.SNOWY_SLOPES)
             return new Context(LootTables.ABANDONED_MINESHAFT.getLootTable(), EntityType.SKELETON, EntityType.STRAY);   // the ruined watchtowers
+        if (here == B.JUNGLE || here == B.BAMBOO_JUNGLE) return new Context(LootTables.JUNGLE_TEMPLE.getLootTable(), EntityType.ZOMBIE, EntityType.SKELETON);   // the huts in the kapoks
         if (here == B.SPIDER) return new Context(LootTables.SIMPLE_DUNGEON.getLootTable(), EntityType.SPIDER, EntityType.CAVE_SPIDER);   // the brood mounds
         if (here == B.DEEP_FOREST) return new Context(LootTables.PILLAGER_OUTPOST.getLootTable(), EntityType.VINDICATOR, EntityType.PILLAGER);
         if (here == B.MIRE || here == B.INFERNO_FOREST) return new Context(LootTables.ABANDONED_MINESHAFT.getLootTable(), EntityType.ZOMBIE, EntityType.SKELETON);

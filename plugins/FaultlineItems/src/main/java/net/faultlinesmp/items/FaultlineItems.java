@@ -462,6 +462,7 @@ public final class FaultlineItems extends JavaPlugin {
         if (getCommand("mimicplayer") != null) { getCommand("mimicplayer").setExecutor(mimics); getCommand("mimicplayer").setTabCompleter(mimics); }
         combatTag = new CombatTag(this, mimics);
         getServer().getPluginManager().registerEvents(combatTag, this);
+        kingdomCompass = new KingdomCompass(this); // 2.0: kingdom compasses (/adminmenu row 3)
         abilities = new Abilities(this); // 1.3.33: personal abilities (/adminmenu)
         getServer().getPluginManager().registerEvents(abilities, this);
         for (String c : new String[]{"adminmenu", "ability"}) if (getCommand(c) != null) { getCommand(c).setExecutor(abilities); getCommand(c).setTabCompleter(abilities); }
@@ -1052,6 +1053,7 @@ public final class FaultlineItems extends JavaPlugin {
     CombatTag combatTag;
     Truce truce;
     Abilities abilities;
+    KingdomCompass kingdomCompass;
     Legendary legendary;
     ToiletRaid toiletRaid;
     ChromeRunner chromeRunner;

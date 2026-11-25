@@ -71,6 +71,9 @@ final class Decor {
             if (onRoad(x, z, reach)) continue;                                   // nothing grows on a faction road
             if (c.hole) continue;        // AUDIT: a hole has no floor: rocks drawn at its "floor" height hung in open water
             if (Sites.near(x, z, reach + 4)) continue;
+            boolean city = false;                                                // round 7: trees stood 40 blocks over the flattened cities
+            for (int[] cc : Structures.cities()) if (Layout.dist(x, z, cc[0], cc[1]) < Structures.CITY_R + reach + 6) city = true;
+            if (city) continue;
             f.draw(cv, t, x, z, c.surface, h >>> 32);
         }
     }
@@ -82,6 +85,7 @@ final class Decor {
             Terrain.Col c = cols[lx * 16 + lz];
             int x = bx + lx, z = bz + lz, y = c.surface;
             if (y < d.getMinHeight() + 2 || y >= d.getMaxHeight() - 2) continue;
+            if (Sites.near(x, z, 0)) continue;     // round 7: ferns grew under Himeji's moat water (the build is drawn after)
             long h = hash(t.seed, x, z, 0x6A0);
             int r = (int) (h & 255);
             switch (c.biome) {
@@ -563,7 +567,7 @@ final class Decor {
                     continue;
                 }
                 int ty = g + up;
-                if (!cv.air(x, ty, z)) continue;
+                if (!cv.air(x, ty, z) || !cv.type(x, ty - 1, z).isSolid()) continue;   // round 7: plants stood on moss carpet / azaleas
                 if (q < 9) cv.set(x, ty, z, bd("minecraft:azalea"));
                 else if (q < 13) cv.set(x, ty, z, bd("minecraft:flowering_azalea"));
                 else if (q < 42) cv.set(x, ty, z, bd("minecraft:moss_carpet"));
@@ -771,7 +775,7 @@ final class Decor {
                         else if (r < 64) d.setBlock(lx, y, lz, bd("minecraft:moss_carpet"));
                     } else if (above.isSolid() && r < 200) d.setBlock(lx, y, lz, bd(r < 30 ? "minecraft:glow_lichen[up=true]" : "minecraft:hanging_roots"));
                 } else if (u == B.SPIDER_CAVES || (c.biome == B.SPIDER && y > 60)) {
-                    if (r < 60) d.setBlock(lx, y, lz, bd("minecraft:cobweb"));
+                    if (r < 60 && (below.isSolid() || above.isSolid())) d.setBlock(lx, y, lz, bd("minecraft:cobweb"));   // round 7: not hanging in mid-air
                 }
             }
         }
@@ -794,6 +798,14 @@ final class Decor {
             Terrain.Col c = t.column(x, z);
             int base = -28 + (int) ((h >>> 30) % 10);
             if (t.underground(x, base, z, c) != B.MIRE) continue;
+            // round 7: the base was a fixed height, so huts and roots hung in the caverns: stand on the real cave floor,
+            // and only where the hut's / tree's corners stand on it too
+            int fl = WorldGen.caveFloor(t, x, base + 12, z, 30);
+            if (fl == Integer.MIN_VALUE || fl < -46) continue;
+            boolean flat = true;
+            for (int[] o : new int[][]{{-1, -1}, {7, 0}, {0, 6}, {7, 6}, {2, 2}}) if (Math.abs(WorldGen.caveFloor(t, x + o[0], fl + 4, z + o[1], 10) - fl) > 2) flat = false;
+            if (!flat) continue;
+            base = fl + 1;
             int height = 22 + (int) ((h >>> 36) % 18);
             boolean hut = ((h >>> 44) & 7) == 0;
             if (hut) { hut(cv, x, base, z, h); continue; }
@@ -992,8 +1004,10 @@ final class Decor {
                     if (dx * dx + dz * dz <= 5) cv.set(x + dx + k / 4, yy, z + dz, WorldGen.Blocks.CAVE_AIR);
             }
         }
-        if (((h >>> 12) & 3) == 0) { // a campsite beside it
+        int campY = t.column(x + R + 4, z).surface;
+        if (((h >>> 12) & 3) == 0 && Math.abs(campY - base) <= 2) { // a campsite beside it, on its own ground (it hung in caves / sat in hills)
             int cx = x + R + 4, cz = z;
+            base = campY;
             cv.set(cx, base + 1, cz, bd("minecraft:campfire[lit=true]"));
             cv.set(cx + 2, base + 1, cz + 1, bd("minecraft:barrel[facing=up]"));
             cv.set(cx - 2, base + 1, cz - 1, bd("minecraft:spruce_log[axis=x]"));
@@ -1168,7 +1182,8 @@ final class Decor {
         int H = 8 + (int) (h % 11);
         int R = 3 + (int) ((h >>> 5) % 5);
         boolean yellow = (h >>> 9 & 1) == 0;
-        for (int y = base; y <= base + H; y++) { cv.set(x, y, z, bd("minecraft:mushroom_stem")); if (y < base + 2) for (int k = 0; k < 4; k++) cv.soft(x + (k == 0 ? 1 : k == 1 ? -1 : 0), y, z + (k == 2 ? 1 : k == 3 ? -1 : 0), bd("minecraft:mushroom_stem")); }
+        int stemTop = base + H + (int) (R / 2.0 + 1) - 1;     // round 7: the cap sat 1-2 blocks over the stem's end (floating caps)
+        for (int y = base; y <= stemTop; y++) { cv.set(x, y, z, bd("minecraft:mushroom_stem")); if (y < base + 2) for (int k = 0; k < 4; k++) cv.soft(x + (k == 0 ? 1 : k == 1 ? -1 : 0), y, z + (k == 2 ? 1 : k == 3 ? -1 : 0), bd("minecraft:mushroom_stem")); }
         int top = base + H;
         for (int dx = -R; dx <= R; dx++) for (int dz = -R; dz <= R; dz++) for (int dy = -1; dy <= R / 2 + 1; dy++) {
             double d = Math.hypot(dx, dz) / R;
@@ -1178,7 +1193,11 @@ final class Decor {
             cv.air(x + dx, top + dy, z + dz, bd(b));
         }
         for (int dx = -R + 1; dx <= R - 1; dx++) for (int dz = -R + 1; dz <= R - 1; dz++) // gills underneath
-            if (Math.hypot(dx, dz) < R - 1 && (dx + dz & 1) == 0) cv.air(x + dx, top - 1, z + dz, bd("minecraft:ochre_froglight"));
+            if (Math.hypot(dx, dz) < R - 1 && (dx + dz & 1) == 0) {
+                double dd = Math.hypot(dx, dz) / R, cap = (1 - dd * dd) * (R / 2.0 + 1);
+                int under = top + (int) Math.ceil(cap - 1.6) - 1;           // round 7: right under the cap (they hung in the air)
+                cv.air(x + dx, under, z + dz, bd("minecraft:ochre_froglight"));
+            }
     }
 
     static void sandRock(Canvas cv, Terrain t, int x, int z, int base, long h) {
@@ -1205,6 +1224,10 @@ final class Decor {
             for (int y = base - 2; y <= Math.min(top, Layout.SEA - 3); y++)
                 cv.set(x + dx, y, z + dz, bd(((hash3(t.seed, x + dx, y, z + dz, 0x6E6)) & 7) == 0 ? "minecraft:prismarine" : "minecraft:stone"));
         }
-        for (int k = 0; k < 12; k++) if (cv.type(x + R + 1, base + 1 + k, z) == Material.WATER) cv.set(x + R + 1, base + 1 + k, z, bd(k == 11 ? "minecraft:kelp" : "minecraft:kelp_plant"));
+        // kelp beside it, from ITS floor (it started at the rock's height and floated over lower ground)
+        int kx = x + R + 1, kf = base + 1;
+        while (kf > base - 30 && cv.type(kx, kf - 1, z) == Material.WATER) kf--;
+        if (cv.inXZ(kx, z) && cv.type(kx, kf - 1, z).isSolid())
+            for (int k = 0; k < 12; k++) if (cv.type(kx, kf + k, z) == Material.WATER) cv.set(kx, kf + k, z, bd(k == 11 || cv.type(kx, kf + k + 1, z) != Material.WATER ? "minecraft:kelp" : "minecraft:kelp_plant")); else break;
     }
 }

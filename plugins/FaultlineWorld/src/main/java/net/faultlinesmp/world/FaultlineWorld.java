@@ -158,7 +158,7 @@ public final class FaultlineWorld extends JavaPlugin {
             for (Layout.Site s : Layout.SITES) if (s.file().toLowerCase().contains(what) && !what.isEmpty()) {
                 int[] b = Sites.box(s);
                 int y = b != null ? b[4] + 3 : s.y() + 60;
-                p.teleport(new Location(p.getWorld(), s.x() + 0.5, Math.min(318, y), s.z() + 0.5));
+                p.teleport(new Location(p.getWorld(), s.x() + 0.5, Math.min(Layout.MAX_Y - 1, y), s.z() + 0.5));
                 sender.sendMessage("§3[World] §7" + s.file());
                 return true;
             }

@@ -40,7 +40,8 @@ final class SkyCity {
                 double d = Layout.dist(A.x(), A.z(), B2.x(), B2.z()), gap = d - 0.62 * (A.r() + B2.r());
                 if (gap > 130 || gap < 2) continue;
                 if (Math.abs(A.top() - B2.top()) > 0.42 * gap) continue;
-                if (Layout.segDist(2100, -1000, A.x(), A.z(), B2.x(), B2.z(), null) < 112) continue;   // never through the statue
+                boolean statue = a == STATUE || b == STATUE;
+                if (!statue && Layout.segDist(2100, -1000, A.x(), A.z(), B2.x(), B2.z(), null) < 112) continue;   // never through the statue
                 edges.add(new double[]{gap, a, b});
             }
             edges.sort(Comparator.comparingDouble(e -> e[0]));
@@ -49,7 +50,7 @@ final class SkyCity {
             // the ring round the statue is always there (fixed isles 0-2 come first in isles(), the core is last)
             List<int[]> bridges = new ArrayList<>();
             for (int[] br : Structures.SKY_BRIDGES) {
-                int a = br[0] == 3 ? n - 1 : br[0], b = br[1] == 3 ? n - 1 : br[1];
+                int a = br[0] == 4 ? n - 1 : br[0], b = br[1] == 4 ? n - 1 : br[1];
                 union(parent, a, b);
             }
             for (double[] e : edges) {
@@ -69,8 +70,12 @@ final class SkyCity {
     static int find(int[] p, int i) { while (p[i] != i) { p[i] = p[p[i]]; i = p[i]; } return i; }
     static void union(int[] p, int a, int b) { p[find(p, a)] = find(p, b); }
 
+    /** Index of the statue's island in the plan (fixed isles come first). */
+    static final int STATUE = 3;
+
     static int[] end(Structures.Isle a, Structures.Isle b) {
-        double d = Layout.dist(a.x(), a.z(), b.x(), b.z()), f = a.r() * 0.62 / d;
+        // the statue's island: the bridge lands on its rim, clear of the statue
+        double d = Layout.dist(a.x(), a.z(), b.x(), b.z()), f = a.r() * (a.r() >= 100 ? 0.97 : 0.62) / d;
         return new int[]{(int) Math.round(a.x() + (b.x() - a.x()) * f), (int) Math.round(a.z() + (b.z() - a.z()) * f), a.top() + 2};
     }
 
@@ -80,15 +85,15 @@ final class SkyCity {
         if (!cv.touches(1480, -1520, 2720, -480)) return;
         Plan p = plan(t);
         for (int[] b : p.bridges()) Structures.bridge(cv, t, b[0], b[1], b[2], b[3], b[4], b[5]);
-        for (int i = 3; i < p.isles().size() - 1; i++) {                 // the random islands (not the fixed three, not the core)
+        for (int i = Structures.SKY_FIXED.length; i < p.isles().size() - 1; i++) {   // the random islands (not the fixed ones, not the core)
             Structures.Isle s = p.isles().get(i);
             if (!cv.touches(s.x() - s.r() - 12, s.z() - s.r() - 12, s.x() + s.r() + 12, s.z() + s.r() + 12)) continue;
             building(cv, t, s);
         }
         int[] m = Structures.SKY_FIXED[2];
         mast(cv, t, m[0] + 6, m[1] - 6, m[2] + 2);
-        airship(cv, t, 2300, -1230, 300, 0x41A);
-        airship(cv, t, 1880, -900, 296, 0x41B);
+        airship(cv, t, 2300, -1230, 470, 0x41A);
+        airship(cv, t, 1880, -900, 455, 0x41B);
     }
 
     /** A building that fits the island: the bigger the island, the bigger the ruin. */
@@ -102,8 +107,10 @@ final class SkyCity {
             if (d > 0.58 || !cv.inXZ(x + dx, z + dz)) continue;
             int gy = top(cv, x + dx, z + dz, s.top() + 4);
             if (gy < s.top()) continue;
+            org.bukkit.Material gm = cv.type(x + dx, gy, z + dz);
+            if (gm != org.bukkit.Material.GRASS_BLOCK && gm != org.bukkit.Material.DIRT) continue;   // never a bridge's slab
             long hh = hash(h, x + dx, z + dz, 0x5C17);
-            if (d < 0.5) cv.set(x + dx, gy, z + dz, bd((hh & 7) == 0 ? "minecraft:mossy_cobblestone" : (hh & 7) < 3 ? "minecraft:cobblestone" : (hh & 7) == 3 ? "minecraft:gravel" : "minecraft:stone_bricks"));
+            if (d < 0.5) cv.set(x + dx, gy, z + dz, bd((hh & 7) == 0 ? "minecraft:mossy_cobblestone" : (hh & 7) < 3 ? "minecraft:cobblestone" : (hh & 7) == 3 ? "minecraft:mossy_stone_bricks" : "minecraft:stone_bricks"));
             if (d < 0.58) for (int k = 1; k <= 3; k++) if (!cv.air(x + dx, gy + k, z + dz)) cv.set(x + dx, gy + k, z + dz, WorldGen.Blocks.AIR);
         }
         if (r >= 24) { if (kind < 2) clockTower(cv, t, x, y, z, h); else factory(cv, t, x, y, z, h); }
@@ -165,7 +172,7 @@ final class SkyCity {
         for (int dy = 1; dy <= 3; dy++) for (int dx = -1; dx <= 0; dx++) cv.set(mx + dx, y0 + dy, z0 + d - 1, WorldGen.Blocks.AIR);
         cv.set(mx + 1, y0 + 1, z0 + d, bd("minecraft:exposed_copper_trapdoor[facing=north,half=bottom,open=true]"));
         // stairs between floors: a ladder in the north-west corner
-        for (int dy = 1; dy < h - 1; dy++) cv.set(x0 + 1, y0 + dy, z0 + 1, bd("minecraft:ladder[facing=south]"));
+        for (int dy = 1; dy < h - 1; dy++) { cv.set(x0 + 1, y0 + dy, z0, bd(TRIM)); cv.set(x0 + 1, y0 + dy, z0 + 1, bd("minecraft:ladder[facing=south]")); }
         for (int dy = floorEvery; dy < h - 1; dy += floorEvery) { cv.set(x0 + 1, y0 + dy, z0 + 1, bd("minecraft:ladder[facing=south]")); cv.set(x0 + 2, y0 + dy, z0 + 1, WorldGen.Blocks.AIR); }
     }
 
@@ -211,13 +218,14 @@ final class SkyCity {
 
     static void chimney(Canvas cv, int x, int y0, int y1, int z, long h) {
         for (int y = y0; y <= y1; y++) for (int a = 0; a <= 1; a++) for (int b = 0; b <= 1; b++) put(cv, x + a, y, z + b, y >= y1 - 1 ? TRIM : BRICK, h);
+        cv.set(x, y1, z, bd(TRIM));
         if ((h & 3) == 0) cv.set(x, y1 + 1, z, bd("minecraft:campfire[lit=true,signal_fire=true]"));   // still steaming
     }
 
     // ---------------------------------------------------------------- the buildings
 
     static void clockTower(Canvas cv, Terrain t, int x, int y, int z, long h) {
-        int w = 9, tall = 30 + (int) (h >>> 20 & 7);
+        int w = 9, tall = Math.min(30 + (int) (h >>> 20 & 7), Layout.MAX_Y - y - 19);   // dome + spire stay under the world top
         int x0 = x - 4, z0 = z - 4;
         shell(cv, x0, y, z0, w, w, tall, h, BRICK, 6);
         for (int k = 0; k < 4; k++) {                                     // buttress pipes on the corners
@@ -245,8 +253,8 @@ final class SkyCity {
             }
         }
         for (int k = 0; k <= d / 2; k++) for (int dz = k; dz < d - k; dz++) for (int side : new int[]{0, w - 1}) put(cv, x0 + side, y + tall + k, z0 + dz, BRICK, h);
-        chimney(cv, x0 + 3, y + tall, y + tall + 14, z0 + 2, h);
-        chimney(cv, x0 + w - 5, y + tall, y + tall + 11, z0 + 2, h >>> 3);
+        chimney(cv, x0 + 3, y + tall, Math.min(y + tall + 14, Layout.MAX_Y - 3), z0 + 2, h);
+        chimney(cv, x0 + w - 5, y + tall, Math.min(y + tall + 11, Layout.MAX_Y - 3), z0 + 2, h >>> 3);
         gear(cv, x0 + w / 2, y + 7, z0 + d, 3.5, true, h);
         for (int k = 0; k < 4; k++) { int px = x0 + 2 + k * 5; pipe(cv, px, y + 1, y + tall - 1, z0 + d, h); }
         // a boiler outside the east end

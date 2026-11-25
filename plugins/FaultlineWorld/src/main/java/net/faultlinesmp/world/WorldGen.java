@@ -136,6 +136,7 @@ public final class WorldGen extends ChunkGenerator {
                     Terrain.Col n = nx >= 0 && nx < 16 && nz >= 0 && nz < 16 ? cols[nx * 16 + nz] : t.column(x + o[0], z + o[1]);
                     if ((n.sea || n.river) && !n.dry) ceil = Math.min(ceil, n.surface - 3);
                 }
+                ceil = Math.min(ceil, cavernCap(x, z));
                 for (int y = minY + 6; y <= ceil; y++) {
                     double d = interp(grid, lx, lz, (y - gy0) / 8.0, gyN) + fb * bandWeight(t, x, y, z, c);
                     if (d > 0) data.setBlock(lx, y, lz, y < -54 ? Blocks.LAVA : Blocks.CAVE_AIR);
@@ -147,9 +148,90 @@ public final class WorldGen extends ChunkGenerator {
         Decor.paint(t, bx, bz, cols, data);                 // custom biomes' ground, trees, rocks...
         Structures.paint(t, bx, bz, cols, data);            // pyramids, dungeons, admin cores, sky isles
         Sites.paint(t, bx, bz, data);                       // the faction builds
+        settle(data, minY, maxY);
+    }
+
+    /**
+     * Round 7 (audit): sand, gravel, concrete powder and anvils left over air or water fall the moment the chunk ticks
+     * (pyramids' carved rooms under the desert's sand, a ruin's hole under a build's gravel). The last thing a chunk does:
+     * they become their solid cousins.
+     */
+    static void settle(ChunkData data, int minY, int maxY) {
+        for (int lx = 0; lx < 16; lx++) for (int lz = 0; lz < 16; lz++) {
+            Material below = data.getType(lx, minY, lz);
+            for (int y = minY + 1; y < maxY; y++) {
+                Material m = data.getType(lx, y, lz);
+                if ((m.hasGravity() || m.name().endsWith("ANVIL")) && (below.isAir() || below == Material.WATER || below == Material.LAVA)) {
+                    String n = m.name();
+                    String to = n.equals("SAND") || n.equals("SUSPICIOUS_SAND") ? "minecraft:sandstone" : n.equals("RED_SAND") ? "minecraft:red_sandstone"
+                            : n.endsWith("CONCRETE_POWDER") ? "minecraft:" + n.toLowerCase().replace("_powder", "") : n.endsWith("ANVIL") ? "minecraft:barrel"
+                            : n.contains("GRAVEL") ? "minecraft:andesite" : null;
+                    if (to != null) { data.setBlock(lx, y, lz, Blocks.bd(to)); m = data.getType(lx, y, lz); }
+                }
+                below = m;
+            }
+        }
     }
 
     static final int[][] NEIGHBOURS = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}, {1, 1}, {1, -1}, {-1, 1}, {-1, -1}};
+
+    /**
+     * Round 7: noise caves stay 12 blocks below a cavern's floor. They used to hollow out under it and leave the cavern
+     * floor (and the Fibers' paths, mushrooms, pools) as a thin crust floating over a hole.
+     */
+    static int cavernCap(int x, int z) {
+        int cap = Integer.MAX_VALUE;
+        for (Layout.Cavern c : Layout.CAVERNS) if (Layout.dist(x, z, c.x(), c.z()) < c.r() + 14) cap = Math.min(cap, c.floor() - 12);
+        return cap;
+    }
+
+    private static final Map<Long, Caves> CAVES = new ConcurrentHashMap<>();
+
+    /**
+     * True when the noise caves made (x, y, z) air: the same sums the chunk generator does (grid corners every 4 x 8 x 4,
+     * interpolated the same way), so a feature drawn across several chunks can find the real cave floor in all of them.
+     * (Caverns, the canyon and features carved later aren't included.)
+     */
+    static boolean caveAt(Terrain t, int x, int y, int z) {
+        Terrain.Col c = t.column(x, z);
+        if (c.sea || c.dry || c.farlands >= 0.5 || Sites.near(x, z, 6)) return false;
+        int minY = -64;
+        if (y < minY + 6) return false;
+        int bx = Math.floorDiv(x, 16) * 16, bz = Math.floorDiv(z, 16) * 16, lx = x - bx, lz = z - bz;
+        int gx = lx / 4, gz = lz / 4;
+        double tx = (lx - gx * 4) / 4.0, tz = (lz - gz * 4) / 4.0;
+        double b00 = caveBias(t, bx + gx * 4, bz + gz * 4), b10 = caveBias(t, bx + gx * 4 + 4, bz + gz * 4);
+        double b01 = caveBias(t, bx + gx * 4, bz + gz * 4 + 4), b11 = caveBias(t, bx + gx * 4 + 4, bz + gz * 4 + 4);
+        double fb = (b00 + (b10 - b00) * tx) + ((b01 + (b11 - b01) * tx) - (b00 + (b10 - b00) * tx)) * tz;
+        int top = Math.min(c.surface, Layout.MAX_Y);
+        int ceil = top - 12 - (fb > 0.2 ? 14 : 0);
+        if (c.wetNear) for (int[] o : NEIGHBOURS) {
+            Terrain.Col n = t.column(x + o[0], z + o[1]);
+            if ((n.sea || n.river) && !n.dry) ceil = Math.min(ceil, n.surface - 3);
+        }
+        ceil = Math.min(ceil, cavernCap(x, z));
+        if (y > ceil) return false;
+        Caves cv = CAVES.computeIfAbsent(t.seed, Caves::new);
+        double fy = (y - minY) / 8.0;
+        int n = (Layout.WORLD_TOP - minY) / 8 + 1, iy = Math.max(0, Math.min(n - 2, (int) fy));
+        double ty = fy - iy;
+        double[] v = new double[8];
+        for (int k = 0; k < 8; k++) v[k] = cv.density(bx + (gx + (k & 1)) * 4, minY + (iy + (k >> 2)) * 8, bz + (gz + (k >> 1 & 1)) * 4, 0);
+        double c00 = v[0] + (v[1] - v[0]) * tx, c10 = v[2] + (v[3] - v[2]) * tx, c01 = v[4] + (v[5] - v[4]) * tx, c11 = v[6] + (v[7] - v[6]) * tx;
+        double a = c00 + (c10 - c00) * tz, bb = c01 + (c11 - c01) * tz;
+        return a + (bb - a) * ty + fb * bandWeight(t, x, y, z, c) > 0;
+    }
+
+    /** The cave floor under (x, from, z): the first rock with cave air over it, searching down `depth` blocks, or MIN_VALUE. */
+    static int caveFloor(Terrain t, int x, int from, int z, int depth) {
+        boolean airAbove = caveAt(t, x, from + 1, z);
+        for (int y = from; y > from - depth; y--) {
+            boolean air = caveAt(t, x, y, z);
+            if (!air && airAbove) return y;
+            airAbove = air;
+        }
+        return Integer.MIN_VALUE;
+    }
 
     /** How much bigger caves get here (Fibers / Mire regions); 0 elsewhere. */
     static double caveBias(Terrain t, int x, int z) {

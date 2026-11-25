@@ -87,14 +87,14 @@ final class Layout {
             new Site("jungle", "jungle/ghost_statue", -1230, 188, 1180, 70, Shape.BASIN, false),
             new Site("jungle", "jungle/starry_night_town", -1310, 205, 1560, 45, Shape.FLAT, true),
             // ICE (island C, south)
-            new Site("ice", "ice/cathedral", 1560, 3, 1450, 0, Shape.CANYON, true),
+            new Site("ice", "ice/cathedral", 1560, 255, 1450, 185, Shape.FLAT, true),   // round 7: on a mountain plateau (the world is 640 tall now)
             new Site("ice", "ice/sightless_angel_statue", 1290, 190, 1660, 80, Shape.BASIN, false),
             new Site("ice", "ice/ocean_arena", 1790, 135, 1210, 50, Shape.CAVERN, true),
             // SKY (over the open Great Sea: the statue stands in the water, the islands ring it high above)
-            new Site("sky", "sky/greek_statue", 2100, 87, -1000, 150, Shape.SEABED, false),   // 232 tall: its head is at the build limit
-            new Site("sky", "sky/factory_castle", 2320, 253, -1110, 0, Shape.SKY, true),
-            new Site("sky", "sky/ship", 2150, 268, -790, 0, Shape.SKY, true),
-            new Site("sky", "sky/yellow_ballroom", 1940, 286, -1160, 0, Shape.SKY, true));
+            new Site("sky", "sky/greek_statue", 2100, 280, -1000, 0, Shape.SKY, false),     // on its own floating island (top y 300; its model starts 20 layers up)
+            new Site("sky", "sky/factory_castle", 2320, 383, -1110, 0, Shape.SKY, true),
+            new Site("sky", "sky/ship", 2150, 398, -790, 0, Shape.SKY, true),
+            new Site("sky", "sky/yellow_ballroom", 1940, 426, -1160, 0, Shape.SKY, true));
 
     /** Each faction's admin-block hall (bedrock + command/structure/jigsaw blocks, lit by light blocks). */
     /** A faction road: a straight path between two of its places (x0, z0) -> (x1, z1). */
@@ -109,9 +109,9 @@ final class Layout {
             new Road("jungle", -1500, 1360, -1310, 1560),        // Himeji - the town
             new Road("jungle", -1500, 1360, -1720, 1268),        // Himeji - shrine
             new Road("jungle", -1230, 1180, -1310, 1560),        // statue - the town
-            new Road("ice", 1345, 1356, 1300, 1438),             // the canyon's ramp - shrine
+            new Road("ice", 1385, 1450, 1300, 1438),             // the cathedral - shrine
             new Road("ice", 1300, 1438, 1290, 1660),             // shrine - sightless angel
-            new Road("ice", 1345, 1356, 1742, 1210),             // the ramp - the way down to the arena
+            new Road("ice", 1385, 1450, 1742, 1210),             // the cathedral - the way down to the arena
             new Road("fibers", 453, -690, 360, -690),            // (surface) the way down - over the base
             new Road("spawn", 250, -1250, 440, -690));           // spawn - the way down to the Fibers
 
@@ -137,7 +137,7 @@ final class Layout {
             new Core("fibers", 430, -610, 41),
             new Core("jungle", -1720, 1250, 0),
             new Core("ice", 1300, 1420, 0),
-            new Core("sky", 2010, -830, 290));        // floats over the crater
+            new Core("sky", 2010, -830, 440));        // floats over the crater
 
     /** Big caverns carved for the Fibers sites and the arena (centre, floor y, ceiling y, radius). */
     record Cavern(int x, int z, int floor, int ceil, int r) {}
@@ -147,6 +147,10 @@ final class Layout {
             new Cavern(1790, 1210, 134, 199, 52));
 
     /** The cathedral canyon: centre x/z, half sizes, floor y. */
+    /** Round 7: the world is 640 tall (the datapack's overworld dimension type): y -64..575. */
+    static final int WORLD_TOP = 576, MAX_Y = WORLD_TOP - 1;
+    /** The cathedral moved onto a mountain: the canyon it stood in is gone (false). */
+    static final boolean CANYON = false;
     static final int CANYON_X = 1560, CANYON_Z = 1450, CANYON_HX = 200, CANYON_HZ = 112, CANYON_FLOOR = 2;
 
     static double dist(double ax, double az, double bx, double bz) { return Math.hypot(ax - bx, az - bz); }

@@ -319,7 +319,7 @@ final class Terrain {
             f = Math.min(f, smooth(s.r() * 2.0 + 6, s.r() * 2.0 + 46, Layout.dist(x, z, s.x(), s.z())));
         }
         int ex = Math.abs(x - Layout.CANYON_X) - Layout.CANYON_HX, ez = Math.abs(z - Layout.CANYON_Z) - Layout.CANYON_HZ;
-        f = Math.min(f, smooth(6, 46, Math.max(ex, ez)));
+        if (Layout.CANYON) f = Math.min(f, smooth(6, 46, Math.max(ex, ez)));
         return f;
     }
 
@@ -330,13 +330,14 @@ final class Terrain {
             if (s.r() <= 0) continue;
             Layout.Shape sh = s.shape();
             if (sh != Layout.Shape.FLAT && sh != Layout.Shape.BASIN && sh != Layout.Shape.CRATER) continue;
+            if (s.y() - 1 >= SEA) continue;     // round 7: only builds dug in BELOW sea level keep a dry zone (the cathedral's plateau reached the sea)
             if (Layout.dist(x, z, s.x(), s.z()) < s.r() * 1.95) return true;
         }
         return false;
     }
 
     static boolean inCanyon(int x, int z) {
-        return Math.abs(x - Layout.CANYON_X) <= Layout.CANYON_HX && Math.abs(z - Layout.CANYON_Z) <= Layout.CANYON_HZ;
+        return Layout.CANYON && Math.abs(x - Layout.CANYON_X) <= Layout.CANYON_HX && Math.abs(z - Layout.CANYON_Z) <= Layout.CANYON_HZ;
     }
 
     /** Canyon floor at this column (or Integer.MAX_VALUE outside). Walls step down in terraces toward the middle. */

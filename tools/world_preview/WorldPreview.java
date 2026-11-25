@@ -17,7 +17,7 @@ import java.util.*;
  * WorldPreview <outDir> <name> <x> <z> <radiusBlocks> [sectionAxis x|z]
  */
 public class WorldPreview {
-    static final int MINY = -64, MAXY = 320;
+    static final int MINY = -64, MAXY = 576;
 
     static Material[] chunk(WorldGen g, WorldInfo wi, int cx, int cz) {
         Material[] a = new Material[16 * 16 * (MAXY - MINY)];

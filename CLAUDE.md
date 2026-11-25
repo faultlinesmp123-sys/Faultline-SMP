@@ -3309,6 +3309,27 @@ Notes:
   KINGDOM COMPASSES (Items `KingdomCompass.java`, /adminmenu row 3 slots 20-24, `kingdom-compass.targets.<1-5>` "x,y,z"):
   a lodestone compass to the kingdom's abandoned home + action bar arrow/distance; PDC `faultlineitems:kingdom_compass`;
   Index entry. Ability heads moved to row 4. Checks: `Leak` 0 on 4 seeds, `Scan`, side renders, shrine terraces clear on 5 seeds.
+- **2.0 round 8 (FaultlineWorld, Items; same 2.0.0)**: THE WORLD IS 640 TALL (y -64..575, `Layout.WORLD_TOP`/`MAX_Y`): the
+  datapack's `dimension_type/overworld.json` height + logical_height 640, clouds at 520, noise height 640
+  (`tools/world_datapack.py`). The owner asked for it ("RAISE IT") knowing BEDROCK CLIENTS ONLY SHOW y -64..319 (a Bedrock
+  limit; no plugin can change it): Bedrock players don't see the sky city or the cathedral's upper half. CustomWorldHeight
+  isn't needed. The datapack is global, so `faultline_deep` (a NORMAL world) is 640 tall too. Needs a FRESH world.
+  The CATHEDRAL stands on a mountain plateau (`Shape.FLAT` y 255 r 185 in the ice faction's peaks); the canyon is off
+  (`Layout.CANYON` false gates `inCanyon`, the canyon walls, stairs and floor detail). THE SKY: fixed islands castle 380,
+  ballroom 423, mooring 400, the STATUE'S ISLAND (`SKY_FIXED[3]`, 2100,-1000, top 298, r 118, depth capped at 78 so it clears
+  the sea; the statue at y 280: its model starts 20 layers up), the shrine 439; random islands 350-459; airships 455-470;
+  ring bridges `SKY_BRIDGES` (index 4 = the core); `SkyCity.STATUE` bridges land on the statue island's rim. Only builds dug
+  in BELOW sea level keep a dry zone (`Terrain.dry`: the cathedral plateau's 360-block zone reached the sea). AUDIT FIXES:
+  `tools/world_preview/Audit.java` (floating clusters, gravity blocks, plants on nothing, wall-less ladders, flowing fluids,
+  several seeds); `WorldGen.settle` (last pass of every chunk: sand / gravel / concrete powder / anvils over air or water
+  become sandstone / andesite / concrete / barrels; `Sites.heal` never puts a gravity block back); schematics' concrete powder
+  is concrete; `Sites.finalBlock` drops grass/flowers/carpets/snow/rails whose support the ruin took (`needsGround`); ruins'
+  cobwebs only under solid blocks; `WorldGen.caveAt` / `caveFloor` (the generator's own cave sums, exact: 44,717/44,717 checks)
+  put Mire trees and huts on the real cave floor; no noise caves within 12 under a cavern's floor (`cavernCap`); trees never
+  in illager cities; Decor ground never inside a build's box; sea-rock kelp from its own floor; wasteland mushroom stems reach
+  their caps, gills under them; inferno campsites on their own ground; Fibers floor plants only on solid; spider-cave webs
+  touch rock; pyramid well ladders keep their wall; sky street never paves a bridge; signal-fire pillars mark the top of each
+  spiral (the spawn road ends at the Fibers spiral, 440,-690). KINGDOM COMPASS ice target = the cathedral (1385, 1450).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

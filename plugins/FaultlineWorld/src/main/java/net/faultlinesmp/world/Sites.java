@@ -32,7 +32,7 @@ final class Sites {
                 if (in == null) { log.warning("[World] missing schematic factions/" + s.file()); continue; }
                 Schematic sc = Schematic.read(s.file(), in);
                 sc.palette = new BlockData[sc.paletteNames.length];
-                for (int i = 0; i < sc.palette.length; i++) sc.palette[i] = bd(sc.paletteNames[i]);
+                for (int i = 0; i < sc.palette.length; i++) sc.palette[i] = bd(sc.paletteNames[i].replace("_concrete_powder", "_concrete"));   // round 7: ruined builds dropped their powder
                 sc.findPlugs();
                 LOADED.put(s.file(), sc);
                 if (s.ruin()) ENTRANCES.put(s.file(), entrance(sc));
@@ -89,7 +89,7 @@ final class Sites {
                     // cobwebs in the abandoned rooms
                     if (s.ruin()) for (int y = sc.colMin[c] + 1; y < sc.colMax[c]; y++) {
                         int wy = oy + y;
-                        if (cv.type(x, wy, z).isAir() && !cv.type(x, wy + 1, z).isAir() && (hash3(t.seed, x, wy, z, 0x5EB) & 63) == 0) cv.set(x, wy, z, bd("minecraft:cobweb"));
+                        if (cv.type(x, wy, z).isAir() && cv.type(x, wy + 1, z).isSolid() && (hash3(t.seed, x, wy, z, 0x5EB) & 63) == 0) cv.set(x, wy, z, bd("minecraft:cobweb"));
                     }
                 }
             // the entrance (under the sea it stays water)
@@ -138,6 +138,7 @@ final class Sites {
                         org.bukkit.block.Block at = ch.getBlock(x & 15, y, z & 15);
                         Material want = b.getMaterial(), have = at.getType();
                         if (have == want) continue;
+                        if (want.hasGravity() || want.name().endsWith("ANVIL")) continue;   // round 7: see WorldGen.settle
                         if (want.isAir() && !(have == Material.WATER || have == Material.LAVA)) continue;   // a hole in a ruin: only springs are undone
                         at.setBlockData(b, false);
                         fixed++;
@@ -161,6 +162,12 @@ final class Sites {
             if (b != raw && (b == null || b.getMaterial().isAir()) && sc.besideSource(lx, ly, lz)) b = raw;
         }
         if (b == null) return null;
+        if (needsGround(b.getMaterial()) && ly > 0) {
+            // round 7 (audit): grass, flowers, carpets, snow and rails stood on nothing where the ruin had taken the block under them
+            int bi = sc.find(lx, ly - 1, lz);
+            BlockData under = bi < 0 ? null : (s.ruin() ? ruin(t, s, sc, x, y - 1, z, ly - 1, sc.palette[bi]) : sc.palette[bi]);
+            if (under == null || !under.getMaterial().isSolid() && under.getMaterial() != b.getMaterial()) return null;
+        }
         if (s.shape() == Layout.Shape.SEABED && y < Layout.SEA) {
             Material m = b.getMaterial();
             if (m.isAir() || m == Material.WATER) return null;
@@ -237,6 +244,20 @@ final class Sites {
     }
 
     static long pack(int x, int y, int z) { return ((long) x << 40) | ((long) y << 20) | (z & 0xFFFFF); }
+
+    static final Set<Material> GROUND_PLANTS = EnumSet.noneOf(Material.class);
+    static boolean needsGround(Material m) {
+        if (GROUND_PLANTS.isEmpty()) synchronized (GROUND_PLANTS) {
+            if (GROUND_PLANTS.isEmpty()) for (String n : new String[]{"SHORT_GRASS", "TALL_GRASS", "FERN", "LARGE_FERN", "DEAD_BUSH", "DANDELION", "POPPY",
+                    "BLUE_ORCHID", "ALLIUM", "AZURE_BLUET", "OXEYE_DAISY", "CORNFLOWER", "LILY_OF_THE_VALLEY", "PINK_PETALS", "SNOW", "SWEET_BERRY_BUSH",
+                    "SUNFLOWER", "LILAC", "ROSE_BUSH", "PEONY", "RAIL", "POWERED_RAIL", "DETECTOR_RAIL", "ACTIVATOR_RAIL", "TORCHFLOWER", "BROWN_MUSHROOM", "RED_MUSHROOM",
+                    "RED_TULIP", "ORANGE_TULIP", "WHITE_TULIP", "PINK_TULIP", "AZALEA", "FLOWERING_AZALEA"}) {
+                Material mm = Material.getMaterial(n);
+                if (mm != null) GROUND_PLANTS.add(mm);
+            }
+        }
+        return GROUND_PLANTS.contains(m) || m.name().endsWith("_CARPET") || m.name().endsWith("_SAPLING");
+    }
 
     /** The world box of a site (for protection of statues / loot), or null when its schematic didn't load. */
     static int[] box(Layout.Site s) {

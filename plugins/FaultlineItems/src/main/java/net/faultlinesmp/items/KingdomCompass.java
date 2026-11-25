@@ -23,8 +23,8 @@ final class KingdomCompass {
     static final String[] NAMES = {"The Mountain", "The Jungle", "The Ice", "The Fibers", "The Sky"};
     static final ChatColor[] COLORS = {ChatColor.RED, ChatColor.GREEN, ChatColor.AQUA, ChatColor.DARK_PURPLE, ChatColor.YELLOW};
     static final String[] PLACE = {"the mountain castle", "Himeji castle", "the frozen cathedral", "the way down to the Fibers", "the ladder up to the sky city"};
-    /** FaultlineWorld's Layout: the mountain castle, Himeji, the cathedral canyon's stairs, the Fibers' way down, the sky ladder's dock. */
-    static final int[][] DEFAULTS = {{-800, 222, -1650}, {-1500, 190, 1360}, {1357, 230, 1356}, {449, 210, -690}, {2404, 201, -1110}};
+    /** FaultlineWorld's Layout: the mountain castle, Himeji, the cathedral on its mountain, the Fibers' way down, the sky ladder's dock. */
+    static final int[][] DEFAULTS = {{-800, 222, -1650}, {-1500, 190, 1360}, {1385, 256, 1450}, {449, 210, -690}, {2404, 201, -1110}};
 
     KingdomCompass(FaultlineItems plugin) {
         this.plugin = plugin;

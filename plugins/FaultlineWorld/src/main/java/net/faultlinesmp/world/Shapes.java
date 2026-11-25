@@ -62,6 +62,23 @@ final class Shapes {
                 for (int y = floor + 1; y <= ceil; y++) data.setBlock(lx, y, lz, air);
             }
         }
+        // round 7 (the owner: "where's the path going to"): the top of each spiral gets four tall pillars with signal fires on
+        // them, so the end of the road can be seen (and its smoke) from far away
+        for (int si = 0; si < SPIRALS.length; si++) {
+            Spiral s = SPIRALS[si];
+            if (!cv.touches(s.x() - 16, s.z() - 16, s.x() + 16, s.z() + 16)) continue;
+            String body = si == 0 ? "minecraft:mud_bricks" : "minecraft:polished_diorite", trim = si == 0 ? "minecraft:packed_mud" : "minecraft:packed_ice";
+            for (int k = 0; k < 4; k++) {
+                int px = s.x() + (k % 2 == 0 ? -12 : 12), pz = s.z() + (k < 2 ? -12 : 12);
+                int g = t.column(px, pz).surface;
+                for (int dx = 0; dx <= 1; dx++) for (int dz = 0; dz <= 1; dz++) {
+                    cv.column(px + dx, pz + dz, g - 4, g + 8, bd(body));
+                    cv.set(px + dx, g + 4, pz + dz, bd(trim));
+                    cv.set(px + dx, g + 9, pz + dz, bd("minecraft:hay_block"));
+                    cv.set(px + dx, g + 10, pz + dz, bd("minecraft:campfire[lit=true,signal_fire=true]"));
+                }
+            }
+        }
         // spiral tunnels (surface -> cavern), lit with lanterns on the inner wall
         for (Spiral s : SPIRALS) {
             int R = HELIX_R + 4;
@@ -85,7 +102,7 @@ final class Shapes {
             }
         }
         // canyon walls: ice and snow instead of bare stone
-        if (cv.touches(Layout.CANYON_X - Layout.CANYON_HX, Layout.CANYON_Z - Layout.CANYON_HZ, Layout.CANYON_X + Layout.CANYON_HX, Layout.CANYON_Z + Layout.CANYON_HZ)) {
+        if (Layout.CANYON && cv.touches(Layout.CANYON_X - Layout.CANYON_HX, Layout.CANYON_Z - Layout.CANYON_HZ, Layout.CANYON_X + Layout.CANYON_HX, Layout.CANYON_Z + Layout.CANYON_HZ)) {
             for (int lx = 0; lx < 16; lx++) for (int lz = 0; lz < 16; lz++) {
                 int x = bx + lx, z = bz + lz;
                 if (!Terrain.inCanyon(x, z)) continue;
@@ -117,7 +134,7 @@ final class Shapes {
         }
         // the cathedral canyon's staircase: real stairs down its north wall, landings every 16 steps, all the way to the floor
         int x0 = Layout.CANYON_X - Layout.CANYON_HX, zr = Layout.CANYON_Z - Layout.CANYON_HZ + 17;
-        if (cv.touches(x0 - 44, zr - 1, Layout.CANYON_X + Layout.CANYON_HX, zr + 3)) {
+        if (Layout.CANYON && cv.touches(x0 - 44, zr - 1, Layout.CANYON_X + Layout.CANYON_HX, zr + 3)) {
             int rim = t.column(x0 - 1, zr + 1).surface;
             BlockData ice = bd("minecraft:packed_ice"), step = bd("minecraft:polished_diorite_stairs[facing=west]"), flat = bd("minecraft:polished_diorite");
             for (int i = 0; ; i++) {
@@ -125,6 +142,9 @@ final class Shapes {
                 if (y <= Layout.CANYON_FLOOR || x > Layout.CANYON_X + Layout.CANYON_HX - 16) break;
                 if (!cv.touches(x, zr, x, zr + 3)) continue;
                 boolean land = Terrain.rampFlat(rim, i) || i == 0;
+                // round 7 (the owner's screenshot): a slit stayed open between the stairs and the north wall, down to the floor.
+                // The stairs are now cut into a ledge of ice that runs back to the wall.
+                for (int z = Layout.CANYON_Z - Layout.CANYON_HZ; z < zr; z++) if (Terrain.canyonFloor(x, z) < y) cv.column(x, z, Layout.CANYON_FLOOR, y, ice);
                 for (int z = zr; z <= zr + 3; z++) {
                     cv.column(x, z, Layout.CANYON_FLOOR, y - 1, ice);
                     cv.column(x, z, y + 1, y + 6, air);             // through the wall near the top

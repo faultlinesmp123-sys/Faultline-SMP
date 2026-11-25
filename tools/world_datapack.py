@@ -149,7 +149,12 @@ def build():
     ns["sea_level"] = 200
     files["data/minecraft/worldgen/noise_settings/overworld.json"] = ns
     dt = load("dimension_type_overworld.json")
-    dt["attributes"]["minecraft:visual/cloud_height"] = 318.0
+    # round 7: the world is 640 tall (y -64..575): the sky kingdom floats at 300-470, the cathedral stands on a mountain.
+    # (Bedrock clients only ever show y -64..319.)
+    dt["height"] = 640
+    dt["logical_height"] = 640
+    dt["attributes"]["minecraft:visual/cloud_height"] = 520.0
+    ns["noise"]["height"] = 640
     files["data/minecraft/dimension_type/overworld.json"] = dt
     for k, v in diamonds().items():
         files[f"data/minecraft/worldgen/placed_feature/{k}.json"] = v

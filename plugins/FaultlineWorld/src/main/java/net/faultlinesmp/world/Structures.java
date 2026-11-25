@@ -148,6 +148,7 @@ final class Structures {
                 }
                 if (Math.abs(dx) == 2 && Math.abs(dz) <= 2 || Math.abs(dz) == 2 && Math.abs(dx) <= 2)
                     for (int y = y0 - 52; y <= y0; y++) cv.set(x, y, z, cut);              // the well's lining
+                if (dx == 0 && dz == -2) for (int y = y0; y <= y0 + FLOORS[FLOORS.length - 1] + 4; y++) cv.set(x, y, z, cut);   // round 7: the ladder's wall through the rooms
             }
         underworld(cv, t, i, px, pz, y0 - 55);
     }
@@ -418,15 +419,15 @@ final class Structures {
     record Isle(int x, int z, int top, int r, long h) {}   // also used by SkyCity
 
     /** The designated islands (under the sky faction's builds): castle, ballroom, the ship's mooring. Then the random ones. */
-    static final int[][] SKY_FIXED = {{2320, -1110, 252, 60}, {1940, -1160, 285, 38}, {2240, -850, 270, 24}};
+    static final int[][] SKY_FIXED = {{2320, -1110, 380, 60}, {1940, -1160, 423, 38}, {2240, -850, 400, 24}, {2100, -1000, 298, 118}};   // [3] = the statue's island;
     /** The core's island (drawn by core()). */
-    static final int[] SKY_CORE = {2010, -830, 289, 20};
+    static final int[] SKY_CORE = {2010, -830, 439, 20};
     /** The bridges: a ring round the statue, island to island. Each {from isle, to isle} by index (3 = the core's). */
-    static final int[][] SKY_BRIDGES = {{1, 0}, {0, 2}, {2, 3}, {3, 1}};
+    static final int[][] SKY_BRIDGES = {{1, 0}, {0, 2}, {2, 4}, {4, 1}};
     /** The ladder pillar from the sea up to the castle island. */
     static final int LADDER_X = 2320 + 81, LADDER_Z = -1110;
 
-    static int[] skyIsle(int i) { return i == 3 ? SKY_CORE : SKY_FIXED[i]; }
+    static int[] skyIsle(int i) { return i == 4 ? SKY_CORE : SKY_FIXED[i]; }
 
     /** Where a bridge from island a toward island b leaves a: on its turf, 0.62 of the way out. */
     static int[] bridgeEnd(int a, int b) {
@@ -449,7 +450,7 @@ final class Structures {
                 boolean clash = false;
                 for (int[] f : SKY_FIXED) if (Layout.dist(x, z, f[0], f[1]) < f[3] + r + 12) clash = true;
                 for (Layout.Site s : Layout.SITES) if (s.faction().equals("sky") && Math.abs(x - s.x()) < 120 + r && Math.abs(z - s.z()) < 125 + r
-                        && (s.shape() == Layout.Shape.SEABED || Layout.dist(x, z, s.x(), s.z()) < 50 + r)) clash = true;
+                        && (s.file().equals("sky/greek_statue") || Layout.dist(x, z, s.x(), s.z()) < 50 + r)) clash = true;
                 if (Layout.dist(x, z, SKY_CORE[0], SKY_CORE[1]) < 34 + r) clash = true;
                 if (Layout.dist(x, z, LADDER_X, LADDER_Z) < 12 + r) clash = true;
                 if (Layout.dist(x, z, 2300, -1230) < 30 + r || Layout.dist(x, z, 1880, -900) < 30 + r) clash = true;   // SkyCity's airships
@@ -457,7 +458,7 @@ final class Structures {
                 int[] m = SKY_FIXED[2];
                 if (Layout.segDist(x, z, m[0], m[1], 2150, -790, null) < r + 10) clash = true;      // the ship's gangway
                 if (clash) continue;
-                out.add(new Isle(x, z, 236 + (int) ((h >>> 32) % 62), r, h));
+                out.add(new Isle(x, z, 350 + (int) ((h >>> 32) % 110), r, h));   // round 7: y 350-459 (the world is 640 tall)
             }
         return out;
     }
@@ -534,10 +535,10 @@ final class Structures {
             double d = Math.hypot(dx, dz) / (r * (1 + wob));
             if (d > 1) continue;
             int surf = top + (int) Math.round(2 * (1 - d * d));
-            int bottom = top - (int) Math.round(r * 1.25 * Math.pow(1 - d, 0.8)) - 2;
+            int bottom = top - (int) Math.round(Math.min(r * 1.25, 78) * Math.pow(1 - d, 0.8)) - 2;   // the statue's wide island stays clear of the sea
             for (int y = bottom; y <= surf; y++) cv.set(wx, y, wz, y == surf ? grass : y > surf - 3 ? dirt : ((hash3(h, wx, y, wz, 1) & 15) == 0 ? moss : stone));
             long hh = hash(h, wx, wz, 0x5F2);
-            if ((hh & 63) == 0 && d < 0.8 && (r < 12 || d > 0.62)) smallTree(cv, wx, surf + 1, wz, hh);
+            if ((hh & 63) == 0 && d < 0.8 && (r < 12 || d > 0.62) && r < 100) smallTree(cv, wx, surf + 1, wz, hh);
             else if ((hh & 7) == 1) cv.air(wx, surf + 1, wz, bd("minecraft:short_grass"));
             else if ((hh & 31) == 2) cv.air(wx, surf + 1, wz, bd((hh >>> 8 & 1) == 0 ? "minecraft:cornflower" : "minecraft:oxeye_daisy"));
             if (d > 0.85 && (hh >>> 12 & 7) == 0) for (int k = 1; k <= 1 + (hh >>> 16 & 7); k++) cv.air(wx, bottom - k, wz, bd("minecraft:hanging_roots"));

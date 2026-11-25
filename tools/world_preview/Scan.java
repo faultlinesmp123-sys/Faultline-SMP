@@ -7,7 +7,7 @@ import java.util.*;
 
 /** Generates a square of chunks and looks for things that go wrong the moment the world ticks. */
 public class Scan {
-    static final int MINY = -64, MAXY = 320, H = MAXY - MINY;
+    static final int MINY = -64, MAXY = 576, H = MAXY - MINY;
     static Map<Long, Material[]> chunks = new HashMap<>();
     static WorldGen g; static WorldInfo wi;
     static Material at(int x, int y, int z) {

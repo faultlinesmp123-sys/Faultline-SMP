@@ -418,7 +418,7 @@ final class Structures {
             for (int dx = -4; dx <= 4; dx++) for (int dz = -4; dz <= 4; dz++) {
                 double d = Math.hypot(dx, dz);
                 if (d > 4.4) continue;
-                if (d > 3.5) cv.set(x + dx, y, z + dz, (y % 6 == 0 && (dx == 0 || dz == 0)) ? bd("minecraft:glass_pane") : brick);
+                if (d > 3.5) cv.set(x + dx, y, z + dz, (y % 6 == 0 && (dx == 0 || dz == 0)) ? bd("minecraft:tinted_glass") : brick);
                 else if (d < 1.2) cv.set(x + dx, y, z + dz, brick);
                 else {
                     double a = Math.atan2(dz, dx); if (a < 0) a += Math.PI * 2;
@@ -486,7 +486,7 @@ final class Structures {
             for (int dy = 0; dy < 22; dy++) for (int dx = -3; dx <= 3; dx++) for (int dz = -3; dz <= 3; dz++) {
                 boolean edge = Math.abs(dx) == 3 || Math.abs(dz) == 3, corner = Math.abs(dx) == 3 && Math.abs(dz) == 3;
                 int x = c[0] + dx - 8, z = c[1] + dz - 8, yy = y + 1 + dy;
-                if (dy == 21) cv.set(x, yy, z, edge ? bd("minecraft:dark_oak_fence") : plank);
+                if (dy == 21) cv.set(x, yy, z, edge ? bd("minecraft:dark_oak_slab") : plank);   // a fence drawn here has no connections: loose posts
                 else if (corner) cv.set(x, yy, z, log);
                 else if (edge) cv.set(x, yy, z, dy % 7 == 3 && (dx == 0 || dz == 0) ? air : (dy < 6 ? cob : plank));
                 else cv.set(x, yy, z, dy % 7 == 0 ? plank : air);
@@ -498,7 +498,7 @@ final class Structures {
                 int x = c[0] + 6 + k * 6, z = c[1] - 18;
                 for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) for (int dy = 1; dy <= 3; dy++) {
                     boolean e = Math.abs(dx) == 1 || Math.abs(dz) == 1;
-                    cv.set(x + dx, y + dy, z + dz, dy == 3 ? plank : e ? bd("minecraft:iron_bars") : air);
+                    cv.set(x + dx, y + dy, z + dz, dy == 3 ? plank : e ? bd("minecraft:waxed_oxidized_copper_grate") : air);
                 }
             }
             cv.set(c[0] + 20, y + 1, c[1] + 30, bd("minecraft:target"));
@@ -515,7 +515,7 @@ final class Structures {
                 if (dy == -1) b = bd("minecraft:cobblestone");
                 else if (dy >= H) { int roofLevel = Math.min(dz, l - 1 - dz); b = dy - H <= roofLevel ? bd("minecraft:dark_oak_planks") : WorldGen.Blocks.AIR; if (dy - H < roofLevel && !edge) b = WorldGen.Blocks.AIR; }
                 else if (corner) b = bd("minecraft:dark_oak_log");
-                else if (edge) b = dy == 2 && (dx == 3 || dx == 5) ? bd("minecraft:glass_pane") : bd(dy == 0 ? "minecraft:cobblestone" : "minecraft:dark_oak_planks");
+                else if (edge) b = dy == 2 && (dx == 3 || dx == 5) ? bd("minecraft:glass") : bd(dy == 0 ? "minecraft:cobblestone" : "minecraft:dark_oak_planks");
                 else b = WorldGen.Blocks.AIR;
                 cv.set(x + dx, y + dy, z + dz, b);
             }

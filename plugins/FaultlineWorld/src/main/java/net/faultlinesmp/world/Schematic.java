@@ -143,6 +143,9 @@ final class Schematic {
         Schematic s = new Schematic(name, sx, sy, sz, names, count, ys, idx, mn, mx);
         s.floorY = 0;
         for (int y = 0; y < sy; y++) if (layer[y] > cols * 0.3) { s.floorY = y; break; }
+        // AUDIT: a floor can be two or three blocks thick (the Fibers base, the ballroom): the ground floor is its TOP layer,
+        // or the doorway was "cut" through solid floor and never found the inside.
+        while (s.floorY + 1 < sy && layer[s.floorY + 1] > cols * 0.5) s.floorY++;
         return s;
     }
 

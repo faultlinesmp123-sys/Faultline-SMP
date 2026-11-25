@@ -260,6 +260,7 @@ final class Life implements Listener {
             LootTable loot = b.getType() == Material.CHEST ? LootTables.TRIAL_CHAMBERS_CORRIDOR.getLootTable() : LootTables.SIMPLE_DUNGEON.getLootTable();
             return new Context(loot, mobs);
         }
+        if (here == B.SPIDER) return new Context(LootTables.SIMPLE_DUNGEON.getLootTable(), EntityType.SPIDER, EntityType.CAVE_SPIDER);   // the brood mounds
         if (here == B.DEEP_FOREST) return new Context(LootTables.PILLAGER_OUTPOST.getLootTable(), EntityType.VINDICATOR, EntityType.PILLAGER);
         if (here == B.MIRE || here == B.INFERNO_FOREST) return new Context(LootTables.ABANDONED_MINESHAFT.getLootTable(), EntityType.ZOMBIE, EntityType.SKELETON);
         if (Structures.inCore(t, x, y, z)) return null;
@@ -389,9 +390,24 @@ final class Life implements Listener {
     }
 
     /** The elites' biome rules are in FaultlineRaids; here: extra spawns for the busy places (every 5 s). */
+    /** A safety net for water mobs: no more than this many glow squids / squids near one player (the datapack once listed
+     *  glow squids in the wrong category, the game's cap never counted them, and hundreds piled up). */
+    void cullSquids(World w) {
+        int max = plugin.getConfig().getInt("spawns.squid-cap", 8);
+        for (Player p : w.getPlayers()) {
+            int n = 0;
+            for (Entity e : p.getNearbyEntities(72, 96, 72)) {
+                if (!(e instanceof Squid) || e.customName() != null) continue;
+                if (++n > max) e.remove();
+            }
+        }
+    }
+
     void spawns() {
         World w = main();
-        if (!ours(w) || w.getDifficulty() == Difficulty.PEACEFUL) return;
+        if (!ours(w)) return;
+        cullSquids(w);
+        if (w.getDifficulty() == Difficulty.PEACEFUL) return;
         for (Player p : w.getPlayers()) {
             if (!survival(p)) continue;
             B b = where(p.getLocation());

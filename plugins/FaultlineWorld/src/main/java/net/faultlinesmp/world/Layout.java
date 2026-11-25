@@ -91,7 +91,7 @@ final class Layout {
             new Site("ice", "ice/sightless_angel_statue", 1290, 190, 1660, 80, Shape.BASIN, false),
             new Site("ice", "ice/ocean_arena", 1790, 135, 1210, 50, Shape.CAVERN, true),
             // SKY (island C, north: islands over a crater)
-            new Site("sky", "sky/greek_statue", 1450, 89, 240, 150, Shape.CRATER, false),
+            new Site("sky", "sky/greek_statue", 1450, 87, 240, 150, Shape.CRATER, false),   // 232 tall: y 87 keeps its top under the build limit
             new Site("sky", "sky/factory_castle", 1655, 241, 160, 0, Shape.SKY, true),
             new Site("sky", "sky/ship", 1560, 262, 360, 0, Shape.SKY, true),
             new Site("sky", "sky/yellow_ballroom", 1290, 251, 120, 0, Shape.SKY, true));

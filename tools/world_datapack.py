@@ -87,7 +87,10 @@ def biomes():
     return {
         "great_sea": biome("deep_ocean", water="#1b3d8c", fog="#2a4f9e", sky="#7aa6ff"),
         "abyss": biome("deep_cold_ocean", water="#050a1e", fog="#03050d", sky="#03050d", music="minecraft:music.under_water",
-                       spawn=spawns(monster=[("drowned", 2, 60), ("guardian", 1, 10)], water=[("glow_squid", 2, 20)], ambient=[])),
+                       spawn=spawns(monster=[("drowned", 2, 60), ("guardian", 1, 10)], ambient=[],
+                                    # AUDIT: glow squids MUST be listed under their own category. Under water_creature the game's cap
+                                    # (which counts by the mob's own category) never saw them: hundreds per player, forever.
+                                    extra={"underground_water_creature": [{"type": "minecraft:glow_squid", "count": 2, "weight": 10}]})),
         "wasteland": biome("swamp", temp=1.2, water="#9bc31b", grass="#8a8f2a", foliage="#7d8a1e", sky="#b9c46a", fog="#9aa63a",
                            particles=[("minecraft:spore_blossom_air", 0.012), ("minecraft:white_ash", 0.03)],
                            spawn=spawns(monster=[("bogged", 4, 100), ("slime", 4, 80), ("drowned", 2, 40), ("zombie", 4, 60), ("creeper", 3, 60)], creature=[])),

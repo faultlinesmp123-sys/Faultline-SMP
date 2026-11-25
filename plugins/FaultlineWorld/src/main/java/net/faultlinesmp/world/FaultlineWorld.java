@@ -80,16 +80,18 @@ public final class FaultlineWorld extends JavaPlugin {
         }
         try {
             File dp = new File(worldDir, "datapacks/faultline_world.zip");
-            if (!datapackLoaded || !dp.exists()) {
+            byte[] ours = null;
+            try (InputStream in = getResource("faultline_world.zip")) { if (in != null) ours = in.readAllBytes(); }
+            // A newer jar carries a newer datapack (mob lists, biome looks: the sea level and the terrain never change in it).
+            // It replaces the installed one; the server reads it on its next start.
+            boolean stale = ours != null && dp.exists() && !java.util.Arrays.equals(ours, Files.readAllBytes(dp.toPath()));
+            if (ours != null && (!datapackLoaded || !dp.exists() || stale)) {
                 dp.getParentFile().mkdirs();
-                try (InputStream in = getResource("faultline_world.zip")) {
-                    if (in != null) {
-                        File tmp = new File(dp.getPath() + ".tmp");
-                        Files.copy(in, tmp.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                        Files.move(tmp.toPath(), dp.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                        changed = !datapackLoaded;
-                    }
-                }
+                File tmp = new File(dp.getPath() + ".tmp");
+                Files.write(tmp.toPath(), ours);
+                Files.move(tmp.toPath(), dp.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                changed = !datapackLoaded;
+                if (stale && !fresh) getLogger().warning("[World] the Faultline datapack was updated by this jar. RESTART the server once more for it to take effect (mob spawn lists, biome looks).");
             }
             if (!lineSet) {
                 YamlConfiguration y = new YamlConfiguration();

@@ -29,7 +29,9 @@ final class Decor {
         cells(cv, t, B.DEEP_FOREST, 46, 9, 0xDE4, 150, Decor::spire);
         cells(cv, t, B.INFERNO_FOREST, 7, 5, 0x1F5, 150, Decor::burntTree);
         cells(cv, t, B.INFERNO_FOREST, 60, 10, 0x1F6, 140, Decor::outcrop);
-        cells(cv, t, B.SPIDER, 10, 8, 0x5D7, 200, Decor::spiderTree);
+        cells(cv, t, B.SPIDER, 11, 12, 0x5D7, 185, Decor::spiderTree);
+        cells(cv, t, B.SPIDER, 38, 10, 0x5DA, 120, Decor::greatWeb);
+        cells(cv, t, B.SPIDER, 64, 7, 0x5DB, 110, Decor::nestMound);
         cells(cv, t, B.WASTELAND, 17, 10, 0xA58, 170, Decor::shroom);
         cells(cv, t, B.DEEP_DESERT, 44, 8, 0xD59, 120, Decor::sandRock);
         cells(cv, t, B.GREAT_SEA, 40, 6, 0x6E5, 90, Decor::seaRock);
@@ -48,6 +50,7 @@ final class Decor {
             Terrain.Col c = t.column(x, z);
             if (c.biome != biome || c.dry && biome != B.WASTELAND) continue;
             if (biome != B.GREAT_SEA && (c.sea || c.river)) continue;
+            if (c.hole) continue;        // AUDIT: a hole has no floor: rocks drawn at its "floor" height hung in open water
             if (Sites.near(x, z, reach + 4)) continue;
             f.draw(cv, t, x, z, c.surface, h >>> 32);
         }
@@ -93,11 +96,19 @@ final class Decor {
                     else if (r < 6) d.setBlock(lx, y, lz, bd("minecraft:ochre_froglight"));
                 }
                 case SPIDER -> {
-                    String top = r < 90 ? "minecraft:podzol" : r < 170 ? "minecraft:coarse_dirt" : r < 200 ? "minecraft:gravel" : "minecraft:grass_block";
+                    // grey, dead ground: pale moss in drifts, podzol and coarse dirt between, silk and bones lying about
+                    double n = t.fbmPublic(x / 22.0 + 300, z / 22.0);
+                    String top = n > 0.28 ? "minecraft:pale_moss_block" : r < 80 ? "minecraft:podzol" : r < 165 ? "minecraft:coarse_dirt" : r < 195 ? "minecraft:gravel" : r < 215 ? "minecraft:rooted_dirt" : "minecraft:grass_block";
                     d.setBlock(lx, y, lz, bd(top));
                     for (int i = 1; i < 3; i++) d.setBlock(lx, y - i, lz, bd("minecraft:dirt"));
-                    if (r > 248) d.setBlock(lx, y + 1, lz, bd("minecraft:cobweb"));
-                    else if (r > 238) d.setBlock(lx, y + 1, lz, bd("minecraft:dead_bush"));
+                    int q = (int) (h >>> 12 & 1023);
+                    if (q < 14) d.setBlock(lx, y + 1, lz, bd("minecraft:cobweb"));
+                    else if (q < 34) d.setBlock(lx, y + 1, lz, bd("minecraft:dead_bush"));
+                    else if (q < 90 && n > 0.2) d.setBlock(lx, y + 1, lz, bd("minecraft:pale_moss_carpet"));
+                    else if (q < 96) d.setBlock(lx, y + 1, lz, bd("minecraft:white_carpet"));           // a sheet of silk
+                    else if (q < 99) d.setBlock(lx, y, lz, bd("minecraft:bone_block"));
+                    else if (q < 101) d.setBlock(lx, y + 1, lz, bd("minecraft:skeleton_skull[rotation=" + (q * 7 & 15) + "]"));
+                    else if (q < 104) { d.setBlock(lx, y + 1, lz, bd("minecraft:white_wool")); d.setBlock(lx, y + 2, lz, bd("minecraft:cobweb")); }   // a small cocoon
                 }
                 case DARK_FOREST -> {
                     if (r < 40) d.setBlock(lx, y, lz, bd("minecraft:moss_block"));
@@ -279,7 +290,7 @@ final class Decor {
         // a couple of side branches under the canopy
         for (int b = 0; b < 2; b++) {
             double a = ((h >>> (20 + b * 5)) & 31) / 31.0 * Math.PI * 2;
-            for (int i = 1; i < 5; i++) cv.soft(x + (int) Math.round(Math.cos(a) * i), top - 4 - b * 3 + i / 2, z + (int) Math.round(Math.sin(a) * i), bd(log.replace("_log", "_wood")));
+            branch(cv, log.replace("_log", "_wood"), x, top - 4 - b * 3, z, x + (int) Math.round(Math.cos(a) * 4), top - 2 - b * 3, z + (int) Math.round(Math.sin(a) * 4));
         }
     }
 
@@ -289,11 +300,17 @@ final class Decor {
         double ph = (h >>> 6 & 63) / 10.0, lean = 0.12 + (h >>> 12 & 7) / 40.0;
         int px = x, pz = z;
         for (int i = 0; i <= H; i++) {
-            px = x + (int) Math.round(Math.sin(ph + i * 0.35) * lean * i);
-            pz = z + (int) Math.round(Math.cos(ph + i * 0.27) * lean * i);
+            // AUDIT: the trunk leaned by jumping sideways, so its pieces only touched at the corners (or not at all). It now
+            // moves one block at a time, and every sideways step is filled in at that height.
+            int wx = x + (int) Math.round(Math.sin(ph + i * 0.35) * lean * i * 0.5);
+            int wz = z + (int) Math.round(Math.cos(ph + i * 0.27) * lean * i * 0.5);
             String b = (i / 2) % 3 == 0 ? "minecraft:mushroom_stem" : (i / 2) % 3 == 1 ? "minecraft:birch_wood" : "minecraft:stripped_birch_wood";
-            cv.set(px, base + i, pz, bd(b));
-            cv.set(px + 1, base + i, pz, bd(b));
+            for (int guard = 0; guard < 8; guard++) {
+                cv.set(px, base + i, pz, bd(b));
+                cv.set(px + 1, base + i, pz, bd(b));
+                if (px == wx && pz == wz) break;
+                if (px != wx) px += Integer.signum(wx - px); else pz += Integer.signum(wz - pz);
+            }
         }
         int top = base + H + 1;
         int R = 6 + (int) ((h >>> 18) % 4);
@@ -327,7 +344,8 @@ final class Decor {
             double a = (hash(t.seed, x, y, 0xDE5) & 255) / 255.0 * Math.PI * 2;
             int len = 4 + (int) ((base + H - y) / 6);
             int ex = x, ez = z;
-            for (int i = 2; i <= len; i++) { ex = x + (int) Math.round(Math.cos(a) * i); ez = z + (int) Math.round(Math.sin(a) * i); cv.soft(ex, y + i / 3, ez, bd(log.replace("_log", "_wood"))); }
+            ex = x + (int) Math.round(Math.cos(a) * len); ez = z + (int) Math.round(Math.sin(a) * len);
+            branch(cv, log.replace("_log", "_wood"), x, y, z, ex, y + len / 3, ez);     // connected (it was drawn in loose steps)
             blobLeaves(cv, t, ex, y + len / 3 + 1, ez, 3.2, leaves);
         }
         for (int dy = 0; dy < 10; dy++) { // the crown: a cone
@@ -371,8 +389,9 @@ final class Decor {
         for (int b = 0; b < 3; b++) {
             double a = ((h >>> (10 + b * 6)) & 63) / 63.0 * Math.PI * 2;
             int by = base + H - 2 - b * 2;
-            for (int i = 1; i <= 2 + (int) ((h >>> (30 + b)) & 1); i++)
-                cv.soft(x + (int) Math.round(Math.cos(a) * i), by + i / 2, z + (int) Math.round(Math.sin(a) * i), bd("minecraft:dark_oak_fence"));
+            int len = 2 + (int) ((h >>> (30 + b)) & 1);
+            // AUDIT: these were loose fence posts too (floating bits); now a connected charred branch
+            branch(cv, "minecraft:stripped_dark_oak_log", x, by, z, x + (int) Math.round(Math.cos(a) * len), by + len / 2 + 1, z + (int) Math.round(Math.sin(a) * len));
         }
     }
 
@@ -405,25 +424,163 @@ final class Decor {
     }
 
     /** The spider woods: dead twisted trees wrapped in cobwebs, a web curtain and an egg sac. */
+    /** A branch of logs from a to b where every block touches the one before it face to face (no floating pieces),
+     *  each log lying along the way it runs. */
+    static void branch(Canvas cv, String log, int x0, int y0, int z0, int x1, int y1, int z1) {
+        int x = x0, y = y0, z = z0;
+        for (int guard = 0; guard < 64 && (x != x1 || y != y1 || z != z1); guard++) {
+            int dx = x1 - x, dy = y1 - y, dz = z1 - z;
+            String axis;
+            if (Math.abs(dx) >= Math.abs(dz) && Math.abs(dx) >= Math.abs(dy)) { x += Integer.signum(dx); axis = "x"; }
+            else if (Math.abs(dz) >= Math.abs(dy)) { z += Integer.signum(dz); axis = "z"; }
+            else { y += Integer.signum(dy); axis = "y"; }
+            cv.soft(x, y, z, bd(log + "[axis=" + axis + "]"));
+        }
+    }
+
+    /** A clump of web (and a few dead leaves) round a point. */
+    static void webClump(Canvas cv, Terrain t, int x, int y, int z, double r, int leafEvery) {
+        int R = (int) Math.ceil(r);
+        for (int dx = -R; dx <= R; dx++) for (int dy = -R; dy <= R; dy++) for (int dz = -R; dz <= R; dz++) {
+            if (dx * dx + dy * dy * 1.6 + dz * dz > r * r) continue;
+            long hh = hash3(t.seed, x + dx, y + dy, z + dz, 0x5D8);
+            if ((hh & 3) == 0) cv.air(x + dx, y + dy, z + dz, bd("minecraft:cobweb"));
+            else if (leafEvery > 0 && (hh >>> 2) % leafEvery == 0) cv.air(x + dx, y + dy, z + dz, bd("minecraft:pale_oak_leaves[persistent=true]"));
+        }
+    }
+
+    /** A strand hanging down from under a block: silk, or pale moss. */
+    static void strand(Canvas cv, int x, int y, int z, int len, boolean moss) {
+        for (int k = 0; k < len; k++) {
+            if (!cv.air(x, y - k, z)) return;
+            cv.air(x, y - k, z, bd(moss ? "minecraft:pale_hanging_moss[tip=" + (k == len - 1) + "]" : "minecraft:cobweb"));
+        }
+    }
+
+    /**
+     * The spider woods (2.0 audit: the first version drew its branches as loose fence posts, so they floated in pieces, and
+     * had no crowns). Dead pale trees with real branches, each ending in a crown of web and a few dead leaves, silk
+     * curtains sagging between branches, strands hanging down; great trees with thick trunks and roots; stumps with
+     * cocoons; fallen trunks.
+     */
     static void spiderTree(Canvas cv, Terrain t, int x, int z, int base, long h) {
-        int H = 8 + (int) (h % 7);
-        for (int y = base; y <= base + H; y++) cv.set(x, y, z, bd("minecraft:stripped_oak_log"));
-        for (int b = 0; b < 4; b++) {
-            double a = ((h >>> (6 + b * 5)) & 31) / 31.0 * Math.PI * 2;
-            int by = base + H - b * 2;
-            int ex = x, ez = z, ey = by;
-            for (int i = 1; i <= 3; i++) {
-                ex = x + (int) Math.round(Math.cos(a) * i); ez = z + (int) Math.round(Math.sin(a) * i); ey = by + i / 2;
-                cv.soft(ex, ey, ez, bd("minecraft:oak_fence"));
+        int kind = (int) (h & 15);
+        String log = "minecraft:pale_oak_log", wood = "minecraft:pale_oak_wood";
+        if (kind == 0 || kind == 1) {                    // a stump with a cocoon beside it
+            int H = 1 + (int) (h >>> 4 & 1);
+            for (int y = base + 1; y <= base + H; y++) cv.soft(x, y, z, bd(log + "[axis=y]"));
+            cv.air(x, base + H + 1, z, bd("minecraft:cobweb"));
+            int cx = x + ((h >>> 6 & 1) == 0 ? 1 : -1), cz = z + ((h >>> 7 & 1) == 0 ? 1 : -1);
+            int cy = t.column(cx, cz).surface + 1;
+            cv.air(cx, cy, cz, bd("minecraft:white_wool")); cv.air(cx, cy + 1, cz, bd("minecraft:white_wool")); cv.air(cx, cy + 2, cz, bd("minecraft:cobweb"));
+            for (int[] o : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) if ((hash(t.seed, cx + o[0], cz + o[1], 0x5D9) & 1) == 0) cv.air(cx + o[0], t.column(cx + o[0], cz + o[1]).surface + 1, cz + o[1], bd("minecraft:cobweb"));
+            return;
+        }
+        if (kind == 2) {                                 // a fallen trunk, webbed over
+            boolean alongX = (h >>> 4 & 1) == 0;
+            int len = 4 + (int) (h >>> 5 & 3);
+            for (int i = -len / 2; i <= len / 2; i++) {
+                int fx = alongX ? x + i : x, fz = alongX ? z : z + i, fy = t.column(fx, fz).surface + 1;
+                cv.soft(fx, fy, fz, bd(log + "[axis=" + (alongX ? "x" : "z") + "]"));
+                if ((hash(t.seed, fx, fz, 0x5DC) & 3) == 0) cv.air(fx, fy + 1, fz, bd("minecraft:cobweb"));
+                else if ((hash(t.seed, fx, fz, 0x5DC) & 7) == 1) cv.air(fx, fy + 1, fz, bd("minecraft:pale_moss_carpet"));
             }
-            for (int k = 1; k <= 1 + (int) ((h >>> (30 + b)) & 3); k++) cv.air(ex, ey - k, ez, bd("minecraft:cobweb"));
-            for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) if (((hash3(t.seed, ex + dx, ey, ez + dz, 0x5D8)) & 3) == 0) cv.air(ex + dx, ey + 1, ez + dz, bd("minecraft:cobweb"));
+            return;
         }
-        if ((h >>> 40 & 3) == 0) { // egg sac
-            cv.air(x + 1, base + 3, z, bd("minecraft:white_wool"));
-            cv.air(x + 1, base + 2, z, bd("minecraft:mushroom_stem"));
-            cv.air(x + 1, base + 4, z, bd("minecraft:cobweb"));
+        boolean great = kind == 3;                       // a great tree: 2 x 2 trunk, roots, more and longer branches
+        int H = great ? 17 + (int) (h >>> 4 & 7) : 9 + (int) (h >>> 4 & 7);
+        int w = great ? 1 : 0;
+        for (int y = base - 1; y <= base + H; y++) for (int ax = 0; ax <= w; ax++) for (int az = 0; az <= w; az++) cv.set(x + ax, y, z + az, bd(log + "[axis=y]"));
+        // roots spreading out over the ground
+        for (int[] o : new int[][]{{-1, 0}, {w + 1, 0}, {0, -1}, {0, w + 1}, {w + 1, w}, {w, w + 1}}) {
+            if ((hash(t.seed, x + o[0], z + o[1], 0x5DD) & 3) > (great ? 2 : 0)) continue;
+            int ry = t.column(x + o[0], z + o[1]).surface + 1;
+            if (Math.abs(ry - (base + 1)) > 2) continue;
+            for (int y = ry; y <= Math.max(ry, base + 1 + (great ? 1 : 0)); y++) cv.soft(x + o[0], y, z + o[1], bd(wood + "[axis=y]"));
         }
+        int n = great ? 5 + (int) (h >>> 8 & 1) : 3 + (int) (h >>> 8 & 1);
+        int[][] tips = new int[n][];
+        for (int b = 0; b < n; b++) {
+            double a = (b + ((h >>> (10 + b * 5)) & 31) / 31.0 * 0.8) / n * Math.PI * 2;
+            int len = (great ? 5 : 3) + (int) ((h >>> (36 + b * 2)) & 3);
+            int by = base + (int) (H * (0.5 + 0.5 * (b + 1) / (double) n));
+            int tx = x + (int) Math.round(Math.cos(a) * len), tz = z + (int) Math.round(Math.sin(a) * len), ty = by + 1 + len / 2;
+            branch(cv, log, x + (Math.cos(a) > 0 ? w : 0), by, z + (Math.sin(a) > 0 ? w : 0), tx, ty, tz);
+            tips[b] = new int[]{tx, ty, tz};
+            webClump(cv, t, tx, ty + 1, tz, great ? 2.6 : 2.1, 5);
+            int sl = 1 + (int) ((h >>> (48 + b * 2)) & 3);
+            strand(cv, tx, ty - 1, tz, sl + (great ? 2 : 0), (h >>> (56 + b) & 1) == 0);
+        }
+        webClump(cv, t, x, base + H + 1, z, great ? 3.0 : 2.2, 4);            // the crown
+        // silk curtains sagging between neighbouring branch tips
+        for (int b = 0; b < n; b++) {
+            if ((h >>> (20 + b) & 1) == 0) continue;
+            int[] p = tips[b], q = tips[(b + 1) % n];
+            int steps = Math.max(Math.abs(p[0] - q[0]), Math.abs(p[2] - q[2])) * 2;
+            if (steps == 0 || steps > 26) continue;
+            for (int k = 1; k < steps; k++) {
+                double f = k / (double) steps, sag = Math.sin(f * Math.PI) * (2 + steps / 8.0);
+                cv.air((int) Math.round(p[0] + (q[0] - p[0]) * f), (int) Math.round(p[1] + (q[1] - p[1]) * f - sag), (int) Math.round(p[2] + (q[2] - p[2]) * f), bd("minecraft:cobweb"));
+            }
+        }
+        if (great && (h >>> 44 & 1) == 0) {              // an egg sac on the trunk
+            int ey = base + 3 + (int) (h >>> 45 & 3);
+            cv.air(x - 1, ey, z, bd("minecraft:white_wool")); cv.air(x - 1, ey + 1, z, bd("minecraft:white_wool")); cv.air(x - 1, ey + 2, z, bd("minecraft:cobweb")); cv.air(x - 1, ey - 1, z, bd("minecraft:cobweb"));
+        }
+    }
+
+    /** A great orb web strung between two tall dead trunks: spokes and rings of silk in an upright wheel. */
+    static void greatWeb(Canvas cv, Terrain t, int x, int z, int base, long h) {
+        boolean alongX = (h >>> 3 & 1) == 0;
+        int R = 5 + (int) (h >>> 4 & 1) * 2;
+        int cy = base + R + 3;
+        String log = "minecraft:pale_oak_log[axis=y]";
+        for (int side = -1; side <= 1; side += 2) {
+            int px = alongX ? x + side * (R + 1) : x, pz = alongX ? z : z + side * (R + 1);
+            int g = t.column(px, pz).surface;
+            if (Math.abs(g - base) > 5) return;                                   // too steep for it
+            for (int y = g; y <= cy + R + 1; y++) cv.set(px, y, pz, bd(log));
+            webClump(cv, t, px, cy + R + 2, pz, 1.8, 0);
+        }
+        for (int u = -R; u <= R; u++) for (int v = -R; v <= R; v++) {
+            double d = Math.hypot(u, v);
+            if (d > R + 0.4) continue;
+            boolean spoke = u == 0 || v == 0 || Math.abs(u) == Math.abs(v);
+            int ring = (int) Math.round(d);
+            boolean onRing = ring % 2 == 0 && Math.abs(d - ring) < 0.5 && ring > 0;
+            if (!(spoke || onRing)) continue;
+            if ((hash3(t.seed, x + u, cy + v, z, 0x5DE) & 15) == 0) continue;     // a few torn strands
+            cv.air(alongX ? x + u : x, cy + v, alongX ? z : z + u, bd("minecraft:cobweb"));
+        }
+        // the silk it's tied down with
+        for (int side = -1; side <= 1; side += 2) for (int k = 1; k <= 3; k++)
+            cv.air(alongX ? x + side * (R - k) : x, cy - R - k, alongX ? z : z + side * (R - k), bd("minecraft:cobweb"));
+        cv.air(x, cy, z, bd("minecraft:white_wool"));                              // something wrapped up in the middle
+    }
+
+    /** A brood mound: a low hollow dome of pale moss, cobble and silk with a spider spawner and a chest inside. */
+    static void nestMound(Canvas cv, Terrain t, int x, int z, int base, long h) {
+        int R = 4;
+        for (int dx = -R; dx <= R; dx++) for (int dz = -R; dz <= R; dz++) {
+            int g = t.column(x + dx, z + dz).surface;
+            if (Math.abs(g - base) > 3) return;
+        }
+        for (int dx = -R; dx <= R; dx++) for (int dz = -R; dz <= R; dz++) for (int dy = 0; dy <= R; dy++) {
+            double d = Math.sqrt(dx * dx + dz * dz + dy * dy * 1.5);
+            if (d > R + 0.3) continue;
+            int wx = x + dx, wy = base + 1 + dy, wz = z + dz;
+            if (d < R - 1.1) { cv.set(wx, wy, wz, WorldGen.Blocks.CAVE_AIR); continue; }
+            long hh = hash3(t.seed, wx, wy, wz, 0x5DF);
+            int r = (int) (hh & 15);
+            cv.set(wx, wy, wz, bd(r < 7 ? "minecraft:pale_moss_block" : r < 11 ? "minecraft:mossy_cobblestone" : r < 13 ? "minecraft:white_wool" : r < 15 ? "minecraft:cobblestone" : "minecraft:cobweb"));
+        }
+        for (int dx = -R; dx <= R; dx++) for (int dz = -R; dz <= R; dz++) if (dx * dx + dz * dz <= R * R) for (int y = base; y > base - 4 && cv.air(x + dx, y, z + dz); y--) cv.set(x + dx, y, z + dz, bd("minecraft:coarse_dirt"));
+        // the way in (2 high), and what's inside
+        for (int k = 2; k <= R + 1; k++) { cv.set(x + k, base + 1, z, WorldGen.Blocks.CAVE_AIR); cv.set(x + k, base + 2, z, WorldGen.Blocks.CAVE_AIR); }
+        cv.set(x, base + 1, z, bd("minecraft:spawner"));
+        cv.set(x - 2, base + 1, z, bd("minecraft:chest[facing=east]"));
+        cv.set(x, base + 1, z - 2, bd("minecraft:cobweb")); cv.set(x, base + 1, z + 2, bd("minecraft:cobweb")); cv.set(x - 1, base + 2, z + 1, bd("minecraft:cobweb"));
+        cv.set(x, base + 2, z - 1, bd("minecraft:white_wool")); cv.set(x, base + 1, z - 1, bd("minecraft:white_wool"));           // an egg sac
     }
 
     /** The Wasteland: sulphur mushrooms (yellow / lime caps, glowing rims) on pale stems. */

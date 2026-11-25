@@ -80,7 +80,9 @@ final class Sites {
                         if (b != null) cv.set(x, y, z, b);
                     }
                     // a foundation so nothing floats (castles / statues on the ground)
-                    if (s.shape() == Layout.Shape.FLAT || s.shape() == Layout.Shape.BASIN || s.shape() == Layout.Shape.CRATER || s.shape() == Layout.Shape.CANYON) {
+                    // AUDIT: only under the build's FOOT. It used to hang a 40-block stone column under every overhang too (a
+                    // statue's arms and wings, the great ring, balconies, roof eaves).
+                    if (sc.colMin[c] <= sc.floorY + 2 && (s.shape() == Layout.Shape.FLAT || s.shape() == Layout.Shape.BASIN || s.shape() == Layout.Shape.CRATER || s.shape() == Layout.Shape.CANYON)) {
                         int base = oy + sc.colMin[c] - 1;
                         for (int y = base; y > base - 40 && cv.type(x, y, z).isAir(); y--) cv.set(x, y, z, bd("minecraft:stone"));
                     }
@@ -204,26 +206,27 @@ final class Sites {
      * straight in through its walls until there's room inside. Pure function of the schematic.
      */
     static Set<Long> entrance(Schematic sc) {
-        Set<Long> out = new HashSet<>();
         int gy = sc.floorY + 1;
         int cx = sc.sx / 2;
-        // try the middle, then a few offsets, on the south side; then the north side
-        for (int side : new int[]{1, -1}) for (int off : new int[]{0, 6, -6, 12, -12}) {
+        List<Long> best = null;
+        // the middle, then offsets, from the south and the north side: the SHORTEST way in wins. A way that is already open
+        // (no wall at all before the inside) means the build needs no doorway.
+        for (int side : new int[]{1, -1}) for (int off : new int[]{0, 6, -6, 12, -12, 20, -20, 30, -30}) {
             int x = cx + off;
             if (x < 2 || x > sc.sx - 3) continue;
             List<Long> cut = new ArrayList<>();
             boolean hitWall = false, inside = false;
-            int start = side == 1 ? sc.sz - 1 : 0;
-            for (int k = 0; k < Math.min(40, sc.sz); k++) {
+            int start = side == 1 ? sc.sz - 1 : 0, open = 0;
+            for (int k = 0; k < Math.min(70, sc.sz); k++) {
                 int z = start - side * k;
                 boolean solid = false;
                 for (int dx = -1; dx <= 1; dx++) for (int dy = 0; dy < 4; dy++) if (solidAt(sc, x + dx, gy + dy, z)) solid = true;
-                if (solid) { hitWall = true; for (int dx = -1; dx <= 1; dx++) for (int dy = 0; dy < 4; dy++) cut.add(pack(x + dx, gy + dy, z)); }
-                else if (hitWall) { inside = true; break; }
+                if (solid) { hitWall = true; open = 0; for (int dx = -1; dx <= 1; dx++) for (int dy = 0; dy < 4; dy++) cut.add(pack(x + dx, gy + dy, z)); }
+                else if (hitWall && ++open >= 3) { inside = true; break; }       // 3 clear blocks in a row = a room, not a crack
             }
-            if (hitWall && inside && cut.size() <= 3 * 4 * 14) { out.addAll(cut); return out; }
+            if (hitWall && inside && cut.size() <= 3 * 4 * 14 && (best == null || cut.size() < best.size())) best = cut;   // deeper than 14 = not a doorway, a tunnel through the build (the ship)
         }
-        return out;
+        return best == null ? new HashSet<>() : new HashSet<>(best);
     }
 
     static boolean solidAt(Schematic sc, int x, int y, int z) {

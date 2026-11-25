@@ -3257,6 +3257,24 @@ Notes:
   (4) The 3 holes were covered by the sea floor's 2-block sand lid (`Decor` GREAT_SEA skips `c.hole`). What's left in the scan
   (a few dozen faces at 5 builds) is flowing water in the schematics themselves. `Sites.paint` and `Sites.heal` share
   `finalBlock`, so healing never undoes any of this.
+- **2.0 audit, round 5 (FaultlineWorld; the owner is now testing on a real 26.3 server and sending screenshots)**:
+  HUNDREDS OF GLOW SQUIDS: the abyss biome listed `glow_squid` under `water_creature`. The game's mob cap counts a mob by ITS OWN
+  category (`underground_water_creature` for glow squids), so that list was never capped. RULE (`tools/world_datapack.py`): a mob
+  goes under its own category (script check in the audit: only vanilla's zombie_horse-in-monster differs). `Life.cullSquids`
+  (every 5 s, `spawns.squid-cap` 8 near a player) is the safety net. The installed datapack IS replaced when a newer jar carries a
+  different one (`FaultlineWorld.setup`: byte compare; "restart once more" warning), since spawn lists must be fixable; never change
+  noise settings / sea level in it for a live world. TREES: branches were drawn as `*_fence` posts (no connection states at
+  worldgen = loose floating posts) along rounded diagonals, and Wartsfield trunks leaned in jumps: nothing touched. `Decor.branch`
+  = a face-connected line of logs with the right `axis`; used by the spider, burnt, dark and giant trees; the umbrella tree's trunk
+  moves one block at a time. RULE: no fences / panes / iron bars / walls in generator code unless a lone post is wanted (the
+  illager city's now use slabs, tinted glass, copper grates). THE SPIDER WOODS were redone (the owner asked for detail): pale dead
+  trees with branches ending in web crowns (`webClump`), hanging silk / pale moss (`strand`), silk curtains between branch tips,
+  great 2x2 trees with roots and egg sacs, stumps with cocoons, fallen trunks; `greatWeb` (an upright wheel of spokes and rings
+  between two trunks), `nestMound` (hollow dome, spider spawner + chest; `Life.context` knows SPIDER); pale moss drifts, silk
+  carpets, bones and skulls on the ground. Also: build foundations only under a build's FOOT (40-block stone columns hung under
+  every statue overhang), the floor of a schematic = the TOP of a thick floor (`Schematic.floorY`; the Fibers base got no doorway),
+  the doorway is the shortest way in and never deeper than 14 (the ship isn't tunnelled), the Greek statue sits at y 87 (its top was
+  cut off at the build limit), sea rocks never over a hole. `tools/world_preview/Side.java` = a side view with depth (trees).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

@@ -3095,6 +3095,15 @@ Notes:
   world), showing only their eyes. `QueenSpiderManager.sweepOrphans` removes any entity carrying `OWNED_TAGS` (queen, queen
   stand-in, nest brood, brood stand-in, `faultline_hitbox`, `faultline_queen_part`) that no live queen / brood / spider form
   owns (`liveIds` in NestBrood and SpiderForm): every 10 s, on EntitiesLoadEvent, and in `/queenspider killall`.
+- **Nest audit (Items 1.3.52)**: (1) chests and spawners hung in the air among the bones: the gateway walkway is dug AFTER the
+  chambers are furnished and its head-room pass carved the floor out from under them; every chest / spawner placed is listed
+  (`placedNeedsFloor`) and gets cobbled deepslate under it after the walkway and gates. (2) The sleeping Queen only respawned
+  when NOBODY was within 24 of the throne, so walking up to it after her chunk unloaded = no queen: she now always respawns
+  once the throne chunk is loaded. (3) A build that throws half way is rolled back from its undo map (it used to stay, with no
+  nest record to delete it). (4) BLACK SCREEN: a hidden endless Night Vision under the nest's Darkness
+  (`spider-nest.see-in-the-dark`), so it pulses dark but you can see; both are taken off on leaving, join and quit (only the
+  endless ambient particle-less ones). Tested (scratch `nest/SpecTest`: build, 0 floating chests/spawners, queen back with a
+  survival player + spectator at the throne, 2 min, disable + enable = still exactly one queen body, spectator sees no body).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

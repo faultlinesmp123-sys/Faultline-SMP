@@ -639,6 +639,10 @@ final class NestBrood implements Listener {
             // each time = a black flash
             if (!p.hasPotionEffect(PotionEffectType.DARKNESS))
                 p.addPotionEffect(new PotionEffect(PotionEffectType.DARKNESS, PotionEffect.INFINITE_DURATION, 0, true, false, false));
+            // 1.3.52: Darkness in a cave with no light = a black screen. A hidden Night Vision under it: you still get the
+            // Darkness pulse and the dim edges, but you can see the cave (`spider-nest.see-in-the-dark`)
+            if (plugin.getConfig().getBoolean("spider-nest.see-in-the-dark", true) && !p.hasPotionEffect(PotionEffectType.NIGHT_VISION))
+                p.addPotionEffect(new PotionEffect(PotionEffectType.NIGHT_VISION, PotionEffect.INFINITE_DURATION, 0, true, false, false));
         }
         boolean bossMusic = false;
         if (n.queen != null && !n.queen.asleep && n.queen.body.isValid() && n.queen.body.getWorld() == p.getWorld()
@@ -656,9 +660,18 @@ final class NestBrood implements Listener {
         }
     }
 
+    /** 1.3.52: the nest's endless Darkness / Night Vision never outlive a relog or a teleport out (insideTick puts them back inside). */
+    @EventHandler
+    public void onJoinClean(org.bukkit.event.player.PlayerJoinEvent e) { left(e.getPlayer()); }
+
+    @EventHandler
+    public void onQuitClean(org.bukkit.event.player.PlayerQuitEvent e) { left(e.getPlayer()); }
+
     void left(Player p) {
         if (musicAt.remove(p.getUniqueId()) != null) p.stopSound(MUSIC, SoundCategory.MUSIC);
-        PotionEffect cur = p.getPotionEffect(PotionEffectType.DARKNESS);
-        if (cur != null && cur.isAmbient() && !cur.hasParticles()) p.removePotionEffect(PotionEffectType.DARKNESS);
+        for (PotionEffectType t : new PotionEffectType[]{PotionEffectType.DARKNESS, PotionEffectType.NIGHT_VISION}) {
+            PotionEffect cur = p.getPotionEffect(t);
+            if (cur != null && cur.isAmbient() && !cur.hasParticles() && cur.getDuration() == PotionEffect.INFINITE_DURATION) p.removePotionEffect(t);
+        }
     }
 }

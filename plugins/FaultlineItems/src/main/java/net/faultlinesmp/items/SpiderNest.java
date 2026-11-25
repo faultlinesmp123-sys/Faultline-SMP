@@ -485,8 +485,19 @@ final class SpiderNest implements Listener {
             } catch (RuntimeException e) {
                 task.cancel();
                 building = false;
+                Map<Long, BlockData> u = undo;
                 undo = null;
+                // 1.3.52: a build that failed half way is put back (it used to stay: a half nest no command could remove)
+                if (u != null) for (var en : u.entrySet()) try {
+                    long k = en.getKey();
+                    Block bb = w.getBlockAt(kx(k), ky(k), kz(k));
+                    if (bb.getState() instanceof org.bukkit.block.Container ct) ct.getInventory().clear();
+                    bb.setBlockData(en.getValue(), false);
+                } catch (RuntimeException ignored) { }
+                for (org.bukkit.entity.ItemDisplay d : buildWebItems) if (d.isValid()) d.remove();
+                buildWebItems.clear(); placedNeedsFloor.clear();
                 for (Chunk c : held) try { c.removePluginChunkTicket(plugin); } catch (RuntimeException ignored) { }
+                for (Chunk c : held) for (Entity ent : c.getEntities()) if (ent.getScoreboardTags().contains(SILK_TAG + "_" + buildId)) ent.remove();
                 plugin.getLogger().log(java.util.logging.Level.WARNING, "[SpiderNest] building failed", e);
                 by.sendMessage(ChatColor.RED + "The nest couldn't be finished: " + e.getMessage());
             }
@@ -725,8 +736,11 @@ final class SpiderNest implements Listener {
         return null;
     }
 
+    private final List<Block> placedNeedsFloor = new ArrayList<>(); // 1.3.52
+
     private void spawner(Block f, EntityType type) {
         put(f, Material.SPAWNER);
+        placedNeedsFloor.add(f);
         try { if (f.getState() instanceof CreatureSpawner sp) { sp.setSpawnedType(type); sp.update(true, false); } } catch (RuntimeException ignored) { }
     }
 
@@ -804,6 +818,7 @@ final class SpiderNest implements Listener {
             if (f != null && !room.kind().equals("den")) {
                 if (i % 2 == 1) {
                     put(f, Material.CHEST);
+                    placedNeedsFloor.add(f);
                     if (f.getState() instanceof Chest ch) { // three rolls (a body's), scattered through the chest
                         var inv = ch.getSnapshotInventory();
                         for (int k = 0; k < 3; k++) for (ItemStack it : roll(r, 2)) inv.setItem(r.nextInt(inv.getSize()), it);
@@ -820,6 +835,15 @@ final class SpiderNest implements Listener {
         for (int i = 0; i < 6; i++) silk(w, air, throne, r, id);
         walkway(w, plan);
         for (double[] g : plan.gates) gate(w, air, g, r, webs);
+        // 1.3.52: the way in is dug after the chambers are furnished and could cut the floor out from under a chest or a
+        // spawner (they hung in the air among the bones): everything that needs ground gets a block under it again
+        for (Block b : placedNeedsFloor) {
+            Material m = b.getType();
+            if (m != Material.CHEST && m != Material.SPAWNER && m != Material.DECORATED_POT && m != Material.SKELETON_SKULL) continue;
+            Block under = b.getRelative(0, -1, 0);
+            if (!under.getType().isSolid() || under.getType() == Material.COBWEB) put(under, Material.COBBLED_DEEPSLATE);
+        }
+        placedNeedsFloor.clear();
         // a web that later building replaced (bones, the walkway, a gate) takes its caught item with it
         for (org.bukkit.entity.ItemDisplay d : buildWebItems) if (d.isValid() && d.getLocation().getBlock().getType() != Material.COBWEB) d.remove();
         buildWebItems.clear();
@@ -1323,9 +1347,7 @@ final class SpiderNest implements Listener {
                 if (n.queen == null) n.queen = q; else { queens.remove(q); plugin.getLogger().info("[SpiderNest] removed an extra queen in " + n.id); }
             }
             if (n.queen == null && now >= n.respawnAt && w.isChunkLoaded(n.tx >> 4, n.tz >> 4)) {
-                boolean someone = false;
-                for (Player p : w.getPlayers()) if (p.getLocation().distanceSquared(n.throne(w)) < 24 * 24) someone = true;
-                if (!someone) spawnQueen(n);
+                spawnQueen(n); // 1.3.52: always (she waited for nobody within 24: walking up to her throne, there was no queen at all)
             }
         }
         // ambience and brood for players inside

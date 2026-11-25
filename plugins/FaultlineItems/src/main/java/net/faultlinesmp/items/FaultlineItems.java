@@ -585,6 +585,7 @@ public final class FaultlineItems extends JavaPlugin {
         // Queen Spider (cave boss) + Spider Staff (uses the Necromancer minion system below)
         this.queenSpiderManager = new QueenSpiderManager(this);
         getServer().getPluginManager().registerEvents(queenSpiderManager, this);
+        Bukkit.getScheduler().runTaskTimer(this, () -> { try { queenSpiderManager.sweepAll(); } catch (RuntimeException ignored) { } }, 60L, 200L); // 1.3.51
         getServer().getScheduler().runTaskTimer(this, queenSpiderManager::tick, 1L, 1L); // 1.3.44: every tick (the rig)
         HitBox.init(this); // 1.3.49
         spiderForm = new SpiderForm(this);
@@ -622,6 +623,7 @@ public final class FaultlineItems extends JavaPlugin {
                 queenSpiderManager.removeAll();
                 spiderNest.brood.removeAll();
                 int mobs = spiderNest.brood.clearNests(); // 1.3.50: and every mob in a nest
+                mobs += queenSpiderManager.sweepAll(); // 1.3.51: and leftover bodies from older reloads
                 for (SpiderNest.Nest nest : spiderNest.nests.values()) nest.queen = null;
                 sender.sendMessage(ChatColor.GREEN + "Removed " + n + " Queen Spider(s) and " + mobs + " mobs in nests. Nest queens come back asleep on their thrones.");
                 return true;

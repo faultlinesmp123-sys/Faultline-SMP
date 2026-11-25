@@ -65,6 +65,10 @@ final class SpiderForm implements Listener {
     }
 
     private final Map<UUID, Form> forms = new HashMap<>();
+
+    void liveIds(java.util.Set<UUID> live) { // 1.3.51: player spider-form rigs aren't leftovers
+        for (Form f : forms.values()) if (f.rig != null) for (org.bukkit.entity.Entity e : f.rig.parts) live.add(e.getUniqueId());
+    }
     private final Map<UUID, Long> cooldown = new HashMap<>();
     private final Set<UUID> silkCarriers = new HashSet<>();
     private final Map<Block, Long> parted = new HashMap<>(); // webs parted for a carrier -> when they were last in it

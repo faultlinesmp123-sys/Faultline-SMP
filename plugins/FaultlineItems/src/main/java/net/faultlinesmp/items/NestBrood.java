@@ -186,6 +186,15 @@ final class NestBrood implements Listener {
         return n;
     }
 
+    void liveIds(Set<UUID> live) { // 1.3.51: for QueenSpiderManager.sweepOrphans
+        for (Brood b : brood.values()) {
+            live.add(b.body.getUniqueId());
+            if (b.standin != null) live.add(b.standin.getUniqueId());
+            if (b.box != null && b.box.box != null) live.add(b.box.box.getUniqueId());
+            if (b.rig != null) for (Entity e : b.rig.parts) live.add(e.getUniqueId());
+        }
+    }
+
     void removeAll() {
         for (Brood b : new ArrayList<>(brood.values())) remove(b);
         for (Run r : runs.values()) for (UUID id : r.mobs) { Entity e = Bukkit.getEntity(id); if (e != null) e.remove(); }

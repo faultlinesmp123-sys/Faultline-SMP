@@ -3090,6 +3090,11 @@ Notes:
   black whatever the brightness slider (only spider eyes, which glow, showed). Egg clutches now put an invisible LIGHT 7 block
   (`light(n)`), den sacs LIGHT 9, soul lanterns 0.4% of ceiling cells (was 0.12%), glow lichen more often; old nests get LIGHT 7
   at every froglight egg display once per chunk (`lightUp`, chunk PDC `faultlineitems:nest_v3`).
+- **Leftover queen bodies (Items 1.3.51)**: "queens with no model" in a deleted nest were orphan bodies: invisible spiders the
+  plugin had lost track of (a /faultline reload or an error; non-persistent only means not saved to disk, they stay in a running
+  world), showing only their eyes. `QueenSpiderManager.sweepOrphans` removes any entity carrying `OWNED_TAGS` (queen, queen
+  stand-in, nest brood, brood stand-in, `faultline_hitbox`, `faultline_queen_part`) that no live queen / brood / spider form
+  owns (`liveIds` in NestBrood and SpiderForm): every 10 s, on EntitiesLoadEvent, and in `/queenspider killall`.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

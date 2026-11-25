@@ -955,6 +955,42 @@ final class QueenSpiderManager implements Listener {
         if (FaultlineItems.QueenSpiderEggItem.isEgg(plugin, event.getItem())) event.setCancelled(true);
     }
 
+    /** 1.3.51: tags that only a LIVE queen / brood / their hitboxes and rigs carry. */
+    static final java.util.List<String> OWNED_TAGS = java.util.List.of(TAG, STAND_TAG, NestBrood.TAG, NestBrood.STAND_TAG, HitBox.TAG, QueenRig.TAG);
+
+    /**
+     * 1.3.51: the "queens with no model" were LEFTOVER bodies: a /faultline reload (or a plugin error) dropped the plugin's list of
+     * queens while their invisible spiders stayed in the world (non-persistent only means not saved to disk). With no rig and no
+     * hiding, only their glowing eyes showed, and each reload left another. Anything carrying our tags that nothing tracks is removed.
+     */
+    int sweepOrphans(Iterable<? extends Entity> list) {
+        Set<UUID> live = new HashSet<>();
+        for (Queen q : queens.values()) {
+            live.add(q.body.getUniqueId());
+            if (q.standin != null) live.add(q.standin.getUniqueId());
+            if (q.box != null && q.box.box != null) live.add(q.box.box.getUniqueId());
+            if (q.rig != null) for (Entity e : q.rig.parts) live.add(e.getUniqueId());
+        }
+        if (nests != null) nests.brood.liveIds(live);
+        if (plugin.spiderForm != null) plugin.spiderForm.liveIds(live);
+        int n = 0;
+        for (Entity e : list) {
+            if (live.contains(e.getUniqueId()) || e instanceof Player) continue;
+            for (String t : e.getScoreboardTags()) if (OWNED_TAGS.contains(t)) { e.remove(); n++; break; }
+        }
+        return n;
+    }
+
+    int sweepAll() {
+        int n = 0;
+        for (World w : Bukkit.getWorlds()) n += sweepOrphans(w.getEntities());
+        if (n > 0) plugin.getLogger().info("[QueenSpider] removed " + n + " leftover queen/brood bodies");
+        return n;
+    }
+
+    @EventHandler
+    public void onEntitiesLoad(org.bukkit.event.world.EntitiesLoadEvent e) { sweepOrphans(e.getEntities()); }
+
     void removeAll() {
         for (Queen q : new ArrayList<>(queens.values())) remove(q);
         queens.clear();

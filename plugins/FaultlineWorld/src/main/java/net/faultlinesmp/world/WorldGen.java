@@ -63,6 +63,21 @@ public final class WorldGen extends ChunkGenerator {
             Terrain.Col c = cols[lx * 16 + lz];
             int x = bx + lx, z = bz + lz;
             int top = Math.min(c.surface, maxY - 1);
+            // rock
+            data.setRegion(lx, minY, lz, lx + 1, top + 1, lz + 1, Blocks.STONE);
+            // sea / rivers
+            if ((c.sea || c.river) && !c.dry) data.setRegion(lx, top + 1, lz, lx + 1, SEA, lz + 1, Blocks.WATER);
+            // the abyss (+ holes up to the sea floor)
+            if (c.abyssTop != Integer.MIN_VALUE) {
+                int to = c.hole ? top : c.abyssTop;
+                data.setRegion(lx, c.abyssBottom, lz, lx + 1, to + 1, lz + 1, Blocks.WATER);
+                // diamonds round the abyss (in its ceiling and floor rock)
+                long h = hash(t.seed, x, z, 0xD1A);
+                if ((h & 31) == 0) data.setBlock(lx, c.abyssTop + 1 + (int) ((h >>> 5) & 3), lz, Blocks.DIAMOND);
+                if (((h >>> 9) & 31) == 0) data.setBlock(lx, c.abyssBottom - 1 - (int) ((h >>> 14) & 2), lz, Blocks.DIAMOND);
+                if (((h >>> 17) & 63) == 0) data.setBlock(lx, c.abyssBottom - 1, lz, Blocks.MAGMA);
+                if (((h >>> 23) & 127) == 0) data.setBlock(lx, c.abyssBottom - 1, lz, Blocks.SEA_LANTERN);
+            }
         }
     }
 
@@ -114,6 +129,13 @@ public final class WorldGen extends ChunkGenerator {
             if (!c.sea && !c.dry && c.farlands < 0.5 && !Sites.near(x, z, 6)) {
                 double fb = interp2(bias, lx, lz);
                 int ceil = top - 12 - (fb > 0.2 ? 14 : 0);
+                // AUDIT: a cave under the shore or a river bank opened sideways into the water column next door (a wall of
+                // water into the cave). Next to water, caves stay below that neighbour's bed.
+                if (c.wetNear) for (int[] o : NEIGHBOURS) {
+                    int nx = lx + o[0], nz = lz + o[1];
+                    Terrain.Col n = nx >= 0 && nx < 16 && nz >= 0 && nz < 16 ? cols[nx * 16 + nz] : t.column(x + o[0], z + o[1]);
+                    if ((n.sea || n.river) && !n.dry) ceil = Math.min(ceil, n.surface - 3);
+                }
                 for (int y = minY + 6; y <= ceil; y++) {
                     double d = interp(grid, lx, lz, (y - gy0) / 8.0, gyN) + fb * bandWeight(t, x, y, z, c);
                     if (d > 0) data.setBlock(lx, y, lz, y < -54 ? Blocks.LAVA : Blocks.CAVE_AIR);
@@ -126,6 +148,8 @@ public final class WorldGen extends ChunkGenerator {
         Structures.paint(t, bx, bz, cols, data);            // pyramids, dungeons, admin cores, sky isles
         Sites.paint(t, bx, bz, data);                       // the faction builds
     }
+
+    static final int[][] NEIGHBOURS = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}, {1, 1}, {1, -1}, {-1, 1}, {-1, -1}};
 
     /** How much bigger caves get here (Fibers / Mire regions); 0 elsewhere. */
     static double caveBias(Terrain t, int x, int z) {

@@ -103,6 +103,7 @@ final class Terrain {
         boolean dry;          // below sea level but landlocked (a faction site's basin / crater / the canyon): air, not water
         int abyssTop = Integer.MIN_VALUE, abyssBottom = Integer.MIN_VALUE; // water band (inclusive) under the open sea
         boolean hole;         // a hole down to the abyss
+        boolean wetNear;      // the shore or a river is within a few blocks (caves here check their neighbours for water)
         B biome;
         double coast, farlands;
         int isle;
@@ -126,6 +127,7 @@ final class Terrain {
             double h = landHeight(x, z, co, climate, blob);
             // rivers
             double rv = Math.abs(fbm(river, x / 900.0, z / 900.0, 2));
+            c.wetNear = co < 0.12 || rv < 0.05;
             if (co > 0.12 && rv < 0.03 && (blob == null || blob.biome() != B.DEEP_DESERT && blob.biome() != B.WASTELAND)) {
                 double t = 1 - rv / 0.03;
                 // AUDIT: rivers fade out before the dug-out faction sites and the canyon. One running up to their edge left a

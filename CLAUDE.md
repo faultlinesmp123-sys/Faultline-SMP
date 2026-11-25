@@ -3242,6 +3242,21 @@ Notes:
   server, so check fixed places on several seeds. Items: sandstorms also start in `faultline:deep_desert` (`Weather.sandy`).
   Known and accepted: the schematics' block ENTITIES aren't read (banners lose their patterns, signs their text, heads their
   skin; chests get loot tables, the blank spawner gets a mob).
+- **2.0 audit, round 4 (FaultlineWorld). THE ROUND 2 + 3 JARS (commits 528d96b, b700938) WERE BROKEN**: the script that moved the
+  drawing into `generateSurface` also deleted the rock / water / abyss lines from `generateNoise`: a world of AIR with decorations
+  floating in it. It compiled, and the previews "ran" (nobody looked at the picture). Restored. RULE: after touching the generator run
+  `tools/world_preview/Scan.java` (generates ~60 squares of chunks: every site, pyramid, hole, core, blob + random spots; prints per
+  square `stone=`, `water=`, water-next-to-air faces, falling blocks, plants without ground) AND LOOK at a `WorldPreview` section
+  image. `Leak.java` (dry sites vs water, per seed) and `Fixed.java` (fixed places per seed) are there too. Found by the scan and
+  fixed: (1) the GIANT TOWER (the build in the sea) had its rooms cut out as air inside the water: 261,833 water-next-to-air
+  faces. A `SEABED` build is now FLOODED below sea level (`Sites.finalBlock`: holes stay water, `Waterlogged` blocks are
+  waterlogged, non-solid things aren't placed; air only from y 200 up; its doorway is water). (2) The builds' own water (moats,
+  ponds) ran out at the schematic's edge and through ruin holes: `Schematic.findPlugs` (air cells beside / under a water or lava
+  SOURCE get mossy cobblestone / stone bricks) and `ruin` never opens a cell `besideSource`. (3) Caves under the shore / a river
+  bank opened sideways into the water column next door: `Col.wetNear` + a cap from the 8 neighbours' beds in the cave loop.
+  (4) The 3 holes were covered by the sea floor's 2-block sand lid (`Decor` GREAT_SEA skips `c.hole`). What's left in the scan
+  (a few dozen faces at 5 builds) is flowing water in the schematics themselves. `Sites.paint` and `Sites.heal` share
+  `finalBlock`, so healing never undoes any of this.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

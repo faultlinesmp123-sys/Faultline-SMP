@@ -113,6 +113,7 @@ final class Decor {
                     else if (r >= 200 && r < 206) { d.setBlock(lx, y + 1, lz, bd("minecraft:large_fern[half=lower]")); d.setBlock(lx, y + 2, lz, bd("minecraft:large_fern[half=upper]")); }
                 }
                 case GREAT_SEA -> {
+                    if (c.hole) break;   // AUDIT: a hole is open water all the way down; the sand floor was drawn across it as a lid
                     double n = t.fbmPublic(x / 40.0, z / 40.0);
                     d.setBlock(lx, y, lz, bd(n > 0.3 ? "minecraft:gravel" : n > -0.35 ? "minecraft:sand" : "minecraft:clay"));
                     d.setBlock(lx, y - 1, lz, bd("minecraft:sand"));

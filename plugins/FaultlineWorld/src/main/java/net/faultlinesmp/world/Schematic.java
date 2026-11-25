@@ -27,6 +27,52 @@ final class Schematic {
         this.colStart = colStart; this.ys = ys; this.idx = idx; this.colMin = mn; this.colMax = mx;
     }
 
+    /** The palette index at a local cell, or -1 (air / outside). Each column's ys are in rising order. */
+    int find(int x, int y, int z) {
+        if (x < 0 || z < 0 || y < 0 || x >= sx || z >= sz || y >= sy) return -1;
+        int c = x * sz + z, lo = colStart[c], hi = colStart[c + 1] - 1;
+        while (lo <= hi) {
+            int mid = (lo + hi) >>> 1, v = ys[mid];
+            if (v == y) return idx[mid];
+            if (v < y) lo = mid + 1; else hi = mid - 1;
+        }
+        return -1;
+    }
+
+    /** Per palette index: a water SOURCE (the kind that spreads). */
+    boolean[] source;
+    /** Air cells (local, +1 on each axis so the ring outside the box fits) beside or under a water source: the build's
+     *  water would run out through them. They get a block. */
+    final Set<Long> plugs = new HashSet<>();
+
+    void findPlugs() {
+        source = new boolean[paletteNames.length];
+        boolean any = false;
+        for (int i = 0; i < source.length; i++) {
+            String n = paletteNames[i];
+            source[i] = n.equals("minecraft:water") || n.equals("minecraft:water[level=0]") || n.equals("minecraft:lava") || n.equals("minecraft:lava[level=0]");
+            any |= source[i];
+        }
+        if (!any) return;
+        int[][] around = {{1, 0, 0}, {-1, 0, 0}, {0, 0, 1}, {0, 0, -1}, {0, -1, 0}};
+        for (int x = 0; x < sx; x++) for (int z = 0; z < sz; z++) {
+            int c = x * sz + z;
+            for (int i = colStart[c]; i < colStart[c + 1]; i++) {
+                if (!source[idx[i]]) continue;
+                int y = ys[i];
+                for (int[] o : around) if (find(x + o[0], y + o[1], z + o[2]) < 0) plugs.add(Sites.pack(x + o[0] + 1, y + o[1] + 1, z + o[2] + 1));
+            }
+        }
+    }
+
+    /** True when a water / lava source is right next to this cell (so taking the cell's block out would let it run). */
+    boolean besideSource(int x, int y, int z) {
+        if (source == null) return false;
+        int i;
+        return (i = find(x + 1, y, z)) >= 0 && source[i] || (i = find(x - 1, y, z)) >= 0 && source[i] || (i = find(x, y, z + 1)) >= 0 && source[i]
+                || (i = find(x, y, z - 1)) >= 0 && source[i] || (i = find(x, y + 1, z)) >= 0 && source[i];
+    }
+
     /** Old block names some schematics carry. */
     static final Map<String, String> RENAME = Map.of(
             "minecraft:grass", "minecraft:short_grass",

@@ -33,6 +33,7 @@ final class Sites {
                 Schematic sc = Schematic.read(s.file(), in);
                 sc.palette = new BlockData[sc.paletteNames.length];
                 for (int i = 0; i < sc.palette.length; i++) sc.palette[i] = bd(sc.paletteNames[i]);
+                sc.findPlugs();
                 LOADED.put(s.file(), sc);
                 if (s.ruin()) ENTRANCES.put(s.file(), entrance(sc));
             } catch (Throwable e) {
@@ -69,11 +70,13 @@ final class Sites {
                     int lx = x - ox, lz = z - oz, c = lx * sc.sz + lz;
                     if (sc.colMin[c] < 0) continue;
                     // inside the build's span the ground / sea goes (rooms are air, not rock or water)
-                    if (fillAir) for (int y = sc.colMin[c]; y <= sc.colMax[c]; y++) cv.set(x, oy + y, z, s.shape() == Layout.Shape.SEABED && oy + y < Layout.SEA ? WorldGen.Blocks.AIR : WorldGen.Blocks.AIR);
+                    // AUDIT: a build standing in the sea (the Giant Tower) is FLOODED below sea level: its rooms used to be
+                    // cut out as air inside the water, a curtain of 260,000 water-next-to-air faces that all start flowing.
+                    boolean sunk = s.shape() == Layout.Shape.SEABED;
+                    if (fillAir) for (int y = sc.colMin[c]; y <= sc.colMax[c]; y++) if (!sunk || oy + y >= Layout.SEA) cv.set(x, oy + y, z, WorldGen.Blocks.AIR);
                     for (int i = sc.colStart[c]; i < sc.colStart[c + 1]; i++) {
                         int ly = sc.ys[i], y = oy + ly;
-                        BlockData b = sc.palette[sc.idx[i]];
-                        if (s.ruin()) b = ruin(t, s, sc, x, y, z, ly, b);
+                        BlockData b = finalBlock(t, s, sc, x, y, z, lx, ly, lz, sc.palette[sc.idx[i]]);
                         if (b != null) cv.set(x, y, z, b);
                     }
                     // a foundation so nothing floats (castles / statues on the ground)
@@ -87,10 +90,20 @@ final class Sites {
                         if (cv.type(x, wy, z).isAir() && !cv.type(x, wy + 1, z).isAir() && (hash3(t.seed, x, wy, z, 0x5EB) & 63) == 0) cv.set(x, wy, z, bd("minecraft:cobweb"));
                     }
                 }
-            // the entrance
+            // the entrance (under the sea it stays water)
             for (long k : door) {
                 int lx = (int) (k >> 40), ly = (int) ((k >> 20) & 0xFFFFF), lz = (int) (k & 0xFFFFF);
-                cv.set(ox + lx, oy + ly, oz + lz, WorldGen.Blocks.AIR);
+                if (s.shape() == Layout.Shape.SEABED && oy + ly < Layout.SEA) cv.set(ox + lx, oy + ly, oz + lz, WorldGen.Blocks.WATER);
+                else if (!sc.besideSource(lx, ly, lz)) cv.set(ox + lx, oy + ly, oz + lz, WorldGen.Blocks.AIR);
+            }
+            // AUDIT: the builds' own water (moats, ponds, fountains) ran out wherever the cell beside or under a source was
+            // open: at the edge of the schematic, or where the builder left a gap. Those cells get a block.
+            if (!sc.plugs.isEmpty() && s.shape() != Layout.Shape.SEABED) {
+                BlockData plug = bd(s.ruin() ? "minecraft:mossy_cobblestone" : "minecraft:stone_bricks");
+                for (long k : sc.plugs) {
+                    int x = ox + (int) (k >> 40) - 1, y = oy + (int) ((k >> 20) & 0xFFFFF) - 1, z = oz + (int) (k & 0xFFFFF) - 1;
+                    if (cv.in(x, y, z) && cv.type(x, y, z).isAir()) cv.set(x, y, z, plug);
+                }
             }
         }
     }
@@ -118,8 +131,7 @@ final class Sites {
                     for (int i = sc.colStart[c]; i < sc.colStart[c + 1]; i++) {
                         int ly = sc.ys[i], y = oy + ly;
                         if (y < minY || y >= maxY) continue;
-                        BlockData b = sc.palette[sc.idx[i]];
-                        if (s.ruin()) b = ruin(t, s, sc, x, y, z, ly, b);
+                        BlockData b = finalBlock(t, s, sc, x, y, z, lx, ly, lz, sc.palette[sc.idx[i]]);
                         if (b == null || door.contains(pack(lx, ly, lz))) continue;
                         org.bukkit.block.Block at = ch.getBlock(x & 15, y, z & 15);
                         Material want = b.getMaterial(), have = at.getType();
@@ -131,6 +143,31 @@ final class Sites {
                 }
         }
         return fixed;
+    }
+
+    private static final Map<BlockData, BlockData> WET = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /**
+     * What a build's cell really becomes in the world (the same answer for {@link #paint} and {@link #heal}); null = leave
+     * what's there. Ruins decay, but never where that would let the build's own water out. Under the sea (a sunk build) holes
+     * stay water, waterloggable blocks are waterlogged, and things water would wash away aren't placed.
+     */
+    static BlockData finalBlock(Terrain t, Layout.Site s, Schematic sc, int x, int y, int z, int lx, int ly, int lz, BlockData raw) {
+        BlockData b = raw;
+        if (s.ruin()) {
+            b = ruin(t, s, sc, x, y, z, ly, raw);
+            if (b != raw && (b == null || b.getMaterial().isAir()) && sc.besideSource(lx, ly, lz)) b = raw;
+        }
+        if (b == null) return null;
+        if (s.shape() == Layout.Shape.SEABED && y < Layout.SEA) {
+            Material m = b.getMaterial();
+            if (m.isAir() || m == Material.WATER) return null;
+            if (b instanceof org.bukkit.block.data.Waterlogged) {
+                return WET.computeIfAbsent(b, k -> { try { org.bukkit.block.data.Waterlogged w = (org.bukkit.block.data.Waterlogged) k.clone(); w.setWaterlogged(true); return w; } catch (Throwable e) { return k; } });
+            }
+            if (!m.isSolid()) return null;
+        }
+        return b;
     }
 
     static final Set<Material> LIGHTS = EnumSet.of(Material.TORCH, Material.WALL_TORCH, Material.LANTERN, Material.SOUL_LANTERN,

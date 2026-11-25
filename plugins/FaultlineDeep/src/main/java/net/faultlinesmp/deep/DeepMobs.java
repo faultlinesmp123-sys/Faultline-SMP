@@ -331,8 +331,7 @@ final class DeepMobs implements Listener {
         body.setCustomNameVisible(false);
         if (body instanceof org.bukkit.entity.Slime sl) sl.setSize(2);   // (setSize resets health: first)
         if (body instanceof org.bukkit.entity.Phantom ph) { ph.setSize(0); try { ph.setShouldBurnInDay(false); } catch (Throwable ignored) { } }
-        attr(body, Attribute.MAX_HEALTH, k.health());
-        body.setHealth(k.health());
+        BigHealth.set(body, k.health()); // 1.3.53 / Deep 1.19.2: over the server's 1024 cap setHealth threw (the Rimeback)
         attr(body, Attribute.SCALE, k.scale());
         if (k.damage() > 0) attr(body, Attribute.ATTACK_DAMAGE, k.damage());
         if (k.speed() > 0) attr(body, Attribute.MOVEMENT_SPEED, k.speed());

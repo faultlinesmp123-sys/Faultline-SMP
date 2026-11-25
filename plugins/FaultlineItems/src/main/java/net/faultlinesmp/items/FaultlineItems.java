@@ -588,6 +588,7 @@ public final class FaultlineItems extends JavaPlugin {
         Bukkit.getScheduler().runTaskTimer(this, () -> { try { queenSpiderManager.sweepAll(); } catch (RuntimeException ignored) { } }, 60L, 200L); // 1.3.51
         getServer().getScheduler().runTaskTimer(this, queenSpiderManager::tick, 1L, 1L); // 1.3.44: every tick (the rig)
         HitBox.init(this); // 1.3.49
+        BigHealth.init(this); // 1.3.53
         spiderForm = new SpiderForm(this);
         getServer().getPluginManager().registerEvents(spiderForm, this);
         spiderNest = new SpiderNest(this, queenSpiderManager); // 1.3.44: the Spider Nest biome + the sleeping Queen

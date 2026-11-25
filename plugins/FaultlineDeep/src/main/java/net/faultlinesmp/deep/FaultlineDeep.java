@@ -78,6 +78,7 @@ public final class FaultlineDeep extends JavaPlugin implements Listener {
         outer = new Outer(this);
         tides = new Tides(this);
         volcano = new Volcano(this);
+        BigHealth.init(this); // 1.19.2: health over the server's 1024 cap
         getServer().getPluginManager().registerEvents(volcano, this);
         habitat = new Habitat(this);
         getServer().getPluginManager().registerEvents(habitat, this);

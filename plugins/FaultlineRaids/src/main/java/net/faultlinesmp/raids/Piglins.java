@@ -396,7 +396,8 @@ final class Piglins implements Listener {
 
     static void hp(LivingEntity mob, double hp) {
         FaultlineRaids.setAttr(mob, Attribute.MAX_HEALTH, hp);
-        mob.setHealth(hp);
+        var max = mob.getAttribute(Attribute.MAX_HEALTH); // Raids 1.4.1: the server caps max health at 1024 (setHealth over it throws)
+        mob.setHealth(Math.min(hp, max != null ? max.getValue() : hp));
     }
 
     /** Raid piglins join the raid they came with (summoned grunts, the Great Hog's rally). */

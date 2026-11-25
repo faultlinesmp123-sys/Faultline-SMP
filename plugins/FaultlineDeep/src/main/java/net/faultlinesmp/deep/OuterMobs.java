@@ -95,7 +95,7 @@ final class OuterMobs {
         m.mutated = true;
         LivingEntity b = m.body;
         AttributeInstance hp = b.getAttribute(Attribute.MAX_HEALTH);
-        if (hp != null) { hp.setBaseValue(hp.getBaseValue() * cfg("mutated.health", 2.0)); b.setHealth(hp.getBaseValue()); }
+        if (hp != null) BigHealth.set(b, hp.getBaseValue() * cfg("mutated.health", 2.0)); // the base keeps the asked value (only getValue is capped)
         AttributeInstance dmg = b.getAttribute(Attribute.ATTACK_DAMAGE);
         if (dmg != null) dmg.setBaseValue(dmg.getBaseValue() * cfg("mutated.damage", 1.5));
         AttributeInstance sp = b.getAttribute(Attribute.MOVEMENT_SPEED);

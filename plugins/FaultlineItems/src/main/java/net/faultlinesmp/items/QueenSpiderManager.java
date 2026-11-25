@@ -139,12 +139,26 @@ final class QueenSpiderManager implements Listener {
     }
 
     /** A wild queen (egg, natural, /queenspider spawn): awake at once. */
-    void makeQueen(Spider spider) { setup(spider, null, false); }
+    void makeQueen(Spider spider) {
+        try { setup(spider, null, false); }
+        catch (RuntimeException e) { cleanupHalf(spider); plugin.getLogger().warning("[QueenSpider] couldn't make a queen: " + e); }
+    }
+
+    private void cleanupHalf(Spider spider) {
+        queens.remove(spider.getUniqueId());
+        for (Entity e : spider.getNearbyEntities(4, 4, 4))
+            if (e.getScoreboardTags().contains(QueenRig.TAG) || e.getScoreboardTags().contains(HitBox.TAG) || e.getScoreboardTags().contains(STAND_TAG)) e.remove();
+        spider.remove();
+    }
 
     /** A nest's queen, asleep on her throne. */
     Queen sleepingQueen(Location at, String nestId) {
         if (!(at.getWorld().spawnEntity(at, EntityType.SPIDER, false) instanceof Spider spider) || !spider.isValid()) return null;
-        return setup(spider, nestId, true);
+        try { return setup(spider, nestId, true); }
+        catch (RuntimeException e) { // 1.3.53: never leave a half-made queen behind (it was a model-less body each try)
+            cleanupHalf(spider);
+            throw e;
+        }
     }
 
     private Queen setup(Spider spider, String nestId, boolean asleep) {
@@ -164,8 +178,7 @@ final class QueenSpiderManager implements Listener {
         spider.setCustomNameVisible(false);
         setAttr(spider, Attribute.SCALE, q.scale);
         double hp = ncfg(q, "health", Balance.num(plugin, "queen-spider-boss.health", 500, 900), 3600); // really hard
-        setAttr(spider, Attribute.MAX_HEALTH, hp);
-        spider.setHealth(hp);
+        BigHealth.set(spider, hp); // 1.3.53: over the server's 1024 cap setHealth threw (the model-less queens)
         setAttr(spider, Attribute.ATTACK_DAMAGE, ncfg(q, "bite-damage", 13, 20));
         setAttr(spider, Attribute.ARMOR, q.nestId != null ? cfg("nest.armor", 12) : cfg("armor", 6));
         setAttr(spider, Attribute.KNOCKBACK_RESISTANCE, 0.9);
@@ -214,8 +227,7 @@ final class QueenSpiderManager implements Listener {
         for (Player p : q.body.getWorld().getPlayers()) if (survival(p) && p.getLocation().distanceSquared(q.body.getLocation()) < 48 * 48) fighters++;
         if (q.nestId != null && fighters > 1) {
             double hp = cfg("nest.health", 3600) * (1 + (fighters - 1) * cfg("nest.per-fighter", 0.3));
-            setAttr(q.body, Attribute.MAX_HEALTH, hp);
-            q.body.setHealth(hp);
+            BigHealth.set(q.body, hp);
         }
         q.rig.play("wake", 45);
         wakeEffects(q);

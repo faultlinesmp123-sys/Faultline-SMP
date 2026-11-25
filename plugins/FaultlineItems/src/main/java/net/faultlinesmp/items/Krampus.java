@@ -162,8 +162,7 @@ final class Krampus implements Listener {
         int n = 0;
         for (Player p : at.getWorld().getPlayers()) if (p.getLocation().distanceSquared(at) < 40 * 40 && p.getGameMode() == GameMode.SURVIVAL) n++;
         double hp = cfg("health", 900) * (1 + cfg("per-fighter", 0.25) * Math.max(0, n - 1));
-        MimicPlayer.attr(w, Attribute.MAX_HEALTH, hp);
-        w.setHealth(hp);
+        BigHealth.set(w, hp);
         MimicPlayer.attr(w, Attribute.SCALE, cfg("scale", 1.7));
         MimicPlayer.attr(w, Attribute.MOVEMENT_SPEED, 0.3);
         MimicPlayer.attr(w, Attribute.ATTACK_DAMAGE, cfg("melee", 10));

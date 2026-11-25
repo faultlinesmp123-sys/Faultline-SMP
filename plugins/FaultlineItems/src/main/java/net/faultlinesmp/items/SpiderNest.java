@@ -1347,7 +1347,12 @@ final class SpiderNest implements Listener {
                 if (n.queen == null) n.queen = q; else { queens.remove(q); plugin.getLogger().info("[SpiderNest] removed an extra queen in " + n.id); }
             }
             if (n.queen == null && now >= n.respawnAt && w.isChunkLoaded(n.tx >> 4, n.tz >> 4)) {
-                spawnQueen(n); // 1.3.52: always (she waited for nobody within 24: walking up to her throne, there was no queen at all)
+                try { spawnQueen(n); } // 1.3.52
+                catch (RuntimeException ex) { // 1.3.53: a failure waits a minute (it retried every tick)
+                    n.respawnAt = now + 60000;
+                    plugin.getLogger().warning("[SpiderNest] the queen of " + n.id + " couldn't be placed: " + ex);
+                }
+                // 1.3.52: always (she waited for nobody within 24: walking up to her throne, there was no queen at all)
             }
         }
         // ambience and brood for players inside

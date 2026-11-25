@@ -270,8 +270,7 @@ final class HauntedVillage implements Listener {
         w.getEquipment().setHelmetDropChance(0);
         w.getEquipment().setItemInMainHandDropChance(0);
         double hp = cfg("wraith-health", 160) * (1 + 0.2 * Math.max(0, h.fighters.size() - 1));
-        MimicPlayer.attr(w, Attribute.MAX_HEALTH, hp);
-        w.setHealth(hp);
+        BigHealth.set(w, hp);
         MimicPlayer.attr(w, Attribute.SCALE, 1.4);
         MimicPlayer.attr(w, Attribute.MOVEMENT_SPEED, 0.3);
         w.addPotionEffect(new PotionEffect(PotionEffectType.FIRE_RESISTANCE, PotionEffect.INFINITE_DURATION, 0, false, false));

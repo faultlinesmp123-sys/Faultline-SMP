@@ -178,8 +178,7 @@ final class ChromeRunner implements Listener, CommandExecutor, TabCompleter {
         int n = 0;
         for (Player p : at.getWorld().getPlayers()) if (p.getLocation().distanceSquared(at) < 48 * 48 && p.getGameMode() == GameMode.SURVIVAL) n++;
         double hp = cfg("health", 7000) * (1 + cfg("per-fighter", 0.35) * Math.max(0, n - 1));
-        MimicPlayer.attr(z, Attribute.MAX_HEALTH, hp);
-        z.setHealth(hp);
+        BigHealth.set(z, hp);
         MimicPlayer.attr(z, Attribute.ATTACK_DAMAGE, cfg("melee", 15));
         MimicPlayer.attr(z, Attribute.MOVEMENT_SPEED, 0.36);
         MimicPlayer.attr(z, Attribute.ARMOR, 14);

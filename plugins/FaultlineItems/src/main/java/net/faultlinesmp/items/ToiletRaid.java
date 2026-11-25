@@ -296,8 +296,7 @@ final class ToiletRaid implements Listener, CommandExecutor, TabCompleter {
         z.setCustomNameVisible(false);
         double hp = kind.hp * hpMul * cfg("health-multiplier", 1.0);
         MimicPlayer.attr(z, Attribute.SCALE, kind.scale);
-        MimicPlayer.attr(z, Attribute.MAX_HEALTH, hp);
-        z.setHealth(hp);
+        BigHealth.set(z, hp);
         MimicPlayer.attr(z, Attribute.ATTACK_DAMAGE, kind.dmg * cfg("damage-multiplier", 1.0));
         MimicPlayer.attr(z, Attribute.MOVEMENT_SPEED, kind.speed);
         MimicPlayer.attr(z, Attribute.FOLLOW_RANGE, 64);
@@ -475,8 +474,7 @@ final class ToiletRaid implements Listener, CommandExecutor, TabCompleter {
         double scale = cfg("boss.scale", 4);
         double hp = cfg("boss.health", 12000) * (1 + cfg("boss.per-fighter", 0.4) * (n - 1));
         MimicPlayer.attr(z, Attribute.SCALE, scale);
-        MimicPlayer.attr(z, Attribute.MAX_HEALTH, hp);
-        z.setHealth(hp);
+        BigHealth.set(z, hp);
         MimicPlayer.attr(z, Attribute.ATTACK_DAMAGE, cfg("boss.melee", 22));
         MimicPlayer.attr(z, Attribute.MOVEMENT_SPEED, 0.27);
         MimicPlayer.attr(z, Attribute.KNOCKBACK_RESISTANCE, 1);

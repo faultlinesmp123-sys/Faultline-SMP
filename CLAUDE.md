@@ -3104,6 +3104,17 @@ Notes:
   (`spider-nest.see-in-the-dark`), so it pulses dark but you can see; both are taken off on leaving, join and quit (only the
   endless ambient particle-less ones). Tested (scratch `nest/SpecTest`: build, 0 floating chests/spawners, queen back with a
   survival player + spectator at the throne, 2 min, disable + enable = still exactly one queen body, spectator sees no body).
+- **THE 1024 HEALTH CAP (Items 1.3.53, Deep 1.19.2, Raids 1.4.1)**: THE cause of the model-less "many queens" in the nest. The
+  server caps mob max health at 1024 (spigot.yml `settings.attribute.maxHealth.max`): `setBaseValue(3600)` is clamped and then
+  `setHealth(3600)` THROWS ("Health value must be between 0 and 1024"). The nest Queen's setup threw after her body spawned but
+  before her rig / hitbox / tracking existed, and the nest retried EVERY TICK = a pile of untracked, unhidden spiders with only
+  eyes. MockBukkit has no cap, so no test caught it (Bosses had hit it before with a worm and clamps). `BigHealth.set(e, hp)`
+  (Items, a copy in Deep): sets the base, takes the real `getValue()`, `setHealth(min)`, and when it's less than asked stores
+  `<plugin>:hp_scale` = hp / real in the entity PDC; EntityDamageEvent / EntityRegainHealthEvent (HIGHEST) divide by it, so the mob
+  is exactly as tough as asked. Used by the Queen (3600 + per fighter), Chrome Runner (7000), the Porcelain Colossus (12000), Krampus,
+  the Lantern Wraith, toilets, every Dark Ocean creature (the Rimeback 1200, mutated x2). A setup that throws now removes the half-made
+  queen (`cleanupHalf`) and the nest waits a minute before trying again. Raids' `Piglins.hp` clamps. RULE: never
+  `setHealth(x)` with x from config; use `BigHealth.set` or clamp to `getAttribute(MAX_HEALTH).getValue()`.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.
@@ -3111,8 +3122,9 @@ Notes:
   resource packs. Check the source before assuming those still exist.
 
 ## Standing rules when updating plugins
-0. **When sending a release, also give the terminal command to download it on the VPS** (owner's request), e.g.
-   `curl -L -o FAULTLINESMPJAR.jar https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/<branch>/release/FAULTLINESMPJAR.jar`
+0. **When sending a release, also give the terminal command to download it on the VPS** (owner's request), with the COMMIT
+   SHA in the URL (a branch URL is cached by GitHub's CDN for ~5 min: the owner kept getting the previous jar), e.g.
+   `curl -L -o FAULTLINESMPJAR.jar https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/<commit sha>/release/FAULTLINESMPJAR.jar`
    run inside the server's `plugins/` folder, then `/faultline reload`.
 1. **Every new item, boss, or enemy must be added to the Faultline Index.**
 2. **Every new boss must be added to `/itemsmenu`** (a spawn egg or summon item).

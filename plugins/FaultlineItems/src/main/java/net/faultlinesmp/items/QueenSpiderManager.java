@@ -78,6 +78,7 @@ final class QueenSpiderManager implements Listener {
     static final class Queen {
         Spider body;
         Spider standin;          // Bedrock only
+        HitBox box;              // 1.3.49: Java players hit this (the body is hidden from them: its eyes showed)
         QueenRig rig;
         BossBar bar;
         final Set<UUID> brood = new HashSet<>();
@@ -171,6 +172,7 @@ final class QueenSpiderManager implements Listener {
         setAttr(spider, Attribute.FOLLOW_RANGE, 40);
         if (asleep) { spider.setAI(false); spider.setInvulnerable(false); }
         q.rig = new QueenRig(plugin, spider, q.scale);
+        q.box = new HitBox(spider, 1.4 * q.scale, 0.9 * q.scale);
         if (asleep) q.rig.play("sleep", 0);
         else q.rig.play("wake", 40);
         q.bar = Bukkit.createBossBar(ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + name, BarColor.PURPLE, BarStyle.SEGMENTED_20);
@@ -243,6 +245,7 @@ final class QueenSpiderManager implements Listener {
         q.t++;
         Spider queen = q.body;
         if (q.rig != null) q.rig.tick();
+        if (q.box != null) q.box.tick(q.t);
         if (!queen.isValid() || queen.isDead()) {
             if (q.rig == null || q.rig.gone) { end(q); queens.remove(queen.getUniqueId()); }
             return;
@@ -916,6 +919,7 @@ final class QueenSpiderManager implements Listener {
         if (q.bar != null) q.bar.removeAll();
         stopMusic(q);
         if (q.standin != null && q.standin.isValid()) q.standin.remove();
+        if (q.box != null) q.box.remove();
     }
 
     /** Takes a queen away now (her nest's chunk unloaded, the plugin stopping). */

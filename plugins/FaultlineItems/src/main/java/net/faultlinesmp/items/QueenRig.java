@@ -95,7 +95,7 @@ final class QueenRig {
                 e.addScoreboardTag(TAG);
                 e.addScoreboardTag("faultline_no_bedrock_fx");
                 e.setItemStack(item(prefix + model));
-                if (glow >= 0) e.setBrightness(new Display.Brightness(glow, glow));
+                e.setBrightness(glow >= 0 ? new Display.Brightness(glow, glow) : new Display.Brightness(5, 0)); // 1.3.49: never pitch black in the dark nest
                 e.setTeleportDuration(2);
                 e.setInterpolationDuration(2);
                 e.setViewRange(2f);

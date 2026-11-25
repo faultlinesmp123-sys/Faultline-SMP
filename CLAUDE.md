@@ -3067,6 +3067,22 @@ Notes:
   permanent); every parted web goes back on shutdown. RIG LOD (`QueenRig`, 32 displays per spider): poses every 2 ticks under
   24 blocks, 4 under 48, 8 under 96, else 20 (a player's spider form always 2); the IK feet only twice a second with nobody within
   64. The Skeleton Wanderer never walks where there's sky light.
+- **Nest fixes (Items 1.3.49)**: the FLOATING RED CUBES were vanilla's spider EYES: an invisible spider still draws its glowing
+  eye layer (and its fire when burning: a giant flame over the Queen in a fight). `HitBox.java`: the Queen's and the brood's
+  hitbox spiders are HIDDEN from every player (`hideEntity`, re-checked every second and on join / world change); an Interaction
+  box the same size follows each one, and a Java player hitting it makes a real attack on the body (`PrePlayerAttackEntityEvent`
+  cancelled -> `Player#attack(body)`); projectiles hit the body server-side as before; Bedrock keeps its stand-in. TOO MANY
+  SPIDERS: vanilla's NATURAL hostile spawns are cancelled inside a nest (`NestBrood.onVanillaSpawn`; ours go through
+  `spawning`), ambient `spawn-chance` 0.18 -> 0.06, `mob-cap` 9 -> 5, `brood-cap` 6 -> 3 (`Balance.num`: old values read as new),
+  at most `sleepers-max` 4 asleep per nest, spawners only in every 4th plain room. THE BLACK FLASH: the Darkness was re-applied every
+  few seconds (each time restarting its fade-in): now put on once (endless, ambient) and taken off when you leave. THE WAY IN is
+  underground only: no spiral / surface hole; 3 GATEWAY tunnels (`Plan.gates`) from outer chambers 45+ from the throne, winding
+  80-110 blocks out (`mouthX/Y/Z` = one end, `/queenspider nest tp [id] entrance`), a bone gate at each far end (`gate()`).
+  STRUCTURES: `create` -> `tryAt` checks `World#getStructures` over every chunk of the plan's box (loaded async first) for
+  `spider-nest.avoid-structures` (default trial_chambers, ancient_city, stronghold) and moves the nest out in rings (`TRIES`, up to
+  360 blocks) until clear. Right-click a web to take the item caught in it (`onWebPick`, the web stays); a caught item whose web was
+  later built over is removed at the end of the build. Her bone bowl's rim slopes down outside too (it was a 5-block wall). Rig parts
+  never go pitch black (min brightness 5). Tested: `nest/NestTest3` (walk in from a gateway's far end, 205 blocks out).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

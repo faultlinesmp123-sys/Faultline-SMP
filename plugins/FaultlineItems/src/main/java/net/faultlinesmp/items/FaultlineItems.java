@@ -586,6 +586,7 @@ public final class FaultlineItems extends JavaPlugin {
         this.queenSpiderManager = new QueenSpiderManager(this);
         getServer().getPluginManager().registerEvents(queenSpiderManager, this);
         getServer().getScheduler().runTaskTimer(this, queenSpiderManager::tick, 1L, 1L); // 1.3.44: every tick (the rig)
+        HitBox.init(this); // 1.3.49
         spiderForm = new SpiderForm(this);
         getServer().getPluginManager().registerEvents(spiderForm, this);
         spiderNest = new SpiderNest(this, queenSpiderManager); // 1.3.44: the Spider Nest biome + the sleeping Queen

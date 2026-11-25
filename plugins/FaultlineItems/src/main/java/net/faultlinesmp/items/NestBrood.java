@@ -83,6 +83,7 @@ final class NestBrood implements Listener {
 
     final class Brood {
         Spider body, standin;
+        HitBox box; // 1.3.49
         QueenRig rig;
         Kind kind;
         boolean asleep;
@@ -146,6 +147,7 @@ final class NestBrood implements Listener {
         if (kind == Kind.EMBER) sp.setVisualFire(false);
         if (asleep) sp.setAI(false);
         b.rig = new QueenRig(plugin, sp, kind.rig, kind.models, kind.glow);
+        b.box = new HitBox(sp, 1.4 * kind.hitbox, 0.9 * kind.hitbox);
         b.rig.play(asleep ? "sleep" : "wake", asleep ? 0 : 20);
         try { // Bedrock: a plain spider only they see
             if (w.spawnEntity(at, EntityType.SPIDER, false) instanceof Spider s2) {
@@ -169,6 +171,7 @@ final class NestBrood implements Listener {
 
     void remove(Brood b) {
         brood.remove(b.body.getUniqueId());
+        if (b.box != null) b.box.remove();
         if (b.rig != null) b.rig.remove();
         if (b.body.isValid()) b.body.remove();
         if (b.standin != null) { byStandin.remove(b.standin.getUniqueId()); if (b.standin.isValid()) b.standin.remove(); }
@@ -201,6 +204,7 @@ final class NestBrood implements Listener {
         {
             b.t++;
             if (b.rig != null) b.rig.tick();
+            if (b.box != null) b.box.tick(b.t);
             if (!b.body.isValid() || b.body.isDead()) {
                 if (b.rig == null || b.rig.gone) {
                     brood.remove(b.body.getUniqueId());
@@ -328,26 +332,39 @@ final class NestBrood implements Listener {
         if (b.standin != null) { byStandin.remove(b.standin.getUniqueId()); if (b.standin.isValid()) b.standin.remove(); }
     }
 
+    private boolean spawning;
+
+    /** 1.3.49: the whole nest is dark, so vanilla filled it with mobs on top of ours: no NATURAL spawns inside a nest but ours. */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onVanillaSpawn(org.bukkit.event.entity.CreatureSpawnEvent e) {
+        if (spawning || e.getSpawnReason() != org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.NATURAL) return;
+        if (!(e.getEntity() instanceof org.bukkit.entity.Enemy) || nests.nests.isEmpty()) return;
+        if (nests.nestAt(e.getLocation()) != null) e.setCancelled(true);
+    }
+
     // ============================================================================================ spawning round players
     /** Something comes out of the dark near a player inside (every 2 s, `spawn-chance`), up to `mob-cap` near them. */
     void ambient(Player p, SpiderNest.Nest n) {
-        if (!survival(p) || random.nextDouble() >= cfg("spawn-chance", 0.18)) return;
+        if (!survival(p) || random.nextDouble() >= Balance.num(plugin, "spider-nest.spawn-chance", 0.18, 0.06)) return; // 1.3.49: far fewer
         int near = 0;
         for (Entity e : p.getNearbyEntities(22, 10, 22))
             if (e.getType() == EntityType.SPIDER && !e.getScoreboardTags().contains(STAND_TAG) || e.getType() == EntityType.CAVE_SPIDER
                     || e.getType() == EntityType.ZOMBIE || e.getType() == EntityType.SKELETON) near++;
-        if (near >= cfg("mob-cap", 9)) return;
+        if (near >= Balance.num(plugin, "spider-nest.mob-cap", 9, 5)) return;
         Location at = spot(p.getLocation(), 7, 14);
         if (at == null) return;
         double r = random.nextDouble();
+        spawning = true;
+        try {
         if (r < 0.28) at.getWorld().spawnEntity(at, EntityType.SPIDER, org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.NATURAL);
         else if (r < 0.50) at.getWorld().spawnEntity(at, EntityType.CAVE_SPIDER, org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.NATURAL);
         else if (r < 0.62) at.getWorld().spawnEntity(at, EntityType.ZOMBIE, org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.NATURAL);
         else if (r < 0.74) at.getWorld().spawnEntity(at, EntityType.SKELETON, org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.NATURAL);
-        else if (broodNear(at, 40) < cfg("brood-cap", 6) && brood.size() < cfg("brood-max", 30)) {
+        else if (broodNear(at, 40) < Balance.num(plugin, "spider-nest.brood-cap", 6, 3) && brood.size() < cfg("brood-max", 30)) {
             Kind k = r < 0.83 ? Kind.SERVANT : r < 0.89 ? Kind.VENOM : r < 0.95 ? Kind.EMBER : Kind.SWIFT;
             spawn(k, at, false, n.id);
         }
+        } finally { spawning = false; }
     }
 
     int broodNear(Location l, double r) {
@@ -377,6 +394,9 @@ final class NestBrood implements Listener {
         for (int[] bed : n.sleeps) {
             String key = n.id + "@" + bed[0] + "," + bed[1] + "," + bed[2];
             if (now < bedSpawned.getOrDefault(key, 0L)) continue;
+            int asleepNow = 0;
+            for (Brood o : brood.values()) if (o.asleep && n.id.equals(o.nestId)) asleepNow++;
+            if (asleepNow >= cfg("sleepers-max", 4)) return;
             UUID old = bedSleeper.get(key);
             if (old != null && brood.containsKey(old)) continue; // still there (asleep or out hunting)
             Location at = new Location(p.getWorld(), bed[0] + 0.5, bed[1], bed[2] + 0.5);
@@ -590,9 +610,10 @@ final class NestBrood implements Listener {
     /** Inside: it's DARK (hidden Darkness, unless a Night Vision potion... no, that doesn't help either), and the nest's music. */
     void insideTick(Player p, SpiderNest.Nest n, QueenSpiderManager queens) {
         if (plugin.getConfig().getBoolean("spider-nest.darkness", true) && p.getGameMode() != GameMode.SPECTATOR) {
-            PotionEffect cur = p.getPotionEffect(PotionEffectType.DARKNESS);
-            if (cur == null || cur.isAmbient() && cur.getDuration() < 60)
-                p.addPotionEffect(new PotionEffect(PotionEffectType.DARKNESS, 100, 0, true, false, false));
+            // 1.3.49: put on ONCE (endless) and taken off when you leave: re-applying it every few seconds restarted its fade-in
+            // each time = a black flash
+            if (!p.hasPotionEffect(PotionEffectType.DARKNESS))
+                p.addPotionEffect(new PotionEffect(PotionEffectType.DARKNESS, PotionEffect.INFINITE_DURATION, 0, true, false, false));
         }
         boolean bossMusic = false;
         if (n.queen != null && !n.queen.asleep && n.queen.body.isValid() && n.queen.body.getWorld() == p.getWorld()

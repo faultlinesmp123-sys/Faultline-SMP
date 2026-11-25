@@ -82,7 +82,7 @@ final class SpiderNest implements Listener {
         int minX, minY, minZ, maxX, maxY, maxZ; // the box it was carved in (0s for 1.3.44 nests)
         final List<int[]> dens = new ArrayList<>(), sleeps = new ArrayList<>(); // 1.3.47: brood dens, sleeping beds
         final Map<Integer, Long> denReady = new HashMap<>(); // den index -> when it can wake again
-        int mouthX = Integer.MIN_VALUE, mouthZ;  // where the way in comes up
+        int mouthX = Integer.MIN_VALUE, mouthZ, mouthY = Integer.MIN_VALUE; // where a way in ends (1.3.49: underground)
         long respawnAt;
         transient QueenSpiderManager.Queen queen;
         Location throne(World w) { return new Location(w, tx + 0.5, ty, tz + 0.5); }
@@ -107,7 +107,7 @@ final class SpiderNest implements Listener {
             n.radius = c.getInt("radius", 80); n.respawnAt = c.getLong("respawn-at");
             n.minX = c.getInt("box.min-x"); n.minY = c.getInt("box.min-y"); n.minZ = c.getInt("box.min-z");
             n.maxX = c.getInt("box.max-x"); n.maxY = c.getInt("box.max-y"); n.maxZ = c.getInt("box.max-z");
-            n.mouthX = c.getInt("mouth-x", Integer.MIN_VALUE); n.mouthZ = c.getInt("mouth-z");
+            n.mouthX = c.getInt("mouth-x", Integer.MIN_VALUE); n.mouthZ = c.getInt("mouth-z"); n.mouthY = c.getInt("mouth-y", Integer.MIN_VALUE);
             for (String d : c.getStringList("dens")) n.dens.add(parse3(d));
             for (String d : c.getStringList("sleeps")) n.sleeps.add(parse3(d));
             var dr = c.getConfigurationSection("den-ready");
@@ -130,7 +130,7 @@ final class SpiderNest implements Listener {
                 data.set(k + "box.min-x", n.minX); data.set(k + "box.min-y", n.minY); data.set(k + "box.min-z", n.minZ);
                 data.set(k + "box.max-x", n.maxX); data.set(k + "box.max-y", n.maxY); data.set(k + "box.max-z", n.maxZ);
             }
-            if (n.mouthX != Integer.MIN_VALUE) { data.set(k + "mouth-x", n.mouthX); data.set(k + "mouth-z", n.mouthZ); }
+            if (n.mouthX != Integer.MIN_VALUE) { data.set(k + "mouth-x", n.mouthX); data.set(k + "mouth-z", n.mouthZ); data.set(k + "mouth-y", n.mouthY); }
             data.set(k + "dens", n.dens.stream().map(d -> d[0] + "," + d[1] + "," + d[2]).toList());
             data.set(k + "sleeps", n.sleeps.stream().map(d -> d[0] + "," + d[1] + "," + d[2]).toList());
             for (var e : n.denReady.entrySet()) data.set(k + "den-ready." + e.getKey(), e.getValue());
@@ -160,7 +160,8 @@ final class SpiderNest implements Listener {
         final List<Room> rooms = new ArrayList<>();
         final List<Tunnel> tunnels = new ArrayList<>();
         final List<Tunnel> entrance = new ArrayList<>(); // 1.3.46: the spiral way in (kept clear and lit)
-        int mouthX, mouthZ;
+        int mouthX, mouthZ, mouthY;
+        final List<double[]> gates = new ArrayList<>(); // 1.3.49: the far ends of the gateway tunnels (x, y, z, heading)
         final long seed;
         int surface = Integer.MIN_VALUE; // the ground the way in comes up to (MIN = none)
         int minX = Integer.MAX_VALUE, minY = Integer.MAX_VALUE, minZ = Integer.MAX_VALUE, maxX = Integer.MIN_VALUE, maxY = Integer.MIN_VALUE, maxZ = Integer.MIN_VALUE;
@@ -272,36 +273,35 @@ final class SpiderNest implements Listener {
             p.rooms.set(idx.get(k), p.rooms.get(idx.get(k)).kind(kind));
         }
         p.surface = surface;
-        if (surface != Integer.MIN_VALUE && surface - cy < 150) {
-            // 1.3.46: the way in is a SPIRAL RAMP round a rock pillar under where the admin stood (1.3.44's straight shaft was
-            // far too steep to climb), from the surface down to the level of the nearest chamber, then a level tunnel into it
-            Room best = throne; double bd = Double.MAX_VALUE;
-            for (Room o : placed) { double d = Math.hypot(o.x - sx, o.z - sz); if (d < bd && o != throne) { bd = d; best = o; } }
-            double ox = sx + 0.5, oz = sz + 0.5, R = 7;
-            double bottom = best.y - best.ry * 0.4, top = surface + 1.2;
-            double drop = Math.max(0, top - bottom), perSeg = 1.9, dA = 0.75;
-            int segs = Math.max(2, (int) Math.ceil(drop / perSeg));
-            double end = Math.atan2(best.z - oz, best.x - ox), start = end + segs * dA;
-            p.mouthX = sx; p.mouthZ = sz;
-            double px = ox + Math.cos(start) * R, py = top, pz = oz + Math.sin(start) * R;
-            for (int i = 1; i <= segs; i++) {
-                double a = start - i * dA, y = top - drop * i / segs;
-                double nx = ox + Math.cos(a) * R, nz = oz + Math.sin(a) * R;
-                p.entrance.add(new Tunnel(px, py, pz, nx, y, nz, 2.5));
-                p.grow(nx, y, nz, 4);
-                px = nx; py = y; pz = nz;
+        // 1.3.49: the ways in are UNDERGROUND only (no hole in the surface): 4 GATEWAY tunnels run out from the outermost chambers
+        // in four directions, 44 blocks each, wandering and rising a little, into the rock round the nest (where they meet the
+        // caves already down there); a bone gate stands at each one's far end.
+        // 1.3.49: 3 GATEWAYS, all underground, from the outermost chambers (never near the throne) winding out 80-110 blocks
+        // beyond the nest: you come in from far off and have to find your way through it to her.
+        double a0 = r.nextDouble() * Math.PI * 2;
+        for (int g = 0; g < 3; g++) {
+            double ang = a0 + g * Math.PI * 2 / 3;
+            double dx0 = Math.cos(ang), dz0 = Math.sin(ang);
+            Room from = null; double best = -1e9;
+            for (Room o : p.rooms) {
+                if (o == throne || Math.hypot(o.x - throne.x, o.z - throne.z) < 45) continue;
+                double proj = (o.x - cx) * dx0 + (o.z - cz) * dz0;
+                if (proj > best) { best = proj; from = o; }
             }
-            p.grow(ox, top, oz, R + 4);
-            // level into the chamber, a gentle slope if it isn't level
-            double len = Math.hypot(best.x - px, best.z - pz);
-            int n2 = Math.max(1, (int) Math.ceil(len / 6));
-            for (int i = 1; i <= n2; i++) {
-                double f = i / (double) n2;
-                double nx = px + (best.x - px) / n2, nz = pz + (best.z - pz) / n2, ny = py + (bottom - py) / (n2 - i + 1);
-                p.entrance.add(new Tunnel(px, py, pz, nx, ny, nz, 2.5));
+            if (from == null) continue;
+            double px = from.x + dx0 * from.rx * 0.6, pz = from.z + dz0 * from.rz * 0.6, py = from.y - from.ry * 0.4;
+            double heading = ang;
+            int segs = 13 + r.nextInt(5);
+            for (int i = 0; i < segs; i++) {
+                heading += (r.nextDouble() - 0.5) * 0.6;
+                double nx = px + Math.cos(heading) * 6.5, nz = pz + Math.sin(heading) * 6.5;
+                double ny = Math.max(lo + 4, Math.min(hi - 5, py + (r.nextDouble() - 0.45) * 2.2));
+                p.entrance.add(new Tunnel(px, py, pz, nx, ny, nz, 2.4));
                 p.grow(nx, ny, nz, 4);
                 px = nx; py = ny; pz = nz;
             }
+            p.gates.add(new double[]{px, py, pz, heading});
+            if (p.mouthX == 0 && p.mouthZ == 0) { p.mouthX = (int) Math.floor(px); p.mouthZ = (int) Math.floor(pz); p.mouthY = (int) Math.floor(py); }
         }
         return p;
     }
@@ -344,23 +344,66 @@ final class SpiderNest implements Listener {
                 p.sendMessage(ChatColor.RED + "There's already a nest here (" + o.id + "). " + ChatColor.GRAY + "/queenspider nest delete " + o.id + " removes it, or /queenspider nest here force.");
                 return;
             }
-        int sx = l.getBlockX(), sz = l.getBlockZ();
+        building = true;
+        tryAt(p, w, l.getBlockX(), l.getBlockZ(), 0);
+    }
+
+    /** Spots tried round the admin, in order (1.3.49): here, then further out in rings, until one is clear of structures. */
+    static final int[][] TRIES = {{0, 0}, {180, 0}, {-180, 0}, {0, 180}, {0, -180}, {180, 180}, {-180, -180}, {180, -180}, {-180, 180},
+            {360, 0}, {-360, 0}, {0, 360}, {0, -360}};
+
+    /** The structures a nest never cuts into (`spider-nest.avoid-structures`). */
+    private Set<String> avoid() {
+        List<String> l = plugin.getConfig().getStringList("spider-nest.avoid-structures");
+        if (l.isEmpty()) l = List.of("trial_chambers", "ancient_city", "stronghold");
+        Set<String> out = new HashSet<>();
+        for (String x : l) out.add(x.toLowerCase(java.util.Locale.ROOT).replace("minecraft:", ""));
+        return out;
+    }
+
+    /** A structure from the avoid list in the nest's box (the chunks are loaded), or null. */
+    private String blocked(World w, Plan plan) {
+        Set<String> av = avoid();
+        org.bukkit.util.BoundingBox box = new org.bukkit.util.BoundingBox(plan.minX - 8, plan.minY - 8, plan.minZ - 8, plan.maxX + 8, plan.maxY + 8, plan.maxZ + 8);
+        try {
+            for (int x = plan.minX >> 4; x <= plan.maxX >> 4; x++) for (int z = plan.minZ >> 4; z <= plan.maxZ >> 4; z++)
+                for (var gs : w.getStructures(x, z)) {
+                    String key = gs.getStructure().getKey().getKey();
+                    if (av.contains(key) && gs.getBoundingBox().overlaps(box)) return key.replace('_', ' ');
+                }
+        } catch (RuntimeException | LinkageError e) { return null; } // can't look (an old server / a test): build anyway
+        return null;
+    }
+
+    private void tryAt(Player p, World w, int bx, int bz, int attempt) {
+        int sx = bx + TRIES[attempt][0], sz = bz + TRIES[attempt][1];
         int surface = w.getHighestBlockYAt(sx, sz, org.bukkit.HeightMap.MOTION_BLOCKING_NO_LEAVES);
         // 1.3.47: always between y -50 and -1 (`min-y` / `max-y`), whatever the admin stands on
         int lo = Math.max(w.getMinHeight() + 4, (int) cfg("min-y", -50)), hi = Math.max(lo + 30, (int) cfg("max-y", -1));
         int cy = (lo + hi) / 2 - 2;
         long seed = random.nextLong();
         Plan plan = plan(seed, sx, cy, sz, sx, sz, surface, lo, hi);
-        building = true;
-        p.sendMessage(ChatColor.DARK_PURPLE + "Weaving a Spider Nest between y " + lo + " and " + hi + " under you (" + plan.rooms.size() + " chambers)...");
+        if (attempt == 0) p.sendMessage(ChatColor.DARK_PURPLE + "Weaving a Spider Nest between y " + lo + " and " + hi + " under you (" + plan.rooms.size() + " chambers)...");
         List<java.util.concurrent.CompletableFuture<Chunk>> loads = new ArrayList<>();
         for (int x = plan.minX >> 4; x <= plan.maxX >> 4; x++) for (int z = plan.minZ >> 4; z <= plan.maxZ >> 4; z++) {
             try { loads.add(w.getChunkAtAsync(x, z, true)); } catch (RuntimeException e) { loads.add(java.util.concurrent.CompletableFuture.completedFuture(w.getChunkAt(x, z))); }
         }
         java.util.concurrent.CompletableFuture.allOf(loads.toArray(new java.util.concurrent.CompletableFuture[0])).whenComplete((ok, err) ->
                 Bukkit.getScheduler().runTask(plugin, () -> {
+                    String hit = blocked(w, plan);
+                    if (hit != null) {
+                        if (attempt + 1 < TRIES.length) {
+                            p.sendMessage(ChatColor.GRAY + "A " + hit + " is in the way there: moving the nest further out...");
+                            tryAt(p, w, bx, bz, attempt + 1);
+                        } else {
+                            building = false;
+                            p.sendMessage(ChatColor.RED + "Every spot near you hits a " + hit + ". Try somewhere else.");
+                        }
+                        return;
+                    }
                     List<Chunk> held = new ArrayList<>();
                     for (var f : loads) try { Chunk c = f.getNow(null); if (c != null && c.addPluginChunkTicket(plugin)) held.add(c); } catch (RuntimeException ignored) { }
+                    if (attempt > 0) p.sendMessage(ChatColor.DARK_PURPLE + "Building it at " + sx + " " + sz + " instead (clear of structures).");
                     build(p, w, plan, sx, sz, held);
                 }));
     }
@@ -476,6 +519,7 @@ final class SpiderNest implements Listener {
     String buildId = "nest";
     final List<int[]> buildDens = new ArrayList<>(), buildSleeps = new ArrayList<>();
     static final String WEB_ITEM_TAG = "faultline_nest_webitem";
+    final List<org.bukkit.entity.ItemDisplay> buildWebItems = new ArrayList<>();
 
     static Room roomAt(Plan plan, int x, int y, int z) {
         for (Room rm : plan.rooms) if (rm.holds(x + 0.5, y + 0.5, z + 0.5, 1.5)) return rm;
@@ -552,14 +596,14 @@ final class SpiderNest implements Listener {
     void webItem(Block b, ItemStack item, Random r) {
         Location at = new Location(b.getWorld(), b.getX() + 0.5, b.getY() + 0.5, b.getZ() + 0.5);
         float yaw = (float) (r.nextDouble() * Math.PI * 2), tilt = (float) ((r.nextDouble() - 0.5) * 0.9);
-        b.getWorld().spawn(at, org.bukkit.entity.ItemDisplay.class, d -> {
+        buildWebItems.add(b.getWorld().spawn(at, org.bukkit.entity.ItemDisplay.class, d -> {
             d.setPersistent(true);
             d.addScoreboardTag(SILK_TAG); d.addScoreboardTag(SILK_TAG + "_" + buildId); d.addScoreboardTag(WEB_ITEM_TAG);
             d.setItemStack(item);
             d.setBrightness(new org.bukkit.entity.Display.Brightness(7, 0));
             d.setViewRange(0.35f);
             d.setTransformation(new Transformation(new Vector3f(), new Quaternionf().rotateY(yaw).rotateZ(tilt), new Vector3f(0.42f, 0.42f, 0.42f), new Quaternionf()));
-        });
+        }));
     }
 
     private static Material chain() {
@@ -687,8 +731,10 @@ final class SpiderNest implements Listener {
         // THE QUEEN'S NEST: a bowl of bone 19 across, lined with silk, rim piled with skulls and webs; a web canopy over it
         for (int dx = -10; dx <= 10; dx++) for (int dz = -10; dz <= 10; dz++) {
             double d = Math.hypot(dx, dz) + plan.noise((tx + dx) / 3.0, ty, (tz + dz) / 3.0) * 0.8;
-            if (d > 9.6) continue;
-            int h = d < 5.5 ? 1 : 1 + (int) Math.round((d - 5.5) / 4.1 * 4);
+            if (d > 11.5) continue;
+            // 1.3.49: a rim you can climb from either side (it was a sheer 5-block wall outside)
+            int h = d < 5.5 ? 1 : d < 8.5 ? 1 + (int) Math.round((d - 5.5)) : Math.max(0, 4 - (int) Math.round((d - 8.5) * 1.4));
+            if (h <= 0) continue;
             Block floor = floorAt(w, air, tx + dx, ty + 3, tz + dz, 8);
             int base = floor == null ? ty : floor.getY();
             for (int dy = 0; dy < h; dy++) {
@@ -698,7 +744,7 @@ final class SpiderNest implements Listener {
                         : dy == h - 1 && r.nextDouble() < 0.25 ? Material.WHITE_WOOL : Material.BONE_BLOCK;
                 put(b, m);
             }
-            if (d > 6.5) {
+            if (d > 6.5 && d < 9.5) {
                 Block top = w.getBlockAt(tx + dx, base + h, tz + dz);
                 if (top.getType().isAir() && air.contains(key(top.getX(), top.getY(), top.getZ()))) {
                     double q = r.nextDouble();
@@ -755,7 +801,7 @@ final class SpiderNest implements Listener {
                         ch.update(true, false);
                     }
                     for (int[] d : SIX) { Block n = f.getRelative(d[0], d[1], d[2]); if (d[1] == 0 && n.getType().isAir() && r.nextBoolean()) web(n, r, webs, false); }
-                } else if (room.kind().equals("plain") || room.kind().equals("sleep") || i % 4 == 0) {
+                } else if (room.kind().equals("plain") && i % 4 == 0) { // 1.3.49: fewer spawners (the nest was crawling)
                     spawner(f, spawnTypes[r.nextInt(spawnTypes.length)]);
                     for (int[] d : SIX) { Block n = f.getRelative(d[0], d[1], d[2]); if (n.getType().isAir() && d[1] >= 0) web(n, r, webs, false); }
                 }
@@ -764,7 +810,10 @@ final class SpiderNest implements Listener {
         }
         for (int i = 0; i < 6; i++) silk(w, air, throne, r, id);
         walkway(w, plan);
-        mouth(w, plan, air, r, webs);
+        for (double[] g : plan.gates) gate(w, air, g, r, webs);
+        // a web that later building replaced (bones, the walkway, a gate) takes its caught item with it
+        for (org.bukkit.entity.ItemDisplay d : buildWebItems) if (d.isValid() && d.getLocation().getBlock().getType() != Material.COBWEB) d.remove();
+        buildWebItems.clear();
         // the loot marks into each chunk
         writeMarks(w, webs, webKey);
         writeMarks(w, bodies, bodyKey);
@@ -775,8 +824,9 @@ final class SpiderNest implements Listener {
         n.tx = tx; n.ty = throneY; n.tz = tz;
         n.radius = Math.max(plan.maxX - plan.minX, plan.maxZ - plan.minZ) / 2 + 4;
         n.minX = plan.minX; n.minY = plan.minY; n.minZ = plan.minZ; n.maxX = plan.maxX; n.maxY = plan.maxY; n.maxZ = plan.maxZ;
-        n.mouthX = plan.surface != Integer.MIN_VALUE && !plan.entrance.isEmpty() ? plan.mouthX : Integer.MIN_VALUE;
+        n.mouthX = !plan.entrance.isEmpty() ? plan.mouthX : Integer.MIN_VALUE;
         n.mouthZ = plan.mouthZ;
+        n.mouthY = plan.mouthY;
         n.dens.addAll(buildDens);
         n.sleeps.addAll(buildSleeps);
         n.respawnAt = 0;
@@ -788,7 +838,7 @@ final class SpiderNest implements Listener {
         building = false;
         by.sendMessage(ChatColor.DARK_PURPLE + "The Spider Nest is done (" + air.size() + " blocks of cave, " + plan.rooms.size() + " chambers, " + n.dens.size() + " brood dens). "
                 + ChatColor.GRAY + "Her throne is at " + tx + " " + throneY + " " + tz + ". Id: " + n.id
-                + (n.mouthX != Integer.MIN_VALUE ? ". The way in is at " + n.mouthX + " " + n.mouthZ + " (a spiral ramp)." : "."));
+                + (n.mouthX != Integer.MIN_VALUE ? ". Its 3 ways in are long underground tunnels (one ends at " + n.mouthX + " " + n.mouthY + " " + n.mouthZ + ")." : "."));
         plugin.getLogger().info("[SpiderNest] made " + n.id + " at " + w.getName() + " " + tx + " " + throneY + " " + tz);
     }
 
@@ -957,6 +1007,27 @@ final class SpiderNest implements Listener {
                     }
                 }
             }
+        }
+    }
+
+    /** A bone gate at a gateway tunnel's far end: bone fangs from the walls pointing in, skulls, webs across the corners. */
+    private void gate(World w, Set<Long> air, double[] g, Random r, Map<String, List<Integer>> webs) {
+        int gx = (int) Math.floor(g[0]), gy = (int) Math.floor(g[1]), gz = (int) Math.floor(g[2]);
+        double hx = Math.cos(g[3]), hz = Math.sin(g[3]);
+        for (int dx = -4; dx <= 4; dx++) for (int dy = -4; dy <= 4; dy++) for (int dz = -4; dz <= 4; dz++) {
+            int x = gx + dx, y = gy + dy, z = gz + dz;
+            if (!air.contains(key(x, y, z))) continue;
+            double along = dx * hx + dz * hz, side = Math.abs(-dx * hz + dz * hx);
+            if (Math.abs(along) > 1.2) continue; // a ring across the tunnel
+            boolean wall = false;
+            for (int[] d : SIX) if (!air.contains(key(x + d[0], y + d[1], z + d[2]))) wall = true;
+            if (!wall || side < 1.2 && dy > -2 && dy < 2) continue; // never in the middle of the way through
+            Block b = w.getBlockAt(x, y, z);
+            if (!b.getType().isAir()) continue;
+            double q = r.nextDouble();
+            if (q < 0.55) put(b, Material.BONE_BLOCK);
+            else if (q < 0.75) web(b, r, webs, false);
+            else if (q < 0.82 && !air.contains(key(x, y - 1, z))) put(b, Material.SKELETON_SKULL);
         }
     }
 
@@ -1164,6 +1235,25 @@ final class SpiderNest implements Listener {
         b.getWorld().spawnParticle(Particle.WHITE_ASH, at, 12, 0.3, 0.3, 0.3, 0);
     }
 
+    /** 1.3.49: right-click a web to pull out what's caught in it (the web stays). */
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onWebPick(org.bukkit.event.player.PlayerInteractEvent e) {
+        if (e.getAction() != org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK || e.getHand() != org.bukkit.inventory.EquipmentSlot.HAND || e.getClickedBlock() == null) return;
+        Block b = e.getClickedBlock();
+        if (b.getType() != Material.COBWEB || nests.isEmpty()) return;
+        for (Entity en : b.getWorld().getNearbyEntities(b.getLocation().add(0.5, 0.5, 0.5), 0.55, 0.55, 0.55))
+            if (en instanceof org.bukkit.entity.ItemDisplay d && en.getScoreboardTags().contains(WEB_ITEM_TAG) && d.isValid()) {
+                e.setCancelled(true);
+                ItemStack it = d.getItemStack();
+                d.remove();
+                for (ItemStack left : e.getPlayer().getInventory().addItem(it).values()) b.getWorld().dropItemNaturally(e.getPlayer().getLocation(), left);
+                e.getPlayer().playSound(b.getLocation(), Sound.ENTITY_ITEM_PICKUP, 0.8f, 0.8f);
+                e.getPlayer().playSound(b.getLocation(), Sound.BLOCK_WOOL_BREAK, 0.6f, 1.3f);
+                b.getWorld().spawnParticle(Particle.ITEM, b.getLocation().add(0.5, 0.5, 0.5), 6, 0.2, 0.2, 0.2, 0.02, new ItemStack(Material.COBWEB));
+                return;
+            }
+    }
+
     /** The item you could see in a web drops when the web really breaks (MONITOR: never when a claim plugin stopped it). */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onWebItem(BlockBreakEvent e) {
@@ -1326,7 +1416,7 @@ final class SpiderNest implements Listener {
             case "list" -> {
                 if (nests.isEmpty()) s.sendMessage(ChatColor.GRAY + "No nests.");
                 for (Nest n : nests.values()) s.sendMessage(ChatColor.DARK_PURPLE + n.id + ChatColor.GRAY + " " + n.world + " " + n.tx + " " + n.ty + " " + n.tz
-                        + (n.mouthX != Integer.MIN_VALUE ? " (way in at " + n.mouthX + " " + n.mouthZ + ")" : "")
+                        + (n.mouthX != Integer.MIN_VALUE ? " (a way in at " + n.mouthX + " " + (n.mouthY != Integer.MIN_VALUE ? n.mouthY + " " : "") + n.mouthZ + ")" : "")
                         + (n.queen != null ? (n.queen.asleep ? " (queen asleep)" : " (queen awake)") : n.respawnAt > System.currentTimeMillis() ? " (queen back in " + (n.respawnAt - System.currentTimeMillis()) / 60000 + " min)" : " (queen comes when loaded)"));
             }
             case "tp" -> {
@@ -1335,7 +1425,7 @@ final class SpiderNest implements Listener {
                 World w = Bukkit.getWorld(n.world);
                 if (w == null) { s.sendMessage(ChatColor.RED + "That world isn't loaded."); return true; }
                 if (a.length > 3 && a[3].equalsIgnoreCase("entrance") && n.mouthX != Integer.MIN_VALUE)
-                    p.teleport(new Location(w, n.mouthX + 0.5, w.getHighestBlockYAt(n.mouthX + 9, n.mouthZ) + 1, n.mouthZ + 9.5));
+                    p.teleport(new Location(w, n.mouthX + 0.5, n.mouthY != Integer.MIN_VALUE ? n.mouthY - 1 : w.getHighestBlockYAt(n.mouthX + 9, n.mouthZ) + 1, n.mouthZ + 0.5));
                 else p.teleport(new Location(w, n.tx + 0.5, n.ty, n.tz + 10.5));
             }
             case "respawn" -> {

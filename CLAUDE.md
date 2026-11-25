@@ -3275,6 +3275,19 @@ Notes:
   every statue overhang), the floor of a schematic = the TOP of a thick floor (`Schematic.floorY`; the Fibers base got no doorway),
   the doorway is the shortest way in and never deeper than 14 (the ship isn't tunnelled), the Greek statue sits at y 87 (its top was
   cut off at the build limit), sea rocks never over a hole. `tools/world_preview/Side.java` = a side view with depth (trees).
+- **2.0 round 6 (FaultlineWorld; from the owner's screenshots)**: THE ABYSS AND THE 3 HOLES ARE OUT of the overworld (owner: "just
+  the Great Sea, with the whirlpool"): `Layout.ABYSS` false (`Terrain.abyss` returns, no bowls in `seaFloor`); `Life`'s abyss / hole
+  code is inert; the way down is FaultlineDeep's Depths whirlpool. Don't bring it back unless asked. MOUNTAINS (`Decor.mountain` +
+  `MOUNTAINS` = jagged / stony / frozen peaks, windswept hills, snowy slopes): every exposed cliff face is banded (`STRATA`, tilted
+  by noise) with cracks, ice, coal / iron / copper / emerald showing; scree, coarse dirt, mossy rock, grass tufts and flowers on
+  gentle ground; features `boulder`, `rockSpire`, `oreOutcrop`, `alpinePine`, `watchtower` (ruined round tower: ladder, chest, barrel;
+  `Life.context` gives mountain chests mineshaft loot). SHRINES: each admin core is wrapped by `Structures.shrine` (a skin of the
+  faction's stone with slits over the command blocks, 4 corner towers, plinth + porch, stepped roof, a lantern of the faction's
+  colour: `theme(faction)`); ground cores stand on a terrace (`Terrain.padHeight`: flat 20 round it at min(natural, 268), eased over
+  24 more) so the roof fits under y 319 (the mountain core sat on a 310 peak, cut off); `inCore` protects 15 round / 26 up;
+  `/fworld tp <faction>core`. FIBERS: `Decor.cavernFloors` (mounds, mud hollows, root pillars floor to roof, glowing mushroom
+  clusters, boulders) over the caverns' flat floors. Quest "Abyss Gazer" is now "Sea Hunter". Faction coordinates: `Layout.SITES` /
+  `CORES` (mountain castle -800,-1650; jungle Himeji -1500,1360; ice cathedral 1560,1450; fibers base 360,-690 y 41; sky statue 1450,240).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

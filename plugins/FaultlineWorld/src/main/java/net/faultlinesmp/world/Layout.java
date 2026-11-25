@@ -97,6 +97,10 @@ final class Layout {
             new Site("sky", "sky/yellow_ballroom", 1290, 251, 120, 0, Shape.SKY, true));
 
     /** Each faction's admin-block hall (bedrock + command/structure/jigsaw blocks, lit by light blocks). */
+    /** 2.0: the owner took the abyss and its three holes back out of the overworld ("just the Great Sea, with the whirlpool"):
+     *  the way down to the Dark Ocean is FaultlineDeep's whirlpool. true brings the abyss layer and the holes back. */
+    static final boolean ABYSS = false;
+
     record Core(String faction, int x, int z, int y) {}
 
     static final List<Core> CORES = List.of(

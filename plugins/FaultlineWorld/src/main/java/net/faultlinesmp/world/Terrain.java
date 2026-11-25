@@ -148,7 +148,30 @@ final class Terrain {
         return c;
     }
 
-    double landHeight(double x, double z, double co, int climate, Layout.Blob blob) {
+    /** The terrace each ground shrine stands on: flat for 20 blocks round it (never higher than y 268, so the shrine and its
+     *  roof fit under the build limit even on a peak), easing back into the mountainside over the next 24. */
+    private final double[] padY = new double[Layout.CORES.size()];
+    private final boolean[] padDone = new boolean[Layout.CORES.size()];
+
+    double padHeight(int i) {
+        if (!padDone[i]) {
+            synchronized (padY) {
+                if (!padDone[i]) {
+                    Layout.Core k = Layout.CORES.get(i);
+                    double co = coast(k.x(), k.z());
+                    int isle = isle(k.x(), k.z());
+                    int climate = isle >= 0 ? Layout.ISLES.get(isle).climate() : 0;
+                    padY[i] = Math.max(SEA + 4, Math.min(268, Math.round(landHeight(k.x(), k.z(), co, climate, co > -0.45 ? surfaceBlob(k.x(), k.z()) : null, false))));
+                    padDone[i] = true;
+                }
+            }
+        }
+        return padY[i];
+    }
+
+    double landHeight(double x, double z, double co, int climate, Layout.Blob blob) { return landHeight(x, z, co, climate, blob, true); }
+
+    double landHeight(double x, double z, double co, int climate, Layout.Blob blob, boolean pads) {
         double inland = smooth(0, 0.9, co);
         double h = SEA + 1 + 10 * inland;                                   // beach ramp
         h += 18 * inland * (0.5 + 0.5 * fbm(hills, x / 260.0, z / 260.0, 4));
@@ -176,6 +199,12 @@ final class Terrain {
             if (p > 0.35) h += Math.min(24, (p - 0.35) * 90);
         }
         h = shapeSites(x, z, h, true);
+        if (pads) for (int i = 0; i < Layout.CORES.size(); i++) {
+            Layout.Core k = Layout.CORES.get(i);
+            if (k.y() != 0) continue;
+            double d = Math.max(Math.abs(x - k.x()), Math.abs(z - k.z()));
+            if (d < 46) h = lerp(padHeight(i), h, smooth(20, 46, d));
+        }
         // AUDIT: the coastline moves with the seed, and a site's dug-out bowl could reach the beach: land below sea level right
         // next to the sea (it would pour in). A rim always stands: nothing is below sea level within ~24 blocks of the shore, and
         // from there the ground may only drop one block per block.
@@ -188,7 +217,7 @@ final class Terrain {
         double far = -coast(x, z) >= 1 ? distanceToLand(x, z) : off;
         double depth = 6 + Math.min(150, far * 0.42) + 14 * fbm(floorN, x / 180.0, z / 180.0, 3);
         double y = SEA - depth;
-        for (int[] h : Layout.HOLES) {                       // bowls round the holes
+        if (Layout.ABYSS) for (int[] h : Layout.HOLES) {     // bowls round the holes
             double d = Layout.dist(x, z, h[0], h[1]);
             if (d < 260) y = Math.min(y, lerp(20, y, smooth(Layout.HOLE_R, 260, d)));
         }
@@ -206,6 +235,7 @@ final class Terrain {
 
     /** The open sea's abyss: a flooded, pitch-black layer from about y -50 to y -1 with rock pillars (and diamonds). */
     void abyss(double x, double z, Col c) {
+        if (!Layout.ABYSS) return;
         double far = distanceToLand(x, z);
         boolean holeHere = false;
         for (int[] h : Layout.HOLES) if (Layout.dist(x, z, h[0], h[1]) < Layout.HOLE_R + 6 * floorN.noise(x / 9.0, z / 9.0)) holeHere = true;

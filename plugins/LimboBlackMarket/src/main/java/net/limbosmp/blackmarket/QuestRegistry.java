@@ -231,7 +231,7 @@ public class QuestRegistry {
                 12, false);
 
         q("prospector", "Prospector", Material.IRON_PICKAXE, Difficulty.MEDIUM,
-                List.of(Step.mine(12, Material.DIAMOND_ORE, "Mine 12 Diamond Ore (y 0-35, or round the Abyss)"),
+                List.of(Step.mine(12, Material.DIAMOND_ORE, "Mine 12 Diamond Ore (y 0-35)"),
                         Step.mine(24, Material.GOLD_ORE, "Mine 24 Gold Ore"),
                         Step.mine(16, Material.LAPIS_ORE, "Mine 16 Lapis Ore")),
                 "1 Diamond Block + 16 Bottles o' Enchanting",
@@ -289,7 +289,7 @@ public class QuestRegistry {
                 p -> { give(p, new ItemStack(Material.NETHERITE_INGOT, 1)); give(p, new ItemStack(Material.TOTEM_OF_UNDYING, 2)); },
                 72, false);
 
-        q("abyss-gazer", "Abyss Gazer", Material.SCULK, Difficulty.HARD,
+        q("abyss-gazer", "Sea Hunter", Material.PRISMARINE_SHARD, Difficulty.HARD,
                 List.of(Step.mine(20, Material.DIAMOND_ORE, "Mine 20 Diamond Ore"),
                         Step.killMobs(30, "Kill 30 Drowned or Guardians", EntityType.DROWNED, EntityType.GUARDIAN),
                         Step.killMobs(1, "Kill an Elder Guardian", EntityType.ELDER_GUARDIAN)),

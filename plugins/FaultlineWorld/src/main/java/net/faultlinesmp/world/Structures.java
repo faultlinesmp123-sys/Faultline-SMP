@@ -322,16 +322,91 @@ final class Structures {
         // the entrance (south), 3 wide and 4 tall
         for (int dx = -1; dx <= 1; dx++) for (int dy = 1; dy <= 4; dy++) cv.set(c.x() + dx, y + dy, c.z() + S, air);
         // a floating core gets its own little island under it
-        if (c.y() != 0) skyIsland(cv, t, c.x(), c.z(), y - 1, S + 4, 0x51C);
+        if (c.y() != 0) skyIsland(cv, t, c.x(), c.z(), y - 1, S + 5, 0x51C);
+        shrine(cv, t, c, y, S, H);
     }
 
     static boolean inCore(Terrain t, int x, int y, int z) {
         for (Layout.Core c : Layout.CORES) {
-            if (Math.abs(x - c.x()) > 11 || Math.abs(z - c.z()) > 11) continue;
+            if (Math.abs(x - c.x()) > 15 || Math.abs(z - c.z()) > 15) continue;
             int b = coreBase(t, c);
-            if (y >= b - 8 && y <= b + 13) return true;
+            if (y >= b - 9 && y <= b + 26) return true;
         }
         return false;
+    }
+
+    /** Per faction: wall, trim, roof, stair, lamp, the glass of its colour. */
+    static String[] theme(String faction) {
+        return switch (faction) {
+            case "mountain" -> new String[]{"minecraft:stone_bricks", "minecraft:polished_deepslate", "minecraft:deepslate_tiles", "minecraft:stone_brick_stairs", "minecraft:lantern", "minecraft:red_stained_glass", "minecraft:red_wool"};
+            case "jungle" -> new String[]{"minecraft:mossy_stone_bricks", "minecraft:stripped_jungle_log", "minecraft:jungle_planks", "minecraft:mossy_stone_brick_stairs", "minecraft:lantern", "minecraft:lime_stained_glass", "minecraft:green_wool"};
+            case "ice" -> new String[]{"minecraft:packed_ice", "minecraft:blue_ice", "minecraft:snow_block", "minecraft:quartz_stairs", "minecraft:soul_lantern", "minecraft:light_blue_stained_glass", "minecraft:light_blue_wool"};
+            case "fibers" -> new String[]{"minecraft:mud_bricks", "minecraft:stripped_mangrove_log", "minecraft:mangrove_planks", "minecraft:mud_brick_stairs", "minecraft:soul_lantern", "minecraft:purple_stained_glass", "minecraft:purple_wool"};
+            default -> new String[]{"minecraft:quartz_bricks", "minecraft:chiseled_quartz_block", "minecraft:smooth_quartz", "minecraft:quartz_stairs", "minecraft:lantern", "minecraft:yellow_stained_glass", "minecraft:yellow_wool"};
+        };
+    }
+
+    /**
+     * The faction's SHRINE round its admin core (2.0 audit: the core was a bare bedrock cube sticking out of the hillside).
+     * A skin of the faction's own stone over the bedrock with tall slits that show the command blocks behind, four corner
+     * towers with lamps, a plinth with steps up to the doorway, a porch, a stepped roof rising to a lit lantern of the
+     * faction's colour, and its colours hanging beside the door. The bedrock room inside is untouched.
+     */
+    static void shrine(Canvas cv, Terrain t, Layout.Core c, int y, int S, int H) {
+        String[] th = theme(c.faction());
+        BlockData wall = bd(th[0]), trim = bd(th[1]), roof = bd(th[2]), lamp = bd(th[4]), glass = bd(th[5]), cloth = bd(th[6]), air = WorldGen.Blocks.AIR;
+        int O = S + 1;
+        for (int dx = -O - 3; dx <= O + 3; dx++) for (int dz = -O - 3; dz <= O + 3; dz++) {
+            int x = c.x() + dx, z = c.z() + dz;
+            if (!cv.in(x, y, z)) continue;
+            int ax = Math.abs(dx), az = Math.abs(dz), r = Math.max(ax, az);
+            boolean door = ax <= 1 && dz > 0;
+            boolean tower = ax >= O - 1 && az >= O - 1 && r <= O + 1 && ax >= O - 1 && az >= O - 1;
+            if (r > O + 1 + (tower ? 0 : 2)) continue;
+            if (c.y() == 0 && r >= O) cv.column(x, z, y - 9, y - 1, r == O || tower ? wall : trim);                 // footing down into the slope
+            if (tower && r >= O) {                                               // the four corner towers
+                for (int dy = 0; dy <= H + 3; dy++) cv.set(x, y + dy, z, dy % 5 == 4 ? trim : wall);
+                if (ax == O && az == O) { cv.set(x, y + H + 4, z, trim); cv.set(x, y + H + 5, z, lamp); }
+                else cv.set(x, y + H + 4, z, (dx + dz & 1) == 0 ? trim : air);                                       // battlements
+                continue;
+            }
+            if (r == O) {                                                        // the skin, with slits over the command blocks
+                for (int dy = 0; dy <= H; dy++) {
+                    boolean slit = dy >= 4 && dy <= 8 && (ax == O ? az % 4 == 2 : ax % 4 == 2);
+                    if (door && dy >= 1 && dy <= 4) { cv.set(x, y + dy, z, air); continue; }
+                    if (door && dy == 5) { cv.set(x, y + dy, z, trim); continue; }
+                    cv.set(x, y + dy, z, slit ? air : dy == 0 || dy == H || dy == 3 || dy == 9 ? trim : wall);
+                }
+            } else if (r == O + 1) {                                             // the plinth
+                cv.set(x, y, z, trim);
+                if (door) { for (int dy = 1; dy <= 4; dy++) cv.set(x, y + dy, z, air); }
+                else if ((ax == 2 && dz > 0)) { for (int dy = 1; dy <= 5; dy++) cv.set(x, y + dy, z, trim); cv.set(x, y + 6, z, lamp); }   // porch posts
+                else if ((ax + az) % 6 == 0) cv.set(x, y + 1, z, trim);
+            } else if (r == O + 2 && c.y() == 0) {
+                cv.set(x, y - 1, z, trim);
+                if (door) for (int dy = 0; dy <= 4; dy++) cv.set(x, y + dy, z, air);
+            } else if (r == O + 3 && c.y() == 0 && door) {
+                for (int dy = -1; dy <= 3; dy++) cv.set(x, y + dy, z, air);
+                cv.set(x, y - 2, z, trim);
+            }
+        }
+        // the faction's colours beside the door
+        for (int side = -1; side <= 1; side += 2) for (int dy = 6; dy <= 10; dy++) cv.set(c.x() + side * 3, y + dy, c.z() + O + 1, dy == 10 ? bd(th[1]) : cloth);
+        // the stepped roof and its lantern
+        for (int k = 1; k <= 6; k++) {
+            int hs = O - k * 2 + 1;
+            if (hs < 1) break;
+            for (int dx = -hs; dx <= hs; dx++) for (int dz = -hs; dz <= hs; dz++) {
+                boolean rim = Math.abs(dx) == hs || Math.abs(dz) == hs;
+                cv.set(c.x() + dx, y + H + k, c.z() + dz, rim ? ((dx + dz & 3) == 0 ? trim : roof) : roof);
+            }
+        }
+        int top = y + H + 6;
+        for (int dy = 1; dy <= 3; dy++) for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) {
+            boolean mid = dx == 0 && dz == 0, corner = dx != 0 && dz != 0;
+            cv.set(c.x() + dx, top + dy, c.z() + dz, mid ? bd(dy == 3 ? th[1] : "minecraft:sea_lantern") : corner ? trim : dy == 3 ? trim : glass);
+        }
+        cv.set(c.x(), top + 4, c.z(), trim); cv.set(c.x(), top + 5, c.z(), bd("minecraft:lightning_rod"));
     }
 
     // ================================================================== SKY ISLES

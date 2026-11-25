@@ -260,6 +260,8 @@ final class Life implements Listener {
             LootTable loot = b.getType() == Material.CHEST ? LootTables.TRIAL_CHAMBERS_CORRIDOR.getLootTable() : LootTables.SIMPLE_DUNGEON.getLootTable();
             return new Context(loot, mobs);
         }
+        if (here == B.JAGGED_PEAKS || here == B.STONY_PEAKS || here == B.WINDSWEPT_HILLS || here == B.FROZEN_PEAKS || here == B.SNOWY_SLOPES)
+            return new Context(LootTables.ABANDONED_MINESHAFT.getLootTable(), EntityType.SKELETON, EntityType.STRAY);   // the ruined watchtowers
         if (here == B.SPIDER) return new Context(LootTables.SIMPLE_DUNGEON.getLootTable(), EntityType.SPIDER, EntityType.CAVE_SPIDER);   // the brood mounds
         if (here == B.DEEP_FOREST) return new Context(LootTables.PILLAGER_OUTPOST.getLootTable(), EntityType.VINDICATOR, EntityType.PILLAGER);
         if (here == B.MIRE || here == B.INFERNO_FOREST) return new Context(LootTables.ABANDONED_MINESHAFT.getLootTable(), EntityType.ZOMBIE, EntityType.SKELETON);

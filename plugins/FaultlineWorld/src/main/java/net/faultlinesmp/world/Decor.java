@@ -29,6 +29,15 @@ final class Decor {
         cells(cv, t, B.DEEP_FOREST, 46, 9, 0xDE4, 150, Decor::spire);
         cells(cv, t, B.INFERNO_FOREST, 7, 5, 0x1F5, 150, Decor::burntTree);
         cells(cv, t, B.INFERNO_FOREST, 60, 10, 0x1F6, 140, Decor::outcrop);
+        for (B m : MOUNTAINS) {
+            cells(cv, t, m, 13, 5, 0x3A1, 150, Decor::boulder);
+            cells(cv, t, m, 44, 6, 0x3A2, 130, Decor::rockSpire);
+            cells(cv, t, m, 27, 4, 0x3A3, 120, Decor::oreOutcrop);
+            cells(cv, t, m, 120, 6, 0x3A5, 90, Decor::watchtower);
+        }
+        cells(cv, t, B.WINDSWEPT_HILLS, 9, 5, 0x3A4, 150, Decor::alpinePine);
+        cells(cv, t, B.SNOWY_SLOPES, 12, 5, 0x3A4, 110, Decor::alpinePine);
+        cavernFloors(cv, t);
         cells(cv, t, B.SPIDER, 11, 12, 0x5D7, 185, Decor::spiderTree);
         cells(cv, t, B.SPIDER, 38, 10, 0x5DA, 120, Decor::greatWeb);
         cells(cv, t, B.SPIDER, 64, 7, 0x5DB, 110, Decor::nestMound);
@@ -130,11 +139,232 @@ final class Decor {
                     d.setBlock(lx, y - 1, lz, bd("minecraft:sand"));
                     if (r < 20 && y < 190) d.setBlock(lx, y + 1, lz, bd("minecraft:seagrass"));
                 }
+                case JAGGED_PEAKS, STONY_PEAKS, WINDSWEPT_HILLS, FROZEN_PEAKS, SNOWY_SLOPES -> mountain(t, bx, bz, cols, d, lx, lz, c, h);
                 case FARLANDS -> {
                     // stone faces between the grass tops
                     if ((h >>> 9 & 7) == 0) d.setBlock(lx, y, lz, bd("minecraft:stone"));
                 }
                 default -> { }
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------ the mountains
+
+    static final B[] MOUNTAINS = {B.JAGGED_PEAKS, B.STONY_PEAKS, B.WINDSWEPT_HILLS, B.FROZEN_PEAKS, B.SNOWY_SLOPES};
+    static final String[] STRATA = {"minecraft:stone", "minecraft:andesite", "minecraft:stone", "minecraft:tuff", "minecraft:stone", "minecraft:cobblestone", "minecraft:andesite", "minecraft:stone", "minecraft:calcite"};
+
+    /**
+     * The mountains' rock (2.0, the owner asked for a lot more detail: they were plain stone and snow). Cliffs show their
+     * layers: every exposed face is banded in stone, andesite, tuff, cobble and a thin calcite seam, the bands tilting gently
+     * across the range, with cracks, coal, iron and the odd emerald showing. Gentle ground below the snow is scree, coarse dirt,
+     * mossy rock and tufts of grass; ledges on the cold peaks keep their snow and ice.
+     */
+    static void mountain(Terrain t, int bx, int bz, Terrain.Col[] cols, ChunkData d, int lx, int lz, Terrain.Col c, long h) {
+        int x = bx + lx, z = bz + lz, y = c.surface;
+        if (c.sea || c.river || c.dry || Sites.near(x, z, 3)) return;
+        int low = y;
+        for (int[] o : WorldGen.NEIGHBOURS) {
+            int nx = lx + o[0], nz = lz + o[1];
+            Terrain.Col n = nx >= 0 && nx < 16 && nz >= 0 && nz < 16 ? cols[nx * 16 + nz] : t.column(x + o[0], z + o[1]);
+            if (n.surface < low) low = n.surface;
+        }
+        int drop = y - low, r = (int) (h & 255);
+        boolean cold = c.biome == B.JAGGED_PEAKS || c.biome == B.FROZEN_PEAKS || c.biome == B.SNOWY_SLOPES;
+        if (drop >= 3) {
+            double tilt = t.fbmPublic(x / 90.0 + 11, z / 90.0) * 9 + x * 0.04;
+            for (int yy = y; yy >= Math.max(low - 1, y - 48); yy--) {
+                long hh = hash3(t.seed, x, yy, z, 0x3A0);
+                int q = (int) (hh & 1023);
+                String b = STRATA[Math.floorMod((int) Math.floor((yy + tilt) / 3.0), STRATA.length)];
+                if (b.endsWith("calcite") && !cold) b = "minecraft:diorite";
+                if (q < 60) b = "minecraft:cobblestone";
+                else if (q < 80) b = "minecraft:gravel".equals(b) ? b : "minecraft:mossy_cobblestone";
+                else if (q < 104) b = "minecraft:coal_ore";
+                else if (q < 116) b = "minecraft:iron_ore";
+                else if (q < 122) b = "minecraft:copper_ore";
+                else if (q < 124) b = "minecraft:emerald_ore";
+                if (q >= 60 && q < 80 && cold) b = "minecraft:packed_ice";
+                d.setBlock(lx, yy, lz, bd(b));
+            }
+            if (cold && drop < 7 && (r & 3) != 0) d.setBlock(lx, y, lz, bd("minecraft:snow_block"));     // snow lying on the ledges
+            return;
+        }
+        if (cold) {
+            if (r < 8) d.setBlock(lx, y, lz, bd("minecraft:packed_ice"));
+            else if (r < 20) d.setBlock(lx, y, lz, bd("minecraft:powder_snow"));
+            return;
+        }
+        Material top = d.getType(lx, y, lz);
+        if (r < 26) d.setBlock(lx, y, lz, bd("minecraft:gravel"));
+        else if (r < 48) d.setBlock(lx, y, lz, bd("minecraft:coarse_dirt"));
+        else if (r < 62) d.setBlock(lx, y, lz, bd("minecraft:mossy_cobblestone"));
+        else if (r < 74) d.setBlock(lx, y, lz, bd("minecraft:andesite"));
+        else if (top == Material.GRASS_BLOCK && d.getType(lx, y + 1, lz).isAir()) {
+            if (r > 228) d.setBlock(lx, y + 1, lz, bd("minecraft:short_grass"));
+            else if (r > 222) d.setBlock(lx, y + 1, lz, bd("minecraft:fern"));
+            else if (r > 219) d.setBlock(lx, y + 1, lz, bd((h >>> 9 & 1) == 0 ? "minecraft:azure_bluet" : "minecraft:oxeye_daisy"));
+        }
+    }
+
+    /** A boulder, half sunk in the slope. */
+    static void boulder(Canvas cv, Terrain t, int x, int z, int base, long h) {
+        double R = 1.4 + (h >>> 4 & 7) * 0.3;
+        int n = (int) Math.ceil(R);
+        boolean cold = base > 262;
+        for (int dx = -n; dx <= n; dx++) for (int dz = -n; dz <= n; dz++) for (int dy = -n; dy <= n; dy++) {
+            double dd = dx * dx + dy * dy * 1.5 + dz * dz + ((hash3(t.seed, x + dx, base + dy, z + dz, 0x3A6) & 3) - 1.5) * 0.6;
+            if (dd > R * R) continue;
+            int q = (int) (hash3(t.seed, x + dx, base + dy, z + dz, 0x3A7) & 15);
+            cv.set(x + dx, base + (int) (R * 0.4) + dy, z + dz, bd(q < 6 ? "minecraft:andesite" : q < 10 ? "minecraft:cobblestone" : q < 13 ? "minecraft:stone" : cold ? "minecraft:snow_block" : "minecraft:mossy_cobblestone"));
+        }
+    }
+
+    /** A spire of rock standing out of the mountainside, capped with snow up high. */
+    static void rockSpire(Canvas cv, Terrain t, int x, int z, int base, long h) {
+        int H = 9 + (int) (h >>> 4 & 15);
+        double R = 2.2 + (h >>> 8 & 3) * 0.5;
+        double lx = ((h >>> 12 & 7) - 3.5) / 14.0, lz = ((h >>> 15 & 7) - 3.5) / 14.0;
+        for (int dy = -3; dy <= H; dy++) {
+            double f = Math.max(0, dy) / (double) H, r = R * (1 - f * f) + 0.4;
+            int cx = x + (int) Math.round(lx * dy), cz = z + (int) Math.round(lz * dy), n = (int) Math.ceil(r);
+            for (int dx = -n; dx <= n; dx++) for (int dz = -n; dz <= n; dz++) {
+                if (dx * dx + dz * dz > r * r + ((hash3(t.seed, cx + dx, base + dy, cz + dz, 0x3A8) & 3) - 1.5) * 0.5) continue;
+                int q = (int) (hash3(t.seed, cx + dx, base + dy, cz + dz, 0x3A9) & 15);
+                String b = STRATA[Math.floorMod((base + dy) / 3, STRATA.length)];
+                if (q < 3) b = "minecraft:cobblestone"; else if (q == 3) b = "minecraft:coal_ore";
+                cv.set(cx + dx, base + dy, cz + dz, bd(b.endsWith("calcite") ? "minecraft:andesite" : b));
+            }
+            if (dy == H && base + H > 255) cv.air(cx, base + H + 1, cz, bd("minecraft:snow_block"));
+        }
+    }
+
+    /** Ore showing at the surface: a small vein to find from far off. */
+    static void oreOutcrop(Canvas cv, Terrain t, int x, int z, int base, long h) {
+        int kind = (int) (h >>> 4 & 15);
+        String ore = kind < 7 ? "minecraft:coal_ore" : kind < 12 ? "minecraft:iron_ore" : kind < 15 ? "minecraft:copper_ore" : "minecraft:emerald_ore";
+        int n = 4 + (int) (h >>> 8 & 7);
+        int px = x, py = base, pz = z;
+        for (int i = 0; i < n; i++) {
+            long hh = hash3(t.seed, px, py + i, pz, 0x3AA);
+            if (!cv.air(px, py, pz) && cv.type(px, py, pz) != Material.SNOW_BLOCK || cv.type(px, py, pz) == Material.SNOW_BLOCK) cv.set(px, py, pz, bd(ore));
+            switch ((int) (hh & 7)) { case 0, 1 -> px++; case 2, 3 -> px--; case 4 -> pz++; case 5 -> pz--; default -> py--; }
+            if (py < base - 2) py = base - 2;
+            int g = t.column(px, pz).surface;
+            if (py > g) py = g;
+        }
+    }
+
+    /** A pine on the lower slopes: a straight spruce with a narrow cone of needles. */
+    static void alpinePine(Canvas cv, Terrain t, int x, int z, int base, long h) {
+        if (base > 258) return;
+        Material ground = cv.type(x, base, z);
+        if (cv.in(x, base, z) && ground != Material.GRASS_BLOCK && ground != Material.COARSE_DIRT && ground != Material.SNOW_BLOCK && ground != Material.DIRT && ground != Material.PODZOL) return;
+        int H = 6 + (int) (h >>> 4 & 7);
+        for (int y = base + 1; y <= base + H; y++) cv.soft(x, y, z, bd("minecraft:spruce_log[axis=y]"));
+        String lv = "minecraft:spruce_leaves[persistent=true]";
+        for (int dy = 2; dy <= H + 1; dy++) {
+            int r = dy > H ? 0 : dy == H ? 1 : ((H - dy) % 2 == 0 ? 2 : 1) + (dy < H / 2 ? 1 : 0);
+            for (int dx = -r; dx <= r; dx++) for (int dz = -r; dz <= r; dz++) {
+                if (Math.abs(dx) == r && Math.abs(dz) == r && r > 0) continue;
+                cv.air(x + dx, base + dy, z + dz, bd(lv));
+            }
+        }
+        cv.air(x, base + H + 2, z, bd(lv));
+    }
+
+    /** A ruined watchtower of the mountain folk: a round stone tower, its top broken, a ladder, a chest and a dead campfire. */
+    static void watchtower(Canvas cv, Terrain t, int x, int z, int base, long h) {
+        for (int dx = -4; dx <= 4; dx += 4) for (int dz = -4; dz <= 4; dz += 4) if (Math.abs(t.column(x + dx, z + dz).surface - base) > 4) return;   // too steep
+        int H = 9 + (int) (h >>> 4 & 3);
+        for (int dx = -3; dx <= 3; dx++) for (int dz = -3; dz <= 3; dz++) {
+            double dd = Math.hypot(dx, dz);
+            if (dd > 3.5) continue;
+            boolean wall = dd > 2.4;
+            int g = t.column(x + dx, z + dz).surface;
+            for (int y = Math.min(g, base) - 1; y <= base; y++) cv.set(x + dx, y, z + dz, bd("minecraft:cobblestone"));
+            int broke = H - (int) (hash(t.seed, x + dx, z + dz, 0x3AB) & 3) - (dx > 0 ? 2 : 0);
+            for (int y = base + 1; y <= base + H; y++) {
+                if (!wall) { cv.set(x + dx, y, z + dz, WorldGen.Blocks.AIR); continue; }
+                if (y > base + broke) { cv.soft(x + dx, y, z + dz, WorldGen.Blocks.AIR); continue; }
+                int q = (int) (hash3(t.seed, x + dx, y, z + dz, 0x3AC) & 15);
+                boolean slit = (y - base) % 4 == 3 && (dx == 0 || dz == 0);
+                cv.set(x + dx, y, z + dz, slit ? WorldGen.Blocks.AIR : bd(q < 4 ? "minecraft:cracked_stone_bricks" : q < 7 ? "minecraft:mossy_stone_bricks" : q < 9 ? "minecraft:cobblestone" : "minecraft:stone_bricks"));
+            }
+            if (!wall && Math.abs(dx) + Math.abs(dz) <= 3) cv.set(x + dx, base + 5, z + dz, bd(dx == -1 && dz == 0 ? "minecraft:air" : "minecraft:spruce_planks"));   // a floor half way up
+        }
+        for (int y = base + 1; y <= base + 5; y++) cv.set(x - 1, y, z, bd("minecraft:ladder[facing=east]"));
+        cv.set(x - 2, base + 1, z, bd("minecraft:stone_bricks")); for (int y = base + 2; y <= base + 5; y++) cv.set(x - 2, y, z, bd("minecraft:stone_bricks"));
+        for (int y = base + 1; y <= base + 2; y++) cv.set(x, y, z + 3, WorldGen.Blocks.AIR);                                        // the door
+        cv.set(x + 1, base + 1, z - 1, bd("minecraft:chest[facing=south]"));
+        cv.set(x + 1, base + 1, z + 1, bd("minecraft:campfire[lit=false]"));
+        cv.set(x, base + 6, z + 1, bd("minecraft:barrel[facing=up]"));
+    }
+
+    // ------------------------------------------------------------------ the great caverns' floors
+
+    /**
+     * The Fibers' great caverns had dead flat floors (2.0 audit, from the owner's screenshot). Now: low mossy mounds, root
+     * pillars running from the floor to the roof, clusters of glowing mushrooms, boulders, and puddles of mud.
+     */
+    static void cavernFloors(Canvas cv, Terrain t) {
+        for (Layout.Cavern cav : Layout.CAVERNS) {
+            if (!cv.touches(cav.x() - cav.r(), cav.z() - cav.r(), cav.x() + cav.r(), cav.z() + cav.r())) continue;
+            int floor = cav.floor();
+            // soft mounds: a second, bumpy floor over the flat one
+            for (int x = cv.bx; x <= cv.bx + 15; x++) for (int z = cv.bz; z <= cv.bz + 15; z++) {
+                if (Layout.dist(x, z, cav.x(), cav.z()) > cav.r() - 3 || Sites.near(x, z, 4)) continue;
+                if (!cv.air(x, floor, z) || cv.air(x, floor - 1, z)) continue;                 // only real, open cavern floor
+                double n = t.fbmPublic(x / 17.0 + 70, z / 17.0 + 3) + 0.5 * t.fbmPublic(x / 6.0, z / 6.0 + 40);
+                int up = (int) Math.round(Math.max(0, n) * 4.2);
+                long hh = hash(t.seed, x, z, 0xF1D);
+                int q = (int) (hh & 255);
+                for (int k = 0; k < up; k++) cv.set(x, floor + k, z, bd(k == up - 1 ? (q < 150 ? "minecraft:moss_block" : q < 200 ? "minecraft:rooted_dirt" : "minecraft:mud") : "minecraft:rooted_dirt"));
+                if (n < -0.55) cv.set(x, floor - 1, z, bd("minecraft:mud"));                    // puddles of mud in the hollows
+                int ty = floor + up;
+                if (!cv.air(x, ty, z)) continue;
+                if (q < 10) cv.set(x, ty, z, bd("minecraft:azalea"));
+                else if (q < 14) cv.set(x, ty, z, bd("minecraft:flowering_azalea"));
+                else if (q < 40) cv.set(x, ty, z, bd("minecraft:moss_carpet"));
+                else if (q < 52) cv.set(x, ty, z, bd("minecraft:short_grass"));
+                else if (q < 56) cv.set(x, ty, z, bd("minecraft:brown_mushroom"));
+            }
+            // features on a grid
+            int size = 17, reach = 5;
+            int cx0 = Math.floorDiv(cv.bx - reach, size), cx1 = Math.floorDiv(cv.bx + 15 + reach, size);
+            int cz0 = Math.floorDiv(cv.bz - reach, size), cz1 = Math.floorDiv(cv.bz + 15 + reach, size);
+            for (int ci = cx0; ci <= cx1; ci++) for (int cj = cz0; cj <= cz1; cj++) {
+                long h = hash(t.seed, ci, cj, 0xF1E);
+                int x = ci * size + (int) ((h >>> 8) % size), z = cj * size + (int) ((h >>> 20) % size);
+                if (Layout.dist(x, z, cav.x(), cav.z()) > cav.r() - 8 || Sites.near(x, z, 7)) continue;
+                int kind = (int) (h & 7);
+                if (kind <= 2) {                                   // a root pillar, floor to roof
+                    double R = 1.3 + (h >>> 32 & 3) * 0.45;
+                    for (int dx = -3; dx <= 3; dx++) for (int dz = -3; dz <= 3; dz++) {
+                        if (!cv.in(x + dx, floor, z + dz)) continue;
+                        double dd = Math.hypot(dx, dz);
+                        for (int y = floor; y < cav.ceil() + 12; y++) {
+                            double f = (y - floor) / (double) Math.max(1, cav.ceil() - floor);
+                            double rr = R * (0.55 + 1.8 * (f - 0.5) * (f - 0.5) * 2);          // waisted: wide at the foot and the roof
+                            if (dd > rr) continue;
+                            if (!cv.air(x + dx, y, z + dz)) { if (y > floor + 6) break; continue; }
+                            int q = (int) (hash3(t.seed, x + dx, y, z + dz, 0xF1F) & 15);
+                            cv.set(x + dx, y, z + dz, bd(q < 9 ? "minecraft:mangrove_roots" : q < 13 ? "minecraft:muddy_mangrove_roots" : q < 15 ? "minecraft:rooted_dirt" : "minecraft:shroomlight"));
+                        }
+                    }
+                } else if (kind <= 4) {                            // glowing mushrooms
+                    for (int m = 0; m < 3 + (int) (h >>> 34 & 3); m++) {
+                        int mx = x + (int) (hash(t.seed, x, m, 0xF20) % 5) - 2, mz = z + (int) (hash(t.seed, m, z, 0xF21) % 5) - 2;
+                        int hgt = 1 + (int) (hash(t.seed, mx, mz, 0xF22) & 3), my = floor;
+                        while (my < floor + 6 && !cv.air(mx, my, mz) && cv.in(mx, my, mz)) my++;
+                        for (int k = 0; k < hgt; k++) cv.air(mx, my + k, mz, bd("minecraft:mushroom_stem"));
+                        cv.air(mx, my + hgt, mz, bd("minecraft:shroomlight"));
+                        for (int[] o : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) cv.air(mx + o[0], my + hgt, mz + o[1], bd("minecraft:brown_mushroom_block"));
+                        cv.air(mx, my + hgt + 1, mz, bd("minecraft:brown_mushroom_block"));
+                    }
+                } else if (kind == 5) {                            // a boulder
+                    boulder(cv, t, x, z, floor, h >>> 3);
+                }
             }
         }
     }

@@ -162,6 +162,12 @@ public final class FaultlineWorld extends JavaPlugin {
                 sender.sendMessage("§3[World] §7" + s.file());
                 return true;
             }
+            for (Layout.Core k : Layout.CORES) if (what.equals(k.faction() + "core") || what.equals("core" + k.faction())) {
+                int y = Structures.coreBase(gen.terrain(p.getWorld()), k);
+                p.teleport(new Location(p.getWorld(), k.x() + 0.5, y + 1, k.z() + 18.5, 180, 0));
+                sender.sendMessage("§3[World] §7the " + k.faction() + " shrine");
+                return true;
+            }
             for (int i = 0; i < Layout.PYRAMIDS.length; i++) if (what.equals("pyramid" + (i + 1))) {
                 p.teleport(new Location(p.getWorld(), Layout.PYRAMIDS[i][0] + 0.5, 300, Layout.PYRAMIDS[i][1] - Structures.PH - 10));
                 return true;
@@ -170,10 +176,10 @@ public final class FaultlineWorld extends JavaPlugin {
                 p.teleport(new Location(p.getWorld(), Layout.HOLES[i][0] + 0.5, 201, Layout.HOLES[i][1] + 0.5));
                 return true;
             }
-            sender.sendMessage("§3[World] §7/fworld tp <site name | pyramid1-3 | hole1-3>");
+            sender.sendMessage("§3[World] §7/fworld tp <site name | pyramid1-3 | mountaincore / junglecore / icecore / fiberscore / skycore>");
             return true;
         }
-        sender.sendMessage("§3[World] §7/fworld where §8| §7/fworld tp <site | pyramid1-3 | hole1-3>");
+        sender.sendMessage("§3[World] §7/fworld where §8| §7/fworld tp <site | pyramid1-3 | <faction>core>");
         return true;
     }
 }

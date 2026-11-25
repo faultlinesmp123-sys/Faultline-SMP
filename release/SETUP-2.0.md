@@ -60,7 +60,8 @@ folder with `plugins/FAULTLINESMPJAR-2.0.jar`, run `java -jar paper.jar` twice (
 
 ## Handy admin commands
 - `/fworld tp <name>`: teleport to a faction build (castle, angel, tower, death, mega, hall, ghost, himeji, starry,
-  ship, ballroom, greek, factory, sightless, cathedral, arena), `pyramid1`..`pyramid3`, `hole1`..`hole3`
+  ship, ballroom, greek, factory, sightless, cathedral, arena), `pyramid1`..`pyramid3`,
+  a faction's shrine: `mountaincore`, `junglecore`, `icecore`, `fiberscore`, `skycore`
 - `/fworld giant`: a Zombie Giant where you stand
 - `/kingdoms set <player> <1-5>`
 - `/missions`: the Mission Board

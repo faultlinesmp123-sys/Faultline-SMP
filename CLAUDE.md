@@ -3063,6 +3063,9 @@ Notes:
   resource packs. Check the source before assuming those still exist.
 
 ## Standing rules when updating plugins
+0. **When sending a release, also give the terminal command to download it on the VPS** (owner's request), e.g.
+   `curl -L -o FAULTLINESMPJAR.jar https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/<branch>/release/FAULTLINESMPJAR.jar`
+   run inside the server's `plugins/` folder, then `/faultline reload`.
 1. **Every new item, boss, or enemy must be added to the Faultline Index.**
 2. **Every new boss must be added to `/itemsmenu`** (a spawn egg or summon item).
 3. If textures/models change, update the resource pack zip **and** its SHA-1 hash in config.

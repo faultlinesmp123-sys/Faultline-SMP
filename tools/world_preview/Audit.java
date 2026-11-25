@@ -18,7 +18,7 @@ import java.util.*;
  * Usage: Audit <seed> [nameFilter]
  */
 public class Audit {
-    static final int MINY = -64, MAXY = 576, H = MAXY - MINY;
+    static final int MINY = -64, MAXY = 528, H = MAXY - MINY;
 
     static boolean empty(Material m) {
         return m == null || m.isAir() || m == Material.WATER || m == Material.LAVA || m == Material.LIGHT || m == Material.BUBBLE_COLUMN;
@@ -79,6 +79,7 @@ public class Audit {
         spots.add(new Object[]{"canyon:stairs", Layout.CANYON_X - Layout.CANYON_HX + 20, Layout.CANYON_Z - Layout.CANYON_HZ + 17, 3});
         spots.add(new Object[]{"canyon:mid", Layout.CANYON_X + 80, Layout.CANYON_Z, 3});
         spots.add(new Object[]{"spawn", Layout.SPAWN_X, Layout.SPAWN_Z, 3});
+        for (int[] c : Structures.cities()) spots.add(new Object[]{"city", c[0], c[1], 5});
         for (Layout.Blob b : Layout.SURFACE) spots.add(new Object[]{"surf:" + b.biome(), (int) b.x() + 60, (int) b.z() - 40, 3});
         for (Layout.Blob b : Layout.UNDERGROUND) spots.add(new Object[]{"under:" + b.biome(), (int) b.x(), (int) b.z(), 3});
         for (Layout.Cavern c : Layout.CAVERNS) spots.add(new Object[]{"cavern", c.x(), c.z(), 4});

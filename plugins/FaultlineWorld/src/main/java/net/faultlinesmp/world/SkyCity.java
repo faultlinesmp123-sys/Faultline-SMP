@@ -225,7 +225,7 @@ final class SkyCity {
     // ---------------------------------------------------------------- the buildings
 
     static void clockTower(Canvas cv, Terrain t, int x, int y, int z, long h) {
-        int w = 9, tall = Math.min(30 + (int) (h >>> 20 & 7), Layout.MAX_Y - y - 19);   // dome + spire stay under the world top
+        int w = 9, tall = Math.min(30 + (int) (h >>> 20 & 7), Layout.BEDROCK_TOP - y - 19);   // dome + spire stay under the world top
         int x0 = x - 4, z0 = z - 4;
         shell(cv, x0, y, z0, w, w, tall, h, BRICK, 6);
         for (int k = 0; k < 4; k++) {                                     // buttress pipes on the corners
@@ -253,8 +253,8 @@ final class SkyCity {
             }
         }
         for (int k = 0; k <= d / 2; k++) for (int dz = k; dz < d - k; dz++) for (int side : new int[]{0, w - 1}) put(cv, x0 + side, y + tall + k, z0 + dz, BRICK, h);
-        chimney(cv, x0 + 3, y + tall, Math.min(y + tall + 14, Layout.MAX_Y - 3), z0 + 2, h);
-        chimney(cv, x0 + w - 5, y + tall, Math.min(y + tall + 11, Layout.MAX_Y - 3), z0 + 2, h >>> 3);
+        chimney(cv, x0 + 3, y + tall, Math.min(y + tall + 14, Layout.BEDROCK_TOP - 3), z0 + 2, h);
+        chimney(cv, x0 + w - 5, y + tall, Math.min(y + tall + 11, Layout.BEDROCK_TOP - 3), z0 + 2, h >>> 3);
         gear(cv, x0 + w / 2, y + 7, z0 + d, 3.5, true, h);
         for (int k = 0; k < 4; k++) { int px = x0 + 2 + k * 5; pipe(cv, px, y + 1, y + tall - 1, z0 + d, h); }
         // a boiler outside the east end

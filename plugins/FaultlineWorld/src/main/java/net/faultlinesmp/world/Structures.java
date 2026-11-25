@@ -593,74 +593,10 @@ final class Structures {
         return out.toArray(new int[0][]);
     }
 
-    static final int CITY_R = 44;
+    /** Round 9: the cities are dark fortresses in a ring of crags (IllagerCity); this is the ring's outer radius. */
+    static final int CITY_R = 72;
 
-    static void illagerCities(Canvas cv, Terrain t) {
-        for (int[] c : cities()) {
-            if (!cv.touches(c[0] - CITY_R - 2, c[1] - CITY_R - 2, c[0] + CITY_R + 2, c[1] + CITY_R + 2)) continue;
-            int y = t.column(c[0], c[1]).surface;
-            BlockData log = bd("minecraft:dark_oak_log"), plank = bd("minecraft:dark_oak_planks"), cob = bd("minecraft:cobblestone"),
-                    air = WorldGen.Blocks.AIR, path = bd("minecraft:dirt_path");
-            for (int x = Math.max(cv.bx, c[0] - CITY_R); x <= Math.min(cv.bx + 15, c[0] + CITY_R); x++)
-                for (int z = Math.max(cv.bz, c[1] - CITY_R); z <= Math.min(cv.bz + 15, c[1] + CITY_R); z++) {
-                    int dx = x - c[0], dz = z - c[1], e = Math.max(Math.abs(dx), Math.abs(dz));
-                    // levelled yard, cleared of trees
-                    cv.column(x, z, y - 4, y, bd("minecraft:dirt"));
-                    cv.set(x, y, z, Math.abs(dx) <= 1 || Math.abs(dz) <= 1 ? path : bd("minecraft:coarse_dirt"));
-                    cv.box(x, y + 1, z, x, y + 40, z, air);
-                    // the palisade
-                    if (e == CITY_R) {
-                        boolean gate = Math.abs(dx) <= 2 && dz == CITY_R;
-                        for (int dy = 1; dy <= 7; dy++) cv.set(x, y + dy, z, gate ? air : log);
-                        if (!gate && (x + z & 1) == 0) cv.set(x, y + 8, z, bd("minecraft:dark_oak_fence"));
-                    }
-                }
-            // houses
-            int[][] houses = {{-28, -28}, {14, -30}, {-30, 10}, {20, 14}, {-12, 24}, {26, -8}};
-            for (int k = 0; k < houses.length; k++) illagerHouse(cv, t, c[0] + houses[k][0], y + 1, c[1] + houses[k][1], hash(t.seed, k, c[0], 0x111));
-            // the watchtower (pillager-outpost style) in the middle
-            for (int dy = 0; dy < 22; dy++) for (int dx = -3; dx <= 3; dx++) for (int dz = -3; dz <= 3; dz++) {
-                boolean edge = Math.abs(dx) == 3 || Math.abs(dz) == 3, corner = Math.abs(dx) == 3 && Math.abs(dz) == 3;
-                int x = c[0] + dx - 8, z = c[1] + dz - 8, yy = y + 1 + dy;
-                if (dy == 21) cv.set(x, yy, z, edge ? bd("minecraft:dark_oak_slab") : plank);   // a fence drawn here has no connections: loose posts
-                else if (corner) cv.set(x, yy, z, log);
-                else if (edge) cv.set(x, yy, z, dy % 7 == 3 && (dx == 0 || dz == 0) ? air : (dy < 6 ? cob : plank));
-                else cv.set(x, yy, z, dy % 7 == 0 ? plank : air);
-                if (!edge && dx == 0 && dz == 2 && dy < 21) cv.set(x, yy, z, bd("minecraft:ladder[facing=north]"));
-            }
-            cv.set(c[0] - 8, y + 23, c[1] - 8, bd("minecraft:white_banner"));
-            // cages and targets
-            for (int k = 0; k < 2; k++) {
-                int x = c[0] + 6 + k * 6, z = c[1] - 18;
-                for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) for (int dy = 1; dy <= 3; dy++) {
-                    boolean e = Math.abs(dx) == 1 || Math.abs(dz) == 1;
-                    cv.set(x + dx, y + dy, z + dz, dy == 3 ? plank : e ? bd("minecraft:waxed_oxidized_copper_grate") : air);
-                }
-            }
-            cv.set(c[0] + 20, y + 1, c[1] + 30, bd("minecraft:target"));
-            cv.set(c[0] + 22, y + 1, c[1] + 30, bd("minecraft:target"));
-        }
-    }
-
-    static void illagerHouse(Canvas cv, Terrain t, int x, int y, int z, long h) {
-        int w = 9, l = 7, H = 5;
-        for (int dx = 0; dx < w; dx++) for (int dz = 0; dz < l; dz++) {
-            for (int dy = -1; dy <= H + 2; dy++) {
-                boolean edge = dx == 0 || dz == 0 || dx == w - 1 || dz == l - 1, corner = (dx == 0 || dx == w - 1) && (dz == 0 || dz == l - 1);
-                BlockData b;
-                if (dy == -1) b = bd("minecraft:cobblestone");
-                else if (dy >= H) { int roofLevel = Math.min(dz, l - 1 - dz); b = dy - H <= roofLevel ? bd("minecraft:dark_oak_planks") : WorldGen.Blocks.AIR; if (dy - H < roofLevel && !edge) b = WorldGen.Blocks.AIR; }
-                else if (corner) b = bd("minecraft:dark_oak_log");
-                else if (edge) b = dy == 2 && (dx == 3 || dx == 5) ? bd("minecraft:glass") : bd(dy == 0 ? "minecraft:cobblestone" : "minecraft:dark_oak_planks");
-                else b = WorldGen.Blocks.AIR;
-                cv.set(x + dx, y + dy, z + dz, b);
-            }
-        }
-        cv.set(x + 4, y, z, WorldGen.Blocks.AIR); cv.set(x + 4, y + 1, z, WorldGen.Blocks.AIR);
-        cv.set(x + 1, y, z + l - 2, bd("minecraft:chest[facing=north]"));
-        cv.set(x + w - 2, y, z + l - 2, bd("minecraft:crafting_table"));
-        cv.set(x + w - 2, y, z + 1, bd("minecraft:fletching_table"));
-    }
+    static void illagerCities(Canvas cv, Terrain t) { IllagerCity.paint(cv, t); }
 
     // ================================================================== ABANDONED VILLAGES (Deep Forest)
 

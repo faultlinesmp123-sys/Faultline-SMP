@@ -16,7 +16,7 @@ public class Side {
                 catch (Throwable e) { Material m = Material.matchMaterial(data.contains("[") ? data.substring(0, data.indexOf('[')) : data); return super.createBlockData(m == null ? Material.STONE : m); }
             } });
         WorldInfo wi = (WorldInfo) Proxy.newProxyInstance(Side.class.getClassLoader(), new Class<?>[]{WorldInfo.class}, (o, m, g) -> switch (m.getName()) {
-            case "getSeed" -> seed; case "getMinHeight" -> -64; case "getMaxHeight" -> 576; case "getName" -> "world"; case "hashCode" -> 1; default -> null; });
+            case "getSeed" -> seed; case "getMinHeight" -> -64; case "getMaxHeight" -> 528; case "getName" -> "world"; case "hashCode" -> 1; default -> null; });
         Sites.load(java.util.logging.Logger.getLogger("s"));
         Scan.g = new WorldGen(); Scan.wi = wi;
         for (int x = (cx - hw) >> 4; x <= (cx + hw) >> 4; x++) for (int z = (cz - depth) >> 4; z <= (cz + depth) >> 4; z++) Scan.chunks.put(((long) x << 32) ^ (z & 0xffffffffL), WorldPreview.chunk(Scan.g, wi, x, z));

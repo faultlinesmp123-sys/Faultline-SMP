@@ -153,6 +153,26 @@ final class Terrain {
     private final double[] padY = new double[Layout.CORES.size()];
     private final boolean[] padDone = new boolean[Layout.CORES.size()];
 
+    private final double[] cityY = new double[8];
+    private final boolean[] cityDone = new boolean[8];
+
+    /** The flat ground of illager city i: the land's own height there, at least 6 over the sea, at most 260. */
+    double cityHeight(int i) {
+        if (!cityDone[i]) {
+            synchronized (cityY) {
+                if (!cityDone[i]) {
+                    int[] cc = Structures.cities()[i];
+                    double co = coast(cc[0], cc[1]);
+                    int isle = isle(cc[0], cc[1]);
+                    int climate = isle >= 0 ? Layout.ISLES.get(isle).climate() : 0;
+                    cityY[i] = Math.max(SEA + 6, Math.min(260, Math.round(landHeight(cc[0], cc[1], co, climate, co > -0.45 ? surfaceBlob(cc[0], cc[1]) : null, false))));
+                    cityDone[i] = true;
+                }
+            }
+        }
+        return cityY[i];
+    }
+
     double padHeight(int i) {
         if (!padDone[i]) {
             synchronized (padY) {
@@ -218,6 +238,12 @@ final class Terrain {
                 n++;
             }
             if (n > 0) h = lerp(sum / n, h, smooth(3, 13, d));
+        }
+        // round 9: the illager cities stand on flat ground (their crag ring rises from it)
+        if (pads) for (int i = 0; i < Structures.cities().length; i++) {
+            int[] cc = Structures.cities()[i];
+            double d = Layout.dist(x, z, cc[0], cc[1]);
+            if (d < Structures.CITY_R + 46) h = lerp(cityHeight(i), h, smooth(Structures.CITY_R - 4, Structures.CITY_R + 46, d));
         }
         // the shrines' terraces come LAST: a road ending at a shrine used to lift the ground back over it (round 7: the
         // mountain shrine was buried 40 blocks deep under the road's average of the peaks)

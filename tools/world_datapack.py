@@ -151,10 +151,10 @@ def build():
     dt = load("dimension_type_overworld.json")
     # round 7: the world is 640 tall (y -64..575): the sky kingdom floats at 300-470, the cathedral stands on a mountain.
     # (Bedrock clients only ever show y -64..319.)
-    dt["height"] = 640
-    dt["logical_height"] = 640
-    dt["attributes"]["minecraft:visual/cloud_height"] = 520.0
-    ns["noise"]["height"] = 640
+    dt["height"] = 592          # y -64..527; Geyser shows Bedrock players up to y 511
+    dt["logical_height"] = 592
+    dt["attributes"]["minecraft:visual/cloud_height"] = 500.0
+    ns["noise"]["height"] = 592
     files["data/minecraft/dimension_type/overworld.json"] = dt
     for k, v in diamonds().items():
         files[f"data/minecraft/worldgen/placed_feature/{k}.json"] = v

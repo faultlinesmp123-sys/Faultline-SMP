@@ -505,7 +505,8 @@ final class Life implements Listener {
             boolean evokerOk = now >= cityEvokerAt.getOrDefault(key, 0L);
             EntityType[] pool = {EntityType.PILLAGER, EntityType.PILLAGER, EntityType.PILLAGER, EntityType.VINDICATOR, EntityType.VINDICATOR, EntityType.EVOKER};
             for (int i = 0; i < Math.min(3, cap - have); i++) {
-                int x = c[0] + random.nextInt(Structures.CITY_R * 2 - 8) - Structures.CITY_R + 4, z = c[1] + random.nextInt(Structures.CITY_R * 2 - 8) - Structures.CITY_R + 4;
+                int sr = Structures.CITY_R - 24;                                  // round 9: inside the crag ring, never on the crags
+                int x = c[0] + random.nextInt(sr * 2) - sr, z = c[1] + random.nextInt(sr * 2) - sr;
                 Location at = w.getHighestBlockAt(x, z).getLocation().add(0.5, 1, 0.5);
                 EntityType type = pool[random.nextInt(pool.length)];
                 if (type == EntityType.EVOKER) {

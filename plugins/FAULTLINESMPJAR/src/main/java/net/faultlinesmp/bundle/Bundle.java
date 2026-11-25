@@ -70,7 +70,7 @@ public final class Bundle extends JavaPlugin {
                     Bukkit.getPluginManager().enablePlugin(p);
             } catch (Throwable t) {
                 status.put(name, "NOT LOADED (" + t + ")");
-                getLogger().log(java.util.logging.Level.SEVERE, "Couldn't load the bundled " + name + " (is the disk full?)", t);
+                getLogger().log(java.util.logging.Level.SEVERE, "Couldn't load the bundled " + name + ": " + t, t);
             }
         }
         // loaded after the worlds (a /reload or a plugin manager): Paper won't enable them for us any more

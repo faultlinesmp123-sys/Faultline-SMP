@@ -87,7 +87,7 @@ final class Layout {
             new Site("jungle", "jungle/ghost_statue", -1230, 188, 1180, 70, Shape.BASIN, false),
             new Site("jungle", "jungle/starry_night_town", -1310, 205, 1560, 45, Shape.FLAT, true),
             // ICE (island C, south)
-            new Site("ice", "ice/cathedral", 1560, 255, 1450, 185, Shape.FLAT, true),   // round 7: on a mountain plateau (the world is 640 tall now)
+            new Site("ice", "ice/cathedral", 1560, 201, 1450, 185, Shape.FLAT, true),   // on a plateau in the ice mountains; 316 tall: its spire tip is y 516 (Bedrock sees to 511)
             new Site("ice", "ice/sightless_angel_statue", 1290, 190, 1660, 80, Shape.BASIN, false),
             new Site("ice", "ice/ocean_arena", 1790, 135, 1210, 50, Shape.CAVERN, true),
             // SKY (over the open Great Sea: the statue stands in the water, the islands ring it high above)
@@ -148,7 +148,9 @@ final class Layout {
 
     /** The cathedral canyon: centre x/z, half sizes, floor y. */
     /** Round 7: the world is 640 tall (the datapack's overworld dimension type): y -64..575. */
-    static final int WORLD_TOP = 576, MAX_Y = WORLD_TOP - 1;
+    static final int WORLD_TOP = 528, MAX_Y = WORLD_TOP - 1;
+    /** Geyser (since its Oct 2024 builds) shows Bedrock players the Overworld up to y 511: everything that matters stays under it. */
+    static final int BEDROCK_TOP = 511;
     /** The cathedral moved onto a mountain: the canyon it stood in is gone (false). */
     static final boolean CANYON = false;
     static final int CANYON_X = 1560, CANYON_Z = 1450, CANYON_HX = 200, CANYON_HZ = 112, CANYON_FLOOR = 2;

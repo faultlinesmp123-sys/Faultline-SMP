@@ -3309,7 +3309,7 @@ Notes:
   KINGDOM COMPASSES (Items `KingdomCompass.java`, /adminmenu row 3 slots 20-24, `kingdom-compass.targets.<1-5>` "x,y,z"):
   a lodestone compass to the kingdom's abandoned home + action bar arrow/distance; PDC `faultlineitems:kingdom_compass`;
   Index entry. Ability heads moved to row 4. Checks: `Leak` 0 on 4 seeds, `Scan`, side renders, shrine terraces clear on 5 seeds.
-- **2.0 round 8 (FaultlineWorld, Items; same 2.0.0)**: THE WORLD IS 640 TALL (y -64..575, `Layout.WORLD_TOP`/`MAX_Y`): the
+- **2.0 round 8 (FaultlineWorld, Items; same 2.0.0)**: THE WORLD WAS RAISED (round 9 settled it at 592 tall = y -64..527, see below): the
   datapack's `dimension_type/overworld.json` height + logical_height 640, clouds at 520, noise height 640
   (`tools/world_datapack.py`). The owner asked for it ("RAISE IT") knowing BEDROCK CLIENTS ONLY SHOW y -64..319 (a Bedrock
   limit; no plugin can change it): Bedrock players don't see the sky city or the cathedral's upper half. CustomWorldHeight
@@ -3330,6 +3330,23 @@ Notes:
   their caps, gills under them; inferno campsites on their own ground; Fibers floor plants only on solid; spider-cave webs
   touch rock; pyramid well ladders keep their wall; sky street never paves a bridge; signal-fire pillars mark the top of each
   spiral (the spawn road ends at the Fibers spiral, 440,-690). KINGDOM COMPASS ice target = the cathedral (1385, 1450).
+- **2.0 round 9 (FaultlineWorld, Items, FAULTLINESMPJAR; same 2.0.0)**: BEDROCK SEES UP TO y 511: Geyser (PR #5002, merged
+  Oct 2024, automatic, no config) sends Bedrock a data-driven overworld height clamped to y -512..512. So the world is 592 tall
+  (y -64..527, `Layout.WORLD_TOP` 528, datapack height 592, clouds 500) and everything that matters stays under
+  `Layout.BEDROCK_TOP` 511: the statue (280..511), the sky city (isles 350-459, buildings capped by BEDROCK_TOP), the airships;
+  the CATHEDRAL stands at y 201 on a plateau in the ice mountains (its spire tip reaches 516: Bedrock misses the top 5).
+  The owner's Geyser must be a build after Oct 2024. THE ILLAGER CITIES (`IllagerCity.java`, `Structures.CITY_R` 72, ground
+  flattened by `Terrain.cityHeight`, 46-block blend): a ring of leaning crags (gate south), the witch KEEP on a 30-tall
+  pinnacle (ramp 2.5 turns round it, spired keep + 4 turrets, green-lit windows) with a stone bridge to a LONE TOWER on a
+  needle, the brutalist BUNKER (4 stepped tiers, cantilevered balconies, two-lane zig-zag stairs `zigzag()`, a roof garden),
+  the COOLING TOWER (hyperbolic shell `towerR`, zig-zag stairs following it, a green beacon), the GLOW POOL (froglight floor,
+  a rock with a spring and a waterfall), 14 gothic houses (some with spired towers), thorn arches, green lamp posts (never in
+  the pool / towers: `taken`), cages and targets. Garrison spawns stay inside the ring (`Life.illagers`, CITY_R - 24).
+  Inspired by the owner's references, original design. Audit (`tools/world_preview/Audit.java` + "city" spots): what's left
+  is decorative (stair rails, the builds' own details). Whole-server smoke test (scratch `smoke/`, Prof harness, 20 players,
+  600 ticks): all 11 gameplay plugins load and tick with no errors (FaultlineWorld can't load in MockBukkit: no world
+  container). The bundle's load error now prints the real cause. NOTE: `main` is BEHIND this branch: FaultlineSMP.zip (the
+  Umbrella, max_format 97) and every bedrock/ pack + mapping differ; players and `/bedrockcheck install` read `main`.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

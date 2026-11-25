@@ -84,11 +84,27 @@ final class SpiderNest implements Listener {
         final Map<Integer, Long> denReady = new HashMap<>(); // den index -> when it can wake again
         int mouthX = Integer.MIN_VALUE, mouthZ, mouthY = Integer.MIN_VALUE; // where a way in ends (1.3.49: underground)
         long respawnAt;
+        boolean abyssal;         // 1.3.57: built in the Dark Ocean's abyss (the Abyssal Queen, doors where its tunnels meet the sea)
         transient QueenSpiderManager.Queen queen;
         Location throne(World w) { return new Location(w, tx + 0.5, ty, tz + 0.5); }
     }
 
+    static volatile SpiderNest INSTANCE; // 1.3.57: NestApi (FaultlineDeep asks whether a spot is inside an abyssal nest)
+
+    /** 1.3.57: the Dark Ocean (`spider-nest.abyss-world`): a nest built there is an abyssal nest. */
+    boolean abyss(World w) { return w != null && w.getName().equals(plugin.getConfig().getString("spider-nest.abyss-world", "faultline_deep")); }
+
+    /** Is (x, y, z) inside an abyssal nest's carved box? */
+    boolean inAbyssNest(double x, double y, double z) {
+        for (Nest n : nests.values()) {
+            if (!n.abyssal || n.maxX == n.minX) continue;
+            if (x >= n.minX && x < n.maxX + 1 && y >= n.minY && y < n.maxY + 1 && z >= n.minZ && z < n.maxZ + 1) return true;
+        }
+        return false;
+    }
+
     SpiderNest(FaultlineItems plugin, QueenSpiderManager queens) {
+        INSTANCE = this;
         this.plugin = plugin;
         this.queens = queens;
         queens.nests = this;
@@ -105,6 +121,7 @@ final class SpiderNest implements Listener {
             n.cx = c.getInt("cx"); n.cy = c.getInt("cy"); n.cz = c.getInt("cz");
             n.tx = c.getInt("tx"); n.ty = c.getInt("ty"); n.tz = c.getInt("tz");
             n.radius = c.getInt("radius", 80); n.respawnAt = c.getLong("respawn-at");
+            n.abyssal = c.getBoolean("abyssal", false);
             n.minX = c.getInt("box.min-x"); n.minY = c.getInt("box.min-y"); n.minZ = c.getInt("box.min-z");
             n.maxX = c.getInt("box.max-x"); n.maxY = c.getInt("box.max-y"); n.maxZ = c.getInt("box.max-z");
             n.mouthX = c.getInt("mouth-x", Integer.MIN_VALUE); n.mouthZ = c.getInt("mouth-z"); n.mouthY = c.getInt("mouth-y", Integer.MIN_VALUE);
@@ -126,6 +143,7 @@ final class SpiderNest implements Listener {
             data.set(k + "cx", n.cx); data.set(k + "cy", n.cy); data.set(k + "cz", n.cz);
             data.set(k + "tx", n.tx); data.set(k + "ty", n.ty); data.set(k + "tz", n.tz);
             data.set(k + "radius", n.radius); data.set(k + "respawn-at", n.respawnAt);
+            if (n.abyssal) data.set(k + "abyssal", true);
             if (n.maxX != n.minX) {
                 data.set(k + "box.min-x", n.minX); data.set(k + "box.min-y", n.minY); data.set(k + "box.min-z", n.minZ);
                 data.set(k + "box.max-x", n.maxX); data.set(k + "box.max-y", n.maxY); data.set(k + "box.max-z", n.maxZ);
@@ -835,6 +853,7 @@ final class SpiderNest implements Listener {
         for (int i = 0; i < 6; i++) silk(w, air, throne, r, id);
         walkway(w, plan);
         for (double[] g : plan.gates) gate(w, air, g, r, webs);
+        if (abyss(w)) for (double[] g : plan.gates) seaDoor(w, air, g); // 1.3.57: where a way in meets the sea, a door (water never flows into one)
         // 1.3.52: the way in is dug after the chambers are furnished and could cut the floor out from under a chest or a
         // spawner (they hung in the air among the bones): everything that needs ground gets a block under it again
         for (Block b : placedNeedsFloor) {
@@ -863,6 +882,7 @@ final class SpiderNest implements Listener {
         n.dens.addAll(buildDens);
         n.sleeps.addAll(buildSleeps);
         n.respawnAt = 0;
+        n.abyssal = abyss(w);
         nests.put(n.id, n);
         save();
         writeUndo(n.id, w);
@@ -1043,6 +1063,38 @@ final class SpiderNest implements Listener {
                 }
             }
         }
+    }
+
+    /**
+     * 1.3.57: an abyssal nest is a dry pocket in the deep: the walling pass plugged every tunnel end that met water with tuff. Where a
+     * gateway's end meets the sea, the plug becomes a dark oak door (water never flows into a door), so you can swim in.
+     */
+    private void seaDoor(World w, Set<Long> air, double[] g) {
+        double hx = Math.cos(g[3]), hz = Math.sin(g[3]);
+        int gy = (int) Math.floor(g[1]);
+        int lastX = Integer.MIN_VALUE, lastZ = 0, floorY = 0;
+        for (double k = -8; k <= 14; k += 0.5) {
+            int x = (int) Math.floor(g[0] + hx * k), z = (int) Math.floor(g[2] + hz * k);
+            for (int y = gy - 4; y <= gy + 2; y++) {
+                if (air.contains(key(x, y, z)) && !air.contains(key(x, y - 1, z)) && w.getBlockAt(x, y, z).getType().isAir() && w.getBlockAt(x, y + 1, z).getType().isAir()) {
+                    lastX = x; lastZ = z; floorY = y; break;
+                }
+            }
+        }
+        if (lastX == Integer.MIN_VALUE) return;
+        org.bukkit.block.BlockFace face = Math.abs(hx) > Math.abs(hz) ? (hx > 0 ? org.bukkit.block.BlockFace.EAST : org.bukkit.block.BlockFace.WEST)
+                : (hz > 0 ? org.bukkit.block.BlockFace.SOUTH : org.bukkit.block.BlockFace.NORTH);
+        Block plug = w.getBlockAt(lastX, floorY, lastZ).getRelative(face);
+        boolean sea = false;
+        for (int k = 1; k <= 3 && !sea; k++) { Block b = plug.getRelative(face, k); sea = b.getType() == Material.WATER || b.getRelative(0, 1, 0).getType() == Material.WATER; }
+        if (!sea || plug.getType().isAir() || plug.getRelative(0, 1, 0).getType().isAir()) return;
+        try {
+            BlockData lower = Bukkit.createBlockData("minecraft:dark_oak_door[facing=" + face.name().toLowerCase() + ",half=lower]");
+            BlockData upper = Bukkit.createBlockData("minecraft:dark_oak_door[facing=" + face.name().toLowerCase() + ",half=upper]");
+            put(plug, lower);
+            put(plug.getRelative(0, 1, 0), upper);
+            for (int[] d : new int[][]{{0, 2, 0}}) { Block top = plug.getRelative(d[0], d[1], d[2]); if (!top.getType().isSolid()) put(top, Material.TUFF); }
+        } catch (RuntimeException | LinkageError ignored) { }
     }
 
     /** A bone gate at a gateway tunnel's far end: bone fangs from the walls pointing in, skulls, webs across the corners. */

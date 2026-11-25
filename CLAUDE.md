@@ -3138,6 +3138,22 @@ Notes:
   (ProjectileLaunchEvent) and ray-traces this tick's flight against each hidden body's Interaction-size box: vanilla arrow damage
   (speed x damage, crit bonus) as ARROW / TRIDENT damage caused by the shooter, Flame = fire, Piercing keeps going, the arrow is
   removed (a trident bounces back). Applies to every HitBox body (the Queen, the brood). Tested (scratch `nest/d5/StuckTest`).
+- **The Abyssal Queen, 10 new moves, nerf (Items 1.3.57, Deep 1.19.3, Index 1.9.27)**: a Spider Nest built in
+  `spider-nest.abyss-world` (faultline_deep; /adminmenu or `/queenspider nest here` while in the abyss) is ABYSSAL (`Nest.abyssal`,
+  saved): the walling pass already turns water beside the carve into tuff, so it's a DRY pocket; where a gateway's end meets the sea
+  the plug becomes a dark oak door (`seaDoor`; water never flows into a door). Its queen is THE ABYSSAL QUEEN (`Queen.abyssal`, tag
+  `faultline_abyssal_queen`, `queen-spider-boss.abyssal.*`: scale 4.8, 3000 hp, damage x1.1, cyan name / blue bar / soul aura, +2
+  Dark Loot Bags per fighter, Index stat `abyssal_queens`, entry `abyssal_queen`). Deep: `Market.dry` also asks `NestLink` ->
+  Items' public `NestApi.inAbyssNest` (reflection, re-found after a reload) so the Abyss darkness / Pressure Surge / eaten drops skip
+  the nest; dying in one = normal respawn. NEW MOVES for every nest queen (`pickMove`/`runMove`): frenzy (3 lunging bites),
+  silkstorm (pull-in whirl, then a web burst), broodcall (2-3 NestBrood out of the dark, `brood-call-max`), nova (green ring ->
+  poison cloud), cocoon (silk line, webs at feet + head, Slowness IV), skitter (zig-zag dashes leaving webs, then a bite), quake
+  (phase 2+: slam, red circles, falling dripstone tagged `NestBrood.DRIP_TAG`), eggs (3 lobbed Snowballs tagged
+  `QueenSpiderManager.EGG_TAG` = 2 cave spiders where they land); ABYSSAL ONLY: gaze (anyone LOOKING at her (look . to-her >= 0.55,
+  in sight) at the flash: damage + Darkness + Blindness + Slowness) and undertow (phase 2+: drags everyone within 16 in for 2 s,
+  then bursts). NERF: every `*-damage` read through `ncfg` x `queen-spider-boss.damage-nerf` 0.8 while it is still a default (the
+  code default or the jar config's old number, `OLD_NEST_DAMAGE`); nest health 3600 -> 2600 and per-fighter 0.3 -> 0.2
+  (`Balance.num`). Tested (scratch `nest/d6/MoveTest`: abyssal nest + queen + NestApi, all 10 moves run and end, no errors).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

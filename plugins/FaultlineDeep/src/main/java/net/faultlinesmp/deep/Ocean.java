@@ -450,6 +450,7 @@ final class Ocean implements Listener {
             e.setRespawnLocation(new Location(pl.world, at[0] + 0.5, Halcyon.G, at[1] + 0.5, 180, 0));
             return;
         }
+        if (NestLink.inNest(died.getX(), died.getY(), died.getZ())) return; // 1.19.3: died in an abyssal Spider Nest: the normal respawn
         if (Market.dry(died.getX(), died.getY(), died.getZ())) { // a fight in the Pit, or a fall in the town: back in front of the Black Market
             int[] at = Town.plotSpawn();
             e.setRespawnLocation(new Location(pl.world, at[0] + 0.5, at[1], at[2] + 0.5, 180, 0));

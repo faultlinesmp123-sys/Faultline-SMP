@@ -297,18 +297,24 @@ queen-spider-boss:
   ankh-chance: 0.02
   creative-wakes: true         # a creative player's hit wakes a nest queen too
   # the QUEEN OF THE NEST (asleep in a Spider Nest): much harder, much better loot (every fighter gets it)
+  abyssal:                     # 1.3.57: a Spider Nest built in the Dark Ocean (spider-nest.abyss-world) = THE ABYSSAL QUEEN
+    scale: 4.8
+    health: 3000               # +per-fighter like the nest queen
+    damage-multiplier: 1.1
+    dark-loot-bags: 2          # every fighter, on top of the nest rewards
+  damage-nerf: 0.8             # 1.3.57: every queen move's damage x this while its value is still a default
   nest:
     scale: 4.2
-    health: 3600
-    per-fighter: 0.3           # +30% health for every fighter after the first (counted when she wakes)
+    health: 2600               # 1.3.57: was 3600 (an old 3600 reads as 2600)
+    per-fighter: 0.2           # +20% health for every fighter after the first (counted when she wakes; was 0.3)
     armor: 12
-    bite-damage: 20
-    sweep-damage: 13
-    pounce-damage: 15
-    stomp-damage: 16
-    drop-damage: 20
-    rain-damage: 9
-    spit-damage: 6
+    bite-damage: 16
+    sweep-damage: 10
+    pounce-damage: 12
+    stomp-damage: 13
+    drop-damage: 16
+    rain-damage: 7
+    spit-damage: 5
     xp: 1500
     spider-staff-chance: 1.0
     ankh-chance: 0.02
@@ -326,6 +332,7 @@ queen-spider-boss:
 spider-nest:
   min-y: -50                   # 1.3.47: the whole nest is carved between these heights (a spiral ramp leads down)
   max-y: -1
+  abyss-world: faultline_deep  # 1.3.57: a nest built here is an ABYSSAL nest (the Abyssal Queen; doors where its tunnels meet the sea)
   darkness: true               # hidden Darkness inside: it's dark down there
   see-in-the-dark: true        # 1.3.52: a hidden Night Vision under the Darkness, so the nest pulses dark but never goes pitch black
   spawn-chance: 0.18           # every 2 s per player inside: a spider, cave spider, zombie, skeleton or brood comes out of the dark

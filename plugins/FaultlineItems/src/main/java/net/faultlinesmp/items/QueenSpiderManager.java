@@ -94,6 +94,7 @@ final class QueenSpiderManager implements Listener {
         Location markAt;
         final Map<String, Long> ready = new HashMap<>();
         double scale;
+        boolean abyssal;         // 1.3.57: a nest in the Dark Ocean's abyss = the Abyssal Queen
         Location lastSpot;       // 1.3.56: stuck checks
         int stuck;
     }
@@ -113,7 +114,24 @@ final class QueenSpiderManager implements Listener {
 
     double cfg(String key, double def) { return plugin.getConfig().getDouble("queen-spider-boss." + key, def); }
     private double ncfg(Queen q, String key, double wild, double nest) {
-        return q.nestId != null ? cfg("nest." + key, nest) : cfg(key, wild);
+        double def = q.nestId != null ? nest : wild;
+        double v = q.nestId != null ? cfg("nest." + key, nest) : cfg(key, wild);
+        if (key.endsWith("-damage")) {
+            // 1.3.57: every queen hits softer (a server config still holding the old default reads as the nerfed one)
+            Double old = q.nestId != null ? OLD_NEST_DAMAGE.get(key) : null;
+            if (Math.abs(v - def) < 1e-9 || old != null && Math.abs(v - old) < 1e-9) v *= cfg("damage-nerf", 0.8);
+            if (q.abyssal) v *= cfg("abyssal.damage-multiplier", 1.1);
+        }
+        return v;
+    }
+
+    /** 1.3.57: what the jar's config.yml said before the nerf (a server config still holding these reads as nerfed). */
+    private static final Map<String, Double> OLD_NEST_DAMAGE = Map.of("bite-damage", 20.0, "sweep-damage", 13.0, "pounce-damage", 15.0,
+            "stomp-damage", 16.0, "drop-damage", 20.0, "rain-damage", 9.0, "spit-damage", 6.0);
+
+    /** 1.3.57: the nest queen's health, nerfed (3600 -> 2600; an old config's 3600 reads as 2600); the Abyssal Queen's own. */
+    private double nestHealth(Queen q) {
+        return q.abyssal ? cfg("abyssal.health", 3000) : Balance.num(plugin, "queen-spider-boss.nest.health", 3600, 2600);
     }
 
     // ============================================================================================ spawning
@@ -168,20 +186,22 @@ final class QueenSpiderManager implements Listener {
         q.body = spider;
         q.nestId = nestId;
         q.asleep = asleep;
-        q.scale = nestId != null ? cfg("nest.scale", 4.2) : cfg("scale", 3.0);
+        q.abyssal = nestId != null && nests != null && nests.nests.get(nestId) != null && nests.nests.get(nestId).abyssal;
+        q.scale = q.abyssal ? cfg("abyssal.scale", 4.8) : nestId != null ? cfg("nest.scale", 4.2) : cfg("scale", 3.0);
+        if (q.abyssal) spider.addScoreboardTag("faultline_abyssal_queen");
         spider.addScoreboardTag(TAG);
         if (nestId != null) spider.addScoreboardTag("faultline_nest_queen");
         spider.setPersistent(false);
         spider.setRemoveWhenFarAway(false);
         spider.setInvisible(true); // QueenRig draws her
         spider.setSilent(false);
-        String name = nestId != null ? "Queen of the Nest" : "Queen Spider";
-        spider.setCustomName(ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + name);
+        String name = q.abyssal ? "The Abyssal Queen" : nestId != null ? "Queen of the Nest" : "Queen Spider";
+        spider.setCustomName((q.abyssal ? ChatColor.DARK_AQUA : ChatColor.DARK_PURPLE) + "" + ChatColor.BOLD + name);
         spider.setCustomNameVisible(false);
         // 1.3.56: the BODY (the real mob that walks and pathfinds) is smaller than the model: at the model's size (4.2 = ~6 wide,
         // 4 tall) it couldn't fit the nest's tunnels or get between the bone pillars round her throne and stood stuck there
         setAttr(spider, Attribute.SCALE, Math.min(q.scale, ncfg(q, "body-scale", 2.0, 2.0)));
-        double hp = ncfg(q, "health", Balance.num(plugin, "queen-spider-boss.health", 500, 900), 3600); // really hard
+        double hp = nestId != null ? nestHealth(q) : cfg("health", Balance.num(plugin, "queen-spider-boss.health", 500, 900)); // 1.3.57: nerfed
         BigHealth.set(spider, hp); // 1.3.53: over the server's 1024 cap setHealth threw (the model-less queens)
         setAttr(spider, Attribute.ATTACK_DAMAGE, ncfg(q, "bite-damage", 13, 20));
         setAttr(spider, Attribute.ARMOR, q.nestId != null ? cfg("nest.armor", 12) : cfg("armor", 6));
@@ -192,7 +212,8 @@ final class QueenSpiderManager implements Listener {
         q.box = new HitBox(spider, 1.4 * q.scale, 0.9 * q.scale);
         if (asleep) q.rig.play("sleep", 0);
         else q.rig.play("wake", 40);
-        q.bar = Bukkit.createBossBar(ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + name, BarColor.PURPLE, BarStyle.SEGMENTED_20);
+        q.bar = Bukkit.createBossBar((q.abyssal ? ChatColor.DARK_AQUA : ChatColor.DARK_PURPLE) + "" + ChatColor.BOLD + name,
+                q.abyssal ? BarColor.BLUE : BarColor.PURPLE, BarStyle.SEGMENTED_20);
         q.nextMove = 60;
         // Bedrock stand-in: a real spider only Bedrock players can see; their hits go to her
         try {
@@ -229,7 +250,7 @@ final class QueenSpiderManager implements Listener {
         int fighters = 0;
         for (Player p : q.body.getWorld().getPlayers()) if (survival(p) && p.getLocation().distanceSquared(q.body.getLocation()) < 48 * 48) fighters++;
         if (q.nestId != null && fighters > 1) {
-            double hp = cfg("nest.health", 3600) * (1 + (fighters - 1) * cfg("nest.per-fighter", 0.3));
+            double hp = nestHealth(q) * (1 + (fighters - 1) * Balance.num(plugin, "queen-spider-boss.nest.per-fighter", 0.3, 0.2));
             BigHealth.set(q.body, hp);
         }
         q.rig.play("wake", 45);
@@ -243,7 +264,7 @@ final class QueenSpiderManager implements Listener {
         l.getWorld().playSound(l, Sound.ENTITY_SPIDER_AMBIENT, 3f, 0.3f);
         l.getWorld().playSound(l, Sound.ENTITY_RAVAGER_ROAR, 2f, 0.6f);
         for (Player p : l.getWorld().getPlayers()) if (p.getLocation().distanceSquared(l) < 40 * 40) {
-            p.sendTitle(ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + (q.nestId != null ? "The Queen Awakens" : "Queen Spider"),
+            p.sendTitle((q.abyssal ? ChatColor.DARK_AQUA : ChatColor.DARK_PURPLE) + "" + ChatColor.BOLD + (q.abyssal ? "The Abyssal Queen Awakens" : q.nestId != null ? "The Queen Awakens" : "Queen Spider"),
                     ChatColor.GRAY + (q.nestId != null ? "You woke her." : "Something huge crawls out of the dark."), 8, 50, 15);
         }
     }
@@ -267,6 +288,11 @@ final class QueenSpiderManager implements Listener {
         }
         if (q.standin != null && q.standin.isValid()) {
             if (q.t % 2 == 0) q.standin.teleport(queen.getLocation());
+        }
+        if (q.abyssal && q.t % 6 == 0) { // 1.3.57: the deep clings to her
+            Location c = queen.getLocation().add(0, q.scale * 0.5, 0);
+            queen.getWorld().spawnParticle(Particle.SOUL, c, 2, q.scale * 0.5, q.scale * 0.25, q.scale * 0.5, 0.01);
+            queen.getWorld().spawnParticle(Particle.DUST, c, 4, q.scale * 0.6, q.scale * 0.3, q.scale * 0.6, 0, new Particle.DustOptions(Color.fromRGB(40, 200, 210), 1.4f));
         }
         if (q.asleep) {
             if (q.t % 30 == 0) queen.getWorld().spawnParticle(Particle.WHITE_ASH, queen.getLocation().add(0, q.scale * 0.6, 0), 6, 0.5, 0.3, 0.5, 0);
@@ -434,6 +460,20 @@ final class QueenSpiderManager implements Listener {
             if (readyFor(q, "drop") && queen.isOnGround()) pool.add("drop");
         }
         if (q.phase >= 3 && readyFor(q, "rain")) pool.add("rain");
+        if (q.nestId != null) { // 1.3.57: the nest queen's 8 new moves
+            if (d <= reach + 2 && readyFor(q, "frenzy")) pool.add("frenzy");
+            if (d <= 10 && readyFor(q, "silkstorm")) pool.add("silkstorm");
+            if (nests != null && readyFor(q, "broodcall")) pool.add("broodcall");
+            if (d <= 8 && readyFor(q, "nova")) pool.add("nova");
+            if (d >= 4 && d <= 20 && sees && readyFor(q, "cocoon")) pool.add("cocoon");
+            if (d >= 5 && d <= 18 && queen.isOnGround() && readyFor(q, "skitter")) pool.add("skitter");
+            if (q.phase >= 2 && queen.isOnGround() && readyFor(q, "quake")) pool.add("quake");
+            if (d >= 6 && d <= 22 && sees && readyFor(q, "eggs")) pool.add("eggs");
+            if (q.abyssal) { // and the Abyssal Queen's 2
+                if (d <= 24 && sees && readyFor(q, "gaze")) pool.add("gaze");
+                if (d <= 18 && q.phase >= 2 && readyFor(q, "undertow")) pool.add("undertow");
+            }
+        }
         if (pool.isEmpty()) return;
         String m = pool.get(random.nextInt(pool.size()));
         q.move = m;
@@ -586,11 +626,201 @@ final class QueenSpiderManager implements Listener {
                 }
                 if (t >= 32) { rainSpots.remove(queen.getUniqueId()); cool(q, "rain", 14); q.move = null; }
             }
+            // ---------------------------------------------------------------- 1.3.57: the nest queen's new moves
+            case "frenzy" -> { // Fang Frenzy: three quick lunging bites
+                if (t == 1) { q.rig.play("crouch", 6); face(queen, tg); w.playSound(ql, Sound.ENTITY_SPIDER_AMBIENT, 2f, 1.3f); }
+                if (t == 5 || t == 12 || t == 19) { q.rig.play("bite", 8); face(queen, tg); Safe.vel(queen, dir(ql, tg.getLocation()).multiply(0.55).setY(0.08)); }
+                if (t == 8 || t == 15 || t == 22) {
+                    for (Player p : inFront(queen, 2.8 + q.scale * 0.8, 80)) hurt(q, p, ncfg(q, "frenzy-damage", 3.5, 4.5), true);
+                    w.playSound(ql, Sound.ENTITY_SPIDER_HURT, 1.4f, 0.7f + t * 0.02f);
+                }
+                if (t >= 28) { cool(q, "frenzy", 9); q.move = null; }
+            }
+            case "silkstorm" -> { // Silk Storm: she spins up a whirl of silk that drags you in, then it bursts into webs
+                if (t == 1) { q.rig.play("rear", 40); w.playSound(ql, Sound.ITEM_TRIDENT_RIPTIDE_3, 2f, 0.6f); }
+                if (t >= 5 && t <= 34) {
+                    Particle.DustOptions silk = new Particle.DustOptions(Color.fromRGB(235, 235, 240), 1.2f);
+                    for (int i = 0; i < 3; i++) {
+                        double a = t * 0.5 + i * Math.PI * 2 / 3, r = 2 + (t % 12) * 0.5;
+                        w.spawnParticle(Particle.DUST, ql.clone().add(Math.cos(a) * r, 0.6 + (t % 5) * 0.3, Math.sin(a) * r), 2, 0.1, 0.1, 0.1, 0, silk);
+                    }
+                    if (t % 3 == 0) for (Player p : w.getPlayers()) {
+                        if (!survival(p) || p.getLocation().distanceSquared(ql) > 9.5 * 9.5) continue;
+                        Safe.vel(p, dir(p.getLocation(), ql).multiply(0.22).setY(0.04));
+                        p.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 25, 0));
+                    }
+                }
+                if (t == 36) {
+                    Block c = ql.getBlock();
+                    for (int i = 0; i < 8; i++) {
+                        double a = random.nextDouble() * Math.PI * 2, r = 3 + random.nextDouble() * 4;
+                        placeWeb(c.getRelative((int) Math.round(Math.cos(a) * r), 0, (int) Math.round(Math.sin(a) * r)), (long) cfg("web-seconds", 5));
+                    }
+                    for (Player p : w.getPlayers()) if (survival(p) && p.getLocation().distanceSquared(ql) < 8 * 8) hurt(q, p, ncfg(q, "silkstorm-damage", 6, 8), false);
+                    w.playSound(ql, Sound.ENTITY_PLAYER_ATTACK_SWEEP, 2f, 0.5f);
+                }
+                if (t >= 40) { cool(q, "silkstorm", 16); q.move = null; }
+            }
+            case "broodcall" -> { // Brood Call: her brood come out of the dark
+                if (t == 1) { q.rig.play("brood", 30); w.playSound(ql, Sound.ENTITY_SPIDER_AMBIENT, 3f, 0.5f); w.playSound(ql, Sound.ENTITY_EVOKER_PREPARE_SUMMON, 1.5f, 0.6f); }
+                if (t == 22 && nests != null) {
+                    int n = q.phase >= 3 ? 3 : 2;
+                    for (int i = 0; i < n && nests.brood.brood.size() < cfg("brood-call-max", 30); i++) {
+                        double a = random.nextDouble() * Math.PI * 2;
+                        Location at = ql.clone().add(Math.cos(a) * 4, 0.2, Math.sin(a) * 4);
+                        if (!at.getBlock().isPassable()) at = ql.clone().add(0, 0.2, 0);
+                        NestBrood.Kind k = NestBrood.Kind.values()[random.nextInt(NestBrood.Kind.values().length)];
+                        NestBrood.Brood b = nests.brood.spawn(k, at, false, q.nestId);
+                        if (b != null) { b.body.setTarget(tg); w.spawnParticle(Particle.BLOCK, at, 20, 0.4, 0.3, 0.4, 0, Material.COBWEB.createBlockData()); }
+                    }
+                }
+                if (t >= 30) { cool(q, "broodcall", 30); q.move = null; }
+            }
+            case "nova" -> { // Venom Nova: her abdomen swells (green ring), then bursts in a poison cloud
+                if (t == 1) { q.rig.play("brood", 24); w.playSound(ql, Sound.ENTITY_PUFFER_FISH_BLOW_UP, 2f, 0.5f); }
+                if (t < 20 && t % 2 == 0) circle(ql, 6, Color.fromRGB(110, 230, 40));
+                if (t == 20) {
+                    w.playSound(ql, Sound.ENTITY_PUFFER_FISH_BLOW_OUT, 2f, 0.5f);
+                    w.spawnParticle(Particle.ITEM_SLIME, ql.clone().add(0, 1, 0), 60, 3, 0.6, 3, 0.05);
+                    w.spawn(ql, org.bukkit.entity.AreaEffectCloud.class, c -> {
+                        c.setRadius(5f); c.setDuration(80); c.setRadiusPerTick(-0.03f); c.setColor(Color.fromRGB(110, 200, 40));
+                        c.addCustomEffect(new PotionEffect(PotionEffectType.POISON, 60, 0), true);
+                    });
+                    for (Player p : w.getPlayers()) if (survival(p) && p.getLocation().distanceSquared(ql) < 6 * 6) {
+                        hurt(q, p, ncfg(q, "nova-damage", 5, 7), false);
+                        p.addPotionEffect(new PotionEffect(PotionEffectType.POISON, 80, 1));
+                    }
+                }
+                if (t >= 26) { cool(q, "nova", 14); q.move = null; }
+            }
+            case "cocoon" -> { // Cocoon: a silk line, and you're wrapped in webs
+                if (t == 1) { q.rig.play("spit", 16); face(queen, tg); w.playSound(ql, Sound.ENTITY_FISHING_BOBBER_THROW, 2f, 0.4f); }
+                if (t >= 4 && t <= 10) silkLine(ql.clone().add(0, q.scale * 0.5, 0), tg.getLocation().add(0, 1, 0));
+                if (t == 10 && tg.getLocation().distanceSquared(ql) < 22 * 22) {
+                    if (FaultlineItems.facingBlock(tg, ql.toVector())) FaultlineItems.shieldHit(tg, 2);
+                    else {
+                        Block feet = tg.getLocation().getBlock();
+                        placeWeb(feet, (long) cfg("cocoon-seconds", 3));
+                        placeWeb(feet.getRelative(0, 1, 0), (long) cfg("cocoon-seconds", 3));
+                        tg.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 60, 3));
+                        tg.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 25, 0));
+                        hurt(q, tg, ncfg(q, "cocoon-damage", 3, 4), false);
+                        tg.sendActionBar(net.kyori.adventure.text.Component.text("You're wrapped in silk! Break free!", net.kyori.adventure.text.format.NamedTextColor.WHITE));
+                    }
+                }
+                if (t >= 16) { cool(q, "cocoon", 15); q.move = null; }
+            }
+            case "skitter" -> { // Skitter: zig-zag dashes, webs left behind, ending in a bite
+                if (t == 1) { q.rig.play("crouch", 6); face(queen, tg); }
+                if (t == 4 || t == 10 || t == 16) {
+                    placeWeb(ql.getBlock(), 4);
+                    Vector to = dir(ql, tg.getLocation()), side = new Vector(-to.getZ(), 0, to.getX()).multiply(t == 10 ? -1 : 1);
+                    Safe.vel(queen, to.multiply(0.6).add(side.multiply(0.55)).setY(0.25));
+                    w.playSound(ql, Sound.ENTITY_SPIDER_STEP, 2f, 1.2f);
+                }
+                if (t == 22) {
+                    q.rig.play("bite", 14); face(queen, tg);
+                    for (Player p : inFront(queen, 3 + q.scale * 0.8, 90)) hurt(q, p, ncfg(q, "skitter-damage", 7, 10), true);
+                }
+                if (t >= 28) { cool(q, "skitter", 12); q.move = null; }
+            }
+            case "quake" -> { // Nest Quake: she slams the floor and dripstone rains down where the circles are
+                if (t == 1) { q.rig.play("slam", 30); w.playSound(ql, Sound.ENTITY_RAVAGER_ROAR, 1.5f, 0.7f); }
+                if (t == 4) Safe.vel(queen, new Vector(0, 0.75, 0));
+                if (t > 40 && t < 52 && t % 2 == 0) for (Location spot : quakeSpots.getOrDefault(queen.getUniqueId(), List.of())) circle(spot, 1.4, Color.fromRGB(200, 20, 30));
+                if (t <= 40 && !quakeSpots.containsKey(queen.getUniqueId()) && (t > 10 && queen.isOnGround() || t == 34)) {
+                    slam(q, 6, ncfg(q, "quake-damage", 8, 11));
+                    List<Location> spots = new ArrayList<>();
+                    for (Player p : w.getPlayers()) if (survival(p) && p.getLocation().distanceSquared(ql) < 22 * 22)
+                        for (int i = 0; i < 2; i++) spots.add(p.getLocation().add(random.nextGaussian() * 1.5, 0, random.nextGaussian() * 1.5));
+                    quakeSpots.put(queen.getUniqueId(), spots);
+                    q.moveT = 40; // the drip falls 12 ticks later
+                }
+                if (t == 52) {
+                    for (Location spot : quakeSpots.getOrDefault(queen.getUniqueId(), List.of())) {
+                        Location top = spot.clone();
+                        int up = 0;
+                        while (up < 8 && top.clone().add(0, 1, 0).getBlock().isPassable()) { top.add(0, 1, 0); up++; }
+                        try {
+                            org.bukkit.entity.FallingBlock fb = w.spawnFallingBlock(top, Bukkit.createBlockData("minecraft:pointed_dripstone[vertical_direction=down,thickness=tip]"));
+                            fb.setDropItem(false); fb.setHurtEntities(true); fb.addScoreboardTag(NestBrood.DRIP_TAG);
+                        } catch (RuntimeException | LinkageError ignored) { }
+                    }
+                }
+                if (t >= 56) { quakeSpots.remove(queen.getUniqueId()); cool(q, "quake", 20); q.move = null; }
+            }
+            case "eggs" -> { // Egg Lob: three egg sacs lobbed at you, cave spiders hatch where they land
+                if (t == 1) { q.rig.play("spit", 18); face(queen, tg); }
+                if (t == 9) for (int i = 0; i < 3; i++) {
+                    Location from = ql.clone().add(0, q.scale * 0.6, 0);
+                    Vector v = tg.getLocation().toVector().subtract(from.toVector());
+                    double flat = Math.hypot(v.getX(), v.getZ());
+                    Vector vel = v.setY(0).normalize().multiply(Math.min(1.6, flat * 0.075)).setY(0.45 + flat * 0.012)
+                            .add(new Vector(random.nextGaussian() * 0.08, 0, random.nextGaussian() * 0.08));
+                    org.bukkit.entity.Snowball egg = w.spawn(from, org.bukkit.entity.Snowball.class, sb -> {
+                        sb.setShooter(queen); sb.addScoreboardTag(EGG_TAG); sb.setItem(new ItemStack(Material.TURTLE_EGG));
+                    });
+                    Safe.vel(egg, vel);
+                    w.playSound(from, Sound.ENTITY_TURTLE_LAY_EGG, 1.5f, 0.6f);
+                }
+                if (t >= 18) { cool(q, "eggs", 16); q.move = null; }
+            }
+            // ---------------------------------------------------------------- 1.3.57: the Abyssal Queen's own
+            case "gaze" -> { // Abyssal Gaze: her eyes flare; whoever is LOOKING at her when it lands is struck blind
+                if (t == 1) {
+                    q.rig.play("rear", 30); w.playSound(ql, Sound.ENTITY_WARDEN_HEARTBEAT, 3f, 0.6f);
+                    for (Player p : w.getPlayers()) if (p.getLocation().distanceSquared(ql) < 26 * 26)
+                        p.sendTitle("", ChatColor.DARK_AQUA + "" + ChatColor.BOLD + "LOOK AWAY", 2, 22, 6);
+                }
+                if (t < 24 && t % 2 == 0) w.spawnParticle(Particle.SOUL_FIRE_FLAME, ql.clone().add(0, q.scale * 0.7, 0), 6, 0.6, 0.3, 0.6, 0.02);
+                if (t == 24) {
+                    Location eye = ql.clone().add(0, q.scale * 0.6, 0);
+                    for (Player p : w.getPlayers()) {
+                        if (!survival(p) || p.getLocation().distanceSquared(ql) > 24 * 24 || !sees(queen, p)) continue;
+                        Vector look = p.getEyeLocation().getDirection(), toHer = eye.toVector().subtract(p.getEyeLocation().toVector()).normalize();
+                        if (look.dot(toHer) < 0.55) continue; // looked away
+                        hurt(q, p, ncfg(q, "gaze-damage", 6, 8), false);
+                        p.addPotionEffect(new PotionEffect(PotionEffectType.DARKNESS, 90, 0));
+                        p.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 40, 0));
+                        p.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 50, 1));
+                    }
+                    w.playSound(ql, Sound.ENTITY_WARDEN_SONIC_BOOM, 1.5f, 1.2f);
+                }
+                if (t >= 30) { cool(q, "gaze", 18); q.move = null; }
+            }
+            case "undertow" -> { // Abyssal Undertow: a whirl of the deep drags everyone to her, then bursts
+                if (t == 1) { q.rig.play("rear", 50); w.playSound(ql, Sound.AMBIENT_UNDERWATER_ENTER, 3f, 0.5f); w.playSound(ql, Sound.ENTITY_ELDER_GUARDIAN_CURSE, 1f, 0.6f); }
+                if (t >= 5 && t <= 44) {
+                    Particle.DustOptions deep = new Particle.DustOptions(Color.fromRGB(40, 200, 210), 1.3f);
+                    for (int i = 0; i < 5; i++) {
+                        double a = t * 0.35 + i * Math.PI * 2 / 5, r = 14 - (t % 14);
+                        w.spawnParticle(Particle.DUST, ql.clone().add(Math.cos(a) * r, 0.5, Math.sin(a) * r), 1, 0, 0, 0, 0, deep);
+                    }
+                    if (t % 2 == 0) for (Player p : w.getPlayers()) {
+                        if (!survival(p) || p.getLocation().distanceSquared(ql) > 16 * 16) continue;
+                        Safe.vel(p, dir(p.getLocation(), ql).multiply(0.2).setY(-0.02));
+                    }
+                }
+                if (t == 46) {
+                    w.spawnParticle(Particle.SONIC_BOOM, ql.clone().add(0, 1, 0), 1, 0, 0, 0, 0);
+                    w.playSound(ql, Sound.ENTITY_GENERIC_EXPLODE, 1.5f, 0.6f);
+                    for (Player p : w.getPlayers()) {
+                        if (!survival(p)) continue;
+                        double dd = p.getLocation().distance(ql);
+                        if (dd > 16) continue;
+                        hurt(q, p, ncfg(q, dd < 5 ? "undertow-damage" : "undertow-edge-damage", dd < 5 ? 9 : 4, dd < 5 ? 11 : 5), false);
+                        Safe.vel(p, dir(ql, p.getLocation()).multiply(1.4).setY(0.55));
+                    }
+                }
+                if (t >= 52) { cool(q, "undertow", 24); q.move = null; }
+            }
             default -> q.move = null;
         }
     }
 
     private final Map<UUID, List<Location>> rainSpots = new HashMap<>();
+    private final Map<UUID, List<Location>> quakeSpots = new HashMap<>(); // 1.3.57
+    static final String EGG_TAG = "faultline_queen_egg";
 
     private boolean clearAbove(Location l, int h) {
         for (int i = 1; i <= h; i++) if (l.clone().add(0, i, 0).getBlock().getType().isSolid()) return false;
@@ -776,6 +1006,21 @@ final class QueenSpiderManager implements Listener {
         aim.setY(aim.getY() + aim.length() * 0.06);
         Safe.vel(bolt, aim.normalize().multiply(1.5));
         queen.getWorld().playSound(from, Sound.ENTITY_SPIDER_AMBIENT, 1.5f, 1.8f);
+    }
+
+    @EventHandler
+    public void onEggHit(ProjectileHitEvent event) { // 1.3.57: Egg Lob lands: a puff and two cave spiders
+        Projectile pr = event.getEntity();
+        if (!pr.getScoreboardTags().contains(EGG_TAG)) return;
+        Location at = pr.getLocation();
+        Queen q = pr.getShooter() instanceof Entity s ? queens.get(s.getUniqueId()) : null;
+        at.getWorld().spawnParticle(Particle.ITEM_SLIME, at, 16, 0.4, 0.3, 0.4, 0.02);
+        at.getWorld().playSound(at, Sound.ENTITY_TURTLE_EGG_HATCH, 1.5f, 0.7f);
+        if (event.getHitEntity() instanceof Player p && q != null) hurt(q, p, ncfg(q, "egg-damage", 3, 4), true);
+        if (q == null) return;
+        Player tg = q.mark;
+        for (int i = 0; i < 2 && q.brood.size() < (int) cfg("max-brood", 12); i++) spawnBrood(q, at.clone().add(0, 0.3, 0), EntityType.CAVE_SPIDER, tg);
+        pr.remove();
     }
 
     @EventHandler
@@ -982,9 +1227,14 @@ final class QueenSpiderManager implements Listener {
                 Bukkit.broadcastMessage(ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + p.getName() + " claimed the Queen's Silk!");
             }
             Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "index stat " + p.getName() + " nest_queens 1");
+            if (q.abyssal) { // 1.3.57
+                if (plugin.darkLoot != null) { ItemStack bag = plugin.darkLoot.bag(); bag.setAmount((int) cfg("abyssal.dark-loot-bags", 2)); give(p, bag); }
+                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "index stat " + p.getName() + " abyssal_queens 1");
+                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "index discover " + p.getName() + " abyssal_queen");
+            }
             Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "index discover " + p.getName() + " queen_spider");
         }
-        Bukkit.broadcastMessage(ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + "The Queen of the Nest has fallen" + (killer != null ? " to " + killer.getName() : "") + "!");
+        Bukkit.broadcastMessage((q.abyssal ? ChatColor.DARK_AQUA : ChatColor.DARK_PURPLE) + "" + ChatColor.BOLD + (q.abyssal ? "The Abyssal Queen" : "The Queen of the Nest") + " has fallen" + (killer != null ? " to " + killer.getName() : "") + "!");
     }
 
     private void give(Player p, ItemStack it) {

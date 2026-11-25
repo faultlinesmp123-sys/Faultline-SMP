@@ -587,9 +587,23 @@ public final class FaultlineItems extends JavaPlugin {
         getServer().getScheduler().runTaskTimer(this, queenSpiderManager::tick, 1L, 1L); // 1.3.44: every tick (the rig)
         spiderNest = new SpiderNest(this, queenSpiderManager); // 1.3.44: the Spider Nest biome + the sleeping Queen
         getServer().getPluginManager().registerEvents(spiderNest, this);
+        getCommand("queenspider").setTabCompleter((sender, cmd, label, args) -> { // 1.3.46
+            List<String> opts = args.length == 1 ? List.of("spawn", "nest", "killall")
+                    : args.length == 2 && args[0].equalsIgnoreCase("nest") ? List.of("here", "list", "tp", "respawn", "delete", "forget")
+                    : args.length == 3 && args[0].equalsIgnoreCase("nest") ? new ArrayList<>(spiderNest.nests.keySet()) : List.of();
+            String last = args.length == 0 ? "" : args[args.length - 1].toLowerCase();
+            return opts.stream().filter(o -> o.toLowerCase().startsWith(last)).toList();
+        });
         getCommand("queenspider").setExecutor((sender, cmd, label, args) -> { // /queenspider spawn [<world> <x> <y> <z>]
             if (args.length > 0 && args[0].equalsIgnoreCase("nest")) return spiderNest.command(sender, args); // 1.3.44
-            if (args.length == 0 || !args[0].equalsIgnoreCase("spawn")) { sender.sendMessage(ChatColor.YELLOW + "/queenspider spawn [<world> <x> <y> <z>] | nest [here|list|tp|respawn|remove]"); return true; }
+            if (args.length > 0 && args[0].equalsIgnoreCase("killall")) { // 1.3.46: every queen out there gone (nest queens come back asleep)
+                int n = queenSpiderManager.queens.size();
+                queenSpiderManager.removeAll();
+                for (SpiderNest.Nest nest : spiderNest.nests.values()) nest.queen = null;
+                sender.sendMessage(ChatColor.GREEN + "Removed " + n + " Queen Spider(s). Nest queens come back asleep on their thrones.");
+                return true;
+            }
+            if (args.length == 0 || !args[0].equalsIgnoreCase("spawn")) { sender.sendMessage(ChatColor.YELLOW + "/queenspider spawn [<world> <x> <y> <z>] | killall | nest [here|list|tp|respawn|delete|forget]"); return true; }
             Location at;
             if (args.length >= 5) {
                 World w = Bukkit.getWorld(args[1]);

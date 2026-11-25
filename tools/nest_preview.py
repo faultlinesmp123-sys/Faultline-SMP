@@ -10,15 +10,15 @@ for l in lines[1:]:
     B[(int(x), int(y), int(z))] = m
 out = sys.argv[2]
 AIR = {"CAVE_AIR"}
-LIGHT = {"OCHRE_FROGLIGHT": (255, 190, 90), "SOUL_LANTERN": (120, 220, 255)}
+LIGHT = {"OCHRE_FROGLIGHT": (255, 190, 90), "SOUL_LANTERN": (120, 220, 255), "PEARLESCENT_FROGLIGHT": (240, 200, 230)}
 COL = {"DEEPSLATE": (70, 78, 92), "COBBLED_DEEPSLATE": (60, 64, 76), "DEEPSLATE_TILES": (52, 56, 66), "TUFF": (110, 114, 104),
        "COBWEB": (225, 228, 232), "WHITE_CARPET": (210, 210, 214), "WHITE_WOOL": (230, 230, 230), "BONE_BLOCK": (220, 214, 190),
        "SKELETON_SKULL": (200, 200, 190), "DECORATED_POT": (170, 100, 70), "CHEST": (150, 100, 40), "SPAWNER": (40, 50, 70),
-       "OCHRE_FROGLIGHT": (250, 190, 90), "SOUL_LANTERN": (120, 220, 255), "IRON_CHAIN": (80, 80, 90), "SNIFFER_EGG": (170, 60, 40), "STONE": (100, 100, 100)}
+       "OCHRE_FROGLIGHT": (250, 190, 90), "SOUL_LANTERN": (120, 220, 255), "IRON_CHAIN": (80, 80, 90), "SNIFFER_EGG": (170, 60, 40), "STONE": (100, 100, 100), "CALCITE": (215, 215, 205), "COARSE_DIRT": (110, 80, 55), "GRAVEL": (120, 115, 112), "PEARLESCENT_FROGLIGHT": (235, 200, 225), "BROWN_MUSHROOM": (150, 110, 80), "DEAD_BUSH": (140, 100, 50), "GLOW_LICHEN": (120, 160, 130), "POINTED_DRIPSTONE": (130, 100, 85), "BEDROCK": (40, 40, 40), "OAK_PLANKS": (160, 130, 80)}
 
 def air(x, y, z):
     m = B.get((x, y, z))
-    return m in AIR or m == "COBWEB" or m == "WHITE_CARPET" or m == "SOUL_LANTERN" or m == "IRON_CHAIN" or m == "SKELETON_SKULL" or m == "DECORATED_POT"
+    return m in AIR or m == "GLOW_LICHEN" or m == "POINTED_DRIPSTONE" or m == "BROWN_MUSHROOM" or m == "DEAD_BUSH" or m == "COBWEB" or m == "WHITE_CARPET" or m == "SOUL_LANTERN" or m == "IRON_CHAIN" or m == "SKELETON_SKULL" or m == "DECORATED_POT"
 
 caveY = {}
 for (x, y, z), m in B.items():

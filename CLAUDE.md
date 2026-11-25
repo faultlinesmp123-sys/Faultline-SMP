@@ -2988,6 +2988,30 @@ Notes:
   the open air at the tunnel mouth). QueenRig poses every 2 ticks close up (was every tick: 32 metadata packets a tick).
   PackHash's temp file is deleted when a download fails. Tested (`nest/NestTest`: a chest + planks in the throne cavern and
   a bedrock floor survive, the way in stays open).
+- **The nest overhaul + real queen legs (Items 1.3.46)**: the "red floating cubes" in the nest were SNIFFER EGGS (1.3.44 put them
+  on nest floors; they also hatch into sniffers): gone, and 1.3.44 nests have theirs turned into egg clutches once per chunk on
+  load (`cleanOld`, chunk PDC `faultlineitems:nest_v2`). MANY QUEENS: the nest's own extra spiders spawn as NATURAL, so each had
+  the wild 0.25% roll: wild queens never spawn within a nest's radius + 48 (`SpiderNest.near`); the nest tick keeps ONE queen per
+  nest (adopts a lost one, removes extras); a second nest within radius + 90 of another is refused (`here force` overrides).
+  THE WAY IN: 1.3.44's straight tunnel was far too steep: now a SPIRAL RAMP (`Plan.entrance`, radius 7 round a rock pillar,
+  1.9 down per 0.75 rad, r 2.5) from the surface under the admin to the nearest chamber's level, then a level tunnel in, built
+  even when the admin was underground (within 150 of the surface); `walkway()` lays its floor 3 wide (a white-wool SILK BRIDGE
+  where it crosses a chamber or a lower turn) and clears 3 blocks of head room; few webs, soul lanterns. The MOUTH on the surface:
+  9 curved bone fangs (skull tips) round the hole, webs / silk carpet / bones spilling out. LOOK: floors of coarse dirt / gravel /
+  tuff, ceilings with white-wool silk sheets, calcite veins, glow lichen, dripstone, brown mushrooms / dead bushes, egg clutches
+  (1-3 ochre / pearlescent froglights under a web), hanging COCOONS (2 wool on a strand; the lower wool is a lootable body, "You
+  cut the cocoon open..."), a ribcage of 7 bone arcs over the throne with egg clutches between, 4 silk threads per chamber (tag
+  `faultline_nest_silk` + `_<id>`). DELETE: every block the build changes goes through `put()` into an undo map, saved as
+  `plugins/FaultlineItems/spider_nests/<id>.undo.gz` ("x y z blockdata"); `/queenspider nest delete [id]` (aliases remove,
+  destroy; no id = the nest you're in / nearest within 300) removes the queen, silk and loot marks and puts every block back (test:
+  0 blocks differ); a 1.3.44 nest (no record) has its cave air + nest blocks below the surface filled with stone/deepslate
+  (chests stay). `forget` = the old remove. `/queenspider killall`, `tp [id] entrance`, tab completion. Nest box + mouth saved in
+  spider_nests.yml. THE RIG (`QueenRig`): every foot is PLANTED in the world and the leg reaches it by two-bone IK (femur 18 +
+  tibia 20, the tarsus 15 held at `FOOT_ABS` 1.3 rad); a foot more than 9 px x k from its rest spot (`home`, snapped to the
+  ground under it) STEPS in an arc to where it'll be (leading her motion), a whole tetrapod group at a time; the body sits on its
+  feet (height, pitch, roll from where they stand), the head tracks her target, the abdomen lags turns, fangs chew, palps feel,
+  idle front legs tap, `hurt()` = a flinch; sleep / rear / death blend over the IK. Test: feet within 0.08 blocks of flat ground,
+  all 8 step along a walk (scratch `nest/NestTest2`).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

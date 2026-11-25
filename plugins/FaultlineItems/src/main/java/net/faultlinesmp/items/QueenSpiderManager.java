@@ -120,6 +120,7 @@ final class QueenSpiderManager implements Listener {
         if (event.getEntityType() != EntityType.SPIDER || !(event.getEntity() instanceof Spider spider)) return;
         Location loc = event.getLocation();
         if (loc.getBlock().getLightFromSky() > 0) return; // caves only
+        if (nests != null && nests.near(loc, 48)) return; // 1.3.46: a nest has its own queen (its spiders were making wild ones)
         queens.values().removeIf(q -> !q.body.isValid() && (q.rig == null || q.rig.gone));
         int wild = 0;
         for (Queen q : queens.values()) if (q.nestId == null) wild++;
@@ -816,6 +817,7 @@ final class QueenSpiderManager implements Listener {
                 || event.getCause() == EntityDamageEvent.DamageCause.FIRE || event.getCause() == EntityDamageEvent.DamageCause.LAVA) { event.setCancelled(true); return; }
         if (by != null) q.fighters.add(by.getUniqueId());
         if (q.t % 6 == 0) q.body.getWorld().playSound(q.body.getLocation(), Sound.ENTITY_SPIDER_HURT, 1.5f, 0.5f);
+        if (q.rig != null) q.rig.hurt(event.getDamage());
     }
 
     /** Asleep: she doesn't hunt anyone. Her brood never turn on her. */

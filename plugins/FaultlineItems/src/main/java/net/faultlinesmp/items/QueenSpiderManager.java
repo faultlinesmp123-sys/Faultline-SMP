@@ -94,6 +94,8 @@ final class QueenSpiderManager implements Listener {
         Location markAt;
         final Map<String, Long> ready = new HashMap<>();
         double scale;
+        Location lastSpot;       // 1.3.56: stuck checks
+        int stuck;
     }
 
     private final FaultlineItems plugin;
@@ -176,7 +178,9 @@ final class QueenSpiderManager implements Listener {
         String name = nestId != null ? "Queen of the Nest" : "Queen Spider";
         spider.setCustomName(ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + name);
         spider.setCustomNameVisible(false);
-        setAttr(spider, Attribute.SCALE, q.scale);
+        // 1.3.56: the BODY (the real mob that walks and pathfinds) is smaller than the model: at the model's size (4.2 = ~6 wide,
+        // 4 tall) it couldn't fit the nest's tunnels or get between the bone pillars round her throne and stood stuck there
+        setAttr(spider, Attribute.SCALE, Math.min(q.scale, ncfg(q, "body-scale", 2.0, 2.0)));
         double hp = ncfg(q, "health", Balance.num(plugin, "queen-spider-boss.health", 500, 900), 3600); // really hard
         BigHealth.set(spider, hp); // 1.3.53: over the server's 1024 cap setHealth threw (the model-less queens)
         setAttr(spider, Attribute.ATTACK_DAMAGE, ncfg(q, "bite-damage", 13, 20));
@@ -277,11 +281,66 @@ final class QueenSpiderManager implements Listener {
         int want = frac <= cfg("phase3-at", 0.3) ? 3 : frac <= cfg("phase2-at", 0.6) ? 2 : 1;
         if (want > q.phase) newPhase(q, want);
         if (q.move != null) { runMove(q); return; }
+        unstick(q);
         if (q.t < q.nextMove) return;
         Player target = queen.getTarget() instanceof Player p && survival(p) && p.getLocation().distanceSquared(queen.getLocation()) < 40 * 40 ? p : nearestSurvival(queen.getLocation(), 32);
         if (target == null) return;
         if (queen.getTarget() != target) queen.setTarget(target);
         pickMove(q, target);
+    }
+
+    /**
+     * 1.3.56: stuck = awake with a target, out of reach, and hardly moved in 2 s. First a path is asked for again; still stuck, she
+     * CLIMBS/LEAPS toward them (spiders climb: a hop up and toward the target), and if that fails 4 times in a row she skitters
+     * (a short teleport along open cells) toward them.
+     */
+    private void unstick(Queen q) {
+        Spider queen = q.body;
+        if (q.t % 20 != 0) return;
+        Location now = queen.getLocation();
+        Location was = q.lastSpot;
+        q.lastSpot = now.clone();
+        if (was == null || was.getWorld() != now.getWorld()) return;
+        if (!(queen.getTarget() instanceof Player tg) || tg.getWorld() != now.getWorld()) { q.stuck = 0; return; }
+        double dist = tg.getLocation().distance(now);
+        if (dist < 2.6 + q.scale * 0.8 || was.distance(now) > 1.2) { q.stuck = 0; return; }
+        q.stuck++;
+        if (q.stuck == 1) { try { queen.getPathfinder().moveTo(tg, 1.25); } catch (RuntimeException | LinkageError ignored) { } return; }
+        org.bukkit.util.Vector to = tg.getLocation().toVector().subtract(now.toVector());
+        org.bukkit.util.Vector flat = to.clone().setY(0);
+        if (flat.lengthSquared() < 0.01) flat = new org.bukkit.util.Vector(1, 0, 0);
+        flat.normalize();
+        if (q.stuck <= 5) {
+            Safe.vel(queen, flat.multiply(0.75).setY(to.getY() > 1 ? 0.75 : 0.5));
+            queen.getWorld().playSound(now, Sound.ENTITY_SPIDER_STEP, SoundCategory.HOSTILE, 1f, 0.5f);
+            if (q.rig != null) q.rig.play("rear", 12);
+            return;
+        }
+        // skitter: the furthest open spot up to 4 blocks toward them that her body fits
+        for (double d = 4; d >= 1; d -= 0.5) {
+            Location l = now.clone().add(flat.clone().multiply(d));
+            l.setY(Math.floor(l.getY()));
+            for (int dy : new int[]{0, 1, -1, 2}) {
+                Location c = l.clone().add(0, dy, 0);
+                if (fits(c, Math.ceil(queen.getWidth() / 2), Math.ceil(queen.getHeight()))) {
+                    c.setYaw(now.getYaw()); c.setPitch(0);
+                    queen.teleport(c);
+                    q.stuck = 2;
+                    return;
+                }
+            }
+        }
+    }
+
+    private static boolean fits(Location at, double half, double height) {
+        org.bukkit.block.Block base = at.getBlock();
+        if (!base.getRelative(0, -1, 0).getType().isSolid()) return false;
+        int r = (int) Math.max(0, half - 0.5);
+        for (int x = -r; x <= r; x++) for (int z = -r; z <= r; z++) for (int y = 0; y < height; y++) {
+            Material m = base.getRelative(x, y, z).getType();
+            if (m.isSolid()) return false;
+        }
+        return true;
     }
 
     private double maxHp(LivingEntity e) {

@@ -37,6 +37,7 @@ final class HitBox implements Listener {
         plugin = p;
         p.getServer().getPluginManager().registerEvents(new HitBox(), p);
         Bukkit.getScheduler().runTaskTimer(p, HitBox::standinUpkeep, 20L, 20L);
+        Bukkit.getScheduler().runTaskTimer(p, HitBox::arrows, 1L, 1L);
     }
 
     // ---------------------------------------------------------------- 1.3.55: Bedrock stand-ins
@@ -98,6 +99,64 @@ final class HitBox implements Listener {
     void remove() {
         if (box != null) { BY_BOX.remove(box.getUniqueId()); if (box.isValid()) box.remove(); }
         if (body != null) BY_BODY.remove(body.getUniqueId());
+    }
+
+    // ---------------------------------------------------------------- 1.3.56: arrows
+    // The game never lets a player's projectile hit an entity hidden from that player (CraftBukkit's canHitEntity), so with the
+    // body hidden every arrow flew straight through her. Players' arrows / tridents are followed here: if the path it's about to
+    // fly this tick passes through a hidden body's box (the size she's drawn at), it lands: the vanilla arrow damage (speed x
+    // damage, crits, Power, Flame, Punch none) as ARROW / TRIDENT damage from the shooter, then the arrow drops (or keeps
+    // flying with Piercing).
+    private static final java.util.Set<org.bukkit.entity.AbstractArrow> FLYING = new java.util.HashSet<>();
+
+    @EventHandler(ignoreCancelled = true)
+    public void onLaunch(org.bukkit.event.entity.ProjectileLaunchEvent e) {
+        if (e.getEntity() instanceof org.bukkit.entity.AbstractArrow a && a.getShooter() instanceof Player && !BY_BODY.isEmpty()) FLYING.add(a);
+    }
+
+    private static boolean inBlock(org.bukkit.entity.AbstractArrow a) { try { return a.isInBlock(); } catch (RuntimeException e) { return false; } }
+
+    private static void arrows() {
+        if (FLYING.isEmpty()) return;
+        java.util.Iterator<org.bukkit.entity.AbstractArrow> it = FLYING.iterator();
+        while (it.hasNext()) {
+            org.bukkit.entity.AbstractArrow a = it.next();
+            if (!a.isValid() || inBlock(a) || a.getTicksLived() > 200) { it.remove(); continue; }
+            org.bukkit.util.Vector v = a.getVelocity();
+            double len = v.length();
+            if (len < 0.05 || !Double.isFinite(len)) continue;
+            org.bukkit.Location at = a.getLocation();
+            for (HitBox h : BY_BODY.values()) {
+                if (h.body == null || !h.body.isValid() || h.body.isDead() || h.body.getWorld() != at.getWorld() || h.box == null) continue;
+                org.bukkit.Location b = h.body.getLocation();
+                if (b.distanceSquared(at) > 40 * 40) continue;
+                double hw = h.box.getInteractionWidth() / 2.0, hh = h.box.getInteractionHeight();
+                org.bukkit.util.BoundingBox bb = new org.bukkit.util.BoundingBox(b.getX() - hw, b.getY(), b.getZ() - hw, b.getX() + hw, b.getY() + hh, b.getZ() + hw);
+                org.bukkit.util.RayTraceResult hit = bb.rayTrace(at.toVector(), v.clone().multiply(1 / len), len + 0.3);
+                if (hit == null) continue;
+                if (a.getPierceLevel() > 0 && a.getScoreboardTags().contains("faultline_hit_" + h.body.getEntityId())) continue;
+                Player shooter = (Player) a.getShooter();
+                double dmg;
+                if (a instanceof org.bukkit.entity.Trident) dmg = 8;
+                else {
+                    dmg = Math.ceil(Math.max(0, Math.min(len * a.getDamage(), Integer.MAX_VALUE)));
+                    if (a.isCritical()) dmg += java.util.concurrent.ThreadLocalRandom.current().nextInt((int) (dmg / 2 + 2));
+                }
+                try {
+                    org.bukkit.damage.DamageSource src = org.bukkit.damage.DamageSource.builder(a instanceof org.bukkit.entity.Trident
+                            ? org.bukkit.damage.DamageType.TRIDENT : org.bukkit.damage.DamageType.ARROW).withCausingEntity(shooter).withDirectEntity(a).build();
+                    h.body.damage(dmg, src);
+                } catch (RuntimeException | LinkageError ex) { h.body.damage(dmg, shooter); }
+                if (a.getFireTicks() > 0) h.body.setFireTicks(Math.max(h.body.getFireTicks(), 100));
+                at.getWorld().playSound(at, org.bukkit.Sound.ENTITY_ARROW_HIT, 1f, 1.1f);
+                shooter.playSound(shooter, org.bukkit.Sound.ENTITY_ARROW_HIT_PLAYER, 0.4f, 1f);
+                if (a.getPierceLevel() > 0) { a.addScoreboardTag("faultline_hit_" + h.body.getEntityId()); a.setPierceLevel(a.getPierceLevel() - 1); continue; }
+                if (a instanceof org.bukkit.entity.Trident t) Safe.vel(t, v.clone().multiply(-0.1).setY(0.1)); // bounces off, Loyalty brings it back
+                else a.remove();
+                it.remove();
+                break;
+            }
+        }
     }
 
     private static boolean attacking;

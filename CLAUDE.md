@@ -3129,6 +3129,15 @@ Notes:
   Queen at all. `HitBox.bedrockOnly(e)`: visible by default, HIDDEN from Java players, re-checked every second (`standinUpkeep`)
   and on join / world change (a miss now shows a Java player a plain spider instead). Tested (scratch `nest/d5/BedTest`: Java
   can't see it, a Bedrock player there at spawn and one who arrives later can).
+- **Queen: stuck + arrows (Items 1.3.56)**: (1) her walking BODY was the model's size (scale 4.2 = ~6 wide, 4 tall) and stood
+  stuck between the bone pillars / in the tunnels: the body's SCALE is now `queen-spider-boss.body-scale` / `nest.body-scale` 2.0
+  (the model, her reach and the Bedrock stand-in keep `scale`). `unstick()` (every second, awake with a target out of reach, moved
+  < 1.2 in 1 s): a fresh path, then leaps toward them (Safe.vel + "rear"), after 5 tries a skitter (teleport up to 4 blocks toward
+  them onto a spot her body `fits`). (2) ARROWS went through her: CraftBukkit's canHitEntity refuses a player's projectile against
+  an entity HIDDEN from that player, and `HitBox` hides the body. `HitBox.arrows()` (every tick) follows players' arrows / tridents
+  (ProjectileLaunchEvent) and ray-traces this tick's flight against each hidden body's Interaction-size box: vanilla arrow damage
+  (speed x damage, crit bonus) as ARROW / TRIDENT damage caused by the shooter, Flame = fire, Piercing keeps going, the arrow is
+  removed (a trident bounces back). Applies to every HitBox body (the Queen, the brood). Tested (scratch `nest/d5/StuckTest`).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

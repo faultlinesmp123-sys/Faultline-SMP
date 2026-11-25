@@ -1145,11 +1145,6 @@ final class SpiderNest implements Listener {
         Material m = b.getType();
         if (m != Material.COBWEB && m != Material.SKELETON_SKULL && m != Material.WHITE_WOOL) return;
         if (nests.isEmpty()) return;
-        if (m == Material.COBWEB) for (Entity en : b.getWorld().getNearbyEntities(b.getLocation().add(0.5, 0.5, 0.5), 0.55, 0.55, 0.55)) // the item you could see in it
-            if (en instanceof org.bukkit.entity.ItemDisplay d && en.getScoreboardTags().contains(WEB_ITEM_TAG)) {
-                if (e.getPlayer().getGameMode() != org.bukkit.GameMode.CREATIVE) b.getWorld().dropItemNaturally(d.getLocation(), d.getItemStack());
-                d.remove();
-            }
         NamespacedKey k = m == Material.COBWEB ? webKey : bodyKey;
         if (!takeMark(b, k)) return;
         if (e.getPlayer().getGameMode() == org.bukkit.GameMode.CREATIVE) return;
@@ -1167,6 +1162,18 @@ final class SpiderNest implements Listener {
         Location at = b.getLocation().add(0.5, 0.4, 0.5);
         for (ItemStack it : drop) b.getWorld().dropItemNaturally(at, it);
         b.getWorld().spawnParticle(Particle.WHITE_ASH, at, 12, 0.3, 0.3, 0.3, 0);
+    }
+
+    /** The item you could see in a web drops when the web really breaks (MONITOR: never when a claim plugin stopped it). */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onWebItem(BlockBreakEvent e) {
+        Block b = e.getBlock();
+        if (b.getType() != Material.COBWEB || nests.isEmpty()) return;
+        for (Entity en : b.getWorld().getNearbyEntities(b.getLocation().add(0.5, 0.5, 0.5), 0.55, 0.55, 0.55))
+            if (en instanceof org.bukkit.entity.ItemDisplay d && en.getScoreboardTags().contains(WEB_ITEM_TAG)) {
+                if (e.getPlayer().getGameMode() != org.bukkit.GameMode.CREATIVE) b.getWorld().dropItemNaturally(d.getLocation(), d.getItemStack());
+                d.remove();
+            }
     }
 
     // ============================================================================================ the queen, ambience

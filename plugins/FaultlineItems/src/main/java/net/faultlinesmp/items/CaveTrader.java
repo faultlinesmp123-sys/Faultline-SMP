@@ -389,6 +389,7 @@ final class CaveTrader implements Listener, CommandExecutor {
         for (int dy = 1; dy >= -1; dy--) {
             Block feet = w.getBlockAt(bx, by + dy, bz);
             if (!feet.isPassable() || feet.isLiquid() || !feet.getRelative(0, 1, 0).isPassable()) continue;
+            if (feet.getLightFromSky() > 0) continue; // he keeps to the caves
             Block under = feet.getRelative(0, -1, 0);
             if (!under.getType().isSolid()) continue;
             return (double) feet.getY();

@@ -294,7 +294,7 @@ final class QueenSpiderManager implements Listener {
             Long at = q.musicAt.get(p.getUniqueId());
             if (in && (at == null || q.t - at >= len)) {
                 p.stopSound(SoundCategory.MUSIC);
-                p.playSound(p.getLocation(), MUSIC, SoundCategory.RECORDS, 1f, 1f);
+                p.playSound(p, MUSIC, SoundCategory.RECORDS, 1f, 1f); // 1.3.48: follows the player (it faded out as the fight moved)
                 q.musicAt.put(p.getUniqueId(), q.t);
             } else if (!in && at != null && p.getLocation().distanceSquared(l) > 80 * 80) {
                 p.stopSound(MUSIC, SoundCategory.RECORDS);
@@ -668,10 +668,12 @@ final class QueenSpiderManager implements Listener {
         if (!block.getType().isAir()) return;
         block.setType(Material.COBWEB);
         webs.add(block);
+        SpiderForm.TEMP.add(block);
         Bukkit.getScheduler().runTaskLater(plugin, () -> clearWeb(block), seconds * 20L);
     }
 
     private void clearWeb(Block block) {
+        SpiderForm.TEMP.remove(block);
         if (webs.remove(block) && block.getType() == Material.COBWEB) block.setType(Material.AIR);
     }
 

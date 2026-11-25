@@ -68,6 +68,8 @@ final class SpiderForm implements Listener {
     private final Map<UUID, Long> cooldown = new HashMap<>();
     private final Set<UUID> silkCarriers = new HashSet<>();
     private final Map<Block, Long> parted = new HashMap<>(); // webs parted for a carrier -> when they were last in it
+    /** Webs that are meant to vanish on their own (the silk shot's, the Queen's traps): parted for good, never woven back. */
+    static final Set<Block> TEMP = new HashSet<>();
     private long ticks;
 
     SpiderForm(FaultlineItems plugin) {
@@ -114,6 +116,7 @@ final class SpiderForm implements Listener {
             double half = p.getWidth() / 2 + 0.05;
             for (double dx : new double[]{-half, half}) for (double dz : new double[]{-half, half}) for (double dy : new double[]{0.1, p.getHeight() * 0.5, p.getHeight() - 0.1}) {
                 Block b = l.getWorld().getBlockAt((int) Math.floor(l.getX() + dx), (int) Math.floor(l.getY() + dy), (int) Math.floor(l.getZ() + dz));
+                if (b.getType() == Material.COBWEB && TEMP.contains(b)) { b.setType(Material.AIR, false); continue; }
                 if (b.getType() == Material.COBWEB && !parted.containsKey(b)) {
                     parted.put(b, now);
                     b.setType(Material.AIR, false);
@@ -253,7 +256,9 @@ final class SpiderForm implements Listener {
         if (f.standin != null && f.standin.isValid()) f.standin.remove();
     }
 
-    void endAll() { for (UUID id : new ArrayList<>(forms.keySet())) { Player p = Bukkit.getPlayer(id); if (p != null) end(p, null); else drop(id, forms.get(id)); } }
+    void endAll() {
+        for (Block b : parted.keySet()) if (b.getType().isAir()) b.setType(Material.COBWEB, false); // the server stopping: every parted web goes back
+        parted.clear(); for (UUID id : new ArrayList<>(forms.keySet())) { Player p = Bukkit.getPlayer(id); if (p != null) end(p, null); else drop(id, forms.get(id)); } }
 
     private static final EquipmentSlot[] SLOTS = {EquipmentSlot.HAND, EquipmentSlot.OFF_HAND, EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET};
 

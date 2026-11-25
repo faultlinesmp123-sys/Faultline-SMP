@@ -106,6 +106,7 @@ final class NestBrood implements Listener {
     private final Map<UUID, Brood> byStandin = new HashMap<>();
     private final Map<String, Run> runs = new HashMap<>();
     private final Map<String, Long> bedSpawned = new HashMap<>();
+    private final Map<String, UUID> bedSleeper = new HashMap<>(); // a bed's sleeper (no second one while it lives)
     private final Map<UUID, Long> musicAt = new HashMap<>();
     private final Map<String, Long> nextQuake = new HashMap<>();
     private final Random random = new Random();
@@ -191,6 +192,13 @@ final class NestBrood implements Listener {
     private void tick() {
         ticks++;
         for (Brood b : new ArrayList<>(brood.values())) {
+            try { tickOne(b); } catch (RuntimeException e) { plugin.getLogger().warning("[NestBrood] " + b.kind + ": " + e); }
+        }
+        if (ticks % 10 == 0) dens();
+    }
+
+    private void tickOne(Brood b) {
+        {
             b.t++;
             if (b.rig != null) b.rig.tick();
             if (!b.body.isValid() || b.body.isDead()) {
@@ -198,13 +206,13 @@ final class NestBrood implements Listener {
                     brood.remove(b.body.getUniqueId());
                     if (b.standin != null) { byStandin.remove(b.standin.getUniqueId()); if (b.standin.isValid()) b.standin.remove(); }
                 }
-                continue;
+                return;
             }
             if (b.standin != null && b.standin.isValid() && b.t % 2 == 0) b.standin.teleport(b.body.getLocation());
             if (b.asleep) {
                 if (b.t % 10 == 0) for (Player p : b.body.getWorld().getPlayers())
                     if (survival(p) && p.getLocation().distanceSquared(b.body.getLocation()) < 16 && !p.isSneaking()) { wake(b, p); break; }
-                continue;
+                return;
             }
             Location l = b.body.getLocation();
             LivingEntity tg = b.body.getTarget();
@@ -230,7 +238,6 @@ final class NestBrood implements Listener {
                     if (survival(p) && p.getLocation().distanceSquared(l) < 18 * 18 && b.body.hasLineOfSight(p)) { b.body.setTarget(p); break; }
             }
         }
-        if (ticks % 10 == 0) dens();
     }
 
     void wake(Brood b, Player by) {
@@ -337,7 +344,7 @@ final class NestBrood implements Listener {
         else if (r < 0.50) at.getWorld().spawnEntity(at, EntityType.CAVE_SPIDER, org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.NATURAL);
         else if (r < 0.62) at.getWorld().spawnEntity(at, EntityType.ZOMBIE, org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.NATURAL);
         else if (r < 0.74) at.getWorld().spawnEntity(at, EntityType.SKELETON, org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.NATURAL);
-        else if (broodNear(at, 40) < cfg("brood-cap", 6)) {
+        else if (broodNear(at, 40) < cfg("brood-cap", 6) && brood.size() < cfg("brood-max", 30)) {
             Kind k = r < 0.83 ? Kind.SERVANT : r < 0.89 ? Kind.VENOM : r < 0.95 ? Kind.EMBER : Kind.SWIFT;
             spawn(k, at, false, n.id);
         }
@@ -370,13 +377,16 @@ final class NestBrood implements Listener {
         for (int[] bed : n.sleeps) {
             String key = n.id + "@" + bed[0] + "," + bed[1] + "," + bed[2];
             if (now < bedSpawned.getOrDefault(key, 0L)) continue;
+            UUID old = bedSleeper.get(key);
+            if (old != null && brood.containsKey(old)) continue; // still there (asleep or out hunting)
             Location at = new Location(p.getWorld(), bed[0] + 0.5, bed[1], bed[2] + 0.5);
             double d = at.distanceSquared(p.getLocation());
             if (d > 26 * 26 || d < 10 * 10) continue;
             bedSpawned.put(key, now + (long) (cfg("bed-respawn-minutes", 10) * 60000));
             Kind k = random.nextDouble() < 0.5 ? Kind.SERVANT : Kind.values()[1 + random.nextInt(3)];
+            if (brood.size() >= cfg("brood-max", 30)) return;
             Brood b = spawn(k, at, true, n.id);
-            if (b != null) b.body.setRotation(random.nextFloat() * 360, 0);
+            if (b != null) { b.body.setRotation(random.nextFloat() * 360, 0); bedSleeper.put(key, b.body.getUniqueId()); }
         }
     }
 
@@ -424,6 +434,14 @@ final class NestBrood implements Listener {
                     else if (now - run.lonelySince > 30000) { abort(key, run); continue; }
                 } else run.lonelySince = -1;
                 run.mobs.removeIf(u -> { Entity e = Bukkit.getEntity(u); return e == null || !e.isValid() || e.isDead(); });
+                for (UUID u : new ArrayList<>(run.mobs)) { // a straggler that wandered off (or fell somewhere) can't hold the den up forever
+                    Entity e = Bukkit.getEntity(u);
+                    if (e != null && (e.getWorld() != w || e.getLocation().distanceSquared(at) > 40 * 40)) {
+                        Brood b = brood.get(u);
+                        if (b != null) remove(b); else e.remove();
+                        run.mobs.remove(u);
+                    }
+                }
                 for (UUID u : run.mobs) { // keep them on the fight
                     if (Bukkit.getEntity(u) instanceof Mob m && m.getTarget() == null) {
                         Player best = null; double bd = 30 * 30;
@@ -467,7 +485,10 @@ final class NestBrood implements Listener {
             if (e == null) continue;
             e.addScoreboardTag(DEN_TAG);
             e.setPersistent(false);
-            if (e instanceof LivingEntity le && !(e instanceof Spider)) le.getEquipment().clear();
+            if (e instanceof LivingEntity le && !(e instanceof Spider) && le.getEquipment() != null) { // keep their weapons (a skeleton needs its bow), drop none of it
+                var eq = le.getEquipment();
+                for (org.bukkit.inventory.EquipmentSlot s : org.bukkit.inventory.EquipmentSlot.values()) try { eq.setDropChance(s, 0f); } catch (RuntimeException ignored) { }
+            }
             run.mobs.add(e.getUniqueId());
         }
     }
@@ -584,7 +605,7 @@ final class NestBrood implements Listener {
         }
         if (at == null || now - at > cfg("music-seconds", 101) * 1000) {
             p.stopSound(SoundCategory.MUSIC);
-            p.playSound(p.getLocation(), MUSIC, SoundCategory.MUSIC, 1f, 1f);
+            p.playSound(p, MUSIC, SoundCategory.MUSIC, 1f, 1f); // follows them (a sound at a spot fades as you walk off)
             musicAt.put(p.getUniqueId(), now);
         }
     }

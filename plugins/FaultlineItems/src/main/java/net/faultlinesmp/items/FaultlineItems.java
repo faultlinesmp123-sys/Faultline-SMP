@@ -6313,10 +6313,12 @@ public final class FaultlineItems extends JavaPlugin {
             if (!block.getType().isAir()) return;
             block.setType(Material.COBWEB);
             webs.add(block);
+            SpiderForm.TEMP.add(block);
             Bukkit.getScheduler().runTaskLater(plugin, () -> clearWeb(block), seconds * 20L);
         }
 
         private void clearWeb(Block block) {
+            SpiderForm.TEMP.remove(block);
             if (webs.remove(block) && block.getType() == Material.COBWEB) block.setType(Material.AIR);
         }
 

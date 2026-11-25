@@ -139,9 +139,17 @@ final class QueenRig {
     private static double clamp(double v, double lo, double hi) { return Math.max(lo, Math.min(hi, v)); }
     private static double smooth(double f) { f = clamp(f, 0, 1); return f * f * (3 - 2 * f); }
 
+    private double nearD2 = 1e9; // the nearest player (squared), worked out each tick
+
     void tick() {
         if (gone) return;
         t++;
+        nearD2 = 1e9;
+        if (at != null && at.getWorld() != null) for (Player pl : at.getWorld().getPlayers()) {
+            if (pl == body) continue;
+            double d = pl.getLocation().distanceSquared(at);
+            if (d < nearD2) nearD2 = d;
+        }
         double dYaw = 0;
         if (!dying) {
             if (!body.isValid()) { remove(); return; }
@@ -213,7 +221,7 @@ final class QueenRig {
         } else if (fold < 0.5) hy = Math.sin(t * 0.021) * 0.25 * Math.sin(t * 0.007); // looking around
         headYaw = ease(headYaw, hy, 0.15); headPitch = ease(headPitch, hp, 0.12);
         abdYaw = ease(abdYaw, clamp(-Math.toRadians(turnRate) * 2.2, -0.45, 0.45) + Math.sin(t * 0.05) * 0.04, 0.12);
-        feet();
+        if (nearD2 < 64 * 64 || t % 10 == 0 || !planted) feet(); // 1.3.48: nobody close = the feet are worked out twice a second
         draw();
     }
 
@@ -391,16 +399,18 @@ final class QueenRig {
         float eb = glow >= 0 ? Math.max(glow, fold > 0.6 ? 4 : 15) : fold > 0.6 ? 4 : 15;
         if (eb != eyeBright && parts.size() > 2) { eyeBright = eb; parts.get(2).setBrightness(new Display.Brightness((int) eb, (int) eb)); }
         Location to = at.clone(); to.setYaw(0); to.setPitch(0);
-        boolean near = false;
-        for (Player pl : at.getWorld().getPlayers()) if (pl.getLocation().distanceSquared(at) < 96 * 96) { near = true; break; }
-        if (near ? t % 2 != 0 : t % 10 != 0) return; // a pose every 2 ticks close up (interpolated), every half second otherwise
+        // 1.3.48: how often a pose is sent (32 displays each) by the nearest player: 2 ticks under 24 blocks, 4 under 48, 8 under 96, else 20
+        int every = nearD2 < 24 * 24 ? 2 : nearD2 < 48 * 48 ? 4 : nearD2 < 96 * 96 ? 8 : 20;
+        if (body instanceof Player) every = 2; // a player's spider form: always smooth
+        boolean near = every <= 2;
+        if (t % every != 0) return;
         for (int n = 0; n < parts.size(); n++) {
             ItemDisplay d = parts.get(n);
             Matrix4f m = pending.get(n);
             if (!d.isValid() || m == null) continue;
             if (d.getLocation().distanceSquared(to) > 0.0004) d.teleport(to);
             d.setInterpolationDelay(0);
-            d.setInterpolationDuration(near ? 2 : 10);
+            d.setInterpolationDuration(every);
             d.setTransformationMatrix(m);
         }
     }

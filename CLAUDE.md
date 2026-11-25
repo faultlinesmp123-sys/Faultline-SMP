@@ -3056,6 +3056,17 @@ Notes:
   Index: Queen's Servant, Venom / Ember / Swift Spider, Broodmother's Eye, Queen's Silk + Queen + Wanderer text. Tested: scratch
   `nest/NestTest3` (layout, dark, dens, waves, loot, web items, brood bites, sleep/wake, quake, spider form, silk, Wanderer, delete
   restores 0 differences). Previews `tools/previews/nest_spiders.png`, `nest_map.png`, `nest_cutaway.png`, `nest_slice.png`.
+- **Audit (Items 1.3.48)**: the nest music and the Queen's music were played AT A SPOT (`playSound(Location, ...)`), so they faded
+  out as you walked away / the fight moved: now `playSound(player, ...)` (follows the player; MockBukkit doesn't implement it,
+  the test harness stubs PlayerMock#playSound). Brood den skeletons had their bows taken (`getEquipment().clear()`): equipment
+  kept, drop chances 0. Sleeping-den beds spawned a new sleeper every 10 min even while the last one lived (they piled up): one
+  per bed (`bedSleeper`), and a server-wide brood cap `spider-nest.brood-max` 30. A den mob that wandered 40+ blocks off is
+  removed (it held the den's wave forever). One brood's error no longer stops every brood that tick (`tickOne`). The item seen
+  in a web drops at MONITOR (a claim plugin cancelling the break used to leave the web AND drop its item). Webs meant to vanish
+  (the silk shot's, the Queen's traps: `SpiderForm.TEMP`) are never woven back after a silk carrier parts them (they became
+  permanent); every parted web goes back on shutdown. RIG LOD (`QueenRig`, 32 displays per spider): poses every 2 ticks under
+  24 blocks, 4 under 48, 8 under 96, else 20 (a player's spider form always 2); the IK feet only twice a second with nobody within
+  64. The Skeleton Wanderer never walks where there's sky light.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

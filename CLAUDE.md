@@ -3215,6 +3215,23 @@ Notes:
   on a change. `FaultlineWorld.setup` never edits an existing non-Faultline world or an unreadable bukkit.yml. Raids: an old
   config's `elites.chance: 0.01` reads as 0 (`elsewhere()`). Datapack checked by script: every feature / carver id exists in
   the vendored 26.3 biomes, feature lists are vanilla lists with entries only REMOVED (no feature-order cycle possible).
+- **2.0 audit, round 2 (FaultlineWorld; same 2.0.0)**: THE GENERATION ORDER WAS WRONG. Everything was drawn in `generateNoise`,
+  i.e. BEFORE vanilla's surface pass, which turns any plain STONE with air above it into grass with dirt under it wherever it
+  thinks it's above ground (it uses VANILLA's own terrain height for that, ~y 64-100, and ours is 200+): grassy cave floors all
+  through the islands, grass + dirt on every stone floor / wall top of the faction builds, ferns on dirt. Now `generateNoise` = bare
+  rock + water + the abyss only; `generateSurface` (called after vanilla's surface) = noise caves, `Shapes`, `Decor`, `Structures`,
+  `Sites` (columns kept between the two in `colCache`). RULE: anything that isn't raw terrain goes in `generateSurface`.
+  `shouldGenerateCaves` is FALSE: vanilla's carvers fill what they dig below sea level (200) with water. `getBaseHeight` is
+  overridden (our surface; sea level over water; the sea floor for OCEAN_FLOOR): without it vanilla placed villages, outposts,
+  mansions, shipwrecks at ITS terrain height = buried inside the islands. `Life.onStructure` (AsyncStructureSpawnEvent, the
+  cancellable one; AsyncStructureGenerateEvent isn't) cancels any vanilla structure whose box touches a faction build, a pyramid
+  (+ underworld) or an admin core. `Sites.heal(terrain, chunk)` (first load of each chunk, with the loot fill): vanilla's decoration
+  runs after our builds and puts ore / gravel / dirt / granite blobs and water springs into their plain stone (Himeji castle 19%
+  stone, Giant Tower 38%, Factory castle 43%, Ghost statue 19%): every build cell that isn't what the schematic (after `ruin`,
+  minus the doorway) says is put back. Giants get their brain back when their chunk loads (`onLoad`), and a plugin disable no
+  longer deletes them. Mission Board: the poster receives the very stacks handed in (a worn tool used to come out new);
+  deliveries may carry the Index's dupe serial (`faultlineindex:uid`; every totem / tool has one) but not damage. Guide + Kingdoms
+  plugin.yml texts no longer mention Discord linking. The preview harness (`WorldPreview`) calls both generate steps.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

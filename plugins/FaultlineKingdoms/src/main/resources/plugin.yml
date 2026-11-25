@@ -3,13 +3,13 @@ version: '2.0.0'
 main: net.faultlinesmp.kingdoms.FaultlineKingdoms
 api-version: '2.0.0'
 author: FaultlineSMP
-description: Kingdoms 1, 2 and 3 (assigned from Discord roles) and grace periods, server-wide or per kingdom
+description: Five kingdoms (assigned by staff) and grace periods, server-wide or per kingdom
 softdepend: [floodgate, Geyser-Spigot, FaultlineIndex, LimboBlackMarket]
 
 commands:
   kingdom:
-    description: "Your kingdom and the grace periods; link your Discord: /kingdom link <discord name>, /kingdom verify <code>"
-    usage: /kingdom [link <discord name>|verify <code>|unlink|list <1-5>|ff <on|off|clear>|ally <1-5> <yes|no|clear>]
+    description: "Your kingdom, its friendly-fire and treaty votes, and the grace periods"
+    usage: /kingdom [list <1-5>|ff <on|off|clear>|ally <1-5> <yes|no|clear>]
     aliases: [k]
   kc:
     description: "Kingdom chat: /kc <message>, or /kc alone to talk only to your kingdom until /kc again"

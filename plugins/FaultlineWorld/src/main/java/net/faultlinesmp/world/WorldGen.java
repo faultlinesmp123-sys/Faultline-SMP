@@ -58,8 +58,43 @@ public final class WorldGen extends ChunkGenerator {
         Caves cv = caves(info);
         int bx = chunkX << 4, bz = chunkZ << 4;
         int minY = data.getMinHeight(), maxY = data.getMaxHeight();
-        Terrain.Col[] cols = new Terrain.Col[256];
-        for (int lx = 0; lx < 16; lx++) for (int lz = 0; lz < 16; lz++) cols[lx * 16 + lz] = t.column(bx + lx, bz + lz);
+        Terrain.Col[] cols = cols(t, chunkX, chunkZ);
+        for (int lx = 0; lx < 16; lx++) for (int lz = 0; lz < 16; lz++) {
+            Terrain.Col c = cols[lx * 16 + lz];
+            int x = bx + lx, z = bz + lz;
+            int top = Math.min(c.surface, maxY - 1);
+        }
+    }
+
+    /** A chunk's columns, kept between generateNoise and generateSurface (the terrain maths is the costly part). */
+    private final Map<Long, Terrain.Col[]> colCache = new ConcurrentHashMap<>();
+
+    private Terrain.Col[] cols(Terrain t, int chunkX, int chunkZ) {
+        long key = ((long) chunkX << 32) ^ (chunkZ & 0xffffffffL) ^ (t.seed * 31);
+        if (colCache.size() > 4096) colCache.clear();     // chunks that never reached the surface step
+        return colCache.computeIfAbsent(key, k -> {
+            Terrain.Col[] cols = new Terrain.Col[256];
+            int bx = chunkX << 4, bz = chunkZ << 4;
+            for (int lx = 0; lx < 16; lx++) for (int lz = 0; lz < 16; lz++) cols[lx * 16 + lz] = t.column(bx + lx, bz + lz);
+            return cols;
+        });
+    }
+
+    /**
+     * AUDIT: everything but the bare rock and water happens HERE, after vanilla has laid its surface (grass, dirt, sand,
+     * deepslate, bedrock) on our rock. Before, the caves, the faction builds and the custom ground were all there when
+     * vanilla's surface pass ran, and that pass turns any plain stone with air above it into grass with dirt under it: grassy
+     * cave floors all through the islands, grass and dirt on every stone wall and floor of the castles, ferns on dirt.
+     */
+    @Override
+    public void generateSurface(WorldInfo info, Random random, int chunkX, int chunkZ, ChunkData data) {
+        Blocks.init();
+        Terrain t = terrain(info);
+        Caves cv = caves(info);
+        int bx = chunkX << 4, bz = chunkZ << 4;
+        int minY = data.getMinHeight(), maxY = data.getMaxHeight();
+        Terrain.Col[] cols = cols(t, chunkX, chunkZ);
+        colCache.remove(((long) chunkX << 32) ^ (chunkZ & 0xffffffffL) ^ (t.seed * 31));
 
         // cave densities on a coarse grid (x, z every 4; y every 8)
         int gy0 = minY, gyN = (maxY - minY) / 8 + 1;
@@ -75,21 +110,6 @@ public final class WorldGen extends ChunkGenerator {
             Terrain.Col c = cols[lx * 16 + lz];
             int x = bx + lx, z = bz + lz;
             int top = Math.min(c.surface, maxY - 1);
-            // rock
-            data.setRegion(lx, minY, lz, lx + 1, top + 1, lz + 1, Blocks.STONE);
-            // sea / rivers
-            if ((c.sea || c.river) && !c.dry) data.setRegion(lx, top + 1, lz, lx + 1, SEA, lz + 1, Blocks.WATER);
-            // the abyss (+ holes up to the sea floor)
-            if (c.abyssTop != Integer.MIN_VALUE) {
-                int to = c.hole ? top : c.abyssTop;
-                data.setRegion(lx, c.abyssBottom, lz, lx + 1, to + 1, lz + 1, Blocks.WATER);
-                // diamonds round the abyss (in its ceiling and floor rock)
-                long h = hash(t.seed, x, z, 0xD1A);
-                if ((h & 31) == 0) data.setBlock(lx, c.abyssTop + 1 + (int) ((h >>> 5) & 3), lz, Blocks.DIAMOND);
-                if (((h >>> 9) & 31) == 0) data.setBlock(lx, c.abyssBottom - 1 - (int) ((h >>> 14) & 2), lz, Blocks.DIAMOND);
-                if (((h >>> 17) & 63) == 0) data.setBlock(lx, c.abyssBottom - 1, lz, Blocks.MAGMA);
-                if (((h >>> 23) & 127) == 0) data.setBlock(lx, c.abyssBottom - 1, lz, Blocks.SEA_LANTERN);
-            }
             // noise caves under land (not under the sea, the Farlands or anything near the surface)
             if (!c.sea && !c.dry && c.farlands < 0.5 && !Sites.near(x, z, 6)) {
                 double fb = interp2(bias, lx, lz);
@@ -156,10 +176,24 @@ public final class WorldGen extends ChunkGenerator {
     // vanilla does the rest on top of our rock
     @Override public boolean shouldGenerateNoise() { return false; }
     @Override public boolean shouldGenerateSurface() { return true; }
-    @Override public boolean shouldGenerateCaves() { return true; }
+    // AUDIT: vanilla's carvers fill what they dig below "sea level" (200 here) with water: flooded tunnels all through the
+    // islands. Our own noise caves are the caves.
+    @Override public boolean shouldGenerateCaves() { return false; }
     @Override public boolean shouldGenerateDecorations() { return true; }
     @Override public boolean shouldGenerateMobs() { return true; }
     @Override public boolean shouldGenerateStructures() { return true; }
+
+    /**
+     * AUDIT: without this, vanilla asks ITS OWN terrain for the ground height when it places villages, outposts, mansions,
+     * temples, shipwrecks... (about y 64-100), so they'd all have been buried inside the islands (ground is y 200+).
+     */
+    @Override
+    public int getBaseHeight(WorldInfo info, Random random, int x, int z, org.bukkit.HeightMap heightMap) {
+        Terrain.Col c = terrain(info).column(x, z);
+        int solid = Math.min(c.surface, info.getMaxHeight() - 1) + 1;
+        if (heightMap == org.bukkit.HeightMap.OCEAN_FLOOR || heightMap == org.bukkit.HeightMap.OCEAN_FLOOR_WG) return solid;
+        return (c.sea || c.river) && !c.dry ? Math.max(solid, SEA) : solid;
+    }
 
     @Override
     public BiomeProvider getDefaultBiomeProvider(WorldInfo info) { return new Biomes(this); }

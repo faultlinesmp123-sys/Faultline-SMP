@@ -64,6 +64,14 @@ final class Giants implements Listener {
         return g;
     }
 
+    /** AUDIT: a Giant is saved with its chunk, but its brain wasn't: after a restart (or a chunk reload) it stood there
+     *  frozen with no health bar. Any tagged Giant that loads gets a brain again. */
+    @EventHandler
+    public void onLoad(org.bukkit.event.world.EntitiesLoadEvent e) {
+        for (Entity en : e.getEntities()) if (en instanceof Giant g && g.getScoreboardTags().contains(TAG) && !giants.containsKey(g.getUniqueId()))
+            giants.put(g.getUniqueId(), new Brain(g, Bukkit.createBossBar("§2Zombie Giant", BarColor.GREEN, BarStyle.SEGMENTED_10)));
+    }
+
     /** A spot 14-30 blocks away with a 3x3 column of 13 blocks of air on solid ground. */
     Location roomFor(Location c) {
         World w = c.getWorld();
@@ -202,7 +210,7 @@ final class Giants implements Listener {
     }
 
     void removeAll() {
-        for (Brain b : giants.values()) { b.bar.removeAll(); if (b.g.isValid()) b.g.remove(); }
+        for (Brain b : giants.values()) b.bar.removeAll();   // the Giant itself stays (it's saved with its chunk)
         giants.clear();
     }
 }

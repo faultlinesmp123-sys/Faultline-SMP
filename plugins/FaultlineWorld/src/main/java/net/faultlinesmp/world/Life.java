@@ -141,6 +141,41 @@ final class Life implements Listener {
     @EventHandler(ignoreCancelled = true)
     public void onPistonBack(BlockPistonRetractEvent e) { for (Block b : e.getBlocks()) if (protectedAt(b)) { e.setCancelled(true); return; } }
 
+    /**
+     * AUDIT: vanilla structures (villages, mineshafts, strongholds, trial chambers, ancient cities...) don't know our builds are
+     * there. One whose box touches a faction build, a pyramid (incl. its underworld) or an admin core isn't generated, so no
+     * mineshaft cuts a way through the maze and no village lands in a castle. Async event: only pure maths here.
+     */
+    @EventHandler(ignoreCancelled = true)
+    public void onStructure(org.bukkit.event.world.AsyncStructureSpawnEvent e) {
+        try {
+            if (!ours(e.getWorld())) return;
+            org.bukkit.util.BoundingBox bb = e.getBoundingBox();
+            if (bb == null) return;
+            Terrain t = terrain(e.getWorld());
+            int pad = 6;
+            for (Layout.Site s : Layout.SITES) {
+                int[] b = Sites.box(s);
+                if (b != null && hits(bb, b[0] - pad, b[1] - pad, b[2] - pad, b[3] + pad, b[4] + pad, b[5] + pad)) { e.setCancelled(true); return; }
+            }
+            for (int i = 0; i < Layout.PYRAMIDS.length; i++) {
+                if (bb.getMaxX() < Layout.PYRAMIDS[i][0] - Structures.PH - 8 || bb.getMinX() > Layout.PYRAMIDS[i][0] + Structures.PH + 8
+                        || bb.getMaxZ() < Layout.PYRAMIDS[i][1] - Structures.PH - 8 || bb.getMinZ() > Layout.PYRAMIDS[i][1] + Structures.PH + 8) continue;
+                int[] b = Structures.pyramidBox(t, i);
+                if (hits(bb, b[0] - pad, b[1] - pad, b[2] - pad, b[3] + pad, b[4] + pad, b[5] + pad)) { e.setCancelled(true); return; }
+            }
+            for (Layout.Core c : Layout.CORES) {
+                if (bb.getMaxX() < c.x() - 16 || bb.getMinX() > c.x() + 16 || bb.getMaxZ() < c.z() - 16 || bb.getMinZ() > c.z() + 16) continue;
+                int y = Structures.coreBase(t, c);
+                if (bb.getMaxY() >= y - 12 && bb.getMinY() <= y + 18) { e.setCancelled(true); return; }
+            }
+        } catch (Throwable ignored) { }
+    }
+
+    static boolean hits(org.bukkit.util.BoundingBox bb, int x0, int y0, int z0, int x1, int y1, int z1) {
+        return bb.getMaxX() >= x0 && bb.getMinX() <= x1 && bb.getMaxY() >= y0 && bb.getMinY() <= y1 && bb.getMaxZ() >= z0 && bb.getMinZ() <= z1;
+    }
+
     // ------------------------------------------------------------------ fresh chunks: loot and spawner mobs
 
     @EventHandler
@@ -151,6 +186,7 @@ final class Life implements Listener {
         if (!ours(e.getWorld())) return;
         Chunk ch = e.getChunk();
         if (ch.getPersistentDataContainer().has(filledKey, PersistentDataType.BYTE)) return;
+        try { Sites.heal(terrain(ch.getWorld()), ch); } catch (Throwable err) { plugin.getLogger().warning("[World] healing builds in chunk " + ch.getX() + "," + ch.getZ() + ": " + err); }
         try { fillChunk(ch); } catch (Throwable err) { plugin.getLogger().warning("[World] filling chunk " + ch.getX() + "," + ch.getZ() + ": " + err); }
         ch.getPersistentDataContainer().set(filledKey, PersistentDataType.BYTE, (byte) 1);
     }

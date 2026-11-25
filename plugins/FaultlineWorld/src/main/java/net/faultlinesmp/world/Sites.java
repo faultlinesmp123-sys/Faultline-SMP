@@ -95,6 +95,44 @@ final class Sites {
         }
     }
 
+    /**
+     * AUDIT: vanilla's decoration step runs AFTER we draw the builds, and it treats their plain stone like any rock: ore, gravel,
+     * dirt, granite blobs in the walls, water springs out of them (the Himeji castle is 19% plain stone, the Giant Tower 38%,
+     * the Ghost statue 19%). So once a chunk is fully generated, every cell of a build that isn't what the build says is put
+     * back. Returns how many blocks it fixed. Only cells the build owns (never the air round it: snow, vines, trees stay).
+     */
+    static int heal(Terrain t, org.bukkit.Chunk ch) {
+        if (!ready) return 0;
+        int bx = ch.getX() << 4, bz = ch.getZ() << 4, fixed = 0;
+        int minY = ch.getWorld().getMinHeight(), maxY = ch.getWorld().getMaxHeight();
+        for (Layout.Site s : Layout.SITES) {
+            Schematic sc = LOADED.get(s.file());
+            if (sc == null) continue;
+            int ox = s.x() - sc.sx / 2, oz = s.z() - sc.sz / 2, oy = s.y();
+            if (ox > bx + 15 || ox + sc.sx - 1 < bx || oz > bz + 15 || oz + sc.sz - 1 < bz) continue;
+            Set<Long> door = ENTRANCES.getOrDefault(s.file(), Set.of());
+            for (int x = Math.max(bx, ox); x <= Math.min(bx + 15, ox + sc.sx - 1); x++)
+                for (int z = Math.max(bz, oz); z <= Math.min(bz + 15, oz + sc.sz - 1); z++) {
+                    int lx = x - ox, lz = z - oz, c = lx * sc.sz + lz;
+                    if (sc.colMin[c] < 0) continue;
+                    for (int i = sc.colStart[c]; i < sc.colStart[c + 1]; i++) {
+                        int ly = sc.ys[i], y = oy + ly;
+                        if (y < minY || y >= maxY) continue;
+                        BlockData b = sc.palette[sc.idx[i]];
+                        if (s.ruin()) b = ruin(t, s, sc, x, y, z, ly, b);
+                        if (b == null || door.contains(pack(lx, ly, lz))) continue;
+                        org.bukkit.block.Block at = ch.getBlock(x & 15, y, z & 15);
+                        Material want = b.getMaterial(), have = at.getType();
+                        if (have == want) continue;
+                        if (want.isAir() && !(have == Material.WATER || have == Material.LAVA)) continue;   // a hole in a ruin: only springs are undone
+                        at.setBlockData(b, false);
+                        fixed++;
+                    }
+                }
+        }
+        return fixed;
+    }
+
     static final Set<Material> LIGHTS = EnumSet.of(Material.TORCH, Material.WALL_TORCH, Material.LANTERN, Material.SOUL_LANTERN,
             Material.SOUL_TORCH, Material.SOUL_WALL_TORCH, Material.GLOWSTONE, Material.SEA_LANTERN, Material.SHROOMLIGHT, Material.REDSTONE_LAMP,
             Material.CANDLE, Material.END_ROD, Material.JACK_O_LANTERN);

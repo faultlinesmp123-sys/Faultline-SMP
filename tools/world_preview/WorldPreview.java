@@ -49,6 +49,7 @@ public class WorldPreview {
             }
         });
         g.generateNoise(wi, new Random(1), cx, cz, cd);
+        g.generateSurface(wi, new Random(1), cx, cz, cd);
         return a;
     }
 

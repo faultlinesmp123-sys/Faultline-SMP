@@ -345,13 +345,9 @@ public final class MissionBoard implements Listener, TabExecutor {
         }
         // take them, then pay out
         missions.remove(id);
-        take(p.getInventory(), m.want, m.amount);
-        int left = m.amount;
-        while (left > 0) {
-            int n = Math.min(left, m.want.getMaxStackSize());
-            deliver(m.poster, new ItemStack(m.want, n));
-            left -= n;
-        }
+        // AUDIT: the poster gets the very stacks that were handed in (it used to be brand-new items: a worn-out tool
+        // handed in came out fresh, and an enchanted one lost its enchants)
+        for (ItemStack given : take(p.getInventory(), m.want, m.amount)) deliver(m.poster, given);
         deliver(p.getUniqueId(), m.reward);
         saveWith(p, Bukkit.getPlayer(m.poster));
         p.sendMessage(ChatColor.GOLD + "[Missions] " + ChatColor.GREEN + "Job done! You got " + describe(m.reward) + ".");
@@ -376,12 +372,18 @@ public final class MissionBoard implements Listener, TabExecutor {
 
     // ---------- items ----------
 
-    /** No custom name, lore, model or plugin data: what a delivery may be made of. */
+    /**
+     * What a delivery may be made of: no custom name, lore or model, no plugin data (the Index's dupe serial is fine: every
+     * tool, totem and shulker in a survival inventory carries one) and not worn (nobody gets paid for a nearly broken tool).
+     */
     static boolean plain(ItemStack it) {
         if (it == null || !it.hasItemMeta()) return true;
         ItemMeta m = it.getItemMeta();
         if (m.hasDisplayName() || m.hasLore() || m.hasItemModel() || m.hasCustomModelData()) return false;
-        return it.getPersistentDataContainer().getKeys().isEmpty();
+        if (m instanceof org.bukkit.inventory.meta.Damageable d && d.hasDamage() && d.getDamage() > 0) return false;
+        for (org.bukkit.NamespacedKey k : it.getPersistentDataContainer().getKeys())
+            if (!(k.getNamespace().equals("faultlineindex") && k.getKey().equals("uid"))) return false;
+        return true;
     }
 
     static int count(PlayerInventory inv, Material want) {
@@ -390,16 +392,20 @@ public final class MissionBoard implements Listener, TabExecutor {
         return n;
     }
 
-    static void take(PlayerInventory inv, Material want, int amount) {
+    /** Takes that many out of the inventory and returns the stacks taken. */
+    static List<ItemStack> take(PlayerInventory inv, Material want, int amount) {
+        List<ItemStack> out = new ArrayList<>();
         ItemStack[] c = inv.getStorageContents();
         for (int i = 0; i < c.length && amount > 0; i++) {
             ItemStack it = c[i];
             if (it == null || it.getType() != want || !plain(it)) continue;
             int t = Math.min(amount, it.getAmount());
             amount -= t;
+            ItemStack got = it.clone(); got.setAmount(t); out.add(got);
             if (t >= it.getAmount()) c[i] = null; else it.setAmount(it.getAmount() - t);
         }
         inv.setStorageContents(c);
+        return out;
     }
 
     static String nice(Material m) {

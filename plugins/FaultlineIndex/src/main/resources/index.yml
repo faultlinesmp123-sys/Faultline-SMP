@@ -214,7 +214,7 @@ entries:
 
   - {chapter: consumables, name: "Skeleton Omen", icon: skeleton_omen, detect: "faultlineraids:skeleton_omen",
      how: "Always dropped by Bone Commanders (the leaders of Skeleton Armies).",
-     does: "Drink it near a village to start a Skeleton Raid (levels I-V): waves of archers behind a wall of shields. Win for big rewards."}
+     does: "Drink it near a village to start a Skeleton Raid (levels I-V): waves of archers behind a wall of shields. Win for 2-5 Goodie Bags (by level) and a chance at a Mythic Bag: less than a Zombie Raid, since it's the easier one."}
 
   - {chapter: consumables, name: "Piglin War Horn", icon: piglin_war_horn, detect: "faultlineraids:piglin_war_horn",
      how: "5% from Piglin Brutes (always level III, IV or V).",

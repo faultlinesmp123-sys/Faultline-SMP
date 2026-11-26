@@ -778,9 +778,14 @@ public final class FaultlineRaids extends JavaPlugin implements Listener {
             int goodie = (4 + lv) + random.nextInt(2);                    // I: 5-6 ... V: 9-10
             int mythic = 1 + random.nextInt(1 + (lv - 1) / 2);             // I-II: 1, III-IV: 1-2, V: 1-3
             boolean ankh = random.nextDouble() < cfg("rewards.ankh-chance-per-level", 0.002) * lv; // V: 1%
+            if (raid.skeleton) { // 2.0: Skeleton Raids are the easy ones, so they pay less
+                goodie = Math.max(1, (int) Math.round(goodie * cfg("skeleton-raid.goodie-multiplier", 0.5)));   // I: 2-3 ... V: 4-5
+                mythic = random.nextDouble() < cfg("skeleton-raid.mythic-chance-per-level", 0.08) * lv ? 1 : 0;  // V: 40% for one
+                ankh = ankh && random.nextDouble() < cfg("skeleton-raid.ankh-multiplier", 0.25);
+            }
 
             give(p, "givegoodiebag " + goodie + " " + p.getName());
-            give(p, "givemythicbag " + mythic + " " + p.getName());
+            if (mythic > 0) give(p, "givemythicbag " + mythic + " " + p.getName());
             if (bloodMoon()) {
                 int extra = (int) cfg("blood-moon.bonus-mythic-bags", 1);
                 if (extra > 0) { give(p, "givemythicbag " + extra + " " + p.getName()); mythic += extra; }

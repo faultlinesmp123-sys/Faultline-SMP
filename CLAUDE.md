@@ -3512,6 +3512,9 @@ Notes:
 - **Audit (Items, Bosses; same 2.0.0)**: Blood Rain never doubles a mob's held / worn items (picked-up loot), Echoes, mimics or
   Looters (only mobs it buffed, tag `faultline_blood_rain_mob`); collapsing walls use `spawnFallingBlock`; the Stone Golem's cave
   check needs a solid ceiling within 16 (not open air under a Farlands floating chunk).
+- **Skeleton Raid rewards nerfed (Raids, Index; same 2.0.0)**: it's the easy raid. `winRaid` for `raid.skeleton`: Goodie Bags x
+  `skeleton-raid.goodie-multiplier` 0.5 (I 2-3 ... V 4-5), ONE Mythic Bag at `mythic-chance-per-level` 0.08 x level (V 40%) else
+  none, Ankh chance x `ankh-multiplier` 0.25. Zombie / Piglin raids unchanged; the night Skeleton Army's Bone Commander drops too.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

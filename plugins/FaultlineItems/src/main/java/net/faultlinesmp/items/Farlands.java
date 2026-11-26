@@ -328,8 +328,11 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
     }
 
     void spawnEcho(Echo ec, Location at) {
+        // AUDIT: someone who died in lava / water / a wall: the echo rises on the nearest dry, open spot above (it used to
+        // burn in the lava with the loot it held)
         Location spot = at.clone();
-        for (int dy = 0; dy < 6 && !(Emotes.open(spot.getBlock()) && Emotes.open(spot.clone().add(0, 1, 0).getBlock())); dy++) spot.add(0, 1, 0);
+        for (int dy = 0; dy < 24 && !(Emotes.open(spot.getBlock()) && !spot.getBlock().isLiquid()
+                && Emotes.open(spot.clone().add(0, 1, 0).getBlock()) && !spot.clone().add(0, 1, 0).getBlock().isLiquid()); dy++) spot.add(0, 1, 0);
         Zombie z = (Zombie) spot.getWorld().spawnEntity(spot, EntityType.ZOMBIE, CreatureSpawnEvent.SpawnReason.CUSTOM, en -> en.addScoreboardTag(ECHO));
         try { z.setAdult(); } catch (RuntimeException ignored) { }
         Emotes.q(() -> z.setShouldBurnInDay(false));
@@ -345,6 +348,7 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
         MimicPlayer.attr(z, Attribute.ARMOR, 8);
         MimicPlayer.attr(z, Attribute.FOLLOW_RANGE, 40);
         MimicPlayer.attr(z, Attribute.SPAWN_REINFORCEMENTS, 0);
+        z.addPotionEffect(new PotionEffect(PotionEffectType.FIRE_RESISTANCE, PotionEffect.INFINITE_DURATION, 0, false, false));
         var eq = z.getEquipment();
         eq.clear();
         ItemStack head = new ItemStack(Material.PLAYER_HEAD);
@@ -403,6 +407,12 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onTransform(EntityTransformEvent e) {
         if (e.getEntity().getScoreboardTags().contains(ECHO)) e.setCancelled(true);
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onPortal(EntityPortalEvent e) {
+        Set<String> t = e.getEntity().getScoreboardTags();
+        if (t.contains(ECHO) || t.contains(TRADER)) e.setCancelled(true);
     }
 
     void loadEchoes() {

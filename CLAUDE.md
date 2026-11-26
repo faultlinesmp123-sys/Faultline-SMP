@@ -3436,7 +3436,11 @@ Notes:
   Trader; achievements Rim Breaker, Echo Hunter, Mutiny. Tested (scratch `far/FarTest`: +25%, no plain mob in 180 rolls, spawner =
   Mutant only, captain escorts, crawler drop, echo rise/spawn/kill, trader offers, loot extras + journals, the Warden: 27 parts,
   all 6 moves, phases, death + rewards, no parts left; `fw/FarCheck`: 30/30 vault + camp chests generate; `Audit far:` clean).
-  `Farlands.forceIn` is a test switch only.
+  `Farlands.forceIn` is a test switch only. AUDIT: an Echo rises on the nearest dry open spot above where you died (in lava
+  it burned with the loot) and has Fire Resistance; Echoes, the Rim Trader and the Warden never go through portals; the Rift
+  Beam is blocked by walls (`Farlands.sees`); the rig checks the world before a distance. The biome music's inline
+  `{"sound_id"}` is the same form custom music-disc datapacks use (valid). Known: a staff InventoryRollbackPlus restore of
+  someone who died in the Farlands gives back what their Echo also holds (as with any ground drops).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

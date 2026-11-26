@@ -288,7 +288,7 @@ final class RimWarden implements Listener, CommandExecutor, TabCompleter {
             }
             p.d.setInterpolationDelay(0);
             p.d.setTransformationMatrix(m);
-            if (p.d.getLocation().distanceSquared(tp) > 0.0004 || !p.d.getWorld().equals(tp.getWorld())) p.d.teleport(tp);
+            if (!p.d.getWorld().equals(tp.getWorld()) || p.d.getLocation().distanceSquared(tp) > 0.0004) p.d.teleport(tp);
         }
         // glitch flicker: a random body part shows a wrong block for a moment
         if (f.t % 9 == 0 && !f.parts.isEmpty()) {
@@ -494,6 +494,7 @@ final class RimWarden implements Listener, CommandExecutor, TabCompleter {
                         Vector rel = p.getLocation().add(0, 1, 0).toVector().subtract(f.beamFrom.toVector());
                         double along = rel.dot(f.beam);
                         if (along < 0 || along > 32 || p.getNoDamageTicks() > 0) continue;
+                        if (!Farlands.sees(f.beamFrom, p.getEyeLocation())) continue;   // AUDIT: a wall blocks the beam
                         if (rel.clone().subtract(f.beam.clone().multiply(along)).length() < 1.4) {
                             p.damage(cfg("moves.beam", 17), z);
                             p.addPotionEffect(new PotionEffect(PotionEffectType.WITHER, 80, 1));
@@ -667,6 +668,10 @@ final class RimWarden implements Listener, CommandExecutor, TabCompleter {
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onCombust(EntityCombustEvent e) { if (e.getEntity().getScoreboardTags().contains(TAG)) e.setCancelled(true); }
+
+    /** AUDIT: he never walks through a portal (his model would stay behind). */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onPortal(EntityPortalEvent e) { if (e.getEntity().getScoreboardTags().contains(TAG)) e.setCancelled(true); }
 
     @EventHandler
     public void onDeath(EntityDeathEvent e) {

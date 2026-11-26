@@ -3369,7 +3369,10 @@ Notes:
   inventory only (no chests / ender chest / shulkers / bundles / hoppers / frames / stands / allays), `mace.no-dropping` (Q /
   dragging out cancelled; death still drops it); every 5 s maces in bundles, shulker box ITEMS and the ender chest are moved back
   into the inventory (`unbundle`). Mace enchants (`MaceEnchants.allowed`): Unbreaking III, Wind Burst III, Mending, Density IV,
-  Fire Aspect II (1.2.55's and 1.3.35's old lists read as the new one). Tested (scratch `ml/MlTest`).
+  Fire Aspect II (1.2.55's and 1.3.35's old lists read as the new one). Tested (scratch `ml/MlTest`). AUDIT: a craft click
+  that doesn't take the result (busy cursor) used to keep the place: the forge is checked a tick later (`holds`: cursor,
+  inventory, the open view but never a crafting RESULT slot) and only then broadcast; the grid's repair recipe (two maces in)
+  frees the other mace's id once the craft went through.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

@@ -141,6 +141,15 @@ final class MaceLimit implements Listener, TabExecutor {
                 out.setItemMeta(m);
                 e.setCurrentItem(out);
             } // an untagged one: the sweep gives the result an id and counts it, like the old mace would have been
+            // two maces in (the grid's repair recipe): every other mace that went in frees its place once the craft happened
+            List<Long> others = new ArrayList<>();
+            for (ItemStack it : e.getInventory().getMatrix()) { Long id = idOf(it); if (id != null && !id.equals(from)) others.add(id); }
+            if (!others.isEmpty()) Bukkit.getScheduler().runTask(plugin, () -> {
+                if (from > 0 && !holds(p, from)) return; // the craft didn't go through
+                boolean changed = false;
+                for (Long id : others) if (!holds(p, id) && maces.remove(id) != null) changed = true;
+                if (changed) { save(); plugin.getLogger().info("[MaceLimit] maces " + others + " merged into #" + from + ", " + maces.size() + "/" + max()); }
+            });
             return;
         }
         if (full()) { e.setCancelled(true); p.sendActionBar(ChatColor.RED + "All " + max() + " maces on the server have been made."); return; }
@@ -153,14 +162,37 @@ final class MaceLimit implements Listener, TabExecutor {
         if (out == null) { e.setCancelled(true); return; }
         register(out, p.getName());
         e.setCurrentItem(out);
-        int left = max() - maces.size();
-        Bukkit.broadcastMessage(ChatColor.DARK_RED + "" + ChatColor.BOLD + "A mace has been forged" + ChatColor.GRAY + " by " + p.getName()
-                + ". " + (left <= 0 ? "That was the last one." : left + " left."));
+        Long made = idOf(out);
+        // AUDIT: a click that doesn't take the result (cursor busy...) still fires this event: check a tick later that the
+        // mace really reached them, else its place is given back
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            if (made == null) return;
+            if (!holds(p, made)) {
+                if (maces.remove(made) != null) { save(); plugin.getLogger().info("[MaceLimit] mace #" + made + " wasn't really crafted, place freed"); }
+                return;
+            }
+            int left = max() - maces.size();
+            Bukkit.broadcastMessage(ChatColor.DARK_RED + "" + ChatColor.BOLD + "A mace has been forged" + ChatColor.GRAY + " by " + p.getName()
+                    + ". " + (left <= 0 ? "That was the last one." : left + " left."));
+        });
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onCrafter(org.bukkit.event.block.CrafterCraftEvent e) {
         if (on() && mace(e.getResult())) e.setCancelled(true); // only by hand, so the count stays right
+    }
+
+    /** This mace id is on the player's cursor, in their inventory, or still in the open crafting view. */
+    boolean holds(Player p, long id) {
+        if (!p.isOnline()) return true; // can't tell: keep it
+        Long c = idOf(p.getItemOnCursor());
+        if (c != null && c == id) return true;
+        for (ItemStack it : p.getInventory().getContents()) { Long x = idOf(it); if (x != null && x == id) return true; }
+        org.bukkit.inventory.Inventory top = p.getOpenInventory().getTopInventory();
+        // a crafting grid's RESULT slot doesn't count (an untaken result is exactly the craft that didn't happen)
+        ItemStack[] in = top instanceof org.bukkit.inventory.CraftingInventory ci ? ci.getMatrix() : top == null ? new ItemStack[0] : top.getContents();
+        for (ItemStack it : in) { Long x = idOf(it); if (x != null && x == id) return true; }
+        return false;
     }
 
     // ------------------------------------------------------------------ two maces into one (anvil / grindstone)

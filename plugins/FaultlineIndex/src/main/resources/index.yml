@@ -25,6 +25,15 @@ entries:
   - {chapter: accessories, name: "Golden Ring", icon: golden_ring, detect: "faultlineitems:golden_ring",
      how: "Craft it: a Diamond on top, Gold Ingots on the other three sides.",
      does: "+50% XP from kills, but hostile mobs spawn 1.5x more around you."}
+  - {chapter: accessories, name: "Mountaineer's Gloves", icon: quickdraw_glove, detect: "faultlineitems:mountaineer_gloves",
+     how: "Craft: Leather and an Iron Ingot (L L / LIL / F F with Flint). Mountain Zombies sometimes carry a pair (10% drop).",
+     does: "Walk into a wall to climb it, sneak to hang on it. With the Mountain Armor set you climb faster."}
+  - {chapter: accessories, name: "Goat Hoof Charm", icon: four_leaf_clover, detect: "faultlineitems:goat_hoof_charm",
+     how: "Craft: a Rabbit's Foot with 4 Feathers around it. Mountain Zombies sometimes carry one (10% drop).",
+     does: "Jump 15% higher and take 30% less fall damage."}
+  - {chapter: accessories, name: "Alpine Harness", icon: featherfall_charm, detect: "faultlineitems:alpine_harness",
+     how: "Craft: 4 Leads and 4 String (LTL / T T / LTL). Mountain Zombies sometimes carry one (10% drop).",
+     does: "40% less fall damage, and a fall that would kill you leaves you on 1 heart instead (once a minute)."}
   - {chapter: accessories, name: "Climbing Claws", icon: climbing_claws, detect: "faultlineitems:climbing_claws",
      how: "Can't be found yet. Only given out by staff.",
      does: "Hold jump against a wall to climb straight up it."}
@@ -172,6 +181,12 @@ entries:
   - {chapter: weapons, name: "Spawn Pad", icon: blue_obsidian, detect: "faultlineitems:spawn_pad",
      how: "Craft it: Diamond Block, Totem of Undying, Diamond Block / Crying Obsidian, Respawn Anchor, Crying Obsidian / Netherite Ingot, Recovery Compass, Netherite Ingot.",
      does: "A round respawn pad. Place it, stand on it and right-click (or crouch on it): you respawn on it when you die, in any dimension. Right-click it with a dye to change its colour. Anyone can break it, and then your spawn is gone. A bed or respawn anchor used later takes over."}
+  - {chapter: weapons, name: "Ice Axe", icon: iron_stick, detect: "faultlineitems:ice_axe",
+     how: "Craft: 2 Iron Ingots and a Flint over 2 Sticks (IIF / S / S). Mountain Zombies sometimes hold one (10% drop).",
+     does: "Mines like an iron pickaxe. Off the ground, right-click a wall to dig in and hang on it for up to 6 seconds; Jump to leap up off it, Sneak to let go."}
+  - {chapter: weapons, name: "Rope Ladder", icon: grappling_hook, detect: "faultlineitems:rope_ladder",
+     how: "Craft: 3 Sticks down the middle with String on both sides = 4. Mountain Zombies sometimes carry some (10% drop).",
+     does: "Right-click the side of a wall: a ladder runs up it, up to 16 blocks (look down first and it runs down instead). It comes loose after 2 minutes and drops nothing."}
   - {chapter: weapons, name: "Unholy Arrow", icon: unholy_arrow, detect: "faultlinebosses:unholy_arrow",
      how: "5% from Skeletons, Strays and Bogged you kill (1-2; never from spawners), or craft it: an Arrow, a Fermented Spider Eye, Glowstone Dust and Redstone make 2.",
      does: "A normal arrow's damage, but hit something with a full draw (crossbows always count) and YOU get Strength II and Swiftness II for 3 seconds. Once every 20 seconds. Infinity doesn't make them endless."}
@@ -229,6 +244,18 @@ entries:
 
 
   # ---------------------------------------------------------------- ARMOR
+  - {chapter: armor, name: "Mountain Helmet", icon: knight_helm, detect: "faultlineitems:mountain_armor=helmet",
+     how: "Craft: an Iron Helmet with Leather on its sides and String in the corners. Mountain Zombies drop one 10% of the time (one random thing they had).",
+     does: "Iron armor (iron's protection and durability). No freezing in powder snow. Full Mountain Armor set: climb walls (walk into one) and sneak to hang on it."}
+  - {chapter: armor, name: "Mountain Chestplate", icon: knight_helm, detect: "faultlineitems:mountain_armor=chestplate",
+     how: "Craft: an Iron Chestplate with Leather on its sides and String in the corners. Mountain Zombies drop one (10%).",
+     does: "Iron armor. 20% less fall damage. Full set: climb walls."}
+  - {chapter: armor, name: "Mountain Leggings", icon: knight_helm, detect: "faultlineitems:mountain_armor=leggings",
+     how: "Craft: Iron Leggings with Leather on their sides and String in the corners. Mountain Zombies drop one (10%).",
+     does: "Iron armor. Step up whole blocks without jumping. Full set: climb walls."}
+  - {chapter: armor, name: "Mountain Boots", icon: knight_helm, detect: "faultlineitems:mountain_armor=boots",
+     how: "Craft: Iron Boots with Leather on their sides and String in the corners. Mountain Zombies drop one (10%).",
+     does: "Iron armor. Fall 3 more blocks before it hurts. Full set: climb walls."}
   - {chapter: armor, name: "Hermes Boots", icon: hermes_boots, detect: "faultlineitems:hermes_boots",
      how: "0.5% from any mob, or buy from an Armorer for 45 Emeralds and a Green Dye.",
      does: "Boots: +3 armor and +15% movement speed. Never break."}
@@ -294,6 +321,10 @@ entries:
      where: "Only on Snowy Days, outside deserts and badlands.",
      does: "An icy skeleton archer. Its arrows slow and freeze you.",
      drops: ["2-3 Bones|100%", "Power I book or bow|30%", "Frost Flare|2.5%", "15 XP|100%"]}
+  - {chapter: enemies, name: "Mountain Zombie", icon: zombie_brute, detect-tag: faultline_mountain_zombie,
+     where: "Mountain biomes (peaks, snowy slopes, groves, meadows, windswept hills): a quarter of the zombies there.",
+     does: "Wears 2-4 pieces of Mountain Armor, sometimes an Ice Axe, and climbs walls to get at you.",
+     drops: ["One random thing it had (Mountain Armor piece, Ice Axe, Rope Ladders, Mountaineer's Gloves, Goat Hoof Charm or Alpine Harness)|10%"]}
   - {chapter: enemies, name: "Zombie Captain", icon: zombie_captain, detect-tag: faultline_zombie_captain,
      where: "Some nights (5% per player), with an army of 3-5 zombies.",
      does: "Leads his army toward you. Tough, with an iron sword and a black banner.",

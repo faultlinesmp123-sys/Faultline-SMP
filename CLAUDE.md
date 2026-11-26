@@ -3515,6 +3515,27 @@ Notes:
 - **Skeleton Raid rewards nerfed (Raids, Index; same 2.0.0)**: it's the easy raid. `winRaid` for `raid.skeleton`: Goodie Bags x
   `skeleton-raid.goodie-multiplier` 0.5 (I 2-3 ... V 4-5), ONE Mythic Bag at `mythic-chance-per-level` 0.08 x level (V 40%) else
   none, Ankh chance x `ankh-multiplier` 0.25. Zombie / Piglin raids unchanged; the night Skeleton Army's Bone Commander drops too.
+- **Mountain gear + queens stay underground (Items, World, Index; same 2.0.0)**: `Items/MountainGear.java` (`mountain-gear:`,
+  admin `/mountaingear [give <helmet|chestplate|leggings|boots|iceaxe|rope|gloves|hoof|harness|all> [player]|zombie [n]]`, perm
+  `items.mountaingear` op). MOUNTAIN ARMOR = real IRON armor items (iron's armour, toughness, durability; copper Wayfinder trim,
+  hidden) with item PDC `faultlineitems:mountain_armor` = piece; recipe SLS/LXL/SLS (string, leather round the iron piece). Helmet:
+  FREEZE damage cancelled; chestplate: fall -20%; leggings: STEP_HEIGHT +0.5 (`faultlineitems:mountain_step`); boots:
+  SAFE_FALL_DISTANCE +3 (`mountain_fall`); ALL FOUR = climb walls (walk forward into a solid block = vy `climb.speed-set` 0.2,
+  sneak against it in the air = hang). ACCESSORIES (`/giveaccessory gloves|goathoof|harness`, vanilla item models): Mountaineer's
+  Gloves (LEATHER; climb without the set 0.15, both 0.28), Goat Hoof Charm (RABBIT_FOOT; JUMP_STRENGTH x1.15 `goat_hoof_jump`,
+  fall -30%), Alpine Harness (LEAD; fall -40%, a deadly fall leaves 1 heart once a minute). GEAR: ICE AXE (IRON_PICKAXE + PDC
+  `ice_axe`, recipe IIF/ S / S: off the ground right-click a wall = hang up to 6 s, Jump = leap 0.75, Sneak = let go), ROPE LADDER
+  (LADDER + PDC `rope_ladder`, recipe STS x3 = 4: right-click a wall's side = ladders up it (looking down: down) up to 16, gone after
+  120 s, never drop: breaks / physics / pistons / explosions handled; removed on shutdown, in memory only). The climbing check is
+  `wallAhead` (feet/head block in front, from the yaw) + `getCurrentInput()`, every tick for the cached climbers (refreshed every
+  10 ticks). MOUNTAIN ZOMBIES: natural ZOMBIEs in mountain biomes (`MOUNTAIN_BIOMES`: peaks, snowy slopes, grove, meadow, cherry grove,
+  windswept) `zombies.chance` 25% (skipped if another plugin tagged it faultline*): tag `faultline_mountain_zombie`, 2-4 armour pieces +
+  50% an Ice Axe (drop chance 0), a hidden "pack" (rope / gloves / hoof / harness), all listed in entity PDC `mountain_stuff`;
+  climb walls after their target (UUID set, re-found on EntitiesLoadEvent); killed by a player = `zombies.drop-chance` 10% ONE random
+  thing from that list (10-50% worn). Index: 10 entries. QUEENS: a wild queen only spawns with `queen-spider-boss.min-rock-above` 10
+  blocks over her (`buried`: highest block of the column - y; sky light alone let one spawn at the surface), FaultlineWorld's Fibers
+  spawner needs sky light 0 and 10 blocks of rock too, and a WILD queen under the open sky with no survival player within
+  `surface-leash` 20 for `surface-seconds` 20 burrows away (removed, no loot, logged). Tested (scratch `mg/MgTest`).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

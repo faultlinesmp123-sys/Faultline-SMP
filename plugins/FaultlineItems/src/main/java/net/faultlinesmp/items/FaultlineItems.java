@@ -444,6 +444,9 @@ public final class FaultlineItems extends JavaPlugin {
         // 1.2.78: the backpack, creator mode, the admin player mimic, haunted villages (Halloween), Krampus (Christmas)
         backpack = new Backpack(this);
         umbrella = new Umbrella(this); // 2.0.0
+        mountainGear = new MountainGear(this); // 2.0: mountain armor, climbing gear, mountain zombies
+        getServer().getPluginManager().registerEvents(mountainGear, this);
+        if (getCommand("mountaingear") != null) { getCommand("mountaingear").setExecutor(mountainGear); getCommand("mountaingear").setTabCompleter(mountainGear); }
         getServer().getPluginManager().registerEvents(umbrella, this);
         getServer().getPluginManager().registerEvents(backpack, this);
         if (getCommand("backpack") != null) getCommand("backpack").setExecutor(backpack);
@@ -758,6 +761,7 @@ public final class FaultlineItems extends JavaPlugin {
     @Override
     public void onDisable() {
         if (umbrella != null) umbrella.removeAll(); // 2.0.0
+        if (mountainGear != null) mountainGear.shutdown();
         if (abilities != null) try { abilities.disable(); } catch (RuntimeException ignored) { }
         if (legendary != null) try { legendary.disable(); } catch (RuntimeException ignored) { }
         if (toiletRaid != null) try { toiletRaid.shutdown(); } catch (RuntimeException ignored) { }
@@ -1059,6 +1063,7 @@ public final class FaultlineItems extends JavaPlugin {
     AccessoryBackups accessoryBackups;
     Backpack backpack;
     Umbrella umbrella;
+    MountainGear mountainGear; // 2.0
     CreatorMode creatorMode;
     OfflineTp offlineTp;
     ModGuard modGuard;
@@ -6652,6 +6657,9 @@ public final class FaultlineItems extends JavaPlugin {
             ACCESSORY_TYPES.put("cross", ImmunityCharms::cross);
             ACCESSORY_TYPES.put("backpack", pl -> pl.backpack.item()); // 1.2.78
             ACCESSORY_TYPES.put("umbrella", pl -> pl.umbrella.item()); // 2.0.0
+            ACCESSORY_TYPES.put("gloves", pl -> pl.mountainGear.item("gloves")); // 2.0: mountain gear
+            ACCESSORY_TYPES.put("goathoof", pl -> pl.mountainGear.item("hoof"));
+            ACCESSORY_TYPES.put("harness", pl -> pl.mountainGear.item("harness"));
             // diving gear and the Kraken's counters (their objects are made in onEnable, so they're looked up when given)
             ACCESSORY_TYPES.put("divinghelmet", pl -> pl.getDivingGear().item(DivingGear.Piece.HELMET));
             ACCESSORY_TYPES.put("flipper", pl -> pl.getDivingGear().item(DivingGear.Piece.FLIPPER));
@@ -6752,6 +6760,15 @@ public final class FaultlineItems extends JavaPlugin {
                 pl -> pl.balloons.item(null, 0), // 1.2.24
                 pl -> pl.blueObsidian.item(16), // 1.2.75
                 pl -> UnholyArrows.item(16), // 1.3.8
+                pl -> pl.mountainGear.item("helmet"), // 2.0: mountain gear
+                pl -> pl.mountainGear.item("chestplate"),
+                pl -> pl.mountainGear.item("leggings"),
+                pl -> pl.mountainGear.item("boots"),
+                pl -> pl.mountainGear.iceAxe(),
+                pl -> pl.mountainGear.rope(16),
+                pl -> pl.mountainGear.item("gloves"),
+                pl -> pl.mountainGear.item("hoof"),
+                pl -> pl.mountainGear.item("harness"),
                 pl -> pl.upgradedGrindstone.item(1), // 1.3.9
                 pl -> pl.spawnPad.item(org.bukkit.DyeColor.WHITE, 1), // 1.3.41
                 pl -> pl.backpack.item(), // 1.2.78

@@ -271,6 +271,9 @@ queen-spider-boss:
   spawn-chance: 0.0025         # of spiders spawning underground (no sky above): 4x rarer than before
   brood-eye-chance: 0.025      # 1.3.47: the Broodmother's Eye (spider form); the nest queen: nest.brood-eye-chance, each fighter
   max-alive: 2
+  min-rock-above: 10           # 2.0: a wild queen only spawns this many blocks under the top of her column (no surface spawns)
+  surface-seconds: 20          # 2.0: a wild queen out under the open sky with nobody within surface-leash burrows away after this
+  surface-leash: 20
   scale: 3.0
   health: 900
   armor: 6
@@ -1132,3 +1135,31 @@ kingdom-compass:
     3: ""
     4: ""
     5: ""
+
+# 2.0 MOUNTAIN GEAR: iron Mountain Armor (full set = climb walls), Mountaineer's Gloves / Goat Hoof Charm / Alpine Harness,
+# the Ice Axe (hang on a wall), the Rope Ladder, and Mountain Zombies in mountain biomes that drop one of their things 10%.
+mountain-gear:
+  enabled: true
+  climb:
+    speed-set: 0.2            # full Mountain Armor set
+    speed-gloves: 0.15        # Mountaineer's Gloves alone
+    speed-both: 0.28
+  chestplate-fall-reduction: 0.2
+  leggings-step: 0.5          # added to the 0.6 step height = step up whole blocks
+  boots-safe-fall: 3
+  hoof:
+    jump: 0.15                # +15% jump strength
+    fall-reduction: 0.3
+  harness:
+    fall-reduction: 0.4
+    cooldown-seconds: 60      # how often it can catch a deadly fall
+  ice-axe:
+    hang-seconds: 6
+    leap: 0.75
+  rope:
+    length: 16
+    seconds: 120
+  zombies:
+    chance: 0.25              # of natural zombies in mountain biomes (peaks, slopes, grove, meadow, windswept)
+    drop-chance: 0.10         # killed by a player: one random thing it had
+    climb-speed: 0.22

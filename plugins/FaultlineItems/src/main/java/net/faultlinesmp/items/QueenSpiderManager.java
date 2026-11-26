@@ -97,6 +97,7 @@ final class QueenSpiderManager implements Listener {
         boolean abyssal;         // 1.3.57: a nest in the Dark Ocean's abyss = the Abyssal Queen
         Location lastSpot;       // 1.3.56: stuck checks
         int stuck;
+        int exposed;             // 2.0: seconds a wild queen has spent under the open sky with nobody near
     }
 
     private final FaultlineItems plugin;
@@ -140,7 +141,7 @@ final class QueenSpiderManager implements Listener {
         if (event.getSpawnReason() != CreatureSpawnEvent.SpawnReason.NATURAL) return;
         if (event.getEntityType() != EntityType.SPIDER || !(event.getEntity() instanceof Spider spider)) return;
         Location loc = event.getLocation();
-        if (loc.getBlock().getLightFromSky() > 0) return; // caves only
+        if (loc.getBlock().getLightFromSky() > 0 || !buried(loc)) return; // caves only (2.0: and really underground)
         if (nests != null && nests.near(loc, 48)) return; // 1.3.46: a nest has its own queen (its spiders were making wild ones)
         queens.values().removeIf(q -> !q.body.isValid() && (q.rig == null || q.rig.gone));
         int wild = 0;
@@ -149,6 +150,13 @@ final class QueenSpiderManager implements Listener {
         if (random.nextDouble() >= Balance.num(plugin, "queen-spider-boss.spawn-chance", 0.01, 0.0025)) return; // 1.3.44: 4x rarer
         if (!roomFor(loc)) return;
         makeQueen(spider);
+    }
+
+    /** 2.0: deep underground = at least `min-rock-above` (10) blocks under the top of that column. Sky light alone let
+     *  queens spawn in fresh chunks whose light wasn't worked out yet, and under overhangs at the surface. */
+    boolean buried(Location loc) {
+        try { return loc.getWorld().getHighestBlockYAt(loc.getBlockX(), loc.getBlockZ()) - loc.getBlockY() >= cfg("min-rock-above", 10); }
+        catch (RuntimeException e) { return false; }
     }
 
     private boolean roomFor(Location loc) {
@@ -306,6 +314,7 @@ final class QueenSpiderManager implements Listener {
         double frac = queen.getHealth() / maxHp;
         int want = frac <= cfg("phase3-at", 0.3) ? 3 : frac <= cfg("phase2-at", 0.6) ? 2 : 1;
         if (want > q.phase) newPhase(q, want);
+        if (q.nestId == null && q.t % 20 == 0 && surfaced(q)) return;
         if (q.move != null) { runMove(q); return; }
         unstick(q);
         if (q.t < q.nextMove) return;
@@ -1286,6 +1295,21 @@ final class QueenSpiderManager implements Listener {
         stopMusic(q);
         if (q.standin != null && q.standin.isValid()) q.standin.remove();
         if (q.box != null) q.box.remove();
+    }
+
+    /** 2.0: a WILD queen out under the open sky with no survival player within `surface-leash` (20) for
+     *  `surface-seconds` (20) burrows back down (gone, no loot). She belongs in caves. */
+    private boolean surfaced(Queen q) {
+        Location l = q.body.getLocation();
+        boolean open = l.getBlockY() >= l.getWorld().getHighestBlockYAt(l.getBlockX(), l.getBlockZ()) - 1;
+        if (!open || nearestSurvival(l, cfg("surface-leash", 20)) != null) { q.exposed = 0; return false; }
+        q.exposed++;
+        if (q.exposed < cfg("surface-seconds", 20)) return false;
+        l.getWorld().spawnParticle(Particle.BLOCK, l, 60, q.scale * 0.5, 0.4, q.scale * 0.5, l.clone().add(0, -1, 0).getBlock().getBlockData());
+        l.getWorld().playSound(l, Sound.ENTITY_SPIDER_AMBIENT, 1.5f, 0.4f);
+        plugin.getLogger().info("[QueenSpider] a wild queen at " + l.getBlockX() + " " + l.getBlockY() + " " + l.getBlockZ() + " burrowed back underground");
+        remove(q);
+        return true;
     }
 
     /** Takes a queen away now (her nest's chunk unloaded, the plugin stopping). */

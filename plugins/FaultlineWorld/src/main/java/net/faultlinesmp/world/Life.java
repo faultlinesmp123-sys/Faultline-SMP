@@ -542,6 +542,8 @@ final class Life implements Listener {
             if (!survival(p) || where(p.getLocation()) != B.FIBERS) continue;
             if (minute % 10 == 0 && random.nextDouble() < plugin.getConfig().getDouble("fibers.queen-chance", 0.05) && Bukkit.getPluginCommand("queenspider") != null) {
                 Location at = spot(p.getLocation(), B.FIBERS);
+                // 2.0: never under the open sky (the spiral shaft down is open to it): sky light 0 and 10+ blocks of rock overhead
+                if (at != null && (at.getBlock().getLightFromSky() > 0 || w.getHighestBlockYAt(at.getBlockX(), at.getBlockZ()) - at.getBlockY() < 10)) at = null;
                 if (at != null) Bukkit.dispatchCommand(con, "queenspider spawn " + w.getName() + " " + at.getBlockX() + " " + at.getBlockY() + " " + at.getBlockZ());
             }
             if (random.nextDouble() < plugin.getConfig().getDouble("fibers.servant-chance", 0.12) && Bukkit.getPluginCommand("queenspider") != null) {

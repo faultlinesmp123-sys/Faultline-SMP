@@ -201,6 +201,10 @@ commands:
     description: "Admin: the holiday events (haunted villages, Krampus)"
     usage: /holiday [status|haunt [player|stop]|krampus [player|kill]|bell [n] [player]|lantern [n] [player]]
     permission: items.holiday
+  mountaingear:
+    description: "Admin: mountain gear (give pieces, spawn Mountain Zombies)"
+    usage: /mountaingear [give <helmet|chestplate|leggings|boots|iceaxe|rope|gloves|hoof|harness|all> [player]|zombie [n]]
+    permission: items.mountaingear
   giveunholy:
     description: "Admin: give Unholy Arrows"
     usage: /giveunholy [amount] [player]
@@ -328,6 +332,9 @@ permissions:
     default: op
   items.giveunholy:
     description: /giveunholy
+    default: op
+  items.mountaingear:
+    description: /mountaingear
     default: op
   items.giveblueobsidian:
     description: /giveblueobsidian

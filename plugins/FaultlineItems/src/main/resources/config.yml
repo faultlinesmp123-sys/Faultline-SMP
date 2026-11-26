@@ -395,7 +395,7 @@ item-textures:
   hash: "93d2e198227ab773de183982c40a2c3f043b46eb"
   # The Dark Ocean's music, a second pack sent beside the main one (empty url = not sent)
   music-url: "https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/main/FaultlineDeepMusic.zip"
-  music-hash: "d13735ff9b06f03f39d1e378f553927dbecfba04"
+  music-hash: "6e5d5bfdb42da505a462cb4c78d068f37069b25b"
   # 1.2.72: the bendy emote body (core shader + body part models), only sent to 26.2 games (emotes.rig-protocols)
   emotes-url: "https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/main/FaultlineEmotes.zip"
   emotes-hash: ""             # empty = worked out from the file (auto-hash)
@@ -545,7 +545,7 @@ weather:
   eclipse: {enabled: true, chance-per-minute: 0.003, minutes: 5, sun-height: 55, sun-size: 1.0}   # only each player's sky goes dark: the world's time keeps running
 
 # ---------------- Creatures (Creatures.java) ----------------
-mimic: {enabled: true, chance: 0.01, health: 60, damage: 8, speed: 0.32, xp: 40}
+mimic: {enabled: true, chance: 0.01, farlands-chance: 0.12, health: 60, damage: 8, speed: 0.32, xp: 40}
 skeleton-knights: {enabled: true, check-seconds: 300, chance: 0.12, health: 32, captain-health: 50, helm-chance: 0.06}
 
 # ---------------- Gear (Gear.java): mining helmet headlamp ----------------
@@ -680,6 +680,30 @@ toilet-raid:                       # 1.3.38: admin only (/toiletraid start, Gold
     restore-after-fight: false     # true = put every broken block back 10 s after it dies (/toiletraid restore does it by hand)
     moves: {slam: 20, flush: 18, laser: 5, charge: 24, sludge: 9}
   # rewards: ["givemythicbag 4 {player}", "item NETHERITE_INGOT 4", ...]   ("item MATERIAL n" or a console command; {player}, {enchant})
+# ---------------- 2.0 round 10: THE FARLANDS (Farlands.java) and its boss (RimWarden.java) ----------------
+farlands:
+  enabled: true
+  mob-health: 0.25        # every monster out there: +25% health
+  mob-damage: 0.25        # and +25% damage (FaultlineRaids makes every one of them an Elite or a Mutant)
+  crawlers: {spider-share: 0.3, pack-chance: 0.3, max-near: 4, health: 34, damage: 6, drop-damage: 9}
+  ghasts: {chance: 0.25, max: 2}
+  echoes: {enabled: true, share: 0.35, expire-days: 3, health: 80, damage: 9, xp: 120}
+  trader: {chance-per-minute: 0.04, minutes: 15}
+rim-warden:
+  natural: true           # 5% a minute while someone's in the Farlands
+  spawn-chance: 0.05
+  cooldown-minutes: 30
+  health: 6000
+  per-fighter: 0.3
+  damage-reduction: 0.15
+  melee: 16
+  phase2-at: 0.65
+  phase3-at: 0.3
+  xp: 6000
+  accessory-chance: 0.25  # top damager always
+  sigil-back-chance: 0.15
+  moves: {pound: 13, boulder: 14, glitch-step: 12, beam: 17, fracture: 12, glitch-rain: 8}
+  # rewards: (a list of console commands / "item MAT n"; {player}, {enchant}) - leave out for the built-in list
 chrome-runner:                     # 1.3.38: admin only (/chromerunner summon, Overclocked Chip)
   health: 7000
   per-fighter: 0.35

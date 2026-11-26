@@ -244,7 +244,8 @@ final class Legendary implements Listener, CommandExecutor, TabCompleter {
         return pdc.has(key, PersistentDataType.STRING)
                 || pdc.has(new NamespacedKey(plugin, "chrono_spine"), PersistentDataType.BYTE)
                 || pdc.has(new NamespacedKey(plugin, "overclocked_chip"), PersistentDataType.BYTE)
-                || pdc.has(new NamespacedKey(plugin, "golden_plunger"), PersistentDataType.BYTE);
+                || pdc.has(new NamespacedKey(plugin, "golden_plunger"), PersistentDataType.BYTE)
+                || pdc.has(new NamespacedKey(plugin, "rim_sigil"), PersistentDataType.BYTE);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)

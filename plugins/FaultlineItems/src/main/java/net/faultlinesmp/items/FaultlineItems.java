@@ -478,6 +478,12 @@ public final class FaultlineItems extends JavaPlugin {
         chromeRunner = new ChromeRunner(this);
         getServer().getPluginManager().registerEvents(chromeRunner, this);
         if (getCommand("chromerunner") != null) { getCommand("chromerunner").setExecutor(chromeRunner); getCommand("chromerunner").setTabCompleter(chromeRunner); }
+        rimWarden = new RimWarden(this); // 2.0 round 10: the Farlands' boss
+        getServer().getPluginManager().registerEvents(rimWarden, this);
+        if (getCommand("rimwarden") != null) { getCommand("rimwarden").setExecutor(rimWarden); getCommand("rimwarden").setTabCompleter(rimWarden); }
+        farlands = new Farlands(this); // 2.0 round 10: harder mobs, Wall Crawlers, Echoes, ghasts, the Rim Trader, chest loot
+        getServer().getPluginManager().registerEvents(farlands, this);
+        if (getCommand("farlands") != null) { getCommand("farlands").setExecutor(farlands); getCommand("farlands").setTabCompleter(farlands); }
         truce = new Truce(this); // 1.3.20: both say mb = the fight stops
         if (getCommand("mball") != null) getCommand("mball").setExecutor(truce); // 1.3.32: /mball = "mb all"
         getServer().getPluginManager().registerEvents(truce, this);
@@ -753,6 +759,8 @@ public final class FaultlineItems extends JavaPlugin {
         if (legendary != null) try { legendary.disable(); } catch (RuntimeException ignored) { }
         if (toiletRaid != null) try { toiletRaid.shutdown(); } catch (RuntimeException ignored) { }
         if (chromeRunner != null) try { chromeRunner.shutdown(); } catch (RuntimeException ignored) { }
+        if (rimWarden != null) try { rimWarden.shutdown(); } catch (RuntimeException ignored) { }
+        if (farlands != null) try { farlands.shutdown(); } catch (RuntimeException ignored) { }
         if (blueObsidian != null) try { blueObsidian.shutdown(); } catch (RuntimeException ignored) { }
         if (upgradedGrindstone != null) try { upgradedGrindstone.shutdown(); } catch (RuntimeException ignored) { }
         if (spawnPad != null) try { spawnPad.shutdown(); } catch (RuntimeException ignored) { }
@@ -1059,6 +1067,8 @@ public final class FaultlineItems extends JavaPlugin {
     Legendary legendary;
     ToiletRaid toiletRaid;
     ChromeRunner chromeRunner;
+    RimWarden rimWarden;
+    Farlands farlands;
     HauntedVillage haunted;
     Krampus krampus;
     Holidays holidays;
@@ -6746,6 +6756,7 @@ public final class FaultlineItems extends JavaPlugin {
                 pl -> pl.toiletRaid.plunger(1), // 1.3.38: starts the Toilet Raid (admins)
                 pl -> pl.chromeRunner.chip(1), // 1.3.38: summons the Chrome Runner (admins)
                 pl -> pl.chromeRunner.spine(),
+                pl -> pl.rimWarden.sigil(1), // 2.0 round 10: summons the Warden of the Rim (in the Farlands)
                 pl -> pl.legendary.item(Legendary.Kind.STORMBREAKER),
                 pl -> pl.legendary.item(Legendary.Kind.VOID_PIERCER),
                 pl -> pl.legendary.item(Legendary.Kind.INFERNAL_REAPER),

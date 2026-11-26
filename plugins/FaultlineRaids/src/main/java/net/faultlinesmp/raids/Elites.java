@@ -68,6 +68,9 @@ final class Elites implements Listener {
             SPLITTER = "faultline_splitter", MINI = "faultline_creeper_mini";
     static final List<String> DEFAULT_LOOT = List.of("DIAMOND:1-2:0.10", "EMERALD:1-3:0.25", "GOLDEN_APPLE:1-1:0.15",
             "EXPERIENCE_BOTTLE:2-5:0.40", "IRON_INGOT:2-6:0.35");
+    /** Round 10: the Farlands are hard, so their Elites drop better. */
+    static final List<String> FAR_LOOT = List.of("DIAMOND:2-4:0.20", "EMERALD:2-6:0.35", "GOLDEN_APPLE:1-2:0.20", "EXPERIENCE_BOTTLE:4-8:0.50",
+            "IRON_INGOT:4-8:0.40", "GOLD_INGOT:2-6:0.30", "NETHERITE_SCRAP:1-1:0.05", "ENCHANTED_GOLDEN_APPLE:1-1:0.01", "ENDER_PEARL:1-3:0.25");
     static final Set<EntityType> NEVER = Set.of(EntityType.WARDEN, EntityType.WITHER, EntityType.ELDER_GUARDIAN, EntityType.ENDERMITE,
             EntityType.SILVERFISH, EntityType.VEX, EntityType.GIANT,
             // 1.2.1: the mobs big farms are built on (gold, ender pearl, guardian and witch farms) would turn into loot farms
@@ -92,11 +95,69 @@ final class Elites implements Listener {
 
     // ---------------------------------------------------------------- who becomes what
 
+    static final String FAR = "faultline_far_elite", CAPTAIN = "faultline_elite_captain", ESCORT = "faultline_captain_escort", CRAWLER = "faultline_wall_crawler";
+    static final Set<CreatureSpawnEvent.SpawnReason> FAR_REASONS = Set.of(CreatureSpawnEvent.SpawnReason.NATURAL, CreatureSpawnEvent.SpawnReason.PATROL,
+            CreatureSpawnEvent.SpawnReason.SPAWNER, CreatureSpawnEvent.SpawnReason.TRIAL_SPAWNER, CreatureSpawnEvent.SpawnReason.REINFORCEMENTS,
+            CreatureSpawnEvent.SpawnReason.JOCKEY, CreatureSpawnEvent.SpawnReason.MOUNT, CreatureSpawnEvent.SpawnReason.DEFAULT, CreatureSpawnEvent.SpawnReason.CUSTOM);
+
+    /**
+     * Round 10: in the Farlands EVERY hostile mob is an Elite or a Mutant (or both). A mob that can be neither (slimes,
+     * endermen, witches...) is taken away. Spawner mobs become Mutants only: Mutants give no extra loot, so a spawner out
+     * there is no loot farm. A few Elites are ELITE CAPTAINS leading a pack.
+     */
+    private void farlands(LivingEntity m, CreatureSpawnEvent.SpawnReason why) {
+        var r = plugin.random;
+        boolean spawner = why == CreatureSpawnEvent.SpawnReason.SPAWNER || why == CreatureSpawnEvent.SpawnReason.TRIAL_SPAWNER;
+        boolean can = !(m instanceof org.bukkit.entity.Slime) && !NEVER.contains(m.getType());
+        boolean mutated = false, elited = false;
+        if (can && (spawner || r.nextDouble() < cfg("farlands-mutation-chance", 0.4))) mutated = mutate(m);
+        if (can && !spawner && m instanceof Monster && (!mutated || r.nextDouble() < cfg("farlands-chance", 0.35))) {
+            m.addScoreboardTag(FAR);
+            elite(m);
+            elited = true;
+            if (!mutated && r.nextDouble() < cfg("captain.chance", 0.03)) captain(m);
+        }
+        if (!mutated && !elited && can) mutated = mutate(m);   // not a Monster (a ghast): it has to mutate
+        if (!mutated && !elited) m.remove();
+    }
+
+    /** An Elite Captain: bigger, glowing, x1.5 more health, and an Elite escort of 3-4 of its own kind. */
+    void captain(LivingEntity m) {
+        m.addScoreboardTag(CAPTAIN);
+        String base = m.getCustomName() != null ? ChatColor.stripColor(m.getCustomName()).replace("★ Elite ", "") : nice(m);
+        name(m, ChatColor.RED + "♛ Elite Captain " + ChatColor.GOLD + base);
+        modify(m, Attribute.MAX_HEALTH, new NamespacedKey(plugin, "captain_health"), cfg("captain.health-multiplier", 1.5) - 1);
+        AttributeInstance mh = m.getAttribute(Attribute.MAX_HEALTH);
+        if (mh != null) m.setHealth(mh.getValue());
+        try { m.setGlowing(true); } catch (RuntimeException ignored) { }
+        m.setCustomNameVisible(true);
+        int n = 3 + plugin.random.nextInt(2);
+        for (int i = 0; i < n; i++) {
+            Location l = m.getLocation().add(plugin.random.nextGaussian() * 1.5, 0, plugin.random.nextGaussian() * 1.5);
+            if (!Mutants.open(l.getBlock()) || !Mutants.open(l.clone().add(0, 1, 0).getBlock())) l = m.getLocation();
+            LivingEntity esc = (LivingEntity) m.getWorld().spawnEntity(l, m.getType(), CreatureSpawnEvent.SpawnReason.CUSTOM, en -> en.addScoreboardTag(ESCORT));
+            esc.addScoreboardTag(FAR);
+            elite(esc);
+        }
+        m.getWorld().playSound(m.getLocation(), org.bukkit.Sound.EVENT_RAID_HORN, 2f, 1.2f);
+    }
+
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onSpawn(CreatureSpawnEvent e) {
         CreatureSpawnEvent.SpawnReason why = e.getSpawnReason();
-        if (!on() || (why != CreatureSpawnEvent.SpawnReason.NATURAL && why != CreatureSpawnEvent.SpawnReason.PATROL)) return;
+        if (!on()) return;
         LivingEntity m = e.getEntity();
+        if (FAR_REASONS.contains(why) && m instanceof org.bukkit.entity.Enemy && biomeKey(e.getLocation()).equals("faultline:farlands")
+                && plugin.getConfig().getBoolean("elites.farlands-only-elites", true)) {
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                if (!m.isValid()) return;
+                for (String t : m.getScoreboardTags()) if (t.startsWith("faultline") && !t.equals(CRAWLER)) return;   // bosses, echoes, escorts, raid units
+                if (why == CreatureSpawnEvent.SpawnReason.CUSTOM && !m.getScoreboardTags().contains(CRAWLER)) return;   // other plugins' own mobs
+                farlands(m, why);
+            });
+            return;
+        }
+        if (why != CreatureSpawnEvent.SpawnReason.NATURAL && why != CreatureSpawnEvent.SpawnReason.PATROL) return;
         // 1.3.0: any hostile mob can mutate (phantoms, ghasts, hoglins...; never slimes or magma cubes: slime farms);
         // only Monsters can turn Elite (the bonus loot)
         if (!(m instanceof org.bukkit.entity.Enemy) || m instanceof org.bukkit.entity.Slime || NEVER.contains(m.getType())
@@ -345,8 +406,11 @@ final class Elites implements Listener {
         e.getDrops().addAll(twice);
         e.setDroppedExp(Math.max(10, e.getDroppedExp() * 3));
         ConfigurationSection c = plugin.getConfig().getConfigurationSection("elites");
-        List<String> rolls = c != null && c.isList("bonus-loot") ? c.getStringList("bonus-loot") : DEFAULT_LOOT;
-        for (String s : rolls) {
+        boolean far = tags.contains(FAR);
+        List<String> rolls = far ? (c != null && c.isList("farlands-bonus-loot") ? c.getStringList("farlands-bonus-loot") : FAR_LOOT)
+                : c != null && c.isList("bonus-loot") ? c.getStringList("bonus-loot") : DEFAULT_LOOT;
+        int times = tags.contains(CAPTAIN) ? 3 : 1;
+        for (int rep = 0; rep < times; rep++) for (String s : rolls) {
             String[] p = s.split(":");
             if (p.length < 3) continue;
             Material mat = Material.matchMaterial(p[0]);
@@ -358,7 +422,14 @@ final class Elites implements Listener {
             } catch (NumberFormatException ignored) { }
         }
         Location l = m.getLocation();
-        if (plugin.random.nextDouble() < cfg("goodie-bag-chance", 0.04) && Bukkit.getPluginCommand("givegoodiebag") != null)
+        if (tags.contains(CAPTAIN)) {
+            if (Bukkit.getPluginCommand("givegoodiebag") != null)
+                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "givegoodiebag 1 " + killer.getName() + " at:" + l.getWorld().getName() + "," + l.getX() + "," + l.getY() + "," + l.getZ());
+            if (plugin.random.nextDouble() < cfg("captain.sigil-chance", 0.1) && Bukkit.getPluginCommand("rimwarden") != null)
+                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "rimwarden sigil 1 " + killer.getName());
+            if (Bukkit.getPluginCommand("index") != null) Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "index stat " + killer.getName() + " elite_captains 1");
+            killer.sendMessage(ChatColor.RED + "You took down an Elite Captain.");
+        } else if (plugin.random.nextDouble() < cfg(far ? "farlands-goodie-bag-chance" : "goodie-bag-chance", far ? 0.08 : 0.04) && Bukkit.getPluginCommand("givegoodiebag") != null)
             Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "givegoodiebag 1 " + killer.getName() + " at:" + l.getWorld().getName() + "," + l.getX() + "," + l.getY() + "," + l.getZ());
         if (Bukkit.getPluginCommand("index") != null) Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "index stat " + killer.getName() + " elites 1");
         killer.playSound(l, Sound.ENTITY_PLAYER_LEVELUP, 0.7f, 1.6f);

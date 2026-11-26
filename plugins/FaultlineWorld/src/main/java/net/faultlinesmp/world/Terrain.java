@@ -310,6 +310,14 @@ final class Terrain {
         double cross = Math.abs(Math.sin(a * 900 / (1 + wild * 0.5)));
         double h = SEA + 20 + 80 * stripe * (0.6 + 0.4 * cross) + 25 * wild;
         if (stripe < 0.12) h = SEA + 6;                    // the gaps between walls
+        else {
+            // round 10: in some stretches the walls rise in HUGE STAIRS (terraces 5-9 tall) instead of smooth slopes
+            double steps = farN.noise(x / 260.0 + 40, z / 260.0 - 40);
+            if (steps > 0.15) {
+                int step = 5 + (int) (4 * Math.min(1, (steps - 0.15) * 2.5));
+                h = SEA + 6 + Math.floor((h - SEA - 6) / step) * step;
+            }
+        }
         return (int) Math.min(312, h);
     }
 

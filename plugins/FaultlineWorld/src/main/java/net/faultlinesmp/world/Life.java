@@ -261,6 +261,14 @@ final class Life implements Listener {
                 return new Context(LootTables.STRONGHOLD_CORRIDOR.getLootTable(), EntityType.ZOMBIE, EntityType.SKELETON);
         }
         Terrain.Col c = t.column(x, z);
+        if (c.farlands > 0.5) {
+            // round 10: the Farlands' vaults (inside the walls / floating chunks) and the lost explorers' camps
+            boolean floating = y > c.surface + 4, inWall = y < c.surface - 3;
+            String key = floating || inWall && Math.hypot(x, z) > FarGen.DEEP ? "chests/farlands_vault_deep" : inWall ? "chests/farlands_vault" : "chests/farlands_camp";
+            LootTable lt = Bukkit.getLootTable(new NamespacedKey("faultline", key));
+            if (lt == null) lt = (inWall || floating ? LootTables.BURIED_TREASURE : LootTables.SIMPLE_DUNGEON).getLootTable();
+            return new Context(lt, EntityType.ZOMBIE, EntityType.SKELETON, EntityType.HUSK, EntityType.STRAY);
+        }
         B here = t.underground(x, y, z, c);
         if (here == null) here = c.biome;
         if (b.getType() == Material.TRIAL_SPAWNER || b.getType() == Material.VAULT || y < c.surface - 20 && here.faultlineTen()) {

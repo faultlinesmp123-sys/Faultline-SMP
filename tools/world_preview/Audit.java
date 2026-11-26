@@ -84,6 +84,14 @@ public class Audit {
         for (Layout.Blob b : Layout.UNDERGROUND) spots.add(new Object[]{"under:" + b.biome(), (int) b.x(), (int) b.z(), 3});
         for (Layout.Cavern c : Layout.CAVERNS) spots.add(new Object[]{"cavern", c.x(), c.z(), 4});
         for (Layout.Road r : Layout.ROADS) spots.add(new Object[]{"road:" + r.faction(), (r.x0() + r.x1()) / 2, (r.z0() + r.z1()) / 2, 2});
+        // round 10: the Farlands' vaults and camps (floating chunks are SUPPOSED to float)
+        int nv = 0, nc = 0;
+        for (int ci = -95; ci <= 95 && (nv < 3 || nc < 3); ci++) for (int cj = -95; cj <= 95; cj++) {
+            int[] f = FarGen.feature(t, ci, cj);
+            if (f == null) continue;
+            if (f[0] == FarGen.Kind.VAULT.ordinal() && nv < 3 && FarGen.vaultSpot(t, f[1], f[2]) != null) { spots.add(new Object[]{"far:vault", f[1], f[2], 1}); nv++; }
+            if (f[0] == FarGen.Kind.CAMP.ordinal() && nc < 3) { spots.add(new Object[]{"far:camp", f[1], f[2], 1}); nc++; }
+        }
         Random rnd = new Random(seed ^ 99);
         for (int i = 0; i < 10; i++) spots.add(new Object[]{"random", rnd.nextInt(6400) - 3200, rnd.nextInt(6400) - 3200, 3});
 

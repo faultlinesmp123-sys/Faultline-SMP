@@ -100,7 +100,9 @@ final class Creatures implements Listener, CommandExecutor {
         LootTable table = chest.getLootTable();
         if (table == null) return; // only the chests the world made (never one a player placed or already opened)
         if (b.getBlockData() instanceof org.bukkit.block.data.type.Chest cd && cd.getType() != Type.SINGLE) return;
-        if (random.nextDouble() >= cfg("mimic.chance", 0.01)) return;
+        // round 10: the Farlands' vault chests are far more often mimics
+        boolean far = "faultline".equals(table.getKey().getNamespace()) && table.getKey().getKey().startsWith("chests/farlands_vault");
+        if (random.nextDouble() >= (far ? cfg("mimic.farlands-chance", 0.12) : cfg("mimic.chance", 0.01))) return;
         e.setCancelled(true);
         awaken(b, table, p);
     }

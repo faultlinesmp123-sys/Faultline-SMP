@@ -53,7 +53,7 @@ def spawns(monster=None, creature=None, extra=None, water=None, ambient=None):
 
 
 def biome(template, *, temp=None, downfall=None, precip=None, water=None, grass=None, foliage=None, sky=None, fog=None,
-          particles=None, music=None, spawn=None, strip=True, grass_mod=None, drop_features=()):
+          particles=None, music=None, spawn=None, strip=True, grass_mod=None, drop_features=(), music_delay=(12000, 24000), ambient=None):
     b = copy.deepcopy(load("biome/" + template + ".json"))
     a = b.setdefault("attributes", {})
     eff = b.setdefault("effects", {})
@@ -70,7 +70,9 @@ def biome(template, *, temp=None, downfall=None, precip=None, water=None, grass=
     if particles:
         a["minecraft:visual/ambient_particles"] = {"argument": [{"particle": {"type": p}, "probability": pr} for p, pr in particles], "modifier": "append"}
     if music:
-        a["minecraft:audio/background_music"] = {"default": {"max_delay": 24000, "min_delay": 12000, "sound": music}}
+        a["minecraft:audio/background_music"] = {"default": {"max_delay": music_delay[1], "min_delay": music_delay[0], "sound": music}}
+    if ambient:
+        a["minecraft:audio/ambient_sounds"] = ambient
     if spawn is not None:
         a["minecraft:gameplay/natural_mob_spawns"] = spawn
     if strip:
@@ -116,9 +118,55 @@ def biomes():
         "mire": biome("mangrove_swamp", water="#3a3f22", grass="#3f4a24", foliage="#3a4a20", fog="#2c3122",
                       particles=[("minecraft:spore_blossom_air", 0.015)],
                       spawn=spawns(monster=[("zombie", 4, 140), ("skeleton", 4, 110), ("bogged", 4, 80), ("slime", 4, 100), ("spider", 4, 80), ("creeper", 4, 90), ("witch", 1, 15)], creature=[("frog", 2, 10)])),
-        "farlands": biome("windswept_hills", sky="#b6a8ff", fog="#c9b8ff", particles=[("minecraft:end_rod", 0.002)],
-                          spawn=spawns(monster=[("zombie", 4, 120), ("skeleton", 4, 120), ("creeper", 4, 110), ("spider", 4, 100), ("husk", 2, 30), ("stray", 2, 30), ("enderman", 2, 20)], creature=[("sheep", 4, 6)])),
+        # round 10: a dark crimson sky and fog (the light level is untouched: you can still see), crimson-forest ambience,
+        # its own music (faultline:farlands.music, in FaultlineDeepMusic.zip), and GHASTS drifting over the walls
+        "farlands": biome("windswept_hills", sky="#3b1626", fog="#5a2132",
+                          particles=[("minecraft:crimson_spore", 0.012), ("minecraft:ash", 0.02), ("minecraft:end_rod", 0.001)],
+                          music={"sound_id": "faultline:farlands.music"}, music_delay=(20, 200),
+                          ambient={"additions": {"sound": "minecraft:ambient.crimson_forest.additions", "tick_chance": 0.0111},
+                                   "loop": "minecraft:ambient.crimson_forest.loop",
+                                   "mood": {"block_search_extent": 8, "offset": 2.0, "sound": "minecraft:ambient.crimson_forest.mood", "tick_delay": 6000}},
+                          spawn=spawns(monster=[("zombie", 4, 120), ("skeleton", 4, 120), ("creeper", 4, 110), ("spider", 4, 100), ("husk", 2, 30),
+                                                ("stray", 2, 30), ("ghast", 1, 18)], creature=[("sheep", 4, 6)])),
         "sky_isles": biome("meadow", sky="#9fd7ff", fog="#dff2ff", particles=[("minecraft:white_ash", 0.002)]),
+    }
+
+
+def _it(name, w, lo=1, hi=1, ench=None, book=False):
+    e = {"type": "minecraft:item", "name": "minecraft:" + name, "weight": w, "functions": []}
+    if hi > 1: e["functions"].append({"function": "minecraft:set_count", "count": {"type": "minecraft:uniform", "min": lo, "max": hi}})
+    if ench: e["functions"].append({"function": "minecraft:enchant_with_levels", "levels": ench})
+    if not e["functions"]: del e["functions"]
+    return e
+
+
+def _pool(lo, hi, entries):
+    return {"rolls": {"type": "minecraft:uniform", "min": lo, "max": hi}, "entries": entries}
+
+
+def loot_tables():
+    """Round 10: the Farlands' chests. Hard to reach, so really good. FaultlineItems adds bags, boss books and accessories on top."""
+    vault = [_it("diamond", 22, 2, 6), _it("emerald", 16, 4, 12), _it("gold_ingot", 14, 4, 10), _it("iron_ingot", 14, 6, 16),
+             _it("netherite_scrap", 8, 1, 3), _it("ancient_debris", 6, 1, 2), _it("golden_apple", 12, 1, 3), _it("enchanted_golden_apple", 1),
+             _it("enchanted_book", 10, ench=30), _it("diamond_sword", 3, ench=30), _it("diamond_pickaxe", 3, ench=30),
+             _it("diamond_chestplate", 3, ench=30), _it("totem_of_undying", 2), _it("experience_bottle", 12, 8, 16),
+             _it("netherite_upgrade_smithing_template", 3), _it("ender_pearl", 8, 4, 8), _it("name_tag", 3)]
+    deep = [_it("diamond", 20, 4, 10), _it("emerald", 12, 8, 20), _it("netherite_scrap", 12, 2, 4), _it("netherite_ingot", 5),
+            _it("ancient_debris", 8, 2, 4), _it("golden_apple", 12, 2, 4), _it("enchanted_golden_apple", 4),
+            _it("enchanted_book", 14, ench=30), _it("diamond_sword", 4, ench=30), _it("diamond_axe", 3, ench=30),
+            _it("diamond_helmet", 3, ench=30), _it("diamond_leggings", 3, ench=30), _it("diamond_boots", 3, ench=30),
+            _it("totem_of_undying", 5), _it("experience_bottle", 12, 16, 32), _it("netherite_upgrade_smithing_template", 6),
+            _it("diamond_block", 4, 1, 2)]
+    camp = [_it("bread", 12, 2, 6), _it("cooked_beef", 10, 2, 5), _it("torch", 8, 8, 16), _it("iron_ingot", 12, 3, 8),
+            _it("gold_ingot", 8, 2, 6), _it("diamond", 8, 1, 3), _it("emerald", 8, 2, 6), _it("compass", 4), _it("golden_apple", 6, 1, 2),
+            _it("arrow", 8, 8, 24), _it("experience_bottle", 8, 4, 10), _it("enchanted_book", 6, ench=20),
+            _it("iron_chestplate", 3, ench=20), _it("bow", 3, ench=25), _it("ender_pearl", 5, 2, 4), _it("spyglass", 2)]
+    def table(pools):
+        return {"type": "minecraft:chest", "pools": pools}
+    return {
+        "chests/farlands_vault": table([_pool(5, 8, vault)]),
+        "chests/farlands_vault_deep": table([_pool(7, 11, deep)]),
+        "chests/farlands_camp": table([_pool(4, 7, camp)]),
     }
 
 
@@ -156,6 +204,8 @@ def build():
     dt["attributes"]["minecraft:visual/cloud_height"] = 500.0
     ns["noise"]["height"] = 592
     files["data/minecraft/dimension_type/overworld.json"] = dt
+    for k, v in loot_tables().items():
+        files[f"data/faultline/loot_table/{k}.json"] = v
     for k, v in diamonds().items():
         files[f"data/minecraft/worldgen/placed_feature/{k}.json"] = v
     land = ["faultline:" + b for b in ("wasteland", "deep_desert", "deep_forest", "inferno_forest", "dark_forest", "wartsfield_valley",

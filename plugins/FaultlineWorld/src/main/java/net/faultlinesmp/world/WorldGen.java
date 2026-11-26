@@ -148,6 +148,7 @@ public final class WorldGen extends ChunkGenerator {
         Decor.paint(t, bx, bz, cols, data);                 // custom biomes' ground, trees, rocks...
         Structures.paint(t, bx, bz, cols, data);            // pyramids, dungeons, admin cores, sky isles
         Sites.paint(t, bx, bz, data);                       // the faction builds
+        FarGen.paint(t, bx, bz, data);                      // the Farlands: floating chunks, glitch pillars, vaults, camps
         settle(data, minY, maxY);
     }
 

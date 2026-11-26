@@ -153,7 +153,17 @@ elites:
   # 2.0.0: Elites ONLY spawn naturally in the Farlands (a lot) and rarely in the Fibers. chance = everywhere else (0 = never).
   # An Elite: 2x health, +50% damage, +15% speed, double drops, 3x XP, bonus loot
   chance: 0.0
-  farlands-chance: 0.35
+  farlands-chance: 0.35         # round 10: in the Farlands EVERY hostile mob is an Elite or a Mutant (or both); this is the
+                                # chance a Mutant is ALSO an Elite. Spawner mobs there are Mutants only (no loot farms).
+  farlands-only-elites: true    # false = the old rule (only farlands-chance of them Elite)
+  farlands-mutation-chance: 0.4 # how many Farlands mobs are Mutants (the rest are Elites)
+  farlands-goodie-bag-chance: 0.08
+  farlands-bonus-loot: ["DIAMOND:2-4:0.20", "EMERALD:2-6:0.35", "GOLDEN_APPLE:1-2:0.20", "EXPERIENCE_BOTTLE:4-8:0.50", "IRON_INGOT:4-8:0.40",
+                        "GOLD_INGOT:2-6:0.30", "NETHERITE_SCRAP:1-1:0.05", "ENCHANTED_GOLDEN_APPLE:1-1:0.01", "ENDER_PEARL:1-3:0.25"]
+  captain:                      # Elite Captains (Farlands only): glowing, x1.5 more health, lead 3-4 Elites of their kind;
+    chance: 0.03                # 3x the bonus loot, a Goodie Bag always, Rim Sigil 10%
+    health-multiplier: 1.5
+    sigil-chance: 0.1
   fibers-chance: 0.04
   mutation-chance: 0.02      # Looter Zombie (steals a stack from your backpack), Blazing Skeleton (fire arrows), Splitting Creeper
   raid-chance: 0.06          # the same in raid waves

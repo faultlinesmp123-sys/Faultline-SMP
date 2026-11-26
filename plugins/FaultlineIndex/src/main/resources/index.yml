@@ -779,9 +779,9 @@ entries:
      where: "A mutant: 2% of zombies, spiders, wither skeletons, hoglins, piglins, piglin brutes and vindicators that spawn naturally (5% in raid waves) mutate, each into one of the mutations its kind can have. /zraid mutant lists them all.",
      does: "Heals half of every bit of damage it deals you. Mutants drop only their normal loot."}
   - {chapter: enemies, name: "Elite Mob", icon: elite_mob, detect-tag: faultline_elite,
-     where: "1% of hostile mobs that spawn naturally (any kind), and some mobs in raids. Look for the gold ★ Elite name.",
+     where: "In the Farlands (every hostile mob out there is an Elite or a Mutant), rarely in the Fibers, and some mobs in raids. Look for the gold ★ Elite name.",
      does: "Double health, 50% more damage, faster and a little bigger. Kill it for double drops, triple XP and bonus loot.",
-     drops: ["Its normal drops twice|100%", "2-5 Bottles o' Enchanting|40%", "2-6 Iron Ingots|35%", "1-3 Emeralds|25%", "Golden Apple|15%", "1-2 Diamonds|10%", "Goodie Bag|4%"]}
+     drops: ["Its normal drops twice|100%", "2-5 Bottles o' Enchanting|40%", "2-6 Iron Ingots|35%", "1-3 Emeralds|25%", "Golden Apple|15%", "1-2 Diamonds|10%", "Goodie Bag|4%", "In the Farlands: 2-4 Diamonds|20%", "In the Farlands: Netherite Scrap|5%", "In the Farlands: Goodie Bag|8%"]}
   - {chapter: friends, id: halcyon_citizen, name: "Citizen of Halcyon", icon: caravan_merchant, detect-tag: faultline_citizen,
      where: "HALCYON, the city under the dome in the Dark Ocean's south-west (-1800, 2200, floor y 70). Swim to its south or west gate.",
      does: "Villagers living their day: breakfast at home, work (farming, woodcutting, mining coal down the stair tunnel, building, the Bio-Center, the Aquarium, the market), lunch at the Kelp & Kettle, the plaza at dusk, then to bed. Right-click one to trade (vanilla trades by job). They can't be leashed, ridden or named. Hit one and they all scream and run, and the guards come for you."}
@@ -1490,6 +1490,30 @@ entries:
   - {chapter: enemies, name: "Mimic Player", icon: mimic_player, detect-tag: faultline_player_mimic,
      where: "Only when staff spawn one (/mimicplayer).",
      does: "Looks exactly like a real player (their skin and name) and fights like one: strafes, crits, blocks with a shield (an axe breaks it), eats golden apples, throws pearls, shoots a bow, and pops a totem once."}
+  # ---- 2.0 round 10: the Farlands ----
+  - {chapter: bosses, name: "The Warden of the Rim", icon: stone_golem, detect-tag: faultline_rim_warden, weakness: "Spread out: the Fracture sends a line of spikes at each of you, and the Glitch Step always picks whoever is farthest away. Jump when the fists go up.",
+     where: "The Farlands. 5% every minute while someone's out there, or a Rim Sigil calls him.",
+     does: "A giant of stone and glitched blocks. 6000 health (+30% per extra fighter), takes 15% less, can't be knocked back. Ground Pound (a ring that throws you), Boulder Toss, Glitch Step (vanishes and hits from behind). Below 65%: Rift Beam, Fracture (spikes erupt along a line to each of you), Call of the Rim (Elites climb out of the ground). Below 30% he goes UNSTABLE: faster, and glitched blocks rain on everyone.",
+     drops: ["2 Mythic Bags, 4 Goodie Bags, 2 Dark Loot Bags each|100%", "A boss enchant book each|100%", "Netherite, Diamond Blocks, a God Apple, a Totem each|100%", "An accessory|top damager 100%, others 25%", "Rim Sigil|15%"]}
+  - {chapter: weapons, name: "Rim Sigil", icon: gravity_stone, detect: "faultlineitems:rim_sigil",
+     how: "The Rim Trader, Elite Captains (10%), the Farlands' vaults, and the Warden himself (15%).",
+     does: "Right-click in the Farlands: the Warden of the Rim rises to meet you."}
+  - {chapter: enemies, name: "Wall Crawler", icon: queen_spider, detect-tag: faultline_wall_crawler,
+     where: "The Farlands: clinging high on the walls, and 30% of the spiders out there.",
+     does: "Waits above you and DROPS onto you: a heavy hit, Slowness and Nausea. Don't stand under a ledge.",
+     drops: ["Its normal drops|100%"]}
+  - {chapter: enemies, name: "Echo", icon: revenant, detect-tag: faultline_echo,
+     where: "Where someone died in the Farlands. It rises from their death and waits there.",
+     does: "A dark copy of the player who died, wearing their face and their sword. It holds a third of what they dropped. Anyone can kill it to get the loot. It fades after 3 days, loot and all.",
+     drops: ["The dead player's stacks it was holding|100%", "120 XP|100%"]}
+  - {chapter: enemies, name: "Elite Captain", icon: zombie_captain, detect-tag: faultline_elite_captain,
+     where: "The Farlands: 3% of the Elites there. It glows and leads a pack of 3-4 Elites of its own kind.",
+     does: "An Elite with even more health. Kill it for three times the Elite bonus loot.",
+     drops: ["Goodie Bag|100%", "Farlands Elite bonus loot x3|100%", "Rim Sigil|10%"]}
+  - {chapter: friends, name: "The Rim Trader", icon: caravan_merchant, detect-tag: faultline_rim_trader,
+     where: "Only ever in the Farlands. Sometimes sets up near someone out there for 15 minutes.",
+     does: "Sells what nobody else does: the Rim Sigil, Mythic and Dark Loot Bags, a boss enchant book, totems, netherite templates, a god apple. Each offer runs out after a few buys."}
+
 achievements:
   - {id: first_blood, name: "First Blood", icon: demon_eye, desc: "Defeat any boss.",
      defeat: [queen_spider, diamond_jacob, the_abyssal_kraken, captain_rotbeard, the_great_hog, the_bulwark, the_skeleton_captain, ghost_captain, brine_scourge, umbral_leviathan, coralia, old_inkjaw, grandmaw_clam, the_lament, abyssal_titan, deep_goblin, deep_rimeback, deep_drownking],
@@ -1614,6 +1638,12 @@ achievements:
      stat: krampus, count: 1, reward: {items: ["DIAMOND:5"], xp: 800}}
   - {id: flushed, name: "Flushed", icon: bomber_zombie, desc: "Beat the Porcelain Colossus.",
      stat: toilet_colossus, count: 1, reward: {items: ["DIAMOND:10"], xp: 2000}}
+  - {id: rim_breaker, name: "Rim Breaker", icon: stone_golem, desc: "Help bring down the Warden of the Rim.",
+     stat: rim_wardens, count: 1, reward: {items: ["DIAMOND:12"], xp: 2500}}
+  - {id: echo_hunter, name: "Echo Hunter", icon: revenant, desc: "Break 5 Echoes in the Farlands.",
+     stat: echoes, count: 5, reward: {items: ["DIAMOND:4"], xp: 600}}
+  - {id: captain_down, name: "Mutiny", icon: zombie_captain, desc: "Kill 10 Elite Captains.",
+     stat: elite_captains, count: 10, reward: {items: ["DIAMOND:6"], xp: 1000}}
   - {id: chrome_down, name: "Flatlined", icon: mimic_player, desc: "Beat the Chrome Runner.",
      stat: chrome_runner, count: 1, reward: {items: ["DIAMOND:10"], xp: 2000}}
   - {id: ghostbuster, name: "Ghostbuster", icon: lantern_wraith, desc: "Lift a village's haunting.",

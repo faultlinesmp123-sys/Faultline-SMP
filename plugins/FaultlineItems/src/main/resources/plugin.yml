@@ -22,6 +22,10 @@ commands:
   chromerunner:
     description: The Chrome Runner boss (admins) - summon, kill, chip, spine
     permission: items.adminbosses
+  rimwarden:
+    description: The Warden of the Rim, the Farlands' boss (admins - summon, kill, sigil)
+  farlands:
+    description: The Farlands (admins - status, trader, crawler, ghast, echoes)
   mball:
     description: Says "mb all" to everyone you're fighting (both say it = the fight stops)
     aliases: [mb]
@@ -272,6 +276,9 @@ permissions:
     default: op
   items.legendary.admin:
     description: /legendary list, give, reset
+    default: op
+  items.farlands:
+    description: /farlands admin tools
     default: op
   items.adminbosses:
     description: Start the Toilet Raid and summon the Chrome Runner

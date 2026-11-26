@@ -73,7 +73,7 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
     private final Map<UUID, Long> musicAt = new HashMap<>();
     private UUID trader;
     private long traderUntil;
-    private int tick;
+    private int tick, musicErrAt = -100000;
 
     static final class Echo {
         String id, owner, ownerName, world, items; double x, y, z; long created; UUID entity;
@@ -655,7 +655,9 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
             if (tick % 20 == 0) inCache.clear();
             if (tick % 4 == 0 && !crawlers.isEmpty()) crawlerTick();
             if (tick % 20 == 0) echoTick();
-            if (tick % 40 == 0) try { musicTick(); } catch (RuntimeException ex) { if (tick % 2400 == 0) plugin.getLogger().warning("[Farlands] music: " + ex); }
+            if (tick % 40 == 0) try { musicTick(); } catch (RuntimeException ex) {
+                if (tick - musicErrAt > 1200) { musicErrAt = tick; plugin.getLogger().warning("[Farlands] music: " + ex); }
+            }
             traderTick();
             if (tick % 600 == 0) {
                 for (Player p : playersOut()) {
@@ -705,6 +707,18 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
                 crawler(sp);
                 s.sendMessage(ChatColor.GREEN + "A Wall Crawler.");
             }
+            case "music" -> {   // diagnostics: what the music code decides for you, then the track played both ways
+                if (p == null) return true;
+                Long at = musicAt.get(p.getUniqueId());
+                s.sendMessage(ChatColor.GRAY + "music on: " + plugin.getConfig().getBoolean("farlands.music", true) + ", in the Farlands: " + in(p.getLocation())
+                        + ", in a nest: " + inNest(p) + ", boss music: " + bossMusic(p) + ", started " + (at == null ? "never" : ((System.currentTimeMillis() - at) / 1000) + " s ago"));
+                String how = a.length > 1 ? a[1].toLowerCase(Locale.ROOT) : "entity";
+                p.stopSound(SoundCategory.MUSIC);
+                if (how.equals("spot")) p.playSound(p.getLocation(), MUSIC, SoundCategory.MUSIC, 1f, 1f);
+                else p.playSound(p, MUSIC, SoundCategory.MUSIC, 1f, 1f);
+                musicAt.put(p.getUniqueId(), System.currentTimeMillis());
+                s.sendMessage(ChatColor.YELLOW + "Played the Farlands track (" + how + "). Hear it? Try /farlands music spot too.");
+            }
             case "ghast" -> { if (p != null) { ghasts(p); s.sendMessage(ChatColor.GREEN + "Tried to bring a ghast."); } }
             case "echoes" -> {
                 s.sendMessage(ChatColor.GRAY + "" + echoes.size() + " echo(es):");
@@ -724,6 +738,6 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
     @Override
     public List<String> onTabComplete(CommandSender s, Command cmd, String label, String[] a) {
         if (!s.hasPermission(PERM) || a.length != 1) return List.of();
-        return Legendary.filter(List.of("status", "trader", "crawler", "ghast", "echoes"), a[0]);
+        return Legendary.filter(List.of("status", "trader", "crawler", "ghast", "echoes", "music"), a[0]);
     }
 }

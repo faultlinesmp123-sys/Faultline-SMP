@@ -1206,3 +1206,27 @@ climbers:
     line-2: 2.0
     barb-cooldown-seconds: 6
     barb-max-speed: 1.8
+
+# 2.0 THE FARLANDS, DEEPER (players a lit Rim Lighthouse covers are left alone)
+outer-rim:
+  enabled: true
+  depth:
+    bar: true               # a "Rim Depth" boss bar in the Farlands (0% at its edge, 100% at the border)
+    health: 0.6             # monsters spawning at 100% depth: +60% health...
+    damage: 0.4             # ...and +40% damage (scaled by depth)
+  storm:
+    check-minutes: 8
+    chance: 0.15
+    minutes: 2
+  fakes:
+    min-depth: 0.3
+    chance: 0.08            # a minute's roll per player: footsteps, whispers, fake joins
+  shards:
+    chance: 0.15            # Rim Shards from Farlands monsters (1-2)
+    elite-chance: 0.35      # from Elites (1-3); Elite Captains always 5-8, Echoes 3
+  chart:
+    range: 400
+  siege:
+    chance: 0.06            # every 10 min per player out there (past 15% depth)
+    cooldown-minutes: 60
+    sigil-chance: 0.2

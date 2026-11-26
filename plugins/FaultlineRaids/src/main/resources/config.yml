@@ -160,6 +160,8 @@ elites:
   farlands-chance: 0.35         # round 10: in the Farlands EVERY hostile mob is an Elite or a Mutant (or both); this is the
                                 # chance a Mutant is ALSO an Elite. Spawner mobs there are Mutants only (no loot farms).
   farlands-only-elites: true    # false = the old rule (only farlands-chance of them Elite)
+  farlands-raid-chance: 0.15    # 2.0: this share of natural Farlands spawns are Zombie / Skeleton / Piglin Raid units instead (half of them Elite)
+  farlands-spawn-height: 8      # 2.0: Farlands mobs only spawn within this many blocks (up or down) of a survival player 64 blocks round
   farlands-mutation-chance: 0.4 # how many Farlands mobs are Mutants (the rest are Elites)
   farlands-goodie-bag-chance: 0.08
   farlands-bonus-loot: ["DIAMOND:2-4:0.20", "EMERALD:2-6:0.35", "GOLDEN_APPLE:1-2:0.20", "EXPERIENCE_BOTTLE:4-8:0.50", "IRON_INGOT:4-8:0.40",

@@ -491,6 +491,8 @@ public final class FaultlineItems extends JavaPlugin {
         if (getCommand("chromerunner") != null) { getCommand("chromerunner").setExecutor(chromeRunner); getCommand("chromerunner").setTabCompleter(chromeRunner); }
         farlands = new Farlands(this); // 2.0 round 10: harder mobs, Wall Crawlers, Echoes, ghasts, the Rim Trader, chest loot
         farlandsNight = new FarlandsNight(this, farlands); // 2.0: Blood Rain (the Rim Sigil), collapsing walls, Watchers
+        outerRim = new OuterRim(this); // 2.0: Rim depth, static storms, fake players, gravity anomalies, Rim Shards, the Rim Chart, Rim Sieges
+        getServer().getPluginManager().registerEvents(outerRim, this);
         getServer().getPluginManager().registerEvents(farlandsNight, this);
         getServer().getPluginManager().registerEvents(farlands, this);
         if (getCommand("farlands") != null) { getCommand("farlands").setExecutor(farlands); getCommand("farlands").setTabCompleter(farlands); }
@@ -768,6 +770,7 @@ public final class FaultlineItems extends JavaPlugin {
         if (umbrella != null) umbrella.removeAll(); // 2.0.0
         if (mountainGear != null) mountainGear.shutdown();
         if (wildMobs != null) wildMobs.shutdown();
+        if (outerRim != null) outerRim.shutdown();
         if (abilities != null) try { abilities.disable(); } catch (RuntimeException ignored) { }
         if (legendary != null) try { legendary.disable(); } catch (RuntimeException ignored) { }
         if (toiletRaid != null) try { toiletRaid.shutdown(); } catch (RuntimeException ignored) { }
@@ -1085,6 +1088,7 @@ public final class FaultlineItems extends JavaPlugin {
     ChromeRunner chromeRunner;
     FarlandsNight farlandsNight;
     Farlands farlands;
+    OuterRim outerRim; // 2.0
     HauntedVillage haunted;
     Krampus krampus;
     Holidays holidays;
@@ -6788,6 +6792,8 @@ public final class FaultlineItems extends JavaPlugin {
                 pl -> pl.chromeRunner.chip(1), // 1.3.38: summons the Chrome Runner (admins)
                 pl -> pl.chromeRunner.spine(),
                 pl -> pl.farlandsNight.sigil(1), // 2.0: starts a Blood Rain (in the Farlands)
+                pl -> pl.outerRim.shard(16), // 2.0: Rim Shards
+                pl -> pl.outerRim.chart(),
                 pl -> pl.legendary.item(Legendary.Kind.STORMBREAKER),
                 pl -> pl.legendary.item(Legendary.Kind.VOID_PIERCER),
                 pl -> pl.legendary.item(Legendary.Kind.INFERNAL_REAPER),

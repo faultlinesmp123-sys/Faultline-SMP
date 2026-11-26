@@ -92,6 +92,17 @@ public class Audit {
             if (f[0] == FarGen.Kind.VAULT.ordinal() && nv < 3 && FarGen.vaultSpot(t, f[1], f[2]) != null) { spots.add(new Object[]{"far:vault", f[1], f[2], 1}); nv++; }
             if (f[0] == FarGen.Kind.CAMP.ordinal() && nc < 3) { spots.add(new Object[]{"far:camp", f[1], f[2], 1}); nc++; }
         }
+        // the Outer Rim: the Citadel, villages, lighthouses, glitched patches (the patches' floating bits are meant to float)
+        spots.add(new Object[]{"rim:citadel", RimGen.CITADEL[0], RimGen.CITADEL[1], 6});
+        int rv = 0, rl = 0;
+        for (int ci = -13; ci <= 13 && (rv < 2 || rl < 2); ci++) for (int cj = -13; cj <= 13; cj++) {
+            int[] v = RimGen.villageAt(t.seed, ci, cj);
+            if (v != null && rv < 2) { spots.add(new Object[]{"rim:village", v[0], v[1], 3}); rv++; }
+            int[] gl = RimGen.glitchAt(t.seed, ci * 2, cj * 2);
+            if (gl != null && spots.stream().filter(o -> "rim:glitch".equals(o[0])).count() < 2) spots.add(new Object[]{"rim:glitch", gl[0], gl[1], 3});
+            int[] l = RimGen.lightAt(t.seed, ci, cj);
+            if (l != null && rl < 2) { spots.add(new Object[]{"rim:lighthouse", l[0], l[1], 1}); rl++; }
+        }
         Random rnd = new Random(seed ^ 99);
         for (int i = 0; i < 10; i++) spots.add(new Object[]{"random", rnd.nextInt(6400) - 3200, rnd.nextInt(6400) - 3200, 3});
 

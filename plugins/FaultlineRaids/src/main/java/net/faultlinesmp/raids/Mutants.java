@@ -420,18 +420,27 @@ final class Mutants implements Listener {
                 || !s.getScoreboardTags().contains("faultline_inferno")) return;
         Class<? extends Fireball> cls = f instanceof SmallFireball ? SmallFireball.class : f instanceof LargeFireball ? LargeFireball.class : null;
         if (cls == null) return;
-        launching = true;
-        try {
-            Vector dir = f.getDirection();
-            if (dir.lengthSquared() < 1e-6) dir = f.getVelocity();
-            for (int side = -1; side <= 1; side += 2) {
-                Fireball extra = s.launchProjectile(cls);
-                extra.teleport(f.getLocation());
-                extra.setDirection(dir.clone().rotateAroundY(Math.toRadians(12 * side)));
-                if (extra instanceof LargeFireball lf && f instanceof LargeFireball of) lf.setYield(of.getYield());
-            }
-        } catch (RuntimeException ignored) {
-        } finally { launching = false; }
+        // 2.0 FIX: the extras only had setDirection(), which on 26.x sets the push but not the speed: they hung in the air and drifted
+        // off at odd angles (the owner's "glitched fireballs"). Now each extra is a copy of the real one, turned 12 degrees: same
+        // speed, same push, same spot, launched the tick after (the real fireball's motion is only set once the event is over).
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            if (!f.isValid() || !s.isValid()) return;
+            Vector vel = f.getVelocity(), acc = f.getAcceleration();
+            if (vel.lengthSquared() < 1e-6 && acc.lengthSquared() < 1e-9) return;
+            launching = true;
+            try {
+                for (int side = -1; side <= 1; side += 2) {
+                    double turn = Math.toRadians(12 * side);
+                    Fireball extra = f.getWorld().spawn(f.getLocation(), cls, x -> {
+                        x.setShooter(s);
+                        x.setAcceleration(acc.clone().rotateAroundY(turn));
+                        if (x instanceof LargeFireball lf && f instanceof LargeFireball of) lf.setYield(of.getYield());
+                    });
+                    Safe.vel(extra, vel.clone().rotateAroundY(turn));
+                }
+            } catch (RuntimeException ignored) {
+            } finally { launching = false; }
+        });
     }
 
     // ---------------------------------------------------------------- explosions and deaths

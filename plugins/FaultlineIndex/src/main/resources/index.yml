@@ -193,6 +193,12 @@ entries:
   - {chapter: weapons, name: "Rotbeard's Grappling Hook", icon: grappling_hook, detect: "faultlineitems:grappling_hook",
      how: "10% from Captain Rotbeard.",
      does: "Cast it at a wall, ceiling, or ledge, then reel in to launch yourself there. No fall damage from the landing. Never breaks."}
+  - {chapter: weapons, name: "Rim Shard", icon: ankh_piece, detect: "faultlineitems:rim_shard",
+     how: "The Farlands: monsters 15% (Elites 35%, Elite Captains 5-8, Echoes 3), 2-6 in every Farlands chest, and Rim Sieges.",
+     does: "The Farlands' own money: spend it at the Rim Trader (Rim Chart, Rim Sigil, Mythic Bags, netherite scrap) and with the Lost Villagers (cursed gear). Can't be crafted into prismarine."}
+  - {chapter: weapons, name: "Rim Chart", icon: quest_book, detect: "faultlineitems:rim_chart",
+     how: "Craft: a Map with 4 Rim Shards round it, or buy one from the Rim Trader (6 shards).",
+     does: "Right-click in the Farlands: lists the wall vaults, explorers' camps, lost villages, lighthouses and the Rim Citadel within 400 blocks, with a trail of light to the nearest vault. Won't read in a static storm."}
   - {chapter: weapons, name: "Long Line", icon: grappling_hook, detect: "faultlineitems:long_line",
      how: "Craft: 8 String round an Iron Ingot.",
      does: "A Grappling Hook upgrade: hook on the left of an anvil, this on the right. Up to II: the hook flies 1.5x / 2x as far and pulls you harder."}
@@ -350,6 +356,10 @@ entries:
      where: "Leads every Dire Wolf pack.",
      does: "Bigger: 40 health, 8 damage.",
      drops: ["2-4 Leather|100%", "2-4 Bones|100%", "40 XP|100%", "Goodie Bag|25%"]}
+  - {chapter: enemies, name: "Lost Villager", icon: skeleton_wanderer, detect-tag: faultline_lost_villager,
+     where: "The lost villages of the Outer Rim (the Farlands past 3800 on either axis), two at each village's well.",
+     does: "Can't be hurt. Trades cursed gear for Rim Shards: Sharpness VI swords, Protection V chestplates, Power VI bows, Efficiency VI pickaxes... all with a curse.",
+     drops: []}
   - {chapter: enemies, name: "Mountain Zombie", icon: zombie_brute, detect-tag: faultline_mountain_zombie,
      where: "Mountain biomes (peaks, snowy slopes, groves, meadows, windswept hills): a quarter of the zombies there.",
      does: "Wears 2-4 pieces of Mountain Armor, sometimes an Ice Axe, and climbs walls to get at you.",

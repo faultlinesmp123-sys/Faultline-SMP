@@ -304,7 +304,7 @@ final class Terrain {
     int farlandsHeight(double x, double z) {
         // the Far Lands look: tall stacked walls with gaps, getting wilder further out
         double d = Math.hypot(x, z);
-        double wild = smooth(Layout.FARLANDS, Layout.BORDER, d);
+        double wild = smooth(Layout.FARLANDS, Layout.OLD_BORDER, d);   // (OLD_BORDER: the walls already generated keep their shape)
         double a = Math.atan2(z, x);
         double stripe = Math.abs(Math.sin(d / 5.5 + 3 * farN.noise(x / 80.0, z / 80.0)));
         double cross = Math.abs(Math.sin(a * 900 / (1 + wild * 0.5)));
@@ -318,6 +318,7 @@ final class Terrain {
                 h = SEA + 6 + Math.floor((h - SEA - 6) / step) * step;
             }
         }
+        h = RimGen.shape(seed, x, z, h);   // the Outer Rim: the Citadel's plateau, the lost villages' pads
         return (int) Math.min(312, h);
     }
 

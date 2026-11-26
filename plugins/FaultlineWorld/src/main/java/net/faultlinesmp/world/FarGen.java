@@ -36,6 +36,7 @@ final class FarGen {
         int x = ci * CELL + 6 + (int) ((h >>> 8) % (CELL - 12)), z = cj * CELL + 6 + (int) ((h >>> 20) % (CELL - 12));
         double d = Math.hypot(x, z);
         if (d > Layout.BORDER - 28 || t.farlands(x, z) < 0.75) return null;
+        if (Layout.outerRim(x, z) && (RimGen.citadelDist(x, z) < RimGen.CITADEL_PAD + 70 || !RimGen.villagesNear(t.seed, x, z).isEmpty())) return null;
         int roll = (int) (h & 255);
         Kind k = roll < 70 ? Kind.FLOATING : roll < 120 ? Kind.PILLAR : roll < 170 ? Kind.VAULT : roll < 200 ? Kind.CAMP : Kind.NONE;
         if (k == Kind.NONE) return null;

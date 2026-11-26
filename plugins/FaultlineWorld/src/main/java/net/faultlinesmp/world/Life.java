@@ -261,6 +261,17 @@ final class Life implements Listener {
                 return new Context(LootTables.STRONGHOLD_CORRIDOR.getLootTable(), EntityType.ZOMBIE, EntityType.SKELETON);
         }
         Terrain.Col c = t.column(x, z);
+        if (c.farlands > 0.5 && Layout.outerRim(x, z)) {
+            // the Outer Rim: the Citadel is all deep-vault loot and harder spawners; the lighthouses' barrels are camp loot
+            if (RimGen.citadelDist(x, z) < 95) {
+                LootTable lt = Bukkit.getLootTable(new NamespacedKey("faultline", "chests/farlands_vault_deep"));
+                return new Context(lt != null ? lt : LootTables.BASTION_TREASURE.getLootTable(), EntityType.WITHER_SKELETON, EntityType.SKELETON, EntityType.ZOMBIE);
+            }
+            if (!RimGen.lightsNear(t.seed, x, z, 6).isEmpty() || !RimGen.villagesNear(t.seed, x, z).isEmpty()) {
+                LootTable lt = Bukkit.getLootTable(new NamespacedKey("faultline", "chests/farlands_camp"));
+                return new Context(lt != null ? lt : LootTables.VILLAGE_PLAINS_HOUSE.getLootTable(), EntityType.ZOMBIE, EntityType.SKELETON);
+            }
+        }
         if (c.farlands > 0.5) {
             // round 10: the Farlands' vaults (inside the walls / floating chunks) and the lost explorers' camps
             boolean floating = y > c.surface + 4, inWall = y < c.surface - 3;

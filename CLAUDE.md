@@ -3555,6 +3555,48 @@ Notes:
   (STRING + PDC `long_line`, recipe 8 string round an iron ingot; hook PDC `hook_line` 1-2: the cast x1.5 / x2, the pull +15%/level),
   BARBED HOOK (TRIPWIRE_HOOK + PDC `barbed_hook`; hook PDC `hook_barb`: CAUGHT_ENTITY reel yanks the target to you, 6 s, refused when
   a probe EntityDamageByEntityEvent is cancelled). Index: 8 entries + guide lines. Tested (scratch `mg/WmTest`).
+- **THE OUTER RIM (World, Items, Raids, Index; same 2.0.0)**: the live server had everything inside the 7500 border PREGENERATED
+  (Chunky), so new Farlands content only goes in the new ring. Border 10000 (`Layout.BORDER` 5000; `border-size` 10000, an old
+  7500 reads as 10000; the border is SQUARE, so the ring is `Layout.outerRim` = max(|x|,|z|) >= `Layout.RIM` 3800, and
+  `OLD_BORDER` 3750 keeps the Farlands walls' shape the same: `farlandsHeight` wild = smooth(FARLANDS, OLD_BORDER)).
+  `World/RimGen.java` (pure, painted after FarGen; FarGen's features keep off the Citadel and villages): THE RIM CITADEL at
+  `CITADEL` (0, 4560): plateau `CITADEL_Y` SEA+60 flattened by `RimGen.shape` (called from `Terrain.farlandsHeight`), a 145-block
+  square wall (22 tall, crenellations only on solid tops) with corner + gatehouse towers (gate facing north = toward 0,0), a
+  courtyard of broken pillars, soul campfires, skulls; the KEEP (41 square, 46 tall, 4 floors every 11, ladder at cx+19 / cz+3
+  against a forced-solid wall, chests on every floor, spawners on the upper two, a throne + chest on top) and a vault under it (3
+  chests, 2 spawners). Ruin holes (`gone`) are single blocks low down only (floating clusters otherwise). GLITCHED PATCHES (cells
+  220, ~31%, r 25-45, never near villages / lighthouses): tiles of wrong blocks, a magenta/black checker middle, upside-down trees
+  under floating slabs, blue-ice blobs, concrete columns. LOST VILLAGES (cells 420, ~37%): a pad at SEA+18 on ONE side of a cut
+  line (past it the wall carries on: "eaten"), a well with a solid floor, 7 roofless houses (chest, bed, crafting table, lantern).
+  RIM LIGHTHOUSES (cells 300, ~43%, on the wall tops): red/white tower 28 tall, ladder, glass lamp room, an UNLIT CAMPFIRE
+  (`RimGen.lamp`), a barrel. Every hash modulo is `Math.floorMod` (a negative hash put blocks outside / an array index < 0).
+  `World/Rim.java`: lighting a lighthouse's campfire (flint and steel) = lit for `rim.lighthouse-minutes` 60 (world PDC
+  `faultlineworld:rim_lights`), no NATURAL/PATROL Enemy spawns within 96 and player metadata `faultline_rim_safe`; then it goes out.
+  LOST VILLAGERS: the village's middle chunk's first load (chunk PDC `rim_villagers`) = 2 invulnerable no-AI villagers (tag
+  `faultline_lost_villager`). Citadel entry title. `World/FarApi.near(world, x, z, r)` (public; "kind;x;y;z") for Items.
+  `/fworld rim [citadel|village|lighthouse|glitch]` teleports to the nearest. Loot: Citadel chests = `farlands_vault_deep`
+  (spawners wither skeletons / skeletons / zombies), lighthouse + village chests = `farlands_camp`. Audit: `tools/world_preview/
+  Audit.java <seed> rim` (Citadel, 2 villages, 2 lighthouses, glitch patches): 0 problems on seeds 12345, 777, 42, 9001.
+  `Items/OuterRim.java` (`outer-rim:`; everything skips `faultline_rim_safe` players): RIM DEPTH boss bar (hypot 3280 -> 5000 =
+  0..100%) and natural monsters +60% hp / +40% damage x depth (modifiers `rim_depth_hp/_dmg`, base hp <= 200 only); STATIC STORMS
+  (8 min checks, 15%, 2 min: nausea / darkness flicks, compass targets randomised and reset after, ash, crackle; the Rim Chart
+  won't read); FAKE PLAYERS (depth > 0.3, 8% a minute, 4 min apart: footsteps behind, a whisper from a random offline name, a
+  fake joined/left only they see, a chest sound); GRAVITY ANOMALIES (`anomaly(seed, x, z)`: cells 160, 25%, r 14-30; low = Slow
+  Falling + Jump Boost II, heavy = JUMP_STRENGTH x0.3 `rim_heavy` + Slowness); RIM SHARDS (PRISMARINE_SHARD + PDC `rim_shard`:
+  monsters 15%, Elites 35%, Captains 5-8, Echoes 3, every `faultline:chests/farlands_*` 2-6; crafting with them only makes the Rim
+  Chart); the Rim Trader adds 4 shard offers (`traderOffers`), Lost Villagers sell cursed gear (`villagerOffers`, set on first
+  click); RIM CHART (PAPER, model minecraft:filled_map, PDC `rim_chart`, recipe map + 4 shards ExactChoice): lists FarApi places
+  within 400 + a light trail to the nearest vault; RIM SIEGE (`Siege`, every 10 min 6% per player past 15% depth, 60 min apart,
+  `/farlands siege [player|stop]`): a red ring r 20, 4 waves of CUSTOM-reason mobs (tag `faultline_rim_siege`, x1.5+ hp, x1.4 dmg),
+  4+2w (+2 per extra defender), counted by server seconds; win = 8-15 shards, Goodie Bag, 20% Rim Sigil, 150 XP, stat `rim_sieges`;
+  nobody within 30 for 30 s = lost. `/farlands storm|fake|chart|shards [n] [player]`. RAIDS: in the Farlands a NATURAL monster only
+  spawns within `elites.farlands-spawn-height` 8 blocks of a survival player's height within 64 (`Elites.onFarHeight`; ghasts /
+  phantoms exempt: the owner stood on a wall top while Elites filled the gaps below), and `farlands-raid-chance` 0.15 of natural
+  spawns become a Zombie / Skeleton / Piglin Raid unit (`FAR_RAID_KINDS`, `plugin.spawnKind`, tag `faultline_far_raider`, half
+  Elite). FIX: the Inferno mutation's 2 extra fireballs only got setDirection (on 26.x = no speed: they hung and drifted); now
+  spawned the tick after as copies of the real one (velocity + acceleration turned 12 degrees). Index: Rim Shard, Rim Chart,
+  Lost Villager + a guide section. Tested (scratch `mg/RimTest`: depth, deep zombie hp, offers, a full 4-wave siege won, storm,
+  anomalies).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

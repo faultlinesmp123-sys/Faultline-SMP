@@ -108,6 +108,20 @@ final class Elites implements Listener {
     private void farlands(LivingEntity m, CreatureSpawnEvent.SpawnReason why) {
         var r = plugin.random;
         boolean spawner = why == CreatureSpawnEvent.SpawnReason.SPAWNER || why == CreatureSpawnEvent.SpawnReason.TRIAL_SPAWNER;
+        // 2.0: some natural Farlands spawns are Zombie / Skeleton / Piglin Raid units instead (Elite half the time)
+        if (!spawner && m instanceof Monster && r.nextDouble() < cfg("farlands-raid-chance", 0.15)) {
+            FaultlineRaids.Kind k = FAR_RAID_KINDS[r.nextInt(FAR_RAID_KINDS.length)];
+            Location at = m.getLocation();
+            m.remove();
+            try {
+                LivingEntity unit = plugin.spawnKind(k, at);
+                if (unit != null) {
+                    unit.addScoreboardTag(FAR_RAIDER);
+                    if (r.nextBoolean() && unit instanceof Monster) { unit.addScoreboardTag(FAR); elite(unit); }
+                }
+            } catch (RuntimeException ex) { plugin.getLogger().warning("[Elites] Farlands raid unit " + k + ": " + ex); }
+            return;
+        }
         boolean can = !(m instanceof org.bukkit.entity.Slime) && !NEVER.contains(m.getType());
         boolean mutated = false, elited = false;
         if (can && (spawner || r.nextDouble() < cfg("farlands-mutation-chance", 0.4))) mutated = mutate(m);
@@ -140,6 +154,37 @@ final class Elites implements Listener {
             elite(esc);
         }
         m.getWorld().playSound(m.getLocation(), org.bukkit.Sound.EVENT_RAID_HORN, 2f, 1.2f);
+    }
+
+    static final String FAR_RAIDER = "faultline_far_raider";
+    static final FaultlineRaids.Kind[] FAR_RAID_KINDS = {
+            FaultlineRaids.Kind.ZOMBIE, FaultlineRaids.Kind.ARCHER, FaultlineRaids.Kind.BRUTE, FaultlineRaids.Kind.BOMBER, FaultlineRaids.Kind.MAGE,
+            FaultlineRaids.Kind.HORSEMAN, FaultlineRaids.Kind.SKEL_SOLDIER, FaultlineRaids.Kind.SHIELDBEARER, FaultlineRaids.Kind.FROST_ARCHER,
+            FaultlineRaids.Kind.BOG_ARCHER, FaultlineRaids.Kind.WITHER_BRUTE, FaultlineRaids.Kind.PIGLIN_GRUNT, FaultlineRaids.Kind.PIGLIN_CROSSBOW,
+            FaultlineRaids.Kind.PIGLIN_BRUTE, FaultlineRaids.Kind.PIGLIN_MAGE, FaultlineRaids.Kind.PIGLIN_SHIELDBEARER, FaultlineRaids.Kind.PIGLIN_LOBBER};
+
+    /**
+     * 2.0: in the Farlands a mob only spawns (naturally) near a player's own height: within `farlands-spawn-height` (8) blocks of
+     * a survival player within 64. Before, someone standing on a wall top had the gaps far below filling up with Elites they
+     * could never reach (and the mob cap full of them).
+     */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onFarHeight(CreatureSpawnEvent e) {
+        if (e.getSpawnReason() != CreatureSpawnEvent.SpawnReason.NATURAL || !(e.getEntity() instanceof org.bukkit.entity.Enemy)) return;
+        if (e.getEntity() instanceof org.bukkit.entity.Flying || e.getEntity() instanceof org.bukkit.entity.Phantom) return;   // ghasts, phantoms: up in the air on purpose
+        if (!on() || !plugin.getConfig().getBoolean("elites.farlands-only-elites", true)) return;
+        Location l = e.getLocation();
+        if (!biomeKey(l).equals("faultline:farlands")) return;
+        double band = cfg("farlands-spawn-height", 8);
+        boolean ok = false;
+        for (org.bukkit.entity.Player p : l.getWorld().getPlayers()) {
+            if (p.getGameMode() == org.bukkit.GameMode.SPECTATOR || p.getGameMode() == org.bukkit.GameMode.CREATIVE) continue;
+            Location pl = p.getLocation();
+            double dx = pl.getX() - l.getX(), dz = pl.getZ() - l.getZ();
+            if (dx * dx + dz * dz > 64 * 64) continue;
+            if (Math.abs(pl.getY() - l.getY()) <= band) { ok = true; break; }
+        }
+        if (!ok) e.setCancelled(true);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)

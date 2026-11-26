@@ -38,10 +38,14 @@ public final class FaultlineWorld extends JavaPlugin {
         Bukkit.getScheduler().runTask(this, this::afterWorlds);
         life = new Life(this);
         Bukkit.getPluginManager().registerEvents(life, this);
+        rim = new Rim(this);   // the Outer Rim: lighthouses, Lost Villagers, the Citadel
+        Bukkit.getPluginManager().registerEvents(rim, this);
     }
 
+    Rim rim;
+
     @Override
-    public void onDisable() { if (life != null) life.stop(); }
+    public void onDisable() { if (life != null) life.stop(); if (rim != null) rim.stop(); }
 
     @Override
     public ChunkGenerator getDefaultWorldGenerator(String worldName, String id) { return gen; }
@@ -132,6 +136,7 @@ public final class FaultlineWorld extends JavaPlugin {
         }
         WorldBorder b = w.getWorldBorder();
         int size = getConfig().getInt("border-size", Layout.BORDER * 2);
+        if (size == Layout.OLD_BORDER * 2) size = Layout.BORDER * 2;   // the Outer Rim: an old config's 7500 reads as 10000
         if (b.getSize() != size || b.getCenter().getX() != 0 || b.getCenter().getZ() != 0) { b.setCenter(0, 0); b.setSize(size); }
         getLogger().info("[World] Faultline overworld ready: spawn " + Layout.SPAWN_X + " " + (Layout.SPAWN_Y + 1) + " " + Layout.SPAWN_Z + ", border " + size + " x " + size);
     }
@@ -151,6 +156,29 @@ public final class FaultlineWorld extends JavaPlugin {
             if (life == null) { sender.sendMessage("§cNot running in this world."); return true; }
             life.giants.spawn(p.getLocation());
             sender.sendMessage("§3[World] §7A Zombie Giant. It needs 12 blocks of head room to move.");
+            return true;
+        }
+        if (args.length >= 1 && args[0].equalsIgnoreCase("rim") && sender instanceof Player p) {
+            // /fworld rim [citadel|village|lighthouse|glitch]: the nearest Outer Rim place
+            String k = args.length > 1 ? args[1].toLowerCase(java.util.Locale.ROOT) : "citadel";
+            Terrain t = gen.terrain(p.getWorld());
+            int[] best = null; double bd = Double.MAX_VALUE;
+            if (k.equals("citadel")) best = new int[]{RimGen.CITADEL[0], RimGen.CITADEL_Y + 1, RimGen.CITADEL[1] - 60};
+            else {
+                int cell = k.equals("village") ? RimGen.VILLAGE_CELL : k.equals("lighthouse") ? RimGen.LIGHT_CELL : RimGen.GLITCH_CELL;
+                int ci0 = Math.floorDiv(p.getLocation().getBlockX(), cell), cj0 = Math.floorDiv(p.getLocation().getBlockZ(), cell);
+                for (int a = -30; a <= 30; a++) for (int b = -30; b <= 30; b++) {
+                    int[] f = k.equals("village") ? RimGen.villageAt(t.seed, ci0 + a, cj0 + b) : k.equals("lighthouse") ? RimGen.lightAt(t.seed, ci0 + a, cj0 + b) : RimGen.glitchAt(t.seed, ci0 + a, cj0 + b);
+                    if (f == null) continue;
+                    double d = p.getLocation().distanceSquared(new org.bukkit.Location(p.getWorld(), f[0], p.getLocation().getY(), f[1]));
+                    if (d < bd) { bd = d; best = new int[]{f[0], 0, f[1]}; }
+                }
+                if (best != null) best[1] = k.equals("lighthouse") ? RimGen.lamp(t, new int[]{best[0], best[2]})[1] + 1 : t.column(best[0], best[2]).surface + (k.equals("village") ? 1 : 3);
+                if (best != null && k.equals("village")) best[2] -= 8;
+            }
+            if (best == null) { p.sendMessage("None found."); return true; }
+            p.teleport(new org.bukkit.Location(p.getWorld(), best[0] + 0.5, best[1], best[2] + 0.5));
+            p.sendMessage("Rim " + k + " at " + best[0] + " " + best[1] + " " + best[2]);
             return true;
         }
         if (args.length >= 1 && args[0].equalsIgnoreCase("tp") && sender instanceof Player p) {

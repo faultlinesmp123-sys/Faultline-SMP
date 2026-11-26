@@ -534,6 +534,7 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
         out.add(offer(new ItemStack(Material.ENCHANTED_GOLDEN_APPLE), 1, new ItemStack(Material.DIAMOND, 32)));
         out.add(offer(new ItemStack(Material.EXPERIENCE_BOTTLE, 32), 4, new ItemStack(Material.EMERALD, 12)));
         out.add(offer(new ItemStack(Material.ENDER_PEARL, 8), 4, new ItemStack(Material.EMERALD, 8)));
+        if (plugin.outerRim != null) out.addAll(plugin.outerRim.traderOffers());   // 2.0: paid in Rim Shards
         return out;
     }
 
@@ -756,6 +757,7 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
             s.sendMessage(ChatColor.RED + "The Farlands: the outer ring of the world, past 3280 blocks. Hard, and the best loot there is.");
             return true;
         }
+        if (plugin.outerRim != null && plugin.outerRim.command(s, a)) return true;   // siege, storm, fake, chart, shards
         switch (sub) {
             case "trader" -> {
                 if (p == null) { s.sendMessage("Players only."); return true; }
@@ -831,6 +833,6 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
     @Override
     public List<String> onTabComplete(CommandSender s, Command cmd, String label, String[] a) {
         if (!s.hasPermission(PERM) || a.length != 1) return List.of();
-        return Legendary.filter(List.of("status", "trader", "crawler", "ghast", "echoes", "music", "bloodrain", "sigil", "watcher", "collapse"), a[0]);
+        return Legendary.filter(List.of("status", "trader", "crawler", "ghast", "echoes", "music", "bloodrain", "sigil", "watcher", "collapse", "siege", "storm", "fake", "chart", "shards"), a[0]);
     }
 }

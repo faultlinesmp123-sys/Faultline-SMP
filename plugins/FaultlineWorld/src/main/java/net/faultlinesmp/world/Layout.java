@@ -12,7 +12,12 @@ final class Layout {
     private Layout() {}
 
     static final int SEA = 200;          // sea level (the datapack's overworld noise settings say the same)
-    static final int BORDER = 3750;      // border radius (7500 x 7500)
+    static final int BORDER = 5000;      // border radius (10000 x 10000; was 7500 x 7500 until the Outer Rim)
+    static final int OLD_BORDER = 3750;  // the first border: everything inside it was pregenerated on the live server
+    static final int RIM = 3800;         // the OUTER RIM starts here (Chebyshev |x| or |z|): the new Farlands structures only go out here, in fresh chunks
+
+    /** In the Outer Rim (the ring added when the border went 7500 -> 10000; square, like the border). */
+    static boolean outerRim(double x, double z) { return Math.max(Math.abs(x), Math.abs(z)) >= RIM; }
     static final int FARLANDS = 3280;    // the Farlands start this far from 0,0
     static final int SPAWN_X = 250, SPAWN_Z = -1250, SPAWN_Y = 249; // top block; players stand on 250
 

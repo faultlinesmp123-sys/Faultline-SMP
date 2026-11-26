@@ -409,6 +409,9 @@ public final class FaultlineItems extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new NestGuard(this), this); // 1.3.28: no shulker boxes inside shulker boxes
         pvpLimits = new PvpLimits(this); // 1.2.37: spear lunge cooldown, cobweb place rate
         getServer().getPluginManager().registerEvents(pvpLimits, this);
+        dimensionLock = new DimensionLock(this); // 2.0: Nether / End portals can be locked (/dimlock)
+        getServer().getPluginManager().registerEvents(dimensionLock, this);
+        if (getCommand("dimlock") != null) { getCommand("dimlock").setExecutor(dimensionLock); getCommand("dimlock").setTabCompleter(dimensionLock); }
         totemLimit = new TotemLimit(this); // 1.2.69: totems popped by players count, 4 max (per life)
         getServer().getPluginManager().registerEvents(totemLimit, this);
         if (getCommand("totems") != null) { getCommand("totems").setExecutor(totemLimit); getCommand("totems").setTabCompleter(totemLimit); }
@@ -1047,6 +1050,7 @@ public final class FaultlineItems extends JavaPlugin {
     Gear getGear() { return gear; }
     PvpLimits pvpLimits;
     TotemLimit totemLimit;
+    DimensionLock dimensionLock;
     BlueObsidian blueObsidian;
     UpgradedGrindstone upgradedGrindstone;
     SpawnPad spawnPad;

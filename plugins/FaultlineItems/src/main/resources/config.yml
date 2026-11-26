@@ -747,6 +747,12 @@ pvp-limits:
 # 1.2.69: a totem popped by ANOTHER PLAYER counts (1/4, 2/4...). After `max` of them, the next totem doesn't save you from a
 # player ("4/4 Totems has been popped, this totem wont work"); it still works against mobs, falls, lava... The count goes
 # back to 0 when you die (reset-on-death). Admins: /totems <player> | set <player> <n> | reset <player|all> | limit <n|off>
+# 2.0: Nether / End lock (/dimlock <nether|end|all> <on|off>): portals still build and light, but nobody goes through
+# into a locked one (players, mobs, items). Going back out always works; /tp isn't touched.
+dimension-lock:
+  enabled: true
+  nether: true
+  end: true
 totem-limit:
   enabled: true
   max: 4

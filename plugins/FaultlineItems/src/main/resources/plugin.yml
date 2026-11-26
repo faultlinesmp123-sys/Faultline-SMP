@@ -133,6 +133,10 @@ commands:
     description: "Only 5 maces on the server: list them, free a place, change the limit."
     usage: /macelimit [list|free <id|all>|max <n>]
     aliases: [maces]
+  dimlock:
+    description: Lock / unlock the Nether and the End (portals still build, but nobody can go through)
+    usage: /dimlock [nether|end|all] [on|off]
+    aliases: [dimensionlock, portallock]
   totems:
     description: Totems popped by players (admins - set, reset, change or turn off the limit)
     usage: /totems [<player>|set <player> <n>|reset <player|all>|limit <n|off>|on|off]
@@ -269,6 +273,12 @@ commands:
     usage: /givedisc <id|random> [player]
     permission: items.fgear
 permissions:
+  items.dimlock:
+    description: Lock / unlock the Nether and the End
+    default: op
+  faultline.dimlock.bypass:
+    description: Walk through locked Nether / End portals
+    default: false
   items.macelimit:
     default: op
   items.abilities.admin:

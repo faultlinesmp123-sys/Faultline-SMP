@@ -30,7 +30,7 @@ final class RimGen {
     private RimGen() {}
 
     /** The Citadel's middle (x, z): due south of 0,0, deep in the Outer Rim. */
-    static final int[] CITADEL = {0, 4560};
+    static final int[] CITADEL = {0, 8500};
     static final int CITADEL_Y = Terrain.SEA + 60;      // the plateau's top
     static final int CITADEL_PAD = 100;                 // flat out to here, eased to the walls by CITADEL_PAD + 40
     static final int GLITCH_CELL = 220, VILLAGE_CELL = 420, LIGHT_CELL = 300;

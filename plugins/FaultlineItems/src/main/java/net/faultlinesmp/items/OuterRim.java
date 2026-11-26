@@ -34,7 +34,7 @@ import java.util.*;
  * 2.0 THE FARLANDS, deeper (config {@code outer-rim:}; everything skips players a lit Rim Lighthouse covers: FaultlineWorld's
  * {@code faultline_rim_safe} metadata):
  * <ul>
- *   <li>RIM DEPTH: a boss bar in the Farlands, 0% at the Farlands' edge (3280 from 0,0) to 100% at the border (5000). Monsters
+ *   <li>RIM DEPTH: a boss bar in the Farlands, 0% at the Farlands' edge (3280 from 0,0) to 100% at the border (10000). Monsters
  *       spawning naturally get +60% health / +40% damage at 100% (`depth.health`, `depth.damage`, scaled by depth).</li>
  *   <li>STATIC STORMS: every `storm.check-minutes` 8, `storm.chance` 0.15 with someone out there: `storm.minutes` 2 of static
  *       (nausea pulses, flicks of darkness, compasses spinning, ash, a crackle; the Rim Chart won't read).</li>
@@ -55,7 +55,7 @@ import java.util.*;
  */
 final class OuterRim implements Listener {
     static final String SIEGE = "faultline_rim_siege";
-    private static final double FAR0 = 3280, FAR1 = 5000;
+    private static final double FAR0 = 3280, FAR1 = 10000;
 
     private final FaultlineItems plugin;
     final NamespacedKey shardKey, chartKey;

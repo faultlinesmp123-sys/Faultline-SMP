@@ -95,10 +95,10 @@ public class Audit {
         // the Outer Rim: the Citadel, villages, lighthouses, glitched patches (the patches' floating bits are meant to float)
         spots.add(new Object[]{"rim:citadel", RimGen.CITADEL[0], RimGen.CITADEL[1], 6});
         int rv = 0, rl = 0;
-        for (int ci = -13; ci <= 13 && (rv < 2 || rl < 2); ci++) for (int cj = -13; cj <= 13; cj++) {
+        for (int ci = -25; ci <= 25 && (rv < 2 || rl < 2); ci++) for (int cj = -25; cj <= 25; cj++) {
             int[] v = RimGen.villageAt(t.seed, ci, cj);
             if (v != null && rv < 2) { spots.add(new Object[]{"rim:village", v[0], v[1], 3}); rv++; }
-            int[] gl = RimGen.glitchAt(t.seed, ci * 2, cj * 2);
+            int[] gl = RimGen.glitchAt(t.seed, ci, cj);
             if (gl != null && spots.stream().filter(o -> "rim:glitch".equals(o[0])).count() < 2) spots.add(new Object[]{"rim:glitch", gl[0], gl[1], 3});
             int[] l = RimGen.lightAt(t.seed, ci, cj);
             if (l != null && rl < 2) { spots.add(new Object[]{"rim:lighthouse", l[0], l[1], 1}); rl++; }

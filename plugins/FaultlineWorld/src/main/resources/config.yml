@@ -3,7 +3,7 @@
 # generator line, then stops the server once. Start it again: the new world is generated on that start.
 stop-after-install: true
 set-spawn: true
-border-size: 10000
+border-size: 20000
 
 protect:
   pyramids-locked: false   # true = nobody can break / place / blow up the Deep Desert pyramids (the old 'pyramids' key is ignored)
@@ -49,6 +49,6 @@ giant:
 illager-city:
   garrison: 12
 
-# 2.0 THE OUTER RIM (the ring past 7500 x 7500): the Rim Citadel, glitched patches, lost villages, lighthouses.
+# 2.0 THE OUTER RIM (|x| or |z| from 7000 to 10000): the Rim Citadel, glitched patches, lost villages, lighthouses.
 rim:
   lighthouse-minutes: 60    # a lit lighthouse keeps the Rim away (no monster spawns, no Rim pressure) within 96 blocks for this long

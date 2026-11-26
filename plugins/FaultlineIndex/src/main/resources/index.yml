@@ -357,7 +357,7 @@ entries:
      does: "Bigger: 40 health, 8 damage.",
      drops: ["2-4 Leather|100%", "2-4 Bones|100%", "40 XP|100%", "Goodie Bag|25%"]}
   - {chapter: enemies, name: "Lost Villager", icon: skeleton_wanderer, detect-tag: faultline_lost_villager,
-     where: "The lost villages of the Outer Rim (the Farlands past 3800 on either axis), two at each village's well.",
+     where: "The lost villages of the Outer Rim (the Farlands from 7000 to 10000 on either axis), two at each village's well.",
      does: "Can't be hurt. Trades cursed gear for Rim Shards: Sharpness VI swords, Protection V chestplates, Power VI bows, Efficiency VI pickaxes... all with a curse.",
      drops: []}
   - {chapter: enemies, name: "Mountain Zombie", icon: zombie_brute, detect-tag: faultline_mountain_zombie,

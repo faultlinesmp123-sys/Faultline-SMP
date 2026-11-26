@@ -123,7 +123,7 @@ public final class FaultlineWorld extends JavaPlugin {
         return false;
     }
 
-    /** The main world: spawn at y 250 on island A and the 7500 x 7500 border. */
+    /** The main world: spawn at y 250 on island A and the 20000 x 20000 border. */
     private void afterWorlds() {
         World w = Bukkit.getWorlds().get(0);
         if (!(w.getGenerator() instanceof WorldGen)) {
@@ -136,7 +136,7 @@ public final class FaultlineWorld extends JavaPlugin {
         }
         WorldBorder b = w.getWorldBorder();
         int size = getConfig().getInt("border-size", Layout.BORDER * 2);
-        if (size == Layout.OLD_BORDER * 2) size = Layout.BORDER * 2;   // the Outer Rim: an old config's 7500 reads as 10000
+        if (size == Layout.OLD_BORDER * 2 || size == 10000) size = Layout.BORDER * 2;   // the Outer Rim: an old config's 7500 / 10000 reads as 20000
         if (b.getSize() != size || b.getCenter().getX() != 0 || b.getCenter().getZ() != 0) { b.setCenter(0, 0); b.setSize(size); }
         getLogger().info("[World] Faultline overworld ready: spawn " + Layout.SPAWN_X + " " + (Layout.SPAWN_Y + 1) + " " + Layout.SPAWN_Z + ", border " + size + " x " + size);
     }
@@ -159,8 +159,21 @@ public final class FaultlineWorld extends JavaPlugin {
             return true;
         }
         if (args.length >= 1 && args[0].equalsIgnoreCase("rim") && sender instanceof Player p) {
-            // /fworld rim [citadel|village|lighthouse|glitch]: the nearest Outer Rim place
-            String k = args.length > 1 ? args[1].toLowerCase(java.util.Locale.ROOT) : "citadel";
+            // /fworld rim list [kind] = the nearest ones' coordinates; /fworld rim build [kind] = redraw the nearest one into old chunks
+            String sub = args.length > 1 ? args[1].toLowerCase(java.util.Locale.ROOT) : "";
+            if ((sub.equals("list") || sub.equals("build")) && rim != null) {
+                String kind = args.length > 2 ? args[2].toLowerCase(java.util.Locale.ROOT) : "village";
+                if (!java.util.List.of("village", "lighthouse", "glitch", "citadel").contains(kind)) { p.sendMessage("§3[World] §7kinds: village, lighthouse, glitch, citadel"); return true; }
+                java.util.List<int[]> near = rim.nearest(p.getWorld(), kind, p.getLocation().getX(), p.getLocation().getZ(), sub.equals("list") ? 10 : 1);
+                if (near.isEmpty()) { p.sendMessage("§3[World] §7None found."); return true; }
+                if (sub.equals("list")) {
+                    p.sendMessage("§3[World] §7The nearest " + kind + (kind.equals("citadel") ? "" : "s") + " (x y z, blocks away):");
+                    for (int[] c : near) p.sendMessage("§f  " + c[0] + " " + c[1] + " " + c[2] + " §8(" + (int) Math.hypot(c[0] - p.getLocation().getX(), c[2] - p.getLocation().getZ()) + ")");
+                    p.sendMessage("§8A chunk generated before the update has no " + kind + ": stand near it and /fworld rim build " + kind + ".");
+                } else rim.build(p, kind, near.get(0));
+                return true;
+            }
+            String k = sub.isEmpty() ? "citadel" : sub;
             Terrain t = gen.terrain(p.getWorld());
             int[] best = null; double bd = Double.MAX_VALUE;
             if (k.equals("citadel")) best = new int[]{RimGen.CITADEL[0], RimGen.CITADEL_Y + 1, RimGen.CITADEL[1] - 60};

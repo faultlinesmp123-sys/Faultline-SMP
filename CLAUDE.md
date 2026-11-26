@@ -3597,6 +3597,16 @@ Notes:
   spawned the tick after as copies of the real one (velocity + acceleration turned 12 degrees). Index: Rim Shard, Rim Chart,
   Lost Villager + a guide section. Tested (scratch `mg/RimTest`: depth, deep zombie hp, offers, a full 4-wave siege won, storm,
   anomalies).
+- **The Outer Rim moved to 7000-10000 (World, Items, Index; same 2.0.0)**: the owner set the border to 20000 x 20000 by hand
+  (they fly at z 8000) and wants the new places in the 7000-10000 band. `Layout.BORDER` 10000, `Layout.RIM` 7000 (Chebyshev),
+  `border-size` 20000 (an old 7500 / 10000 reads as 20000), the Rim Citadel at `CITADEL` (0, 8500); Items' Rim Depth runs 3280 ->
+  10000. Chunks already generated there (the owner flew through them) have no Rim places: `Rim.onChunk` spawns Lost Villagers only
+  when the well is there (`wellThere`), `onEntities` removes floating ones (the first jar spawned them in old chunks), and admin
+  `/fworld rim list [village|lighthouse|glitch|citadel]` prints the 10 nearest with coordinates, `/fworld rim build [kind]` REDRAWS the
+  nearest into old chunks (`Rim.build`/`redraw`: each chunk it touches is generated again by `WorldGen` into a Proxy ChunkData, every
+  differing block within `reach()` of its middle is set, existing block entities stay, then `Life.fillChunk` loots it and a village gets
+  its villagers; one chunk at a time, 25 ms a tick). Snow in the Farlands = the old datapack (windswept_hills fallback / temperature 0.2)
+  still loaded: restart twice with the new jar. `tools/world_preview/Audit.java <seed> rim` finds the spots in the new band.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

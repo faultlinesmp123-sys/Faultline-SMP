@@ -532,16 +532,14 @@ kraken-gear:
     eelskin-wrap-from-drowned: 0.02
 
 # ---------------- Weather events (Weather.java) ----------------
-# SANDSTORM in deserts (dust, husks, buried treasure), BLIZZARD in snowy biomes (keep warm: a fire within 4 blocks or
-# 2+ leather pieces), ECLIPSE at midday (5 min night, neutral mobs turn hostile). /fweather <kind> | stop | status
-# (1.2.67: the Aurora and the Locust Swarm were removed.)
+# SANDSTORM in deserts (dust, husks, buried treasure), ECLIPSE at midday (5 min night, neutral mobs turn hostile).
+# /fweather <kind> | stop | status (1.2.67: the Aurora and the Locust Swarm were removed; 2.0: the Blizzard too.)
 weather:
   enabled: true
-  announcements: false     # 1.3.17: true = chat lines + titles when a sandstorm / blizzard / eclipse starts and ends
+  announcements: false     # 1.3.17: true = chat lines + titles when a sandstorm / eclipse starts and ends
   boss-bar: false          # 1.3.17: true = the Eclipse boss bar
   sandstorm: {enabled: true, chance-per-minute: 0.006, minutes: 6, radius: 110, husks-per-player: 4, treasure-chance: 0.04, treasure-per-player: 3,
               treasure: ["GOLD_INGOT:2-6", "EMERALD:1-4", "DIAMOND:1-2:25", "GOLDEN_APPLE:1:15", "RABBIT_FOOT:1:30"]}
-  blizzard: {enabled: true, chance-per-minute: 0.006, minutes: 6, radius: 110, cold-per-half-second: 26, strays-per-player: 6}
   eclipse: {enabled: true, chance-per-minute: 0.003, minutes: 5, sun-height: 55, sun-size: 1.0}   # only each player's sky goes dark: the world's time keeps running
 
 # ---------------- Creatures (Creatures.java) ----------------

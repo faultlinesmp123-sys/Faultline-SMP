@@ -820,8 +820,6 @@ entries:
      does: "Armoured skeletons with swords and shields, in great helms that keep the sun off.", drops: ["Knight's Helm|6%", "Iron Nuggets|100%", "2-5 Emeralds (the captain)|100%"]}
   - {chapter: enemies, id: sandstorm_husk, name: "Sandstorm Husk", icon: molten_husk, detect-tag: faultline_sandstorm_husk,
      where: "Ride in on a sandstorm.", does: "Husks that come with the dust."}
-  - {chapter: enemies, id: blizzard_stray, name: "Blizzard Stray", icon: frost_archer, detect-tag: faultline_blizzard_stray,
-     where: "Come with a blizzard, in packs.", does: "Strays: slowing arrows out of the snow."}
   - {chapter: weapons, name: "Lantern of Souls", icon: lantern_of_souls, detect: "faultlineitems:gear=lantern_of_souls",
      how: "Craft: a soul lantern ringed with 4 phantom membranes and 4 amethyst shards.",
      does: "Hold it: lights the dark, makes invisible creatures nearby glow, lifts Darkness, and makes the Ghost Ship solid so you can board her."}

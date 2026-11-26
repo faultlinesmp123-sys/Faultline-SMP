@@ -7028,7 +7028,6 @@ public final class FaultlineItems extends JavaPlugin {
             }
             // weather events: start one where the admin stands
             list.add(external(icon(Material.SAND, null, ChatColor.GOLD + "" + ChatColor.BOLD + "Event: Sandstorm " + ChatColor.GRAY + "(starts it here)", "FaultlineItems"), "fweather sandstorm {player}", "FaultlineItems"));
-            list.add(external(icon(Material.POWDER_SNOW_BUCKET, null, ChatColor.AQUA + "" + ChatColor.BOLD + "Event: Blizzard " + ChatColor.GRAY + "(starts it here)", "FaultlineItems"), "fweather blizzard {player}", "FaultlineItems"));
             list.add(external(icon(Material.BLACK_CONCRETE, null, ChatColor.DARK_RED + "" + ChatColor.BOLD + "Event: Eclipse " + ChatColor.GRAY + "(the black sun)", "FaultlineItems"), "fweather eclipse {player}", "FaultlineItems"));
             list.add(external(icon(Material.CHEST, null, ChatColor.GOLD + "" + ChatColor.BOLD + "Mimic " + ChatColor.GRAY + "(spawns one)", "FaultlineItems"), "fcreature mimic {player}", "FaultlineItems"));
             list.add(external(icon(Material.SKELETON_HORSE_SPAWN_EGG, null, ChatColor.WHITE + "" + ChatColor.BOLD + "Skeleton Knight Patrol " + ChatColor.GRAY + "(spawns one)", "FaultlineItems"), "fcreature knights {player}", "FaultlineItems"));

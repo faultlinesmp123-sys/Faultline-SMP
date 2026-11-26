@@ -91,7 +91,7 @@ chapters:
 
       # Events
       - The Caravan Merchant camps near players every 8 hours
-      - Weather: Sandstorm, Blizzard, Eclipse
+      - Weather: Sandstorm, Eclipse
       - Blood Moon (stronger monsters, double XP, the Crimson Champion at midnight), Lantern Night (a calm night, catch the Lantern Wisps), Fog (you can't see far, the undead walk by day), Windy days (Luck and loot x1.2, the wind pushes you). /fevent shows what's on.
       - The Nether and the End have day and night too. Night there brings more monsters and sometimes an Ember Storm or a Soul Tide (Nether), a Void Storm or a Starfall (End). A Spawn Pad lets you respawn there.
       - Fishing tournaments, elytra / boat / horse races

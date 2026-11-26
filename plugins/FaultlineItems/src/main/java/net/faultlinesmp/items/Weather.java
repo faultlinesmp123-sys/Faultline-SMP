@@ -61,19 +61,18 @@ import java.util.*;
 /**
  * WEATHER EVENTS (config weather:): rare things the sky (or the fields) do on their own.
  *   SANDSTORM  in deserts / badlands: thick dust, slowness, husk hordes, and buried treasure in the sand you dig.
- *   BLIZZARD   in snowy biomes: snow, cold (you freeze unless you're near a fire or wearing leather), stray packs.
  *   ECLIPSE    at midday the sun goes dark for 5 minutes: it turns to night and every neutral mob turns on you.
- * (The Aurora and the Locust Swarm were removed in Items 1.2.67; leftover locusts carry TAG and are swept on startup.)
- * Admin: /fweather <sandstorm|blizzard|eclipse> [player] | stop [kind] | status
+ * (The Aurora and the Locust Swarm were removed in Items 1.2.67, the Blizzard in 2.0; leftover locusts / strays carry TAG and
+ * are swept on startup.)
+ * Admin: /fweather <sandstorm|eclipse> [player] | stop [kind] | status
  */
 final class Weather implements Listener, CommandExecutor, org.bukkit.command.TabCompleter {
 
     static final String TAG = "faultline_weather", HUSK_TAG = "faultline_sandstorm_husk", STRAY_TAG = "faultline_blizzard_stray",
             PART_TAG = "faultline_weather_part";
-    static final List<String> KINDS = List.of("sandstorm", "blizzard", "eclipse");
+    static final List<String> KINDS = List.of("sandstorm", "eclipse");
     static final Map<String, String> ABOUT = Map.of(
             "sandstorm", "deserts/badlands: dust, husks, treasure in the sand",
-            "blizzard", "snowy biomes: freezing cold, strays",
             "eclipse", "a black sun: beasts turn on you for 5 min");
 
     private final FaultlineItems plugin;
@@ -138,7 +137,6 @@ final class Weather implements Listener, CommandExecutor, org.bukkit.command.Tab
             if (!survival(p) || !FaultlineItems.surfaceWorld(p.getWorld())) continue;
             Biome b = p.getLocation().getBlock().getBiome();
             if (on("sandstorm") && !active.containsKey("sandstorm") && sandy(b) && random.nextDouble() < cfg("sandstorm.chance-per-minute", 0.006)) start("sandstorm", p.getWorld(), p.getLocation());
-            else if (on("blizzard") && !active.containsKey("blizzard") && SNOWY.contains(b) && random.nextDouble() < cfg("blizzard.chance-per-minute", 0.006)) start("blizzard", p.getWorld(), p.getLocation());
         }
     }
 
@@ -151,8 +149,6 @@ final class Weather implements Listener, CommandExecutor, org.bukkit.command.Tab
     }
 
     static final Set<Biome> SANDS = new HashSet<>(List.of(Biome.DESERT, Biome.BADLANDS, Biome.ERODED_BADLANDS, Biome.WOODED_BADLANDS));
-    static final Set<Biome> SNOWY = new HashSet<>(List.of(Biome.SNOWY_PLAINS, Biome.SNOWY_TAIGA, Biome.SNOWY_SLOPES, Biome.SNOWY_BEACH, Biome.GROVE,
-            Biome.ICE_SPIKES, Biome.FROZEN_PEAKS, Biome.JAGGED_PEAKS, Biome.FROZEN_RIVER, Biome.FROZEN_OCEAN, Biome.DEEP_FROZEN_OCEAN));
 
     // =====================================================================================================
     //  starting and ending
@@ -161,7 +157,6 @@ final class Weather implements Listener, CommandExecutor, org.bukkit.command.Tab
         if (active.containsKey(kind)) return null;
         Event e = switch (kind) {
             case "sandstorm" -> at == null ? null : new Sandstorm(at);
-            case "blizzard" -> at == null ? null : new Blizzard(at);
             case "eclipse" -> new Eclipse(w);
             default -> null;
         };
@@ -281,85 +276,6 @@ final class Weather implements Listener, CommandExecutor, org.bukkit.command.Tab
         e.getPlayer().sendActionBar(Meteor.legacy(ChatColor.GOLD + "You dug up buried treasure!"));
         l.getWorld().playSound(l, Sound.BLOCK_SUSPICIOUS_SAND_BREAK, 1f, 0.8f);
         l.getWorld().spawnParticle(Particle.WAX_ON, l, 20, 0.4, 0.4, 0.4, 0.5);
-    }
-
-    // =====================================================================================================
-    //  BLIZZARD
-    // =====================================================================================================
-    final class Blizzard extends Event {
-        final Location center;
-        final Set<UUID> weathered = new HashSet<>();
-        Blizzard(Location at) { super("blizzard", at.getWorld(), Weather.this.cfg("blizzard.minutes", 6)); center = at.clone(); }
-
-        @Override String where() { return " near X " + center.getBlockX() + ", Z " + center.getBlockZ(); }
-
-        boolean inside(Player p) {
-            return p.getWorld().equals(world) && p.getLocation().distanceSquared(center) < sq(cfg("blizzard.radius", 110));
-        }
-
-        @Override void begin() {
-            if (loud()) for (Player p : world.getPlayers()) if (inside(p)) p.showTitle(net.kyori.adventure.title.Title.title(Meteor.legacy(ChatColor.AQUA + "" + ChatColor.BOLD + "BLIZZARD"),
-                    Meteor.legacy(ChatColor.WHITE + "Stay by a fire, or wear leather.")));
-            say(ChatColor.AQUA + "A blizzard howls over the snow" + where() + ChatColor.GRAY + " (keep warm: fire or leather)");
-        }
-
-        boolean warm(Player p) {
-            int leather = 0;
-            for (ItemStack it : p.getInventory().getArmorContents()) if (it != null && it.getType().name().startsWith("LEATHER_")) leather++;
-            if (leather >= 2) return true;
-            Location l = p.getLocation();
-            for (int dx = -4; dx <= 4; dx++) for (int dy = -2; dy <= 2; dy++) for (int dz = -4; dz <= 4; dz++) {
-                Block b = l.getBlock().getRelative(dx, dy, dz);
-                Material m = b.getType();
-                if (m == Material.FIRE || m == Material.SOUL_FIRE || m == Material.LAVA || m == Material.MAGMA_BLOCK) return true;
-                if ((m == Material.CAMPFIRE || m == Material.SOUL_CAMPFIRE || m == Material.FURNACE || m == Material.BLAST_FURNACE || m == Material.SMOKER)
-                        && b.getBlockData() instanceof Lightable lit && lit.isLit()) return true;
-            }
-            return false;
-        }
-
-        @Override boolean tick() {
-            t++;
-            if (System.currentTimeMillis() > endsAt) return true;
-            if (t % 10 == 0) for (Player p : world.getPlayers()) {
-                boolean in = inside(p);
-                if (in && weathered.add(p.getUniqueId())) p.setPlayerWeather(WeatherType.DOWNFALL);
-                if (!in && weathered.remove(p.getUniqueId())) p.resetPlayerWeather();
-                if (!in) continue;
-                Location l = p.getLocation();
-                p.spawnParticle(Particle.SNOWFLAKE, l.clone().add(0, 2, 0), 60, 6, 3, 6, 0.08);
-                p.spawnParticle(Particle.WHITE_ASH, l.clone().add(0, 1.5, 0), 30, 4, 2, 4, 0.02);
-                if (!survival(p) || l.getBlock().getLightFromSky() < 10) continue;
-                if (warm(p)) { if (t % 100 == 0) p.sendActionBar(Meteor.legacy(ChatColor.GOLD + "You're warm.")); continue; }
-                p.setFreezeTicks(Math.min(p.getMaxFreezeTicks() + 40, p.getFreezeTicks() + (int) cfg("blizzard.cold-per-half-second", 26)));
-                if (t % 60 == 0) p.sendActionBar(Meteor.legacy(ChatColor.AQUA + "You're freezing! " + ChatColor.GRAY + "Stand by a fire, or wear leather."));
-            }
-            if (t % 400 == 0) for (Player p : world.getPlayers()) {
-                if (!inside(p) || !survival(p)) continue;
-                long near = p.getNearbyEntities(32, 16, 32).stream().filter(e -> e.getScoreboardTags().contains(STRAY_TAG)).count();
-                if (near >= cfg("blizzard.strays-per-player", 6)) continue;
-                for (int i = 0; i < 3; i++) {
-                    Location s = ring(p.getLocation(), 10, 18);
-                    if (s == null) continue;
-                    world.spawn(s, Stray.class, st -> {
-                        st.addScoreboardTag(TAG); st.addScoreboardTag(STRAY_TAG);
-                        st.setCustomName(ChatColor.AQUA + "Blizzard Stray");
-                        st.setCustomNameVisible(false);
-                        st.setPersistent(false);
-                        st.getEquipment().setItemInMainHand(new ItemStack(Material.BOW));
-                        st.setTarget(p);
-                    });
-                }
-            }
-            return false;
-        }
-
-        @Override void finish(boolean natural) {
-            for (UUID u : weathered) { Player p = Bukkit.getPlayer(u); if (p != null) p.resetPlayerWeather(); }
-            weathered.clear();
-            if (natural) say(ChatColor.AQUA + "The blizzard blows itself out.");
-            for (Entity e : world.getEntities()) if (e.getScoreboardTags().contains(STRAY_TAG) && e.getLocation().distanceSquared(center) < sq(200)) e.remove();
-        }
     }
 
     // =====================================================================================================
@@ -502,7 +418,6 @@ final class Weather implements Listener, CommandExecutor, org.bukkit.command.Tab
 
     @EventHandler
     public void onQuit(PlayerQuitEvent e) {
-        if (active.get("blizzard") instanceof Blizzard b && b.weathered.remove(e.getPlayer().getUniqueId())) e.getPlayer().resetPlayerWeather();
         if (active.get("eclipse") instanceof Eclipse ec) ec.lighten(e.getPlayer());
     }
 
@@ -596,7 +511,7 @@ final class Weather implements Listener, CommandExecutor, org.bukkit.command.Tab
             sender.sendMessage(ChatColor.GREEN + "Stopped.");
             return true;
         }
-        if (!KINDS.contains(sub)) { sender.sendMessage(ChatColor.YELLOW + "/fweather <sandstorm|blizzard|eclipse|stop [kind]|status>"); return true; }
+        if (!KINDS.contains(sub)) { sender.sendMessage(ChatColor.YELLOW + "/fweather <sandstorm|eclipse|stop [kind]|status>"); return true; }
         if (active.containsKey(sub)) { sender.sendMessage(ChatColor.RED + "That's already happening (/fweather stop " + sub + ")."); return true; }
         World w = p != null ? p.getWorld() : Bukkit.getWorlds().get(0);
         Location at = p != null ? p.getLocation() : null;

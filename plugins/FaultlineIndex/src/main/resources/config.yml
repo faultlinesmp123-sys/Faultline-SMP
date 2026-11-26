@@ -46,7 +46,7 @@ discord:
     ignore-commands: [login, l, log, register, reg, changepassword, changepass, cp]   # never logged (passwords)
   # announcements matching any of these (Java regexes) are posted
   forward: ["(?i)has been defeated", "(?i)has fallen", "(?i)has been laid to rest", "(?i)caravan", "(?i)achievement",
-            "(?i)is the first to", "(?i)sandstorm", "(?i)blizzard", "(?i)eclipse", "(?i)ghost ship|wailing mary",
+            "(?i)is the first to", "(?i)sandstorm", "(?i)eclipse", "(?i)ghost ship|wailing mary",
             "(?i)invasion", "(?i)whirlpool has opened", "(?i)blood moon (rises|sets)", "(?i)crimson champion", "(?i)lantern night", "(?i)the fog (rolls in|lifts)", "(?i)the wind (picks up|dies down)"]
 
 # Save guard (1.9.7): catches ROLLBACKS. What every player carries when they leave is remembered; if they come back with

@@ -157,8 +157,8 @@ commands:
     permission: items.givelostmirror
   fweather:
     aliases: [weatherevent]
-    description: "Weather events now (admins: start/stop sandstorm, blizzard, eclipse)"
-    usage: /fweather [list|<sandstorm|blizzard|eclipse> [player]|stop [event]|status]
+    description: "Weather events now (admins: start/stop sandstorm, eclipse)"
+    usage: /fweather [list|<sandstorm|eclipse> [player]|stop [event]|status]
   fenchant:
     description: "Admin: boss enchant books (/fenchant give <id> [level] [amount] [player], /fenchant list)"
     usage: /fenchant [list|give <id> [level] [amount] [player]]

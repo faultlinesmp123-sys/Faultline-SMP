@@ -3461,6 +3461,10 @@ Notes:
   `farlands.always-night`, `always-rain`, `spooky`, `spooky-lightning-chance`. The datapack's farlands biome is now temperature
   0.9 / downfall 0.9 / precipitation on (windswept_hills' 0.2 made it SNOW on the high walls): needs 2 restarts to take
   (the jar replaces the installed datapack, then the world reads it). Tested (scratch `far/FarTest`).
+- **Wanderer shop closed at once (Items, same 2.0.0)**: since 1.3.47 `CaveTrader.wander` teleported his WanderingTrader + click box
+  every 2 ticks (even standing still), and teleporting a trader ends its trade, so the merchant menu shut the moment it opened.
+  Now they're only teleported when he really moved, never while `core.isTrading()`, and trading holds him in the "trade" state.
+  RULE: never teleport a villager / trader someone is trading with (Halcyon's citizens already stand still: `Citizens` ~714).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

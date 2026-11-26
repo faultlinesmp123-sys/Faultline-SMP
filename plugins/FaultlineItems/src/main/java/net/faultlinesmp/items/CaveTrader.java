@@ -314,7 +314,8 @@ final class CaveTrader implements Listener, CommandExecutor {
         boolean someone = false;
         for (Player p : t.home.getWorld().getPlayers())
             if (p.getGameMode() != GameMode.SPECTATOR && p.getLocation().distanceSquared(t.home) < cfg("stop-distance", 6) * cfg("stop-distance", 6)) { someone = true; break; }
-        if (someone) { if (!t.state.equals("trade")) { t.state = "trade"; t.stateT = 0; } }
+        boolean trading = t.core != null && t.core.isValid() && t.core.isTrading();
+        if (someone || trading) { if (!t.state.equals("trade")) { t.state = "trade"; t.stateT = 0; } else if (trading) t.stateT = 0; }
         else if (t.state.equals("trade") && t.stateT > 30) next(t, "idle");
         switch (t.state) {
             case "walk" -> {
@@ -346,10 +347,11 @@ final class CaveTrader implements Listener, CommandExecutor {
             }
         }
         t.walkAmt += ((t.state.equals("walk") ? 1 : 0) - t.walkAmt) * 0.15;
-        if (t.age % 2 == 0) { // his trader and click box go with him
+        if (t.age % 2 == 0 && !trading) { // his trader and click box go with him
+            // only when he really moved: teleporting a trader ends its trade, which shut the shop the moment it opened
             Location at = t.home.clone(); at.setYaw(t.yaw); at.setPitch(0);
-            if (t.core != null && t.core.isValid()) t.core.teleport(at);
-            if (t.click != null && t.click.isValid()) t.click.teleport(at);
+            if (t.core != null && t.core.isValid() && t.core.getLocation().distanceSquared(at) > 0.0004) t.core.teleport(at);
+            if (t.click != null && t.click.isValid() && t.click.getLocation().distanceSquared(at) > 0.0004) t.click.teleport(at);
         }
         if (t.age % 300 == 0 && random.nextDouble() < 0.4) t.home.getWorld().playSound(t.home, Sound.ENTITY_SKELETON_AMBIENT, 0.6f, 0.6f + random.nextFloat() * 0.3f);
     }

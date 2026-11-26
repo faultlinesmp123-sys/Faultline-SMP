@@ -182,7 +182,7 @@ public class Bounties implements Listener, TabExecutor {
         if (!plugin.getConfig().getBoolean("bounty.same-ip-claims", false) && sameIp(killer, victim)) return "same connection as them.";
         if (!plugin.getConfig().getBoolean("bounty.same-kingdom-claims", false)) {
             String a = plugin.getKingdomDataReader().getKingdom(killer.getUniqueId());
-            if (a != null && a.equals(plugin.getKingdomDataReader().getKingdom(victim.getUniqueId()))) return "they're in your kingdom.";
+            if (a != null && a.equals(plugin.getKingdomDataReader().getKingdom(victim.getUniqueId()))) return "they're in your faction.";
         }
         return null;
     }

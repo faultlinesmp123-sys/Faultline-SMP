@@ -3,31 +3,32 @@ version: '2.0.0'
 main: net.faultlinesmp.kingdoms.FaultlineKingdoms
 api-version: '2.0.0'
 author: FaultlineSMP
-description: Five kingdoms (assigned by staff) and grace periods, server-wide or per kingdom
+description: Five factions (assigned by staff) and grace periods, server-wide or per faction
 softdepend: [floodgate, Geyser-Spigot, FaultlineIndex, LimboBlackMarket]
 
 commands:
-  kingdom:
-    description: "Your kingdom, its friendly-fire and treaty votes, and the grace periods"
-    usage: /kingdom [list <1-5>|ff <on|off|clear>|ally <1-5> <yes|no|clear>]
-    aliases: [k]
-  kc:
-    description: "Kingdom chat: /kc <message>, or /kc alone to talk only to your kingdom until /kc again"
-    usage: /kc [message]
-    aliases: [kchat, kingdomchat]
+  faction:
+    description: "Your faction, its friendly-fire and treaty votes, and the grace periods"
+    usage: /faction [list <1-5>|ff <on|off|clear>|ally <1-5> <yes|no|clear>]
+    aliases: [f, kingdom, k]
+  fc:
+    description: "Faction chat: /fc <message>, or /fc alone to talk only to your faction until /fc again"
+    usage: /fc [message]
+    aliases: [fchat, factionchat, kc, kchat, kingdomchat]
   ac:
-    description: "Alliance chat: your kingdom + its allies (treaties). /ac alone toggles it"
+    description: "Alliance chat: your faction + its allies (treaties). /ac alone toggles it"
     usage: /ac [message]
     aliases: [allychat]
-  kingdoms:
-    description: "Admin: /kingdoms grace <all|1-5> <on|off> [time], set <player> <1-5|none|auto>, tp <1-5|outlaws|all> [player], sync, reload"
-    usage: /kingdoms <grace|set|ff|treaty|tp|spy|sync|status|reload>
+  factions:
+    description: "Admin: /factions grace <all|1-5> <on|off> [time], set <player> <1-5|none|auto>, tp <1-5|outlaws|all> [player], sync, reload"
+    usage: /factions <grace|set|ff|treaty|tp|spy|sync|status|reload>
+    aliases: [kingdoms]
     permission: kingdoms.admin
 
 permissions:
   kingdoms.spy:
-    description: See every kingdom's /kc and /ac (toggle with /kingdoms spy)
+    description: See every faction's /fc and /ac (toggle with /factions spy)
     default: op
   kingdoms.admin:
-    description: Grace periods and setting players' kingdoms
+    description: Grace periods and setting players' factions
     default: op

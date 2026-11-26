@@ -163,9 +163,9 @@ entries:
   - {chapter: weapons, id: ability_shade, name: "Ability: Shade", icon: shrieking_phantom, detect: "faultlineitems:ability_shade",
      how: "Admins only (/adminmenu). Right-click it and the ability is yours forever (one ability each).",
      does: "Sin's ability: Strength II, Swiftness II and Fire Resistance forever, and Invisibility until a totem pops. It comes back 5 minutes after the pop, or when you respawn."}
-  - {chapter: weapons, name: "Kingdom Compass", icon: umbral_sonar, detect: "faultlineitems:kingdom_compass",
-     how: "Staff give one to each kingdom's king (/adminmenu).",
-     does: "Points the way to your kingdom's abandoned home: the Mountain's castle, the Jungle's Himeji castle, the Ice's frozen cathedral, the way down to the Fibers, or the ladder up to the Sky's floating city. Hold it to see the distance and which way to go."}
+  - {chapter: weapons, name: "Faction Compass", icon: umbral_sonar, detect: "faultlineitems:kingdom_compass",
+     how: "Staff give one to each faction's leader (/adminmenu).",
+     does: "Points the way to your faction's abandoned home: the Mountain's castle, the Jungle's Himeji castle, the Ice's frozen cathedral, the way down to the Fibers, or the ladder up to the Sky's floating city. Hold it to see the distance and which way to go."}
   - {chapter: weapons, name: "Whirlpool Radar", icon: umbral_sonar, detect: "faultlinedeep:whirlpool_radar",
      how: "Craft it: Copper Ingot, Amethyst Shard, Copper Ingot / Redstone, Compass, Redstone / Copper Ingot, Amethyst Shard, Copper Ingot.",
      does: "Hold it to find whirlpools out in the ocean: an arrow, the distance and a ping that speeds up as you get close. Whirlpools open quietly all the time. Regular ones (white beam) hurt you and spit you back out. Only THE DEPTHS (purple beam) takes you down to the Dark Ocean. Within 120 blocks the radar tells you which one it is."}
@@ -867,7 +867,7 @@ entries:
   - {chapter: accessories, name: "Gladiator's Crest", icon: gladiators_crest, detect: "faultlineitems:gladiators_crest",
      how: "Only from Diamond Jacob: 40% for each player who helps beat him.", does: "+1 armor for every other player within 10 blocks, up to +4."}
   - {chapter: accessories, name: "Guardian's Oath", icon: guardians_oath, detect: "faultlineitems:guardians_oath",
-     how: "Craft it: a Shield in the middle, Gold Ingots on the sides, Iron Ingots in the corners.", does: "Players from your kingdom within 8 blocks of you take 1% less damage (doesn't stack with another Guardian's Oath)."}
+     how: "Craft it: a Shield in the middle, Gold Ingots on the sides, Iron Ingots in the corners.", does: "Players from your faction within 8 blocks of you take 1% less damage (doesn't stack with another Guardian's Oath)."}
   - {chapter: accessories, name: "Miner's Lantern Charm", icon: miners_lantern, detect: "faultlineitems:miners_lantern",
      how: "Craft it: Lanterns on the sides, Glowstone Dust in the corners, a Diamond in the middle.", does: "Mining stone makes every ore within 5 blocks glow for 3 seconds (only you see it)."}
   - {chapter: accessories, name: "Green Thumb Ring", icon: green_thumb, detect: "faultlineitems:green_thumb",

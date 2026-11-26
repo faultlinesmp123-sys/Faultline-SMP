@@ -29,7 +29,7 @@ final class KingdomForms {
         FaultlineKingdoms.Member m = pl.member(p);
         int k = m.kingdom;
         StringBuilder s = new StringBuilder();
-        s.append("§lYour kingdom:§r ").append(c(pl.label(k))).append(m.manual ? " §7(set by staff)" : "").append("\n");
+        s.append("§lYour faction:§r ").append(c(pl.label(k))).append(m.manual ? " §7(set by staff)" : "").append("\n");
         if (!DiscordLink.OFF) s.append("§lDiscord:§r ").append(m.discordId != null ? "§2linked" : "§cnot linked").append("§r\n");
         if (k > 0) s.append("§lFriendly fire:§r ").append(pl.friendlyFire(k) ? "§cON" : "§2OFF").append(" §7(").append(c(pl.ffWhy(k))).append(")§r\n");
         if (FaultlineKingdoms.protectedNow(p)) s.append("§2🛡 You're under a grace period.§r\n");
@@ -49,24 +49,24 @@ final class KingdomForms {
             int n = 0; for (FaultlineKingdoms.Member x : pl.members.values()) if (x.kingdom == kk) n++;
             buttons.add(c(pl.label(kk)) + "\n§8" + n + " members"); actions.add(() -> list(p, kk));
         }
-        return BedrockForms.menu(pl, p, "Kingdoms", s.toString().trim(), buttons, i -> { if (i < actions.size()) actions.get(i).run(); }, null);
+        return BedrockForms.menu(pl, p, "Factions", s.toString().trim(), buttons, i -> { if (i < actions.size()) actions.get(i).run(); }, null);
     }
 
     void link(Player p) {
         if (!BedrockForms.input(pl, p, "Link your Discord", "Your Discord username (Settings > My Account):", "username",
-                t -> { if (!t.isEmpty()) p.performCommand("kingdom link " + t); }))
-            p.sendMessage(ChatColor.GOLD + "Type " + ChatColor.WHITE + "/kingdom link <your discord name>");
+                t -> { if (!t.isEmpty()) p.performCommand("faction link " + t); }))
+            p.sendMessage(ChatColor.GOLD + "Type " + ChatColor.WHITE + "/faction link <your discord name>");
     }
 
     void code(Player p) {
         if (!BedrockForms.input(pl, p, "Enter your code", "The 6-digit code the bot sent you in Discord DMs:", "123456",
-                t -> { if (!t.isEmpty()) p.performCommand("kingdom verify " + t.replaceAll("\\s", "")); }))
-            p.sendMessage(ChatColor.GOLD + "Type " + ChatColor.WHITE + "/kingdom verify <code>");
+                t -> { if (!t.isEmpty()) p.performCommand("faction verify " + t.replaceAll("\\s", "")); }))
+            p.sendMessage(ChatColor.GOLD + "Type " + ChatColor.WHITE + "/faction verify <code>");
     }
 
     void unlink(Player p) {
-        BedrockForms.ask(pl, p, "Unlink Discord?", "You'll leave your kingdom until you link again.", "Unlink", "Cancel",
-                y -> { if (y) p.performCommand("kingdom unlink"); else home(p); });
+        BedrockForms.ask(pl, p, "Unlink Discord?", "You'll leave your faction until you link again.", "Unlink", "Cancel",
+                y -> { if (y) p.performCommand("faction unlink"); else home(p); });
     }
 
     void vote(Player p) {

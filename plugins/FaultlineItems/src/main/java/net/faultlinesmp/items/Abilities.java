@@ -476,7 +476,7 @@ final class Abilities implements Listener, CommandExecutor, TabCompleter {
         ItemMeta im = info.getItemMeta();
         im.setDisplayName(ChatColor.YELLOW + "How it works");
         im.setLore(List.of(ChatColor.GRAY + "Top row: click to get an ability item.", ChatColor.GRAY + "Right-clicking it gives that ability forever.",
-                ChatColor.GRAY + "Row 3: kingdom compasses (give one to each king).", ChatColor.GRAY + "Heads below: players with an ability.", ChatColor.RED + "Click a head to REMOVE their ability."));
+                ChatColor.GRAY + "Row 3: faction compasses (give one to each leader).", ChatColor.GRAY + "Heads below: players with an ability.", ChatColor.RED + "Click a head to REMOVE their ability."));
         info.setItemMeta(im);
         m.inv.setItem(8, info);
         // 1.3.38: row 2 = the legendary weapons + the admin-only bosses
@@ -528,7 +528,7 @@ final class Abilities implements Listener, CommandExecutor, TabCompleter {
         } else if (slot >= 20 && slot <= 24 && plugin.kingdomCompass != null) {
             int k = slot - 19;
             for (ItemStack left : p.getInventory().addItem(plugin.kingdomCompass.item(k)).values()) p.getWorld().dropItem(p.getLocation(), left);
-            p.sendMessage(ChatColor.GREEN + "Got the " + KingdomCompass.NAMES[k - 1] + " Compass. Give it to their king.");
+            p.sendMessage(ChatColor.GREEN + "Got the " + KingdomCompass.NAMES[k - 1] + " Compass. Give it to their leader.");
             plugin.getLogger().info("[Abilities] " + p.getName() + " took the " + KingdomCompass.NAMES[k - 1] + " Compass from /adminmenu");
         } else if (slot >= 27 && slot - 27 < m.heads.size()) {
             UUID id = m.heads.get(slot - 27);

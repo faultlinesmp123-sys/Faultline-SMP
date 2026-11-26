@@ -223,8 +223,8 @@ commands:
     description: "Your ping, someone's, or everyone's (/ping [player|all])"
     usage: /ping [player|all]
   coords:
-    description: "Show your coordinates (a bar at the top); /coords share [player|kingdom|all] tells others where you are"
-    usage: /coords [share [player|kingdom|all]]
+    description: "Show your coordinates (a bar at the top); /coords share [player|faction|all] tells others where you are"
+    usage: /coords [share [player|faction|all]]
     aliases: [coordinates, where]
   crops:
     description: "Which crops are in season this month (they grow faster and give more)"

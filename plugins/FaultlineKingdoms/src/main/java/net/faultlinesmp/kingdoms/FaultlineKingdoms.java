@@ -98,7 +98,7 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
         gateway.start();
         getServer().getScheduler().runTaskTimer(this, this::tick, 20L, 20L);
         for (Player p : Bukkit.getOnlinePlayers()) { member(p); refreshName(p); }
-        getLogger().info("Faultline Kingdoms enabled: " + members.size() + " players known, kingdoms set by staff" + (discord.on() ? "" : "") + ".");
+        getLogger().info("Faultline Factions enabled: " + members.size() + " players known, factions set by staff" + (discord.on() ? "" : "") + ".");
     }
 
     @Override
@@ -170,13 +170,13 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
         return m == null ? 0 : m.kingdom;
     }
 
-    /** The player's kingdom name ("Kingdom 1"), or null for none (LimboBlackMarket reads this by reflection). */
+    /** The player's kingdom name ("Faction 1"), or null for none (LimboBlackMarket reads this by reflection). */
     public static String kingdomName(UUID id) {
         int k = kingdomOf(id);
         return instance == null || k == 0 ? null : instance.name(k);
     }
 
-    String name(int k) { return k < 1 || k > MAX ? "No kingdom" : getConfig().getString("kingdoms." + k + ".name", "Kingdom " + k); }
+    String name(int k) { return k < 1 || k > MAX ? "No faction" : getConfig().getString("kingdoms." + k + ".name", "Faction " + k); }
 
     ChatColor color(int k) {
         if (k < 1 || k > MAX) return ChatColor.GRAY;
@@ -199,7 +199,7 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
         if (p != null) {
             m.name = p.getName();
             refreshName(p);
-            if (changed) p.sendMessage(k == 0 ? ChatColor.GRAY + "You're not in a kingdom any more" + (why == null ? "." : " (" + why + ").")
+            if (changed) p.sendMessage(k == 0 ? ChatColor.GRAY + "You're not in a faction any more" + (why == null ? "." : " (" + why + ").")
                     : ChatColor.GOLD + "You're in " + label(k) + ChatColor.GOLD + "!" + (why == null ? "" : ChatColor.GRAY + " (" + why + ")"));
         }
         if (changed) getLogger().info((m.name == null ? id.toString() : m.name) + " -> " + name(k) + (why == null ? "" : " (" + why + ")"));
@@ -331,11 +331,11 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
     void ffCommand(Player p, String what) {
         Member m = member(p);
         int k = m.kingdom;
-        if (k == 0) { msg(p, ChatColor.RED + "You're not in a kingdom."); return; }
+        if (k == 0) { msg(p, ChatColor.RED + "You're not in a faction."); return; }
         if (what != null) {
             if (!getConfig().getBoolean("pvp.friendly-fire-vote.enabled", true)) { msg(p, ChatColor.RED + "Friendly fire voting is turned off."); return; }
             Boolean v = switch (what) { case "on", "yes", "true" -> Boolean.TRUE; case "off", "no", "false" -> Boolean.FALSE; default -> null; };
-            if (v == null && !what.equals("clear")) { msg(p, ChatColor.RED + "/kingdom ff <on|off|clear>"); return; }
+            if (v == null && !what.equals("clear")) { msg(p, ChatColor.RED + "/faction ff <on|off|clear>"); return; }
             boolean before = friendlyFire(k);
             m.ffVote = v;
             save();
@@ -345,7 +345,7 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
         boolean on = friendlyFire(k);
         msg(p, ChatColor.GOLD + "Friendly fire in " + label(k) + ChatColor.GOLD + ": " + (on ? ChatColor.RED + "ON" : ChatColor.GREEN + "OFF")
                 + ChatColor.GRAY + " (" + ffWhy(k) + ")" + ChatColor.GRAY + " · your vote: "
-                + (m.ffVote == null ? "none" : m.ffVote ? "on" : "off") + ChatColor.DARK_GRAY + " · /kingdom ff <on|off|clear>");
+                + (m.ffVote == null ? "none" : m.ffVote ? "on" : "off") + ChatColor.DARK_GRAY + " · /faction ff <on|off|clear>");
     }
 
     // ================================================================= treaties (1.4.0)
@@ -418,13 +418,13 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
         Member m = member(p);
         int k = m.kingdom;
         if (!getConfig().getBoolean("treaties.enabled", true)) { msg(p, ChatColor.RED + "Treaties are turned off."); return; }
-        if (k == 0) { msg(p, ChatColor.RED + "You're not in a kingdom."); return; }
+        if (k == 0) { msg(p, ChatColor.RED + "You're not in a faction."); return; }
         if (args.length >= 2) {
             int other = parseKingdom(args[1]);
-            if (other < 1 || other == k) { msg(p, ChatColor.RED + "/kingdom ally <the other kingdom: 1-5> <yes|no|clear>"); return; }
+            if (other < 1 || other == k) { msg(p, ChatColor.RED + "/faction ally <the other faction: 1-5> <yes|no|clear>"); return; }
             String what = args.length > 2 ? args[2].toLowerCase(Locale.ROOT) : "yes";
             Boolean v = switch (what) { case "yes", "on", "true" -> Boolean.TRUE; case "no", "off", "false" -> Boolean.FALSE; default -> null; };
-            if (v == null && !what.equals("clear")) { msg(p, ChatColor.RED + "/kingdom ally " + other + " <yes|no|clear>"); return; }
+            if (v == null && !what.equals("clear")) { msg(p, ChatColor.RED + "/faction ally " + other + " <yes|no|clear>"); return; }
             if (v == null) m.allyVotes.remove(other); else m.allyVotes.put(other, v);
             save();
             msg(p, v == null ? ChatColor.GRAY + "Your treaty vote for " + label(other) + ChatColor.GRAY + " is cleared."
@@ -439,7 +439,7 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
             msg(p, ChatColor.GOLD + "Treaty with " + label(o) + ChatColor.GOLD + ": " + (allied(k, o) ? ChatColor.GREEN + "IN FORCE" : ChatColor.RED + "none")
                     + ChatColor.GRAY + " (" + treatyWhy(k, o) + ") · your vote: " + (mine == null ? "none" : mine ? "yes" : "no"));
         }
-        msg(p, ChatColor.DARK_GRAY + "/kingdom ally <1-5> <yes|no|clear> · both kingdoms have to want it");
+        msg(p, ChatColor.DARK_GRAY + "/faction ally <1-5> <yes|no|clear> · both factions have to want it");
     }
 
     // ================================================================= PvP
@@ -459,10 +459,10 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
         if (attacker.equals(victim)) return null;
         if (graceOn("all")) return "It's a grace period: no PvP.";
         int va = kingdomOf(victim.getUniqueId()), aa = kingdomOf(attacker.getUniqueId());
-        if (va > 0 && graceOn(String.valueOf(va))) return victim.getName() + "'s kingdom (" + label(va) + ChatColor.RED + ") is under grace.";
+        if (va > 0 && graceOn(String.valueOf(va))) return victim.getName() + "'s faction (" + label(va) + ChatColor.RED + ") is under grace.";
         if (aa > 0 && graceOn(String.valueOf(aa)) && !getConfig().getBoolean("grace.protected-can-attack", false))
-            return "Your kingdom is under grace: you can't attack players.";
-        if (aa > 0 && aa == va && !friendlyFire(aa)) return victim.getName() + " is in your kingdom (friendly fire is off).";
+            return "Your faction is under grace: you can't attack players.";
+        if (aa > 0 && aa == va && !friendlyFire(aa)) return victim.getName() + " is in your faction (friendly fire is off).";
         if (allied(aa, va)) return victim.getName() + " is in " + label(va) + ChatColor.RED + ", your ally (treaty).";
         long left = treatyCooldown(aa, va);
         if (left > 0) return "Your treaty with " + label(va) + ChatColor.RED + " just ended: PvP with them starts in " + duration(left) + ".";
@@ -505,7 +505,7 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
         if (discord.on()) {
             if (m.discordId != null) Bukkit.getScheduler().runTaskLater(this, () -> discord.syncAsync(p.getUniqueId()), 40L);
             else if (!m.manual) Bukkit.getScheduler().runTaskLater(this, () -> {
-                if (p.isOnline()) p.sendMessage(ChatColor.GOLD + "Link your Discord to join your kingdom: " + ChatColor.WHITE + "/kingdom link <your discord name>");
+                if (p.isOnline()) p.sendMessage(ChatColor.GOLD + "Link your Discord to join your faction: " + ChatColor.WHITE + "/faction link <your discord name>");
             }, 100L);
         }
         if (protectedNow(p)) p.sendMessage(ChatColor.GREEN + "🛡 A grace period is on for you right now.");
@@ -518,8 +518,8 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (command.getName().equalsIgnoreCase("kingdoms")) return admin(sender, args);
-        if (command.getName().equalsIgnoreCase("kc") || command.getName().equalsIgnoreCase("ac")) {
+        if (command.getName().equalsIgnoreCase("factions")) return admin(sender, args);
+        if (command.getName().equalsIgnoreCase("fc") || command.getName().equalsIgnoreCase("ac")) {
             if (!(sender instanceof Player pp)) return msg(sender, "Players only.");
             return chat.command(pp, args, command.getName().equalsIgnoreCase("ac"));
         }
@@ -528,13 +528,13 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
         switch (sub) {
             case "link" -> {
                 if (p == null) return msg(sender, "Players only.");
-                if (!discord.on()) return msg(sender, ChatColor.RED + "Kingdoms are handed out by staff. Ask a staff member to put you in yours.");
-                if (args.length < 2) return msg(sender, ChatColor.RED + "/kingdom link <your Discord username>");
+                if (!discord.on()) return msg(sender, ChatColor.RED + "Factions are handed out by staff. Ask a staff member to put you in yours.");
+                if (args.length < 2) return msg(sender, ChatColor.RED + "/faction link <your Discord username>");
                 discord.startLink(p, String.join(" ", java.util.Arrays.copyOfRange(args, 1, args.length)));
             }
             case "verify" -> {
                 if (p == null) return msg(sender, "Players only.");
-                if (args.length < 2) return msg(sender, ChatColor.RED + "/kingdom verify <the code the bot sent you>");
+                if (args.length < 2) return msg(sender, ChatColor.RED + "/faction verify <the code the bot sent you>");
                 discord.verify(p, args[1]);
             }
             case "unlink" -> {
@@ -555,7 +555,7 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
             }
             case "list" -> {
                 int k = args.length > 1 ? parseKingdom(args[1]) : -1;
-                if (k < 1) return msg(sender, ChatColor.RED + "/kingdom list <1-5>");
+                if (k < 1) return msg(sender, ChatColor.RED + "/faction list <1-5>");
                 List<String> on = new ArrayList<>(), off = new ArrayList<>();
                 for (var e : members.entrySet()) if (e.getValue().kingdom == k) (Bukkit.getPlayer(e.getKey()) != null ? on : off).add(e.getValue().name);
                 msg(sender, label(k) + ChatColor.GRAY + " (" + (on.size() + off.size()) + "): " + ChatColor.GREEN + String.join(", ", on)
@@ -565,8 +565,8 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
                 if (p != null && forms.use(p) && forms.home(p)) return true; // Bedrock: a menu
                 if (p != null) {
                     Member m = member(p);
-                    msg(sender, ChatColor.GOLD + "Your kingdom: " + label(m.kingdom) + (m.manual ? ChatColor.GRAY + " (set by staff)" : "")
-                            + (DiscordLink.OFF ? "" : ChatColor.GRAY + "  ·  Discord: " + (m.discordId != null ? ChatColor.GREEN + "linked" : ChatColor.RED + "not linked (/kingdom link <name>)")));
+                    msg(sender, ChatColor.GOLD + "Your faction: " + label(m.kingdom) + (m.manual ? ChatColor.GRAY + " (set by staff)" : "")
+                            + (DiscordLink.OFF ? "" : ChatColor.GRAY + "  ·  Discord: " + (m.discordId != null ? ChatColor.GREEN + "linked" : ChatColor.RED + "not linked (/faction link <name>)")));
                 }
                 status(sender);
             }
@@ -582,7 +582,7 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
             on.add(graceName(key) + ChatColor.GRAY + (u < 0 ? " (until turned off)" : " (" + duration(u - now) + " left)"));
         }
         s.sendMessage(ChatColor.GOLD + "Grace periods: " + (on.isEmpty() ? ChatColor.RED + "none, PvP is on everywhere" : String.join(ChatColor.GRAY + ", ", on)));
-        StringBuilder counts = new StringBuilder(ChatColor.GRAY + "Kingdoms:");
+        StringBuilder counts = new StringBuilder(ChatColor.GRAY + "Factions:");
         for (int k = 1; k <= MAX; k++) {
             int n = 0; for (Member m : members.values()) if (m.kingdom == k) n++;
             counts.append(" ").append(label(k)).append(ChatColor.GRAY).append(" ").append(n).append(friendlyFire(k) ? "" : " (no friendly fire)");
@@ -597,7 +597,7 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
     }
 
     static int parseKingdom(String s) {
-        String t = s.toLowerCase(Locale.ROOT).replace("kingdom", "").replace("k", "").trim();
+        String t = s.toLowerCase(Locale.ROOT).replace("kingdom", "").replace("faction", "").replace("k", "").replace("f", "").trim();
         if (t.equals("none") || t.equals("0")) return 0;
         try { int k = Integer.parseInt(t); return k >= 1 && k <= MAX ? k : -1; } catch (NumberFormatException e) { return -1; }
     }
@@ -607,7 +607,7 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
         String sub = args.length == 0 ? "status" : args[0].toLowerCase(Locale.ROOT);
         switch (sub) {
             case "grace" -> { // /kingdoms grace <all|1-5> <on|off> [time]
-                if (args.length < 3) return msg(sender, ChatColor.RED + "/kingdoms grace <all|1-5> <on|off> [time, e.g. 2h or 1h30m]");
+                if (args.length < 3) return msg(sender, ChatColor.RED + "/factions grace <all|1-5> <on|off> [time, e.g. 2h or 1h30m]");
                 String key = args[1].equalsIgnoreCase("all") ? "all" : String.valueOf(parseKingdom(args[1]));
                 if (!key.equals("all") && Integer.parseInt(key) < 1) return msg(sender, ChatColor.RED + "Which one? all, 1, 2 or 3.");
                 boolean on = args[2].equalsIgnoreCase("on") || args[2].equalsIgnoreCase("true") || args[2].equalsIgnoreCase("start");
@@ -627,7 +627,7 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
                 setGrace(key, until, sender);
             }
             case "set" -> { // /kingdoms set <player> <1-5|none|auto>
-                if (args.length < 3) return msg(sender, ChatColor.RED + "/kingdoms set <player> <1-5|none|auto>");
+                if (args.length < 3) return msg(sender, ChatColor.RED + "/factions set <player> <1-5|none|auto>");
                 @SuppressWarnings("deprecation") OfflinePlayer op = Bukkit.getOfflinePlayer(args[1]);
                 if (!op.hasPlayedBefore() && !op.isOnline()) return msg(sender, ChatColor.RED + "Never seen " + args[1] + " on this server.");
                 if (args[2].equalsIgnoreCase("auto")) {
@@ -636,14 +636,14 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
                     if (m.name == null) m.name = op.getName();
                     save();
                     if (m.discordId != null && discord.on()) discord.syncAsync(op.getUniqueId());
-                    return msg(sender, ChatColor.GREEN + op.getName() + "'s kingdom follows their Discord role again.");
+                    return msg(sender, ChatColor.GREEN + op.getName() + "'s faction follows their Discord role again.");
                 }
                 int k = parseKingdom(args[2]);
                 if (k < 0) return msg(sender, ChatColor.RED + "1-5, none or auto.");
                 Member m = members.computeIfAbsent(op.getUniqueId(), x -> new Member());
                 if (m.name == null) m.name = op.getName();
                 setKingdom(op.getUniqueId(), k, true, "set by staff");
-                msg(sender, ChatColor.GREEN + op.getName() + " is now in " + label(k) + ChatColor.GREEN + " (/kingdoms set " + op.getName() + " auto to undo).");
+                msg(sender, ChatColor.GREEN + op.getName() + " is now in " + label(k) + ChatColor.GREEN + " (/factions set " + op.getName() + " auto to undo).");
             }
             case "sync" -> {
                 if (!discord.on()) return msg(sender, ChatColor.RED + "Discord isn't set up (discord.bot-token / guild-id in config.yml).");
@@ -656,7 +656,7 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
             }
             case "ff" -> { // /kingdoms ff <1-5> <on|off|vote>
                 int k = args.length > 2 ? parseKingdom(args[1]) : -1;
-                if (k < 1) return msg(sender, ChatColor.RED + "/kingdoms ff <1-5> <on|off|vote>");
+                if (k < 1) return msg(sender, ChatColor.RED + "/factions ff <1-5> <on|off|vote>");
                 boolean before = friendlyFire(k);
                 switch (args[2].toLowerCase(Locale.ROOT)) {
                     case "on" -> ffForced.put(String.valueOf(k), true);
@@ -670,7 +670,7 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
             }
             case "treaty" -> { // /kingdoms treaty <a> <b> <on|off|vote>
                 int a = args.length > 3 ? parseKingdom(args[1]) : -1, b = args.length > 3 ? parseKingdom(args[2]) : -1;
-                if (a < 1 || b < 1 || a == b) return msg(sender, ChatColor.RED + "/kingdoms treaty <1-5> <1-5> <on|off|vote>");
+                if (a < 1 || b < 1 || a == b) return msg(sender, ChatColor.RED + "/factions treaty <1-5> <1-5> <on|off|vote>");
                 switch (args[3].toLowerCase(Locale.ROOT)) {
                     case "on" -> treatyForced.put(pair(a, b), true);
                     case "off" -> treatyForced.put(pair(a, b), false);
@@ -682,14 +682,14 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
                 msg(sender, ChatColor.GREEN + name(a) + " + " + name(b) + ": treaty " + (allied(a, b) ? "IN FORCE" : "none") + " (" + treatyWhy(a, b) + ").");
             }
             case "tp", "bring", "summon" -> { // /kingdoms tp <1-5|outlaws|all>[,more] [player]
-                if (args.length < 2) return msg(sender, ChatColor.RED + "/kingdoms tp <1-5|outlaws|all> [player]  (several: 1,3)  - brings them to you, or to that player");
+                if (args.length < 2) return msg(sender, ChatColor.RED + "/factions tp <1-5|outlaws|all> [player]  (several: 1,3)  - brings them to you, or to that player");
                 java.util.Set<Integer> ks = new java.util.TreeSet<>();
                 for (String part : args[1].toLowerCase(Locale.ROOT).split(",")) {
                     if (part.isBlank()) continue;
                     if (part.equals("all")) { ks.addAll(List.of(0, 1, 2, 3, 4, 5)); continue; }
                     if (part.startsWith("outlaw") || part.equals("none")) { ks.add(0); continue; }
                     int k = parseKingdom(part);
-                    if (k < 1) return msg(sender, ChatColor.RED + "Unknown kingdom: " + part + " (1-5, outlaws or all)");
+                    if (k < 1) return msg(sender, ChatColor.RED + "Unknown faction: " + part + " (1-5, outlaws or all)");
                     ks.add(k);
                 }
                 Player to;
@@ -697,7 +697,7 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
                     to = Bukkit.getPlayerExact(args[2]);
                     if (to == null) return msg(sender, ChatColor.RED + args[2] + " isn't online.");
                 } else if (sender instanceof Player sp) to = sp;
-                else return msg(sender, ChatColor.RED + "From the console, name who to bring them to: /kingdoms tp <kingdom> <player>");
+                else return msg(sender, ChatColor.RED + "From the console, name who to bring them to: /factions tp <faction> <player>");
                 org.bukkit.Location at = to.getLocation();
                 int n = 0;
                 for (Player p : new ArrayList<>(Bukkit.getOnlinePlayers())) {
@@ -718,8 +718,8 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
             }
             case "spy" -> {
                 if (!(sender instanceof Player sp)) return msg(sender, "Players only.");
-                if (!chat.spyOff.remove(sp.getUniqueId())) { chat.spyOff.add(sp.getUniqueId()); return msg(sender, ChatColor.GRAY + "Kingdom chat spy OFF."); }
-                return msg(sender, ChatColor.GREEN + "Kingdom chat spy ON: you see every kingdom's /kc.");
+                if (!chat.spyOff.remove(sp.getUniqueId())) { chat.spyOff.add(sp.getUniqueId()); return msg(sender, ChatColor.GRAY + "Faction chat spy OFF."); }
+                return msg(sender, ChatColor.GREEN + "Faction chat spy ON: you see every faction's /fc.");
             }
             case "reload" -> {
                 reloadConfig();
@@ -731,7 +731,7 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
             }
             default -> {
                 status(sender);
-                msg(sender, ChatColor.DARK_GRAY + "/kingdoms grace <all|1-5> <on|off> [time] · set <player> <1-5|none|auto> · ff <1-5> <on|off|vote> · treaty <a> <b> <on|off|vote> · tp <1-5|outlaws|all> [player] · spy · sync [player] · reload");
+                msg(sender, ChatColor.DARK_GRAY + "/factions grace <all|1-5> <on|off> [time] · set <player> <1-5|none|auto> · ff <1-5> <on|off|vote> · treaty <a> <b> <on|off|vote> · tp <1-5|outlaws|all> [player] · spy · sync [player] · reload");
             }
         }
         return true;
@@ -741,7 +741,7 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
-        if (command.getName().equalsIgnoreCase("kingdoms")) {
+        if (command.getName().equalsIgnoreCase("factions")) {
             if (args.length == 1) return List.of("grace", "set", "ff", "treaty", "tp", "spy", "sync", "status", "reload");
             if (args.length == 2 && args[0].equalsIgnoreCase("tp")) return List.of("1", "2", "3", "4", "5", "outlaws", "all");
             if (args[0].equalsIgnoreCase("treaty")) return args.length <= 3 ? List.of("1", "2", "3", "4", "5") : args.length == 4 ? List.of("on", "off", "vote") : List.of();
@@ -753,7 +753,7 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
             if (args.length == 3 && args[0].equalsIgnoreCase("set")) return List.of("1", "2", "3", "4", "5", "none", "auto");
             return null;
         }
-        if (command.getName().equalsIgnoreCase("kc") || command.getName().equalsIgnoreCase("ac")) return null;
+        if (command.getName().equalsIgnoreCase("fc") || command.getName().equalsIgnoreCase("ac")) return null;
         if (args.length == 1) return List.of("list", "ff", "ally");
         if (args.length == 2 && args[0].equalsIgnoreCase("ally")) return List.of("1", "2", "3", "4", "5");
         if (args.length == 3 && args[0].equalsIgnoreCase("ally")) return List.of("yes", "no", "clear");

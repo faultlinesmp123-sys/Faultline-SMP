@@ -65,7 +65,7 @@ final class TrinketGear implements Listener {
         FANG("bloodthirst_fang", "fang", Material.FLINT, ChatColor.DARK_RED, "Bloodthirst Fang", "Killing a monster or player", "heals you 2 hearts (3 s cooldown)."),
         PAULDRON("ironhide_pauldron", "pauldron", Material.IRON_NUGGET, ChatColor.GRAY, "Ironhide Pauldron", "15% less knockback."),
         CREST("gladiators_crest", "crest", Material.GOLD_NUGGET, ChatColor.GOLD, "Gladiator's Crest", "+1 armor for every player", "within 10 blocks (max +4)."),
-        GUARDIAN("guardians_oath", "guardian", Material.NAUTILUS_SHELL, ChatColor.BLUE, "Guardian's Oath", "Kingdom-mates near you", "take 1% less damage."),
+        GUARDIAN("guardians_oath", "guardian", Material.NAUTILUS_SHELL, ChatColor.BLUE, "Guardian's Oath", "Faction-mates near you", "take 1% less damage."),
         LANTERN("miners_lantern", "lantern", Material.AMETHYST_SHARD, ChatColor.YELLOW, "Miner's Lantern Charm", "Mining stone makes ores", "within 5 blocks glow."),
         THUMB("green_thumb", "greenthumb", Material.PRISMARINE_CRYSTALS, ChatColor.GREEN, "Green Thumb Ring", "Crops near you grow", "20% faster."),
         TREASURE("treasure_sense", "treasure", Material.COMPASS, ChatColor.GOLD, "Treasure Sense", "Buried treasure and your map's X", "ping within 40 blocks."),

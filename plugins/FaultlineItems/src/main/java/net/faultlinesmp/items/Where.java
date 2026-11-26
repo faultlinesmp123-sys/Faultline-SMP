@@ -158,12 +158,12 @@ final class Where implements Listener, CommandExecutor, TabCompleter {
                 + ChatColor.GRAY + " (" + dimension(l.getWorld()) + ", " + biome(l) + ")";
         switch (to.toLowerCase(Locale.ROOT)) {
             case "all" -> { for (Player o : Bukkit.getOnlinePlayers()) o.sendMessage(CreatorMode.forViewer(o, line)); Bukkit.getConsoleSender().sendMessage(line); }
-            case "kingdom", "k" -> {
+            case "faction", "f", "kingdom", "k" -> {
                 int k = kingdom(p.getUniqueId());
-                if (k == 0) { p.sendMessage(ChatColor.RED + "You're not in a kingdom."); return true; }
+                if (k == 0) { p.sendMessage(ChatColor.RED + "You're not in a faction."); return true; }
                 int n = 0;
-                for (Player o : Bukkit.getOnlinePlayers()) if (kingdom(o.getUniqueId()) == k) { o.sendMessage(CreatorMode.forViewer(o, ChatColor.GOLD + "[Kingdom] " + line)); n++; }
-                if (n <= 1) p.sendMessage(ChatColor.GRAY + "Nobody else from your kingdom is online.");
+                for (Player o : Bukkit.getOnlinePlayers()) if (kingdom(o.getUniqueId()) == k) { o.sendMessage(CreatorMode.forViewer(o, ChatColor.GOLD + "[Faction] " + line)); n++; }
+                if (n <= 1) p.sendMessage(ChatColor.GRAY + "Nobody else from your faction is online.");
             }
             default -> {
                 Player o = Bukkit.getPlayerExact(to);
@@ -213,7 +213,7 @@ final class Where implements Listener, CommandExecutor, TabCompleter {
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (command.getName().equalsIgnoreCase("coords")) {
             if (args.length == 1) return List.of("share");
-            if (args.length == 2) { List<String> l = new ArrayList<>(List.of("all", "kingdom")); for (Player o : Bukkit.getOnlinePlayers()) l.add(o.getName()); return l; }
+            if (args.length == 2) { List<String> l = new ArrayList<>(List.of("all", "faction")); for (Player o : Bukkit.getOnlinePlayers()) l.add(o.getName()); return l; }
             return List.of();
         }
         if (args.length == 1) { List<String> l = new ArrayList<>(List.of("all")); for (Player o : Bukkit.getOnlinePlayers()) l.add(o.getName()); return l; }

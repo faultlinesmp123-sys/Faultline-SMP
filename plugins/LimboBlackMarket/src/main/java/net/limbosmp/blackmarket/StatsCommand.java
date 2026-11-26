@@ -52,7 +52,7 @@ public class StatsCommand implements CommandExecutor {
         String kingdom = plugin.getKingdomDataReader().getKingdom(target.getUniqueId());
         if (kingdom != null) {
             String formatted = kingdom.charAt(0) + kingdom.substring(1).toLowerCase();
-            sender.sendMessage(ChatColor.BLUE + "Kingdom: " + ChatColor.RESET + formatted);
+            sender.sendMessage(ChatColor.BLUE + "Faction: " + ChatColor.RESET + formatted);
         }
 
         sender.sendMessage(ChatColor.YELLOW + "Kills: " + ChatColor.WHITE + kills);

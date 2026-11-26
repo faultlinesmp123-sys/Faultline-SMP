@@ -76,13 +76,13 @@ final class KingdomChat implements Listener {
             if (to.contains(pk)) p.sendMessage(line);
             else if (spies(p)) p.sendMessage(ChatColor.DARK_GRAY + "[spy] " + ChatColor.stripColor(line));
         }
-        Bukkit.getConsoleSender().sendMessage("[KingdomChat] " + ChatColor.stripColor(line));
+        Bukkit.getConsoleSender().sendMessage("[FactionChat] " + ChatColor.stripColor(line));
     }
 
     /** A player says something in kingdom (or alliance) chat. Main thread. */
     void say(Player p, String text, boolean alliance) {
         int k = FaultlineKingdoms.kingdomOf(p.getUniqueId());
-        if (k == 0) { p.sendMessage(ChatColor.RED + "You're not in a kingdom (outlaws have no kingdom chat)."); mode.remove(p.getUniqueId()); return; }
+        if (k == 0) { p.sendMessage(ChatColor.RED + "You're not in a faction (outlaws have no faction chat)."); mode.remove(p.getUniqueId()); return; }
         text = clean(text);
         if (text.isEmpty()) return;
         int max = pl.getConfig().getInt("kingdom-chat.max-length", 256);
@@ -122,8 +122,8 @@ final class KingdomChat implements Listener {
                 body.add("allowed_mentions", am);
                 try {
                     DiscordLink.Reply r = pl.discord.call("POST", "/channels/" + channel + "/messages", body.toString());
-                    if (r.code() >= 300) pl.getLogger().warning("Kingdom chat -> Discord channel " + channel + ": HTTP " + r.code() + " (does the bot see that channel and have Send Messages?)");
-                } catch (Exception ex) { pl.getLogger().warning("Kingdom chat -> Discord: " + ex.getMessage()); }
+                    if (r.code() >= 300) pl.getLogger().warning("Faction chat -> Discord channel " + channel + ": HTTP " + r.code() + " (does the bot see that channel and have Send Messages?)");
+                } catch (Exception ex) { pl.getLogger().warning("Faction chat -> Discord: " + ex.getMessage()); }
             });
         }
     }
@@ -153,8 +153,8 @@ final class KingdomChat implements Listener {
 
     /** /kc [msg], /ac [msg]. */
     boolean command(Player p, String[] args, boolean alliance) {
-        if (!on()) { p.sendMessage(ChatColor.RED + "Kingdom chat is turned off."); return true; }
-        if (FaultlineKingdoms.kingdomOf(p.getUniqueId()) == 0) { p.sendMessage(ChatColor.RED + "You're not in a kingdom."); return true; }
+        if (!on()) { p.sendMessage(ChatColor.RED + "Faction chat is turned off."); return true; }
+        if (FaultlineKingdoms.kingdomOf(p.getUniqueId()) == 0) { p.sendMessage(ChatColor.RED + "You're not in a faction."); return true; }
         if (args.length == 0) {
             String want = alliance ? "a" : "k";
             if (want.equals(mode.get(p.getUniqueId()))) {
@@ -162,7 +162,7 @@ final class KingdomChat implements Listener {
                 p.sendMessage(ChatColor.GRAY + "Your chat goes to everyone again.");
             } else {
                 mode.put(p.getUniqueId(), want);
-                p.sendMessage(ChatColor.GREEN + "Everything you type now goes to " + (alliance ? "your alliance" : "your kingdom")
+                p.sendMessage(ChatColor.GREEN + "Everything you type now goes to " + (alliance ? "your alliance" : "your faction")
                         + ChatColor.GRAY + " (/" + (alliance ? "ac" : "kc") + " again to talk to everyone).");
             }
             return true;

@@ -730,7 +730,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             if (n > 0) {
                 ChatColor col;
                 try { col = ChatColor.valueOf(c.getString("kingdoms." + n + ".color", "WHITE").toUpperCase(Locale.ROOT)); } catch (IllegalArgumentException e) { col = ChatColor.WHITE; }
-                line = col + "[" + c.getString("kingdoms." + n + ".name", "Kingdom " + n) + "] " + ChatColor.RESET + m.name;
+                line = col + "[" + c.getString("kingdoms." + n + ".name", "Faction " + n) + "] " + ChatColor.RESET + m.name;
             } else if (c.getBoolean("display.tab-outlaw", true)) line = kingdomLine(m.who) + " " + ChatColor.RESET + m.name;
             else return null;
             return LegacyComponentSerializer.legacySection().deserialize(line);
@@ -746,7 +746,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
             if (n > 0) {
                 ChatColor col;
                 try { col = ChatColor.valueOf(c.getString("kingdoms." + n + ".color", "WHITE").toUpperCase(Locale.ROOT)); } catch (IllegalArgumentException e) { col = ChatColor.WHITE; }
-                return col + c.getString("kingdoms." + n + ".name", "Kingdom " + n);
+                return col + c.getString("kingdoms." + n + ".name", "Faction " + n);
             }
             ChatColor col;
             try { col = ChatColor.valueOf(c.getString("display.outlaw-color", "DARK_RED").toUpperCase(Locale.ROOT)); } catch (IllegalArgumentException e) { col = ChatColor.DARK_RED; }

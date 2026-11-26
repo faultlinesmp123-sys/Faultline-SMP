@@ -7,10 +7,10 @@ chapters:
     icon: faultline_index
     text: |
       # Welcome to Faultline SMP!
-      A survival server with custom bosses, items, raids, ships and kingdoms.
+      A survival server with custom bosses, items, raids, ships and factions.
 
-      # Kingdoms
-      There are five kingdoms: The Mountain, The Jungle, The Ice, The Fibers and The Sky. Staff put you in yours. /kingdom shows it, /kc is your kingdom's chat.
+      # Factions
+      There are five factions: The Mountain, The Jungle, The Ice, The Fibers and The Sky. Staff put you in yours. /faction (/f) shows it, /fc is your faction's chat.
 
       # Heads are money
       Kill a player and they drop their head. Heads are the currency: trade them at the Black Market.

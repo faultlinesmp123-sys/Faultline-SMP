@@ -3379,6 +3379,15 @@ Notes:
   kept the mace id (looked like the same registered mace = a free extra one in survival): the sweep now re-ids the second copy of an
   id seen in one pass and counts it (cursor swept too); an anvil / grindstone click that didn't take the result freed the second
   mace's place: checked a tick later (`holds`). Tested (scratch `ml/MlTest`, 10 checks).
+- **Staff take maces + Kingdoms shown as FACTIONS (Items, Kingdoms, Index, LimboBlackMarket; same 2.0.0)**: `/macelimit take <player>`
+  deletes every mace they have (inventory, armour, off hand, cursor, ender chest, open container, inside shulkers / bundles) and frees
+  the places; offline = by the last holder (`MaceLimit.holders` id -> "uuid;name", updated by the 5 s sweep, saved as `holders:`),
+  those ids go into `revoked` (saved) and any mace carrying one is deleted when it turns up (sweep, join + 1 s, pickups);
+  `/macelimit remove <id>` does the same for one id; both broadcast "A mace was taken from X by staff". FaultlineKingdoms keeps its
+  plugin name, data folder and permissions (other plugins find it by name), but everything players see says FACTION: commands
+  `/faction` (aliases f, kingdom, k), `/fc` (kc...), `/ac`, admin `/factions` (alias kingdoms); messages, forms, /stats ("Faction:"),
+  coords share `faction`, mimic tab fallback, Guardian's Oath lore, the Index guide + Faction Compass entry. Still 5 factions
+  (`MAX` 5). Tested (scratch `ml/MlTest` 14 checks, `fac/FacTest`).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

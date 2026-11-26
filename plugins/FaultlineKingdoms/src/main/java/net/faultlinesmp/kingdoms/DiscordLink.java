@@ -129,10 +129,10 @@ final class DiscordLink {
                         else {
                             String code = String.format("%06d", random.nextInt(1_000_000));
                             long mins = Math.max(1, pl.getConfig().getLong("discord.link-code-minutes", 10));
-                            String dm = "Your Faultline SMP link code for **" + p.getName() + "**: **" + code + "**\nType `/kingdom verify " + code + "` in game (it works for " + mins + " minutes). Didn't ask for this? Ignore it.";
+                            String dm = "Your Faultline SMP link code for **" + p.getName() + "**: **" + code + "**\nType `/faction verify " + code + "` in game (it works for " + mins + " minutes). Didn't ask for this? Ignore it.";
                             if (dm(uid, dm)) {
                                 pending.put(id, new Pending(uid, code, System.currentTimeMillis() + mins * 60000));
-                                reply = ChatColor.GREEN + "The bot sent you a code in Discord DMs. Type " + ChatColor.WHITE + "/kingdom verify <code>" + ChatColor.GREEN + ".";
+                                reply = ChatColor.GREEN + "The bot sent you a code in Discord DMs. Type " + ChatColor.WHITE + "/faction verify <code>" + ChatColor.GREEN + ".";
                             } else reply = ChatColor.RED + "Couldn't DM you: turn on \"Direct Messages\" from server members (right-click the server > Privacy Settings), then try again.";
                         }
                     }
@@ -166,7 +166,7 @@ final class DiscordLink {
         Pending pe = pending.get(p.getUniqueId());
         if (pe == null || pe.expires() < System.currentTimeMillis()) {
             pending.remove(p.getUniqueId());
-            p.sendMessage(ChatColor.RED + "No code waiting (or it ran out). Start again: /kingdom link <your discord name>");
+            p.sendMessage(ChatColor.RED + "No code waiting (or it ran out). Start again: /faction link <your discord name>");
             return;
         }
         if (!pe.code().equals(code.trim())) { p.sendMessage(ChatColor.RED + "That's not the code."); return; }
@@ -217,7 +217,7 @@ final class DiscordLink {
             FaultlineKingdoms.Member m = pl.members.get(id);
             if (m == null || m.manual || !discordId.equals(m.discordId)) return; // pinned by staff, or relinked meanwhile
             if (k == 0 && m.kingdom != 0 && !pl.getConfig().getBoolean("discord.remove-when-role-gone", true)) return;
-            if (m.kingdom != k) pl.setKingdom(id, k, false, roles == null ? "not in the Discord server" : k == 0 ? "no kingdom role in Discord" : "your Discord role");
+            if (m.kingdom != k) pl.setKingdom(id, k, false, roles == null ? "not in the Discord server" : k == 0 ? "no faction role in Discord" : "your Discord role");
         });
     }
 }

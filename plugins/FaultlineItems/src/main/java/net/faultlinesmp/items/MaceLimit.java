@@ -41,6 +41,10 @@ final class MaceLimit implements Listener, TabExecutor {
     /** id -> "holder name;time first seen". */
     final Map<Long, String> maces = new LinkedHashMap<>();
     final Random random = new Random();
+    /** id -> "uuid;name" of whoever last had it in their inventory (for /macelimit take on someone offline). */
+    final Map<Long, String> holders = new HashMap<>();
+    /** Ids staff removed: any mace carrying one is deleted wherever it turns up (offline players, pickups). */
+    final Set<Long> revoked = new HashSet<>();
 
     MaceLimit(FaultlineItems plugin) {
         this.plugin = plugin;
@@ -50,6 +54,10 @@ final class MaceLimit implements Listener, TabExecutor {
         if (y.isConfigurationSection("maces")) for (String k : y.getConfigurationSection("maces").getKeys(false)) {
             try { maces.put(Long.parseLong(k), y.getString("maces." + k, "")); } catch (NumberFormatException ignored) { }
         }
+        if (y.isConfigurationSection("holders")) for (String k : y.getConfigurationSection("holders").getKeys(false)) {
+            try { holders.put(Long.parseLong(k), y.getString("holders." + k, "")); } catch (NumberFormatException ignored) { }
+        }
+        for (String k : y.getStringList("revoked")) { try { revoked.add(Long.parseLong(k)); } catch (NumberFormatException ignored) { } }
         Bukkit.getScheduler().runTaskTimer(plugin, this::sweep, 60L, 100L);
     }
 
@@ -60,6 +68,9 @@ final class MaceLimit implements Listener, TabExecutor {
     void save() {
         YamlConfiguration y = new YamlConfiguration();
         for (var e : maces.entrySet()) y.set("maces." + e.getKey(), e.getValue());
+        for (var e : holders.entrySet()) if (maces.containsKey(e.getKey())) y.set("holders." + e.getKey(), e.getValue());
+        List<String> rv = new ArrayList<>(); for (Long id : revoked) rv.add(String.valueOf(id));
+        y.set("revoked", rv);
         SafeYaml.write(plugin, file, y.saveToString());
     }
 
@@ -93,16 +104,82 @@ final class MaceLimit implements Listener, TabExecutor {
         // forever (a free extra one once it reached a survival inventory). The same id seen twice in one pass = the second
         // is a copy: it gets a new id and counts like any other mace.
         Set<Long> seen = new HashSet<>();
+        boolean changed = false;
         for (Player p : Bukkit.getOnlinePlayers()) {
+            if (!revoked.isEmpty()) strip(p, false, false); // staff removed it (works in creative too)
             if (p.getGameMode() == GameMode.CREATIVE || p.getGameMode() == GameMode.SPECTATOR) continue;
             ItemStack[] c = p.getInventory().getContents();
             for (int i = 0; i < c.length; i++) {
                 ItemStack it = c[i];
                 if (fix(it, p, seen)) p.getInventory().setItem(i, it);
+                changed |= hold(it, p);
             }
             ItemStack cur = p.getItemOnCursor();
             if (fix(cur, p, seen)) p.setItemOnCursor(cur);
+            changed |= hold(cur, p);
         }
+        if (changed) save();
+    }
+
+    /** Remembers who has this mace now; true = that changed. */
+    boolean hold(ItemStack it, Player p) {
+        Long id = idOf(it);
+        if (id == null || !maces.containsKey(id)) return false;
+        String v = p.getUniqueId() + ";" + p.getName();
+        return !v.equals(holders.put(id, v));
+    }
+
+    boolean gone(ItemStack it) { Long id = idOf(it); return id != null && revoked.contains(id); }
+
+    /**
+     * Deletes the player's maces: every one when {@code all} (/macelimit take), else only revoked ones. Looks in the
+     * inventory (armour + off hand), cursor, ender chest, the open container and inside shulker boxes / bundles they carry.
+     * Every mace deleted frees its place. Returns how many went.
+     */
+    int strip(Player p, boolean all) { return strip(p, all, true); }
+
+    /** {@code deep} = also open shulker boxes / bundles (the 5 s sweep skips them: MaceRules moves maces out of those). */
+    int strip(Player p, boolean all, boolean deep) {
+        int n = 0;
+        n += stripInv(p.getInventory(), all, deep);
+        n += stripInv(p.getEnderChest(), all, deep);
+        org.bukkit.inventory.Inventory top = p.getOpenInventory().getTopInventory();
+        if (top != null && top != p.getInventory() && !(top instanceof org.bukkit.inventory.CraftingInventory)) n += stripInv(top, all, deep);
+        ItemStack cur = p.getItemOnCursor();
+        if (mace(cur) && (all || gone(cur))) { free(idOf(cur)); p.setItemOnCursor(null); n++; }
+        if (n > 0) { save(); plugin.getLogger().info("[MaceLimit] removed " + n + " mace(s) from " + p.getName() + ", " + maces.size() + "/" + max()); }
+        return n;
+    }
+
+    int stripInv(org.bukkit.inventory.Inventory inv, boolean all, boolean deep) {
+        int n = 0;
+        ItemStack[] c = inv.getContents();
+        for (int i = 0; i < c.length; i++) {
+            ItemStack it = c[i];
+            if (it == null) continue;
+            if (mace(it)) { if (all || gone(it)) { free(idOf(it)); inv.setItem(i, null); n++; } continue; }
+            if (!deep || !(it.getType().name().endsWith("SHULKER_BOX") || it.getType().name().endsWith("BUNDLE"))) continue;
+            if (!(it.getItemMeta() instanceof org.bukkit.inventory.meta.BlockStateMeta) && !(it.getItemMeta() instanceof org.bukkit.inventory.meta.BundleMeta)) continue;
+            ItemMeta m = it.getItemMeta();
+            int k = 0;
+            if (m instanceof org.bukkit.inventory.meta.BlockStateMeta bsm && bsm.getBlockState() instanceof org.bukkit.block.ShulkerBox box) {
+                k = stripInv(box.getInventory(), all, true);
+                if (k > 0) { bsm.setBlockState(box); it.setItemMeta(bsm); inv.setItem(i, it); }
+            } else if (m instanceof org.bukkit.inventory.meta.BundleMeta bm) {
+                List<ItemStack> keep = new ArrayList<>();
+                for (ItemStack x : bm.getItems()) { if (mace(x) && (all || gone(x))) { free(idOf(x)); k++; } else keep.add(x); }
+                if (k > 0) { bm.setItems(keep); it.setItemMeta(bm); inv.setItem(i, it); }
+            }
+            n += k;
+        }
+        return n;
+    }
+
+    /** A mace place freed (the id stays revoked so a copy elsewhere is deleted too). */
+    void free(Long id) {
+        if (id == null) return;
+        maces.remove(id);
+        holders.remove(id);
     }
 
     /** Registers / re-ids one mace in a sweep; true = the item was changed. */
@@ -271,7 +348,42 @@ final class MaceLimit implements Listener, TabExecutor {
         Bukkit.broadcastMessage(ChatColor.DARK_RED + "A mace was destroyed. " + ChatColor.GRAY + "One can be forged again.");
     }
 
+    /** A removed mace picked up (dropped before staff took it, or a dupe) is deleted on the spot. */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onPickup(org.bukkit.event.entity.EntityPickupItemEvent e) {
+        if (revoked.isEmpty() || !gone(e.getItem().getItemStack())) return;
+        e.setCancelled(true);
+        e.getItem().remove();
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onJoin(org.bukkit.event.player.PlayerJoinEvent e) {
+        if (revoked.isEmpty()) return;
+        Player p = e.getPlayer();
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (p.isOnline() && strip(p, false) > 0) p.sendMessage(ChatColor.RED + "Staff removed your mace.");
+        }, 20L);
+    }
+
     // ------------------------------------------------------------------ /macelimit
+
+    void removeId(CommandSender s, long id) {
+        String h = holders.get(id);
+        revoked.add(id);
+        free(id);
+        int n = 0;
+        for (Player p : Bukkit.getOnlinePlayers()) { int k = strip(p, false); if (k > 0) { n += k; p.sendMessage(ChatColor.RED + "Staff removed your mace."); } }
+        save();
+        String who = h == null ? "?" : h.split(";", 2)[h.contains(";") ? 1 : 0];
+        s.sendMessage(ChatColor.GREEN + "Mace #" + id + " (" + who + ") removed" + (n > 0 ? "" : ": it's deleted wherever it turns up") + ". Maces: " + maces.size() + "/" + max());
+        announceRemoved(who);
+    }
+
+    void announceRemoved(String who) {
+        if (!plugin.getConfig().getBoolean("mace-limit.announce.chat", true)) return;
+        Bukkit.broadcastMessage(ChatColor.DARK_RED + "A mace was taken from " + ChatColor.WHITE + who + ChatColor.DARK_RED + " by staff. "
+                + ChatColor.GRAY + "One can be forged again.");
+    }
 
     @Override
     public boolean onCommand(CommandSender s, Command c, String label, String[] a) {
@@ -287,6 +399,33 @@ final class MaceLimit implements Listener, TabExecutor {
                     save();
                 } catch (NumberFormatException ex) { s.sendMessage(ChatColor.RED + "Not an id: " + a[1]); }
             }
+            case "take", "remove" -> { // /macelimit take <player>: delete their mace(s), online or off
+                if (a.length < 2) { s.sendMessage(ChatColor.RED + "/macelimit take <player>   (or /macelimit remove <id>)"); return true; }
+                Long byId = null;
+                try { byId = Long.parseLong(a[1].replace("#", "")); } catch (NumberFormatException ignored) { }
+                if (byId != null && (maces.containsKey(byId) || holders.containsKey(byId))) { removeId(s, byId); return true; }
+                Player t = Bukkit.getPlayerExact(a[1]);
+                if (t != null) {
+                    int n = strip(t, true);
+                    // anything registered to them that wasn't on them (dropped / hidden) is deleted when it turns up
+                    for (var e : new ArrayList<>(holders.entrySet())) if (e.getValue().startsWith(t.getUniqueId() + ";")) { revoked.add(e.getKey()); free(e.getKey()); n++; }
+                    save();
+                    if (n == 0) { s.sendMessage(ChatColor.GRAY + t.getName() + " has no mace."); return true; }
+                    t.sendMessage(ChatColor.RED + "Staff removed your mace.");
+                    s.sendMessage(ChatColor.GREEN + "Removed " + t.getName() + "'s mace" + (n == 1 ? "" : "s (" + n + ")") + ". Maces: " + maces.size() + "/" + max());
+                    announceRemoved(t.getName());
+                    return true;
+                }
+                int n = 0;
+                for (var e : new ArrayList<>(holders.entrySet())) {
+                    String[] v = e.getValue().split(";", 2);
+                    if (v.length == 2 && v[1].equalsIgnoreCase(a[1])) { revoked.add(e.getKey()); free(e.getKey()); n++; }
+                }
+                if (n == 0) { s.sendMessage(ChatColor.RED + "No mace known for " + a[1] + " (they have to be online, or have held it since this update)."); return true; }
+                save();
+                s.sendMessage(ChatColor.GREEN + "Removed " + a[1] + "'s mace" + (n == 1 ? "" : "s (" + n + ")") + ": it's deleted the moment they log in. Maces: " + maces.size() + "/" + max());
+                announceRemoved(a[1]);
+            }
             case "max" -> {
                 if (a.length < 2) { s.sendMessage(ChatColor.RED + "/macelimit max <n>"); return true; }
                 try {
@@ -299,9 +438,11 @@ final class MaceLimit implements Listener, TabExecutor {
                 s.sendMessage(ChatColor.GOLD + "Maces: " + maces.size() + "/" + max() + (on() ? "" : ChatColor.GRAY + " (limit off)"));
                 for (var e : maces.entrySet()) {
                     String[] v = e.getValue().split(";", 2);
-                    s.sendMessage(ChatColor.GRAY + " #" + e.getKey() + ChatColor.WHITE + " made/first held by " + v[0]);
+                    String h = holders.get(e.getKey());
+                    s.sendMessage(ChatColor.GRAY + " #" + e.getKey() + ChatColor.WHITE + " made/first held by " + v[0]
+                            + (h == null ? "" : ChatColor.GRAY + ", now " + ChatColor.WHITE + h.split(";", 2)[1]));
                 }
-                s.sendMessage(ChatColor.DARK_GRAY + "/macelimit free <id|all>, /macelimit max <n>");
+                s.sendMessage(ChatColor.DARK_GRAY + "/macelimit take <player>, remove <id>, free <id|all>, max <n>");
             }
         }
         return true;
@@ -310,7 +451,14 @@ final class MaceLimit implements Listener, TabExecutor {
     @Override
     public List<String> onTabComplete(CommandSender s, Command c, String label, String[] a) {
         if (!s.hasPermission("items.macelimit")) return List.of();
-        if (a.length == 1) return List.of("list", "free", "max");
+        if (a.length == 1) return List.of("list", "take", "remove", "free", "max");
+        if (a.length == 2 && a[0].equalsIgnoreCase("take")) {
+            Set<String> out = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+            for (Player o : Bukkit.getOnlinePlayers()) out.add(o.getName());
+            for (String v : holders.values()) { String[] x = v.split(";", 2); if (x.length == 2) out.add(x[1]); }
+            return new ArrayList<>(out);
+        }
+        if (a.length == 2 && a[0].equalsIgnoreCase("remove")) { List<String> out = new ArrayList<>(); for (Long id : maces.keySet()) out.add(String.valueOf(id)); return out; }
         if (a.length == 2 && a[0].equalsIgnoreCase("free")) {
             List<String> out = new ArrayList<>(List.of("all"));
             for (Long id : maces.keySet()) out.add(String.valueOf(id));

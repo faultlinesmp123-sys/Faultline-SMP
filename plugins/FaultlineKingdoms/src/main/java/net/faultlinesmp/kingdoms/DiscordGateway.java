@@ -171,7 +171,7 @@ final class DiscordGateway {
                 noContent = true;
                 bridgeStatus = "needs the Message Content Intent";
                 pl.getLogger().warning("Discord: the chat bridge needs the MESSAGE CONTENT INTENT. Turn it on at discord.com/developers/applications > your bot > Bot > "
-                        + "Privileged Gateway Intents, then /kingdoms reload. (/stats keeps working without it.)");
+                        + "Privileged Gateway Intents, then /factions reload. (/stats keeps working without it.)");
                 status = "reconnecting";
                 ended(my, "refused the Message Content intent");
                 return null;
@@ -179,7 +179,7 @@ final class DiscordGateway {
             if (code == 4004) { // authentication failed: retrying won't help
                 gen.incrementAndGet();
                 status = "bad token";
-                pl.getLogger().warning("Discord gateway: the bot token was refused (4004). Check discord.bot-token, then /kingdoms reload.");
+                pl.getLogger().warning("Discord gateway: the bot token was refused (4004). Check discord.bot-token, then /factions reload.");
                 ScheduledFuture<?> h = heartbeat; if (h != null) h.cancel(false);
                 return null;
             }
@@ -321,7 +321,7 @@ final class DiscordGateway {
         String real = op.getName() == null ? name : op.getName();
         Map<String, String> f = new LinkedHashMap<>();
         int k = FaultlineKingdoms.kingdomOf(op.getUniqueId());
-        f.put("Kingdom", pl.name(k));
+        f.put("Faction", pl.name(k));
         Player online = op.getPlayer();
         f.put("Status", online != null && !online.hasMetadata("vanished") ? "🟢 Online"
                 : op.getLastSeen() > 0 ? "Last seen <t:" + op.getLastSeen() / 1000 + ":R>" : "Offline");

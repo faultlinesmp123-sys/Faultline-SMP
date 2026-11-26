@@ -126,6 +126,10 @@ commands:
     description: Spawn a Queen Spider (admin)
     usage: /queenspider spawn [<world> <x> <y> <z>] | killall | brood <servant|venom|ember|swift> [n] [asleep] | quake | nest [here [force]|list|tp [id] [entrance]|respawn [id]|delete [id]|forget [id]]
     permission: items.queenspider
+  macelimit:
+    description: "Only 5 maces on the server: list them, free a place, change the limit."
+    usage: /macelimit [list|free <id|all>|max <n>]
+    aliases: [maces]
   totems:
     description: Totems popped by players (admins - set, reset, change or turn off the limit)
     usage: /totems [<player>|set <player> <n>|reset <player|all>|limit <n|off>|on|off]
@@ -258,6 +262,8 @@ commands:
     usage: /givedisc <id|random> [player]
     permission: items.fgear
 permissions:
+  items.macelimit:
+    default: op
   items.abilities.admin:
     description: /adminmenu and /ability list/remove/give
     default: op

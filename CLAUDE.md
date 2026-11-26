@@ -3358,6 +3358,18 @@ Notes:
   PlayerSetSpawnEvent there (beds still let you sleep); the old entry / Halcyon plaza / Black Market / Den house respawns are
   gone (`death.respawn` is ignored; `/den home` still works); the dome Respawn Pod can't be bought and doesn't work there;
   Spawn Pads do nothing in `spawn-pad.no-spawn-worlds` [faultline_deep]. Don't add one back unless asked.
+- **5 maces, inventory only (Items, same 2.0.0)**: `Items/MaceLimit.java` (`mace-limit:` enabled / max 5, data `maces.yml`,
+  `/macelimit [list|free <id|all>|max <n>]` (alias `/maces`, `items.macelimit` op; others see the count)): every mace gets an id
+  (item PDC `faultlineitems:mace_id`, random long) when crafted or first seen in a survival inventory (old maces count); crafting
+  refused at the limit (grid result cleared, no shift / number-key crafting, Crafter blocks never make one); a forge is
+  broadcast. A mace made FROM a mace (Stormbreaker) takes its id (no new count); an anvil / grindstone result that ate a second
+  mace frees that one's id; an item entity removed by DEATH / DESPAWN / OUT_OF_WORLD (lava, fire, cactus, void, despawn) frees
+  it; mimic deaths never drop maces while the limit is on. `MaceRules` mode default is `restrict` (an old "off" / false reads as
+  restrict unless `mace.really-off: true`), crafting allowed (`mace.block-crafting` false; the old `no-crafting` key is ignored),
+  inventory only (no chests / ender chest / shulkers / bundles / hoppers / frames / stands / allays), `mace.no-dropping` (Q /
+  dragging out cancelled; death still drops it); every 5 s maces in bundles, shulker box ITEMS and the ender chest are moved back
+  into the inventory (`unbundle`). Mace enchants (`MaceEnchants.allowed`): Unbreaking III, Wind Burst III, Mending, Density IV,
+  Fire Aspect II (1.2.55's and 1.3.35's old lists read as the new one). Tested (scratch `ml/MlTest`).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

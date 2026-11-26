@@ -23,7 +23,7 @@ import java.util.Map;
 
 /**
  * MACE ENCHANTMENTS (Items 1.2.55, config mace-enchants:). Maces are allowed again, but a mace can only carry
- * Unbreaking III, Wind Burst II, Mending, Density I and Fire Aspect II (`allowed`, 1.3.35 added the last two): anything else is stripped and levels are capped, wherever the
+ * Unbreaking III, Wind Burst III, Mending, Density IV and Fire Aspect II (`allowed`; 2.0 raised Wind Burst and Density): anything else is stripped and levels are capped, wherever the
  * mace gets them: the enchanting table, the anvil (books or another mace), and maces players already have (their
  * inventories are checked every 2 s, on pickup and when held). Enchanted books of Wind Burst are capped to II too, so
  * nobody can get Wind Burst III at all. faultline.mace.bypass skips it.
@@ -47,16 +47,27 @@ final class MaceEnchants implements Listener {
         ConfigurationSection s = plugin.getConfig().getConfigurationSection("mace-enchants.allowed");
         Map<String, Object> m = new HashMap<>();
         if (s != null) m.putAll(s.getValues(false));
-        if (m.isEmpty()) { m.put("unbreaking", 3); m.put("wind_burst", 2); m.put("mending", 1); }
-        // 1.3.35: Density I and Fire Aspect II are allowed too. A server config still holding the old list gets them.
-        if (m.size() == 3 && m.keySet().containsAll(java.util.List.of("unbreaking", "wind_burst", "mending"))) {
-            m.put("density", 1); m.put("fire_aspect", 2);
-        }
+        // 2.0 (the owner): Unbreaking III, Wind Burst III, Mending, Density IV, Fire Aspect II. A server config still
+        // holding one of the older lists (1.2.55's three, 1.3.35's five) reads as the new one.
+        Map<String, Object> now = new HashMap<>(Map.of("unbreaking", 3, "wind_burst", 3, "mending", 1, "density", 4, "fire_aspect", 2));
+        Map<String, Object> old1 = Map.of("unbreaking", 3, "wind_burst", 2, "mending", 1);
+        Map<String, Object> old2 = Map.of("unbreaking", 3, "wind_burst", 2, "mending", 1, "density", 1, "fire_aspect", 2);
+        if (m.isEmpty() || same(m, old1) || same(m, old2)) { m.clear(); m.putAll(now); }
         for (var e : m.entrySet()) {
             int lvl = e.getValue() instanceof Number n ? n.intValue() : parse(String.valueOf(e.getValue()));
             if (lvl > 0) out.put(id(e.getKey()), lvl);
         }
         return out;
+    }
+
+    static boolean same(Map<String, Object> a, Map<String, Object> b) {
+        if (a.size() != b.size()) return false;
+        for (var e : b.entrySet()) {
+            Object v = a.get(e.getKey());
+            int got = v instanceof Number n ? n.intValue() : v == null ? -1 : parse(String.valueOf(v));
+            if (got != ((Number) e.getValue()).intValue()) return false;
+        }
+        return true;
     }
 
     static int parse(String v) { try { return Integer.parseInt(v.trim()); } catch (NumberFormatException ex) { return 0; } }

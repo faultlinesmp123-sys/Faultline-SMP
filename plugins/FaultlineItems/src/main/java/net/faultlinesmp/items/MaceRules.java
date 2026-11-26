@@ -75,6 +75,11 @@ final class MaceRules implements Listener {
         // the sweep: every online player every 2 seconds; the worlds already loaded once, right after startup
         Bukkit.getScheduler().runTaskTimer(plugin, () -> guard(this::sweepPlayers), 40L, 40L);
         Bukkit.getScheduler().runTaskLater(plugin, () -> guard(this::sweepLoaded), 60L);
+        // 2.0: maces that were in a bundle / shulker / ender chest from before come back to the inventory (every 5 s)
+        Bukkit.getScheduler().runTaskTimer(plugin, () -> guard(() -> {
+            if (removing() || !on("inventory-only")) return;
+            for (Player p : Bukkit.getOnlinePlayers()) if (!bypass(p)) unbundle(p);
+        }), 100L, 100L);
     }
 
     private long errAt;
@@ -86,8 +91,11 @@ final class MaceRules implements Listener {
 
     String mode() {
         if (!plugin.getConfig().getBoolean("mace.enabled", true)) return "off";
-        String m = plugin.getConfig().getString("mace.mode", "off");
+        String m = plugin.getConfig().getString("mace.mode", "restrict");
         m = m == null ? "off" : m.toLowerCase(java.util.Locale.ROOT);
+        // 2.0: maces stay in their owner's inventory (the owner). A server config still holding 1.2.55's "off" (or the
+        // unquoted off = "false") reads as "restrict" unless mace.really-off: true.
+        if ((m.equals("off") || m.equals("false")) && !plugin.getConfig().getBoolean("mace.really-off", false)) m = "restrict";
         // 1.2.55: maces are back (craft and use them freely). A server config still holding 1.2.15's default "remove" reads
         // as "off"; to delete maces again set mace.really-remove: true (or mode: restrict for the 1.2.14 rules)
         if (m.equals("remove") && !plugin.getConfig().getBoolean("mace.really-remove", false)) m = "off";
@@ -100,6 +108,8 @@ final class MaceRules implements Listener {
         String m = mode();
         if (m.equals("off")) return false;
         if (m.equals("remove")) return true; // removal includes every restriction (belt and braces between sweeps)
+        // 2.0: crafting is allowed again (MaceLimit caps how many exist); the old no-crafting key is ignored
+        if (what.equals("no-crafting")) return plugin.getConfig().getBoolean("mace.block-crafting", false);
         return plugin.getConfig().getBoolean("mace." + what, true);
     }
 
@@ -187,6 +197,15 @@ final class MaceRules implements Listener {
         Inventory top = e.getView().getTopInventory();
         if (!storage(top)) return;
         for (int raw : e.getRawSlots()) if (raw < top.getSize()) { e.setCancelled(true); no(p, "in there"); return; }
+    }
+
+    /** 2.0: a mace can't be thrown out either (Q, or dragged out of the inventory screen). Dying still drops it. */
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onDrop(org.bukkit.event.player.PlayerDropItemEvent e) {
+        if (!on("inventory-only") || bypass(e.getPlayer()) || !mace(e.getItemDrop().getItemStack())) return;
+        if (!plugin.getConfig().getBoolean("mace.no-dropping", true)) return;
+        e.setCancelled(true);
+        no(e.getPlayer(), "on the ground");
     }
 
     /** Hoppers (and hopper minecarts) can't suck a dropped mace up... */
@@ -533,8 +552,28 @@ final class MaceRules implements Listener {
             it.setItemMeta(bm);
             p.getInventory().setItem(i, it);
         }
+        // 2.0: shulker box items in the inventory, and the ender chest, give their maces back too
+        for (int i = 0; i < contents.length; i++) {
+            ItemStack it = contents[i];
+            if (it == null || !it.getType().name().endsWith("SHULKER_BOX")) continue;
+            if (!(it.getItemMeta() instanceof org.bukkit.inventory.meta.BlockStateMeta bsm) || !(bsm.getBlockState() instanceof org.bukkit.block.ShulkerBox box)) continue;
+            boolean changed = false;
+            for (int k = 0; k < box.getInventory().getSize(); k++) {
+                ItemStack in = box.getInventory().getItem(k);
+                if (mace(in)) { out.add(in); box.getInventory().setItem(k, null); changed = true; n += in.getAmount(); }
+            }
+            if (!changed) continue;
+            bsm.setBlockState(box);
+            it.setItemMeta(bsm);
+            p.getInventory().setItem(i, it);
+        }
+        org.bukkit.inventory.Inventory ec = p.getEnderChest();
+        for (int k = 0; k < ec.getSize(); k++) {
+            ItemStack in = ec.getItem(k);
+            if (mace(in)) { out.add(in); ec.setItem(k, null); n += in.getAmount(); }
+        }
         for (ItemStack m : out) p.getInventory().addItem(m).values().forEach(left -> p.getWorld().dropItemNaturally(p.getLocation(), left));
-        if (n > 0) p.sendMessage(ChatColor.GOLD + "Maces can't be kept in bundles: " + ChatColor.GRAY + "your mace was taken out of the bundle.");
+        if (n > 0) p.sendMessage(ChatColor.GOLD + "Maces stay in your inventory: " + ChatColor.GRAY + "your mace was taken out of storage and given back to you.");
         return n;
     }
 }

@@ -6077,6 +6077,8 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         e.setDroppedExp(plugin.getConfig().getInt("mimic-player.xp", 0));
         if (plugin.getConfig().getBoolean("mimic-player.drop-inventory", true)) { // killed = it drops everything it had left, like a player
             e.getDrops().addAll(inventory(m));
+            // 2.0: only 5 maces exist; a mimic's mace is a COPY of a real player's, so it never drops while the limit is on
+            if (plugin.getConfig().getBoolean("mace-limit.enabled", true)) e.getDrops().removeIf(it -> it != null && it.getType() == Material.MACE);
             e.setDroppedExp(e.getDroppedExp() + Math.min(m.xpPool, 100) * 7 / 10 + 0); // a player drops 7 a level, capped at 100
         }
         for (String s : plugin.getConfig().getStringList("mimic-player.drops")) {

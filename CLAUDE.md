@@ -3453,6 +3453,14 @@ Notes:
   leaves after 2 minutes with NOBODY near (`Fight.alone`; it used to leave the moment everyone stepped away once the fight was 2
   minutes old); `/farlands crawler` looking straight up no longer makes a NaN spot. Ghasts mutate to Inferno (so the Farlands rule
   never deletes them).
+- **Farlands night + rain (Items, FaultlineWorld datapack; same 2.0.0)**: `Farlands.spookyTick` (every 2 s): each player in the
+  Farlands gets `setPlayerTime(18000, false)` + `setPlayerWeather(DOWNFALL)` (their own sky only; the server's clock / weather
+  and vanilla spawning are untouched), drifting ASH / WHITE_ASH, a creepy far-off sound every 10-20 s (`SPOOK`, string keys:
+  warden heartbeat, cave, ghast, fox screech, shrieker, bell...), 20% of those with a harmless `strikeLightningEffect` 30-60 out.
+  No Darkness (you can still see). Leaving / quit / join / disable = `resetPlayerTime` + `resetPlayerWeather` (`unspook`). Keys
+  `farlands.always-night`, `always-rain`, `spooky`, `spooky-lightning-chance`. The datapack's farlands biome is now temperature
+  0.9 / downfall 0.9 / precipitation on (windswept_hills' 0.2 made it SNOW on the high walls): needs 2 restarts to take
+  (the jar replaces the installed datapack, then the world reads it). Tested (scratch `far/FarTest`).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

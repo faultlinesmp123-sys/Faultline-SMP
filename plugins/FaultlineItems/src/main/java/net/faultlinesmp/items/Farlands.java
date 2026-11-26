@@ -71,6 +71,9 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
     static final String[] VANILLA_MUSIC = {"minecraft:music.game", "minecraft:music.creative", "minecraft:music.overworld.windswept_hills",
             "minecraft:music.overworld.jagged_peaks", "minecraft:music.overworld.stony_peaks", "minecraft:music.under_water"};
     private final Map<UUID, Long> musicAt = new HashMap<>();
+    /** Players we've put in the Farlands' night + rain (reset when they leave). */
+    private final Set<UUID> spooky = new HashSet<>();
+    private final Map<UUID, Integer> spookAt = new HashMap<>();
     private UUID trader;
     private long traderUntil;
     private int tick, musicErrAt = -100000;
@@ -644,19 +647,79 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
     }
 
     @EventHandler
-    public void onJoinMusic(org.bukkit.event.player.PlayerJoinEvent e) { musicAt.remove(e.getPlayer().getUniqueId()); }
+    public void onJoinMusic(org.bukkit.event.player.PlayerJoinEvent e) {
+        musicAt.remove(e.getPlayer().getUniqueId());
+        unspook(e.getPlayer());   // player time / weather aren't saved, but clear anything left from before a reload
+    }
+
+    @EventHandler
+    public void onQuitSpooky(org.bukkit.event.player.PlayerQuitEvent e) { unspook(e.getPlayer()); }
+
+    /** Sounds heard far off in the Farlands' night. */
+    private static final String[] SPOOK = {
+        "minecraft:ambient.cave", "minecraft:entity.warden.heartbeat", "minecraft:entity.ghast.ambient", "minecraft:entity.fox.screech",
+        "minecraft:entity.phantom.ambient", "minecraft:block.sculk_shrieker.shriek", "minecraft:entity.enderman.stare",
+        "minecraft:entity.zombie.ambient", "minecraft:entity.skeleton.ambient", "minecraft:entity.warden.ambient",
+        "minecraft:ambient.soul_sand_valley.mood", "minecraft:ambient.basalt_deltas.mood", "minecraft:block.bell.resonate" };
+
+    /**
+     * Always night + rain in the Farlands, per player (`setPlayerTime` / `setPlayerWeather`: the server's own clock and weather
+     * stay as they are, so spawning elsewhere is untouched), with far-off creepy sounds, ash in the air and silent lightning now
+     * and then. No Darkness: you can still see. Leaving puts your own sky back.
+     */
+    void spookyTick() {
+        boolean night = plugin.getConfig().getBoolean("farlands.always-night", true);
+        boolean rain = plugin.getConfig().getBoolean("farlands.always-rain", true);
+        boolean spook = plugin.getConfig().getBoolean("farlands.spooky", true);
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            UUID id = p.getUniqueId();
+            if (!inCached(p)) { if (spooky.contains(id)) unspook(p); continue; }
+            spooky.add(id);
+            if (night && (p.isPlayerTimeRelative() || Math.abs(p.getPlayerTime() % 24000 - 18000) > 200)) p.setPlayerTime(18000, false);
+            if (rain && p.getPlayerWeather() != WeatherType.DOWNFALL) p.setPlayerWeather(WeatherType.DOWNFALL);
+            if (!spook) continue;
+            Location l = p.getLocation();
+            p.spawnParticle(Particle.ASH, l.clone().add(0, 2, 0), 18, 8, 4, 8, 0);
+            p.spawnParticle(Particle.WHITE_ASH, l.clone().add(0, 2, 0), 8, 8, 4, 8, 0);
+            int next = spookAt.getOrDefault(id, tick + 200 + random.nextInt(200));
+            spookAt.putIfAbsent(id, next);
+            if (tick < next) continue;
+            spookAt.put(id, tick + 200 + random.nextInt(200));   // every 10-20 s
+            double a = random.nextDouble() * Math.PI * 2, d = 14 + random.nextDouble() * 12;
+            Location at = l.clone().add(Math.cos(a) * d, random.nextDouble() * 8 - 2, Math.sin(a) * d);
+            String s = SPOOK[random.nextInt(SPOOK.length)];
+            p.playSound(at, s, SoundCategory.AMBIENT, 0.55f + random.nextFloat() * 0.35f, 0.55f + random.nextFloat() * 0.35f);
+            if (random.nextDouble() < cfg("spooky-lightning-chance", 0.2)) {
+                double b = random.nextDouble() * Math.PI * 2, e = 30 + random.nextDouble() * 30;
+                Location bolt = l.clone().add(Math.cos(b) * e, 0, Math.sin(b) * e);
+                bolt.setY(l.getWorld().getHighestBlockYAt(bolt) + 1);
+                if (l.getWorld().isChunkLoaded(bolt.getBlockX() >> 4, bolt.getBlockZ() >> 4)) l.getWorld().strikeLightningEffect(bolt);
+            }
+        }
+        spooky.removeIf(u -> Bukkit.getPlayer(u) == null);
+        spookAt.keySet().removeIf(u -> Bukkit.getPlayer(u) == null);
+    }
+
+    void unspook(Player p) {
+        if (!spooky.remove(p.getUniqueId())) return;
+        spookAt.remove(p.getUniqueId());
+        try { p.resetPlayerTime(); p.resetPlayerWeather(); } catch (RuntimeException ignored) {}
+    }
 
     // ================================================================= ticks
 
     void tickAll() {
         tick++;
-        if (!on()) return;
+        if (!on()) { if (!spooky.isEmpty()) for (Player p : Bukkit.getOnlinePlayers()) unspook(p); return; }
         try {
             if (tick % 20 == 0) inCache.clear();
             if (tick % 4 == 0 && !crawlers.isEmpty()) crawlerTick();
             if (tick % 20 == 0) echoTick();
             if (tick % 40 == 0) try { musicTick(); } catch (RuntimeException ex) {
                 if (tick - musicErrAt > 1200) { musicErrAt = tick; plugin.getLogger().warning("[Farlands] music: " + ex); }
+            }
+            if (tick % 40 == 20) try { spookyTick(); } catch (RuntimeException ex) {
+                if (tick - musicErrAt > 1200) { musicErrAt = tick; plugin.getLogger().warning("[Farlands] night: " + ex); }
             }
             traderTick();
             if (tick % 600 == 0) {
@@ -674,6 +737,7 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
     }
 
     void shutdown() {
+        for (Player p : Bukkit.getOnlinePlayers()) unspook(p);
         for (Echo ec : echoes) { Entity b = ec.entity == null ? null : Bukkit.getEntity(ec.entity); if (b != null) b.remove(); ec.entity = null; }
         Entity t = trader == null ? null : Bukkit.getEntity(trader);
         if (t != null) t.remove();

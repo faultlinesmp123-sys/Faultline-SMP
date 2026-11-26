@@ -121,7 +121,7 @@ def biomes():
         # round 10: a dark crimson sky and fog (the light level is untouched: you can still see), crimson-forest ambience,
         # GHASTS drifting over the walls. Its music (faultline:farlands.music) is played by FaultlineItems (Farlands.musicTick),
         # not the biome: biome music only changed when the song playing ended
-        "farlands": biome("windswept_hills", sky="#3b1626", fog="#5a2132",
+        "farlands": biome("windswept_hills", temp=0.9, downfall=0.9, precip=True, sky="#3b1626", fog="#5a2132",
                           particles=[("minecraft:crimson_spore", 0.012), ("minecraft:ash", 0.02), ("minecraft:end_rod", 0.001)],
                           ambient={"additions": {"sound": "minecraft:ambient.crimson_forest.additions", "tick_chance": 0.0111},
                                    "loop": "minecraft:ambient.crimson_forest.loop",

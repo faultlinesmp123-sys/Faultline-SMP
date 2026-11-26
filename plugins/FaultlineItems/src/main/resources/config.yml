@@ -691,6 +691,10 @@ farlands:
   trader: {chance-per-minute: 0.04, minutes: 15}
   music: true             # "Underground Crimson" (FaultlineDeepMusic.zip), looped for everyone in the Farlands
   music-seconds: 161.5
+  always-night: true           # every player out there sees a night sky (their own clock; the server time is untouched)
+  always-rain: true            # and rain
+  spooky: true                 # far-off creepy sounds, ash in the air, silent lightning
+  spooky-lightning-chance: 0.2
 rim-warden:
   natural: true           # 5% a minute while someone's in the Farlands
   spawn-chance: 0.05

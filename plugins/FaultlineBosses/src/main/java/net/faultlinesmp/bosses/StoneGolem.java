@@ -137,7 +137,9 @@ final class StoneGolem extends Wild.Boss {
         Block b = l.getBlock();
         if (b.isLiquid()) return false;
         int under = w.getHighestBlockYAt(l.getBlockX(), l.getBlockZ()) - l.getBlockY();   // ground over your head (a ravine floor = 0)
-        return under >= 12 || (under >= 3 && b.getBiome() == Biome.LUSH_CAVES);
+        if (under < 3 || (under < 12 && b.getBiome() != Biome.LUSH_CAVES)) return false;
+        for (int dy = 1; dy <= 16; dy++) if (b.getRelative(0, dy, 0).getType().isSolid()) return true;   // a real cave ceiling (not open air under a floating island)
+        return false;
     }
 
     /** Room for it (3x3, 5 tall, a floor) somewhere between min and max blocks from l, or null. */

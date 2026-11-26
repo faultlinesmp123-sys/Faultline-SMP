@@ -20,11 +20,11 @@ import java.util.*;
 
 /**
  * 1.3.20 "MB" TRUCE (config `truce:`): two players fighting each other both say "mb" (or another word in `truce.words`) in
- * chat within `confirm-seconds` (30) and their fight stops: each of them is out of combat (DonutCombat's tag ended through
- * its own private endCombatForPlayer, by reflection; the built-in mimic tag cleared too), unless they're still fighting someone
+ * chat within `confirm-seconds` (30) and their fight stops: each of them is out of combat (PvPManager's tag ended through
+ * its API, `PvpLink.untag`; the built-in mimic tag cleared too), unless they're still fighting someone
  * else (another player hit in the combat window, or a mimic): then only that pair is dropped and they're told who's left.
- * Opponents = player-vs-player hits (melee, their projectiles, their pets) within the combat window (DonutCombat's
- * combat-duration when it's installed, else `mimic-player.combat-tag.seconds`). Hitting each other again starts a new fight.
+ * Opponents = player-vs-player hits (melee, their projectiles, their pets) within the combat window (PvPManager's
+ * Combat Tag.Time when it's installed, else `mimic-player.combat-tag.seconds`). Hitting each other again starts a new fight.
  */
 final class Truce implements Listener, org.bukkit.command.CommandExecutor {
 
@@ -45,18 +45,10 @@ final class Truce implements Listener, org.bukkit.command.CommandExecutor {
         return w.isEmpty() ? List.of("mb", "mb all", "my bad", "mbmb", "mb mb") : w;
     }
 
-    /** The combat window in ms: DonutCombat's own duration when it's there. */
+    /** The combat window in ms: PvPManager's own tag length when it's there. */
     long windowMs() {
-        org.bukkit.plugin.Plugin dc = Bukkit.getPluginManager().getPlugin("DonutCombat");
-        if (dc != null && dc.isEnabled()) {
-            try {
-                java.lang.reflect.Field f = dc.getClass().getDeclaredField("combatDuration");
-                f.setAccessible(true);
-                int s = f.getInt(dc);
-                if (s > 0) return s * 1000L;
-            } catch (ReflectiveOperationException | RuntimeException ignored) { }
-            return dc.getConfig().getInt("combat-duration", 120) * 1000L;
-        }
+        int pm = PvpLink.seconds();
+        if (pm > 0) return pm * 1000L;
         return plugin.getConfig().getLong("mimic-player.combat-tag.seconds", 120) * 1000L;
     }
 
@@ -105,14 +97,15 @@ final class Truce implements Listener, org.bukkit.command.CommandExecutor {
         Bukkit.getScheduler().runTask(plugin, () -> mb(id));
     }
 
-    /** 1.3.32: /mball (/mb) is handled here, before any combat plugin sees it: DonutCombat blocks every command but
-     *  /msg /r /tell while you're in combat (HIGHEST, ignoreCancelled), which is exactly when you'd type it. */
-    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    /** 1.3.32: /mball (/mb) is handled here, before any combat plugin sees it: the combat plugin (PvPManager's
+     *  command whitelist) blocks commands while you're in combat, which is exactly when you'd type it. */
+    @EventHandler(priority = EventPriority.LOWEST)   // not ignoreCancelled: PvPManager cancels it first (also LOWEST), we still run it
     public void onMbCommand(org.bukkit.event.player.PlayerCommandPreprocessEvent e) {
         String cmd = e.getMessage().trim().toLowerCase(Locale.ROOT);
         int sp = cmd.indexOf(' ');
         String head = sp < 0 ? cmd : cmd.substring(0, sp);
-        if (!head.equals("/mball") && !head.equals("/mb") && !head.equals("/faultlineitems:mball") && !head.equals("/faultlineitems:mb")) return;
+        if (head.startsWith("/")) head = head.substring(1);
+        if (!head.equals("mball") && !head.equals("mb") && !head.equals("faultlineitems:mball") && !head.equals("faultlineitems:mb")) return;
         e.setCancelled(true);
         run(e.getPlayer());
     }
@@ -155,6 +148,7 @@ final class Truce implements Listener, org.bukkit.command.CommandExecutor {
     private void truce(Player a, Player b) {
         drop(a.getUniqueId(), b.getUniqueId());
         drop(b.getUniqueId(), a.getUniqueId());
+        PvpLink.dropPair(a, b);   // PvPManager forgets they're enemies (if either is still fighting someone else, they stay tagged)
         release(a, b);
         release(b, a);
         plugin.getLogger().info("[Truce] " + a.getName() + " and " + b.getName() + " said mb");
@@ -171,7 +165,7 @@ final class Truce implements Listener, org.bukkit.command.CommandExecutor {
         Set<UUID> left = opponents(p.getUniqueId());
         Long m = mimicAt.get(p.getUniqueId());
         boolean mimic = m != null && System.currentTimeMillis() - m < windowMs();
-        if (!left.isEmpty() || mimic) {
+        if (!left.isEmpty() || mimic || PvpLink.otherEnemies(p, other) > 0) {
             List<String> names = new ArrayList<>();
             for (UUID u : left) { Player o = Bukkit.getPlayer(u); if (o != null) names.add(o.getName()); }
             if (mimic) names.add("a mimic");
@@ -182,24 +176,10 @@ final class Truce implements Listener, org.bukkit.command.CommandExecutor {
         p.sendMessage(Component.text("Truce with " + other.getName() + ": you're out of combat.", NamedTextColor.GREEN));
     }
 
-    private java.lang.reflect.Method donutEnd;
-    private org.bukkit.plugin.Plugin donut;
-
-    /** Ends this player's combat tag: DonutCombat's and the built-in one. */
+    /** Ends this player's combat tag: PvPManager's and the built-in one. */
     void endCombat(Player p) {
         if (plugin.combatTag != null) plugin.combatTag.clear(p.getUniqueId());
-        org.bukkit.plugin.Plugin dc = Bukkit.getPluginManager().getPlugin("DonutCombat");
-        if (dc == null || !dc.isEnabled()) return;
-        try {
-            if (donut != dc || donutEnd == null) {
-                donut = dc;
-                donutEnd = dc.getClass().getDeclaredMethod("endCombatForPlayer", UUID.class);
-                donutEnd.setAccessible(true);
-            }
-            donutEnd.invoke(dc, p.getUniqueId());
-        } catch (ReflectiveOperationException | RuntimeException | LinkageError e) {
-            plugin.getLogger().warning("[Truce] couldn't end " + p.getName() + "'s DonutCombat tag (" + e + ")");
-        }
+        PvpLink.untag(p);
     }
 
     private void forget(UUID id) {

@@ -165,7 +165,8 @@ final class FarlandsNight implements Listener {
 
     void bloodBuff(LivingEntity m) {
         Set<String> tags = m.getScoreboardTags();   // our bosses, hitboxes, echoes keep their own numbers
-        if (tags.contains(Farlands.ECHO) || tags.contains(Farlands.TRADER) || tags.contains("faultline_hitbox") || tags.contains("faultline_nest_brood")) return;
+        if (tags.contains(Farlands.ECHO) || tags.contains(Farlands.TRADER) || tags.contains("faultline_hitbox") || tags.contains("faultline_nest_brood")
+                || tags.contains("faultline_player_mimic") || tags.contains("faultline_looter")) return;
         AttributeInstance base = m.getAttribute(Attribute.MAX_HEALTH);
         if (base != null && base.getBaseValue() > 200) return;
         if (m.getScoreboardTags().contains(BLOOD)) return;
@@ -195,9 +196,13 @@ final class FarlandsNight implements Listener {
     @EventHandler(priority = EventPriority.HIGH)
     public void onDeath(EntityDeathEvent e) {
         if (!bloodRain() || !(e.getEntity() instanceof Enemy) || e.getEntity() instanceof Player || e.getEntity().getKiller() == null) return;
-        if (!e.getEntity().getScoreboardTags().contains(BLOOD) && !Farlands.in(e.getEntity().getLocation())) return;
+        LivingEntity dead = e.getEntity();
+        if (!dead.getScoreboardTags().contains(BLOOD)) return;   // only the mobs the red rain made stronger (never echoes, mimics, looters)
+        List<ItemStack> held = new ArrayList<>();   // what it was holding / wearing (picked-up items) never doubles
+        if (dead.getEquipment() != null) for (ItemStack it : dead.getEquipment().getArmorContents()) if (it != null) held.add(it);
+        if (dead.getEquipment() != null) { held.add(dead.getEquipment().getItemInMainHand()); held.add(dead.getEquipment().getItemInOffHand()); }
         List<ItemStack> extra = new ArrayList<>();
-        for (ItemStack it : e.getDrops()) if (doubles(it)) extra.add(it.clone());
+        for (ItemStack it : e.getDrops()) if (doubles(it) && held.stream().noneMatch(h -> h != null && h.isSimilar(it))) extra.add(it.clone());
         e.getDrops().addAll(extra);
         e.setDroppedExp(e.getDroppedExp() * 2);
     }
@@ -333,14 +338,12 @@ final class FarlandsNight implements Listener {
             boolean solid = CRUMBLE.contains(b.getType());
             b.setType(Material.AIR, false);
             if (!solid) continue;
-            FallingBlock fb = w.spawn(b.getLocation().clone().add(0.5, 0, 0.5), FallingBlock.class, f -> {
-                f.setBlockData(data);
-                f.setDropItem(false);
-                f.setHurtEntities(true);
-                f.setDamagePerBlock(0.5f);
-                f.setMaxDamage(6);
-                f.addScoreboardTag("faultline_wall_crumble");
-            });
+            FallingBlock fb = w.spawnFallingBlock(b.getLocation().clone().add(0.5, 0, 0.5), data);
+            fb.setDropItem(false);
+            fb.setHurtEntities(true);
+            fb.setDamagePerBlock(0.5f);
+            fb.setMaxDamage(6);
+            fb.addScoreboardTag("faultline_wall_crumble");
             Safe.vel(fb, new Vector((random.nextDouble() - 0.5) * 0.15, -0.05, (random.nextDouble() - 0.5) * 0.15));
             w.spawnParticle(Particle.BLOCK, b.getLocation().clone().add(0.5, 0.5, 0.5), 6, 0.3, 0.3, 0.3, 0, data);
         }
@@ -451,7 +454,7 @@ final class FarlandsNight implements Listener {
     void face(Watcher w, Player p) {
         Vector to = p.getLocation().toVector().subtract(w.at.toVector());
         float yaw = (float) Math.toDegrees(Math.atan2(-to.getX(), to.getZ()));
-        for (Display d : w.parts) if (d.isValid() && Math.abs(d.getLocation().getYaw() - yaw) > 2) d.setRotation(yaw, 0);
+        for (Display d : w.parts) if (d.isValid() && Math.abs(((d.getLocation().getYaw() - yaw) % 360 + 540) % 360 - 180) > 2) d.setRotation(yaw, 0);
     }
 
     void bedrockShape(Player p, Watcher w) {   // Bedrock can't see displays: a thin black dust figure for them

@@ -18,10 +18,10 @@ import org.bukkit.event.player.PlayerTeleportEvent;
 import java.util.*;
 
 /**
- * COMBAT TAG for fights with a MIMIC (1.2.86, config mimic-player.combat-tag:). With DONUTCOMBAT on the server (the owner's
- * combat plugin; its own listener only tags player-vs-player hits) the mimic's hits call ITS public `tagPlayer(Player)` by
- * reflection, so it's DonutCombat's real tag (its duration, action bar, blocked commands, combat-log kill) and nothing below
- * runs; `use-donutcombat: false` = always the built-in tag. Without it: the built-in tag. A mimic hitting you (melee, its arrows /
+ * COMBAT TAG for fights with a MIMIC (1.2.86, config mimic-player.combat-tag:). With PVPMANAGER on the server (the owner's
+ * combat plugin since 2.0; its own listener only tags player-vs-player hits) the mimic's hits tag you through its API
+ * (`PvpLink.tag`), so it's PvPManager's real tag (its duration, bars, blocked commands, combat-log punishment) and nothing below
+ * runs; `use-pvpmanager: false` = always the built-in tag. Without it: the built-in tag. A mimic hitting you (melee, its arrows /
  * tridents / TNT) or you hitting a mimic = in combat for `seconds` (30): an action bar countdown, the teleport commands in
  * `blocked-commands` (DonutTPA's tpa / tpahere / tpaccept and aliases, home, spawn, warp, rtp, back) refused, and any
  * command / plugin teleport over `max-teleport` (16) blocks cancelled (a TPA accepted just before the fight finishing its
@@ -44,29 +44,11 @@ final class CombatTag implements Listener {
 
     void clear(UUID id) { until.remove(id); }
 
-    private java.lang.reflect.Method donutTag;
-    private org.bukkit.plugin.Plugin donut;
-
-    /** DonutCombat's tagPlayer(Player), when it's installed and enabled. */
-    private boolean donutCombat(Player p) {
-        if (!plugin.getConfig().getBoolean("mimic-player.combat-tag.use-donutcombat", true)) return false;
-        org.bukkit.plugin.Plugin dc = Bukkit.getPluginManager().getPlugin("DonutCombat");
-        if (dc == null || !dc.isEnabled()) return false;
-        try {
-            if (donut != dc || donutTag == null) { donut = dc; donutTag = dc.getClass().getMethod("tagPlayer", Player.class); }
-            donutTag.invoke(dc, p);
-            return true;
-        } catch (ReflectiveOperationException | RuntimeException | LinkageError e) {
-            plugin.getLogger().warning("[MimicPlayer] couldn't tag " + p.getName() + " through DonutCombat (" + e + "): using the built-in combat tag");
-            return false;
-        }
-    }
-
     void tag(Player p) {
         if (!on() || p.getGameMode() == GameMode.CREATIVE || p.getGameMode() == GameMode.SPECTATOR) return;
         try { if (plugin.camera != null) plugin.camera.noteFight(p.getUniqueId()); } catch (RuntimeException ignored) { }
         try { if (plugin.truce != null) plugin.truce.noteMimic(p); } catch (RuntimeException ignored) { }
-        if (donutCombat(p)) return; // DonutCombat runs the whole tag
+        if (plugin.getConfig().getBoolean("mimic-player.combat-tag.use-pvpmanager", true) && PvpLink.tag(p, null)) return; // PvPManager runs the whole tag
         boolean was = left(p) > 0;
         until.put(p.getUniqueId(), System.currentTimeMillis() + ms());
         if (!was) p.sendMessage(Component.text("You're in combat with a mimic: no teleporting for " + ms() / 1000 + "s.", NamedTextColor.RED));

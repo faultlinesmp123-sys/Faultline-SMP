@@ -987,15 +987,15 @@ mimic-player:
     fly-over: 48            # flies its elytra for trips longer than this (rockets to spare, or a wind charge to launch and glide; 1.2.93: was 150)
     nether-over: 500        # a longer Overworld trip goes through the Nether when recorded portals make that 30%+ shorter
     load-radius: 3          # chunks kept loaded round a hunting mimic (3 = 7x7), so it keeps moving with nobody near
-  combat-tag:           # it hitting you / you hitting it = in combat. With DonutCombat installed its own tag is used (its duration, blocked commands, combat-log kill)
+  combat-tag:           # it hitting you / you hitting it = in combat. With PvPManager installed its own tag is used (its duration, blocked commands, combat-log punishment)
     enabled: true
-    use-donutcombat: true
-    seconds: 120        # the built-in tag (no DonutCombat); DonutCombat's own length is combat-duration in ITS config
+    use-pvpmanager: true
+    seconds: 120        # the built-in tag (no PvPManager); PvPManager's own length is Combat Tag.Time in ITS config
     max-teleport: 16    # built-in: command / plugin teleports further than this are cancelled while tagged (ender pearls still work)
     blocked-commands: [tpa, tpahere, tpaccept, tpaaccept, tpyes, home, homes, spawn, warp, rtp, back]
 
 # 1.3.20 "MB" TRUCE: two players fighting each other both say "mb" in chat within confirm-seconds = the fight stops and both
-# are out of combat (DonutCombat's tag too), unless one is still fighting someone else.
+# are out of combat (PvPManager's tag too), unless one is still fighting someone else.
 truce:
   enabled: true
   confirm-seconds: 30
@@ -1106,7 +1106,7 @@ spawn-pad:
   # 2.0: no spawn points in these worlds (pads there do nothing)
   no-spawn-worlds: [faultline_deep]
 
-# 1.3.41: a Riptide trident does nothing while you're in combat (DonutCombat's tag, our combat tag, or a recent player fight)
+# 1.3.41: a Riptide trident does nothing while you're in combat (PvPManager's tag, our combat tag, or a recent player fight)
 riptide-lock:
   enabled: true
 

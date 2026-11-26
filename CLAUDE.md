@@ -3498,6 +3498,20 @@ Notes:
 - **The Blizzard is gone (Items, Index; same 2.0.0)**: `Weather.KINDS` = sandstorm, eclipse (the `Blizzard` class, its natural
   roll, the `SNOWY` set, its /itemsmenu button, `weather.blizzard` config, the Index "Blizzard Stray" entry, the guide line and the
   Discord forward regex removed). Leftover strays carry `faultline_weather` and are swept on startup. Don't bring it back unless asked.
+- **PvPManager replaces DonutCombat (Items, Index; same 2.0.0)**: the owner switched combat plugins to PvPManager 4.0.30
+  (ChanceSD). `Items/PvpLink.java` = its public API by reflection (`CombatPlayer.get(Player)`, `isInCombat`, `tag(boolean,
+  CombatPlayer)`, `untag(UntagReason.PLUGIN_API)`, `removeEnemy`, `getEnemies`, length = its `Combat Tag.Time`); every DonutCombat
+  hook is gone: the mimic's hits tag through PvPManager (`mimic-player.combat-tag.use-pvpmanager`, a mimic = the player is their
+  own enemy), the mb truce untags through it (`endCombat`) and drops the pair as enemies (`dropPair`; someone still fighting
+  another player stays tagged: `otherEnemies`), the Riptide lock reads `inCombat`, the truce window = its tag length; softdepend
+  `PvPManager`. PvPManager's command block is LOWEST + ignoreCancelled, so `Truce.onMbCommand` is LOWEST and NOT ignoreCancelled
+  (it runs /mball even after PvPManager refused it; PvPManager still prints "Command denied" unless `mball`/`mb` are in its
+  `Combat Tag.Actions Blocked.Commands.Command List` whitelist). Golden apple cooldowns are PvPManager's own `Item Cooldowns`
+  (none of ours). Tested with the real jar (scratch `pvpm/t/PvTest`: needs HikariCP, log4j-core and sqlite-jdbc on the classpath,
+  `Other Settings.PvP Blood: false` for MockBukkit, `/newbie disable` for its new-player protection).
+- **Audit (Items, Bosses; same 2.0.0)**: Blood Rain never doubles a mob's held / worn items (picked-up loot), Echoes, mimics or
+  Looters (only mobs it buffed, tag `faultline_blood_rain_mob`); collapsing walls use `spawnFallingBlock`; the Stone Golem's cave
+  check needs a solid ceiling within 16 (not open air under a Farlands floating chunk).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

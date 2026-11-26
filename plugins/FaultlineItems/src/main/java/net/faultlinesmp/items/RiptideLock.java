@@ -20,15 +20,11 @@ import java.util.UUID;
 /**
  * RIPTIDE LOCK (Items 1.3.41, config riptide-lock:). A Riptide trident does nothing while you're in combat: starting to
  * charge it is denied (PlayerInteractEvent, so Java and Bedrock alike never even wind up) and, in case a charge got through,
- * the launch itself is cancelled (PlayerRiptideEvent). In combat = DonutCombat's tag (its private combatLog map, read by
- * reflection), the built-in combat tag (CombatTag), or a player fight in the last combat window (Truce). Creative /
+ * the launch itself is cancelled (PlayerRiptideEvent). In combat = PvPManager's tag (`PvpLink.inCombat`), the built-in combat tag (CombatTag), or a player fight in the last combat window (Truce). Creative /
  * spectator are never locked.
  */
 final class RiptideLock implements Listener {
     private final FaultlineItems plugin;
-    private java.lang.reflect.Field donutLog;
-    private org.bukkit.plugin.Plugin donut;
-    private boolean warned;
 
     RiptideLock(FaultlineItems plugin) { this.plugin = plugin; }
 
@@ -42,26 +38,7 @@ final class RiptideLock implements Listener {
     boolean inCombat(Player p) {
         try { if (plugin.combatTag != null && plugin.combatTag.left(p) > 0) return true; } catch (RuntimeException ignored) { }
         try { if (plugin.truce != null && !plugin.truce.opponents(p.getUniqueId()).isEmpty()) return true; } catch (RuntimeException ignored) { }
-        return donutTagged(p.getUniqueId());
-    }
-
-    private boolean donutTagged(UUID id) {
-        org.bukkit.plugin.Plugin dc = Bukkit.getPluginManager().getPlugin("DonutCombat");
-        if (dc == null || !dc.isEnabled()) return false;
-        try {
-            if (donut != dc || donutLog == null) {
-                donut = dc;
-                donutLog = dc.getClass().getDeclaredField("combatLog");
-                donutLog.setAccessible(true);
-            }
-            Object m = donutLog.get(dc);
-            if (!(m instanceof Map<?, ?> map)) return false;
-            Object v = map.get(id);
-            return v != null && !(v instanceof Number n && n.intValue() <= 0);
-        } catch (ReflectiveOperationException | RuntimeException | LinkageError e) {
-            if (!warned) { warned = true; plugin.getLogger().warning("[RiptideLock] couldn't read DonutCombat's combat tag (" + e + "): using our own"); }
-            return false;
-        }
+        return PvpLink.inCombat(p);
     }
 
     private boolean locked(Player p) {

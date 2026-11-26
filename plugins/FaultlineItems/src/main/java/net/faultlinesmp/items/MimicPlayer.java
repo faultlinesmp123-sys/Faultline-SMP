@@ -1962,7 +1962,7 @@ final class MimicPlayer implements Listener, CommandExecutor, TabCompleter {
         return true;
     }
 
-    /** In combat (DonutCombat's tag when it's there, else the built-in one), every time it hurts you or you hurt it. */
+    /** In combat (PvPManager's tag when it's there, else the built-in one), every time it hurts you or you hurt it. */
     void combat(Player p) { try { if (plugin.combatTag != null) plugin.combatTag.tag(p); } catch (RuntimeException ignored) { } }
 
     // ---- ARM SWINGS: a mannequin never plays the arm-swing animation (the game only plays it back for mobs and players), so

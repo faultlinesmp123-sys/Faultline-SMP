@@ -263,7 +263,7 @@ final class SaveGuard implements Listener {
         return out;
     }
 
-    /** Killed while logging off (DonutCombat's combat-log kill): their items dropped, so the logout copy is wrong. */
+    /** Killed while logging off (the combat plugin's combat-log kill): their items dropped, so the logout copy is wrong. */
     @EventHandler(priority = EventPriority.MONITOR)
     public void onDeath(org.bukkit.event.entity.PlayerDeathEvent e) {
         UUID id = e.getEntity().getUniqueId();
@@ -295,7 +295,7 @@ final class SaveGuard implements Listener {
                 }
             }
             // 1.9.12: the copy is taken a tick later, once every plugin's quit code has run (race items taken back, boss form
-            // undone, DonutCombat's combat-log kill): what's left is exactly what the game writes to their save.
+            // undone, the combat plugin's combat-log kill): what's left is exactly what the game writes to their save.
             if (index.isEnabled()) Bukkit.getScheduler().runTask(index, () -> {
                 if (p.isOnline()) return; // already back (can't really happen in one tick)
                 Print pr = print(p);

@@ -6,7 +6,7 @@ set-spawn: true
 border-size: 7500
 
 protect:
-  pyramids: true        # the Deep Desert pyramids + their underworld can't be broken or blown up (chests/pots/webs can)
+  pyramids-locked: false   # true = nobody can break / place / blow up the Deep Desert pyramids (the old 'pyramids' key is ignored)
   cores: true           # the faction admin-block halls
 
 abyss:

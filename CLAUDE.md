@@ -3388,6 +3388,10 @@ Notes:
   `/faction` (aliases f, kingdom, k), `/fc` (kc...), `/ac`, admin `/factions` (alias kingdoms); messages, forms, /stats ("Faction:"),
   coords share `faction`, mimic tab fallback, Guardian's Oath lore, the Index guide + Faction Compass entry. Still 5 factions
   (`MAX` 5). Tested (scratch `ml/MlTest` 14 checks, `fac/FacTest`).
+- **Pyramids are open (FaultlineWorld, same 2.0.0)**: the owner wants blocks broken / placed in the Deep Desert pyramids. `Life.protectedAt`
+  reads a NEW key `protect.pyramids-locked` (default false); the old `protect.pyramids` (true in every server config) is ignored, so
+  pyramids can be broken, built in, blown up and pushed by pistons by anyone. The faction cores stay protected (`protect.cores`).
+  FaultlineWorld is skipped by `/faultline reload`: this needs a server RESTART.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

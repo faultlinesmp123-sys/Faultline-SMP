@@ -84,10 +84,12 @@ final class Life implements Listener {
 
     // ------------------------------------------------------------------ protection
 
+    /** Pyramids are open to everyone (owner's call): only `protect.pyramids-locked: true` locks them again. The old
+     *  `protect.pyramids` key (true in every server config) is ignored on purpose. */
     boolean protectedAt(Block b) {
         if (!ours(b.getWorld())) return false;
         Terrain t = terrain(b.getWorld());
-        return plugin.getConfig().getBoolean("protect.pyramids", true) && Structures.inPyramid(t, b.getX(), b.getY(), b.getZ())
+        return plugin.getConfig().getBoolean("protect.pyramids-locked", false) && Structures.inPyramid(t, b.getX(), b.getY(), b.getZ())
                 || plugin.getConfig().getBoolean("protect.cores", true) && Structures.inCore(t, b.getX(), b.getY(), b.getZ());
     }
 

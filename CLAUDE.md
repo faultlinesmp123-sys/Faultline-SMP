@@ -3373,6 +3373,12 @@ Notes:
   that doesn't take the result (busy cursor) used to keep the place: the forge is checked a tick later (`holds`: cursor,
   inventory, the open view but never a crafting RESULT slot) and only then broadcast; the grid's repair recipe (two maces in)
   frees the other mace's id once the craft went through.
+- **Mace forge announcement + audit 2 (Items, same 2.0.0)**: a mace forged (after the tick-later check that it really reached
+  them) = `MaceLimit.announceForge`: chat line, a title to everyone ("A MACE HAS BEEN FORGED" / by <name> · N maces left), an anvil +
+  mace slam sound, a console line; each switchable under `mace-limit.announce.chat/title/sound`. AUDIT: a creative middle-click copy
+  kept the mace id (looked like the same registered mace = a free extra one in survival): the sweep now re-ids the second copy of an
+  id seen in one pass and counts it (cursor swept too); an anvil / grindstone click that didn't take the result freed the second
+  mace's place: checked a tick later (`holds`). Tested (scratch `ml/MlTest`, 10 checks).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

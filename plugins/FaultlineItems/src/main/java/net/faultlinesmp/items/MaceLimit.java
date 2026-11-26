@@ -89,18 +89,39 @@ final class MaceLimit implements Listener, TabExecutor {
     /** Every survival player's maces (inventory + cursor) get an id; old ones from before the limit are counted. */
     void sweep() {
         if (!on()) return;
+        // AUDIT: a creative player's middle-click copy keeps the mace id, so the copy looked like the same registered mace
+        // forever (a free extra one once it reached a survival inventory). The same id seen twice in one pass = the second
+        // is a copy: it gets a new id and counts like any other mace.
+        Set<Long> seen = new HashSet<>();
         for (Player p : Bukkit.getOnlinePlayers()) {
             if (p.getGameMode() == GameMode.CREATIVE || p.getGameMode() == GameMode.SPECTATOR) continue;
             ItemStack[] c = p.getInventory().getContents();
             for (int i = 0; i < c.length; i++) {
                 ItemStack it = c[i];
-                if (it == null || it.getType() != Material.MACE) continue;
-                Long id = idOf(it);
-                if (id != null && maces.containsKey(id)) continue;
-                register(it, p.getName());
-                p.getInventory().setItem(i, it);
+                if (fix(it, p, seen)) p.getInventory().setItem(i, it);
             }
+            ItemStack cur = p.getItemOnCursor();
+            if (fix(cur, p, seen)) p.setItemOnCursor(cur);
         }
+    }
+
+    /** Registers / re-ids one mace in a sweep; true = the item was changed. */
+    boolean fix(ItemStack it, Player p, Set<Long> seen) {
+        if (it == null || it.getType() != Material.MACE) return false;
+        Long id = idOf(it);
+        if (id != null && !seen.add(id)) { // a second copy of an id
+            ItemMeta m = it.getItemMeta();
+            m.getPersistentDataContainer().remove(idKey);
+            it.setItemMeta(m);
+            plugin.getLogger().warning("[MaceLimit] " + p.getName() + " had a second mace with id #" + id + ": it gets its own id and counts");
+            register(it, p.getName());
+            seen.add(idOf(it));
+            return true;
+        }
+        if (id != null && maces.containsKey(id)) return false;
+        register(it, p.getName());
+        seen.add(idOf(it));
+        return true;
     }
 
     // ------------------------------------------------------------------ crafting
@@ -171,10 +192,28 @@ final class MaceLimit implements Listener, TabExecutor {
                 if (maces.remove(made) != null) { save(); plugin.getLogger().info("[MaceLimit] mace #" + made + " wasn't really crafted, place freed"); }
                 return;
             }
-            int left = max() - maces.size();
-            Bukkit.broadcastMessage(ChatColor.DARK_RED + "" + ChatColor.BOLD + "A mace has been forged" + ChatColor.GRAY + " by " + p.getName()
-                    + ". " + (left <= 0 ? "That was the last one." : left + " left."));
+            announceForge(p, max() - maces.size());
         });
+    }
+
+    /** Everyone hears about a new mace: chat line, a title, a sound (each can be turned off under mace-limit.announce). */
+    void announceForge(Player p, int left) {
+        String tail = left <= 0 ? "That was the last one." : left + (left == 1 ? " mace left." : " maces left.");
+        String path = "mace-limit.announce.";
+        if (plugin.getConfig().getBoolean(path + "chat", true))
+            Bukkit.broadcastMessage(ChatColor.DARK_RED + "" + ChatColor.BOLD + "A mace has been forged" + ChatColor.GRAY + " by "
+                    + ChatColor.WHITE + p.getName() + ChatColor.GRAY + ". " + tail);
+        boolean title = plugin.getConfig().getBoolean(path + "title", true);
+        boolean sound = plugin.getConfig().getBoolean(path + "sound", true);
+        for (Player o : Bukkit.getOnlinePlayers()) {
+            if (title) o.sendTitle(ChatColor.DARK_RED + "" + ChatColor.BOLD + "A MACE HAS BEEN FORGED",
+                    ChatColor.GRAY + "by " + ChatColor.WHITE + p.getName() + ChatColor.GRAY + " · " + tail, 10, 60, 20);
+            if (sound) {
+                o.playSound(o.getLocation(), org.bukkit.Sound.BLOCK_ANVIL_USE, org.bukkit.SoundCategory.MASTER, 1f, 0.6f);
+                o.playSound(o.getLocation(), org.bukkit.Sound.ITEM_MACE_SMASH_GROUND_HEAVY, org.bukkit.SoundCategory.MASTER, 1f, 0.8f);
+            }
+        }
+        plugin.getLogger().info("[MaceLimit] " + p.getName() + " forged a mace, " + maces.size() + "/" + max());
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
@@ -207,10 +246,14 @@ final class MaceLimit implements Listener, TabExecutor {
         Long keep = idOf(e.getCurrentItem());
         Long a = idOf(top.getItem(0)), b = idOf(top.getItem(1));
         Long gone = a != null && !a.equals(keep) ? a : b != null && !b.equals(keep) ? b : null;
-        if (gone == null || !maces.containsKey(gone)) return;
-        maces.remove(gone);
-        save();
-        plugin.getLogger().info("[MaceLimit] mace #" + gone + " was merged into #" + keep + ", " + maces.size() + "/" + max());
+        if (gone == null || !maces.containsKey(gone) || !(e.getWhoClicked() instanceof Player p)) return;
+        // AUDIT: a click that doesn't take the result (not enough levels, cursor busy) still fires: check a tick later that
+        // the second mace really went (not still in the anvil, the inventory or on the cursor)
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            if (holds(p, gone) || maces.remove(gone) == null) return;
+            save();
+            plugin.getLogger().info("[MaceLimit] mace #" + gone + " was merged into #" + keep + ", " + maces.size() + "/" + max());
+        });
     }
 
     // ------------------------------------------------------------------ destroyed

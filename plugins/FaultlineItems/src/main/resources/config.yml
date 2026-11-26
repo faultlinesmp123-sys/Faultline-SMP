@@ -572,6 +572,10 @@ mace:
 mace-limit:
   enabled: true
   max: 5
+  announce:                    # when someone forges a mace, everyone gets:
+    chat: true                 #   a chat line
+    title: true                #   a title on screen
+    sound: true                #   an anvil + mace slam sound
 
 # ---------------- Mace enchantments (1.2.55) ----------------
 # A mace can only carry these (anything else is stripped; levels are capped): enchanting table, anvil, books, loot,

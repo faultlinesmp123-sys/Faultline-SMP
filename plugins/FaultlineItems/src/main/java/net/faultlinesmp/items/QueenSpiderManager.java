@@ -336,26 +336,66 @@ final class QueenSpiderManager implements Listener {
         org.bukkit.util.Vector flat = to.clone().setY(0);
         if (flat.lengthSquared() < 0.01) flat = new org.bukkit.util.Vector(1, 0, 0);
         flat.normalize();
+        // Owner's rule: a stuck Queen RAMS through the blocks between her and a player on her level. She never digs up or down,
+        // so digging above or below is the only way to get away from her. Someone 2.5+ blocks above / below = she gives up.
+        if (Math.abs(to.getY()) >= cfg("ram.max-height-diff", 2.5)) { q.stuck = Math.min(q.stuck, 1); return; }
+        if (plugin.getConfig().getBoolean("queen-spider-boss.ram.enabled", true)) { ram(q, now, flat, tg); return; }
         if (q.stuck <= 5) {
-            Safe.vel(queen, flat.multiply(0.75).setY(to.getY() > 1 ? 0.75 : 0.5));
+            Safe.vel(queen, flat.multiply(0.75).setY(0.45));
             queen.getWorld().playSound(now, Sound.ENTITY_SPIDER_STEP, SoundCategory.HOSTILE, 1f, 0.5f);
             if (q.rig != null) q.rig.play("rear", 12);
-            return;
         }
-        // skitter: the furthest open spot up to 4 blocks toward them that her body fits
-        for (double d = 4; d >= 1; d -= 0.5) {
-            Location l = now.clone().add(flat.clone().multiply(d));
-            l.setY(Math.floor(l.getY()));
-            for (int dy : new int[]{0, 1, -1, 2}) {
-                Location c = l.clone().add(0, dy, 0);
-                if (fits(c, Math.ceil(queen.getWidth() / 2), Math.ceil(queen.getHeight()))) {
-                    c.setYaw(now.getYaw()); c.setPitch(0);
-                    queen.teleport(c);
-                    q.stuck = 2;
-                    return;
+    }
+
+    /** One ram: breaks a corridor her body's width and height, `ram.depth` blocks ahead, level with her feet (never the floor
+     *  under her, never above her height), then charges into it. Blocks are gone (no drops). Never breaks: block entities,
+     *  unbreakable / very hard blocks (obsidian and up), anything next to water or lava (no flooding domes, the abyssal nest, the
+     *  sea), or what another plugin refuses (an EntityChangeBlockEvent: FaultlineWorld's cores, claims). */
+    private void ram(Queen q, Location now, org.bukkit.util.Vector dir, Player tg) {
+        Spider queen = q.body;
+        World w = now.getWorld();
+        int half = (int) Math.ceil(queen.getWidth() / 2);
+        int height = Math.max(2, (int) Math.ceil(queen.getHeight()) + 1);
+        int depth = (int) cfg("ram.depth", 3);
+        int feet = now.getBlockY();
+        org.bukkit.util.Vector side = new org.bukkit.util.Vector(-dir.getZ(), 0, dir.getX());
+        int broken = 0;
+        java.util.Set<Block> seen = new HashSet<>();
+        for (double d = 0.5; d <= half + depth; d += 0.5) {
+            for (double s = -half; s <= half; s += 0.5) {
+                double x = now.getX() + dir.getX() * d + side.getX() * s, z = now.getZ() + dir.getZ() * d + side.getZ() * s;
+                for (int y = feet; y < feet + height; y++) {
+                    Block b = w.getBlockAt((int) Math.floor(x), y, (int) Math.floor(z));
+                    if (!seen.add(b) || !rammable(b)) continue;
+                    org.bukkit.event.entity.EntityChangeBlockEvent ev = new org.bukkit.event.entity.EntityChangeBlockEvent(queen, b, Material.AIR.createBlockData());
+                    Bukkit.getPluginManager().callEvent(ev);
+                    if (ev.isCancelled()) continue;
+                    w.spawnParticle(Particle.BLOCK, b.getLocation().add(0.5, 0.5, 0.5), 8, 0.3, 0.3, 0.3, 0, b.getBlockData());
+                    b.setType(Material.AIR, true);
+                    broken++;
                 }
             }
         }
+        w.playSound(now, Sound.ENTITY_RAVAGER_ROAR, SoundCategory.HOSTILE, 1.2f, 0.7f);
+        if (broken > 0) w.playSound(now, Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.HOSTILE, 0.6f, 1.4f);
+        if (q.rig != null) q.rig.play("rear", 12);
+        Safe.vel(queen, dir.clone().multiply(0.9).setY(0.12));
+        for (Player p : inFront(queen, 2.5 + q.scale * 0.6, 70)) hurt(q, p, ncfg(q, "ram-damage", 6, 8), true);
+        try { queen.getPathfinder().moveTo(tg, 1.3); } catch (RuntimeException | LinkageError ignored) { }
+    }
+
+    private static boolean rammable(Block b) {
+        Material m = b.getType();
+        if (m.isAir() || b.isLiquid() || !m.isSolid() && m != Material.COBWEB) return false;
+        if (m.getHardness() < 0 || m.getHardness() >= 50) return false; // bedrock, barriers, obsidian, reinforced deepslate
+        if (m == Material.SPAWNER || m == Material.TRIAL_SPAWNER || m == Material.VAULT) return false;
+        if (b.getState(false) instanceof org.bukkit.block.TileState) return false; // chests, furnaces, signs, beds...
+        for (org.bukkit.block.BlockFace f : new org.bukkit.block.BlockFace[]{org.bukkit.block.BlockFace.UP, org.bukkit.block.BlockFace.DOWN,
+                org.bukkit.block.BlockFace.NORTH, org.bukkit.block.BlockFace.SOUTH, org.bukkit.block.BlockFace.EAST, org.bukkit.block.BlockFace.WEST}) {
+            Block n = b.getRelative(f);
+            if (n.isLiquid() || n.getBlockData() instanceof org.bukkit.block.data.Waterlogged wl && wl.isWaterlogged()) return false;
+        }
+        return true;
     }
 
     private static boolean fits(Location at, double half, double height) {

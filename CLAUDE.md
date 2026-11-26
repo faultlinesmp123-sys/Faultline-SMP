@@ -3397,6 +3397,9 @@ Notes:
   defaults: chat showed "Kingdom 1" and "Faction 4". `FaultlineKingdoms.name/color` now read a missing entry or 1.x's
   default ("Kingdom N", its old colour) as `NAMES`/`COLORS` (The Mountain RED, The Jungle GREEN, The Ice AQUA, The Fibers
   DARK_PURPLE, The Sky YELLOW); a name / colour the owner picked is kept. Tested (scratch `fac/FacTest` with an old config).
+- **Maces can be dropped again (Items, same 2.0.0)**: the owner called the Q / drag-out lock a bug. `MaceRules.onDrop` reads a NEW key
+  `mace.drop-locked` (default false); the old `mace.no-dropping` (true in server configs) is ignored. Every other inventory-only
+  rule stays (no chests, shulkers, bundles, frames; hoppers and mobs can't pick one up). Tested (scratch `ml/MlTest`).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

@@ -199,11 +199,12 @@ final class MaceRules implements Listener {
         for (int raw : e.getRawSlots()) if (raw < top.getSize()) { e.setCancelled(true); no(p, "in there"); return; }
     }
 
-    /** 2.0: a mace can't be thrown out either (Q, or dragged out of the inventory screen). Dying still drops it. */
+    /** Maces can be dropped (Q / dragged out) again: the owner called the lock a bug. The old `mace.no-dropping` key (true in
+     *  server configs) is ignored; `mace.drop-locked: true` brings the lock back. */
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onDrop(org.bukkit.event.player.PlayerDropItemEvent e) {
         if (!on("inventory-only") || bypass(e.getPlayer()) || !mace(e.getItemDrop().getItemStack())) return;
-        if (!plugin.getConfig().getBoolean("mace.no-dropping", true)) return;
+        if (!plugin.getConfig().getBoolean("mace.drop-locked", false)) return;
         e.setCancelled(true);
         no(e.getPlayer(), "on the ground");
     }

@@ -564,7 +564,7 @@ mace:
   mode: "restrict"             # 2.0: maces only ever live in their owner's inventory (an old "off" reads as restrict unless really-off: true)
   block-crafting: false        # crafting is allowed; mace-limit caps how many exist
   inventory-only: true         # no chests, ender chests, shulkers, bundles, hoppers, frames, stands, allays...
-  no-dropping: true            # can't be thrown out (dying still drops it)
+  drop-locked: false           # true = maces can't be thrown out with Q (the old no-dropping key is ignored)
 
 # ---------------- Mace limit (2.0) ----------------
 # Only this many maces can ever be crafted on the server. A mace that's destroyed (lava, fire, cactus, the void,

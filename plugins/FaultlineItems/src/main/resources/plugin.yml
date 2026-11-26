@@ -205,6 +205,10 @@ commands:
     description: "Admin: mountain gear (give pieces, spawn Mountain Zombies)"
     usage: /mountaingear [give <helmet|chestplate|leggings|boots|iceaxe|rope|gloves|hoof|harness|all> [player]|zombie [n]]
     permission: items.mountaingear
+  wildmob:
+    description: "Admin: spawn a wild mob (Jungle Stalker, Frost Revenant, Storm Phantom, Dire Wolf pack)"
+    usage: /wildmob <jungle|frost|storm|pack [player]|wolf|alpha>
+    permission: items.wildmobs
   giveunholy:
     description: "Admin: give Unholy Arrows"
     usage: /giveunholy [amount] [player]
@@ -335,6 +339,9 @@ permissions:
     default: op
   items.mountaingear:
     description: /mountaingear
+    default: op
+  items.wildmobs:
+    description: /wildmob
     default: op
   items.giveblueobsidian:
     description: /giveblueobsidian

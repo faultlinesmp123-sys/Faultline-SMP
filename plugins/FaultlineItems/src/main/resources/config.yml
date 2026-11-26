@@ -1163,3 +1163,46 @@ mountain-gear:
     chance: 0.25              # of natural zombies in mountain biomes (peaks, slopes, grove, meadow, windswept)
     drop-chance: 0.10         # killed by a player: one random thing it had
     climb-speed: 0.22
+
+# 2.0 WILD MOBS: biome variants and Dire Wolf packs.
+wild-mobs:
+  jungle:                     # Jungle Stalkers: skeletons in jungles, poison arrows
+    enabled: true
+    chance: 0.3
+    poison-seconds: 5
+    drop-chance: 0.08         # a few poison arrows
+  frost:                      # Frost Revenants: strays/skeletons in snowy biomes, freezing arrows
+    enabled: true
+    chance: 0.3
+    drop-chance: 0.08
+  storm:                      # Storm Phantoms: phantoms in the sky isles / above min-y
+    enabled: true
+    chance: 0.4
+    min-y: 350
+    extra-damage: 4
+  packs:                      # Dire Wolf packs at night on the surface of wild biomes
+    enabled: true
+    chance: 0.02              # per survival player every 30 s
+    cooldown-minutes: 15
+    health: 20
+    damage: 5
+    alpha-health: 40
+    alpha-damage: 8
+    alpha-goodie-chance: 0.25
+
+# 2.0 CLIMBERS: mountain goats you can ride, the Hang Glider, Grappling Hook upgrades.
+climbers:
+  goats:
+    enabled: true
+    tame-chance: 0.25         # per wheat
+    speed: 0.3
+    sprint-speed: 0.42
+    jump: 0.95
+  glider:
+    durability: 120
+    max-speed: 1.1            # blocks a tick
+  hook:
+    line-1: 1.5
+    line-2: 2.0
+    barb-cooldown-seconds: 6
+    barb-max-speed: 1.8

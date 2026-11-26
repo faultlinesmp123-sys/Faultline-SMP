@@ -193,6 +193,15 @@ entries:
   - {chapter: weapons, name: "Rotbeard's Grappling Hook", icon: grappling_hook, detect: "faultlineitems:grappling_hook",
      how: "10% from Captain Rotbeard.",
      does: "Cast it at a wall, ceiling, or ledge, then reel in to launch yourself there. No fall damage from the landing. Never breaks."}
+  - {chapter: weapons, name: "Long Line", icon: grappling_hook, detect: "faultlineitems:long_line",
+     how: "Craft: 8 String round an Iron Ingot.",
+     does: "A Grappling Hook upgrade: hook on the left of an anvil, this on the right. Up to II: the hook flies 1.5x / 2x as far and pulls you harder."}
+  - {chapter: weapons, name: "Barbed Hook", icon: grappling_hook, detect: "faultlineitems:barbed_hook",
+     how: "Craft: a Tripwire Hook with 3 Flint around it and an Iron Ingot under it.",
+     does: "A Grappling Hook upgrade (anvil): hook a mob or player and reel in to yank them over to you. 6 second cooldown, and only where you could hurt them."}
+  - {chapter: weapons, name: "Hang Glider", icon: harpy_ring, detect: "faultlineitems:hang_glider",
+     how: "Craft: 2 Phantom Membranes, 3 Sticks, String and Leather (MSM / STS / L).",
+     does: "An early elytra: wear it and jump off something high to glide. Slower than an elytra (it never goes past about 22 blocks a second), fireworks don't boost it, and it wears out faster."}
   - {chapter: weapons, name: "Queen's Silk", icon: queen_silk, detect: "faultlineitems:queen_silk",
      how: "Always from the Queen Spider (every fighter, for the Queen of the Nest).",
      does: "Carry it and COBWEBS NEVER HOLD YOU: webs part as you walk through and weave themselves back behind you; webs you cut give extra string. Right-click: shoots a glob of silk that webs whatever it hits (a bigger web, five blocks) and slows it for 3 seconds. 8 second cooldown."}
@@ -321,6 +330,26 @@ entries:
      where: "Only on Snowy Days, outside deserts and badlands.",
      does: "An icy skeleton archer. Its arrows slow and freeze you.",
      drops: ["2-3 Bones|100%", "Power I book or bow|30%", "Frost Flare|2.5%", "15 XP|100%"]}
+  - {chapter: enemies, name: "Jungle Stalker", icon: zombie_archer, detect-tag: faultline_jungle_stalker,
+     where: "Jungles: about a third of the skeletons there.",
+     does: "In green leather and quicker than a skeleton. Its arrows poison you.",
+     drops: ["2x XP|100%", "Bamboo|30%", "4-8 Arrows of Poison|8%"]}
+  - {chapter: enemies, name: "Frost Revenant", icon: frost_archer, detect-tag: faultline_frost_revenant,
+     where: "Snowy biomes (slopes, peaks, snowy plains, frozen places): about a third of the strays and skeletons.",
+     does: "Pale blue leather, a little tougher. Its arrows freeze you: Slowness and the frozen overlay.",
+     drops: ["2x XP|100%", "Packed Ice|30%", "4-8 Arrows of Slowness|8%"]}
+  - {chapter: enemies, name: "Storm Phantom", icon: zombie_bat, detect-tag: faultline_storm_phantom,
+     where: "The sky isles and anywhere above y 350: phantoms there are often storm phantoms.",
+     does: "Bigger and glowing, doesn't burn in the sun. Its bite comes with a lightning flash, 4 extra damage and Slowness.",
+     drops: ["2x XP|100%", "1-2 extra Phantom Membranes|100%"]}
+  - {chapter: enemies, name: "Dire Wolf", icon: vampire, detect-tag: faultline_dire_wolf,
+     where: "At night on the surface of forests, taigas, plains, meadows and hills: a pack of 3-5 and an Alpha can come for you. Gone at dawn.",
+     does: "Black wolves that hunt in a pack. 20 health, 5 damage. They can't be tamed.",
+     drops: ["Bones|50%", "Leather|30%"]}
+  - {chapter: enemies, name: "Alpha Dire Wolf", icon: vampire, detect-tag: faultline_dire_alpha,
+     where: "Leads every Dire Wolf pack.",
+     does: "Bigger: 40 health, 8 damage.",
+     drops: ["2-4 Leather|100%", "2-4 Bones|100%", "40 XP|100%", "Goodie Bag|25%"]}
   - {chapter: enemies, name: "Mountain Zombie", icon: zombie_brute, detect-tag: faultline_mountain_zombie,
      where: "Mountain biomes (peaks, snowy slopes, groves, meadows, windswept hills): a quarter of the zombies there.",
      does: "Wears 2-4 pieces of Mountain Armor, sometimes an Ice Axe, and climbs walls to get at you.",

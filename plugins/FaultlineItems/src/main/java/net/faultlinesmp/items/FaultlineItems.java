@@ -445,6 +445,11 @@ public final class FaultlineItems extends JavaPlugin {
         backpack = new Backpack(this);
         umbrella = new Umbrella(this); // 2.0.0
         mountainGear = new MountainGear(this); // 2.0: mountain armor, climbing gear, mountain zombies
+        wildMobs = new WildMobs(this); // 2.0: Jungle Stalkers, Frost Revenants, Storm Phantoms, Dire Wolf packs
+        getServer().getPluginManager().registerEvents(wildMobs, this);
+        if (getCommand("wildmob") != null) { getCommand("wildmob").setExecutor(wildMobs); getCommand("wildmob").setTabCompleter(wildMobs); }
+        climbers = new Climbers(this); // 2.0: mountain goats, the Hang Glider, Grappling Hook upgrades
+        getServer().getPluginManager().registerEvents(climbers, this);
         getServer().getPluginManager().registerEvents(mountainGear, this);
         if (getCommand("mountaingear") != null) { getCommand("mountaingear").setExecutor(mountainGear); getCommand("mountaingear").setTabCompleter(mountainGear); }
         getServer().getPluginManager().registerEvents(umbrella, this);
@@ -762,6 +767,7 @@ public final class FaultlineItems extends JavaPlugin {
     public void onDisable() {
         if (umbrella != null) umbrella.removeAll(); // 2.0.0
         if (mountainGear != null) mountainGear.shutdown();
+        if (wildMobs != null) wildMobs.shutdown();
         if (abilities != null) try { abilities.disable(); } catch (RuntimeException ignored) { }
         if (legendary != null) try { legendary.disable(); } catch (RuntimeException ignored) { }
         if (toiletRaid != null) try { toiletRaid.shutdown(); } catch (RuntimeException ignored) { }
@@ -1064,6 +1070,8 @@ public final class FaultlineItems extends JavaPlugin {
     Backpack backpack;
     Umbrella umbrella;
     MountainGear mountainGear; // 2.0
+    WildMobs wildMobs; // 2.0
+    Climbers climbers; // 2.0
     CreatorMode creatorMode;
     OfflineTp offlineTp;
     ModGuard modGuard;
@@ -6769,6 +6777,9 @@ public final class FaultlineItems extends JavaPlugin {
                 pl -> pl.mountainGear.item("gloves"),
                 pl -> pl.mountainGear.item("hoof"),
                 pl -> pl.mountainGear.item("harness"),
+                pl -> pl.climbers.glider(), // 2.0
+                pl -> pl.climbers.longLine(),
+                pl -> pl.climbers.barbedHook(),
                 pl -> pl.upgradedGrindstone.item(1), // 1.3.9
                 pl -> pl.spawnPad.item(org.bukkit.DyeColor.WHITE, 1), // 1.3.41
                 pl -> pl.backpack.item(), // 1.2.78

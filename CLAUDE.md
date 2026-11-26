@@ -3536,6 +3536,25 @@ Notes:
   blocks over her (`buried`: highest block of the column - y; sky light alone let one spawn at the surface), FaultlineWorld's Fibers
   spawner needs sky light 0 and 10 blocks of rock too, and a WILD queen under the open sky with no survival player within
   `surface-leash` 20 for `surface-seconds` 20 burrows away (removed, no loot, logged). Tested (scratch `mg/MgTest`).
+- **Wild mobs, goats, the glider, hook upgrades (Items, Index; same 2.0.0)**: `Items/WildMobs.java` (`wild-mobs:`, admin `/wildmob
+  <jungle|frost|storm|pack [player]|wolf|alpha>`, perm `items.wildmobs`): NATURAL spawns not already tagged faultline*: JUNGLE
+  STALKER (skeletons in jungle / bamboo / sparse jungle, `jungle.chance` 0.3, tag `faultline_jungle_stalker`, green leather,
+  speed x1.2, arrows carry Poison 5 s), FROST REVENANT (strays/skeletons where `snowy()`, 0.3, `faultline_frost_revenant`, pale blue
+  leather, hp x1.25, arrow tag = Slowness II 3 s + freeze ticks), STORM PHANTOM (phantoms in `faultline:sky_isles` or y >= 350, 0.4,
+  `faultline_storm_phantom`, size 3+, glowing, no sun burn, hp x1.5, bites a player = lightning effect + 4 + Slowness). Drops 2x XP +
+  tipped arrows 8% / bamboo / packed ice / membranes. DIRE WOLF PACKS: night (time 13000-23000), survival player on the surface
+  (within 2 of the highest block) of `PACK_BIOMES`, every 30 s `packs.chance` 0.02, `cooldown-minutes` 15 per player: 3-5 black
+  angry wolves (`faultline_dire_wolf`, 20 hp / 5) + an Alpha (`faultline_dire_alpha`, 40 / 8, scale 1.4) 20-30 out; UUID set; re-target
+  the nearest survival player; removed at dawn; no taming / interacting; alpha drops leather, bones, 25% Goodie Bag, stat `dire_alphas`.
+  `Items/Climbers.java` (`climbers:`): MOUNTAIN GOATS: wheat on an adult wild goat 25% = owned (PDC `goat_owner`, persistent), a
+  Saddle = `goat_saddle` (named "<owner>'s Mountain Goat", drops the saddle on death), right-click empty-handed = ride: the goat's
+  AI is OFF while ridden (back on dismount / quit / chunk load); every tick `ride()` steers from `getCurrentInput()` (W/S where the
+  rider looks, Sprint faster, Jump = `goats.jump` 0.95 leap, 600 ms apart, auto-hop 1-block steps); no fall damage for goat or rider;
+  it never rams its owner. HANG GLIDER: ELYTRA + PDC `hang_glider`, max damage 120, recipe MSM/STS/ L; speed capped to
+  `glider.max-speed` 1.1 b/t while gliding, PlayerElytraBoostEvent cancelled. GRAPPLING HOOK UPGRADES (anvil, hook left): LONG LINE
+  (STRING + PDC `long_line`, recipe 8 string round an iron ingot; hook PDC `hook_line` 1-2: the cast x1.5 / x2, the pull +15%/level),
+  BARBED HOOK (TRIPWIRE_HOOK + PDC `barbed_hook`; hook PDC `hook_barb`: CAUGHT_ENTITY reel yanks the target to you, 6 s, refused when
+  a probe EntityDamageByEntityEvent is cancelled). Index: 8 entries + guide lines. Tested (scratch `mg/WmTest`).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

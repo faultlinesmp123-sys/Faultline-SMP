@@ -155,6 +155,22 @@ wild:
   # each survival player in it rolls this chance, and one that fits where they are (Sunlit Sea or deeper) comes.
   deep-world: faultline_deep
   deep-spawns: {enabled: true, chance: 0.001}
+  # ---- the Stone Golem (back in 2.0): a cave mini boss. Every minute each survival player underground in a cave rolls
+  # natural-chance-per-minute (lush caves) or cave-chance-per-minute (any other cave, 12+ blocks of ground over your head).
+  golem:
+    health: 900
+    health-per-extra-fighter: 0.25
+    natural-chance-per-minute: 0.03
+    cave-chance-per-minute: 0.004
+    cooldown-minutes: 20
+    music: {sound: "minecraft:music_disc.precipice", length-seconds: 299}
+    rewards:
+      mythic-bags: 1
+      goodie-bags: 2
+      xp: 600
+      gear-parts-min: 2
+      gear-parts-extra: 3
+      items: ["AMETHYST_SHARD:8-16", "EMERALD:4-8", "IRON_BLOCK:1-3"]
   # ---- the Dark Ocean (1.6.0). Minis roll a Dark Loot rare 10%, bosses 50% (rewards.dark-loot-rare-chance).
   scourge:
     health: 2400

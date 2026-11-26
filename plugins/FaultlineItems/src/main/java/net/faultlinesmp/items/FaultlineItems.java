@@ -478,10 +478,9 @@ public final class FaultlineItems extends JavaPlugin {
         chromeRunner = new ChromeRunner(this);
         getServer().getPluginManager().registerEvents(chromeRunner, this);
         if (getCommand("chromerunner") != null) { getCommand("chromerunner").setExecutor(chromeRunner); getCommand("chromerunner").setTabCompleter(chromeRunner); }
-        rimWarden = new RimWarden(this); // 2.0 round 10: the Farlands' boss
-        getServer().getPluginManager().registerEvents(rimWarden, this);
-        if (getCommand("rimwarden") != null) { getCommand("rimwarden").setExecutor(rimWarden); getCommand("rimwarden").setTabCompleter(rimWarden); }
         farlands = new Farlands(this); // 2.0 round 10: harder mobs, Wall Crawlers, Echoes, ghasts, the Rim Trader, chest loot
+        farlandsNight = new FarlandsNight(this, farlands); // 2.0: Blood Rain (the Rim Sigil), collapsing walls, Watchers
+        getServer().getPluginManager().registerEvents(farlandsNight, this);
         getServer().getPluginManager().registerEvents(farlands, this);
         if (getCommand("farlands") != null) { getCommand("farlands").setExecutor(farlands); getCommand("farlands").setTabCompleter(farlands); }
         truce = new Truce(this); // 1.3.20: both say mb = the fight stops
@@ -536,6 +535,7 @@ public final class FaultlineItems extends JavaPlugin {
         getServer().getPluginManager().registerEvents(gear, this);
         getCommand("fgear").setExecutor(gear);
         getCommand("givedisc").setExecutor(gear);
+        getCommand("giveancientgear").setExecutor(gear);
         weather = new Weather(this);
         getServer().getPluginManager().registerEvents(weather, this);
         getCommand("fweather").setExecutor(weather);
@@ -759,7 +759,6 @@ public final class FaultlineItems extends JavaPlugin {
         if (legendary != null) try { legendary.disable(); } catch (RuntimeException ignored) { }
         if (toiletRaid != null) try { toiletRaid.shutdown(); } catch (RuntimeException ignored) { }
         if (chromeRunner != null) try { chromeRunner.shutdown(); } catch (RuntimeException ignored) { }
-        if (rimWarden != null) try { rimWarden.shutdown(); } catch (RuntimeException ignored) { }
         if (farlands != null) try { farlands.shutdown(); } catch (RuntimeException ignored) { }
         if (blueObsidian != null) try { blueObsidian.shutdown(); } catch (RuntimeException ignored) { }
         if (upgradedGrindstone != null) try { upgradedGrindstone.shutdown(); } catch (RuntimeException ignored) { }
@@ -1067,7 +1066,7 @@ public final class FaultlineItems extends JavaPlugin {
     Legendary legendary;
     ToiletRaid toiletRaid;
     ChromeRunner chromeRunner;
-    RimWarden rimWarden;
+    FarlandsNight farlandsNight;
     Farlands farlands;
     HauntedVillage haunted;
     Krampus krampus;
@@ -6756,7 +6755,7 @@ public final class FaultlineItems extends JavaPlugin {
                 pl -> pl.toiletRaid.plunger(1), // 1.3.38: starts the Toilet Raid (admins)
                 pl -> pl.chromeRunner.chip(1), // 1.3.38: summons the Chrome Runner (admins)
                 pl -> pl.chromeRunner.spine(),
-                pl -> pl.rimWarden.sigil(1), // 2.0 round 10: summons the Warden of the Rim (in the Farlands)
+                pl -> pl.farlandsNight.sigil(1), // 2.0: starts a Blood Rain (in the Farlands)
                 pl -> pl.legendary.item(Legendary.Kind.STORMBREAKER),
                 pl -> pl.legendary.item(Legendary.Kind.VOID_PIERCER),
                 pl -> pl.legendary.item(Legendary.Kind.INFERNAL_REAPER),
@@ -7013,6 +7012,8 @@ public final class FaultlineItems extends JavaPlugin {
                 list.add(external(icon(Material.PAPER, DiveHelmets.IDS[i], DiveHelmets.COLORS[i] + "" + ChatColor.BOLD + DiveHelmets.NAMES[i], "FaultlineItems"), "fgear " + DiveHelmets.IDS[i] + " {amount} {player}", "FaultlineItems"));
             list.add(external(icon(Material.PAPER, "lantern_of_souls", ChatColor.AQUA + "" + ChatColor.BOLD + "Lantern of Souls", "FaultlineItems"), "fgear lantern_of_souls {amount} {player}", "FaultlineItems"));
             list.add(external(icon(Material.PAPER, "knight_helm", ChatColor.WHITE + "" + ChatColor.BOLD + "Knight's Helm", "FaultlineItems"), "fgear knight_helm {amount} {player}", "FaultlineItems"));
+            list.add(external(icon(Material.PAPER, "ancient_gear_part", ChatColor.GREEN + "Ancient Gear Part", "FaultlineItems"), "fgear ancient_gear_part {amount} {player}", "FaultlineItems"));
+            list.add(external(icon(Material.PAPER, "ancient_core", ChatColor.DARK_GREEN + "" + ChatColor.BOLD + "Ancient Core", "FaultlineItems"), "fgear ancient_core {amount} {player}", "FaultlineItems"));
             list.add(external(icon(Material.POLISHED_BLACKSTONE_BRICK_WALL, "museum_pedestal", ChatColor.GOLD + "" + ChatColor.BOLD + "Museum Pedestal", "FaultlineItems"), "fgear museum_pedestal {amount} {player}", "FaultlineItems"));
             for (var d : Gear.DISCS.entrySet())
                 list.add(external(icon(Material.PAPER, "disc/disc_" + d.getKey(), ChatColor.AQUA + "Music Disc " + ChatColor.GRAY + "(" + d.getValue()[0] + ")", "FaultlineItems"), "fgear disc_" + d.getKey() + " {amount} {player}", "FaultlineItems"));
@@ -7042,6 +7043,7 @@ public final class FaultlineItems extends JavaPlugin {
                 list.add(external(icon(Material.ZOMBIE_SPAWN_EGG, null, ChatColor.DARK_RED + "" + ChatColor.BOLD + "Crimson Champion " + ChatColor.GRAY + "(Blood Moon mini boss, near you)", "FaultlineEvents"), "fevent champion {player}", "FaultlineEvents"));
             }
             if (enabled("FaultlineBosses")) {
+                list.add(external(icon(Material.IRON_GOLEM_SPAWN_EGG, null, ChatColor.DARK_GREEN + "" + ChatColor.BOLD + "The Stone Golem " + ChatColor.GRAY + "(summons it)", "FaultlineBosses"), "stonegolem summon {world} {x} {y} {z}", "FaultlineBosses"));
                 // the Dark Ocean's bosses (Bosses 1.6.0): their summon items (used down there) + a summon right here
                 String[][] deep = {{"scourge", "brine_bait", "Brine Bait", "the Brine Scourge"}, {"umbral", "umbral_sonar", "Umbral Sonar", "the Umbral Leviathan"},
                         {"coralia", "sirens_comb", "Siren's Comb", "Coralia"}, {"inkjaw", "inkjaw_bait", "Inkjaw Bait", "Old Inkjaw"},

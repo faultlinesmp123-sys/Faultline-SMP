@@ -83,17 +83,17 @@ final class Wild implements Listener {
 
     static final String PART_TAG = "faultline_wild_part", STAND_TAG = "faultline_wild_stand", HIT_TAG = "faultline_wild_hitbox",
             MOB_TAG = "faultline_wild_mob", FX_TAG = "faultline_wild_fx";
-    static final List<String> KINDS = List.of("scourge", "umbral", "coralia", "inkjaw", "grandmaw", "lament", "titan"); // the Dark Ocean's (DeepBosses): six + the Trench's Titan (1.7.0)
+    static final List<String> KINDS = List.of("scourge", "umbral", "coralia", "inkjaw", "grandmaw", "lament", "titan", "golem"); // the Dark Ocean's (DeepBosses): six + the Trench's Titan (1.7.0)
     static final Map<String, String> NAMES = Map.ofEntries(Map.entry("scourge", "The Brine Scourge"), Map.entry("umbral", "The Umbral Leviathan"), Map.entry("coralia", "Coralia, Queen of the Den"),
             Map.entry("inkjaw", "Old Inkjaw"), Map.entry("grandmaw", "The Grandmaw Clam"), Map.entry("lament", "The Lament"),
-            Map.entry("titan", "The Abyssal Titan"));
+            Map.entry("titan", "The Abyssal Titan"), Map.entry("golem", "The Stone Golem"));
     /** Their Faultline Index entries (and the tag on their hitboxes, for the Index's kill detection). */
     static final Map<String, String> INDEX = Map.ofEntries(Map.entry("scourge", "brine_scourge"), Map.entry("umbral", "umbral_leviathan"), Map.entry("coralia", "coralia"),
             Map.entry("inkjaw", "old_inkjaw"), Map.entry("grandmaw", "grandmaw_clam"), Map.entry("lament", "the_lament"),
-            Map.entry("titan", "abyssal_titan"));
+            Map.entry("titan", "abyssal_titan"), Map.entry("golem", "stone_golem"));
     static final Map<String, ChatColor> COLOR = Map.ofEntries(Map.entry("scourge", ChatColor.GREEN), Map.entry("umbral", ChatColor.DARK_GRAY), Map.entry("coralia", ChatColor.LIGHT_PURPLE),
             Map.entry("inkjaw", ChatColor.DARK_PURPLE), Map.entry("grandmaw", ChatColor.AQUA), Map.entry("lament", ChatColor.BLUE),
-            Map.entry("titan", ChatColor.DARK_PURPLE));
+            Map.entry("titan", ChatColor.DARK_PURPLE), Map.entry("golem", ChatColor.DARK_GREEN));
     /** Local -> display axes (a part's front +x = display +z at yaw 0), and the half turn item displays draw items with. */
     static final Quaternionf Q0 = new Quaternionf().rotationY((float) Math.toRadians(-90));
     static final Quaternionf FLIP = new Quaternionf().rotationY((float) Math.PI);
@@ -254,8 +254,12 @@ final class Wild implements Listener {
     //  where each one can be called
     // =====================================================================================================
     /** Null if it can be summoned here, else why not. */
+    /** The admin command for a kind (the golem's is /stonegolem). */
+    static String cmd(String kind) { return kind.equals("golem") ? "stonegolem" : kind; }
+
     String whyNot(String kind, Player p) {
         Location l = p.getLocation();
+        if (kind.equals("golem")) return StoneGolem.cave(l) ? null : "Only underground, in a cave.";
         boolean deep = l.getWorld().getName().equals(DeepBosses.world(pl));
         if (kind.equals("titan")) { // the Trench's Maw only (FaultlineDeep wakes it for someone who beat all six sea bosses)
             double mx = c("titan.maw-x", -1460), mz = c("titan.maw-z", -1640);
@@ -296,7 +300,7 @@ final class Wild implements Listener {
         if (kind == null) return;
         event.setUseInteractedBlock(Result.DENY);
         event.setUseItemInHand(Result.DENY);
-        if (live(kind) != null) { p.sendActionBar(legacy(ChatColor.GRAY + NAMES.get(kind) + " is already out there. " + ChatColor.WHITE + "/" + kind + " kill" + ChatColor.GRAY + " (admins)")); return; }
+        if (live(kind) != null) { p.sendActionBar(legacy(ChatColor.GRAY + NAMES.get(kind) + " is already out there. " + ChatColor.WHITE + "/" + cmd(kind) + " kill" + ChatColor.GRAY + " (admins)")); return; }
         if (p.getWorld().getDifficulty() == Difficulty.PEACEFUL) { p.sendActionBar(legacy(ChatColor.RED + "Nothing answers on Peaceful.")); return; }
         long cd = cooldownUntil.getOrDefault(kind, 0L);
         if (System.currentTimeMillis() < cd) { p.sendActionBar(legacy(ChatColor.GRAY + "Nothing answers yet... try again in " + ((cd - System.currentTimeMillis()) / 60000 + 1) + " min.")); return; }
@@ -333,6 +337,7 @@ final class Wild implements Listener {
                 case "grandmaw" -> new DeepBosses.Grandmaw(this, at, by);
                 case "lament" -> new DeepBosses.Lament(this, at, by);
                 case "titan" -> new DeepBosses.Titan(this, at, by);
+                case "golem" -> new StoneGolem(this, at, by); // 2.0: back, in the caves
                 default -> null;
             };
         } catch (RuntimeException | LinkageError e) { // LinkageError: an API the server's Paper doesn't have
@@ -422,6 +427,7 @@ final class Wild implements Listener {
         if (ticks - lastBusy < 2400 ? ticks % 100 == 50 : ticks % 1200 == 50) sweep(false);
         if (ticks % 40 == 0) standUpkeep();
         if (ticks % 6000 == 3000) deepSpawns();
+        if (ticks % 1200 == 600) StoneGolem.naturalSpawns(this);
         if (ticks % 2 == 0 && !specimens.isEmpty()) specimenTick();
     }
 
@@ -650,7 +656,7 @@ final class Wild implements Listener {
         String sub = args.length > 0 ? args[0].toLowerCase() : "";
         Player self = sender instanceof Player p ? p : null;
         Boss b = live(kind);
-        String label = kind;
+        String label = cmd(kind);
         switch (sub) {
             case "summon" -> {
                 Location at = null;
@@ -996,7 +1002,7 @@ final class Wild implements Listener {
                 // Before 1.4.6 it just hung there, which looked like a frozen boss.
                 a = onlookers();
                 if (!a.isEmpty() && ticks % 60 == 0) for (Player p : a)
-                    p.sendActionBar(legacy(color() + name() + ChatColor.GRAY + " is fighting you for show (creative: no damage). " + ChatColor.WHITE + "/gamemode survival" + ChatColor.GRAY + " for real, " + ChatColor.WHITE + "/" + kind + " kill" + ChatColor.GRAY + " to remove it."));
+                    p.sendActionBar(legacy(color() + name() + ChatColor.GRAY + " is fighting you for show (creative: no damage). " + ChatColor.WHITE + "/gamemode survival" + ChatColor.GRAY + " for real, " + ChatColor.WHITE + "/" + cmd(kind) + " kill" + ChatColor.GRAY + " to remove it."));
             }
             if (a.isEmpty() && pilot == null && !watched()) {
                 if (++lonely > c("leave-after-ticks", 600)) { leave(line("leave")); return; }

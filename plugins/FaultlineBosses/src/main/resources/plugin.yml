@@ -43,6 +43,10 @@ commands:
     description: "Admin: summon or remove the Lament (Dark Ocean mini boss), skip to a phase, or give its summon item"
     usage: /lament <summon [world x y z]|kill|phase|item>
     permission: bosses.admin
+  stonegolem:
+    description: "Admin: summon or remove the Stone Golem (a cave mini boss)"
+    usage: /stonegolem <summon [world x y z]|kill|phase <2|3>>
+    permission: bosses.admin
   titan:
     description: "Admin: summon or remove the Abyssal Titan (the Trench's final boss), or skip to a phase"
     usage: /titan <summon [world x y z]|kill|phase <2|3>>

@@ -425,8 +425,8 @@ final class Elites implements Listener {
         if (tags.contains(CAPTAIN)) {
             if (Bukkit.getPluginCommand("givegoodiebag") != null)
                 Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "givegoodiebag 1 " + killer.getName() + " at:" + l.getWorld().getName() + "," + l.getX() + "," + l.getY() + "," + l.getZ());
-            if (plugin.random.nextDouble() < cfg("captain.sigil-chance", 0.1) && Bukkit.getPluginCommand("rimwarden") != null)
-                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "rimwarden sigil 1 " + killer.getName());
+            if (plugin.random.nextDouble() < cfg("captain.sigil-chance", 0.1) && Bukkit.getPluginCommand("farlands") != null)
+                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "farlands sigil 1 " + killer.getName());
             if (Bukkit.getPluginCommand("index") != null) Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "index stat " + killer.getName() + " elite_captains 1");
             killer.sendMessage(ChatColor.RED + "You took down an Elite Captain.");
         } else if (plugin.random.nextDouble() < cfg(far ? "farlands-goodie-bag-chance" : "goodie-bag-chance", far ? 0.08 : 0.04) && Bukkit.getPluginCommand("givegoodiebag") != null)

@@ -22,10 +22,9 @@ commands:
   chromerunner:
     description: The Chrome Runner boss (admins) - summon, kill, chip, spine
     permission: items.adminbosses
-  rimwarden:
-    description: The Warden of the Rim, the Farlands' boss (admins - summon, kill, sigil)
   farlands:
-    description: The Farlands (admins - status, trader, crawler, ghast, echoes)
+    description: The Farlands (admins - status, trader, crawler, ghast, echoes, bloodrain, sigil, watcher, collapse)
+    aliases: [rimwarden]
   mball:
     description: Says "mb all" to everyone you're fighting (both say it = the fight stops)
     aliases: [mb]
@@ -260,6 +259,10 @@ commands:
   fgear:
     description: "Admin: give the new gear (mining helmet, lantern, knight's helm, ancient gear/core, pedestal, music discs)"
     usage: /fgear <id> [amount] [player]
+    permission: items.fgear
+  giveancientgear:
+    description: "Admin/console: give Ancient Gear Parts (the Stone Golem drops them)"
+    usage: /giveancientgear [amount] [player]
     permission: items.fgear
   givedisc:
     description: "Admin/console: give a boss music disc"

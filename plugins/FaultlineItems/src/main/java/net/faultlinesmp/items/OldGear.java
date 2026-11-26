@@ -50,7 +50,7 @@ final class OldGear implements Listener {
     /** faultlinebosses:wild_item values that are still in the game (the Dark Ocean's summons). */
     static final Set<String> WILD_KEEP = Set.of("brine_bait", "umbral_sonar", "sirens_comb", "inkjaw_bait", "glistening_pearl", "mournful_shell");
     /** faultlineitems:gear values that are gone. */
-    static final Set<String> GEAR_GONE = Set.of("ancient_gear_part", "disc_demon_eye", "disc_dune", "disc_don", "disc_rocco", "disc_explorer");
+    static final Set<String> GEAR_GONE = Set.of("disc_demon_eye", "disc_dune", "disc_don", "disc_rocco", "disc_explorer");
 
     /** What a crafted summon gives back (per item). */
     static final Map<String, List<ItemStack>> REFUND = Map.of(
@@ -112,7 +112,7 @@ final class OldGear implements Listener {
                 String v = c.get(GEAR, PersistentDataType.STRING);
                 if (v != null && GEAR_GONE.contains(v)) return "";
             }
-            if (k.equals(CORE) || k.equals(TROPHY)) return "";
+            if (k.equals(TROPHY)) return ""; // (2.0: the Ancient Core is back with the Stone Golem)
         }
         return null;
     }

@@ -44,7 +44,7 @@ import java.util.*;
  *   <li>ECHOES: die out here and a dark copy of you rises where you fell, carrying {@code echoes.share} of what you dropped.
  *       Kill it (anyone can) to get it all back. It fades after {@code echoes.expire-days}, loot and all.</li>
  *   <li>THE RIM TRADER: a wandering trader that only ever comes to the Farlands, selling things you can't buy anywhere
- *       else (the Rim Sigil, bags, boss books, totems). Every offer can be bought a few times, then he's sold out.</li>
+ *       else (the Rim Sigil = a Blood Rain, see FarlandsNight; bags, boss books, totems). Every offer can be bought a few times, then he's sold out.</li>
  *   <li>LOOT: the datapack's Farlands chests (vaults, floating vaults, lost explorers' camps) get Goodie / Mythic / Dark Loot
  *       bags, boss enchant books, accessories and Rim Sigils on top; camps hold the explorer's journal. 12% of the vault
  *       chests are MIMICS ({@code mimic.farlands-chance}, in Creatures).</li>
@@ -519,7 +519,7 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
 
     List<MerchantRecipe> recipes() {
         List<MerchantRecipe> out = new ArrayList<>();
-        out.add(offer(plugin.rimWarden != null ? plugin.rimWarden.sigil(1) : new ItemStack(Material.ECHO_SHARD), 2, new ItemStack(Material.DIAMOND, 24), new ItemStack(Material.EMERALD, 32)));
+        out.add(offer(plugin.farlandsNight.sigil(1), 2, new ItemStack(Material.DIAMOND, 24), new ItemStack(Material.EMERALD, 32)));
         out.add(offer(FaultlineItems.MythicGoodieBagItem.create(plugin), 2, new ItemStack(Material.DIAMOND, 28), new ItemStack(Material.NETHERITE_INGOT, 1)));
         ItemStack goodie = FaultlineItems.GoodieBagItem.create(plugin); goodie.setAmount(2);
         out.add(offer(goodie, 4, new ItemStack(Material.EMERALD, 20)));
@@ -566,7 +566,7 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
             if (b != null) add.add(b);
         }
         if (plugin.darkLoot != null && random.nextDouble() < (deep ? 0.12 : vault ? 0.05 : 0.01)) { ItemStack a = plugin.darkLoot.accessory(); if (a != null) add.add(a); }
-        if (plugin.rimWarden != null && random.nextDouble() < (deep ? 0.08 : vault ? 0.03 : 0)) add.add(plugin.rimWarden.sigil(1));
+        if (plugin.farlandsNight != null && random.nextDouble() < (deep ? 0.08 : vault ? 0.03 : 0)) add.add(plugin.farlandsNight.sigil(1));
         if (kind.equals("camp") && random.nextDouble() < 0.75) add.add(journal());
         e.getLoot().addAll(add);
     }
@@ -583,7 +583,7 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
                     "Don't stand under a ledge. Don't stand still.",
                     "I've lost Maren. I keep seeing her out past the camp, but it isn't her. It just wears her face."},
             {"Met a trader out here. Red coat, no name. Sold me a sigil and told me not to use it.",
-                    "He said the Warden of the Rim guards the edge of the world, and only a fool would call him.",
+                    "He said it makes the rain bleed, and that everything out here gets hungrier when it does.",
                     "I'm going to use it."},
     };
 
@@ -722,6 +722,7 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
                 if (tick - musicErrAt > 1200) { musicErrAt = tick; plugin.getLogger().warning("[Farlands] night: " + ex); }
             }
             traderTick();
+            if (plugin.farlandsNight != null) plugin.farlandsNight.tick();
             if (tick % 600 == 0) {
                 for (Player p : playersOut()) {
                     if (random.nextDouble() < cfg("crawlers.pack-chance", 0.3)) crawlerPack(p);
@@ -738,6 +739,7 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
 
     void shutdown() {
         for (Player p : Bukkit.getOnlinePlayers()) unspook(p);
+        if (plugin.farlandsNight != null) plugin.farlandsNight.shutdown();
         for (Echo ec : echoes) { Entity b = ec.entity == null ? null : Bukkit.getEntity(ec.entity); if (b != null) b.remove(); ec.entity = null; }
         Entity t = trader == null ? null : Bukkit.getEntity(trader);
         if (t != null) t.remove();
@@ -783,6 +785,32 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
                 musicAt.put(p.getUniqueId(), System.currentTimeMillis());
                 s.sendMessage(ChatColor.YELLOW + "Played the Farlands track (" + how + "). Hear it? Try /farlands music spot too.");
             }
+            case "bloodrain" -> {
+                FarlandsNight n = plugin.farlandsNight;
+                if (a.length > 1 && a[1].equalsIgnoreCase("stop")) { n.stopBlood(false); s.sendMessage(ChatColor.GREEN + "Blood Rain stopped."); }
+                else if (a.length > 1 && a[1].equalsIgnoreCase("start")) { n.startBlood(s.getName()); s.sendMessage(ChatColor.GREEN + "Blood Rain started."); }
+                else s.sendMessage(ChatColor.GRAY + n.status() + ChatColor.DARK_GRAY + "  (/farlands bloodrain start|stop)");
+            }
+            case "sigil" -> {
+                int n = 1; Player to = p;
+                for (int i = 1; i < a.length; i++) {
+                    Player online = Bukkit.getPlayerExact(a[i]);
+                    if (online != null) to = online;
+                    else try { n = Math.max(1, Math.min(64, Integer.parseInt(a[i]))); } catch (NumberFormatException ignored) { }
+                }
+                if (to == null) { s.sendMessage("Who should get it?"); return true; }
+                Player t2 = to;
+                t2.getInventory().addItem(plugin.farlandsNight.sigil(n)).values().forEach(left -> t2.getWorld().dropItemNaturally(t2.getLocation(), left));
+                s.sendMessage(ChatColor.GREEN + "Gave " + n + " Rim Sigil(s) to " + to.getName() + ".");
+            }
+            case "watcher" -> {
+                if (p == null) return true;
+                s.sendMessage(plugin.farlandsNight.spawnWatcher(p, a.length > 1 && a[1].equalsIgnoreCase("close")) != null ? ChatColor.GREEN + "Something is watching you." : ChatColor.RED + "No wall top above you nearby.");
+            }
+            case "collapse" -> {
+                if (p == null) return true;
+                s.sendMessage(plugin.farlandsNight.collapseUnder(p) ? ChatColor.GREEN + "The ground cracks." : ChatColor.RED + "Nothing here can crumble (or a chest is near).");
+            }
             case "ghast" -> { if (p != null) { ghasts(p); s.sendMessage(ChatColor.GREEN + "Tried to bring a ghast."); } }
             case "echoes" -> {
                 s.sendMessage(ChatColor.GRAY + "" + echoes.size() + " echo(es):");
@@ -793,7 +821,8 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
                 s.sendMessage(ChatColor.RED + "The Farlands " + ChatColor.GRAY + "(" + playersOut().size() + " player(s) out there)");
                 s.sendMessage(ChatColor.GRAY + " Rim Trader: " + (trader != null ? "out" : "not out") + ", echoes: " + echoes.size()
                         + (p != null ? ", you are " + (in(p.getLocation()) ? "IN" : "not in") + " the Farlands" : ""));
-                s.sendMessage(ChatColor.DARK_GRAY + " /farlands trader | crawler | ghast | echoes");
+                s.sendMessage(ChatColor.GRAY + " " + plugin.farlandsNight.status());
+                s.sendMessage(ChatColor.DARK_GRAY + " /farlands trader | crawler | ghast | echoes | bloodrain | sigil | watcher | collapse");
             }
         }
         return true;
@@ -802,6 +831,6 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
     @Override
     public List<String> onTabComplete(CommandSender s, Command cmd, String label, String[] a) {
         if (!s.hasPermission(PERM) || a.length != 1) return List.of();
-        return Legendary.filter(List.of("status", "trader", "crawler", "ghast", "echoes", "music"), a[0]);
+        return Legendary.filter(List.of("status", "trader", "crawler", "ghast", "echoes", "music", "bloodrain", "sigil", "watcher", "collapse"), a[0]);
     }
 }

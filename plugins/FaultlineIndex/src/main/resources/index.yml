@@ -825,6 +825,8 @@ entries:
   - {chapter: weapons, name: "Lantern of Souls", icon: lantern_of_souls, detect: "faultlineitems:gear=lantern_of_souls",
      how: "Craft: a soul lantern ringed with 4 phantom membranes and 4 amethyst shards.",
      does: "Hold it: lights the dark, makes invisible creatures nearby glow, lifts Darkness, and makes the Ghost Ship solid so you can board her."}
+  - {chapter: consumables, name: "Ancient Gear Part", icon: ancient_gear_part, detect: "faultlineitems:gear=ancient_gear_part",
+     how: "2-4 from the Stone Golem.", does: "Four around an amethyst block (with amethyst shards) make an Ancient Core."}
   - {chapter: consumables, name: "Museum Pedestal", icon: museum_pedestal, detect: "faultlineitems:gear=museum_pedestal",
      how: "Craft: gold, a quartz slab, a blackstone brick wall and blackstone bricks (makes 2).",
      does: "Place it and right-click it with anything to put it on show (it floats and turns). Only you can take it back."}
@@ -878,6 +880,8 @@ entries:
      how: "Craft it: Leather in the corners, Iron Ingots on the sides, a Blast Furnace in the middle.", does: "30% of the raw iron, gold and copper you mine drops already smelted."}
   - {chapter: accessories, name: "Featherfall Charm", icon: featherfall_charm, detect: "faultlineitems:featherfall_charm",
      how: "Craft it: Feathers all around, a Slime Ball in the middle, a Gold Ingot at the bottom.", does: "No fall damage from falls of 5 blocks or less."}
+  - {chapter: accessories, name: "Ancient Core", icon: ancient_core, detect: "faultlineitems:ancient_core",
+     how: "Craft: 4 Ancient Gear Parts around an amethyst block, with 4 amethyst shards.", does: "+2 armor and +15% knockback resistance."}
   - {chapter: armor, name: "Mining Helmet", icon: mining_helmet, detect: "faultlineitems:gear=mining_helmet",
      how: "Craft: an iron helmet, glowstone and a redstone torch.", does: "Wear it: night vision, and a headlamp that lights up whatever you look at. +2 armor."}
   - {chapter: armor, name: "Knight's Helm", icon: knight_helm, detect: "faultlineitems:gear=knight_helm",
@@ -1244,6 +1248,10 @@ entries:
      where: "Only during the LEVIATHAN MIGRATION (every 1-2 hours, with someone in the Sunlit Sea): a pod of 3-5 crosses the Sunlit Sea in a straight line.",
      does: "Passive, 400 health, the size of a house. Follow the pod: at the end of its 600-block journey the eldest sinks to the floor as a fresh WHALE FALL with a chest of loot. Killing one has a 35% chance to bring the Umbral Leviathan up from below.",
      drops: ["Leather|100%", "Bone Blocks|100%", "Prismarine Crystals|100%"]}
+  - {chapter: bosses, weakness: "Slow: dodge the Pound wind-up and the Boulder, then hit it after every slam.", id: stone_golem, name: "The Stone Golem", icon: stone_golem, detect-tag: faultline_stone_golem,
+     where: "A mini boss of the caves: it wakes by itself near someone exploring underground (most often in lush caves). 900 health (+25% per extra fighter).",
+     does: "An ancient mossy guardian with amber eyes. Ground Pound (a shockwave ring), Boulder Throw, Crystal Spikes (amethyst bursts along a line). Below 60% it roots itself and heals (Overgrowth) until you hit it hard enough.",
+     drops: ["2-4 Ancient Gear Parts|100%", "Mythic Goodie Bag|100%", "2 Goodie Bags|100%", "8-16 Amethyst Shards|100%", "600 XP|100%", "Vein Miner / Autosmelt / Arrowguard book|20-30%"]}
   - {chapter: bosses, weakness: "In phase 2 break its three lures (3% of its health in hits each): all three = stunned, taking 50% more. Wear the Abyssal Diving Suit and a Hadal Dive Helmet against the Trench's pressure.", id: abyssal_titan, name: "The Abyssal Titan", icon: abyssal_titan, detect-tag: faultline_abyssal_titan,
      where: "THE FINAL BOSS of the Dark Ocean. It sleeps under the floor of the MAW, at the southern end of the Trench (-1460, -1640, at y -61). It only wakes for someone who has beaten all six of the Dark Ocean's bosses: swim down into the Maw. 5,000 health (+25% per extra fighter). Bring the Abyssal Diving Suit and a Hadal Dive Helmet: the Trench's pressure crushes everyone else.",
      does: "A colossal torso rising out of the rock: it never moves, it turns and reaches. A dark shape in the pitch black with burning cyan eyes and three violet lures. Claw Sweep (an arm swings low across the floor: swim up off it), Crushing Slam (a fist on your spot, then a shockwave along the floor), The Lure (its lights flare: DON'T LOOK AT THEM, or you're drawn to its jaws), Abyssal Roar (thrown back, Darkness), Hadal Spawn (guardians). Below 65%: Tentacle Eruption (under everyone), Pressure Wave (a ring along the floor: get up off it), The Gaze (a sweeping beam from its eyes: get behind something), and its LURES CAN BE BROKEN: break all three and it reels, stunned, taking 50% more damage for 8 seconds. Below 30%: Devour (it inhales the whole Maw: swim away from the jaws) and Abyssal Collapse (the walls come down).",
@@ -1491,13 +1499,13 @@ entries:
      where: "Only when staff spawn one (/mimicplayer).",
      does: "Looks exactly like a real player (their skin and name) and fights like one: strafes, crits, blocks with a shield (an axe breaks it), eats golden apples, throws pearls, shoots a bow, and pops a totem once."}
   # ---- 2.0 round 10: the Farlands ----
-  - {chapter: bosses, name: "The Warden of the Rim", icon: stone_golem, detect-tag: faultline_rim_warden, weakness: "Spread out: the Fracture sends a line of spikes at each of you, and the Glitch Step always picks whoever is farthest away. Jump when the fists go up.",
-     where: "The Farlands. 5% every minute while someone's out there, or a Rim Sigil calls him.",
-     does: "A giant of stone and glitched blocks. 6000 health (+30% per extra fighter), takes 15% less, can't be knocked back. Ground Pound (a ring that throws you), Boulder Toss, Glitch Step (vanishes and hits from behind). Below 65%: Rift Beam, Fracture (spikes erupt along a line to each of you), Call of the Rim (Elites climb out of the ground). Below 30% he goes UNSTABLE: faster, and glitched blocks rain on everyone.",
-     drops: ["2 Mythic Bags, 4 Goodie Bags, 2 Dark Loot Bags each|100%", "A boss enchant book each|100%", "Netherite, Diamond Blocks, a God Apple, a Totem each|100%", "An accessory|top damager 100%, others 25%", "Rim Sigil|15%"]}
   - {chapter: weapons, name: "Rim Sigil", icon: gravity_stone, detect: "faultlineitems:rim_sigil",
-     how: "The Rim Trader, Elite Captains (10%), the Farlands' vaults, and the Warden himself (15%).",
-     does: "Right-click in the Farlands: the Warden of the Rim rises to meet you."}
+     how: "The Rim Trader, Elite Captains (10%) and the Farlands' vaults.",
+     does: "Right-click in the Farlands: the rain turns to BLOOD for 8 minutes. Monsters out there get 50% more health and 30% more damage, and their drops, XP and the Farlands' chest loot are doubled."}
+  - {chapter: enemies, id: farlands_watcher, name: "Watcher", icon: revenant, detect-tag: faultline_watcher,
+     where: "The Farlands: a tall thin black figure standing still on a far wall top. Only you can see the one watching you.",
+     does: "It just watches. Look straight at it, or get close, and it's gone. Sometimes it's behind you a moment later.",
+     drops: ["Nothing|100%"]}
   - {chapter: enemies, name: "Wall Crawler", icon: queen_spider, detect-tag: faultline_wall_crawler,
      where: "The Farlands: clinging high on the walls, and 30% of the spiders out there.",
      does: "Waits above you and DROPS onto you: a heavy hit, Slowness and Nausea. Don't stand under a ledge.",
@@ -1516,7 +1524,7 @@ entries:
 
 achievements:
   - {id: first_blood, name: "First Blood", icon: demon_eye, desc: "Defeat any boss.",
-     defeat: [queen_spider, diamond_jacob, the_abyssal_kraken, captain_rotbeard, the_great_hog, the_bulwark, the_skeleton_captain, ghost_captain, brine_scourge, umbral_leviathan, coralia, old_inkjaw, grandmaw_clam, the_lament, abyssal_titan, deep_goblin, deep_rimeback, deep_drownking],
+     defeat: [queen_spider, diamond_jacob, the_abyssal_kraken, captain_rotbeard, the_great_hog, the_bulwark, the_skeleton_captain, ghost_captain, brine_scourge, umbral_leviathan, coralia, old_inkjaw, grandmaw_clam, the_lament, abyssal_titan, deep_goblin, deep_rimeback, deep_drownking, stone_golem],
      need: any, reward: {items: ["DIAMOND:8"], xp: 200}}
   - {id: den_delver, name: "Den Delver", icon: queen_spider, desc: "Clear 5 Brood Dens in Spider Nests.",
      stat: brood_dens, count: 5, reward: {items: ["DIAMOND:6", "GOLDEN_APPLE:2"], xp: 600}}
@@ -1638,8 +1646,10 @@ achievements:
      stat: krampus, count: 1, reward: {items: ["DIAMOND:5"], xp: 800}}
   - {id: flushed, name: "Flushed", icon: bomber_zombie, desc: "Beat the Porcelain Colossus.",
      stat: toilet_colossus, count: 1, reward: {items: ["DIAMOND:10"], xp: 2000}}
-  - {id: rim_breaker, name: "Rim Breaker", icon: stone_golem, desc: "Help bring down the Warden of the Rim.",
-     stat: rim_wardens, count: 1, reward: {items: ["DIAMOND:12"], xp: 2500}}
+  - {id: blood_rain, name: "Red Skies", icon: elite_mob, desc: "Make it through a Blood Rain in the Farlands.",
+     stat: blood_rains, count: 1, reward: {items: ["DIAMOND:8"], xp: 1500}}
+  - {id: watched, name: "Being Watched", icon: revenant, desc: "Stare down 10 Watchers in the Farlands.",
+     stat: watchers, count: 10, reward: {items: ["ENDER_EYE:4", "DIAMOND:4"], xp: 800}}
   - {id: echo_hunter, name: "Echo Hunter", icon: revenant, desc: "Break 5 Echoes in the Farlands.",
      stat: echoes, count: 5, reward: {items: ["DIAMOND:4"], xp: 600}}
   - {id: captain_down, name: "Mutiny", icon: zombie_captain, desc: "Kill 10 Elite Captains.",

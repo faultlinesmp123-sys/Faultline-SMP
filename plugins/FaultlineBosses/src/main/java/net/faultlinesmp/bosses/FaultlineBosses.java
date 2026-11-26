@@ -269,7 +269,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         wild = new Wild(this);
         getServer().getPluginManager().registerEvents(wild, this);
         for (String kind : Wild.KINDS) {
-            String cmd = kind;
+            String cmd = Wild.cmd(kind);
             getCommand(cmd).setExecutor((sender, command, label, args) -> wild.command(kind, sender, args));
         }
         getServer().getScheduler().runTaskTimer(this, () -> {
@@ -5057,7 +5057,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         for (Player p : Bukkit.getOnlinePlayers()) if (hearingBossMusic(p.getUniqueId())) p.stopSound(SoundCategory.MUSIC);
     }
 
-    static final List<String> MORPH_KINDS = List.of("jacob", "scourge", "umbral", "coralia", "inkjaw", "grandmaw", "lament", "titan", "off", "release");
+    static final List<String> MORPH_KINDS = List.of("jacob", "scourge", "umbral", "coralia", "inkjaw", "grandmaw", "lament", "titan", "golem", "off", "release");
     private Morph morph;
     Wild wild;
 
@@ -5073,7 +5073,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
     boolean bossAlive(String kind) {
         return switch (kind) {
             case "kraken" -> kraken != null; case "jacob" -> jacob != null;
-            case "scourge", "umbral", "coralia", "inkjaw", "grandmaw", "lament", "titan" -> wild != null && wild.get(kind) != null;
+            case "scourge", "umbral", "coralia", "inkjaw", "grandmaw", "lament", "titan", "golem" -> wild != null && wild.get(kind) != null;
             default -> false;
         };
     }
@@ -5200,14 +5200,14 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         if (!(sender instanceof Player p)) { sender.sendMessage("Players only."); return true; }
         if (morph != null) { sender.sendMessage(ChatColor.RED + "Someone is already in boss form. (/bossmorph off)"); return true; }
         if (!MORPH_KINDS.contains(kind) || kind.equals("off") || kind.equals("release")) {
-            sender.sendMessage(ChatColor.YELLOW + "/bossmorph <jacob|scourge|umbral|coralia|inkjaw|grandmaw|lament|titan>  |  /bossmorph off  |  /bossmorph release");
+            sender.sendMessage(ChatColor.YELLOW + "/bossmorph <jacob|scourge|umbral|coralia|inkjaw|grandmaw|lament|titan|golem>  |  /bossmorph off  |  /bossmorph release");
             return true;
         }
         boolean busy = switch (kind) {
             case "jacob" -> jacob != null;
             default -> wild.get(kind) != null;
         };
-        if (busy) { sender.sendMessage(ChatColor.RED + "That boss is already out. Remove it first (/" + kind + " kill)."); return true; }
+        if (busy) { sender.sendMessage(ChatColor.RED + "That boss is already out. Remove it first (/" + Wild.cmd(kind) + " kill)."); return true; }
         startMorph(p, kind);
         return true;
     }
@@ -5242,6 +5242,7 @@ public final class FaultlineBosses extends JavaPlugin implements Listener {
         try {
             switch (kind) {
                 case "jacob" -> { summonJacob(at, null); morph.boss = jacob; }
+                case "golem" -> { Location f = StoneGolem.openFloor(at, 6, 12); morph.boss = wild.summon(kind, f != null ? f : at.clone().add(look.clone().multiply(4)), null); }
                 default -> morph.boss = wild.summon(kind, at.clone().add(look.clone().multiply(4)), null);
             }
         } catch (RuntimeException e) {

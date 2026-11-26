@@ -680,7 +680,7 @@ toilet-raid:                       # 1.3.38: admin only (/toiletraid start, Gold
     restore-after-fight: false     # true = put every broken block back 10 s after it dies (/toiletraid restore does it by hand)
     moves: {slam: 20, flush: 18, laser: 5, charge: 24, sludge: 9}
   # rewards: ["givemythicbag 4 {player}", "item NETHERITE_INGOT 4", ...]   ("item MATERIAL n" or a console command; {player}, {enchant})
-# ---------------- 2.0 round 10: THE FARLANDS (Farlands.java) and its boss (RimWarden.java) ----------------
+# ---------------- 2.0 round 10: THE FARLANDS (Farlands.java, FarlandsNight.java) ----------------
 farlands:
   enabled: true
   mob-health: 0.25        # every monster out there: +25% health
@@ -695,21 +695,10 @@ farlands:
   always-rain: true            # and rain
   spooky: true                 # far-off creepy sounds, ash in the air, silent lightning
   spooky-lightning-chance: 0.2
-rim-warden:
-  natural: true           # 5% a minute while someone's in the Farlands
-  spawn-chance: 0.05
-  cooldown-minutes: 30
-  health: 6000
-  per-fighter: 0.3
-  damage-reduction: 0.15
-  melee: 16
-  phase2-at: 0.65
-  phase3-at: 0.3
-  xp: 6000
-  accessory-chance: 0.25  # top damager always
-  sigil-back-chance: 0.15
-  moves: {pound: 13, boulder: 14, glitch-step: 12, beam: 17, fracture: 12, glitch-rain: 8}
-  # rewards: (a list of console commands / "item MAT n"; {player}, {enchant}) - leave out for the built-in list
+farlands-night:               # 2.0 (FarlandsNight.java): the Warden of the Rim is gone
+  blood-rain: {enabled: true, check-minutes: 5, chance: 0.08, minutes: 8, mob-health: 0.5, mob-damage: 0.3}   # a Rim Sigil starts one too
+  collapse: {enabled: true, chance: 0.04, cooldown-seconds: 20, delay-ticks: 40, max-blocks: 40}
+  watchers: {enabled: true, every-seconds: 30, chance: 0.35, seconds: 60, vanish-distance: 24, stare-degrees: 7, return-chance: 0.15}
 chrome-runner:                     # 1.3.38: admin only (/chromerunner summon, Overclocked Chip)
   health: 7000
   per-fighter: 0.35

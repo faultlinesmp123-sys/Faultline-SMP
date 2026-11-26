@@ -108,6 +108,7 @@ final class Enchants implements Listener, CommandExecutor, TabCompleter {
         DROPS.put("the_great_hog", List.of("vitality:1:0.25", "cleave:1:0.2"));
         DROPS.put("the_skeleton_captain", List.of("thunderstrike:1:0.3", "cleave:1:0.25"));
         DROPS.put("ghost_captain", List.of("featherstep:1:0.3", "swiftstride:1:0.2"));
+        DROPS.put("stone_golem", List.of("veinminer:1:0.3", "autosmelt:1:0.25", "arrowguard:1:0.2")); // 2.0: back in the caves
         DROPS.put("diamond_jacob", List.of("vitality:2:0.35", "executioner:2:0.25", "arrowguard:2:0.25", "veinminer:1:0.25", "autosmelt:1:0.2"));
         // the Dark Ocean
         DROPS.put("the_abyssal_kraken", List.of("thunderstrike:1:0.35", "tidecaller:1:0.35", "lifesteal:2:0.3", "frostbite:2:0.25"));

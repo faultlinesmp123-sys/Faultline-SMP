@@ -119,10 +119,10 @@ def biomes():
                       particles=[("minecraft:spore_blossom_air", 0.015)],
                       spawn=spawns(monster=[("zombie", 4, 140), ("skeleton", 4, 110), ("bogged", 4, 80), ("slime", 4, 100), ("spider", 4, 80), ("creeper", 4, 90), ("witch", 1, 15)], creature=[("frog", 2, 10)])),
         # round 10: a dark crimson sky and fog (the light level is untouched: you can still see), crimson-forest ambience,
-        # its own music (faultline:farlands.music, in FaultlineDeepMusic.zip), and GHASTS drifting over the walls
+        # GHASTS drifting over the walls. Its music (faultline:farlands.music) is played by FaultlineItems (Farlands.musicTick),
+        # not the biome: biome music only changed when the song playing ended
         "farlands": biome("windswept_hills", sky="#3b1626", fog="#5a2132",
                           particles=[("minecraft:crimson_spore", 0.012), ("minecraft:ash", 0.02), ("minecraft:end_rod", 0.001)],
-                          music={"sound_id": "faultline:farlands.music"}, music_delay=(20, 200),
                           ambient={"additions": {"sound": "minecraft:ambient.crimson_forest.additions", "tick_chance": 0.0111},
                                    "loop": "minecraft:ambient.crimson_forest.loop",
                                    "mood": {"block_search_extent": 8, "offset": 2.0, "sound": "minecraft:ambient.crimson_forest.mood", "tick_delay": 6000}},

@@ -689,6 +689,8 @@ farlands:
   ghasts: {chance: 0.25, max: 2}
   echoes: {enabled: true, share: 0.35, expire-days: 3, health: 80, damage: 9, xp: 120}
   trader: {chance-per-minute: 0.04, minutes: 15}
+  music: true             # "Underground Crimson" (FaultlineDeepMusic.zip), looped for everyone in the Farlands
+  music-seconds: 161.5
 rim-warden:
   natural: true           # 5% a minute while someone's in the Farlands
   spawn-chance: 0.05

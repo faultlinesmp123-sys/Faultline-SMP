@@ -67,6 +67,10 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
     private final Map<UUID, Boolean> inCache = new HashMap<>();
     private final List<Echo> echoes = new ArrayList<>();
     private final File echoFile;
+    static final String MUSIC = "faultline:farlands.music";
+    static final String[] VANILLA_MUSIC = {"minecraft:music.game", "minecraft:music.creative", "minecraft:music.overworld.windswept_hills",
+            "minecraft:music.overworld.jagged_peaks", "minecraft:music.overworld.stony_peaks", "minecraft:music.under_water"};
+    private final Map<UUID, Long> musicAt = new HashMap<>();
     private UUID trader;
     private long traderUntil;
     private int tick;
@@ -585,6 +589,41 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
         return b;
     }
 
+    // ================================================================= music
+
+    /**
+     * The Farlands' music ("Underground Crimson", in FaultlineDeepMusic.zip), played to each player out there and looped
+     * (`farlands.music-seconds` 161). The datapack's biome music alone was unreliable: it only switches once the song playing
+     * ends, needs the datapack update (2 restarts), and starts after a random wait. Stops when you leave; the Spider Nest's own
+     * music wins inside a nest.
+     */
+    void musicTick() {
+        if (!plugin.getConfig().getBoolean("farlands.music", true)) return;
+        long now = System.currentTimeMillis();
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            boolean in = inCached(p) && !inNest(p);
+            Long at = musicAt.get(p.getUniqueId());
+            if (!in) {
+                if (at != null) { p.stopSound(MUSIC, SoundCategory.MUSIC); musicAt.remove(p.getUniqueId()); }
+                continue;
+            }
+            for (String k : VANILLA_MUSIC) p.stopSound(k, SoundCategory.MUSIC);   // the game's own tracks never play over it
+            if (at == null || now - at > cfg("music-seconds", 161.5) * 1000) {
+                p.stopSound(SoundCategory.MUSIC);   // the game's own music would play over it
+                p.playSound(p, MUSIC, SoundCategory.MUSIC, 1f, 1f);
+                musicAt.put(p.getUniqueId(), now);
+            }
+        }
+        musicAt.keySet().removeIf(id -> Bukkit.getPlayer(id) == null);
+    }
+
+    boolean inNest(Player p) {
+        try { return plugin.spiderNest != null && plugin.spiderNest.nestAt(p.getLocation()) != null; } catch (RuntimeException e) { return false; }
+    }
+
+    @EventHandler
+    public void onJoinMusic(org.bukkit.event.player.PlayerJoinEvent e) { musicAt.remove(e.getPlayer().getUniqueId()); }
+
     // ================================================================= ticks
 
     void tickAll() {
@@ -594,6 +633,7 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
             if (tick % 20 == 0) inCache.clear();
             if (tick % 4 == 0 && !crawlers.isEmpty()) crawlerTick();
             if (tick % 20 == 0) echoTick();
+            if (tick % 40 == 0) try { musicTick(); } catch (RuntimeException ex) { if (tick % 2400 == 0) plugin.getLogger().warning("[Farlands] music: " + ex); }
             traderTick();
             if (tick % 600 == 0) {
                 for (Player p : playersOut()) {

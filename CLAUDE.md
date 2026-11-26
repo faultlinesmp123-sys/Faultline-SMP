@@ -3441,6 +3441,11 @@ Notes:
   Beam is blocked by walls (`Farlands.sees`); the rig checks the world before a distance. The biome music's inline
   `{"sound_id"}` is the same form custom music-disc datapacks use (valid). Known: a staff InventoryRollbackPlus restore of
   someone who died in the Farlands gives back what their Echo also holds (as with any ground drops).
+  MUSIC FIX: the biome music never played for the owner (biome music only switches when the song playing ends, needs the
+  datapack update = 2 restarts, and starts after a random wait). Now `Farlands.musicTick` (every 2 s, `farlands.music`,
+  `music-seconds` 161.5) plays `faultline:farlands.music` to each player in the Farlands (not inside a Spider Nest: its own
+  music), loops it, stops the vanilla music keys (`VANILLA_MUSIC`) every 2 s and stops it when they leave; the datapack no
+  longer sets the biome's music (it would overlap).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

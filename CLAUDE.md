@@ -3392,6 +3392,11 @@ Notes:
   reads a NEW key `protect.pyramids-locked` (default false); the old `protect.pyramids` (true in every server config) is ignored, so
   pyramids can be broken, built in, blown up and pushed by pistons by anyone. The faction cores stay protected (`protect.cores`).
   FaultlineWorld is skipped by `/faultline reload`: this needs a server RESTART.
+- **Faction names on old configs (Kingdoms, same 2.0.0)**: the live server's `plugins/FaultlineKingdoms/config.yml` still says
+  "Kingdom 1/2/3" (RED/BLUE/GREEN) and has no 4/5, and a Bukkit `getString(path, def)` never falls back to the jar's
+  defaults: chat showed "Kingdom 1" and "Faction 4". `FaultlineKingdoms.name/color` now read a missing entry or 1.x's
+  default ("Kingdom N", its old colour) as `NAMES`/`COLORS` (The Mountain RED, The Jungle GREEN, The Ice AQUA, The Fibers
+  DARK_PURPLE, The Sky YELLOW); a name / colour the owner picked is kept. Tested (scratch `fac/FacTest` with an old config).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

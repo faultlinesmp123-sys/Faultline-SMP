@@ -176,11 +176,25 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
         return instance == null || k == 0 ? null : instance.name(k);
     }
 
-    String name(int k) { return k < 1 || k > MAX ? "No faction" : getConfig().getString("kingdoms." + k + ".name", "Faction " + k); }
+    // 2.0: the five factions' names and colours. A server config still holding 1.x's "Kingdom N" / RED BLUE GREEN
+    // (or no entry for 4 and 5) reads as these; a name or colour the owner picked is kept.
+    static final String[] NAMES = {null, "The Mountain", "The Jungle", "The Ice", "The Fibers", "The Sky"};
+    static final String[] COLORS = {null, "RED", "GREEN", "AQUA", "DARK_PURPLE", "YELLOW"};
+    static final String[] OLD_COLORS = {null, "RED", "BLUE", "GREEN"};
+
+    String name(int k) {
+        if (k < 1 || k > MAX) return "No faction";
+        String n = getConfig().getString("kingdoms." + k + ".name");
+        return n == null || n.isBlank() || n.equalsIgnoreCase("Kingdom " + k) ? NAMES[k] : n;
+    }
 
     ChatColor color(int k) {
         if (k < 1 || k > MAX) return ChatColor.GRAY;
-        try { return ChatColor.valueOf(getConfig().getString("kingdoms." + k + ".color", "WHITE").toUpperCase(Locale.ROOT)); }
+        String c = getConfig().getString("kingdoms." + k + ".color");
+        String n = getConfig().getString("kingdoms." + k + ".name");
+        boolean oldDefaults = n == null || n.equalsIgnoreCase("Kingdom " + k);
+        if (c == null || (oldDefaults && k < OLD_COLORS.length && c.equalsIgnoreCase(OLD_COLORS[k]))) c = COLORS[k];
+        try { return ChatColor.valueOf(c.toUpperCase(Locale.ROOT)); }
         catch (IllegalArgumentException e) { return ChatColor.WHITE; }
     }
 

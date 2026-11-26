@@ -66,7 +66,7 @@ final class RimWarden implements Listener, CommandExecutor, TabCompleter {
 
     final class Fight {
         Zombie body; BossBar bar; final List<Part> parts = new ArrayList<>(); final List<Entity> temp = new ArrayList<>();
-        int t, nextMove = 50, move, moveT, phase = 1, rising = 40; Player target; double walk; Location last;
+        int t, nextMove = 50, move, moveT, phase = 1, rising = 40, alone; Player target; double walk; Location last;
         float armL, armR, legSwing, lean, bodyDrop; boolean hidden; Vector beam; Location beamFrom;
         final Map<UUID, Double> damage = new HashMap<>(); final Set<UUID> fighters = new HashSet<>(); final Set<UUID> minions = new HashSet<>();
         final Set<UUID> hitThisMove = new HashSet<>();
@@ -344,7 +344,8 @@ final class RimWarden implements Listener, CommandExecutor, TabCompleter {
         if (f.t % 6 == 0) w.spawnParticle(Particle.DUST, now.clone().add(0, 3, 0), 2, 1.2, 1.5, 1.2, 0, f.phase == 3 ? GLITCH : CRIMSON);
         List<Player> ps = near(now, 70);
         for (Player p : ps) f.fighters.add(p.getUniqueId());
-        if (ps.isEmpty()) { if (f.t > 20 * 120) leave(f, false); return; }
+        if (ps.isEmpty()) { if (++f.alone > 20 * 120) leave(f, false); return; }   // AUDIT: 2 minutes with nobody near (not 2 minutes into the fight)
+        f.alone = 0;
         int phase = z.getHealth() < max * cfg("phase3-at", 0.3) ? 3 : z.getHealth() < max * cfg("phase2-at", 0.65) ? 2 : 1;
         if (phase != f.phase) {
             f.phase = phase;

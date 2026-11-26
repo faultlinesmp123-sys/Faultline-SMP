@@ -3446,6 +3446,13 @@ Notes:
   `music-seconds` 161.5) plays `faultline:farlands.music` to each player in the Farlands (not inside a Spider Nest: its own
   music), loops it, stops the vanilla music keys (`VANILLA_MUSIC`) every 2 s and stops it when they leave; the datapack no
   longer sets the biome's music (it would overlap).
+  AUDIT 2: boss music wins over the Farlands track (`Farlands.bossMusic` = FaultlineBosses' public static
+  `hearingBossMusic(UUID)` by reflection); a Wall Crawler that is also an Elite spawns at FULL health (crawler() set it to 34 of
+  85); crawlers are found again on `EntitiesLoadEvent` (after a chunk reload they never pounced); stale `dropping` entries are
+  cleaned; Echoes have SAFE_FALL_DISTANCE 64 (rising over a wall they could die from the drop and spill the loot early); the Warden
+  leaves after 2 minutes with NOBODY near (`Fight.alone`; it used to leave the moment everyone stepped away once the fight was 2
+  minutes old); `/farlands crawler` looking straight up no longer makes a NaN spot. Ghasts mutate to Inferno (so the Farlands rule
+  never deletes them).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

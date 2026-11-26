@@ -156,7 +156,7 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
         s.customName(Component.text("Wall Crawler", NamedTextColor.DARK_RED));
         s.setCustomNameVisible(false);
         MimicPlayer.attr(s, Attribute.MAX_HEALTH, cfg("crawlers.health", 34));
-        s.setHealth(Math.min(cfg("crawlers.health", 34), s.getAttribute(Attribute.MAX_HEALTH).getValue()));
+        s.setHealth(s.getAttribute(Attribute.MAX_HEALTH).getValue());   // AUDIT: full (an Elite crawler's x2 modifier stays on it)
         MimicPlayer.attr(s, Attribute.ATTACK_DAMAGE, cfg("crawlers.damage", 6));
         MimicPlayer.attr(s, Attribute.MOVEMENT_SPEED, 0.36);
         MimicPlayer.attr(s, Attribute.FOLLOW_RANGE, 40);
@@ -203,7 +203,7 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
     void crawlerTick() {
         for (Iterator<UUID> it = crawlers.iterator(); it.hasNext(); ) {
             Entity e = Bukkit.getEntity(it.next());
-            if (!(e instanceof Spider s) || !s.isValid()) { it.remove(); continue; }
+            if (!(e instanceof Spider s) || !s.isValid()) { it.remove(); continue; }   // (dropping / pounceAt are cleaned every 30 s)
             Long dropT = dropping.get(s.getUniqueId());
             Player tg = s.getTarget() instanceof Player p && survival(p) ? p : null;
             if (tg == null) {
@@ -248,6 +248,12 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
             if (blk.getType().isOccluding()) return false;
         }
         return true;
+    }
+
+    /** AUDIT: a crawler whose chunk unloaded and loaded again is found again (it stopped pouncing). */
+    @EventHandler
+    public void onEntitiesLoad(org.bukkit.event.world.EntitiesLoadEvent e) {
+        for (Entity en : e.getEntities()) if (en instanceof Spider && en.getScoreboardTags().contains(CRAWLER)) crawlers.add(en.getUniqueId());
     }
 
     // ================================================================= ghasts
@@ -352,6 +358,7 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
         MimicPlayer.attr(z, Attribute.ARMOR, 8);
         MimicPlayer.attr(z, Attribute.FOLLOW_RANGE, 40);
         MimicPlayer.attr(z, Attribute.SPAWN_REINFORCEMENTS, 0);
+        MimicPlayer.attr(z, Attribute.SAFE_FALL_DISTANCE, 64);   // AUDIT: rising over a wall it must not die from the drop
         z.addPotionEffect(new PotionEffect(PotionEffectType.FIRE_RESISTANCE, PotionEffect.INFINITE_DURATION, 0, false, false));
         var eq = z.getEquipment();
         eq.clear();
@@ -601,7 +608,7 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
         if (!plugin.getConfig().getBoolean("farlands.music", true)) return;
         long now = System.currentTimeMillis();
         for (Player p : Bukkit.getOnlinePlayers()) {
-            boolean in = inCached(p) && !inNest(p);
+            boolean in = inCached(p) && !inNest(p) && !bossMusic(p);
             Long at = musicAt.get(p.getUniqueId());
             if (!in) {
                 if (at != null) { p.stopSound(MUSIC, SoundCategory.MUSIC); musicAt.remove(p.getUniqueId()); }
@@ -615,6 +622,21 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
             }
         }
         musicAt.keySet().removeIf(id -> Bukkit.getPlayer(id) == null);
+    }
+
+    private java.lang.reflect.Method bossMusicM;
+    private boolean bossMusicLooked;
+
+    /** AUDIT: a boss's music (FaultlineBosses: Jacob, the Kraken...) wins; ours would cut it off. */
+    boolean bossMusic(Player p) {
+        try {
+            if (!bossMusicLooked) {
+                bossMusicLooked = true;
+                org.bukkit.plugin.Plugin b = Bukkit.getPluginManager().getPlugin("FaultlineBosses");
+                if (b != null) bossMusicM = b.getClass().getMethod("hearingBossMusic", UUID.class);
+            }
+            return bossMusicM != null && Boolean.TRUE.equals(bossMusicM.invoke(null, p.getUniqueId()));
+        } catch (Throwable t) { bossMusicM = null; return false; }
     }
 
     boolean inNest(Player p) {
@@ -641,6 +663,7 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
                     if (random.nextDouble() < cfg("ghasts.chance", 0.25)) ghasts(p);
                 }
                 pounceAt.values().removeIf(t -> t < tick);
+                dropping.keySet().removeIf(id -> !crawlers.contains(id));
             }
         } catch (RuntimeException ex) {
             StackTraceElement at = Arrays.stream(ex.getStackTrace()).filter(st -> st.getClassName().startsWith("net.faultlinesmp")).findFirst().orElse(null);
@@ -676,7 +699,8 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
             case "crawler" -> {
                 if (p == null) return true;
                 Location at = wallSpot(p);
-                if (at == null) at = p.getLocation().add(p.getLocation().getDirection().setY(0).normalize().multiply(3));
+                Vector fwd = p.getLocation().getDirection().setY(0);
+                if (at == null) at = p.getLocation().add(fwd.lengthSquared() < 1e-4 ? new Vector(3, 0, 0) : fwd.normalize().multiply(3));
                 Spider sp = (Spider) p.getWorld().spawnEntity(at, EntityType.SPIDER, CreatureSpawnEvent.SpawnReason.CUSTOM, en -> en.addScoreboardTag(CRAWLER));
                 crawler(sp);
                 s.sendMessage(ChatColor.GREEN + "A Wall Crawler.");

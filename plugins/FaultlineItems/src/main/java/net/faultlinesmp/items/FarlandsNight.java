@@ -62,7 +62,9 @@ final class FarlandsNight implements Listener {
     private final FaultlineItems plugin;
     private final Farlands far;
     private final Random random = new Random();
-    final NamespacedKey sigilKey, bloodHp, bloodDmg;
+    final NamespacedKey sigilKey, bloodHp, bloodDmg, placedKey;
+    /** FaultlineSkills' own placed-block marks (same packing): blocks placed before ours existed count too. */
+    private static final NamespacedKey SKILLS_PLACED = NamespacedKey.fromString("faultlineskills:placed");
 
     private long bloodUntil;                       // server tick count it ends at (0 = off)
     private int tick, nextBloodCheck = 6000;
@@ -88,6 +90,7 @@ final class FarlandsNight implements Listener {
         sigilKey = new NamespacedKey(plugin, "rim_sigil");
         bloodHp = new NamespacedKey(plugin, "farlands_blood_hp");
         bloodDmg = new NamespacedKey(plugin, "farlands_blood_dmg");
+        placedKey = new NamespacedKey(plugin, "far_placed");
         Bukkit.getScheduler().runTask(plugin, () -> {
             for (World w : Bukkit.getWorlds()) for (Entity e : w.getEntities()) {
                 Set<String> t = e.getScoreboardTags();
@@ -256,7 +259,7 @@ final class FarlandsNight implements Listener {
             Long was = lastBlock.put(p.getUniqueId(), key);
             if (was != null && was == key) continue;   // only a NEW block rolls
             if (tick < collapseReady.getOrDefault(p.getUniqueId(), 0)) continue;
-            if (!CRUMBLE.contains(under.getType()) || !ledge(under)) continue;
+            if (!CRUMBLE.contains(under.getType()) || placed(under) || !ledge(under)) continue;
             if (random.nextDouble() >= cfg("collapse.chance", 0.04)) continue;
             List<Block> piece = piece(under);
             if (piece.size() < 4) continue;
@@ -304,6 +307,7 @@ final class FarlandsNight implements Listener {
             Block b = c.getRelative(x, y, z);
             if (b.getState(false) instanceof org.bukkit.block.TileState) return List.of();   // someone's stuff nearby
         }
+        if (anyPlaced(c, 4)) return List.of();   // a player built here: leave the whole spot alone
         double r = 2 + random.nextDouble() * 1.4;
         int depth = 2 + random.nextInt(2);
         int max = (int) cfg("collapse.max-blocks", 40);
@@ -311,7 +315,7 @@ final class FarlandsNight implements Listener {
             if (x * x + z * z > r * r) continue;
             for (int y = 0; y > -depth; y--) {
                 Block b = c.getRelative(x, y, z);
-                if (!CRUMBLE.contains(b.getType())) continue;
+                if (!CRUMBLE.contains(b.getType()) || placed(b)) continue;
                 out.add(b);
                 if (out.size() >= max) return out;
             }
@@ -320,6 +324,86 @@ final class FarlandsNight implements Listener {
         }
         if (w.getHighestBlockYAt(c.getX(), c.getZ()) > c.getY() + 2) return List.of();   // a cave ceiling, not a wall top
         return out;
+    }
+
+    // ---------------------------------------------------------- player-placed blocks never crumble
+    static int local(Block b) { return ((b.getX() & 15) << 16) | ((b.getZ() & 15) << 12) | ((b.getY() + 2048) & 4095); }
+
+    private static boolean has(int[] a, int me) {
+        if (a != null) for (int v : a) if (v == me) return true;
+        return false;
+    }
+
+    /** Placed by a player: our own Farlands mark, or FaultlineSkills' mark. */
+    boolean placed(Block b) {
+        org.bukkit.persistence.PersistentDataContainer pdc = b.getChunk().getPersistentDataContainer();
+        int me = local(b);
+        return has(pdc.get(placedKey, PersistentDataType.INTEGER_ARRAY), me)
+                || (SKILLS_PLACED != null && has(pdc.get(SKILLS_PLACED, PersistentDataType.INTEGER_ARRAY), me));
+    }
+
+    /** Any player-placed block within r (x/z) and 4 down / 2 up of c. Reads each chunk's marks once. */
+    boolean anyPlaced(Block c, int r) {
+        World w = c.getWorld();
+        for (int cx = (c.getX() - r) >> 4; cx <= (c.getX() + r) >> 4; cx++) for (int cz = (c.getZ() - r) >> 4; cz <= (c.getZ() + r) >> 4; cz++) {
+            if (!w.isChunkLoaded(cx, cz)) continue;
+            org.bukkit.persistence.PersistentDataContainer pdc = w.getChunkAt(cx, cz).getPersistentDataContainer();
+            for (NamespacedKey k : new NamespacedKey[]{placedKey, SKILLS_PLACED}) {
+                if (k == null) continue;
+                int[] a = pdc.get(k, PersistentDataType.INTEGER_ARRAY);
+                if (a == null) continue;
+                for (int v : a) {
+                    int x = (cx << 4) + ((v >> 16) & 15), z = (cz << 4) + ((v >> 12) & 15), y = (v & 4095) - 2048;
+                    if (Math.abs(x - c.getX()) <= r && Math.abs(z - c.getZ()) <= r && y <= c.getY() + 2 && y >= c.getY() - 4) return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    void mark(Block b, boolean on) {
+        Chunk ch = b.getChunk();
+        org.bukkit.persistence.PersistentDataContainer pdc = ch.getPersistentDataContainer();
+        int[] a = pdc.getOrDefault(placedKey, PersistentDataType.INTEGER_ARRAY, new int[0]);
+        int me = local(b), at = -1;
+        for (int i = 0; i < a.length; i++) if (a[i] == me) { at = i; break; }
+        if (on && at < 0) {
+            int[] n = Arrays.copyOf(a, a.length + 1);
+            n[a.length] = me;
+            pdc.set(placedKey, PersistentDataType.INTEGER_ARRAY, n);
+        } else if (!on && at >= 0) {
+            int[] n = new int[a.length - 1];
+            System.arraycopy(a, 0, n, 0, at);
+            System.arraycopy(a, at + 1, n, at, a.length - at - 1);
+            if (n.length == 0) pdc.remove(placedKey); else pdc.set(placedKey, PersistentDataType.INTEGER_ARRAY, n);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onPlaceMark(org.bukkit.event.block.BlockPlaceEvent e) {
+        Block b = e.getBlockPlaced();
+        if (CRUMBLE.contains(b.getType()) && Farlands.in(b.getLocation())) mark(b, true);
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onBreakMark(org.bukkit.event.block.BlockBreakEvent e) {
+        Block b = e.getBlock();
+        if (CRUMBLE.contains(b.getType()) && Farlands.in(b.getLocation())) mark(b, false);
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onPush(org.bukkit.event.block.BlockPistonExtendEvent e) { pushed(e.getBlocks(), e.getDirection()); }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onPull(org.bukkit.event.block.BlockPistonRetractEvent e) { pushed(e.getBlocks(), e.getDirection()); }
+
+    /** Anything a piston moves in the Farlands is someone's contraption: its new spot counts as placed. */
+    private void pushed(List<Block> blocks, org.bukkit.block.BlockFace dir) {
+        if (blocks.isEmpty() || !Farlands.in(blocks.get(0).getLocation())) return;
+        List<Block> moved = new ArrayList<>();
+        for (Block b : blocks) if (CRUMBLE.contains(b.getType())) moved.add(b);
+        for (Block b : moved) mark(b, false);
+        for (Block b : moved) mark(b.getRelative(dir), true);
     }
 
     private static void crack(Player v, Location l, float progress, int id) {
@@ -333,6 +417,7 @@ final class FarlandsNight implements Listener {
         w.playSound(mid, "minecraft:block.stone.break", SoundCategory.BLOCKS, 1.5f, 0.5f);
         for (Block b : c.blocks()) {
             if (!CRUMBLE.contains(b.getType()) && !(b.isPassable() && !b.getType().isAir())) continue;   // changed meanwhile
+            if (placed(b)) continue;   // a player put a block here while it cracked
             for (Player v : w.getPlayers()) if (v.getLocation().distanceSquared(b.getLocation()) < 64 * 64) crack(v, b.getLocation(), 0f, b.hashCode());
             BlockData data = b.getBlockData();
             boolean solid = CRUMBLE.contains(b.getType());

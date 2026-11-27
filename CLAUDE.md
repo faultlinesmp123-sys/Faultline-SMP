@@ -3641,6 +3641,12 @@ Notes:
   extras, nest ambient) use reason NATURAL but pick spots without vanilla's light check, and the Farlands' Wall Crawler packs are
   CUSTOM. Any hostile spawn with reason NATURAL / PATROL / REINFORCEMENTS, or CUSTOM tagged `faultline_wall_crawler`, is cancelled
   (LOWEST) when block light at its feet or head is over `light-limit`. Raids, bosses, sieges, eggs, spawners untouched.
+- **Placed blocks never collapse (Items, same 2.0.0)**: Farlands collapsing walls skip anything a player built. `FarlandsNight`
+  marks every CRUMBLE-type block placed in the Farlands in the chunk PDC `faultlineitems:far_placed` (int array, FaultlineSkills'
+  packing: x<<16 | z<<12 | y+2048), unmarks on break, moves marks with pistons; `placed(b)` also reads `faultlineskills:placed`
+  (stone-type blocks placed before this update). A placed block under you never rolls, a piece skips placed blocks, and any
+  placed block within 4 (x/z), 4 down / 2 up of the spot cancels the whole collapse (`anyPlaced`). Dirt / grass / gravel placed
+  before this update aren't marked. Tested (scratch `far/FarTest`).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

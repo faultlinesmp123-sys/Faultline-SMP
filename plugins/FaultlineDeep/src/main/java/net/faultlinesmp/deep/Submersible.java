@@ -399,9 +399,12 @@ final class Submersible implements Listener {
 
     /** A rider sees the cockpit round them instead of the hull (the hull's walls were in their face). */
     void inside(Sub s, Player p, int seat, boolean in) {
+        // the hull is ALWAYS hidden from the people inside it (its walls sat round their face); the cockpit only shows once the
+        // pack has its model (submersible.cockpit), otherwise they just see the water
+        boolean hide = in && pl.getConfig().getBoolean("submersible.hide-hull-for-riders", true);
+        for (Entity e : new Entity[]{s.body, s.prop, s.bed}) if (e != null && e.isValid()) { if (hide) p.hideEntity(pl, e); else if (e != s.bed) p.showEntity(pl, e); else if (Edition.bedrock(p)) p.showEntity(pl, e); }
         if (in && !cockpitOn()) in = false;
-        for (Entity e : new Entity[]{s.body, s.prop}) if (e != null && e.isValid()) { if (in) p.hideEntity(pl, e); else p.showEntity(pl, e); }
-        for (Interaction b : s.boxes) if (b != null && b.isValid()) { if (in) p.hideEntity(pl, b); else p.showEntity(pl, b); }
+        for (Interaction b : s.boxes) if (b != null && b.isValid()) { if (hide) p.hideEntity(pl, b); else p.showEntity(pl, b); }
         for (int i = 0; i < SEAT.length; i++) {
             ItemDisplay pit = s.pits[i];
             if (pit == null || !pit.isValid()) continue;
@@ -1030,7 +1033,8 @@ final class Submersible implements Listener {
                 a.getEquipment().setHelmet(it);
             });
             DeepMobs.attr(s.bed, org.bukkit.attribute.Attribute.SCALE, cfg("model-scale", 2.0));
-            for (Player p : l.getWorld().getPlayers()) if (Edition.bedrock(p)) p.showEntity(pl, s.bed);
+            List<Player> aboard = s.riders();
+            for (Player p : l.getWorld().getPlayers()) if (Edition.bedrock(p) && !aboard.contains(p)) p.showEntity(pl, s.bed);
         }
         s.bed.teleport(l);
     }

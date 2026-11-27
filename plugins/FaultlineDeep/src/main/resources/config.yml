@@ -67,6 +67,7 @@ submersible:
   # 2.0: four seats (the pilot up front); riders see a COCKPIT round their eyes instead of the hull's walls. auto = only once
   # the resource pack players download (FaultlineSMP.zip on main) has its model; on / off to force it.
   cockpit: auto
+  hide-hull-for-riders: true   # riders never see the hull's walls round their face (first person)
   seat-y: 0.43
   cockpit-scale: 1.0
 

@@ -150,7 +150,9 @@ public final class FaultlineWorld extends JavaPlugin {
 
     // ================================================================== resetting the Farlands' chunks
 
-    static final int RESET_FROM = 3360;   // the Farlands start at 3280 (+-70 wobble): region files wholly past this are Farlands only
+    /** The Farlands start at 3280 from 0,0 with a +-70 wobble and a 100-block blend: a column 3420+ out is ALWAYS Farlands, so a
+     *  region file wholly past this holds nothing else (spawn, the factions, the pyramids, the sky kingdom are all far inside). */
+    static final int RESET_FROM = 3420;
 
     File resetMarker() { return new File(getDataFolder(), "reset-farlands.txt"); }
 
@@ -190,7 +192,17 @@ public final class FaultlineWorld extends JavaPlugin {
             getLogger().warning("[World] the Farlands reset waits: this start loads the new datapack first. RESTART once more and the Farlands reset then.");
             return;
         }
+        // SAFETY: only while the main world is closed (at startup). Never move a file a loaded world is using.
+        if (Bukkit.getWorld(levelName()) != null) {
+            getLogger().warning("[World] the Farlands reset waits: the world '" + levelName() + "' is already open. It runs on the next full restart.");
+            return;
+        }
         File worldDir = new File(Bukkit.getWorldContainer(), levelName());
+        if (!new File(worldDir, "level.dat").isFile() || !new File(worldDir, "region").isDirectory()) {
+            getLogger().warning("[World] the Farlands reset: no world at " + worldDir.getPath() + " (nothing moved).");
+            if (!mk.delete()) mk.deleteOnExit();
+            return;
+        }
         String stamp = new java.text.SimpleDateFormat("yyyy-MM-dd_HH-mm-ss").format(new java.util.Date());
         File backup = new File(worldDir, "farlands_backup_" + stamp);
         int moved = 0, failed = 0;
@@ -217,7 +229,9 @@ public final class FaultlineWorld extends JavaPlugin {
             boolean cancel = java.util.Arrays.stream(args).anyMatch(a -> a.equalsIgnoreCase("cancel"));
             if (cancel) { sender.sendMessage(resetMarker().delete() ? "§3[World] §7Farlands reset cancelled." : "§3[World] §7No reset was waiting."); return true; }
             if (!confirm) {
-                sender.sendMessage("§3[World] §7" + files.size() + " region file(s) (" + (bytes / 1024 / 1024) + " MB) are wholly in the Farlands (" + from + "+ blocks out).");
+                int all = 0; File[] rf = new File(worldDir, "region").listFiles(); if (rf != null) for (File f : rf) if (f.getName().endsWith(".mca")) all++;
+                sender.sendMessage("§3[World] §7" + files.size() + " of " + all + " region file(s) (" + (bytes / 1024 / 1024) + " MB) are wholly in the Farlands (" + from + "+ blocks from 0,0).");
+                sender.sendMessage("§aKEPT: §7everything within ~" + from + " blocks of 0,0 (spawn, the factions, pyramids, the sky kingdom, your bases there), the Nether, the End and the Dark Ocean.");
                 sender.sendMessage("§7On the next restart they're moved to a backup folder in the world, and those chunks generate fresh");
                 sender.sendMessage("§7(the Broken Lands, rain, no snow). §cEverything built out there goes with them §7(it stays in the backup).");
                 sender.sendMessage("§e/fworld resetfarlands confirm §7to do it  ·  §7from <blocks> §8(further out only)§7  ·  cancel");

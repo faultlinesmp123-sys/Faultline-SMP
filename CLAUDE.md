@@ -3785,11 +3785,14 @@ Notes:
   area cancelled; switching it on clears the snow on top of the ground in the area's loaded chunks (4 chunks a tick).
 - **Resetting the Farlands (World, same 2.0.0)**: Paper can't regenerate chunks in a running server, so `/fworld resetfarlands`
   (`faultlineworld.admin` / console) shows how many region files are WHOLLY in the Farlands (nearest point >= `RESET_FROM` 3360 from
-  0,0; `from <blocks>` for further out only), `confirm` writes `plugins/FaultlineWorld/reset-farlands.txt`, `cancel` removes it. On the
+  0,0; audited: 3420 since the Farlands' edge wobbles +-70 with a 100-block blend; `from <blocks>` for further out only), `confirm` writes `plugins/FaultlineWorld/reset-farlands.txt`, `cancel` removes it. On the
   next start `FaultlineWorld.resetFarlandsIfAsked()` (onEnable at STARTUP, before the main world opens) MOVES those r.X.Z.mca files
   from <world>/region, /entities and /poi to <world>/farlands_backup_<time>/ (same disk, nothing deleted), so the chunks generate fresh
   (the Broken Lands, the right biomes, no snow). It waits a restart while the new datapack isn't loaded yet (`faultline:missing_chunks`
-  missing): chunks made then would save the fallback biome again. Regions that also hold inner land (the first ring past 3280) stay.
+  missing): chunks made then would save the fallback biome again. It refuses while the main world is open (`Bukkit.getWorld(level)` != null)
+  or there's no level.dat / region folder. Regions that also hold inner land stay. Checked (scratch `rst/ResetCheck`): of a 20000 x 20000
+  world's 1764 region files 1600 move, 164 stay; all 33 landmarks (spawn, pyramids, holes, faction sites, cores, sky islands; furthest
+  2797 out) are in kept regions; every column of the moved regions near the edge is Farlands on 5 seeds; nothing under 3420 moves.
 - **The Submersible, round 2 (Deep, Items config hash, FaultlineSMP.zip, FaultlineDeep.mcpack; same 2.0.0)**: the model is rebuilt
   (`tools/deep_assets.py submersible()`, 134 boxes, ppb 24: a longer riveted hull with dark bands, a glass bow dome in steel ribs +
   headlight, a conning tower (hatch with a wheel, handrail, periscope, antenna with a red beacon), 3 glowing portholes a side, side
@@ -3807,7 +3810,9 @@ Notes:
   model in the pack players download (else a missing-texture cube on their face), on / off. Three click boxes along the 5-block hull
   (`BOX_AT` -1.75 / 0 / 1.6), `HALF_W` 1.2, nose / tail checks at +2.35 / -2.85. Implosion hurts everyone aboard. FaultlineSMP.zip
   24.1 MiB (only the sub's 8 files replaced; deep_assets.py is deterministic: everything else came out byte-identical), new hash in
-  Items' config. Tested (scratch `sub/SubTest`: 2 riders, own cockpits, hull hidden / shown, seats follow).
+  Items' config. Tested (scratch `sub/SubTest`: 2 riders, own cockpits, hull hidden / shown, seats follow). FIRST PERSON: the hull (body,
+  prop, click boxes, the Bedrock stand) is hidden from its riders ALWAYS (`submersible.hide-hull-for-riders` true), not only when the
+  cockpit is on: with the pack not yet on main the cockpit stays off and riders had the hull's walls round their face again.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

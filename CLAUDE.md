@@ -3790,6 +3790,24 @@ Notes:
   from <world>/region, /entities and /poi to <world>/farlands_backup_<time>/ (same disk, nothing deleted), so the chunks generate fresh
   (the Broken Lands, the right biomes, no snow). It waits a restart while the new datapack isn't loaded yet (`faultline:missing_chunks`
   missing): chunks made then would save the fallback biome again. Regions that also hold inner land (the first ring past 3280) stay.
+- **The Submersible, round 2 (Deep, Items config hash, FaultlineSMP.zip, FaultlineDeep.mcpack; same 2.0.0)**: the model is rebuilt
+  (`tools/deep_assets.py submersible()`, 134 boxes, ppb 24: a longer riveted hull with dark bands, a glass bow dome in steel ribs +
+  headlight, a conning tower (hatch with a wheel, handrail, periscope, antenna with a red beacon), 3 glowing portholes a side, side
+  thruster pods (red / green running lights, blue nozzles), twin floodlights, folded manipulator arms with claws, rusty ballast
+  tanks, skids, side ladder, cross tail fins, a DUCTED prop (bone pivot now -1.44: DeepParts)). FOUR SEATS (`Submersible.SEAT`,
+  blocks in the hull's frame: pilot {1.45, 0} under the dome, {0.1, +-0.55}, rear {-1.15, 0}): each an invisible non-persistent
+  MARKER stand (tag `faultline_submersible_seat`, `bySeat` map) moved with the hull (`seatLoc`, `submersible.seat-y` 0.43 = eyes at the
+  hull's middle; RETAIN_PASSENGERS, only when it moved); seat 0 drives (`rider()`; someone riding the stand itself from before still
+  counts), the rest ride along (air, Water Breathing, their own HUD; F sonar works for anyone, Q light only the pilot); clicking fills
+  the first free seat, "It's full (4 seats)". THE POV: riders don't see the hull (body, prop, click boxes hidden for them) but a COCKPIT
+  (`submersible_cockpit()` in deep_assets.py, Java only, `faultline:deep/submersible_cockpit`, origin = the rider's eye: window frame +
+  mullion, slanted dashboard with glowing screens, a sonar ring, a joystick, side walls with portholes and gauges, ceiling lamp and
+  pipes): one ItemDisplay per seat, `setVisibleByDefault(false)`, shown only to its rider, teleported to their eye each tick with the
+  hull's yaw / pitch / roll (`cockpit-scale` 1). `submersible.cockpit` auto (default) = only once FaultlineItems' `packHas` sees the
+  model in the pack players download (else a missing-texture cube on their face), on / off. Three click boxes along the 5-block hull
+  (`BOX_AT` -1.75 / 0 / 1.6), `HALF_W` 1.2, nose / tail checks at +2.35 / -2.85. Implosion hurts everyone aboard. FaultlineSMP.zip
+  24.1 MiB (only the sub's 8 files replaced; deep_assets.py is deterministic: everything else came out byte-identical), new hash in
+  Items' config. Tested (scratch `sub/SubTest`: 2 riders, own cockpits, hull hidden / shown, seats follow).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

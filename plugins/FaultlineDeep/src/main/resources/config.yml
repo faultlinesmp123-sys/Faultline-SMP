@@ -64,6 +64,11 @@ submersible:
   sonar-radius: 48
   sonar-cooldown-seconds: 12
   owner-only-cargo: true
+  # 2.0: four seats (the pilot up front); riders see a COCKPIT round their eyes instead of the hull's walls. auto = only once
+  # the resource pack players download (FaultlineSMP.zip on main) has its model; on / off to force it.
+  cockpit: auto
+  seat-y: 0.43
+  cockpit-scale: 1.0
 
 # THE LEVIATHAN MIGRATION (1.8.0): a pod of great whales crossing the Sunlit Sea; at the end the eldest sinks into a whale
 # fall (bones + a chest). Killing a whale can bring the Umbral Leviathan up. /deep migration [start|stop]

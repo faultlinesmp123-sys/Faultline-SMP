@@ -244,7 +244,7 @@ final class DeepParts {
         BONES.put("greatwhale", List.of(new Bone("finl", 0.1600f, -0.1000f, -0.1600f), new Bone("finr", 0.1600f, -0.1000f, 0.1600f), new Bone("tail", -0.4000f, 0.0000f, 0.0000f)));
         ANIMS.put("greatwhale", List.of(new Anim("tail", true, 0.0000f, 0.0000f, 12.0000f, 3.0000f, 0.0000f, false), new Anim("finl", true, 10.0000f, 0.0000f, 14.0000f, 3.0000f, 0.0000f, false), new Anim("finr", true, -10.0000f, 0.0000f, -14.0000f, 3.0000f, 0.0000f, false), new Anim("body", false, 0.0000f, 1.0000f, 0.0000f, 6.0000f, 0.0000f, false)));
         BODY_PIVOT.put("greatwhale", new float[]{0.0000f, 0.0000f, 0.0000f});
-        BONES.put("submersible", List.of(new Bone("prop", -1.0800f, 0.0000f, 0.0000f)));
+        BONES.put("submersible", List.of(new Bone("prop", -1.4400f, 0.0000f, 0.0000f)));
         ANIMS.put("submersible", List.of(new Anim("prop", true, 0.0000f, 0.0000f, 180.0000f, 0.4000f, 0.0000f, false)));
         BODY_PIVOT.put("submersible", new float[]{0.0000f, 0.0000f, 0.0000f});
         BONES.put("marroweel", List.of(new Bone("jaw", 0.1400f, -0.0500f, 0.0000f), new Bone("s1", -0.0600f, 0.0000f, 0.0000f), new Bone("s2", -0.3400f, 0.0000f, 0.0000f), new Bone("s3", -0.6400f, 0.0000f, 0.0000f)));

@@ -2690,34 +2690,152 @@ def greatwhale():
 
 
 def submersible():
-    """The Submersible (FaultlineDeep 1.8.0): a little yellow research sub. A round hull you sit inside, a big glass dome at
-    the front, a headlight, fins and a propeller (its own bone) at the back. +x = forward; the origin is where the pilot sits."""
-    p = Part("submersible", 32, 512)
-    hull = W.grad((236, 196, 50), (190, 148, 30), 5, (250, 220, 90), 0.03)
-    dark = solid((50, 54, 62), 4)
-    glass = solid((150, 214, 236), 3)
-    rounded(p, -0.75, -0.55, -0.55, 0.45, 0.55, 0.55, hull, 0.24)                                  # the hull
-    rounded(p, 0.25, -0.42, -0.45, 0.85, 0.48, 0.45, glass, 0.2)                                    # the glass dome
-    for z in (-0.46, 0.46): p.add(0.25, -0.44, z - 0.03, 0.88, 0.5, z + 0.03, dark)               # the dome's frame
-    p.add(0.84, -0.25, -0.1, 0.92, -0.1, 0.1, W.glow((255, 250, 210)))                            # the headlight
-    p.add(-0.4, 0.5, -0.12, 0.1, 0.72, 0.12, hull)                                                 # the hatch on top
-    p.add(-0.2, 0.72, -0.08, 0.0, 0.78, 0.08, dark)
-    for s in (-1, 1):
-        a, b = sorted((s * 0.55, s * 0.95))
-        p.add(-0.5, -0.12, a, -0.1, -0.04, b, hull)                                                # side fins
-        a2, b2 = sorted((s * 0.56, s * 0.62))
-        p.add(-0.2, -0.3, a2, 0.15, 0.2, b2, dark)                                                 # side portholes' rims
-    p.add(-1.05, -0.06, -0.06, -0.75, 0.06, 0.06, dark)                                           # the prop shaft
-    p.add(-1.0, 0.0, -0.02, -0.7, 0.55, 0.02, hull)                                               # the tail fin
-    p.add(-1.0, -0.4, -0.02, -0.7, 0.0, 0.02, hull)
-    p.add(-0.9, -0.3, -0.3, -0.75, -0.22, 0.3, dark)                                              # skids
-    p.bone("prop", (-1.08, 0, 0))
-    for (y, z) in ((0.3, 0), (-0.3, 0), (0, 0.3), (0, -0.3)): p.add(-1.12, min(0, y) - 0.04 + (0.04 if y == 0 else 0), min(0, z) - 0.04 + (0.04 if z == 0 else 0),
-                                                                 -1.06, max(0, y) + 0.04 - (0.04 if y == 0 else 0), max(0, z) + 0.04 - (0.04 if z == 0 else 0), solid((210, 210, 220), 3))
+    """The Submersible (Deep 1.8.0; 2.0: rebuilt, four seats). A yellow research sub: a long riveted hull with dark bands, a
+    big glass bow dome ribbed in steel, a conning tower with a hatch, handrail, periscope and a red beacon, three portholes a
+    side, two side thruster pods, twin floodlights + a headlight, folded manipulator arms with claws under the bow, ballast tanks,
+    skids, a ducted propeller (its own bone) behind cross-shaped tail fins. +x = forward; the origin is the hull's middle."""
+    p = Part("submersible", 24, 1024)
+    hull = W.grad((240, 200, 52), (196, 150, 32), 5, (150, 112, 22), 0.02)
+    hull_d = W.grad((205, 165, 40), (160, 120, 25), 5)
+    dark = solid((46, 50, 58), 4)
+    steel = W.grad((150, 156, 165), (98, 104, 114), 4)
+    rust = W.grad((120, 84, 46), (84, 56, 30), 6, (60, 40, 22), 0.06)
+    glass = solid((140, 210, 236), 3)
+    glass_d = solid((70, 140, 175), 3)
+    lamp = glow((255, 248, 205))
+    red = glow((255, 60, 50))
+    green = glow((80, 255, 120))
+    # ---- the hull: a long rounded body, tapering to the stern
+    rounded(p, -0.95, -0.5, -0.52, 0.62, 0.5, 0.52, hull, 0.2)
+    rounded(p, -1.15, -0.4, -0.42, -0.95, 0.4, 0.42, hull_d, 0.16)
+    rounded(p, -1.3, -0.28, -0.3, -1.15, 0.28, 0.3, hull_d, 0.1)
+    # dark bands round it + rows of rivets (thin dark boxes)
+    for x in (-0.78, -0.3, 0.18):
+        rounded(p, x, -0.52, -0.54, x + 0.05, 0.52, 0.54, dark, 0.2)
+    for x in (-0.6, -0.1, 0.38):
+        for z in (-0.53, 0.52):
+            p.add(x, 0.05, z, x + 0.02, 0.07, z + 0.01, dark); p.add(x, -0.15, z, x + 0.02, -0.13, z + 0.01, dark)
+    # ---- the bow: a big glass dome in steel ribs
+    rounded(p, 0.55, -0.42, -0.46, 1.05, 0.44, 0.46, glass, 0.18)
+    rounded(p, 1.05, -0.3, -0.34, 1.2, 0.32, 0.34, glass_d, 0.12)
+    for x in (0.7, 0.88):
+        p.add(x, 0.4, -0.3, x + 0.04, 0.47, 0.3, steel)      # ribs over the top
+        p.add(x, -0.46, -0.3, x + 0.04, -0.39, 0.3, steel)   # and under
+        p.add(x, -0.3, -0.49, x + 0.04, 0.3, -0.43, steel)   # the sides
+        p.add(x, -0.3, 0.43, x + 0.04, 0.3, 0.49, steel)
+    p.add(0.55, -0.02, -0.47, 1.06, 0.02, 0.47, steel)        # the waist ring round the dome
+    p.add(1.18, -0.06, -0.06, 1.24, 0.06, 0.06, lamp)          # the headlight in the dome's nose
+    # ---- the conning tower: hatch, handrail, periscope, beacon
+    rounded(p, -0.42, 0.45, -0.26, 0.12, 0.72, 0.26, hull, 0.08)
+    rounded(p, -0.3, 0.72, -0.17, 0.0, 0.8, 0.17, steel, 0.05)          # the round hatch
+    p.add(-0.17, 0.8, -0.02, -0.13, 0.84, 0.02, dark)                  # its wheel hub
+    p.add(-0.27, 0.8, -0.005, -0.03, 0.82, 0.005, dark); p.add(-0.155, 0.8, -0.12, -0.145, 0.82, 0.12, dark)
+    for z in (-0.3, 0.3):                                               # the handrail
+        p.add(-0.5, 0.74, z - 0.015, 0.2, 0.765, z + 0.015, steel)
+        for x in (-0.48, -0.15, 0.18): p.add(x, 0.5, z - 0.015, x + 0.03, 0.74, z + 0.015, steel)
+    p.add(0.04, 0.72, 0.1, 0.08, 1.02, 0.14, steel)                     # periscope
+    p.add(0.04, 0.98, 0.1, 0.16, 1.03, 0.14, steel); p.add(0.15, 0.975, 0.105, 0.17, 1.035, 0.135, glass_d)
+    p.add(-0.38, 0.72, -0.16, -0.35, 0.98, -0.13, dark)                 # antenna + beacon
+    p.add(-0.39, 0.98, -0.17, -0.34, 1.03, -0.12, red)
+    # ---- portholes: 3 a side (rim, glass, a warm glow behind)
+    for x in (-0.65, -0.35, -0.05):
+        for z, d in ((-0.52, -1), (0.52, 1)):
+            z0, z1 = sorted((z, z + d * 0.035))
+            p.add(x - 0.09, -0.02, z0, x + 0.09, 0.16, z1, dark)
+            z2, z3 = sorted((z + d * 0.02, z + d * 0.04))
+            p.add(x - 0.06, 0.01, z2, x + 0.06, 0.13, z3, glow((255, 220, 150)))
+    # ---- side thruster pods (with nozzles and a running light)
+    for z, d in ((-0.62, -1), (0.62, 1)):
+        z0, z1 = sorted((z, z + d * 0.16))
+        rounded(p, -0.75, -0.22, z0, 0.0, -0.04, z1, hull_d, 0.04)
+        p.add(-0.82, -0.2, z0 + 0.02, -0.75, -0.06, z1 - 0.02, dark)
+        p.add(-0.86, -0.17, z0 + 0.04, -0.82, -0.09, z1 - 0.04, glow((120, 200, 255)))
+        p.add(0.0, -0.17, z0 + 0.03, 0.05, -0.09, z1 - 0.03, red if d < 0 else green)
+        zz0, zz1 = sorted((z - d * 0.1, z))
+        p.add(-0.5, -0.16, zz0, -0.42, -0.1, zz1, steel); p.add(-0.2, -0.16, zz0, -0.12, -0.1, zz1, steel)   # pylons
+    # ---- twin floodlights on the bow's shoulders
+    for z in (-0.4, 0.4):
+        p.add(0.5, 0.36, z - 0.08, 0.64, 0.48, z + 0.08, dark)
+        p.add(0.64, 0.38, z - 0.06, 0.67, 0.46, z + 0.06, lamp)
+    # ---- the manipulator arms, folded under the bow (with claws)
+    for z in (-0.22, 0.22):
+        p.add(0.35, -0.6, z - 0.04, 0.42, -0.48, z + 0.04, steel)           # shoulder
+        p.add(0.42, -0.62, z - 0.03, 0.85, -0.56, z + 0.03, steel)          # upper arm
+        p.add(0.82, -0.64, z - 0.035, 0.88, -0.54, z + 0.035, dark)         # elbow
+        p.add(0.88, -0.6, z - 0.025, 1.05, -0.56, z + 0.025, steel)         # forearm
+        p.add(1.05, -0.62, z - 0.05, 1.1, -0.54, z - 0.02, dark); p.add(1.05, -0.62, z + 0.02, 1.1, -0.54, z + 0.05, dark)   # claw
+    # ---- ballast tanks + skids
+    for z in (-0.3, 0.3):
+        rounded(p, -0.8, -0.66, z - 0.12, 0.3, -0.48, z + 0.12, rust, 0.05)
+        p.add(-0.95, -0.76, z - 0.03, 0.55, -0.71, z + 0.03, dark)          # skid rail
+        for x in (-0.7, -0.1, 0.4): p.add(x, -0.71, z - 0.02, x + 0.04, -0.62, z + 0.02, dark)
+    p.add(0.52, -0.76, -0.33, 0.6, -0.71, 0.33, dark)                       # the skids' front bar
+    # ---- a ladder of steps up the side
+    for i in range(3): p.add(-0.62, -0.3 + i * 0.22, 0.52, -0.5, -0.27 + i * 0.22, 0.58, steel)
+    # ---- the stern: cross-shaped tail fins (dark tips), the prop duct
+    p.add(-1.35, 0.28, -0.025, -1.05, 0.62, 0.025, hull); p.add(-1.35, 0.55, -0.03, -1.15, 0.64, 0.03, dark)
+    p.add(-1.35, -0.62, -0.025, -1.05, -0.28, 0.025, hull); p.add(-1.35, -0.64, -0.03, -1.15, -0.55, 0.03, dark)
+    p.add(-1.35, -0.025, -0.62, -1.05, 0.025, -0.3, hull); p.add(-1.35, -0.03, -0.64, -1.15, 0.03, -0.55, dark)
+    p.add(-1.35, -0.025, 0.3, -1.05, 0.025, 0.62, hull); p.add(-1.35, -0.03, 0.55, -1.15, 0.03, 0.64, dark)
+    p.add(-1.42, -0.05, -0.05, -1.3, 0.05, 0.05, dark)                      # the prop shaft
+    for (y0, y1, z0, z1) in ((0.24, 0.29, -0.29, 0.29), (-0.29, -0.24, -0.29, 0.29), (-0.29, 0.29, 0.24, 0.29), (-0.29, 0.29, -0.29, -0.24)):
+        p.add(-1.5, y0, z0, -1.36, y1, z1, steel)                           # the duct (a square ring)
+    p.bone("prop", (-1.44, 0, 0))
+    for (y, z) in ((0.22, 0), (-0.22, 0), (0, 0.22), (0, -0.22)):
+        p.add(-1.47, min(0, y) - 0.03 + (0.03 if y == 0 else 0), min(0, z) - 0.03 + (0.03 if z == 0 else 0),
+              -1.42, max(0, y) + 0.03 - (0.03 if y == 0 else 0), max(0, z) + 0.03 - (0.03 if z == 0 else 0), solid((215, 215, 225), 3))
+    p.add(-1.48, -0.04, -0.04, -1.41, 0.04, 0.04, dark)                     # the hub
     p.bone(None)
     p.anim("prop", "rot", (0, 0, 0), 0.8)  # (Java spins it itself while it moves; Bedrock below)
     p.anims = [("prop", "rot", (0, 0, 180), 0.4, 0.0)]
     return p
+
+
+def submersible_cockpit():
+    """2.0: what a Submersible's riders see instead of the hull (Java only, shown to them alone): a cockpit round their eyes.
+    The origin is the rider's EYE, +x = forward: a window frame, a dashboard with glowing screens and a sonar ring, a joystick,
+    side walls with portholes, a ceiling with a lamp and pipes. Every face that matters faces the eye."""
+    p = Part("submersible_cockpit", 24, 512)
+    wall = W.grad((205, 165, 40), (150, 112, 24), 4)
+    dark = solid((38, 42, 50), 4)
+    panel = W.grad((70, 76, 86), (44, 48, 56), 4)
+    steel = W.grad((150, 156, 165), (98, 104, 114), 4)
+    screen = glow((80, 230, 200))
+    amber = glow((255, 190, 70))
+    redl = glow((255, 70, 60))
+    lamp = glow((255, 245, 200))
+    # the window frame (the open window shows the sea)
+    p.add(0.78, 0.42, -0.72, 0.84, 0.6, 0.72, steel)        # top
+    p.add(0.78, -0.62, -0.72, 0.84, -0.3, 0.72, steel)      # bottom
+    p.add(0.78, -0.3, -0.72, 0.84, 0.42, -0.56, steel)      # left
+    p.add(0.78, -0.3, 0.56, 0.84, 0.42, 0.72, steel)        # right
+    p.add(0.8, -0.3, -0.015, 0.84, 0.42, 0.015, dark)       # the mullion
+    for z in (-0.4, 0.4): p.add(0.76, 0.38, z - 0.02, 0.84, 0.44, z + 0.02, dark)   # bolts
+    # the dashboard: a slanted console under the window, screens on it
+    p.add(0.42, -0.62, -0.6, 0.78, -0.42, 0.6, panel)
+    p.add(0.55, -0.42, -0.6, 0.78, -0.34, 0.6, panel)
+    p.add(0.41, -0.47, -0.36, 0.43, -0.42, -0.08, screen)   # left screen
+    p.add(0.41, -0.47, 0.08, 0.43, -0.42, 0.36, screen)     # right screen
+    p.add(0.54, -0.41, -0.06, 0.56, -0.35, 0.06, amber)     # the sonar ring (middle)
+    for i, z in enumerate((-0.52, -0.46, 0.46, 0.52)): p.add(0.54, -0.41, z - 0.02, 0.56, -0.38, z + 0.02, (redl, amber, amber, redl)[i])
+    p.add(0.36, -0.66, 0.16, 0.4, -0.5, 0.2, dark); p.add(0.35, -0.52, 0.15, 0.41, -0.48, 0.21, redl)   # the joystick
+    # side walls with a porthole each
+    for z, d in ((-0.78, -1), (0.78, 1)):
+        z0, z1 = sorted((z, z + d * 0.06))
+        p.add(-0.6, 0.15, z0, 0.78, 0.6, z1, wall)
+        p.add(-0.6, -0.62, z0, 0.78, -0.15, z1, wall)
+        p.add(-0.6, -0.15, z0, -0.05, 0.15, z1, wall)
+        p.add(0.25, -0.15, z0, 0.78, 0.15, z1, wall)
+        zz0, zz1 = sorted((z - d * 0.02, z))
+        for (x0, y0, x1, y1) in ((-0.07, 0.13, 0.27, 0.17), (-0.07, -0.17, 0.27, -0.13), (-0.07, -0.13, -0.03, 0.13), (0.23, -0.13, 0.27, 0.13)):
+            p.add(x0, y0, zz0, x1, y1, zz1, steel)                       # the porthole's rim
+        p.add(-0.4, -0.05, zz0, -0.36, 0.05, zz1, amber)                   # a gauge
+    # the ceiling: plates, a lamp, two pipes
+    p.add(-0.6, 0.6, -0.78, 0.84, 0.66, 0.78, wall)
+    p.add(0.0, 0.57, -0.1, 0.3, 0.6, 0.1, lamp)
+    for z in (-0.55, 0.55): p.add(-0.6, 0.52, z - 0.03, 0.78, 0.58, z + 0.03, steel)
+    return p
+
 
 TRENCH_MOBS = [hadalsnail, anglerking, bonecrawler, palestalker, crushjelly, tubeworm, greatwhale, submersible]
 
@@ -3368,6 +3486,15 @@ def main():
         model["textures"] = {"t": f"{NS}:item/wild/{bn}", "particle": f"{NS}:item/wild/{bn}"}
         W.jw(os.path.join(A, "models/item/wild", bn + ".json"), model)
         W.jw(os.path.join(A, "items/wild", bn + ".json"), {"model": {"type": "minecraft:model", "model": f"{NS}:item/wild/{bn}"}})
+    # 2.0: the Submersible's cockpit (Java only: shown to its riders instead of the hull)
+    part = submersible_cockpit()
+    img, boxes = W.build(part, 7200)
+    os.makedirs(os.path.join(A, "textures/item/deep"), exist_ok=True)
+    img.save(os.path.join(A, "textures/item/deep", part.name + ".png"))
+    model = java_model(part, boxes)
+    model["textures"] = {"t": f"{NS}:item/deep/{part.name}", "particle": f"{NS}:item/deep/{part.name}"}
+    W.jw(os.path.join(A, "models/item/deep", part.name + ".json"), model)
+    W.jw(os.path.join(A, "items/deep", part.name + ".json"), {"model": {"type": "minecraft:model", "model": f"{NS}:item/deep/{part.name}"}})
     # the Dark Loot Bag (FaultlineItems DarkLoot, paper + faultline:dark_loot_bag)
     bag = bag_icon()
     W.flat_item(A, "dark_loot_bag", bag)

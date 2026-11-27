@@ -88,7 +88,10 @@ final class Submersible implements Listener {
     final class Sub implements InventoryHolder {
         final ArmorStand stand;
         ItemDisplay body, prop;
-        Interaction box;
+        final Interaction[] boxes = new Interaction[BOX_AT.length];
+        final ArmorStand[] seats = new ArmorStand[SEAT.length];
+        final ItemDisplay[] pits = new ItemDisplay[SEAT.length];
+        final Location[] seatAt = new Location[SEAT.length];
         ArmorStand bed;
         float yaw, pitch, roll;
         Vector vel = new Vector();
@@ -100,7 +103,25 @@ final class Submersible implements Listener {
         long sonarAt = -99999;
         Player lastRider;
         Sub(ArmorStand stand) { this.stand = stand; yaw = stand.getLocation().getYaw(); }
-        Player rider() { for (Entity e : stand.getPassengers()) if (e instanceof Player p) return p; return null; }
+        /** The pilot (seat 0; or, from before 2.0, someone riding the stand itself). */
+        Player rider() {
+            Player p = seatRider(0);
+            if (p != null) return p;
+            for (Entity e : stand.getPassengers()) if (e instanceof Player q) return q;
+            return null;
+        }
+        Player seatRider(int i) {
+            ArmorStand st = seats[i];
+            if (st == null) return null;
+            for (Entity e : st.getPassengers()) if (e instanceof Player p) return p;
+            return null;
+        }
+        List<Player> riders() {
+            List<Player> out = new ArrayList<>(4);
+            for (int i = 0; i < SEAT.length; i++) { Player p = seatRider(i); if (p != null) out.add(p); }
+            for (Entity e : stand.getPassengers()) if (e instanceof Player q && !out.contains(q)) out.add(q);
+            return out;
+        }
         double hull() { return stand.getPersistentDataContainer().getOrDefault(hullKey, PersistentDataType.DOUBLE, 100.0); }
         void hull(double h) { stand.getPersistentDataContainer().set(hullKey, PersistentDataType.DOUBLE, Math.max(0, Math.min(100, h))); }
         boolean plated() { return stand.getPersistentDataContainer().has(plateKey, PersistentDataType.BYTE); }
@@ -118,8 +139,15 @@ final class Submersible implements Listener {
         Location center() { return stand.getLocation().add(0, CENTER, 0); }
     }
 
+    /** 2.0: FOUR SEATS (blocks, in the hull's frame: x = forward, z = right): the pilot under the bow dome, two side by side
+     *  in the middle, one at the back. Each is an invisible marker stand the rider sits on. */
+    static final double[][] SEAT = {{1.45, 0}, {0.1, -0.55}, {0.1, 0.55}, {-1.15, 0}};
+    /** The click boxes along the (5-block) hull: stern, middle, bow. */
+    static final double[] BOX_AT = {-1.75, 0, 1.6};
+    static final String SEAT_TAG = "faultline_submersible_seat";
+
     /** The hull's middle sits this far above the vehicle stand's feet, and its box reaches HALF_W across and HALF_H up/down. */
-    static final double CENTER = 1.4, HALF_W = 1.05, HALF_H = 1.05;
+    static final double CENTER = 1.4, HALF_W = 1.2, HALF_H = 1.05;
 
     Submersible(FaultlineDeep pl) {
         this.pl = pl;
@@ -263,21 +291,125 @@ final class Submersible implements Listener {
         });
     }
 
-    /** The click/punch box: an Interaction the size of the hull, kept on it every tick (not saved: remade on load). */
+    /** The click/punch boxes: Interactions along the hull, kept on it every tick (not saved: remade on load). */
     void box(Sub s) {
-        if (s.box != null && s.box.isValid()) return;
-        Location l = s.stand.getLocation().add(0, CENTER - HALF_H, 0);
-        s.box = l.getWorld().spawn(l, Interaction.class, i -> {
-            i.setInteractionWidth((float) (HALF_W * 2 + 0.4));
-            i.setInteractionHeight((float) (HALF_H * 2 + 0.2));
-            i.setResponsive(true);
-            i.setPersistent(false);
-            i.addScoreboardTag(BOX);
-            i.addScoreboardTag(PART);
-        });
-        Player r = s.rider();
-        if (r != null) r.hideEntity(pl, s.box);
+        for (int k = 0; k < BOX_AT.length; k++) {
+            if (s.boxes[k] != null && s.boxes[k].isValid()) continue;
+            Location l = s.stand.getLocation().add(0, CENTER - HALF_H, 0);
+            s.boxes[k] = l.getWorld().spawn(l, Interaction.class, i -> {
+                i.setInteractionWidth((float) (HALF_W * 2 + 0.3));
+                i.setInteractionHeight((float) (HALF_H * 2 + 0.2));
+                i.setResponsive(true);
+                i.setPersistent(false);
+                i.addScoreboardTag(BOX);
+                i.addScoreboardTag(PART);
+            });
+            for (Player r : s.riders()) r.hideEntity(pl, s.boxes[k]);
+            s.lastBox = null;
+        }
     }
+
+    /** Where a seat sits now (the stand's feet + the seat's offset turned with the hull). */
+    Location seatLoc(Sub s, int i) {
+        double yr = Math.toRadians(s.yaw);
+        double fx = -Math.sin(yr), fz = Math.cos(yr), rx = -fz, rz = fx;
+        Location l = s.stand.getLocation().add(fx * SEAT[i][0] + rx * SEAT[i][1], cfg("seat-y", 0.43), fz * SEAT[i][0] + rz * SEAT[i][1]);
+        l.setYaw(s.yaw); l.setPitch(0);
+        return l;
+    }
+
+    /** The four seats + the cockpit each rider sees (not saved: remade when needed). */
+    void seats(Sub s) {
+        for (int i = 0; i < SEAT.length; i++) {
+            if (s.seats[i] == null || !s.seats[i].isValid()) {
+                Location l = seatLoc(s, i);
+                s.seats[i] = l.getWorld().spawn(l, ArmorStand.class, a -> {
+                    a.setInvisible(true); a.setMarker(true); a.setGravity(false); a.setInvulnerable(true); a.setSilent(true);
+                    a.setBasePlate(false); a.setPersistent(false); a.addScoreboardTag(SEAT_TAG); a.addScoreboardTag(PART);
+                });
+                s.seatAt[i] = l;
+                bySeat.put(s.seats[i].getUniqueId(), s);
+            }
+            if (s.pits[i] == null || !s.pits[i].isValid()) {
+                Location l = seatLoc(s, i);
+                l.setYaw(0);
+                s.pits[i] = l.getWorld().spawn(l, ItemDisplay.class, d -> {
+                    ItemStack it = new ItemStack(Material.PAPER);
+                    ItemMeta m = it.getItemMeta();
+                    m.setItemModel(NamespacedKey.fromString("faultline:deep/submersible_cockpit"));
+                    it.setItemMeta(m);
+                    d.setItemStack(it);
+                    d.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.NONE);
+                    d.setVisibleByDefault(false);
+                    d.setPersistent(false);
+                    d.addScoreboardTag(PART);
+                    d.addScoreboardTag("faultline_no_bedrock_fx");
+                    d.setTeleportDuration(1);
+                    d.setInterpolationDuration(1);
+                    d.setViewRange(0.5f);
+                    d.setBrightness(new org.bukkit.entity.Display.Brightness(13, 13));
+                });
+            }
+        }
+    }
+
+    /** The seats follow the hull; each rider's cockpit sits on their eyes, turned with the hull. */
+    void moveSeats(Sub s) {
+        for (int i = 0; i < SEAT.length; i++) {
+            ArmorStand st = s.seats[i];
+            if (st == null || !st.isValid()) continue;
+            Location want = seatLoc(s, i);
+            Location was = s.seatAt[i];
+            if (was == null || !was.getWorld().equals(want.getWorld()) || was.distanceSquared(want) > 1e-5 || Math.abs(was.getYaw() - want.getYaw()) > 0.05) {
+                st.teleport(want, io.papermc.paper.entity.TeleportFlag.EntityState.RETAIN_PASSENGERS);
+                s.seatAt[i] = want;
+            }
+            Player r = s.seatRider(i);
+            ItemDisplay pit = s.pits[i];
+            if (r == null || pit == null || !pit.isValid()) continue;
+            Location eye = r.getEyeLocation();
+            eye.setYaw(0); eye.setPitch(0);
+            pit.teleport(eye);
+            Quaternionf frame = new Quaternionf().rotationY((float) Math.toRadians(-s.yaw)).rotateX((float) Math.toRadians(s.pitch))
+                    .rotateZ((float) Math.toRadians(s.roll)).rotateY((float) Math.toRadians(-90));
+            float sc = (float) cfg("cockpit-scale", 1.0);
+            pit.setInterpolationDelay(0);
+            pit.setTransformation(new Transformation(new Vector3f(), frame.mul(new Quaternionf().rotationY((float) Math.PI)), new Vector3f(sc, sc, sc), new Quaternionf()));
+        }
+    }
+
+    private Boolean cockpitCache; private long cockpitAt;
+
+    /** The cockpit only once the pack players download has its model (else they'd see a missing-texture cube on their face):
+     *  submersible.cockpit auto (asks FaultlineItems' packHas, once a minute) | on | off. */
+    boolean cockpitOn() {
+        String mode = pl.getConfig().getString("submersible.cockpit", "auto");
+        if (mode.equalsIgnoreCase("on") || mode.equalsIgnoreCase("true")) return true;
+        if (mode.equalsIgnoreCase("off") || mode.equalsIgnoreCase("false")) return false;
+        long now = System.currentTimeMillis();
+        if (cockpitCache != null && now - cockpitAt < 60_000) return cockpitCache;
+        boolean has = false;
+        try {
+            org.bukkit.plugin.Plugin items = Bukkit.getPluginManager().getPlugin("FaultlineItems");
+            if (items != null) has = Boolean.TRUE.equals(items.getClass().getMethod("packHas", String.class).invoke(items, "assets/faultline/items/deep/submersible_cockpit.json"));
+        } catch (Throwable ignored) { }
+        cockpitCache = has; cockpitAt = now;
+        return has;
+    }
+
+    /** A rider sees the cockpit round them instead of the hull (the hull's walls were in their face). */
+    void inside(Sub s, Player p, int seat, boolean in) {
+        if (in && !cockpitOn()) in = false;
+        for (Entity e : new Entity[]{s.body, s.prop}) if (e != null && e.isValid()) { if (in) p.hideEntity(pl, e); else p.showEntity(pl, e); }
+        for (Interaction b : s.boxes) if (b != null && b.isValid()) { if (in) p.hideEntity(pl, b); else p.showEntity(pl, b); }
+        for (int i = 0; i < SEAT.length; i++) {
+            ItemDisplay pit = s.pits[i];
+            if (pit == null || !pit.isValid()) continue;
+            if (in && i == seat) p.showEntity(pl, pit); else p.hideEntity(pl, pit);
+        }
+    }
+
+    final Map<UUID, Sub> bySeat = new HashMap<>();
 
     /** A sub that comes back with its chunk (it's a saved entity): know it again. */
     void adopt(Entity e) {
@@ -306,7 +438,7 @@ final class Submersible implements Listener {
         subs.put(st.getUniqueId(), s);
     }
 
-    boolean owned(Interaction i) { for (Sub s : subs.values()) if (i.equals(s.box)) return true; return false; }
+    boolean owned(Interaction i) { for (Sub s : subs.values()) for (Interaction b : s.boxes) if (i.equals(b)) return true; return false; }
 
     @EventHandler public void onLoad(EntitiesLoadEvent e) { for (Entity en : e.getEntities()) if (en instanceof ArmorStand) adopt(en); }
 
@@ -319,19 +451,40 @@ final class Submersible implements Listener {
         saveHold(s);
         if (s.hold != null) for (org.bukkit.entity.HumanEntity h : new ArrayList<>(s.hold.getViewers())) h.closeInventory();
         if (s.bed != null && s.bed.isValid()) s.bed.remove();
-        if (s.box != null && s.box.isValid()) s.box.remove();
+        for (Interaction b : s.boxes) if (b != null && b.isValid()) b.remove();
+        for (int i = 0; i < SEAT.length; i++) {
+            ArmorStand st = s.seats[i];
+            if (st != null) { bySeat.remove(st.getUniqueId()); for (Entity e : new ArrayList<>(st.getPassengers())) st.removePassenger(e); if (st.isValid()) st.remove(); }
+            if (s.pits[i] != null && s.pits[i].isValid()) s.pits[i].remove();
+        }
     }
 
     Sub of(Entity e) {
         Sub s = subs.get(e.getUniqueId());
         if (s != null) return s;
         if (e.getVehicle() != null && !(e instanceof Player)) { s = subs.get(e.getVehicle().getUniqueId()); if (s != null) return s; }
-        for (Sub x : subs.values()) if (e.equals(x.bed) || e.equals(x.box)) return x;
+        if (e.getVehicle() != null && !(e instanceof Player)) { Sub b = bySeat.get(e.getVehicle().getUniqueId()); if (b != null) return b; }
+        Sub seat = bySeat.get(e.getUniqueId());
+        if (seat != null) return seat;
+        for (Sub x : subs.values()) { if (e.equals(x.bed)) return x; for (Interaction b : x.boxes) if (e.equals(b)) return x; }
         return null;
     }
 
     /** Is this player inside a sub right now? (Ocean: no pressure, no dark) */
-    boolean riding(Player p) { return p.getVehicle() != null && subs.containsKey(p.getVehicle().getUniqueId()); }
+    boolean riding(Player p) { return subOf(p) != null; }
+
+    /** The sub this player is sitting in (any seat), or null. */
+    Sub subOf(Player p) {
+        Entity v = p.getVehicle();
+        if (v == null) return null;
+        Sub s = bySeat.get(v.getUniqueId());
+        return s != null ? s : subs.get(v.getUniqueId());
+    }
+
+    int seatOf(Sub s, Player p) {
+        for (int i = 0; i < SEAT.length; i++) if (p.equals(s.seatRider(i))) return i;
+        return -1;
+    }
 
     boolean mayUse(Sub s, Player p) {
         String o = s.owner();
@@ -381,13 +534,17 @@ final class Submersible implements Listener {
             p.playSound(s.stand.getLocation(), Sound.BLOCK_IRON_TRAPDOOR_OPEN, SoundCategory.PLAYERS, 1f, 0.9f);
             return;
         }
-        if (s.rider() != null) { p.sendActionBar(net.kyori.adventure.text.Component.text("Someone's already inside.", net.kyori.adventure.text.format.NamedTextColor.GRAY)); return; }
-        if (!s.stand.addPassenger(p)) return;
+        seats(s);
+        int seat = -1;
+        for (int i = 0; i < SEAT.length; i++) if (s.seatRider(i) == null && !(i == 0 && s.rider() != null)) { seat = i; break; }
+        if (seat < 0) { p.sendActionBar(net.kyori.adventure.text.Component.text("It's full (4 seats).", net.kyori.adventure.text.format.NamedTextColor.GRAY)); return; }
+        if (!s.seats[seat].addPassenger(p)) return;
         s.lastRider = p;
-        if (s.box != null) p.hideEntity(pl, s.box);
+        inside(s, p, seat, true);
         p.playSound(s.stand.getLocation(), Sound.BLOCK_IRON_TRAPDOOR_CLOSE, SoundCategory.PLAYERS, 1f, 0.7f);
-        p.sendMessage(ChatColor.YELLOW + "Submersible: " + ChatColor.GRAY + "it turns where you look. W thrust, S brake, A/D slide, Jump up, Sprint full speed. "
+        if (seat == 0) p.sendMessage(ChatColor.YELLOW + "Submersible (pilot): " + ChatColor.GRAY + "it turns where you look. W thrust, S brake, A/D slide, Jump up, Sprint full speed. "
                 + ChatColor.AQUA + "F" + ChatColor.GRAY + " sonar, " + ChatColor.AQUA + "Q" + ChatColor.GRAY + " headlight, sneak to climb out.");
+        else p.sendMessage(ChatColor.YELLOW + "Submersible (seat " + (seat + 1) + "): " + ChatColor.GRAY + "you're a passenger. " + ChatColor.AQUA + "F" + ChatColor.GRAY + " sonar, sneak to climb out.");
     }
 
     @EventHandler public void onHoldClick(InventoryClickEvent e) {
@@ -441,7 +598,7 @@ final class Submersible implements Listener {
         if (owner != null && !owner.equals(p.getUniqueId().toString()) && !p.hasPermission("faultlinedeep.admin")) {
             p.sendActionBar(net.kyori.adventure.text.Component.text("It isn't yours.", net.kyori.adventure.text.format.NamedTextColor.RED)); return;
         }
-        if (s.rider() != null) { p.sendActionBar(net.kyori.adventure.text.Component.text("Someone's inside it.", net.kyori.adventure.text.format.NamedTextColor.GRAY)); return; }
+        if (!s.riders().isEmpty()) { p.sendActionBar(net.kyori.adventure.text.Component.text("Someone's inside it.", net.kyori.adventure.text.format.NamedTextColor.GRAY)); return; }
         if (s.hold != null) for (org.bukkit.entity.HumanEntity h : new ArrayList<>(s.hold.getViewers())) h.closeInventory();
         saveHold(s);
         ItemStack it = item(s.hull(), s.plated(), s.stand.getPersistentDataContainer().get(cargoKey, PersistentDataType.BYTE_ARRAY));
@@ -460,8 +617,9 @@ final class Submersible implements Listener {
     /** Bites, shots and blasts on someone inside hit the hull instead (a boss's moves still reach you). */
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onRiderHurt(EntityDamageEvent e) {
-        if (!(e.getEntity() instanceof Player p) || !riding(p)) return;
-        Sub s = subs.get(p.getVehicle().getUniqueId());
+        if (!(e.getEntity() instanceof Player p)) return;
+        Sub s = subOf(p);
+        if (s == null) return;
         switch (e.getCause()) {
             case DROWNING, SUFFOCATION, FALL, FLY_INTO_WALL -> e.setCancelled(true);
             case ENTITY_ATTACK, ENTITY_SWEEP_ATTACK, PROJECTILE, ENTITY_EXPLOSION, BLOCK_EXPLOSION, POISON, MAGIC, THORNS -> {
@@ -478,10 +636,12 @@ final class Submersible implements Listener {
     /** Climbing out: put them on top of the hull (or beside it) a tick later, never inside it or a wall. */
     @EventHandler public void onDismount(EntityDismountEvent e) {
         if (!(e.getEntity() instanceof Player p)) return;
-        Sub s = subs.get(e.getDismounted().getUniqueId());
+        Sub s = bySeat.get(e.getDismounted().getUniqueId());
+        if (s == null) s = subs.get(e.getDismounted().getUniqueId());
         if (s == null) return;
-        unlight(s);
-        if (s.box != null && s.box.isValid()) p.showEntity(pl, s.box);
+        boolean pilot = s.seats[0] != null && e.getDismounted().equals(s.seats[0]) || e.getDismounted().equals(s.stand);
+        if (pilot) unlight(s);
+        inside(s, p, -1, false);
         Location base = s.stand.getLocation();
         if (!pl.isEnabled()) return;
         Bukkit.getScheduler().runTask(pl, () -> {
@@ -504,18 +664,20 @@ final class Submersible implements Listener {
     @EventHandler(priority = EventPriority.HIGH)
     public void onSwap(PlayerSwapHandItemsEvent e) {
         Player p = e.getPlayer();
-        if (!riding(p)) return;
+        Sub s = subOf(p);
+        if (s == null) return;
         e.setCancelled(true);
-        sonar(subs.get(p.getVehicle().getUniqueId()), p);
+        sonar(s, p);
     }
 
     /** Q inside = the headlight on/off. */
     @EventHandler(priority = EventPriority.HIGH)
     public void onDrop(PlayerDropItemEvent e) {
         Player p = e.getPlayer();
-        if (!riding(p)) return;
+        Sub s = subOf(p);
+        if (s == null) return;
         e.setCancelled(true);
-        Sub s = subs.get(p.getVehicle().getUniqueId());
+        if (!p.equals(s.rider())) { p.sendActionBar(net.kyori.adventure.text.Component.text("Only the pilot works the headlight.", net.kyori.adventure.text.format.NamedTextColor.GRAY)); return; }
         s.lamp(!s.lamp());
         if (!s.lamp()) unlight(s);
         p.playSound(p, Sound.BLOCK_LEVER_CLICK, SoundCategory.PLAYERS, 1f, s.lamp() ? 1.4f : 0.8f);
@@ -575,11 +737,24 @@ final class Submersible implements Listener {
             if (!s.stand.isValid()) { subs.remove(s.stand.getUniqueId()); forget(s); continue; }
             try {
                 box(s);
+                seats(s);
                 Player p = s.rider();
                 if (p != null) drive(s, p); else idle(s);
-                if (s.box != null && s.box.isValid()) {
-                    Location bl = s.stand.getLocation().add(0, CENTER - HALF_H - 0.1, 0);
-                    if (s.lastBox == null || s.lastBox.distanceSquared(bl) > 1e-6 || !s.box.getWorld().equals(bl.getWorld())) { s.box.teleport(bl); s.lastBox = bl; }
+                Location bl = s.stand.getLocation();
+                if (s.lastBox == null || s.lastBox.distanceSquared(bl) > 1e-6 || Math.abs(s.lastBox.getYaw() - s.yaw) > 0.05 || !s.lastBox.getWorld().equals(bl.getWorld())) {
+                    double yr = Math.toRadians(s.yaw), fx = -Math.sin(yr), fz = Math.cos(yr);
+                    for (int k = 0; k < BOX_AT.length; k++) if (s.boxes[k] != null && s.boxes[k].isValid())
+                        s.boxes[k].teleport(bl.clone().add(fx * BOX_AT[k], CENTER - HALF_H - 0.1, fz * BOX_AT[k]));
+                    s.lastBox = bl.clone(); s.lastBox.setYaw(s.yaw);
+                }
+                moveSeats(s);
+                // the passengers breathe too, and see the hull and depth
+                for (Player r : s.riders()) {
+                    if (r.equals(p)) continue;
+                    r.setRemainingAir(r.getMaximumAir());
+                    if (ticks % 40 == 0) r.addPotionEffect(new PotionEffect(PotionEffectType.WATER_BREATHING, 100, 0, true, false, false));
+                    if (ticks % 10 == 0) r.sendActionBar(ChatColor.YELLOW + "Passenger " + ChatColor.GRAY + "| Hull " + (int) s.hull() + "% | y " + s.stand.getLocation().getBlockY()
+                            + " | " + String.format("%.1f", s.vel.length() * 20) + " b/s");
                 }
                 pose(s);
                 if (ticks % 2 == 0) bedrock(s);
@@ -744,7 +919,7 @@ final class Submersible implements Listener {
     /** The nose and the tail stick out past the square box: they need water / air too. */
     static boolean ends(Location l, float yaw) {
         double fx = -Math.sin(Math.toRadians(yaw)), fz = Math.cos(Math.toRadians(yaw));
-        for (double d : new double[]{1.75, -2.1}) {
+        for (double d : new double[]{2.35, -2.85}) {
             Location c = l.clone().add(fx * d, CENTER, fz * d);
             if (!loaded(c)) return false;
             Block b = c.getBlock();
@@ -755,7 +930,7 @@ final class Submersible implements Listener {
 
     void implode(Sub s) {
         Location l = s.center();
-        Player p = s.rider();
+        List<Player> aboard = s.riders();
         World w = l.getWorld();
         w.playSound(l, Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.PLAYERS, 2f, 0.6f);
         w.playSound(l, Sound.BLOCK_GLASS_BREAK, SoundCategory.PLAYERS, 2f, 0.5f);
@@ -767,7 +942,7 @@ final class Submersible implements Listener {
         s.stand.getPersistentDataContainer().remove(cargoKey);
         remove(s);
         if (cargo != null) for (ItemStack it : cargo) if (it != null && !it.getType().isAir()) w.dropItemNaturally(l, it);
-        if (p != null) {
+        for (Player p : aboard) {
             p.damage(cfg("implode-damage", 10));
             p.sendMessage(ChatColor.RED + "" + ChatColor.BOLD + "The Submersible's hull gave way!" + ChatColor.GRAY + " (Hadal Plating keeps it whole below y " + (int) cfg("safe-y", -40) + ".)");
         }
@@ -863,7 +1038,7 @@ final class Submersible implements Listener {
     static boolean anyBedrock(World w) { for (Player p : w.getPlayers()) if (Edition.bedrock(p)) return true; return false; }
 
     void shutdown() {
-        for (Sub s : subs.values()) { Player p = s.rider(); if (p != null) p.leaveVehicle(); forget(s); }
+        for (Sub s : subs.values()) { for (Player p : s.riders()) p.leaveVehicle(); forget(s); }
         subs.clear();
     }
 

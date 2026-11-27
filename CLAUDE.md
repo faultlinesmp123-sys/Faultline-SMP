@@ -3616,6 +3616,11 @@ Notes:
   fight) or in a `no-minimap-worlds` world (sends NO_MINIMAP, "Minimaps are off in combat."), and back after (`RESET_XAERO`
   "§r§e§s§e§t§x§a§e§r§o" then the fair-play codes again; `mapOff` set). VoxelMap gets its off-codes on join (`voxel`: "&3 &6 &3 &6 &3
   &6 &d" no cave mode, "... &e" no radar; `voxel-codes`). The reset and VoxelMap codes are from memory: edit the config if wrong.
+- **Spawn points (World, Items; same 2.0.0)**: FaultlineWorld put the world spawn back on island A on EVERY start, so a
+  `/setworldspawn` was undone by each restart. Now only a brand-new world (full time < 1200) is moved, once (world PDC
+  `faultlineworld:spawn_set`); after that the world spawn is whatever staff set. Spawn Pads never override a respawn the game
+  is doing at a bed / anchor (`isBedSpawn` / `isAnchorSpawn` = forget the pad), and `/spawnpoint` (cause COMMAND) clears a pad
+  too. Respawn anchors still only work in the Nether (vanilla; the Nether is dimlocked).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

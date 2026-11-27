@@ -2,7 +2,7 @@
 # On a brand new server this plugin installs its datapack (world/datapacks/faultline_world.zip) and the bukkit.yml
 # generator line, then stops the server once. Start it again: the new world is generated on that start.
 stop-after-install: true
-set-spawn: true
+set-spawn: true          # a NEW world's spawn goes on island A once; /setworldspawn sticks after that
 border-size: 20000
 
 protect:

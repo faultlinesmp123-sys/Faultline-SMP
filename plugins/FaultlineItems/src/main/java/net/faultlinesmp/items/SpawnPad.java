@@ -508,7 +508,7 @@ final class SpawnPad implements Listener {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onSetSpawn(com.destroystokyo.paper.event.player.PlayerSetSpawnEvent e) {
         String c = e.getCause().name();
-        if (c.equals("BED") || c.equals("RESPAWN_ANCHOR")) forget(e.getPlayer());
+        if (c.equals("BED") || c.equals("RESPAWN_ANCHOR") || c.equals("COMMAND")) forget(e.getPlayer()); // a bed, an anchor or /spawnpoint set later wins
     }
 
     @EventHandler(priority = EventPriority.HIGH)
@@ -517,6 +517,8 @@ final class SpawnPad implements Listener {
         String s = p.getPersistentDataContainer().get(spawnKey, PersistentDataType.STRING);
         if (s == null || !on()) return;
         try { if (e.getRespawnReason() != PlayerRespawnEvent.RespawnReason.DEATH) return; } catch (RuntimeException | LinkageError ignored) { }
+        // a bed / anchor the game is respawning them at was set after the pad (setting a pad clears the vanilla point): it wins
+        try { if (e.isBedSpawn() || e.isAnchorSpawn()) { forget(p); return; } } catch (RuntimeException | LinkageError ignored) { }
         String[] a = s.split(";");
         World w = a.length == 4 ? Bukkit.getWorld(a[0]) : null;
         if (w == null) return;

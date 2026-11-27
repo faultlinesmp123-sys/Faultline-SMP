@@ -130,9 +130,14 @@ public final class FaultlineWorld extends JavaPlugin {
             getLogger().warning("[World] the main world isn't using the Faultline generator (it was made before FaultlineWorld). Delete the world folder (server stopped) to make the new one.");
             return;
         }
-        if (getConfig().getBoolean("set-spawn", true)) {
+        // The world spawn is put on island A ONCE (world PDC faultlineworld:spawn_set). It used to be reset on every start,
+        // which undid /setworldspawn after each restart.
+        org.bukkit.NamespacedKey setKey = new org.bukkit.NamespacedKey(this, "spawn_set");
+        if (getConfig().getBoolean("set-spawn", true) && !w.getPersistentDataContainer().has(setKey, org.bukkit.persistence.PersistentDataType.BYTE)) {
             Location s = new Location(w, Layout.SPAWN_X + 0.5, Layout.SPAWN_Y + 1, Layout.SPAWN_Z + 0.5);
-            if (w.getSpawnLocation().distanceSquared(s) > 4) w.setSpawnLocation(s);
+            // only a brand-new world is moved: on a running world the spawn may have been set by staff on purpose
+            if (w.getFullTime() < 1200 && w.getSpawnLocation().distanceSquared(s) > 4) w.setSpawnLocation(s);
+            w.getPersistentDataContainer().set(setKey, org.bukkit.persistence.PersistentDataType.BYTE, (byte) 1);
         }
         WorldBorder b = w.getWorldBorder();
         int size = getConfig().getInt("border-size", Layout.BORDER * 2);

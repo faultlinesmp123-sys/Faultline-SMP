@@ -3697,6 +3697,12 @@ Notes:
   The Lucid Locket's model is now the vanilla clock (the first ones pointed at a model the pack lacks; `fixLockets` converts).
   Index: The Faceless, Lantern of Sanity, guide. Tested (scratch `far/FarTest`: freeze + unfreeze, rot, moonless time, echo storm
   flag, Faceless closes in unwatched / frozen watched, lantern drops insanity, scrambled coords at x 9500, woke 70 blocks off).
+- **Lost + real words (Items; same 2.0.0)**: LOST (`FarlandsDread.displace`, `farlands-dread.displace:` chance 0.05 every 5 min
+  per player in the Farlands, 40-150 blocks, +8 insanity; never riding / gliding / sleeping / in combat = `riptideLock.inCombat`):
+  Darkness + Blindness, a second later teleported to open ground elsewhere in the Farlands, "...where am I?". Admin `/farlands
+  lost [player]`. REAL WORDS (`Insanity.onChat` keeps the last 200 chat lines, async-safe; `fakeChat` half the time replays a
+  real player's real message as chat, a whisper, or a broken lowercase echo; your own words come back under someone else's name).
+  Tested (`far/FarTest`: moved 85 blocks).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

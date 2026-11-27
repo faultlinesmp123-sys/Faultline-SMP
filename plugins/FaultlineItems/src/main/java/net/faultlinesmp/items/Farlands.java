@@ -952,7 +952,7 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
                 spawnTrader(p);
                 s.sendMessage(ChatColor.GREEN + "The Rim Trader is here.");
             }
-            case "stillness", "rot", "longnight", "echostorm", "faceless", "lantern", "dread", "wakeelsewhere" -> {
+            case "stillness", "rot", "longnight", "echostorm", "faceless", "lantern", "dread", "wakeelsewhere", "lost" -> {
                 FarlandsDread d = plugin.farlandsDread;
                 if (d == null) { s.sendMessage(ChatColor.RED + "Off."); return true; }
                 Player t = a.length > 1 && Bukkit.getPlayerExact(a[a.length - 1]) != null ? Bukkit.getPlayerExact(a[a.length - 1]) : p;
@@ -974,6 +974,7 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
                             case "rot" -> d.rot(t);
                             case "faceless" -> s.sendMessage(d.spawnFaceless(t) != null ? ChatColor.GREEN + "Don't look away." : ChatColor.RED + "No spot behind them.");
                             case "wakeelsewhere" -> d.moveSleeper(t);
+                            case "lost" -> { if (!d.displace(t)) s.sendMessage(ChatColor.RED + "No spot (or they're riding / gliding / in combat)."); }
                             default -> { }
                         }
                         if (!sub.equals("faceless")) s.sendMessage(ChatColor.GREEN + "Done (" + sub + " on " + t.getName() + ").");
@@ -1060,6 +1061,6 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
     @Override
     public List<String> onTabComplete(CommandSender s, Command cmd, String label, String[] a) {
         if (!s.hasPermission(PERM) || a.length != 1) return List.of();
-        return Legendary.filter(List.of("status", "trader", "mimic", "insanity", "stillness", "rot", "longnight", "echostorm", "faceless", "lantern", "dread", "crawler", "ghast", "echoes", "music", "bloodrain", "sigil", "watcher", "collapse", "siege", "storm", "fake", "chart", "shards"), a[0]);
+        return Legendary.filter(List.of("status", "trader", "mimic", "insanity", "stillness", "rot", "longnight", "echostorm", "faceless", "lantern", "dread", "lost", "crawler", "ghast", "echoes", "music", "bloodrain", "sigil", "watcher", "collapse", "siege", "storm", "fake", "chart", "shards"), a[0]);
     }
 }

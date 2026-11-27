@@ -1237,6 +1237,7 @@ farlands-dread:
   wrong-depth: 0.7        # past this Rim Depth compasses spin, /coords lies, the screen goes red
   sleep: {enabled: true, chance: 0.35, after-seconds: 4, min-distance: 25, max-distance: 70, insanity: 15}
   lantern: {radius: 8, start-minutes: 10, max-hours: 4}
+  displace: {enabled: true, chance: 0.05, every-minutes: 5, min-distance: 40, max-distance: 150, insanity: 8}   # you blink and you're somewhere else (never riding / gliding / in combat)
 
 outer-rim:
   enabled: true

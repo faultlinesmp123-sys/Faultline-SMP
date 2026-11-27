@@ -168,6 +168,7 @@ final class FarlandsDread implements Listener {
             if (OuterRim.safe(p)) continue;
             if (tick % 600 == 0 && !still(p) && !far().hushed(p) && tick >= stillReady.getOrDefault(id, 0)
                     && rnd.nextDouble() < cfg("stillness.chance", 0.05)) startStill(p);
+            if (tick % (int) (cfg("displace.every-minutes", 5) * 1200) == 900 && rnd.nextDouble() < cfg("displace.chance", 0.05)) displace(p);
             if (tick % 600 == 300 && tick >= rotReady.getOrDefault(id, 0) && rnd.nextDouble() < cfg("chunk-rot.chance", 0.06)) {
                 rotReady.put(id, tick + (int) (cfg("chunk-rot.cooldown-seconds", 180) * 20));
                 rot(p);
@@ -628,6 +629,29 @@ final class FarlandsDread implements Listener {
             if (plugin.insanity != null) plugin.insanity.force(p, plugin.insanity.get(p) + cfg("sleep.insanity", 15));
             plugin.getLogger().info("[Dread] " + p.getName() + " woke up somewhere else");
         });
+    }
+
+    // ================================================================= lost: you blink and you're somewhere else
+
+    boolean displace(Player p) {
+        if (!flag("displace.enabled") || p.isInsideVehicle() || p.isGliding() || p.isSleeping() || (plugin.riptideLock != null && plugin.riptideLock.inCombat(p))) return false;
+        Location to = null;
+        for (int i = 0; i < 12 && to == null; i++) to = ground(p, cfg("displace.min-distance", 40), cfg("displace.max-distance", 150));
+        if (to == null) return false;
+        Location dest = to;
+        dest.setYaw(rnd.nextFloat() * 360);
+        p.addPotionEffect(new PotionEffect(PotionEffectType.DARKNESS, 60, 0, false, false, false));
+        p.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 30, 0, false, false, false));
+        p.playSound(p, "minecraft:block.portal.trigger", SoundCategory.AMBIENT, 0.25f, 0.4f);
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (!p.isOnline() || !far().inCached(p)) return;
+            p.teleport(dest);
+            p.playSound(p, "minecraft:ambient.cave", SoundCategory.AMBIENT, 1f, 0.6f);
+            p.sendActionBar(Component.text("...where am I?", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, true));
+            if (plugin.insanity != null) plugin.insanity.force(p, plugin.insanity.get(p) + cfg("displace.insanity", 8));
+            plugin.getLogger().info("[Dread] " + p.getName() + " was moved " + (int) p.getLocation().distance(dest) + " blocks");
+        }, 20);
+        return true;
     }
 
     // ================================================================= 10. the Lantern of Sanity

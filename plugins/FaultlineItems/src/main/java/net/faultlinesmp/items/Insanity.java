@@ -11,6 +11,7 @@ import org.bukkit.block.Block;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
@@ -319,10 +320,49 @@ final class Insanity implements Listener {
         void remove() { if (m.isValid()) m.remove(); }
     }
 
+    /** Real lines real players said (name, message), newest last; the chat is async, so it's locked. */
+    private final LinkedList<String[]> heard = new LinkedList<>();
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onChat(io.papermc.paper.event.player.AsyncChatEvent e) {
+        String text;
+        try { text = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(e.message()); }
+        catch (RuntimeException | LinkageError ex) { return; }
+        if (text.isBlank() || text.length() > 120) return;
+        synchronized (heard) {
+            heard.add(new String[]{e.getPlayer().getName(), e.getPlayer().getUniqueId().toString(), text});
+            while (heard.size() > 200) heard.removeFirst();
+        }
+    }
+
+    /** One real line someone else said (sometimes something YOU said, said back to you by someone else). */
+    private String[] realLine(Player p) {
+        synchronized (heard) {
+            if (heard.isEmpty()) return null;
+            List<String[]> pool = new ArrayList<>(heard);
+            for (int i = 0; i < 8; i++) {
+                String[] l = pool.get(rnd.nextInt(pool.size()));
+                if (!l[1].equals(p.getUniqueId().toString()) || rnd.nextInt(4) == 0) return l;
+            }
+            return pool.get(pool.size() - 1);
+        }
+    }
+
     private void fakeChat(Player p) {
         List<OfflinePlayer> all = new ArrayList<>();
         for (OfflinePlayer o : Bukkit.getOfflinePlayers()) if (o.getName() != null && !o.getUniqueId().equals(p.getUniqueId())) all.add(o);
         String name = all.isEmpty() ? p.getName() : all.get(rnd.nextInt(all.size())).getName();
+        String[] real = realLine(p);
+        // REAL WORDS: a real player's real message, out of place (or your own words in someone else's mouth)
+        if (real != null && rnd.nextInt(2) == 0) {
+            String who = real[1].equals(p.getUniqueId().toString()) ? name : real[0];
+            switch (rnd.nextInt(3)) {
+                case 0 -> p.sendMessage(Component.text("<" + who + "> " + real[2]));
+                case 1 -> p.sendMessage(Component.text(who + " whispers to you: " + real[2], NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, true));
+                default -> p.sendMessage(Component.text("<" + who + "> " + real[2].toLowerCase(Locale.ROOT).replaceAll("[^a-z ]", "") + "...", NamedTextColor.DARK_GRAY));
+            }
+            return;
+        }
         switch (rnd.nextInt(5)) {
             case 0 -> p.sendMessage(Component.translatable("multiplayer.player.joined", NamedTextColor.YELLOW, Component.text(name)));
             case 1 -> p.sendMessage(Component.translatable("multiplayer.player.left", NamedTextColor.YELLOW, Component.text(name)));

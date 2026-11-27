@@ -688,7 +688,7 @@ farlands:
   mob-damage: 0.25        # and +25% damage (FaultlineRaids makes every one of them an Elite or a Mutant)
   crawlers: {spider-share: 0.3, pack-chance: 0.3, max-near: 4, health: 34, damage: 6, drop-damage: 9}
   ghasts: {chance: 0.25, max: 2}
-  mimics: {enabled: true, chance: 0.005, cooldown-minutes: 45, max: 2}   # RARE wild player mimics (offline players' gear); /farlands mimic
+  mimics: {enabled: true, chance: 0.005, cooldown-minutes: 45, max: 2, delay-seconds: 60, hush-radius: 96}   # RARE: every monster vanishes, a minute of silence, then "<name> joined the game" and an offline player's mimic comes for you; /farlands mimic [now]
   echoes: {enabled: true, share: 0.35, expire-days: 3, health: 80, damage: 9, xp: 120}
   trader: {chance-per-minute: 0.04, minutes: 15}
   music: true             # "Underground Crimson" (FaultlineDeepMusic.zip), looped for everyone in the Farlands

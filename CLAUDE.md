@@ -3654,6 +3654,13 @@ Notes:
   `faultline_far_mimic`; nobody in survival within 128 for 3 min = removed (`wildMimicUpkeep`). Admin `/farlands mimic`. Spawns
   bypass the `/mimicplayer` name lock (it only gates the command). Index entry "Wild Mimic". Spot tested in `far/FarTest`; the
   mimic itself needs a real server (MockBukkit lacks Vindicator#setRemoveWhenFarAway).
+- **The Hush (Items, Index; same 2.0.0)**: a wild Farlands mimic no longer just appears. The roll (or `/farlands mimic`) starts a
+  HUSH for that player (`Farlands.Hush`, `hushes`): every `Enemy` within `farlands.mimics.hush-radius` 96 is removed without a
+  sound (`clearAround`, every second; `keep` = player mimics, Echoes, siege mobs, base health > 200), `onHushSpawn` (HIGHEST)
+  cancels every hostile spawn within 96 of them, the Farlands music stops (`hushed` in `musicTick`), a cave sound. After
+  `delay-seconds` 60 `spawnWild` brings the mimic (the fake "<name> joined the game" line comes from MimicPlayer's fake-join),
+  target = that player. Mobs come back when the mimic dies or leaves; leaving the Farlands before it comes ends the hush.
+  `/farlands mimic now` skips the wait. Tested (`far/FarTest`: zombie vanishes, spawns cancelled, one hush at a time).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

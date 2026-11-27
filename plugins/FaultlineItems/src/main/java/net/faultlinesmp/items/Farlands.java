@@ -615,7 +615,7 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
         if (!plugin.getConfig().getBoolean("farlands.music", true)) return;
         long now = System.currentTimeMillis();
         for (Player p : Bukkit.getOnlinePlayers()) {
-            boolean in = inCached(p) && !inNest(p) && !bossMusic(p);
+            boolean in = inCached(p) && !inNest(p) && !bossMusic(p) && !hushed(p);
             Long at = musicAt.get(p.getUniqueId());
             if (!in) {
                 if (at != null) { p.stopSound(MUSIC, SoundCategory.MUSIC); musicAt.remove(p.getUniqueId()); }
@@ -720,15 +720,92 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
      * `mimics.max` 2 at once. It comes in 24-40 blocks away on open ground near your height, skill weighted toward
      * normal / hard, with that player's real gear (and drops it). Nobody in survival within 128 for 3 minutes = it leaves.
      */
-    MimicPlayer.Mimic wildMimic(Player p, boolean forced) {
-        MimicPlayer mp = plugin.mimics;
-        if (mp == null || !plugin.getConfig().getBoolean("farlands.mimics.enabled", true)) return null;
+    /** One hush: the player it came for, when the mimic walks in, the mimic once it's out (brain UUID). */
+    static final class Hush { final UUID player; int spawnAt, giveUpAt; UUID mimic; Hush(UUID p) { player = p; } }
+    final Map<UUID, Hush> hushes = new HashMap<>();   // player -> their hush
+    private boolean spawningMimic;
+
+    /**
+     * THE HUSH: the roll (or `/farlands mimic`) starts it. Every monster round them vanishes and none can spawn within
+     * `mimics.hush-radius` 96 of them, the music stops: silence. `mimics.delay-seconds` 60 later the chat says
+     * "<name> joined the game" and the mimic walks in. Mobs come back once it's dead or gone.
+     */
+    boolean wildMimic(Player p, boolean forced) {
+        if (plugin.mimics == null || !plugin.getConfig().getBoolean("farlands.mimics.enabled", true)) return false;
+        if (hushes.containsKey(p.getUniqueId())) return false;
         if (!forced) {
-            if (p.getGameMode() != GameMode.SURVIVAL && p.getGameMode() != GameMode.ADVENTURE) return null;
-            if (tick < mimicReady.getOrDefault(p.getUniqueId(), 0)) return null;
-            if (wildMimics.size() >= (int) cfg("mimics.max", 2)) return null;
-            if (random.nextDouble() >= cfg("mimics.chance", 0.005)) return null;
+            if (p.getGameMode() != GameMode.SURVIVAL && p.getGameMode() != GameMode.ADVENTURE) return false;
+            if (tick < mimicReady.getOrDefault(p.getUniqueId(), 0)) return false;
+            if (wildMimics.size() + hushes.size() >= (int) cfg("mimics.max", 2)) return false;
+            if (random.nextDouble() >= cfg("mimics.chance", 0.005)) return false;
         }
+        Hush h = new Hush(p.getUniqueId());
+        h.spawnAt = tick + (int) (cfg("mimics.delay-seconds", 60) * 20);
+        h.giveUpAt = h.spawnAt + 600;
+        hushes.put(p.getUniqueId(), h);
+        mimicReady.put(p.getUniqueId(), tick + (int) (cfg("mimics.cooldown-minutes", 45) * 1200));
+        clearAround(p);
+        p.stopSound(MUSIC, SoundCategory.MUSIC);
+        musicAt.remove(p.getUniqueId());
+        p.playSound(p, "minecraft:ambient.cave", SoundCategory.AMBIENT, 0.6f, 0.5f);
+        plugin.getLogger().info("[Farlands] the hush starts round " + p.getName());
+        return true;
+    }
+
+    boolean hushed(Player p) { return hushes.containsKey(p.getUniqueId()); }
+
+    /** Every monster near them goes, without a sound (not bosses, Echoes, siege mobs or player mimics). */
+    private void clearAround(Player p) {
+        double r = cfg("mimics.hush-radius", 96);
+        for (Entity e : p.getNearbyEntities(r, r, r)) {
+            if (!(e instanceof Enemy) || !(e instanceof LivingEntity le)) continue;
+            if (keep(le)) continue;
+            e.remove();
+        }
+    }
+
+    private static boolean keep(LivingEntity le) {
+        for (String t : le.getScoreboardTags())
+            if (t.startsWith("faultline_player_mimic") || t.equals("faultline_echo") || t.equals("faultline_rim_siege")) return true;
+        AttributeInstance hp = le.getAttribute(Attribute.MAX_HEALTH);
+        return hp != null && hp.getBaseValue() > 200;   // bosses
+    }
+
+    /** Nothing hostile spawns near a hushed player (our own mimic aside). */
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onHushSpawn(CreatureSpawnEvent e) {
+        if (hushes.isEmpty() || spawningMimic || !(e.getEntity() instanceof Enemy)) return;
+        if (keep(e.getEntity())) return;
+        double r = cfg("mimics.hush-radius", 96);
+        for (Hush h : hushes.values()) {
+            Player p = Bukkit.getPlayer(h.player);
+            if (p != null && p.getWorld() == e.getLocation().getWorld() && p.getLocation().distanceSquared(e.getLocation()) < r * r) { e.setCancelled(true); return; }
+        }
+    }
+
+    private void hushTick() {
+        for (Iterator<Hush> it = hushes.values().iterator(); it.hasNext(); ) {
+            Hush h = it.next();
+            Player p = Bukkit.getPlayer(h.player);
+            if (h.mimic == null) {
+                if (p == null || !inCached(p)) { it.remove(); continue; }   // left before it came
+                if (tick % 20 == 0) clearAround(p);
+                if (tick < h.spawnAt) continue;
+                MimicPlayer.Mimic m = spawnWild(p);
+                if (m != null) h.mimic = m.brain.getUniqueId();
+                else if (tick > h.giveUpAt) it.remove();
+                continue;
+            }
+            MimicPlayer.Mimic m = plugin.mimics == null ? null : plugin.mimics.byBrain.get(h.mimic);
+            if (m == null || m.brain == null || !m.brain.isValid() || m.brain.isDead()) { it.remove(); continue; }   // it's over: mobs come back
+            if (p != null && tick % 20 == 0 && p.getWorld() == m.brain.getWorld() && p.getLocation().distanceSquared(m.brain.getLocation()) < 160 * 160) clearAround(p);
+        }
+    }
+
+    /** The mimic itself: a random OFFLINE player (their real gear; the fake "joined the game" line), 24-40 blocks off. */
+    MimicPlayer.Mimic spawnWild(Player p) {
+        MimicPlayer mp = plugin.mimics;
+        if (mp == null) return null;
         List<OfflinePlayer> pick = new ArrayList<>();
         for (OfflinePlayer o : Bukkit.getOfflinePlayers()) if (o.getName() != null && !o.isOnline()) pick.add(o);
         if (pick.isEmpty()) return null;
@@ -737,11 +814,14 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
         String[] skills = {"easy", "normal", "normal", "normal", "hard", "hard", "hard", "godlike"};
         MimicPlayer.Skill skill = MimicPlayer.SKILLS.get(skills[random.nextInt(skills.length)]);
         at.setYaw((float) Math.toDegrees(Math.atan2(-(p.getX() - at.getX()), p.getZ() - at.getZ())));
-        MimicPlayer.Mimic m = mp.spawn(at, pick.get(random.nextInt(pick.size())), skill);
+        MimicPlayer.Mimic m;
+        spawningMimic = true;
+        try { m = mp.spawn(at, pick.get(random.nextInt(pick.size())), skill); }
+        finally { spawningMimic = false; }
         if (m == null || m.brain == null) return null;
         m.brain.addScoreboardTag("faultline_far_mimic");
+        m.target = p;
         wildMimics.put(m.brain.getUniqueId(), tick);
-        mimicReady.put(p.getUniqueId(), tick + (int) (cfg("mimics.cooldown-minutes", 45) * 1200));
         plugin.getLogger().info("[Farlands] a wild mimic of " + m.name + " (" + skill.id() + ") came for " + p.getName());
         return m;
     }
@@ -786,6 +866,7 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
             if (tick % 4 == 0 && !crawlers.isEmpty()) crawlerTick();
             if (tick % 20 == 0) echoTick();
             if (tick % 100 == 0 && !wildMimics.isEmpty()) wildMimicUpkeep();
+            if (!hushes.isEmpty()) hushTick();
             if (tick % 40 == 0) try { musicTick(); } catch (RuntimeException ex) {
                 if (tick - musicErrAt > 1200) { musicErrAt = tick; plugin.getLogger().warning("[Farlands] music: " + ex); }
             }
@@ -840,8 +921,10 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
             }
             case "mimic" -> {
                 if (p == null) { s.sendMessage("Players only."); return true; }
-                MimicPlayer.Mimic m = wildMimic(p, true);
-                s.sendMessage(m != null ? ChatColor.GREEN + "A wild mimic of " + m.name + " is coming." : ChatColor.RED + "No spot for one nearby (or no offline players to copy).");
+                if (a.length > 1 && a[1].equalsIgnoreCase("now")) {
+                    MimicPlayer.Mimic m = spawnWild(p);
+                    s.sendMessage(m != null ? ChatColor.GREEN + "A wild mimic of " + m.name + " is here." : ChatColor.RED + "No spot for one nearby (or no offline players to copy).");
+                } else s.sendMessage(wildMimic(p, true) ? ChatColor.GREEN + "The hush starts: every monster round you is gone. The mimic joins in " + (int) cfg("mimics.delay-seconds", 60) + " s." : ChatColor.RED + "A hush is already on for you (or mimics are off).");
             }
             case "crawler" -> {
                 if (p == null) return true;

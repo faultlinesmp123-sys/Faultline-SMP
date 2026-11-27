@@ -1051,6 +1051,8 @@ mod-guard:
   map-action: kick
   pie-action: kick
   map-patterns: ["(?i)world_?map", "(?i)journey_?map", "(?i)voxel_?map", "(?i)ftb_?chunks", "(?i)map_?frontiers", "(?i)antique_?atlas", "(?i)mini_?map", "(?i)maps?(?=[:_./-]|$)", "(?i)atlas(?=[:_./-]|$)", "(?i)radar"]
+  allowed-maps: ["(?i)xaero", "(?i)voxel_?map"]   # the ONLY map mods allowed (Xaero's Minimap + World Map, VoxelMap); they win over map-patterns
+  no-minimap: false   # true = send Xaero's "no minimap" code again
   map-allow: ["(?i)^xaerominimap", "(?i)^xaero_minimap", "(?i)(key|bit|tone|mip|cube|shadow|normal|light|height|texture|block|item|color|colour|font)_?maps?(?=[:_./-]|$)"]
   pie-patterns: ["(?i)pie.?chart", "(?i)pie.?ray", "(?i)pie.?menu"]
 

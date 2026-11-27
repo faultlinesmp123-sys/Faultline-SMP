@@ -3607,6 +3607,11 @@ Notes:
   differing block within `reach()` of its middle is set, existing block entities stay, then `Life.fillChunk` loots it and a village gets
   its villagers; one chunk at a time, 25 ms a tick). Snow in the Farlands = the old datapack (windswept_hills fallback / temperature 0.2)
   still loaded: restart twice with the new jar. `tools/world_preview/Audit.java <seed> rim` finds the spots in the new band.
+- **Only Xaero's and VoxelMap (Items, same 2.0.0)**: `ModGuard` allows Xaero's Minimap AND World Map and VoxelMap: a NEW key
+  `mod-guard.allowed-maps` (default `["(?i)xaero", "(?i)voxel_?map"]`, added on top of `map-allow`, so old server configs get it)
+  wins over every map pattern; any other map mod (JourneyMap, FTB Chunks, MapFrontiers, homemade "...map"/radar) is still kicked.
+  Xaero's "no minimap" code is no longer sent (`codes()` drops it from an old config's list unless `mod-guard.no-minimap` true);
+  "fair play" (no cave mode / entity radar) still is. VoxelMap gets no off-codes.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

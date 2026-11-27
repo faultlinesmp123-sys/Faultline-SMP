@@ -78,6 +78,10 @@ final class ModGuard implements Listener {
             "(?i)world_?map", "(?i)journey_?map", "(?i)voxel_?map", "(?i)ftb_?chunks", "(?i)map_?frontiers", "(?i)antique_?atlas",
             "(?i)mini_?map", "(?i)maps?(?=[:_./-]|$)", "(?i)atlas(?=[:_./-]|$)", "(?i)radar"}; // any "...map" mod, homemade too
     static final String[] DEFAULT_ALLOW = {"(?i)^xaerominimap", "(?i)^xaero_minimap", "(?i)(key|bit|tone|mip|cube|shadow|normal|light|height|texture|block|item|color|colour|font)_?maps?(?=[:_./-]|$)"}; // switched off by the codes instead
+    /** The map mods players MAY use (owner: only Xaero's (minimap + world map) and VoxelMap). A NEW key, so a server config's old
+     *  map-allow list still gets these: they win over every map pattern. */
+    static final String[] DEFAULT_ALLOWED_MAPS = {"(?i)xaero", "(?i)voxel_?map"};
+    static final String NO_MINIMAP = "\u00a7n\u00a7o\u00a7m\u00a7i\u00a7n\u00a7i\u00a7m\u00a7a\u00a7p";
     static final String[] DEFAULT_PIE = {"(?i)pie.?chart", "(?i)pie.?ray", "(?i)pie.?menu"};
     /** Xaero's Minimap: no minimap, fair play (no cave mode / entity radar). Sent as invisible chat lines. */
     static final String[] DEFAULT_CODES = {"§n§o§m§i§n§i§m§a§p", "§f§a§i§r§x§a§e§r§o"};
@@ -102,7 +106,9 @@ final class ModGuard implements Listener {
         h.remove(Material.TRIAL_SPAWNER); h.remove(Material.VAULT); // 1.3.1: players need to find trial chambers
         hide = h;
         mapPatterns = patterns("mod-guard.map-patterns", DEFAULT_MAPS);
-        mapAllow = patterns("mod-guard.map-allow", DEFAULT_ALLOW);
+        List<Pattern> allow = new ArrayList<>(patterns("mod-guard.map-allow", DEFAULT_ALLOW));
+        allow.addAll(patterns("mod-guard.allowed-maps", DEFAULT_ALLOWED_MAPS));
+        mapAllow = allow;
         piePatterns = patterns("mod-guard.pie-patterns", DEFAULT_PIE);
     }
 
@@ -110,6 +116,16 @@ final class ModGuard implements Listener {
         List<String> raw = plugin.getConfig().isList(path) ? plugin.getConfig().getStringList(path) : List.of(def);
         List<Pattern> out = new ArrayList<>();
         for (String r : raw) try { out.add(Pattern.compile(r)); } catch (RuntimeException ex) { plugin.getLogger().warning("[ModGuard] bad pattern " + r + ": " + ex.getMessage()); }
+        return out;
+    }
+
+    /** The Xaero codes to send. Xaero's minimap is ALLOWED now, so its "no minimap" code is dropped (an old server config still
+     *  lists it) unless mod-guard.no-minimap is true; "fair play" (no cave mode / entity radar) stays. */
+    List<String> codes() {
+        List<String> raw = plugin.getConfig().isList("mod-guard.codes") ? plugin.getConfig().getStringList("mod-guard.codes") : List.of(DEFAULT_CODES);
+        boolean noMini = plugin.getConfig().getBoolean("mod-guard.no-minimap", false);
+        List<String> out = new ArrayList<>();
+        for (String c : raw) { String t = c.replace('&', '\u00a7'); if (noMini || !t.equals(NO_MINIMAP)) out.add(t); }
         return out;
     }
 
@@ -123,9 +139,8 @@ final class ModGuard implements Listener {
         Player p = e.getPlayer();
         if (!guardOn() || Edition.bedrock(p)) return;
         if (plugin.getConfig().getBoolean("mod-guard.xaero-codes", true)) {
-            List<String> codes = plugin.getConfig().isList("mod-guard.codes") ? plugin.getConfig().getStringList("mod-guard.codes") : List.of(DEFAULT_CODES);
             // literal text, not Bukkit colour translation: "&i" isn't a colour code, so translation would leave the code broken
-            for (String c : codes) p.sendMessage(net.kyori.adventure.text.Component.text(c.replace('&', '\u00a7')));
+            for (String c : codes()) p.sendMessage(net.kyori.adventure.text.Component.text(c));
         }
         // channels can arrive after the join (configuration phase / late registers): check now and a bit later
         Bukkit.getScheduler().runTaskLater(plugin, () -> { if (p.isOnline()) checkAll(p); }, 40L);
@@ -162,7 +177,7 @@ final class ModGuard implements Listener {
         plugin.getLogger().info("[ModGuard] " + p.getName() + " has " + label + " (" + kind + " " + what + "): " + action);
         if (action.equals("kick")) {
             p.kickPlayer(ChatColor.RED + "Faultline doesn't allow " + label + ".\n" + ChatColor.GRAY + "Found: " + what
-                    + "\n" + ChatColor.WHITE + "Remove it and join again. (Xaero's Minimap is fine: it switches itself off here.)");
+                    + "\n" + ChatColor.WHITE + "Remove it and join again. (Xaero's Minimap / World Map and VoxelMap are allowed.)");
             return true;
         }
         if (action.equals("warn")) p.sendMessage(ChatColor.RED + "[Faultline] " + label + " aren't allowed here (" + what + ").");
@@ -173,9 +188,8 @@ final class ModGuard implements Listener {
     @EventHandler
     public void onPing(com.destroystokyo.paper.event.server.PaperServerListPingEvent e) {
         if (!guardOn() || !plugin.getConfig().getBoolean("mod-guard.motd-codes", true) || !plugin.getConfig().getBoolean("mod-guard.xaero-codes", true)) return;
-        List<String> codes = plugin.getConfig().isList("mod-guard.codes") ? plugin.getConfig().getStringList("mod-guard.codes") : List.of(DEFAULT_CODES);
         StringBuilder sb = new StringBuilder();
-        for (String c : codes) sb.append(c.replace('&', '\u00a7'));
+        for (String c : codes()) sb.append(c);
         try { e.motd(e.motd().append(net.kyori.adventure.text.Component.text(sb.toString()))); } catch (Throwable ignored) { }
     }
 

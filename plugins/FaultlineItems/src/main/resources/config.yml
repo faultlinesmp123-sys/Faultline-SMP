@@ -1242,3 +1242,5 @@ outer-rim:
 mob-spawning:
   enabled: true
   reduce: 0.5
+  torches-stop-spawns: true   # no hostile spawns where torch / block light reaches (our biome waves and the Farlands too)
+  light-limit: 0

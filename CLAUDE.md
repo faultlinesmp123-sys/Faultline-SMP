@@ -3636,6 +3636,11 @@ Notes:
   (vanilla only trades with a profession), home in PDC `faultlineworld:rim_home`, `tether()` every second walks them back past 26
   blocks from the well (teleport past 60); older frozen ones are woken on load. Items `OuterRim.onVillager` sets their cursed-gear
   offers once (PDC `faultlineitems:rim_offers`). Already-generated villages don't change: `/fworld rim build village` redraws.
+- **Torches stop spawns (Items, same 2.0.0, `MobThrottle.onLight`, `mob-spawning.torches-stop-spawns` true / `light-limit` 0)**: the
+  owner: torches didn't keep mobs away in the Farlands. Our extra spawns (FaultlineWorld's biome waves, Blood Moon / Fog / realm
+  extras, nest ambient) use reason NATURAL but pick spots without vanilla's light check, and the Farlands' Wall Crawler packs are
+  CUSTOM. Any hostile spawn with reason NATURAL / PATROL / REINFORCEMENTS, or CUSTOM tagged `faultline_wall_crawler`, is cancelled
+  (LOWEST) when block light at its feet or head is over `light-limit`. Raids, bosses, sieges, eggs, spawners untouched.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

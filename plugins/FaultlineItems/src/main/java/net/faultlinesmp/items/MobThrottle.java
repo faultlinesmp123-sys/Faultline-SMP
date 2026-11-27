@@ -32,6 +32,23 @@ final class MobThrottle implements Listener, CommandExecutor {
         return Math.max(0, Math.min(1, plugin.getConfig().getDouble("mob-spawning.reduce", 0.5)));
     }
 
+    /**
+     * TORCHES WORK: no hostile spawns where any block light reaches (vanilla's own rule for monsters), also for the spawns our
+     * plugins make with a NATURAL reason (FaultlineWorld's biome waves in the Farlands / Mire / Inferno..., Blood Moon / Fog /
+     * realm extras, nest ambient mobs) and the Farlands' Wall Crawler packs. Ghasts in the open air are left alone.
+     */
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
+    public void onLight(CreatureSpawnEvent e) {
+        if (!(e.getEntity() instanceof Enemy) || !plugin.getConfig().getBoolean("mob-spawning.torches-stop-spawns", true)) return;
+        boolean ours = CUT.contains(e.getSpawnReason())
+                || (e.getSpawnReason() == SpawnReason.CUSTOM && e.getEntity().getScoreboardTags().contains(Farlands.CRAWLER));
+        if (!ours) return;
+        int limit = plugin.getConfig().getInt("mob-spawning.light-limit", 0);
+        org.bukkit.block.Block b = e.getLocation().getBlock();
+        int light = Math.max(b.getLightFromBlocks(), b.getRelative(0, 1, 0).getLightFromBlocks());
+        if (light > limit) e.setCancelled(true);
+    }
+
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onSpawn(CreatureSpawnEvent e) {
         if (!(e.getEntity() instanceof Enemy) || !CUT.contains(e.getSpawnReason())) return;

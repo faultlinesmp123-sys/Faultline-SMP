@@ -90,6 +90,49 @@ final class ModGuard implements Listener {
         this.plugin = plugin;
         reload();
         Bukkit.getScheduler().runTaskTimer(plugin, this::tick, 20L, 5L);
+        Bukkit.getScheduler().runTaskTimer(plugin, this::mapTick, 40L, 10L);
+    }
+
+    // ================================================================ Xaero / VoxelMap restrictions
+
+    /** Xaero: wipes every server restriction (sent before we send ours again, after the minimap comes back). */
+    static final String RESET_XAERO = "\u00a7r\u00a7e\u00a7s\u00a7e\u00a7t\u00a7x\u00a7a\u00a7e\u00a7r\u00a7o";
+    /** VoxelMap: no cave mode, no radar (each its own chat line). */
+    static final String[] DEFAULT_VOXEL = {"&3 &6 &3 &6 &3 &6 &d", "&3 &6 &3 &6 &3 &6 &e"};
+    private final Set<UUID> mapOff = new HashSet<>();
+
+    /** VoxelMap's switch-off codes (no cave mode, no radar). */
+    List<String> voxelCodes() {
+        if (!plugin.getConfig().getBoolean("mod-guard.voxel-codes", true)) return List.of();
+        List<String> raw = plugin.getConfig().isList("mod-guard.voxel") ? plugin.getConfig().getStringList("mod-guard.voxel") : List.of(DEFAULT_VOXEL);
+        List<String> out = new ArrayList<>();
+        for (String c : raw) out.add(c.replace('&', '\u00a7'));
+        return out;
+    }
+
+    private void send(Player p, List<String> lines) { for (String c : lines) p.sendMessage(net.kyori.adventure.text.Component.text(c)); }
+
+    /** No minimap while in combat (PvPManager, the built-in tag, an mb fight) or in a world listed in mod-guard.no-minimap-worlds;
+     *  it comes back (Xaero reset + fair play again) once that's over. */
+    boolean mapBanned(Player p) {
+        if (plugin.getConfig().getStringList("mod-guard.no-minimap-worlds").contains(p.getWorld().getName())) return true;
+        if (!plugin.getConfig().getBoolean("mod-guard.no-minimap-in-combat", true)) return false;
+        try { if (plugin.riptideLock != null) return plugin.riptideLock.inCombat(p); } catch (RuntimeException ignored) { }
+        return PvpLink.inCombat(p);
+    }
+
+    private void mapTick() {
+        if (!guardOn() || !plugin.getConfig().getBoolean("mod-guard.xaero-codes", true)) return;
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            if (Edition.bedrock(p)) continue;
+            boolean ban = mapBanned(p), off = mapOff.contains(p.getUniqueId());
+            if (ban && !off) { mapOff.add(p.getUniqueId()); send(p, List.of(NO_MINIMAP)); p.sendActionBar(net.kyori.adventure.text.Component.text("Minimaps are off in combat.", net.kyori.adventure.text.format.NamedTextColor.RED)); }
+            else if (!ban && off) {
+                mapOff.remove(p.getUniqueId());
+                List<String> back = new ArrayList<>(); back.add(RESET_XAERO); back.addAll(codes());
+                send(p, back);
+            }
+        }
     }
 
     void reload() {
@@ -141,6 +184,8 @@ final class ModGuard implements Listener {
         if (plugin.getConfig().getBoolean("mod-guard.xaero-codes", true)) {
             // literal text, not Bukkit colour translation: "&i" isn't a colour code, so translation would leave the code broken
             for (String c : codes()) p.sendMessage(net.kyori.adventure.text.Component.text(c));
+            send(p, voxelCodes());
+            mapOff.remove(p.getUniqueId());
         }
         // channels can arrive after the join (configuration phase / late registers): check now and a bit later
         Bukkit.getScheduler().runTaskLater(plugin, () -> { if (p.isOnline()) checkAll(p); }, 40L);
@@ -282,7 +327,7 @@ final class ModGuard implements Listener {
     @EventHandler public void onQuit(PlayerQuitEvent e) { forget(e.getPlayer()); }
     @EventHandler public void onWorld(PlayerChangedWorldEvent e) { forget(e.getPlayer()); }
 
-    void forget(Player p) { lastEye.remove(p.getUniqueId()); armed.remove(p.getUniqueId()); hidden.remove(p.getUniqueId()); shown.remove(p.getUniqueId()); worldOf.remove(p.getUniqueId()); }
+    void forget(Player p) { mapOff.remove(p.getUniqueId()); lastEye.remove(p.getUniqueId()); armed.remove(p.getUniqueId()); hidden.remove(p.getUniqueId()); shown.remove(p.getUniqueId()); worldOf.remove(p.getUniqueId()); }
 
     /** Fakes these for p unless it may see them now. `place` = a block just placed (nearby + seen ones stay real). */
     void hideNow(Player p, List<Block> blocks, boolean place) {

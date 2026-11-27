@@ -3611,7 +3611,11 @@ Notes:
   `mod-guard.allowed-maps` (default `["(?i)xaero", "(?i)voxel_?map"]`, added on top of `map-allow`, so old server configs get it)
   wins over every map pattern; any other map mod (JourneyMap, FTB Chunks, MapFrontiers, homemade "...map"/radar) is still kicked.
   Xaero's "no minimap" code is no longer sent (`codes()` drops it from an old config's list unless `mod-guard.no-minimap` true);
-  "fair play" (no cave mode / entity radar) still is. VoxelMap gets no off-codes.
+  "fair play" (no cave mode / entity radar) still is. RESTRICTED HEAVILY: `ModGuard.mapTick` (every 10 ticks) switches Xaero's
+  minimap OFF while a player is in combat (`mod-guard.no-minimap-in-combat`: RiptideLock.inCombat = PvPManager / CombatTag / an mb
+  fight) or in a `no-minimap-worlds` world (sends NO_MINIMAP, "Minimaps are off in combat."), and back after (`RESET_XAERO`
+  "§r§e§s§e§t§x§a§e§r§o" then the fair-play codes again; `mapOff` set). VoxelMap gets its off-codes on join (`voxel`: "&3 &6 &3 &6 &3
+  &6 &d" no cave mode, "... &e" no radar; `voxel-codes`). The reset and VoxelMap codes are from memory: edit the config if wrong.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

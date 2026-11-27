@@ -3661,6 +3661,18 @@ Notes:
   `delay-seconds` 60 `spawnWild` brings the mimic (the fake "<name> joined the game" line comes from MimicPlayer's fake-join),
   target = that player. Mobs come back when the mimic dies or leaves; leaving the Farlands before it comes ends the hush.
   `/farlands mimic now` skips the wait. Tested (`far/FarTest`: zombie vanishes, spawns cancelled, one hush at a time).
+- **Insanity + the Lucid Locket (Items, Index; same 2.0.0, `Items/Insanity.java`, `insanity:`)**: in the Farlands (survival, not at a
+  lit Rim Lighthouse) insanity rises `rise-per-second` 0.6 x (0.15 + Rim Depth) a second (+0.3 during a Hush; ~3 min to 100% at
+  the edge), falls `fall-per-second` 1.5 outside (x3 at a lighthouse), 0 on death; player PDC `faultlineitems:insanity` (double).
+  Shown after the Rim Depth bar title (`label`). 20%+ whispers / footsteps / breathing behind you; 40%+ HALLUCINATED PLAYERS
+  (a Mannequin, tag `faultline_hallucination`, only that player sees it, with an online player's face or 20% their own; watches,
+  vanishes in smoke within 9 / stared at 1 s / 20 s) + fake chat (joined / left / whispers / death / chat lines); 60%+ fake
+  blocks (`sendBlockChange`: torches, wither roses, skulls, an obsidian doorway; put back after 3-7 s) + threats (creeper hiss,
+  hurt flinch, your name); 80%+ some hallucinations RUN at you (scream, Darkness), heartbeat, the ground round you flickers black,
+  Darkness pulses; 100% "YOU ARE NOT ALONE" title, Nausea, `insane-damage` 2 every `insane-damage-seconds` 15, effects x2.2.
+  The LUCID LOCKET accessory (CLOCK, `/giveaccessory lucidlocket`, recipe EAE/ACA/EAE = echo shards / amethyst shards / clock,
+  key `faultlineitems:lucid_locket`): worn = none of it, drains 3/s. Admin `/farlands insanity [0-100] [player]`. Index entry +
+  guide line. Tested (`far/FarTest`). Hallucination mannequins need a real server (MockBukkit: caught, other effects run).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

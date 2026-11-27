@@ -1215,6 +1215,17 @@ climbers:
     barb-max-speed: 1.8
 
 # 2.0 THE FARLANDS, DEEPER (players a lit Rim Lighthouse covers are left alone)
+# INSANITY in the Farlands: rises with the Rim Depth (about 3 min to 100% at the very edge), falls once you're out (x3 at a lit
+# Rim Lighthouse), resets on death. 20%+ whispers / footsteps, 40%+ hallucinated players + fake chat, 60%+ fake blocks + threats,
+# 80%+ they run at you, the world flickers, 100% INSANE (Nausea, insane-damage every insane-damage-seconds). The Lucid Locket
+# accessory (/giveaccessory lucidlocket) stops it. Admin: /farlands insanity [0-100] [player].
+insanity:
+  enabled: true
+  rise-per-second: 0.6
+  fall-per-second: 1.5
+  insane-damage: 2
+  insane-damage-seconds: 15
+
 outer-rim:
   enabled: true
   depth:

@@ -238,7 +238,8 @@ final class OuterRim implements Listener {
         });
         int pct = (int) Math.round(d * 100);
         b.setTitle(safe ? ChatColor.GOLD + "Rim Depth " + pct + "% " + ChatColor.GRAY + "(a lighthouse keeps it away)"
-                : storm ? ChatColor.GRAY + "Rim Depth " + ChatColor.MAGIC + "00" + ChatColor.GRAY + "% (static)" : ChatColor.LIGHT_PURPLE + "Rim Depth " + pct + "%");
+                : (storm ? ChatColor.GRAY + "Rim Depth " + ChatColor.MAGIC + "00" + ChatColor.GRAY + "% (static)" : ChatColor.LIGHT_PURPLE + "Rim Depth " + pct + "%")
+                  + (plugin.insanity == null ? "" : plugin.insanity.label(p)));
         b.setColor(safe ? BarColor.YELLOW : d > 0.66 ? BarColor.RED : BarColor.PURPLE);
         b.setProgress(Math.max(0, Math.min(1, d)));
     }

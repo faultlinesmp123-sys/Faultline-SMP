@@ -1493,6 +1493,9 @@ entries:
      how: "Craft it: Leather, String, Leather / Leather, a Chest, Leather / Leather all along the bottom.",
      does: "Wear it in /accessories for 9 extra slots: /backpack (or sneak + right-click the air with an empty hand) opens them. What's inside is yours, not the bag's, and drops when you die (like the backpack itself). A backpack can't go inside a backpack."}
   # ---------------------------------------------------------------- 2.0.0: the new overworld
+  - {chapter: accessories, name: "Lucid Locket", icon: backpack, detect: "faultlineitems:lucid_locket",
+     how: "Craft it: Echo Shards in the four corners, Amethyst Shards on the four sides, a Clock in the middle.",
+     does: "Wear it in /accessories and the Farlands can't get into your head: your Insanity never rises (and drains fast), so no whispers, no hallucinated players, no fake blocks, nothing running at you, and no going insane."}
   - {chapter: accessories, name: "Umbrella", icon: backpack, detect: "faultlineitems:umbrella",
      how: "Craft it: three Wool (any colour) along the top, a Stick in the middle, a Stick and an Iron Nugget along the bottom (the nugget on the right).",
      does: "Wear it in /accessories and the acid rain can't touch you: the Wasteland's rain and the Dark Ocean's Acid Rain. It opens over your head whenever it rains or you're in the Wasteland, so everyone can see it. The Wasteland's burning sun still gets you."}

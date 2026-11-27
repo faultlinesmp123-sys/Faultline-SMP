@@ -919,6 +919,12 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
                 spawnTrader(p);
                 s.sendMessage(ChatColor.GREEN + "The Rim Trader is here.");
             }
+            case "insanity" -> {
+                Player t = a.length > 2 ? Bukkit.getPlayerExact(a[2]) : p;
+                if (t == null || plugin.insanity == null) { s.sendMessage(ChatColor.RED + "Who?"); return true; }
+                if (a.length > 1) { try { plugin.insanity.force(t, Double.parseDouble(a[1])); } catch (NumberFormatException ex) { s.sendMessage(ChatColor.RED + "/farlands insanity [0-100] [player]"); return true; } }
+                s.sendMessage(ChatColor.GRAY + t.getName() + "'s insanity: " + (int) plugin.insanity.get(t) + "%");
+            }
             case "mimic" -> {
                 if (p == null) { s.sendMessage("Players only."); return true; }
                 if (a.length > 1 && a[1].equalsIgnoreCase("now")) {
@@ -993,6 +999,6 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
     @Override
     public List<String> onTabComplete(CommandSender s, Command cmd, String label, String[] a) {
         if (!s.hasPermission(PERM) || a.length != 1) return List.of();
-        return Legendary.filter(List.of("status", "trader", "mimic", "crawler", "ghast", "echoes", "music", "bloodrain", "sigil", "watcher", "collapse", "siege", "storm", "fake", "chart", "shards"), a[0]);
+        return Legendary.filter(List.of("status", "trader", "mimic", "insanity", "crawler", "ghast", "echoes", "music", "bloodrain", "sigil", "watcher", "collapse", "siege", "storm", "fake", "chart", "shards"), a[0]);
     }
 }

@@ -496,6 +496,8 @@ public final class FaultlineItems extends JavaPlugin {
         farlandsNight = new FarlandsNight(this, farlands); // 2.0: Blood Rain (the Rim Sigil), collapsing walls, Watchers
         outerRim = new OuterRim(this); // 2.0: Rim depth, static storms, fake players, gravity anomalies, Rim Shards, the Rim Chart, Rim Sieges
         getServer().getPluginManager().registerEvents(outerRim, this);
+        insanity = new Insanity(this); // 2.0: Farlands insanity + the Lucid Locket
+        getServer().getPluginManager().registerEvents(insanity, this);
         getServer().getPluginManager().registerEvents(farlandsNight, this);
         getServer().getPluginManager().registerEvents(farlands, this);
         if (getCommand("farlands") != null) { getCommand("farlands").setExecutor(farlands); getCommand("farlands").setTabCompleter(farlands); }
@@ -771,6 +773,7 @@ public final class FaultlineItems extends JavaPlugin {
     @Override
     public void onDisable() {
         if (umbrella != null) umbrella.removeAll(); // 2.0.0
+        if (insanity != null) insanity.shutdown();
         if (mountainGear != null) mountainGear.shutdown();
         if (wildMobs != null) wildMobs.shutdown();
         if (outerRim != null) outerRim.shutdown();
@@ -1092,6 +1095,7 @@ public final class FaultlineItems extends JavaPlugin {
     FarlandsNight farlandsNight;
     Farlands farlands;
     OuterRim outerRim; // 2.0
+    Insanity insanity; // 2.0
     HauntedVillage haunted;
     Krampus krampus;
     Holidays holidays;
@@ -6672,6 +6676,7 @@ public final class FaultlineItems extends JavaPlugin {
             ACCESSORY_TYPES.put("cross", ImmunityCharms::cross);
             ACCESSORY_TYPES.put("backpack", pl -> pl.backpack.item()); // 1.2.78
             ACCESSORY_TYPES.put("umbrella", pl -> pl.umbrella.item()); // 2.0.0
+            ACCESSORY_TYPES.put("lucidlocket", pl -> pl.insanity.locket());
             ACCESSORY_TYPES.put("gloves", pl -> pl.mountainGear.item("gloves")); // 2.0: mountain gear
             ACCESSORY_TYPES.put("goathoof", pl -> pl.mountainGear.item("hoof"));
             ACCESSORY_TYPES.put("harness", pl -> pl.mountainGear.item("harness"));

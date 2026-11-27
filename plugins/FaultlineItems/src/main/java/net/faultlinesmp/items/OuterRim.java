@@ -162,7 +162,12 @@ final class OuterRim implements Listener {
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onVillager(PlayerInteractEntityEvent e) {
         if (!(e.getRightClicked() instanceof Villager v) || !v.getScoreboardTags().contains("faultline_lost_villager")) return;
-        if (v.getRecipeCount() == 0) v.setRecipes(villagerOffers());
+        // their own cursed-gear offers, once (they're clerics now so vanilla lets you trade; vanilla's own offers are replaced)
+        org.bukkit.NamespacedKey k = new org.bukkit.NamespacedKey(plugin, "rim_offers");
+        if (!v.getPersistentDataContainer().has(k, org.bukkit.persistence.PersistentDataType.BYTE)) {
+            v.setRecipes(villagerOffers());
+            v.getPersistentDataContainer().set(k, org.bukkit.persistence.PersistentDataType.BYTE, (byte) 1);
+        }
     }
 
     // ================================================================ the tick

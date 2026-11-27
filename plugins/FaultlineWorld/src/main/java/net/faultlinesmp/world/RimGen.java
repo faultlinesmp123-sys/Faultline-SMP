@@ -1,5 +1,6 @@
 package net.faultlinesmp.world;
 
+import org.bukkit.Material;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.generator.ChunkGenerator.ChunkData;
 
@@ -35,7 +36,10 @@ final class RimGen {
     static final int CITADEL_PAD = 100;                 // flat out to here, eased to the walls by CITADEL_PAD + 40
     static final int GLITCH_CELL = 220, VILLAGE_CELL = 420, LIGHT_CELL = 300;
     static final int LIGHT_RADIUS = 96;
-    static final int VILLAGE_PAD = 34;
+    static final int VILLAGE_PAD = 42;   // flat pad radius; the walls slope down to it over VILLAGE_BLEND
+    static final int VILLAGE_BLEND = 70;
+    static final int VILLAGE_CUT = 30;   // the wall's "eaten" side starts this far out from the well, then slopes up over VILLAGE_CUT_SLOPE
+    static final int VILLAGE_CUT_SLOPE = 34;
 
     static double citadelDist(double x, double z) { return Math.hypot(x - CITADEL[0], z - CITADEL[1]); }
     static boolean inCitadel(double x, double z) { return citadelDist(x, z) <= 80; }
@@ -85,7 +89,7 @@ final class RimGen {
         int ci = Math.floorDiv((int) x, VILLAGE_CELL), cj = Math.floorDiv((int) z, VILLAGE_CELL);
         for (int a = -1; a <= 1; a++) for (int b = -1; b <= 1; b++) {
             int[] v = villageAt(seed, ci + a, cj + b);
-            if (v != null && Math.hypot(v[0] - x, v[1] - z) < VILLAGE_PAD + 30) out.add(v);
+            if (v != null && Math.hypot(v[0] - x, v[1] - z) < VILLAGE_PAD + VILLAGE_BLEND + 6) out.add(v);
         }
         return out;
     }
@@ -114,8 +118,11 @@ final class RimGen {
             // the pad only on one side of the cut: past it the wall carries on through the village ("eaten")
             double a = Math.toRadians(v[2]);
             double side = (x - v[0]) * Math.cos(a) + (z - v[1]) * Math.sin(a);
-            double keep = smooth(4, -4, side);                 // 1 on the village side, 0 past the cut
-            double pad = (1 - smooth(VILLAGE_PAD, VILLAGE_PAD + 22, d)) * keep;
+            double keep = 1 - smooth(VILLAGE_CUT, VILLAGE_CUT + VILLAGE_CUT_SLOPE, side);   // 1 on the village side, sloping up past the cut
+            // a wide valley: the walls come down in a long eased slope with a few soft terraces (it was a sheer 22-block ring = a pit)
+            double u = Math.max(0, Math.min(1, (d - VILLAGE_PAD) / VILLAGE_BLEND));
+            double steps = u + 0.06 * Math.sin(u * Math.PI * 6);
+            double pad = (1 - smooth(0, 1, Math.max(0, Math.min(1, steps)))) * keep;
             h = lerp(h, Terrain.SEA + 18, pad);
         }
         return h;
@@ -352,26 +359,211 @@ final class RimGen {
 
     static void village(Canvas cv, Terrain t, int[] vl) {
         int x0 = vl[0], z0 = vl[1], v = vl[3];
-        if (!cv.touches(x0 - VILLAGE_PAD - 4, z0 - VILLAGE_PAD - 4, x0 + VILLAGE_PAD + 4, z0 + VILLAGE_PAD + 4)) return;
+        int R = VILLAGE_PAD + VILLAGE_BLEND;
+        if (!cv.touches(x0 - R, z0 - R, x0 + R, z0 + R)) return;
         long s = t.seed;
         double a = Math.toRadians(vl[2]), ca = Math.cos(a), sa = Math.sin(a);
         int g = Terrain.SEA + 18;
-        // the well in the middle
+        // ground: grass over dirt on the pad and up the slopes (it was bare stone), wild plants, a few trees
+        for (int x = Math.max(cv.bx, x0 - R); x < Math.min(cv.bx + 16, x0 + R); x++) for (int z = Math.max(cv.bz, z0 - R); z < Math.min(cv.bz + 16, z0 + R); z++) {
+            double d = Math.hypot(x - x0, z - z0);
+            if (d > VILLAGE_PAD + VILLAGE_BLEND * 0.8) continue;
+            if ((x - x0) * ca + (z - z0) * sa > VILLAGE_CUT + VILLAGE_CUT_SLOPE * 0.7) continue;   // high up the cut slope the wall stays raw
+            int top = -999;
+            for (int y = g + 90; y >= g - 6; y--) { Material m = cv.type(x, y, z); if (m.isSolid() && m != Material.VOID_AIR) { top = y; break; } }
+            if (top < g - 6) continue;
+            Material tm = cv.type(x, top, z);
+            if (tm != Material.STONE && tm != Material.GRASS_BLOCK && tm != Material.DIRT && tm != Material.COARSE_DIRT && tm != Material.ANDESITE
+                    && tm != Material.TUFF && tm != Material.GRAVEL && tm != Material.COBBLESTONE && tm != Material.MOSSY_COBBLESTONE) continue;
+            if (top > g && cv.type(x, top - 1, z).isAir()) continue;       // an overhang
+            long h = hash(s, x, z, 0x7120);
+            boolean steep = top > g && (Math.abs(top - topNear(cv, x + 1, z, top)) > 1 || Math.abs(top - topNear(cv, x, z + 1, top)) > 1);
+            if (steep) { if ((h & 3) == 0) cv.set(x, top, z, bd((h & 4) == 0 ? "minecraft:mossy_cobblestone" : "minecraft:coarse_dirt")); continue; }
+            cv.set(x, top, z, bd((h & 31) == 0 ? "minecraft:coarse_dirt" : (h & 31) == 1 ? "minecraft:podzol" : "minecraft:grass_block"));
+            for (int y = top - 1; y >= top - 3; y--) cv.set(x, y, z, bd("minecraft:dirt"));
+            if (top != g || d > VILLAGE_PAD - 2 || d < 4) { plant(cv, x, top + 1, z, h); continue; }
+            plant(cv, x, top + 1, z, h);
+        }
         well(cv, x0, z0, g);
-        // houses on a ring round it; only on the village side of the cut (the wall ate the rest)
-        int n = 7;
+        // houses on a ring round the well, only where the whole house is on the village side of the cut
+        int n = 8;
+        boolean[] placed = new boolean[n];
         for (int k = 0; k < n; k++) {
             double ang = Math.PI * 2 * k / n + (v % 100) / 100.0;
-            int hx = x0 + (int) Math.round(Math.cos(ang) * 17), hz = z0 + (int) Math.round(Math.sin(ang) * 17);
-            house(cv, s, hx, hz, g, k, ca, sa, x0, z0, v);
+            int hx = x0 + (int) Math.round(Math.cos(ang) * 21), hz = z0 + (int) Math.round(Math.sin(ang) * 21);
+            if ((hx - x0) * ca + (hz - z0) * sa > VILLAGE_CUT - 8) continue;            // the wall ate it: no half-houses in the wall
+            placed[k] = true;
+            int dx = x0 - hx, dz = z0 - hz;
+            int face = Math.abs(dx) > Math.abs(dz) ? (dx > 0 ? 0 : 1) : (dz > 0 ? 2 : 3);   // door toward the well: +x, -x, +z, -z
+            cottage(cv, s, hx, hz, g, k, v, face);
+            path(cv, s, x0, z0, hx, hz, g);
         }
-        // a path ring
-        for (int x = x0 - 12; x <= x0 + 12; x++) for (int z = z0 - 12; z <= z0 + 12; z++) {
-            double d = Math.hypot(x - x0, z - z0);
-            if (d < 9 || d > 11 || !cv.inXZ(x, z)) continue;
-            if ((x - x0) * ca + (z - z0) * sa > 0) continue;
-            cv.set(x, g, z, bd((hash(s, x, z, 0x7112) & 3) == 0 ? "minecraft:coarse_dirt" : "minecraft:dirt_path"));
+        // farm plots and a hay stack between houses
+        for (int k = 0; k < n; k++) {
+            if (!placed[k] || k % 3 != 1) continue;
+            double ang = Math.PI * 2 * (k + 0.5) / n + (v % 100) / 100.0;
+            int fx = x0 + (int) Math.round(Math.cos(ang) * 31), fz = z0 + (int) Math.round(Math.sin(ang) * 31);
+            if ((fx - x0) * ca + (fz - z0) * sa > VILLAGE_CUT - 8) continue;
+            farm(cv, s, fx, fz, g, k);
         }
+        // a few trees inside the pad
+        for (int k = 0; k < 5; k++) {
+            long h = hash(s, x0 + k, z0 - k, 0x7121 + k);
+            double ang = (h & 1023) / 1023.0 * Math.PI * 2, rr = 30 + ((h >>> 10) & 7);
+            int tx = x0 + (int) Math.round(Math.cos(ang) * rr), tz = z0 + (int) Math.round(Math.sin(ang) * rr);
+            if ((tx - x0) * ca + (tz - z0) * sa > VILLAGE_CUT - 5) continue;
+            tree(cv, s, tx, g, tz, h);
+        }
+        // lamp posts by the well
+        for (int k = 0; k < 4; k++) {
+            int lx = x0 + (k < 2 ? (k == 0 ? 6 : -6) : 0), lz = z0 + (k >= 2 ? (k == 2 ? 6 : -6) : 0);
+            if ((lx - x0) * ca + (lz - z0) * sa > VILLAGE_CUT - 2) continue;
+            int o = k == 3 ? -1 : 1;
+            cv.column(lx, lz, g + 1, g + 4, bd("minecraft:stripped_spruce_log"));
+            cv.set(lx, g + 4, lz + o, bd("minecraft:stripped_spruce_log[axis=z]"));
+            cv.set(lx, g + 3, lz + o, bd("minecraft:lantern[hanging=true]"));
+        }
+    }
+
+    static int topNear(Canvas cv, int x, int z, int near) {
+        if (!cv.inXZ(x, z)) return near;
+        for (int y = near + 4; y >= near - 4; y--) if (cv.type(x, y, z).isSolid()) return y;
+        return near;
+    }
+
+    static void plant(Canvas cv, int x, int y, int z, long h) {
+        if (!cv.inXZ(x, z) || !cv.type(x, y, z).isAir() || cv.type(x, y - 1, z) != Material.GRASS_BLOCK) return;
+        int q = (int) (h >>> 12 & 63);
+        String p = q < 16 ? "minecraft:short_grass" : q < 20 ? "minecraft:fern" : q < 22 ? "minecraft:dandelion" : q < 24 ? "minecraft:poppy"
+                : q < 25 ? "minecraft:cornflower" : q < 26 ? "minecraft:oxeye_daisy" : q < 27 ? "minecraft:sweet_berry_bush[age=2]" : null;
+        if (p != null) cv.set(x, y, z, bd(p));
+    }
+
+    static void path(Canvas cv, long s, int x0, int z0, int hx, int hz, int g) {
+        double len = Math.hypot(hx - x0, hz - z0);
+        for (double t = 3.5; t < len - 4; t += 0.5) {
+            int px = (int) Math.round(x0 + (hx - x0) * t / len), pz = (int) Math.round(z0 + (hz - z0) * t / len);
+            for (int o = 0; o <= 1; o++) {
+                int qx = px + (Math.abs(hz - z0) > Math.abs(hx - x0) ? o : 0), qz = pz + (Math.abs(hz - z0) > Math.abs(hx - x0) ? 0 : o);
+                if (!cv.inXZ(qx, qz) || cv.type(qx, g, qz) != Material.GRASS_BLOCK) continue;
+                cv.set(qx, g, qz, bd((hash(s, qx, qz, 0x7122) & 7) == 0 ? "minecraft:coarse_dirt" : "minecraft:dirt_path"));
+                if (!cv.type(qx, g + 1, qz).isSolid()) cv.set(qx, g + 1, qz, bd("minecraft:air"));
+            }
+        }
+    }
+
+    /** A ruined cottage: cobble footing, log frame, plank walls, glass windows (some broken), a gable roof half fallen in, a chimney. */
+    static void cottage(Canvas cv, long s, int hx, int hz, int g, int k, int v, int face) {
+        boolean alongX = face >= 2;          // the door wall is a long wall facing the well
+        int w = alongX ? 3 : 2, dpt = alongX ? 2 : 3;
+        if (!cv.touches(hx - w - 2, hz - dpt - 2, hx + w + 2, hz + dpt + 2)) return;
+        String[] woods = {"oak", "spruce", "birch", "dark_oak"};
+        String wood = woods[Math.floorMod(k + v, 4)];
+        String plank = "minecraft:" + wood + "_planks", log = "minecraft:" + (wood.equals("dark_oak") ? "dark_oak_log" : "stripped_" + wood + "_log");
+        String roofMat = Math.floorMod(k + v, 3) == 0 ? "minecraft:cobblestone" : "minecraft:" + (wood.equals("birch") ? "spruce" : wood) + "_planks";
+        String stair = roofMat.replace("_planks", "_stairs").replace("cobblestone", "cobblestone_stairs");
+        int wallH = 4;
+        double fallen = 0.25 + (hash(s, hx, hz, 0x7130) & 3) * 0.12;          // how much of the roof fell in
+        // clear the volume and lay the footing
+        for (int x = hx - w - 1; x <= hx + w + 1; x++) for (int z = hz - dpt - 1; z <= hz + dpt + 1; z++) {
+            for (int y = g + 1; y <= g + wallH + 9; y++) cv.set(x, y, z, bd("minecraft:air"));
+            cv.set(x, g, z, bd(Math.abs(x - hx) <= w && Math.abs(z - hz) <= dpt ? "minecraft:cobblestone" : "minecraft:grass_block"));
+        }
+        for (int x = hx - w; x <= hx + w; x++) for (int z = hz - dpt; z <= hz + dpt; z++) {
+            boolean ex = Math.abs(x - hx) == w, ez = Math.abs(z - hz) == dpt;
+            if (!ex && !ez) { cv.set(x, g, z, bd(((x + z) & 1) == 0 ? plank : "minecraft:" + wood + "_planks")); continue; }
+            boolean corner = ex && ez;
+            boolean doorWall = face == 0 ? x == hx + w : face == 1 ? x == hx - w : face == 2 ? z == hz + dpt : z == hz - dpt;
+            boolean mid = alongX ? x == hx : z == hz;
+            boolean midSide = alongX ? z == hz : x == hx;
+            int crumble = !mid && !midSide && (int) Math.floorMod(hash(s, x, z, 0x7131), 4L) == 0 ? 1 : 0;   // the tie beam's ends always stand
+            for (int y = g + 1; y <= g + wallH - crumble; y++) {
+                if (doorWall && mid && y <= g + 2) continue;                                    // the doorway
+                boolean window = y == g + 2 && !corner && ((!doorWall && (mid || midSide)) || (doorWall && Math.abs(alongX ? x - hx : z - hz) == 2));
+                String b;
+                if (corner) b = log;
+                else if (y == g + 1) b = (hash3(s, x, y, z, 0x7132) & 3) == 0 ? "minecraft:mossy_cobblestone" : "minecraft:cobblestone";
+                else if (window) b = "minecraft:glass_pane";
+                else if (y == g + wallH) b = log.replace("_log", "_log[axis=" + (ez ? "x" : "z") + "]");
+                else b = (hash3(s, x, y, z, 0x7134) & 15) == 0 ? "minecraft:mossy_cobblestone" : plank;
+                cv.set(x, y, z, bd(b));
+            }
+        }
+        // gable roof: stairs from the wall tops up to a slab ridge, gable ends filled with planks so every row is held up;
+        // a ruin = one hole in one slope (rows stay joined to the gable ends)
+        int halfSpan = alongX ? dpt : w;
+        int len = alongX ? w : dpt;
+        int holeSide = (hash(s, hx, hz, 0x7137) & 1) == 0 ? -1 : 1, hole0 = (int) Math.floorMod(hash(s, hx, hz, 0x7138), (long) Math.max(1, len)) - len / 2;
+        boolean holed = fallen > 0.4;
+        for (int i = 0; i < halfSpan; i++) {
+            int y = g + wallH + 1 + i;
+            for (int l = -len; l <= len; l++) {
+                for (int sgn : new int[]{-1, 1}) {
+                    int off = (halfSpan - i) * sgn;
+                    int x = alongX ? hx + l : hx + off, z = alongX ? hz + off : hz + l;
+                    boolean end = Math.abs(l) == len;
+                    if (holed && !end && sgn == holeSide && i >= 1 && l >= hole0 && l <= hole0 + 1) continue;
+                    String f = alongX ? (sgn < 0 ? "south" : "north") : (sgn < 0 ? "east" : "west");
+                    cv.set(x, y, z, bd(stair + "[facing=" + f + ",half=bottom]"));
+                    if (end) for (int q = -(halfSpan - i) + 1; q <= (halfSpan - i) - 1; q++) {     // the gable end wall
+                        int ex = alongX ? hx + l : hx + q, ez = alongX ? hz + q : hz + l;
+                        cv.set(ex, y, ez, bd(plank));
+                    }
+                }
+            }
+        }
+        for (int l = -len; l <= len; l++) {                                                     // the ridge
+            int x = alongX ? hx + l : hx, z = alongX ? hz : hz + l;
+            cv.set(x, g + wallH + 1 + halfSpan, z, bd(roofMat.replace("_planks", "_slab[type=bottom]").replace("cobblestone", "cobblestone_slab[type=bottom]")));
+        }
+        // chimney on the back wall
+        int cx = face == 0 ? hx - w : face == 1 ? hx + w : hx - w + 1, cz = face == 2 ? hz - dpt : face == 3 ? hz + dpt : hz - dpt + 1;
+        cv.column(cx, cz, g + 1, g + wallH + halfSpan + 2, bd("minecraft:bricks"));
+        if ((hash(s, hx, hz, 0x7136) & 1) == 0) cv.set(cx, g + wallH + halfSpan + 3, cz, bd("minecraft:campfire[lit=false]"));
+        // inside: bed, chest, table, barrel, a lantern, sometimes webs
+        int ix = hx, iz = hz;
+        int bx = face == 0 || face == 1 ? hx : hx - w + 1, bz = face == 2 || face == 3 ? hz : hz - dpt + 1;
+        if (face >= 2) { cv.set(hx - w + 1, g + 1, hz, bd("minecraft:red_bed[facing=east,part=foot]")); cv.set(hx - w + 2, g + 1, hz, bd("minecraft:red_bed[facing=east,part=head]")); }
+        else { cv.set(hx, g + 1, hz - dpt + 1, bd("minecraft:red_bed[facing=south,part=foot]")); cv.set(hx, g + 1, hz - dpt + 2, bd("minecraft:red_bed[facing=south,part=head]")); }
+        int chx = face >= 2 ? hx + w - 1 : hx + (face == 0 ? -1 : 1), chz = face >= 2 ? hz + (face == 2 ? -1 : 1) : hz + dpt - 1;
+        cv.set(chx, g + 1, chz, bd("minecraft:chest[facing=" + (face == 0 ? "east" : face == 1 ? "west" : face == 2 ? "south" : "north") + "]"));
+        int tx = face >= 2 ? hx + w - 1 : hx + (face == 0 ? -1 : 1), tz = face >= 2 ? hz + (face == 2 ? 1 : -1) : hz - dpt + 1;
+        if (cv.type(tx, g + 1, tz).isAir()) cv.set(tx, g + 1, tz, bd((k & 1) == 0 ? "minecraft:crafting_table" : "minecraft:barrel[facing=up]"));
+        // a tie beam across the middle from wall to wall, a lantern hanging from it
+        for (int q = -(alongX ? dpt : w) + 1; q <= (alongX ? dpt : w) - 1; q++)
+            cv.set(alongX ? ix : ix + q, g + wallH, alongX ? iz + q : iz, bd(log.replace("_log", "_log[axis=" + (alongX ? "z" : "x") + "]")));
+        cv.set(ix, g + wallH - 1, iz, bd("minecraft:lantern[hanging=true]"));
+        if (k % 3 == 0) cv.set(ix + (alongX ? 1 : 0), g + wallH - 1, iz + (alongX ? 0 : 1), bd("minecraft:cobweb"));
+    }
+
+    static void farm(Canvas cv, long s, int fx, int fz, int g, int k) {
+        for (int x = fx - 3; x <= fx + 3; x++) for (int z = fz - 2; z <= fz + 2; z++) {
+            if (!cv.inXZ(x, z)) continue;
+            boolean edge = Math.abs(x - fx) == 3 || Math.abs(z - fz) == 2;
+            if (edge) { cv.set(x, g, z, bd("minecraft:stripped_oak_log[axis=" + (Math.abs(z - fz) == 2 ? "x" : "z") + "]")); cv.set(x, g + 1, z, bd("minecraft:air")); continue; }
+            if (x == fx) { cv.set(x, g, z, bd("minecraft:water")); cv.set(x, g + 1, z, bd("minecraft:air")); continue; }
+            cv.set(x, g, z, bd("minecraft:farmland[moisture=7]"));
+            String crop = k % 2 == 0 ? "minecraft:wheat[age=" + (3 + (int) (hash(s, x, z, 0x7140) & 3) + "]") : "minecraft:carrots[age=" + (4 + (int) (hash(s, x, z, 0x7140) & 3)) + "]";
+            cv.set(x, g + 1, z, bd(crop));
+        }
+        cv.set(fx + 4, g + 1, fz, bd("minecraft:hay_block"));
+        cv.set(fx + 4, g + 1, fz + 1, bd("minecraft:hay_block"));
+        cv.set(fx + 4, g + 2, fz, bd("minecraft:hay_block"));
+        cv.set(fx - 4, g + 1, fz, bd("minecraft:composter"));
+    }
+
+    static void tree(Canvas cv, long s, int x, int g, int z, long h) {
+        if (!cv.touches(x - 3, z - 3, x + 3, z + 3)) return;
+        int ht = 5 + (int) (h >>> 20 & 2);
+        for (int y = g + ht - 2; y <= g + ht + 1; y++) {
+            int r = y >= g + ht ? 1 : 2;
+            for (int a = -r; a <= r; a++) for (int b = -r; b <= r; b++) {
+                if (Math.abs(a) == r && Math.abs(b) == r && (hash3(s, x + a, y, z + b, 0x7150) & 1) == 0) continue;
+                if (cv.inXZ(x + a, z + b) && cv.type(x + a, y, z + b).isAir()) cv.set(x + a, y, z + b, bd("minecraft:oak_leaves[persistent=true]"));
+            }
+        }
+        cv.column(x, z, g + 1, g + ht, bd("minecraft:oak_log"));
+        cv.set(x, g, z, bd("minecraft:dirt"));
     }
 
     static void well(Canvas cv, int x, int z, int g) {
@@ -379,39 +571,19 @@ final class RimGen {
             boolean rim = Math.abs(a) == 2 || Math.abs(b) == 2;
             cv.column(x + a, z + b, g - 7, g - 5, bd("minecraft:mossy_cobblestone"));   // a solid floor (caves under the pad)
             cv.column(x + a, z + b, g - 4, g, bd(rim ? "minecraft:mossy_cobblestone" : "minecraft:water"));
-            if (rim) cv.set(x + a, g + 1, z + b, bd("minecraft:cobblestone_wall"));
+            if (rim) cv.set(x + a, g + 1, z + b, bd((Math.abs(a) == 2 && Math.abs(b) == 2) ? "minecraft:cobblestone" : "minecraft:cobblestone_slab[type=bottom]"));
+            else cv.column(x + a, z + b, g + 1, g + 4, bd("minecraft:air"));
         }
         for (int a : new int[]{-2, 2}) for (int b : new int[]{-2, 2}) cv.column(x + a, z + b, g + 2, g + 4, bd("minecraft:oak_log"));
-        cv.box(x - 2, g + 5, z - 2, x + 2, g + 5, z + 2, bd("minecraft:mossy_cobblestone_slab"));
-    }
-
-    static void house(Canvas cv, long s, int hx, int hz, int g, int k, double ca, double sa, int vx, int vz, int v) {
-        int w = 3, dpt = 3, h = 5;
-        if (!cv.touches(hx - w - 1, hz - dpt - 1, hx + w + 1, hz + dpt + 1)) return;
-        String[] wood = {"minecraft:oak_planks", "minecraft:spruce_planks", "minecraft:birch_planks"};
-        String plank = wood[(k + v) % 3];
-        for (int x = hx - w; x <= hx + w; x++) for (int z = hz - dpt; z <= hz + dpt; z++) {
-            if ((x - vx) * ca + (z - vz) * sa > -1) continue;          // eaten by the wall
-            boolean edge = Math.abs(x - hx) == w || Math.abs(z - hz) == dpt;
-            boolean corner = Math.abs(x - hx) == w && Math.abs(z - hz) == dpt;
-            cv.set(x, g, z, bd("minecraft:cobblestone"));
-            int top = g + h - (int) Math.floorMod(hash(s, x, z, 0x7113), 3L);
-            for (int y = g + 1; y <= g + h; y++) {
-                if (!edge) { cv.set(x, y, z, bd("minecraft:air")); continue; }
-                if (y > top) continue;
-                boolean door = z == hz - dpt && x == hx && y <= g + 2;
-                boolean win = y == g + 2 && !corner && (x == hx || z == hz) && !door;
-                if (door) continue;
-                cv.set(x, y, z, bd(win ? "minecraft:air" : corner ? "minecraft:stripped_oak_log" : (hash3(s, x, y, z, 0x7114) & 7) == 0 ? "minecraft:mossy_cobblestone" : plank));
-            }
+        for (int a = -2; a <= 2; a++) for (int b = -2; b <= 2; b++) cv.set(x + a, g + 5, z + b, bd(Math.abs(a) == 2 || Math.abs(b) == 2 ? "minecraft:spruce_stairs[facing=" + (a == -2 ? "east" : a == 2 ? "west" : b == -2 ? "south" : "north") + ",half=bottom]" : "minecraft:spruce_planks"));
+        cv.set(x, g + 4, z, bd("minecraft:lantern[hanging=true]"));
+        // a ring of path round it
+        for (int a = -4; a <= 4; a++) for (int b = -4; b <= 4; b++) {
+            double d = Math.hypot(a, b);
+            if (d < 2.6 || d > 4.4 || !cv.inXZ(x + a, z + b) || cv.type(x + a, g, z + b) != Material.GRASS_BLOCK) continue;
+            cv.set(x + a, g, z + b, bd("minecraft:dirt_path"));
+            if (!cv.type(x + a, g + 1, z + b).isSolid()) cv.set(x + a, g + 1, z + b, bd("minecraft:air"));
         }
-        if ((hx - vx) * ca + (hz - vz) * sa > -2) return;
-        cv.set(hx + w - 1, g + 1, hz + dpt - 1, bd("minecraft:chest[facing=west]"));
-        cv.set(hx - w + 1, g + 1, hz + dpt - 1, bd("minecraft:red_bed[facing=south,part=head]"));
-        cv.set(hx - w + 1, g + 1, hz + dpt - 2, bd("minecraft:red_bed[facing=south,part=foot]"));
-        cv.set(hx + w - 1, g + 1, hz - dpt + 1, bd("minecraft:crafting_table"));
-        cv.set(hx + w - 1, g + 2, hz + dpt - 1, bd("minecraft:lantern[hanging=false]"));   // on the chest (the roofs fell in)
-        if (k % 3 == 0) cv.set(hx, g + 1, hz, bd("minecraft:cobweb"));
     }
 
     // ------------------------------------------------------------------ rim lighthouses

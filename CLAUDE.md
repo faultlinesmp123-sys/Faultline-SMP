@@ -3625,6 +3625,17 @@ Notes:
   `items.mobspawns` op)**: half of every NATURAL / PATROL / REINFORCEMENTS hostile (`Enemy`) spawn is cancelled (LOW) in every
   world: vanilla's own and every plugin's "natural" extras (FaultlineWorld biome waves, Blood Moon extras, Farlands ghasts).
   Spawners, eggs, raids, bosses and CUSTOM spawns untouched. `/mobspawns 70` = cut 70%, written to the config.
+- **Lost Villages v2 + walking villagers (World, Items; same 2.0.0)**: the owner's screenshot showed a village at the bottom of a
+  sheer stone pit with plank boxes, one cut into the wall. `RimGen`: pad `VILLAGE_PAD` 42 flat, walls slope down over
+  `VILLAGE_BLEND` 70 (eased + soft terraces); the "eaten" side starts `VILLAGE_CUT` 30 out and slopes up over 34 (was through the
+  well); grass over dirt on the pad + slopes (`plant`: grass, ferns, flowers, berry bushes), 8 COTTAGES (`cottage`: cobble footing,
+  log corners, plank walls, glass panes, door toward the well, gable stair roof with plank gable ends + slab ridge, one hole on
+  some, brick chimney, tie beam + lantern, bed / chest / table or barrel), dirt paths to the well, farm plots (wheat / carrots, a
+  water row, hay, composter), oak trees, lamp posts with arms, a roofed well. Houses only where the whole house is on the village
+  side. `Audit <seed> rim`: villages ok on 3 seeds. LOST VILLAGERS (`Rim`): AI ON (walk like normal villagers), CLERIC level 5
+  (vanilla only trades with a profession), home in PDC `faultlineworld:rim_home`, `tether()` every second walks them back past 26
+  blocks from the well (teleport past 60); older frozen ones are woken on load. Items `OuterRim.onVillager` sets their cursed-gear
+  offers once (PDC `faultlineitems:rim_offers`). Already-generated villages don't change: `/fworld rim build village` redraws.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

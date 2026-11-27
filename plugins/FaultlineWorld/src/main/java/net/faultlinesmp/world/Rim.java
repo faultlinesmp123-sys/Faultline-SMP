@@ -38,7 +38,7 @@ final class Rim implements Listener {
     static final String SAFE_META = "faultline_rim_safe";
 
     private final FaultlineWorld plugin;
-    private final NamespacedKey lightsKey, villagersKey;
+    private final NamespacedKey lightsKey, villagersKey, homeKey;
     private final Map<String, Long> lit = new HashMap<>();   // "x,z" -> until (ms)
     private final Set<UUID> safe = new HashSet<>(), inCitadel = new HashSet<>();
     private final List<BukkitTask> tasks = new ArrayList<>();
@@ -48,6 +48,7 @@ final class Rim implements Listener {
         this.plugin = plugin;
         lightsKey = new NamespacedKey(plugin, "rim_lights");
         villagersKey = new NamespacedKey(plugin, "rim_villagers");
+        homeKey = new NamespacedKey(plugin, "rim_home");
         tasks.add(Bukkit.getScheduler().runTaskTimer(plugin, this::second, 60, 20));
     }
 
@@ -100,6 +101,7 @@ final class Rim implements Listener {
     }
 
     private void second() {
+        tether();
         World w = main();
         if (w == null) return;
         load(w);
@@ -204,8 +206,27 @@ final class Rim implements Listener {
             vi.setPersistent(true);
             vi.setRemoveWhenFarAway(false);
             vi.setInvulnerable(true);
-            vi.setAI(false);
-            try { vi.setProfession(Villager.Profession.NITWIT); } catch (Throwable ignored) { }
+            vi.setAI(true);      // they walk about like normal villagers (kept near the well: tether())
+            try { vi.setProfession(Villager.Profession.CLERIC); vi.setVillagerLevel(5); vi.setVillagerExperience(250); } catch (Throwable ignored) { }
+            vi.getPersistentDataContainer().set(homeKey, PersistentDataType.STRING, v[0] + ";" + v[1]);
+            lost.add(vi.getUniqueId());
+        }
+    }
+
+    /** Lost Villagers wander like normal ones but are walked back when they stray past 26 blocks from their well. */
+    private final Set<UUID> lost = new HashSet<>();
+    private void tether() {
+        for (Iterator<UUID> it = lost.iterator(); it.hasNext(); ) {
+            Entity en = Bukkit.getEntity(it.next());
+            if (!(en instanceof Villager vi) || !vi.isValid()) { it.remove(); continue; }
+            String h = vi.getPersistentDataContainer().get(homeKey, PersistentDataType.STRING);
+            if (h == null) continue;
+            String[] p = h.split(";");
+            double hx = Integer.parseInt(p[0]) + 0.5, hz = Integer.parseInt(p[1]) + 0.5;
+            Location l = vi.getLocation();
+            double d = Math.hypot(l.getX() - hx, l.getZ() - hz);
+            if (d > 60) { vi.teleport(new Location(vi.getWorld(), hx + 3, Terrain.SEA + 19, hz + 3)); continue; }
+            if (d > 26) vi.getPathfinder().moveTo(new Location(vi.getWorld(), hx + 3, Terrain.SEA + 19, hz + 3), 0.6);
         }
     }
 
@@ -215,7 +236,19 @@ final class Rim implements Listener {
         for (Entity en : e.getEntities()) {
             if (!en.getScoreboardTags().contains(VILLAGER_TAG)) continue;
             Block under = en.getLocation().getBlock().getRelative(0, -1, 0);
-            if (!under.getType().isAir()) continue;
+            if (!under.getType().isAir() || !((LivingEntity) en).hasAI()) {
+                if (en instanceof Villager vi && !under.getType().isAir()) {          // older ones stood frozen: let them walk
+                    vi.setAI(true);
+                    if (!vi.getPersistentDataContainer().has(homeKey, PersistentDataType.STRING)) {
+                        Location l = vi.getLocation();
+                        int[] best = null; double bd = 1e9;
+                        for (int[] v : RimGen.villagesNear(terrain(vi.getWorld()).seed, l.getX(), l.getZ())) { double d = Math.hypot(v[0] - l.getX(), v[1] - l.getZ()); if (d < bd) { bd = d; best = v; } }
+                        if (best != null) vi.getPersistentDataContainer().set(homeKey, PersistentDataType.STRING, best[0] + ";" + best[1]);
+                    }
+                    lost.add(vi.getUniqueId());
+                }
+                if (!under.getType().isAir()) continue;
+            }
             Chunk ch = en.getLocation().getChunk();
             en.remove();
             ch.getPersistentDataContainer().remove(villagersKey);
@@ -247,7 +280,7 @@ final class Rim implements Listener {
     static int reach(String kind, int[] at) {
         return switch (kind) {
             case "citadel" -> RimGen.CITADEL_PAD + 45;
-            case "village" -> RimGen.VILLAGE_PAD + 26;
+            case "village" -> RimGen.VILLAGE_PAD + RimGen.VILLAGE_BLEND;
             case "lighthouse" -> 8;
             default -> at.length > 3 ? at[3] + 12 : 50;
         };

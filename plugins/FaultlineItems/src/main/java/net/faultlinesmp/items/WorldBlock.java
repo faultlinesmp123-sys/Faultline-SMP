@@ -162,6 +162,7 @@ final class WorldBlock implements Listener {
     }
 
     static final class Listen { String area, track; long until; double pitch; }
+    private final Set<UUID> gaveDark = new java.util.HashSet<>(), gaveNv = new java.util.HashSet<>();
 
     private final FaultlineItems plugin;
     private final NamespacedKey toolKey, areaKey;
@@ -469,7 +470,7 @@ final class WorldBlock implements Listener {
         }
         music(p, a);
         weatherFx(p, a);
-        if (ticks % 8 == 0) effects(p, a);
+        if (ticks % 8 == 0) apply(p, a);
     }
 
     void apply(Player p, Area a) {
@@ -488,13 +489,13 @@ final class WorldBlock implements Listener {
     }
 
     void effects(Player p, Area a) {
-        boolean dark = a.light == -2, bright = a.light == 2;
-        PotionEffect d = p.getPotionEffect(PotionEffectType.DARKNESS);
-        if (dark) { if (d == null || d.getDuration() < 60 && d.isAmbient()) p.addPotionEffect(new PotionEffect(PotionEffectType.DARKNESS, PotionEffect.INFINITE_DURATION, 0, true, false, false)); }
-        else if (d != null && d.isAmbient() && d.getDuration() == PotionEffect.INFINITE_DURATION) p.removePotionEffect(PotionEffectType.DARKNESS);
-        PotionEffect n = p.getPotionEffect(PotionEffectType.NIGHT_VISION);
-        if (bright) { if (n == null) p.addPotionEffect(new PotionEffect(PotionEffectType.NIGHT_VISION, PotionEffect.INFINITE_DURATION, 0, true, false, false)); }
-        else if (n != null && n.isAmbient() && n.getDuration() == PotionEffect.INFINITE_DURATION) p.removePotionEffect(PotionEffectType.NIGHT_VISION);
+        UUID id = p.getUniqueId();
+        if (a.light == -2) {
+            if (!p.hasPotionEffect(PotionEffectType.DARKNESS)) { p.addPotionEffect(new PotionEffect(PotionEffectType.DARKNESS, PotionEffect.INFINITE_DURATION, 0, true, false, false)); gaveDark.add(id); }
+        } else if (gaveDark.remove(id)) p.removePotionEffect(PotionEffectType.DARKNESS);
+        if (a.light == 2) {
+            if (!p.hasPotionEffect(PotionEffectType.NIGHT_VISION)) { p.addPotionEffect(new PotionEffect(PotionEffectType.NIGHT_VISION, PotionEffect.INFINITE_DURATION, 0, true, false, false)); gaveNv.add(id); }
+        } else if (gaveNv.remove(id)) p.removePotionEffect(PotionEffectType.NIGHT_VISION);
     }
 
     void weatherFx(Player p, Area a) {
@@ -540,10 +541,8 @@ final class WorldBlock implements Listener {
         stopMusic(p);
         p.resetPlayerTime();
         p.resetPlayerWeather();
-        PotionEffect d = p.getPotionEffect(PotionEffectType.DARKNESS);
-        if (d != null && d.isAmbient() && d.getDuration() == PotionEffect.INFINITE_DURATION) p.removePotionEffect(PotionEffectType.DARKNESS);
-        PotionEffect n = p.getPotionEffect(PotionEffectType.NIGHT_VISION);
-        if (n != null && n.isAmbient() && n.getDuration() == PotionEffect.INFINITE_DURATION) p.removePotionEffect(PotionEffectType.NIGHT_VISION);
+        if (gaveDark.remove(p.getUniqueId())) p.removePotionEffect(PotionEffectType.DARKNESS);
+        if (gaveNv.remove(p.getUniqueId())) p.removePotionEffect(PotionEffectType.NIGHT_VISION);
     }
 
     /** Someone who may not come in: back to where they last stood outside (or just past the nearest edge). */
@@ -612,6 +611,7 @@ final class WorldBlock implements Listener {
         lastOut.remove(p.getUniqueId());
         warned.remove(p.getUniqueId());
         picks.remove(p.getUniqueId());
+        gaveDark.remove(p.getUniqueId()); gaveNv.remove(p.getUniqueId());
     }
 
     // ================================================================= the rules: griefing
@@ -664,7 +664,9 @@ final class WorldBlock implements Listener {
         if (st instanceof InventoryHolder || b.getType() == Material.ANVIL || b.getType().name().endsWith("_ANVIL") || b.getType() == Material.JUKEBOX
                 || b.getType() == Material.FLOWER_POT || b.getType().name().startsWith("POTTED_") || b.getType() == Material.CAKE || b.getType().name().endsWith("_CANDLE_CAKE")
                 || b.getType() == Material.RESPAWN_ANCHOR || b.getType() == Material.CHISELED_BOOKSHELF || b.getType() == Material.DECORATED_POT || b.getType() == Material.LECTERN
-                || b.getType().name().endsWith("_SIGN") || b.getType() == Material.COMPOSTER || b.getType() == Material.CAULDRON || b.getType().name().endsWith("_CAULDRON")) {
+                || b.getType().name().endsWith("_SIGN") || b.getType() == Material.COMPOSTER || b.getType() == Material.REPEATER || b.getType() == Material.COMPARATOR
+                || b.getType() == Material.DAYLIGHT_DETECTOR || b.getType() == Material.NOTE_BLOCK || b.getType() == Material.CAMPFIRE || b.getType() == Material.SOUL_CAMPFIRE
+                || b.getType() == Material.BEEHIVE || b.getType() == Material.BEE_NEST || b.getType() == Material.SWEET_BERRY_BUSH || b.getType() == Material.CAVE_VINES || b.getType() == Material.CAVE_VINES_PLANT || b.getType() == Material.CAULDRON || b.getType().name().endsWith("_CAULDRON")) {
             e.setUseInteractedBlock(org.bukkit.event.Event.Result.DENY);
             e.setUseItemInHand(org.bukkit.event.Event.Result.DENY);
             deny(e.getPlayer());
@@ -680,8 +682,7 @@ final class WorldBlock implements Listener {
         Player p = playerBehind(e.getDamager());
         if (v instanceof Player victim) { // PvP
             if (p == null || p.equals(victim)) return;
-            Area a = at(victim.getLocation()), b = at(p.getLocation());
-            if (a != null && !a.pvp || b != null && !b.pvp) { e.setCancelled(true); p.sendActionBar(net.kyori.adventure.text.Component.text("PvP is off here.", net.kyori.adventure.text.format.NamedTextColor.RED)); }
+            if (noPvp(victim, p)) { e.setCancelled(true); p.sendActionBar(net.kyori.adventure.text.Component.text("PvP is off here.", net.kyori.adventure.text.format.NamedTextColor.RED)); }
             return;
         }
         if (v instanceof Enemy) return;
@@ -737,6 +738,54 @@ final class WorldBlock implements Listener {
         if (e.getEntered() instanceof AbstractVillager && noGrief(e.getEntered().getLocation(), null)) e.setCancelled(true);
     }
 
+    /** Boats and minecarts: no breaking them (VehicleDamageEvent, not an entity damage event). */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onVehicleHit(org.bukkit.event.vehicle.VehicleDamageEvent e) {
+        Player p = e.getAttacker() == null ? null : playerBehind(e.getAttacker());
+        if (p != null && noGrief(e.getVehicle().getLocation(), p)) { e.setCancelled(true); deny(p); }
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onVehicleBreak(org.bukkit.event.vehicle.VehicleDestroyEvent e) {
+        Player p = e.getAttacker() == null ? null : playerBehind(e.getAttacker());
+        if (p != null && noGrief(e.getVehicle().getLocation(), p)) e.setCancelled(true);
+    }
+
+    /** Boats, minecarts, armor stands and end crystals put down by a player. */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onEntityPlace(org.bukkit.event.entity.EntityPlaceEvent e) {
+        if (e.getPlayer() != null && noGrief(e.getEntity().getLocation(), e.getPlayer())) { e.setCancelled(true); deny(e.getPlayer()); }
+    }
+
+    /** Splash / lingering potions thrown by a player don't reach other players where PvP is off. */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onSplash(org.bukkit.event.entity.PotionSplashEvent e) {
+        if (!(e.getPotion().getShooter() instanceof Player thrower)) return;
+        for (LivingEntity v : new ArrayList<>(e.getAffectedEntities()))
+            if (v instanceof Player victim && !victim.equals(thrower) && noPvp(victim, thrower)) e.setIntensity(v, 0);
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onCloud(org.bukkit.event.entity.AreaEffectCloudApplyEvent e) {
+        if (!(e.getEntity().getSource() instanceof Player thrower)) return;
+        e.getAffectedEntities().removeIf(v -> v instanceof Player victim && !victim.equals(thrower) && noPvp(victim, thrower));
+    }
+
+    boolean noPvp(Player victim, Player attacker) {
+        Area a = at(victim.getLocation()), b = at(attacker.getLocation());
+        return a != null && !a.pvp || b != null && !b.pvp;
+    }
+
+    /** Hoppers (and hopper minecarts) outside can't pull things out of a protected area's chests. */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onHopper(org.bukkit.event.inventory.InventoryMoveItemEvent e) {
+        if (areas.isEmpty()) return;
+        Location from = e.getSource().getLocation(), to = e.getDestination().getLocation();
+        if (from == null || to == null) return;
+        Area a = at(from);
+        if (a != null && !a.grief && !a.in(to)) e.setCancelled(true);
+    }
+
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onExplode(EntityExplodeEvent e) { e.blockList().removeIf(b -> noGrief(b.getLocation(), null)); }
 
@@ -779,7 +828,7 @@ final class WorldBlock implements Listener {
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onMobGrief(EntityChangeBlockEvent e) {
-        if (e.getEntity() instanceof Player || e.getEntity() instanceof FallingBlock) return;
+        if (!(e.getEntity() instanceof Enemy) && !(e.getEntity() instanceof org.bukkit.entity.EnderDragon)) return; // villagers farming, sheep, bees...
         if (noGrief(e.getBlock().getLocation(), null)) e.setCancelled(true);
     }
 

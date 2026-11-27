@@ -344,7 +344,7 @@ public class Bounties implements Listener, TabExecutor {
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String label, String[] args) {
-        if (args.length == 1) return filter(List.of("place", "list", "info", "cancel", "claim"), args[0]);
+        if (args.length == 1) return filter(List.of("claim"), args[0]); // 2.0: bounties are gone, only the refund is left
         if (args.length == 2 && !args[0].equalsIgnoreCase("list") && !args[0].equalsIgnoreCase("claim")) {
             List<String> names = new ArrayList<>();
             if (args[0].equalsIgnoreCase("place")) for (Player p : Bukkit.getOnlinePlayers()) names.add(p.getName());

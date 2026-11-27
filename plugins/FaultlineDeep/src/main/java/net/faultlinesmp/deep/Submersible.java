@@ -93,6 +93,7 @@ final class Submersible implements Listener {
         float yaw, pitch, roll;
         Vector vel = new Vector();
         double spin, bob;
+        float lastYaw = Float.NaN, lastPitch, lastRoll; double lastSpin; Location lastBox;
         Location light;
         BlockData lightWas;
         Inventory hold;
@@ -576,7 +577,10 @@ final class Submersible implements Listener {
                 box(s);
                 Player p = s.rider();
                 if (p != null) drive(s, p); else idle(s);
-                if (s.box != null && s.box.isValid()) s.box.teleport(s.stand.getLocation().add(0, CENTER - HALF_H - 0.1, 0));
+                if (s.box != null && s.box.isValid()) {
+                    Location bl = s.stand.getLocation().add(0, CENTER - HALF_H - 0.1, 0);
+                    if (s.lastBox == null || s.lastBox.distanceSquared(bl) > 1e-6 || !s.box.getWorld().equals(bl.getWorld())) { s.box.teleport(bl); s.lastBox = bl; }
+                }
                 pose(s);
                 if (ticks % 2 == 0) bedrock(s);
             } catch (RuntimeException e) { // one sub's trouble never stops the others (logged at most once a minute)
@@ -587,8 +591,8 @@ final class Submersible implements Listener {
 
     void idle(Sub s) {
         unlight(s);
-        s.roll *= 0.9f;
-        s.pitch *= 0.95f;
+        s.roll = Math.abs(s.roll) < 0.05f ? 0 : s.roll * 0.9f;
+        s.pitch = Math.abs(s.pitch) < 0.05f ? 0 : s.pitch * 0.95f;
         Location l = s.stand.getLocation();
         boolean wet = water(s.center().getBlock()) || water(l.getBlock());
         if (wet) {
@@ -702,7 +706,7 @@ final class Submersible implements Listener {
             double v = axis == 0 ? d.getX() : axis == 1 ? d.getY() : d.getZ();
             if (Math.abs(v) < 1e-7) continue;
             Location t = n.clone().add(axis == 0 ? v : 0, axis == 1 ? v : 0, axis == 2 ? v : 0);
-            boolean ok = free(t) && ends(t, s.yaw);
+            boolean ok = (free(t) || !free(n)) && (ends(t, s.yaw) || !ends(n, s.yaw)); // (already stuck = it may move out)
             // the surface: going up, the hull's middle must stay in the water (its top may break the surface)
             if (ok && axis == 1 && v > 0 && driven && !water(t.clone().add(0, CENTER, 0).getBlock())) ok = false;
             if (ok) n = t;
@@ -803,6 +807,9 @@ final class Submersible implements Listener {
 
     // =========================================================================================== drawing
     void pose(Sub s) {
+        // (a parked sub sends nothing: a pose is two metadata packets to everyone near)
+        if (s.yaw == s.lastYaw && s.pitch == s.lastPitch && s.roll == s.lastRoll && s.spin == s.lastSpin) return;
+        s.lastYaw = s.yaw; s.lastPitch = s.pitch; s.lastRoll = s.roll; s.lastSpin = s.spin;
         Quaternionf frame = new Quaternionf().rotationY((float) Math.toRadians(-s.yaw)).rotateX((float) Math.toRadians(s.pitch))
                 .rotateZ((float) Math.toRadians(s.roll)).rotateY((float) Math.toRadians(-90));
         Quaternionf flip = new Quaternionf().rotationY((float) Math.PI);

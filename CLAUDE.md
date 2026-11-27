@@ -3738,6 +3738,14 @@ Notes:
   `pending` on start and is handed back on join, `/bounty claim` for the rest; the help line and the Index's Bounty Hunter / Headhunter
   achievements are gone). LEGENDARY WEAPONS can't be crafted any more (`Legendary.addRecipes` only removes the old recipe keys; they come
   from /adminmenu or `/legendary give`; Index text updated).
+- **Audit of the above (same 2.0.0)**: World Block: it only takes away Darkness / Night Vision IT gave (`gaveDark`/`gaveNv`;
+  1.x code re-added the Darkness every 2 s = its fade restarting, and leaving an area in the Abyss would have stripped the Abyss's own
+  dark); the sky / weather are re-applied every 2 s (leaving the Farlands resets them); mob griefing only stops monsters (villagers kept
+  farming, sheep eating grass); also protected: boats and minecarts (VehicleDamage / VehicleDestroy), boats / carts / armor stands /
+  crystals put down (EntityPlaceEvent), repeaters, comparators, note blocks, campfires, beehives, berry bushes, glow berries, hoppers
+  outside pulling from chests inside (InventoryMoveItemEvent); PvP off also stops thrown splash / lingering potions on other players.
+  Submersible: a hull already overlapping a block (one placed into it, or its nose swung into a wall while turning) can move out again
+  (it froze for good); a parked sub sends no pose / box packets (its tilt fades to exactly 0). Bounties: tab completion is only `claim`.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

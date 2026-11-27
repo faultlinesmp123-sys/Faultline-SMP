@@ -411,6 +411,9 @@ public final class FaultlineItems extends JavaPlugin {
         getServer().getPluginManager().registerEvents(pvpLimits, this);
         dimensionLock = new DimensionLock(this); // 2.0: Nether / End portals can be locked (/dimlock)
         getServer().getPluginManager().registerEvents(dimensionLock, this);
+        MobThrottle mobThrottle = new MobThrottle(this); // 2.0: fewer hostile mobs (/mobspawns)
+        getServer().getPluginManager().registerEvents(mobThrottle, this);
+        if (getCommand("mobspawns") != null) getCommand("mobspawns").setExecutor(mobThrottle);
         if (getCommand("dimlock") != null) { getCommand("dimlock").setExecutor(dimensionLock); getCommand("dimlock").setTabCompleter(dimensionLock); }
         totemLimit = new TotemLimit(this); // 1.2.69: totems popped by players count, 4 max (per life)
         getServer().getPluginManager().registerEvents(totemLimit, this);

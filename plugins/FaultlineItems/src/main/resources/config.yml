@@ -1236,3 +1236,9 @@ outer-rim:
     chance: 0.06            # every 10 min per player out there (past 15% depth)
     cooldown-minutes: 60
     sigil-chance: 0.2
+
+# 2.0: fewer hostile mobs. This share of NATURAL / patrol hostile spawns is cancelled in every world
+# (vanilla + plugin biome waves). Spawners, eggs, raids, bosses untouched. /mobspawns <percent> changes it live.
+mob-spawning:
+  enabled: true
+  reduce: 0.5

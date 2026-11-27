@@ -7,6 +7,9 @@ author: FaultlineSMP
 description: Custom items for Faultline SMP — Magic Mirror, Cloud Potion, Darkness Potion, Golden Ring, Goodie Bag
 
 commands:
+  mobspawns:
+    description: Show or set how many natural hostile mob spawns are cut
+    usage: /mobspawns [percent]
   adminmenu:
     description: Admin menu (ability items, remove abilities)
     permission: items.abilities.admin
@@ -281,6 +284,8 @@ commands:
     usage: /givedisc <id|random> [player]
     permission: items.fgear
 permissions:
+  items.mobspawns:
+    default: op
   items.dimlock:
     description: Lock / unlock the Nether and the End
     default: op

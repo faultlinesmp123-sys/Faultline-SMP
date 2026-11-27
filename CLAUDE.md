@@ -3621,6 +3621,10 @@ Notes:
   `faultlineworld:spawn_set`); after that the world spawn is whatever staff set. Spawn Pads never override a respawn the game
   is doing at a bed / anchor (`isBedSpawn` / `isAnchorSpawn` = forget the pad), and `/spawnpoint` (cause COMMAND) clears a pad
   too. Respawn anchors still only work in the Nether (vanilla; the Nether is dimlocked).
+- **Fewer mobs (Items, same 2.0.0, `Items/MobThrottle.java`, `mob-spawning:` enabled / reduce 0.5, `/mobspawns [percent]` perm
+  `items.mobspawns` op)**: half of every NATURAL / PATROL / REINFORCEMENTS hostile (`Enemy`) spawn is cancelled (LOW) in every
+  world: vanilla's own and every plugin's "natural" extras (FaultlineWorld biome waves, Blood Moon extras, Farlands ghasts).
+  Spawners, eggs, raids, bosses and CUSTOM spawns untouched. `/mobspawns 70` = cut 70%, written to the config.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

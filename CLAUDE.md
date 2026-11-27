@@ -3746,6 +3746,14 @@ Notes:
   outside pulling from chests inside (InventoryMoveItemEvent); PvP off also stops thrown splash / lingering potions on other players.
   Submersible: a hull already overlapping a block (one placed into it, or its nose swung into a wall while turning) can move out again
   (it froze for good); a parked sub sends no pose / box packets (its tilt fades to exactly 0). Bounties: tab completion is only `claim`.
+- **World Block full height + Bedrock height check (Items, same 2.0.0)**: every World Block area now covers its whole world's height
+  (`Area.in` ignores y; `fullHeight()` sets y1/y2 to the world's min / max on creation and load), so the music, weather, lighting and
+  rules reach the build limit. BEDROCK ABOVE Y 320 is Geyser's job (read from Geyser's source, `GeyserSession.connect`): since #5002
+  (2024-10) it sends a DimensionDataPacket extending Bedrock's overworld to the Java overworld type's height, clamped to -512..512, and
+  translates chunks to that height (the definition names Geyser's INTEGRATED PACK since 2026-08). Nothing a plugin can do past that.
+  `/bedrockcheck` now reports each NORMAL world's height on the server (<= 320 = the datapack's height isn't loaded there), whether the
+  installed Geyser has the tall-overworld code (reflection: `GeyserSession.bedrockOverworldDimension`; missing = update Geyser), and
+  warns when Geyser's `enable-integrated-pack` is false. The world's height is unchanged (592: y -64..527).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

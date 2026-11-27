@@ -153,12 +153,14 @@ final class WorldBlock implements Listener {
         Area(String id) { this.id = id; }
         boolean in(Location l) {
             if (l == null || l.getWorld() == null || !l.getWorld().getName().equals(world)) return false;
-            int x = l.getBlockX(), y = l.getBlockY(), z = l.getBlockZ();
-            return x >= x1 && x <= x2 && y >= y1 && y <= y2 && z >= z1 && z <= z2;
+            int x = l.getBlockX(), z = l.getBlockZ(); // (2.0: every area reaches from the bottom of the world to the very top)
+            return x >= x1 && x <= x2 && z >= z1 && z <= z2;
         }
         boolean isBlock(Block b) { return placed && b.getWorld().getName().equals(world) && b.getX() == bx && b.getY() == by && b.getZ() == bz; }
         boolean live() { return placed; }
-        String size() { return (x2 - x1 + 1) + " x " + (y2 - y1 + 1) + " x " + (z2 - z1 + 1); }
+        String size() { return (x2 - x1 + 1) + " x " + (z2 - z1 + 1) + " (bedrock to sky)"; }
+        /** The whole height of its world (the music, weather and rules go all the way up to the build limit). */
+        void fullHeight() { World w = Bukkit.getWorld(world); if (w != null) { y1 = w.getMinHeight(); y2 = w.getMaxHeight() - 1; } }
     }
 
     static final class Listen { String area, track; long until; double pitch; }
@@ -245,6 +247,7 @@ final class WorldBlock implements Listener {
             a.x1 = Math.min(pk[0].getBlockX(), pk[1].getBlockX()); a.x2 = Math.max(pk[0].getBlockX(), pk[1].getBlockX());
             a.y1 = Math.min(pk[0].getBlockY(), pk[1].getBlockY()); a.y2 = Math.max(pk[0].getBlockY(), pk[1].getBlockY());
             a.z1 = Math.min(pk[0].getBlockZ(), pk[1].getBlockZ()); a.z2 = Math.max(pk[0].getBlockZ(), pk[1].getBlockZ());
+            a.fullHeight();
             areas.put(a.id, a);
             picks.remove(p.getUniqueId());
             save();
@@ -271,7 +274,7 @@ final class WorldBlock implements Listener {
         Player p = e.getPlayer();
         Area a = areas.get(id);
         if (!admin(p) || a == null) { e.setCancelled(true); if (a == null) p.sendMessage(ChatColor.RED + "That area doesn't exist any more."); return; }
-        if (!a.in(e.getBlock().getLocation())) { e.setCancelled(true); p.sendMessage(ChatColor.RED + "Place it INSIDE its area (" + a.x1 + " " + a.y1 + " " + a.z1 + " to " + a.x2 + " " + a.y2 + " " + a.z2 + ")."); return; }
+        if (!a.in(e.getBlock().getLocation())) { e.setCancelled(true); p.sendMessage(ChatColor.RED + "Place it INSIDE its area (x " + a.x1 + ".." + a.x2 + ", z " + a.z1 + ".." + a.z2 + ")."); return; }
         e.setCancelled(false);
         if (a.placed) { Block old = Bukkit.getWorld(a.world) == null ? null : Bukkit.getWorld(a.world).getBlockAt(a.bx, a.by, a.bz); if (old != null && old.getType() == Material.LODESTONE) old.setType(Material.AIR); }
         a.placed = true; a.bx = e.getBlock().getX(); a.by = e.getBlock().getY(); a.bz = e.getBlock().getZ();
@@ -341,7 +344,7 @@ final class WorldBlock implements Listener {
         for (int i = 0; i < 54; i++) m.inv.setItem(i, glass);
         Track t = track(a.music);
         m.inv.setItem(4, button(Material.MAP, ChatColor.AQUA + "Area " + a.id, a.size() + " blocks in " + a.world,
-                a.x1 + " " + a.y1 + " " + a.z1 + "  to  " + a.x2 + " " + a.y2 + " " + a.z2,
+                "x " + a.x1 + ".." + a.x2 + ", z " + a.z1 + ".." + a.z2 + ", y " + a.y1 + ".." + a.y2 + " (all of it)",
                 a.placed ? "Block at " + a.bx + " " + a.by + " " + a.bz + " (ON)" : ChatColor.YELLOW + "Not placed yet: OFF until you place the block inside."));
         m.inv.setItem(19, button(t == null ? Material.JUKEBOX : t.icon, ChatColor.GOLD + "Music: " + ChatColor.WHITE + (t == null ? "none" : t.name), "Click to pick a song."));
         m.inv.setItem(20, button(a.loop ? Material.REPEATER : Material.COMPARATOR, ChatColor.GOLD + "Loop: " + onOff(a.loop), "Click to switch."));
@@ -568,8 +571,7 @@ final class WorldBlock implements Listener {
         if (min == dx1) x = a.x1 - 1.5; else if (min == dx2) x = a.x2 + 2.5; else if (min == dz1) z = a.z1 - 1.5; else z = a.z2 + 2.5;
         World w = from.getWorld();
         int y = w.getHighestBlockYAt((int) Math.floor(x), (int) Math.floor(z));
-        double yy = from.getY() < a.y1 || from.getY() > a.y2 + 1 ? from.getY() : Math.max(from.getY(), y + 1);
-        if (yy >= a.y1 && yy <= a.y2 + 1 && (int) Math.floor(x) >= a.x1 && (int) Math.floor(x) <= a.x2 && (int) Math.floor(z) >= a.z1 && (int) Math.floor(z) <= a.z2) yy = a.y2 + 2;
+        double yy = Math.max(from.getY(), y + 1);
         return new Location(w, x, yy, z);
     }
 
@@ -864,6 +866,7 @@ final class WorldBlock implements Listener {
             a.entry = c.getBoolean("entry", true);
             a.light = Math.max(-2, Math.min(2, c.getInt("light", 0)));
             a.weather = c.getString("weather", "normal");
+            a.fullHeight();
             areas.put(id, a);
         }
     }

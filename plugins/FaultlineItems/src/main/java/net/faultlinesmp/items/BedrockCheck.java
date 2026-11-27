@@ -125,7 +125,23 @@ final class BedrockCheck implements CommandExecutor {
             else out.add(ok("enable-custom-content: " + (custom == null ? "default (true)" : custom)));
             if (Boolean.FALSE.equals(force)) out.add(warn("force-resource-packs is false: a Bedrock player who taps 'no' to the download plays without the packs."));
             else out.add(ok("force-resource-packs: " + (force == null ? "default (true)" : force)));
+            Boolean integrated = flag(y, "enable-integrated-pack");
+            if (Boolean.FALSE.equals(integrated)) out.add(warn("enable-integrated-pack is false: Geyser's tall-world support names that pack, so Bedrock may stay capped at y 320. Set it to true."));
         } else out.add(warn("No " + cfg.getPath() + " found"));
+        // ---- world height (2.0): Bedrock sees above y 320 only through Geyser's extended overworld (Geyser 2024-10+, up to y 512)
+        for (org.bukkit.World w : Bukkit.getWorlds()) {
+            if (w.getEnvironment() != org.bukkit.World.Environment.NORMAL) continue;
+            int lo = w.getMinHeight(), hi = w.getMaxHeight();
+            if (hi <= 320) { out.add(warn(w.getName() + " is only " + lo + ".." + (hi - 1) + " tall on the server (the Faultline datapack's height isn't loaded there): nothing to show above y 320 for anyone.")); continue; }
+            out.add(ok(w.getName() + ": y " + lo + ".." + (hi - 1) + " (Bedrock gets y " + Math.max(lo, -512) + ".." + (Math.min(hi, 512) - 1) + ")"));
+        }
+        if (geyser != null) {
+            boolean tall;
+            try { Class.forName("org.geysermc.geyser.session.GeyserSession", false, geyser.getClass().getClassLoader()).getDeclaredField("bedrockOverworldDimension"); tall = true; }
+            catch (Throwable t) { tall = false; }
+            if (tall) out.add(ok("This Geyser sends Bedrock the tall overworld (above y 320 up to 512)."));
+            else { out.add(bad("This Geyser is too old to show Bedrock anything above y 320: update Geyser-Spigot (and Floodgate) from geysermc.org/download.")); problems++; }
+        }
         // ---- packs
         File packs = new File(gf, "packs");
         List<Expected> exp = expected();

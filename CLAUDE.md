@@ -3783,6 +3783,13 @@ Notes:
   players (`guest.pvp-protected` true). `FaultlineKingdoms.isGuest(uuid)` for other plugins. Tested (scratch `guest/GTest`).
   WORLD BLOCK: menu slot 33 "Snow on the ground" (`no-snow`): BlockFormEvent / EntityBlockFormEvent making SNOW or POWDER_SNOW in the
   area cancelled; switching it on clears the snow on top of the ground in the area's loaded chunks (4 chunks a tick).
+- **Resetting the Farlands (World, same 2.0.0)**: Paper can't regenerate chunks in a running server, so `/fworld resetfarlands`
+  (`faultlineworld.admin` / console) shows how many region files are WHOLLY in the Farlands (nearest point >= `RESET_FROM` 3360 from
+  0,0; `from <blocks>` for further out only), `confirm` writes `plugins/FaultlineWorld/reset-farlands.txt`, `cancel` removes it. On the
+  next start `FaultlineWorld.resetFarlandsIfAsked()` (onEnable at STARTUP, before the main world opens) MOVES those r.X.Z.mca files
+  from <world>/region, /entities and /poi to <world>/farlands_backup_<time>/ (same disk, nothing deleted), so the chunks generate fresh
+  (the Broken Lands, the right biomes, no snow). It waits a restart while the new datapack isn't loaded yet (`faultline:missing_chunks`
+  missing): chunks made then would save the fallback biome again. Regions that also hold inner land (the first ring past 3280) stay.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

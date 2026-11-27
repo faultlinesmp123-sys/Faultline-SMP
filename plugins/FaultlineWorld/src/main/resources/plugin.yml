@@ -9,7 +9,7 @@ softdepend: [FaultlineItems, FaultlineRaids, FaultlineBosses, FaultlineDeep, Fau
 commands:
   fworld:
     description: Faultline world admin tools (where am I, teleport to a site).
-    usage: /fworld [where|giant|rim [citadel|village|lighthouse|glitch|list [kind]|build [kind]]|tp <site|pyramid1-3|hole1-3>]
+    usage: /fworld [where|giant|resetfarlands [confirm|cancel] [from <blocks>]|rim [citadel|village|lighthouse|glitch|list [kind]|build [kind]]|tp <site|pyramid1-3|hole1-3>]
     permission: faultlineworld.admin
 permissions:
   faultlineworld.admin:

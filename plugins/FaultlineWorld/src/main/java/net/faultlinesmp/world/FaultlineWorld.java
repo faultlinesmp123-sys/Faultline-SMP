@@ -15,6 +15,7 @@ import java.io.File;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import java.util.List;
 import java.util.Properties;
 
 /**
@@ -34,6 +35,7 @@ public final class FaultlineWorld extends JavaPlugin {
         INSTANCE = this;
         saveDefaultConfig();
         Sites.load(getLogger());
+        resetFarlandsIfAsked();     // (before setup: the world isn't open yet at STARTUP)
         if (setup()) return;
         Bukkit.getScheduler().runTask(this, this::afterWorlds);
         life = new Life(this);
@@ -146,8 +148,87 @@ public final class FaultlineWorld extends JavaPlugin {
         getLogger().info("[World] Faultline overworld ready: spawn " + Layout.SPAWN_X + " " + (Layout.SPAWN_Y + 1) + " " + Layout.SPAWN_Z + ", border " + size + " x " + size);
     }
 
+    // ================================================================== resetting the Farlands' chunks
+
+    static final int RESET_FROM = 3360;   // the Farlands start at 3280 (+-70 wobble): region files wholly past this are Farlands only
+
+    File resetMarker() { return new File(getDataFolder(), "reset-farlands.txt"); }
+
+    /** Region files (r.X.Z.mca) wholly at least `from` blocks from 0,0. */
+    static boolean farRegion(String name, int from) {
+        String[] p = name.split("\\.");
+        if (p.length != 4 || !p[0].equals("r") || !p[3].equals("mca")) return false;
+        try {
+            int rx = Integer.parseInt(p[1]), rz = Integer.parseInt(p[2]);
+            long x0 = rx * 512L, x1 = x0 + 511, z0 = rz * 512L, z1 = z0 + 511;
+            long dx = x0 > 0 ? x0 : x1 < 0 ? -x1 : 0, dz = z0 > 0 ? z0 : z1 < 0 ? -z1 : 0;
+            return Math.hypot(dx, dz) >= from;
+        } catch (NumberFormatException e) { return false; }
+    }
+
+    List<File> farFiles(File worldDir, int from) {
+        List<File> out = new java.util.ArrayList<>();
+        for (String sub : new String[]{"region", "entities", "poi"}) {
+            File[] fs = new File(worldDir, sub).listFiles();
+            if (fs != null) for (File f : fs) if (farRegion(f.getName(), from)) out.add(f);
+        }
+        return out;
+    }
+
+    /**
+     * 2.0: /fworld resetfarlands confirm leaves a marker; on the next start (here, before the main world opens) every region file
+     * wholly in the Farlands is MOVED to <world>/farlands_backup_<time>/ (region, entities, poi), so those chunks generate fresh
+     * with the current generator and datapack. It waits while the datapack is being updated (a new chunk made then would save
+     * the vanilla fallback biome again).
+     */
+    void resetFarlandsIfAsked() {
+        File mk = resetMarker();
+        if (!mk.isFile()) return;
+        int from = RESET_FROM;
+        try { from = Math.max(RESET_FROM, Integer.parseInt(Files.readString(mk.toPath()).trim())); } catch (Exception ignored) { }
+        if (WorldGen.BiomeMap.lookup("faultline:missing_chunks") == null) {
+            getLogger().warning("[World] the Farlands reset waits: this start loads the new datapack first. RESTART once more and the Farlands reset then.");
+            return;
+        }
+        File worldDir = new File(Bukkit.getWorldContainer(), levelName());
+        String stamp = new java.text.SimpleDateFormat("yyyy-MM-dd_HH-mm-ss").format(new java.util.Date());
+        File backup = new File(worldDir, "farlands_backup_" + stamp);
+        int moved = 0, failed = 0;
+        for (File f : farFiles(worldDir, from)) {
+            File to = new File(new File(backup, f.getParentFile().getName()), f.getName());
+            try { to.getParentFile().mkdirs(); Files.move(f.toPath(), to.toPath()); moved++; }
+            catch (Exception e) { failed++; getLogger().warning("[World] couldn't move " + f + ": " + e); }
+        }
+        if (!mk.delete()) mk.deleteOnExit();
+        getLogger().warning("[World] FARLANDS RESET: moved " + moved + " region file(s) (" + from + "+ blocks out) to " + backup.getName()
+                + (failed > 0 ? " (" + failed + " failed)" : "") + ". Those chunks generate fresh. Delete that folder once you're happy.");
+    }
+
     @Override
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
+        if (args.length >= 1 && args[0].equalsIgnoreCase("resetfarlands")) {
+            if (!sender.hasPermission("faultlineworld.admin") && !(sender instanceof org.bukkit.command.ConsoleCommandSender)) { sender.sendMessage("§cAdmins only."); return true; }
+            int from = RESET_FROM;
+            for (int i = 1; i + 1 < args.length; i++) if (args[i].equalsIgnoreCase("from")) try { from = Math.max(RESET_FROM, Integer.parseInt(args[i + 1])); } catch (NumberFormatException ignored) { }
+            File worldDir = new File(Bukkit.getWorldContainer(), levelName());
+            List<File> files = farFiles(worldDir, from);
+            long bytes = 0; for (File f : files) bytes += f.length();
+            boolean confirm = java.util.Arrays.stream(args).anyMatch(a -> a.equalsIgnoreCase("confirm"));
+            boolean cancel = java.util.Arrays.stream(args).anyMatch(a -> a.equalsIgnoreCase("cancel"));
+            if (cancel) { sender.sendMessage(resetMarker().delete() ? "§3[World] §7Farlands reset cancelled." : "§3[World] §7No reset was waiting."); return true; }
+            if (!confirm) {
+                sender.sendMessage("§3[World] §7" + files.size() + " region file(s) (" + (bytes / 1024 / 1024) + " MB) are wholly in the Farlands (" + from + "+ blocks out).");
+                sender.sendMessage("§7On the next restart they're moved to a backup folder in the world, and those chunks generate fresh");
+                sender.sendMessage("§7(the Broken Lands, rain, no snow). §cEverything built out there goes with them §7(it stays in the backup).");
+                sender.sendMessage("§e/fworld resetfarlands confirm §7to do it  ·  §7from <blocks> §8(further out only)§7  ·  cancel");
+                return true;
+            }
+            try { getDataFolder().mkdirs(); Files.writeString(resetMarker().toPath(), String.valueOf(from)); }
+            catch (Exception e) { sender.sendMessage("§cCouldn't write the marker: " + e.getMessage()); return true; }
+            sender.sendMessage("§3[World] §aThe Farlands (" + files.size() + " region files, " + from + "+ blocks out) reset on the next restart. §7(/fworld resetfarlands cancel to undo)");
+            getLogger().warning("[World] " + sender.getName() + " asked for a Farlands reset (" + from + "+): it happens on the next restart");
+            return true;
+        }
         if (args.length >= 1 && args[0].equalsIgnoreCase("where")) {
             if (!(sender instanceof Player p)) return true;
             Terrain t = gen.terrain(p.getWorld());
@@ -225,7 +306,7 @@ public final class FaultlineWorld extends JavaPlugin {
             sender.sendMessage("§3[World] §7/fworld tp <site name | pyramid1-3 | mountaincore / junglecore / icecore / fiberscore / skycore>");
             return true;
         }
-        sender.sendMessage("§3[World] §7/fworld where §8| §7/fworld tp <site | pyramid1-3 | <faction>core>");
+        sender.sendMessage("§3[World] §7/fworld where §8| §7/fworld tp <site | pyramid1-3 | <faction>core> §8| §7/fworld resetfarlands [confirm|cancel] [from <blocks>]");
         return true;
     }
 }

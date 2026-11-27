@@ -1525,13 +1525,13 @@ entries:
      where: "Krampus calls them, three at a time.",
      does: "Small, fast and furry. 16 health."}
   - {chapter: weapons, name: "Stormbreaker", icon: jacob_hammer, detect: "faultlineitems:legendary_stormbreaker",
-     how: "LEGENDARY, only one can ever exist. Only an admin can craft it, once: a Mace, 2 Breeze Rods, 3 Wind Charges and a Heavy Core.",
+     how: "LEGENDARY, only one can ever exist. It can't be crafted: only an admin can hand it out.",
      does: "A legendary mace. Right-click to leap up and slam down in a huge wind blast that reaches 4 blocks: 2 hearts right next to you, 1 heart a block out, half a heart further, and everyone it hits is thrown about 4 blocks up. 30 second cooldown. Every hit you land with it gives you a little hop."}
   - {chapter: weapons, name: "Void Piercer", icon: jacob_sword, detect: "faultlineitems:legendary_void_piercer",
-     how: "LEGENDARY, only one can ever exist. Only an admin can craft it, once: a Netherite Sword, 4 End Crystals, 2 Dragon Heads and an Elytra.",
+     how: "LEGENDARY, only one can ever exist. It can't be crafted: only an admin can hand it out.",
      does: "A legendary sword. Right-click to blink up to 12 blocks where you look, in a purple blast where you leave and where you land (hurts everyone close), then Speed II for 10 seconds. 35 second cooldown."}
   - {chapter: weapons, name: "Infernal Reaper", icon: inferno_mob, detect: "faultlineitems:legendary_infernal_reaper",
-     how: "LEGENDARY, only one can ever exist. Only an admin can craft it, once: a Netherite Sword, 4 Nether Stars, 2 Magma Cream and a Wither Skeleton Skull.",
+     how: "LEGENDARY, only one can ever exist. It can't be crafted: only an admin can hand it out.",
      does: "A legendary sword. Carry it and you never burn (endless Fire Resistance). Its hits burn like Fire Aspect III, and that fire burns through Fire Resistance. Right-click for EARTHSHATTER: spikes burst out of the ground round you (2 hearts each) and 1 in 4 of them are frozen in place for a second. 25 second cooldown."}
   - {chapter: weapons, name: "Chrono Spine", icon: gravity_stone, detect: "faultlineitems:chrono_spine",
      how: "Torn from the Chrome Runner: the one who hurt him most always gets one, everyone else in the fight has a 1 in 4 chance.",
@@ -1631,10 +1631,6 @@ achievements:
      stat: mutants, count: 25, reward: {items: ["DIAMOND:3", "GOLDEN_APPLE:2"], xp: 500}}
   - {id: mutant_slayer, name: "Mutant Slayer", icon: broodmother, desc: "Kill 250 mutants.",
      stat: mutants, count: 250, reward: {items: ["NETHERITE_SCRAP:2", "ENCHANTED_GOLDEN_APPLE:1"], xp: 2500}}
-  - {id: bounty_hunter, name: "Bounty Hunter", icon: slayer_crown, desc: "Claim a bounty: kill a player someone put heads on (/bounty).",
-     stat: bounties_claimed, count: 1, reward: {items: ["DIAMOND:4"], xp: 300}}
-  - {id: headhunter, name: "Headhunter", icon: slayer_crown, desc: "Claim 10 bounties.",
-     stat: bounties_claimed, count: 10, reward: {items: ["NETHERITE_SCRAP:2"], xp: 1500}}
   - {id: good_customer, name: "Good Customer", icon: caravan_merchant, desc: "Make 10 trades with the Caravan Merchant.",
      stat: caravan_trades, count: 10, reward: {items: ["EMERALD:16"], xp: 300}}
   - {id: pirate_hunter, name: "Pirate Hunter", icon: skeleton_navigator, desc: "Sink 5 skeleton ships.",

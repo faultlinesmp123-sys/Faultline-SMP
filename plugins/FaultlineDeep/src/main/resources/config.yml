@@ -55,6 +55,15 @@ submersible:
   implode-damage: 10
   model-scale: 2.0
   model-lift: 0.9
+  # 2.0 overhaul: how fast the hull turns toward your view (degrees a tick), how quickly it speeds up (0-1),
+  # ramming a wall faster than ram-speed (blocks a tick) dents the hull, sonar (F) and the cargo hold.
+  turn-rate: 7
+  acceleration: 0.12
+  ram-speed: 0.4
+  ram-damage: 12
+  sonar-radius: 48
+  sonar-cooldown-seconds: 12
+  owner-only-cargo: true
 
 # THE LEVIATHAN MIGRATION (1.8.0): a pod of great whales crossing the Sunlit Sea; at the end the eldest sinks into a whale
 # fall (bones + a chest). Killing a whale can bring the Umbral Leviathan up. /deep migration [start|stop]

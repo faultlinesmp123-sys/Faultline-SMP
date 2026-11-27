@@ -479,6 +479,8 @@ public final class FaultlineItems extends JavaPlugin {
         combatTag = new CombatTag(this, mimics);
         getServer().getPluginManager().registerEvents(combatTag, this);
         kingdomCompass = new KingdomCompass(this); // 2.0: kingdom compasses (/adminmenu row 3)
+        worldBlock = new WorldBlock(this); // 2.0: the World Block (/adminmenu slot 18)
+        getServer().getPluginManager().registerEvents(worldBlock, this);
         abilities = new Abilities(this); // 1.3.33: personal abilities (/adminmenu)
         getServer().getPluginManager().registerEvents(abilities, this);
         for (String c : new String[]{"adminmenu", "ability"}) if (getCommand(c) != null) { getCommand(c).setExecutor(abilities); getCommand(c).setTabCompleter(abilities); }
@@ -782,6 +784,7 @@ public final class FaultlineItems extends JavaPlugin {
         if (outerRim != null) outerRim.shutdown();
         if (abilities != null) try { abilities.disable(); } catch (RuntimeException ignored) { }
         if (legendary != null) try { legendary.disable(); } catch (RuntimeException ignored) { }
+        if (worldBlock != null) try { worldBlock.disable(); } catch (RuntimeException ignored) { }
         if (toiletRaid != null) try { toiletRaid.shutdown(); } catch (RuntimeException ignored) { }
         if (chromeRunner != null) try { chromeRunner.shutdown(); } catch (RuntimeException ignored) { }
         if (farlands != null) try { farlands.shutdown(); } catch (RuntimeException ignored) { }
@@ -1092,6 +1095,7 @@ public final class FaultlineItems extends JavaPlugin {
     Truce truce;
     Abilities abilities;
     KingdomCompass kingdomCompass;
+    WorldBlock worldBlock;
     Legendary legendary;
     ToiletRaid toiletRaid;
     ChromeRunner chromeRunner;

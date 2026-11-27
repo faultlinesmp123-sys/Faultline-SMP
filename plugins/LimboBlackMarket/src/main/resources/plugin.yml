@@ -30,8 +30,8 @@ commands:
     aliases: [freload]
 
   bounty:
-    description: Put player heads on someone's name; whoever kills them gets the heads
-    usage: /bounty <place <player> [amount]|list|info <player>|cancel <player>|claim>
+    description: Bounties were removed; /bounty claim gives back heads that were on one
+    usage: /bounty claim
     aliases: [bounties]
   missions:
     description: The Mission Board - post jobs for other players or take theirs

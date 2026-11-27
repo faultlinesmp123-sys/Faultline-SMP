@@ -3703,6 +3703,41 @@ Notes:
   lost [player]`. REAL WORDS (`Insanity.onChat` keeps the last 200 chat lines, async-safe; `fakeChat` half the time replays a
   real player's real message as chat, a whisper, or a broken lowercase echo; your own words come back under someone else's name).
   Tested (`far/FarTest`: moved 85 blocks).
+- **The Submersible overhaul, the World Block, no bounties, no legendary recipes (Deep, Items, LimboBlackMarket, Index; same 2.0.0)**:
+  SUBMERSIBLE (`Deep/Submersible.java` rewritten): its displays had the placing player's yaw ON TOP of the pose (the model faced
+  the wrong way when turning): now spawned with no rotation and reset to 0 (old subs fixed on load). The vehicle is a tiny invisible
+  small stand (an invisible armor stand can't be punched at all, and it was hard to click), so an INTERACTION box the size of the hull
+  (tag `faultline_submersible_box`, non-persistent, remade on load, hidden from the rider) takes the clicks (PlayerInteractEntityEvent +
+  AtEntity, deduped) and punches (PrePlayerAttackEntityEvent). Collision checks the real hull (`CENTER` 1.4 over the stand's feet, `HALF_W`/
+  `HALF_H` 1.05, 3x3x3 points + nose/tail along the heading: `ends`), blocks with `solid()` = !isPassable; unloaded chunks are walls (it
+  used to load them). Driving: the hull TURNS toward your view at `turn-rate` 7 deg/tick (it never snaps), momentum (`acceleration`
+  0.12), S brakes then reverses, banks into turns (roll), bobs at the surface, holds depth when let go, drops when out of the water;
+  ramming faster than `ram-speed` 0.4 dents the hull (`ram-damage` 12 x the excess). F = SONAR (`sonar-radius` 48, `sonar-cooldown-
+  seconds` 12: a ring + every creature marked in red / aqua dust for the rider only, a count and the nearest threat). Q = headlight on/off
+  (stand PDC `sub_lamp`; its LIGHT block is recorded in `sub_light` and put back to water on load after a crash; never overwrites another
+  LIGHT). Sneak + right-click from outside = CARGO HOLD (27 slots, stand PDC `sub_cargo` bytes, saved on every click; owner only unless
+  `owner-only-cargo: false`); picked up = the cargo goes in the item (and comes back when placed), imploding spills it. Climbing out puts
+  you on top of / beside the hull (`onDismount`, a tick later). HUD every 5 ticks: hull bar, y, speed, heading, sonar, light. Tested
+  (scratch `sub/SubTest`, with an EntityMock patched by ByteBuddy to teleport with passengers: `sub/tp/TpPatch.java`).
+  WORLD BLOCK (`Items/WorldBlock.java`, data `world_blocks.yml`, perm `items.worldblock` op, ONLY from /adminmenu slot 18): a LODESTONE
+  item (PDC `faultlineitems:world_block`). Holding it: right-click a block = pos 1, left-click = pos 2 (never breaks it) -> a cuboid
+  area `areaN` + the settings menu: music (Faultline `FAULTLINE` list incl. the new `faultline:world.festive` = the owner's Fortnite
+  Festive Lobby track, cut to start at 0:23 (108.8 s) in FaultlineDeepMusic.zip `sounds/world/festive.ogg`, category record; or vanilla
+  discs `VANILLA`; or none), loop on/off, pitch 0.5-2.0 (left +0.1 / right -0.1 / shift = 1.0; the loop length is divided by it),
+  building & griefing (default OFF), PvP (default on), entering (anyone / admins only: others are stopped at the edge (PlayerMoveEvent,
+  PlayerTeleportEvent) and put out at their last spot outside if inside), lighting -2..2 (dark = the player's own sky at 18000, very dark
+  + ambient Darkness; bright = noon, very bright + Night Vision), weather normal / clear / rain (player weather DOWNFALL + falling water
+  drops so it rains even in deserts) / snow (clear sky + snowflake particles), all only for people inside. DONE = the World Block in hand
+  becomes bound to the area (PDC `world_block_area`); the area is OFF until that block is PLACED inside it (outside = refused).
+  Right-click the placed block = the menu; sneak + break it (admin) = the area is deleted (or the menu's shift-click Delete). Griefing off:
+  breaking, placing, buckets, containers / anvils / jukeboxes / pots / signs / lecterns..., fire, world-changing items (flint, bone meal,
+  spawn eggs, boats, hoes / axes / shovels...), hurting non-hostile mobs / villagers / frames / stands, leads / name tags / buckets on
+  mobs, villagers into vehicles, explosions, burning, flow from outside, pistons across the edge and mob griefing. Admins in CREATIVE
+  ignore the rules (`bypass`); admins always may enter. The music only plays once the new FaultlineDeepMusic.zip is on `main`.
+  Tested (scratch `wb/WbTest`). BOUNTIES REMOVED (LimboBlackMarket `Bounties`: `enabled()` is always false; every staked head moves to
+  `pending` on start and is handed back on join, `/bounty claim` for the rest; the help line and the Index's Bounty Hunter / Headhunter
+  achievements are gone). LEGENDARY WEAPONS can't be crafted any more (`Legendary.addRecipes` only removes the old recipe keys; they come
+  from /adminmenu or `/legendary give`; Index text updated).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

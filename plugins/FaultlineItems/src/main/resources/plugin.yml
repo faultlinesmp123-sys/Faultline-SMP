@@ -294,6 +294,9 @@ permissions:
     default: false
   items.macelimit:
     default: op
+  items.worldblock:
+    description: use World Blocks (areas with their own music, rules, lighting and weather) and always walk into them
+    default: op
   items.abilities.admin:
     description: /adminmenu and /ability list/remove/give
     default: op

@@ -398,7 +398,7 @@ item-textures:
   hash: "93d2e198227ab773de183982c40a2c3f043b46eb"
   # The Dark Ocean's music, a second pack sent beside the main one (empty url = not sent)
   music-url: "https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/main/FaultlineDeepMusic.zip"
-  music-hash: "6e5d5bfdb42da505a462cb4c78d068f37069b25b"
+  music-hash: "7cabbbf7399b157d7891b6267dea51233152225e"
   # 1.2.72: the bendy emote body (core shader + body part models), only sent to 26.2 games (emotes.rig-protocols)
   emotes-url: "https://raw.githubusercontent.com/faultlinesmp123-sys/Faultline-SMP/main/FaultlineEmotes.zip"
   emotes-hash: ""             # empty = worked out from the file (auto-hash)

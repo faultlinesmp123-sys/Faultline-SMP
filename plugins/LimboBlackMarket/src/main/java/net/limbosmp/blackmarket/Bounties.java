@@ -60,10 +60,15 @@ public class Bounties implements Listener, TabExecutor {
         this.plugin = plugin;
         this.file = new File(plugin.getDataFolder(), "bounties.yml");
         load();
-        Bukkit.getScheduler().runTaskTimer(plugin, this::expire, 20L * 60, 20L * 60 * 10);
+        // 2.0: BOUNTIES ARE GONE (the owner removed them). Every head still held on a bounty goes back to whoever put it up
+        // (handed over on their next join, or /bounty claim); nothing can be placed or paid out any more.
+        boolean any = false;
+        for (Bounty b : bounties.values()) for (Stake st : b.stakes) { pending.computeIfAbsent(st.poster, k -> new ArrayList<>()).add(st.heads); any = true; }
+        bounties.clear();
+        if (any) { save(); plugin.getLogger().info("[Bounty] bounties are removed: every staked head is waiting for its owner."); }
     }
 
-    private boolean enabled() { return plugin.getConfig().getBoolean("bounty.enabled", true); }
+    private boolean enabled() { return false; }
 
     // ============================================================================================ saving
     private void load() {
@@ -223,8 +228,14 @@ public class Bounties implements Listener, TabExecutor {
             b.name = p.getName();
             p.sendMessage(ChatColor.DARK_RED + "[Bounty] " + ChatColor.GRAY + "There's a bounty on you: " + ChatColor.GOLD + plural(b.heads()) + ChatColor.GRAY + ". Watch your back.");
         }
-        if (pending.containsKey(p.getUniqueId()))
-            p.sendMessage(ChatColor.YELLOW + "[Bounty] You have heads waiting for you. " + ChatColor.WHITE + "/bounty claim");
+        List<ItemStack> waiting = pending.remove(p.getUniqueId());
+        if (waiting != null) {
+            boolean still = deliver(p.getUniqueId(), waiting);
+            save();
+            savePlayer(p);
+            p.sendMessage(ChatColor.YELLOW + "[Bounty] Bounties were removed: the heads you had on bounties are back in your inventory."
+                    + (still ? ChatColor.WHITE + " Your inventory is full: /bounty claim for the rest." : ""));
+        }
     }
 
     // ============================================================================================ the command
@@ -232,7 +243,7 @@ public class Bounties implements Listener, TabExecutor {
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         String sub = args.length > 0 ? args[0].toLowerCase(Locale.ROOT) : "list";
         Player self = sender instanceof Player p ? p : null;
-        if (!enabled() && !sub.equals("claim")) { sender.sendMessage(ChatColor.GRAY + "Bounties are switched off."); return true; }
+        if (!enabled() && !sub.equals("claim")) { sender.sendMessage(ChatColor.GRAY + "Bounties were removed. " + ChatColor.WHITE + "/bounty claim" + ChatColor.GRAY + " gives back heads you had on one."); return true; }
         switch (sub) {
             case "place", "set", "add" -> {
                 if (self == null) { sender.sendMessage("Players only."); return true; }

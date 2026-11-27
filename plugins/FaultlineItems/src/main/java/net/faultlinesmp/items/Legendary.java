@@ -171,20 +171,13 @@ final class Legendary implements Listener, CommandExecutor, TabCompleter {
         return id == null ? null : Kind.of(id);
     }
 
+    /** 2.0: the legendary weapons can't be crafted any more (the owner hands them out from /adminmenu or /legendary give).
+     *  Their old recipes are taken out of the server (a /faultline reload of an older jar left them registered). */
     private void addRecipes() {
         for (Kind k : Kind.values()) {
             NamespacedKey rk = new NamespacedKey(plugin, "legendary_" + k.id + "_recipe");
             recipes.put(k, rk);
-            try {
-                if (Bukkit.getRecipe(rk) != null) continue;
-                ShapelessRecipe r = new ShapelessRecipe(rk, item(k));
-                switch (k) {
-                    case STORMBREAKER -> { r.addIngredient(Material.MACE); r.addIngredient(2, Material.BREEZE_ROD); r.addIngredient(3, Material.WIND_CHARGE); r.addIngredient(Material.HEAVY_CORE); }
-                    case VOID_PIERCER -> { r.addIngredient(Material.NETHERITE_SWORD); r.addIngredient(4, Material.END_CRYSTAL); r.addIngredient(2, Material.DRAGON_HEAD); r.addIngredient(Material.ELYTRA); }
-                    case INFERNAL_REAPER -> { r.addIngredient(Material.NETHERITE_SWORD); r.addIngredient(4, Material.NETHER_STAR); r.addIngredient(2, Material.MAGMA_CREAM); r.addIngredient(Material.WITHER_SKELETON_SKULL); }
-                }
-                Bukkit.addRecipe(r);
-            } catch (RuntimeException e) { plugin.getLogger().warning("[Legendary] recipe " + k.id + ": " + e.getMessage()); }
+            try { Bukkit.removeRecipe(rk); } catch (RuntimeException ignored) { }
         }
     }
 

@@ -476,7 +476,7 @@ final class Abilities implements Listener, CommandExecutor, TabCompleter {
         ItemMeta im = info.getItemMeta();
         im.setDisplayName(ChatColor.YELLOW + "How it works");
         im.setLore(List.of(ChatColor.GRAY + "Top row: click to get an ability item.", ChatColor.GRAY + "Right-clicking it gives that ability forever.",
-                ChatColor.GRAY + "Row 3: faction compasses (give one to each leader).", ChatColor.GRAY + "Heads below: players with an ability.", ChatColor.RED + "Click a head to REMOVE their ability."));
+                ChatColor.GRAY + "Row 3: the World Block (areas), faction compasses.", ChatColor.GRAY + "Heads below: players with an ability.", ChatColor.RED + "Click a head to REMOVE their ability."));
         info.setItemMeta(im);
         m.inv.setItem(8, info);
         // 1.3.38: row 2 = the legendary weapons + the admin-only bosses
@@ -486,6 +486,7 @@ final class Abilities implements Listener, CommandExecutor, TabCompleter {
         if (plugin.spiderNest != null) m.inv.setItem(17, plugin.spiderNest.menuItem()); // 1.3.44: carve a Spider Nest under you
         // 2.0: row 3 = the kingdom compasses (give one to each king: it points to their abandoned kingdom)
         if (plugin.kingdomCompass != null) for (int k = 1; k <= 5; k++) m.inv.setItem(18 + k + 1, plugin.kingdomCompass.item(k));
+        if (plugin.worldBlock != null) m.inv.setItem(18, plugin.worldBlock.tool()); // 2.0: the World Block (only here)
         int s = 27;
         List<Map.Entry<UUID, Kind>> list = new ArrayList<>(owned.entrySet());
         list.sort(Comparator.comparing(e -> names.getOrDefault(e.getKey(), "?").toLowerCase(Locale.ROOT)));
@@ -525,6 +526,10 @@ final class Abilities implements Listener, CommandExecutor, TabCompleter {
         } else if (slot == 17 && plugin.spiderNest != null) {
             p.closeInventory();
             plugin.spiderNest.create(p);
+        } else if (slot == 18 && plugin.worldBlock != null) {
+            for (ItemStack left : p.getInventory().addItem(plugin.worldBlock.tool()).values()) p.getWorld().dropItem(p.getLocation(), left);
+            p.sendMessage(ChatColor.AQUA + "World Block: " + ChatColor.GRAY + "right-click a block = pos 1, left-click a block = pos 2.");
+            plugin.getLogger().info("[Abilities] " + p.getName() + " took a World Block from /adminmenu");
         } else if (slot >= 20 && slot <= 24 && plugin.kingdomCompass != null) {
             int k = slot - 19;
             for (ItemStack left : p.getInventory().addItem(plugin.kingdomCompass.item(k)).values()) p.getWorld().dropItem(p.getLocation(), left);

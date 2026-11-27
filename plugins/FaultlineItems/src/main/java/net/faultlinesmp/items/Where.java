@@ -101,7 +101,7 @@ final class Where implements Listener, CommandExecutor, TabCompleter {
 
     private void update(Player p, BossBar b) {
         Location l = p.getLocation();
-        b.setTitle(ChatColor.WHITE + "📍 " + (CreatorMode.on(p) ? ChatColor.DARK_GRAY + "hidden" + ChatColor.WHITE : spot(l)) + ChatColor.GRAY + "  ·  " + ChatColor.WHITE + facing(l.getYaw())
+        b.setTitle(ChatColor.WHITE + "📍 " + (CreatorMode.on(p) ? ChatColor.DARK_GRAY + "hidden" + ChatColor.WHITE : FarlandsDread.SCRAMBLED.contains(p.getUniqueId()) ? ChatColor.DARK_RED + FarlandsDread.scramble(l, new java.util.Random()) + ChatColor.WHITE : spot(l)) + ChatColor.GRAY + "  ·  " + ChatColor.WHITE + facing(l.getYaw())
                 + ChatColor.GRAY + "  ·  " + biome(l) + "  ·  " + dimension(l.getWorld()));
     }
 

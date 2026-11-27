@@ -328,9 +328,13 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
             World w = Bukkit.getWorld(ec.world);
             if (w == null) continue;
             Location at = new Location(w, ec.x, ec.y, ec.z);
+            boolean storm = echoStorm();
+            double keep = storm ? 160 : 64, wake = storm ? 128 : 36;
             if (body != null && body.isValid()) {
                 boolean anyone = false;
-                for (Player p : w.getPlayers()) if (p.getLocation().distanceSquared(body.getLocation()) < 64 * 64) { anyone = true; break; }
+                for (Player p : w.getPlayers()) if (p.getLocation().distanceSquared(body.getLocation()) < keep * keep) { anyone = true; break; }
+                if (storm && body instanceof Zombie z) hunt(z);
+                else if (!storm && body instanceof Zombie z && z.isGlowing()) { z.setGlowing(false); MimicPlayer.attr(z, Attribute.FOLLOW_RANGE, 40); MimicPlayer.attr(z, Attribute.MOVEMENT_SPEED, 0.3); }
                 if (!anyone) { body.remove(); ec.entity = null; }
                 else if (tick % 4 == 0) w.spawnParticle(Particle.DUST, body.getLocation().add(0, 1, 0), 3, 0.3, 0.6, 0.3, 0, DARK);
                 continue;
@@ -338,9 +342,27 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
             ec.entity = null;
             if (!w.isChunkLoaded(at.getBlockX() >> 4, at.getBlockZ() >> 4)) continue;
             for (Player p : w.getPlayers())
-                if (survival(p) && p.getLocation().distanceSquared(at) < 36 * 36) { spawnEcho(ec, at); break; }
+                if (survival(p) && p.getLocation().distanceSquared(at) < wake * wake) { spawnEcho(ec, at); break; }
         }
         if (changed) saveEchoes();
+    }
+
+    /** Echo Storm: it knows where you are. */
+    private void hunt(Zombie z) {
+        if (!z.isGlowing()) {
+            z.setGlowing(true);
+            MimicPlayer.attr(z, Attribute.FOLLOW_RANGE, 128);
+            MimicPlayer.attr(z, Attribute.MOVEMENT_SPEED, 0.36);
+            z.getWorld().playSound(z.getLocation(), Sound.ENTITY_WARDEN_ROAR, 0.6f, 1.6f);
+        }
+        Player best = null; double bd = 128 * 128;
+        for (Player p : z.getWorld().getPlayers()) {
+            if (!survival(p)) continue;
+            double d = p.getLocation().distanceSquared(z.getLocation());
+            if (d < bd) { bd = d; best = p; }
+        }
+        if (best != null && z.getTarget() != best) z.setTarget(best);
+        if (tick % 4 == 0) z.getWorld().spawnParticle(Particle.SOUL, z.getLocation().add(0, 1, 0), 2, 0.3, 0.5, 0.3, 0.01);
     }
 
     void spawnEcho(Echo ec, Location at) {
@@ -679,8 +701,11 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
             UUID id = p.getUniqueId();
             if (!inCached(p)) { if (spooky.contains(id)) unspook(p); continue; }
             spooky.add(id);
-            if (night && (p.isPlayerTimeRelative() || Math.abs(p.getPlayerTime() % 24000 - 18000) > 200)) p.setPlayerTime(18000, false);
-            if (rain && p.getPlayerWeather() != WeatherType.DOWNFALL) p.setPlayerWeather(WeatherType.DOWNFALL);
+            long want = plugin.farlandsDread == null ? 18000 : plugin.farlandsDread.playerTime();
+            if (night && (p.isPlayerTimeRelative() || Math.abs(p.getPlayerTime() - want) > 200)) p.setPlayerTime(want, false);
+            WeatherType wx = plugin.farlandsDread == null ? WeatherType.DOWNFALL : plugin.farlandsDread.weather(p);
+            if (rain && p.getPlayerWeather() != wx) p.setPlayerWeather(wx);
+            if (plugin.farlandsDread != null && plugin.farlandsDread.still(p)) continue;   // the Stillness: no ash, no sounds
             if (!spook) continue;
             Location l = p.getLocation();
             p.spawnParticle(Particle.ASH, l.clone().add(0, 2, 0), 18, 8, 4, 8, 0);
@@ -752,7 +777,14 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
         return true;
     }
 
-    boolean hushed(Player p) { return hushes.containsKey(p.getUniqueId()); }
+    boolean hushed(Player p) { return hushes.containsKey(p.getUniqueId()) || (plugin.farlandsDread != null && plugin.farlandsDread.still(p)); }
+
+    // the Echo Storm (FarlandsDread): every Echo out there wakes and hunts
+    private int echoStormUntil;
+    boolean echoStorm() { return tick < echoStormUntil; }
+    void musicReset(UUID id) { musicAt.remove(id); }
+    void startEchoStorm(int ticks) { echoStormUntil = tick + ticks; }
+    void stopEchoStorm() { echoStormUntil = tick; }
 
     /** Every monster near them goes, without a sound (not bosses, Echoes, siege mobs or player mimics). */
     private void clearAround(Player p) {
@@ -875,6 +907,7 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
             }
             traderTick();
             if (plugin.farlandsNight != null) plugin.farlandsNight.tick();
+            if (plugin.farlandsDread != null) plugin.farlandsDread.tick();
             if (tick % 600 == 0) {
                 for (Player p : playersOut()) {
                     if (random.nextDouble() < cfg("crawlers.pack-chance", 0.3)) crawlerPack(p);
@@ -918,6 +951,34 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
                 if (t != null) leaveTrader(t);
                 spawnTrader(p);
                 s.sendMessage(ChatColor.GREEN + "The Rim Trader is here.");
+            }
+            case "stillness", "rot", "longnight", "echostorm", "faceless", "lantern", "dread", "wakeelsewhere" -> {
+                FarlandsDread d = plugin.farlandsDread;
+                if (d == null) { s.sendMessage(ChatColor.RED + "Off."); return true; }
+                Player t = a.length > 1 && Bukkit.getPlayerExact(a[a.length - 1]) != null ? Bukkit.getPlayerExact(a[a.length - 1]) : p;
+                boolean stop = a.length > 1 && a[1].equalsIgnoreCase("stop");
+                switch (sub) {
+                    case "dread" -> s.sendMessage(ChatColor.GRAY + d.status());
+                    case "longnight" -> { if (stop) d.stopLongNight(); else d.startLongNight(); s.sendMessage(ChatColor.GREEN + (stop ? "The Long Night ends." : "The Long Night begins.")); }
+                    case "echostorm" -> { if (stop) stopEchoStorm(); else d.startEchoStorm(); s.sendMessage(ChatColor.GREEN + (stop ? "Echo Storm over." : "Echo Storm: the dead are walking.")); }
+                    case "lantern" -> {
+                        int n = 1; try { if (a.length > 1) n = Integer.parseInt(a[1]); } catch (NumberFormatException ignored) { }
+                        if (t == null) { s.sendMessage("Who?"); return true; }
+                        t.getInventory().addItem(d.lantern(n)).values().forEach(left -> t.getWorld().dropItemNaturally(t.getLocation(), left));
+                        s.sendMessage(ChatColor.GREEN + "Gave " + n + " Lantern of Sanity to " + t.getName() + ".");
+                    }
+                    default -> {
+                        if (t == null) { s.sendMessage("Players only."); return true; }
+                        switch (sub) {
+                            case "stillness" -> d.startStill(t);
+                            case "rot" -> d.rot(t);
+                            case "faceless" -> s.sendMessage(d.spawnFaceless(t) != null ? ChatColor.GREEN + "Don't look away." : ChatColor.RED + "No spot behind them.");
+                            case "wakeelsewhere" -> d.moveSleeper(t);
+                            default -> { }
+                        }
+                        if (!sub.equals("faceless")) s.sendMessage(ChatColor.GREEN + "Done (" + sub + " on " + t.getName() + ").");
+                    }
+                }
             }
             case "insanity" -> {
                 Player t = a.length > 2 ? Bukkit.getPlayerExact(a[2]) : p;
@@ -999,6 +1060,6 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
     @Override
     public List<String> onTabComplete(CommandSender s, Command cmd, String label, String[] a) {
         if (!s.hasPermission(PERM) || a.length != 1) return List.of();
-        return Legendary.filter(List.of("status", "trader", "mimic", "insanity", "crawler", "ghast", "echoes", "music", "bloodrain", "sigil", "watcher", "collapse", "siege", "storm", "fake", "chart", "shards"), a[0]);
+        return Legendary.filter(List.of("status", "trader", "mimic", "insanity", "stillness", "rot", "longnight", "echostorm", "faceless", "lantern", "dread", "crawler", "ghast", "echoes", "music", "bloodrain", "sigil", "watcher", "collapse", "siege", "storm", "fake", "chart", "shards"), a[0]);
     }
 }

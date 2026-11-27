@@ -84,13 +84,30 @@ final class Insanity implements Listener {
         });
     }
 
+    /** The first Lucid Lockets pointed at a model the pack doesn't have (a missing texture): the vanilla clock now. */
+    private void fixLockets(Player p) {
+        for (ItemStack it : p.getInventory().getContents()) {
+            if (it == null || it.getType() != Material.CLOCK || !it.getPersistentDataContainer().has(locketKey, PersistentDataType.BYTE)) continue;
+            var m = it.getItemMeta();
+            if (m.hasItemModel() && m.getItemModel().equals(NamespacedKey.minecraft("clock"))) continue;
+            m.setItemModel(NamespacedKey.minecraft("clock"));
+            m.setEnchantmentGlintOverride(true);
+            it.setItemMeta(m);
+        }
+    }
+
     double cfg(String k, double d) { return plugin.getConfig().getDouble("insanity." + k, d); }
 
     ItemStack locket() {
-        return FaultlineItems.NewAccessoryItems.make(plugin, Material.CLOCK, ChatColor.AQUA + "" + ChatColor.BOLD + "Lucid Locket", locketKey,
+        ItemStack it = FaultlineItems.NewAccessoryItems.make(plugin, Material.CLOCK, ChatColor.AQUA + "" + ChatColor.BOLD + "Lucid Locket", locketKey,
                 ChatColor.AQUA + "Keeps your mind your own.",
                 ChatColor.GRAY + "Worn, the Farlands can't drive you",
                 ChatColor.GRAY + "insane: no Insanity, no hallucinations.");
+        var m = it.getItemMeta();
+        m.setItemModel(NamespacedKey.minecraft("clock"));   // no custom model in the pack
+        m.setEnchantmentGlintOverride(true);
+        it.setItemMeta(m);
+        return it;
     }
 
     boolean wearing(Player p) {
@@ -126,6 +143,7 @@ final class Insanity implements Listener {
         tick++;
         boolean on = plugin.getConfig().getBoolean("insanity.enabled", true);
         for (Player p : Bukkit.getOnlinePlayers()) {
+            if (tick % 20 == 0) fixLockets(p);
             try { one(p, on); }
             catch (RuntimeException ex) { if (tick % 120 == 0) plugin.getLogger().warning("[Insanity] " + ex); }
         }
@@ -152,7 +170,8 @@ final class Insanity implements Listener {
             return;
         }
         if (whole) {
-            if (OuterRim.safe(p)) v -= cfg("fall-per-second", 1.5) * 3;
+            boolean lantern = plugin.farlandsDread != null && plugin.farlandsDread.nearLantern(p);
+            if (OuterRim.safe(p) || lantern) v -= cfg("fall-per-second", 1.5) * (lantern ? 2 : 3);
             else {
                 double d = OuterRim.depth(p.getLocation());
                 v += cfg("rise-per-second", 0.6) * (0.15 + d);
@@ -162,6 +181,7 @@ final class Insanity implements Listener {
             v = get(p);
         }
         if (!whole || OuterRim.safe(p)) return;
+        if (plugin.farlandsDread != null && (plugin.farlandsDread.still(p) || plugin.farlandsDread.nearLantern(p))) return;   // silence / a lantern's light
         double rate = v >= 100 ? 2.2 : 1;
         if (v >= 20 && rnd.nextDouble() < 0.07 * rate) whisper(p, v);
         if (v >= 40 && !ghosts.containsKey(p.getUniqueId()) && rnd.nextDouble() < 0.035 * rate) ghost(p, v >= 80 && rnd.nextDouble() < 0.45);

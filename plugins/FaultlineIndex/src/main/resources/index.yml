@@ -1493,6 +1493,9 @@ entries:
      how: "Craft it: Leather, String, Leather / Leather, a Chest, Leather / Leather all along the bottom.",
      does: "Wear it in /accessories for 9 extra slots: /backpack (or sneak + right-click the air with an empty hand) opens them. What's inside is yours, not the bag's, and drops when you die (like the backpack itself). A backpack can't go inside a backpack."}
   # ---------------------------------------------------------------- 2.0.0: the new overworld
+  - {chapter: weapons, name: "Lantern of Sanity", icon: lantern_of_souls, detect: "faultlineitems:sanity_lantern",
+     how: "Craft it: Glowstone Dust in the four corners, Amethyst Shards on the four sides, a Soul Lantern in the middle. The Faceless drop one sometimes.",
+     does: "Place it: within 8 blocks your Insanity can't rise and falls fast, and the Long Night can't reach you. It burns 10 minutes; right-click it with an Amethyst Shard (+10 min) or Glowstone Dust (+5 min), up to 4 hours. Right-click with anything else to see its fuel. Breaking it gives it back (the fuel is lost)."}
   - {chapter: accessories, name: "Lucid Locket", icon: backpack, detect: "faultlineitems:lucid_locket",
      how: "Craft it: Echo Shards in the four corners, Amethyst Shards on the four sides, a Clock in the middle.",
      does: "Wear it in /accessories and the Farlands can't get into your head: your Insanity never rises (and drains fast), so no whispers, no hallucinated players, no fake blocks, nothing running at you, and no going insane."}
@@ -1589,6 +1592,10 @@ entries:
      where: "The Farlands, RARELY. First every monster round you vanishes and nothing spawns. A minute of silence later the chat says someone joined the game, and it walks in.",
      does: "A copy of a real player who's offline: their skin, their name, their gear, and it fights like a player (crits, shields, pearls, gapples, pots). Some are easy, some are godlike. It leaves if nobody's near it for 3 minutes.",
      drops: ["The gear it copied (armour, weapons, what it didn't use up)|100%", "XP|100%"]}
+  - {chapter: enemies, name: "The Faceless", icon: revenant, detect-tag: faultline_faceless,
+     where: "The Farlands, past about a third of the Rim Depth. It comes from behind you, 30-45 blocks off.",
+     does: "A tall figure in black with no face. It ONLY moves while nobody is looking at it. Look away and it closes in; turn round and it's standing still, closer than before. It hits hard and brings the dark. Keep your eyes on it and back it into your swords.",
+     drops: ["Rim Shard|3-6", "Lantern of Sanity|25%", "Rim Sigil|10%", "80 XP|100%"]}
   - {chapter: enemies, name: "Elite Captain", icon: zombie_captain, detect-tag: faultline_elite_captain,
      where: "The Farlands: 3% of the Elites there. It glows and leads a pack of 3-4 Elites of its own kind.",
      does: "An Elite with even more health. Kill it for three times the Elite bonus loot.",

@@ -3673,6 +3673,30 @@ Notes:
   The LUCID LOCKET accessory (CLOCK, `/giveaccessory lucidlocket`, recipe EAE/ACA/EAE = echo shards / amethyst shards / clock,
   key `faultlineitems:lucid_locket`): worn = none of it, drains 3/s. Admin `/farlands insanity [0-100] [player]`. Index entry +
   guide line. Tested (`far/FarTest`). Hallucination mannequins need a real server (MockBukkit: caught, other effects run).
+- **The Farlands' Dread (Items, Index; same 2.0.0, `Items/FarlandsDread.java`, `farlands-dread:`, ticked from Farlands.tickAll)**:
+  THE STILLNESS (every 30 s per player out there 5%, 30 min cooldown): every untagged `Enemy` Mob within 48 gets AI off + tag
+  `dread_stilled` (restored after, on quit, on EntitiesLoadEvent / startup after a crash), `stopAllSounds` every 10 ticks, player
+  weather CLEAR, no ash; 30 s later a footstep 1.2 behind + a breath, +6 insanity. `Farlands.hushed` includes it (music),
+  `Farlands.musicReset` restarts the track. CHUNK ROT (6%, 3 min): a 16x16 patch 18-36 off, top 3 blocks of each column sent as
+  wrong blocks (magenta/black checker or a random material) to that player for 3-7 s. THE LONG NIGHT (every 10 min 2%, 3 h
+  cooldown, 10 min): `playerTime()` = 4*24000+18000 (new moon) read by `spookyTick`; outside a lighthouse / Lantern of Sanity:
+  hidden Darkness, +0.4 insanity a second, 2 NATURAL monsters every 10 s (cap 10 within 32); plain drops + XP doubled
+  (`onLongNightKill`). ECHO STORM (every 10 min 3%, 8 min): `Farlands.echoStorm()` = echoes spawn within 128 (not 36), stay to 160,
+  glow, follow 128, speed 0.36, target the nearest survival player (`hunt`). THE FACELESS (`faultline_faceless`, depth >= 0.35,
+  3% / 30 s, 20 min per player, max 2): a CUSTOM zombie, AI off, scale 1.35, black leather + a BLACK_CONCRETE head, 80 hp
+  (BigHealth); every tick it teleports 0.55 toward the nearest survival player ONLY while nobody sees it (`watched`: look within
+  ~60 degrees + block walk), hits 7 + Darkness within 1.6; drops 3-6 Rim Shards, 25% a Lantern of Sanity, 10% a Rim Sigil, stat
+  `faceless`; gone after 2 min with nobody near. THE WORLD GOES WRONG (depth >= `wrong-depth` 0.7, no Lucid Locket / lighthouse):
+  compass target random every 2 s, `/coords` bar scrambled (`SCRAMBLED` read by `Where`), a per-player WorldBorder (size =
+  warning distance 59,999,000) = red screen tint; reset on leaving / quit / join. SLEEP: a bed in the Farlands works by day
+  (`setUseBed(ALLOW)`); 4 s asleep, 35% = woken, teleported 25-70 off, the bed removed (no drop), respawn point cleared, +15
+  insanity. LANTERN OF SANITY (SOUL_LANTERN + PDC `faultlineitems:sanity_lantern`, vanilla model + glint, recipe GAG/ASA/GAG
+  glowstone / amethyst / soul lantern): placed = chunk PDC `faultlineitems:sanity_lanterns` (pairs local pos, fuel-until ms);
+  10 min fuel, amethyst +10 / glowstone +5 min, max 4 h; within 8 = no insanity rise / effects, falls x2, and the Long Night's
+  dark skips you. Admin `/farlands stillness|rot|longnight [stop]|echostorm [stop]|faceless|lantern [n] [player]|wakeelsewhere|dread`.
+  The Lucid Locket's model is now the vanilla clock (the first ones pointed at a model the pack lacks; `fixLockets` converts).
+  Index: The Faceless, Lantern of Sanity, guide. Tested (scratch `far/FarTest`: freeze + unfreeze, rot, moonless time, echo storm
+  flag, Faceless closes in unwatched / frozen watched, lantern drops insanity, scrambled coords at x 9500, woke 70 blocks off).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

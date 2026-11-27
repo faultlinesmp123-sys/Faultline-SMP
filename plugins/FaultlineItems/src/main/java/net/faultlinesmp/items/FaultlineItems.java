@@ -498,6 +498,8 @@ public final class FaultlineItems extends JavaPlugin {
         getServer().getPluginManager().registerEvents(outerRim, this);
         insanity = new Insanity(this); // 2.0: Farlands insanity + the Lucid Locket
         getServer().getPluginManager().registerEvents(insanity, this);
+        farlandsDread = new FarlandsDread(this); // 2.0: the Stillness, chunk rot, the Long Night, Echo Storms, the Faceless, the world going wrong, sleep, the Lantern of Sanity
+        getServer().getPluginManager().registerEvents(farlandsDread, this);
         getServer().getPluginManager().registerEvents(farlandsNight, this);
         getServer().getPluginManager().registerEvents(farlands, this);
         if (getCommand("farlands") != null) { getCommand("farlands").setExecutor(farlands); getCommand("farlands").setTabCompleter(farlands); }
@@ -774,6 +776,7 @@ public final class FaultlineItems extends JavaPlugin {
     public void onDisable() {
         if (umbrella != null) umbrella.removeAll(); // 2.0.0
         if (insanity != null) insanity.shutdown();
+        if (farlandsDread != null) farlandsDread.shutdown();
         if (mountainGear != null) mountainGear.shutdown();
         if (wildMobs != null) wildMobs.shutdown();
         if (outerRim != null) outerRim.shutdown();
@@ -1096,6 +1099,7 @@ public final class FaultlineItems extends JavaPlugin {
     Farlands farlands;
     OuterRim outerRim; // 2.0
     Insanity insanity; // 2.0
+    FarlandsDread farlandsDread; // 2.0
     HauntedVillage haunted;
     Krampus krampus;
     Holidays holidays;

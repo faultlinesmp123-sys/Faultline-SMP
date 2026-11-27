@@ -1226,6 +1226,18 @@ insanity:
   insane-damage: 2
   insane-damage-seconds: 15
 
+# THE FARLANDS' DREAD (admin: /farlands stillness|rot|longnight [stop]|echostorm [stop]|faceless|lantern [n] [player]|dread)
+farlands-dread:
+  enabled: true
+  stillness: {chance: 0.05, cooldown-minutes: 30, seconds: 30, radius: 48, insanity: 6}   # rolled every 30 s per player
+  chunk-rot: {chance: 0.06, cooldown-seconds: 180}
+  long-night: {chance: 0.02, minutes: 10, cooldown-hours: 3, cap: 10, insanity-per-second: 0.4}   # rolled every 10 min
+  echo-storm: {chance: 0.03, minutes: 8}   # rolled every 10 min
+  faceless: {chance: 0.03, cooldown-minutes: 20, max: 2, min-depth: 0.35, health: 80, damage: 7, speed: 0.55, reach: 1.6, view-cos: 0.5, sigil-chance: 0.1, lantern-chance: 0.25}
+  wrong-depth: 0.7        # past this Rim Depth compasses spin, /coords lies, the screen goes red
+  sleep: {enabled: true, chance: 0.35, after-seconds: 4, min-distance: 25, max-distance: 70, insanity: 15}
+  lantern: {radius: 8, start-minutes: 10, max-hours: 4}
+
 outer-rim:
   enabled: true
   depth:

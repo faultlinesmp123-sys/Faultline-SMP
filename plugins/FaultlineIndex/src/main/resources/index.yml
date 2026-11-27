@@ -1582,6 +1582,10 @@ entries:
      where: "Where someone died in the Farlands. It rises from their death and waits there.",
      does: "A dark copy of the player who died, wearing their face and their sword. It holds a third of what they dropped. Anyone can kill it to get the loot. It fades after 3 days, loot and all.",
      drops: ["The dead player's stacks it was holding|100%", "120 XP|100%"]}
+  - {chapter: enemies, name: "Wild Mimic", icon: revenant, detect-tag: faultline_far_mimic,
+     where: "The Farlands, RARELY. It walks in from 24-40 blocks away, and the chat says someone joined the game.",
+     does: "A copy of a real player who's offline: their skin, their name, their gear, and it fights like a player (crits, shields, pearls, gapples, pots). Some are easy, some are godlike. It leaves if nobody's near it for 3 minutes.",
+     drops: ["The gear it copied (armour, weapons, what it didn't use up)|100%", "XP|100%"]}
   - {chapter: enemies, name: "Elite Captain", icon: zombie_captain, detect-tag: faultline_elite_captain,
      where: "The Farlands: 3% of the Elites there. It glows and leads a pack of 3-4 Elites of its own kind.",
      does: "An Elite with even more health. Kill it for three times the Elite bonus loot.",

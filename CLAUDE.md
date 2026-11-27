@@ -3647,6 +3647,13 @@ Notes:
   (stone-type blocks placed before this update). A placed block under you never rolls, a piece skips placed blocks, and any
   placed block within 4 (x/z), 4 down / 2 up of the spot cancels the whole collapse (`anyPlaced`). Dirt / grass / gravel placed
   before this update aren't marked. Tested (scratch `far/FarTest`).
+- **Wild mimics in the Farlands (Items, Index; same 2.0.0)**: `Farlands.wildMimic` (`farlands.mimics:` enabled / chance 0.005 /
+  cooldown-minutes 45 / max 2): every 30 s each survival player in the Farlands rolls the chance (about once every 1.7 h out
+  there) = a player mimic (`MimicPlayer.spawn`) of a random OFFLINE player (their real gear, fake join line) 24-40 blocks off on
+  open ground within 10 of your height (`mimicSpot`), skill weighted easy 1 / normal 3 / hard 3 / godlike 1, brain tag
+  `faultline_far_mimic`; nobody in survival within 128 for 3 min = removed (`wildMimicUpkeep`). Admin `/farlands mimic`. Spawns
+  bypass the `/mimicplayer` name lock (it only gates the command). Index entry "Wild Mimic". Spot tested in `far/FarTest`; the
+  mimic itself needs a real server (MockBukkit lacks Vindicator#setRemoveWhenFarAway).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

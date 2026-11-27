@@ -77,6 +77,9 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
     private UUID trader;
     private long traderUntil;
     private int tick, musicErrAt = -100000;
+    // wild mimics: rare player mimics that roam the Farlands (brain UUID -> last tick a survival player was near)
+    private final Map<UUID, Integer> wildMimics = new HashMap<>();
+    private final Map<UUID, Integer> mimicReady = new HashMap<>();
 
     static final class Echo {
         String id, owner, ownerName, world, items; double x, y, z; long created; UUID entity;
@@ -709,6 +712,72 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
 
     // ================================================================= ticks
 
+    // ================================================================= wild mimics
+
+    /**
+     * RARE: a mimic of a real (offline) player roaming the Farlands. Every 30 s each survival player out there rolls
+     * `mimics.chance` (0.005 = about once every 1.7 hours out there), `mimics.cooldown-minutes` 45 per player, at most
+     * `mimics.max` 2 at once. It comes in 24-40 blocks away on open ground near your height, skill weighted toward
+     * normal / hard, with that player's real gear (and drops it). Nobody in survival within 128 for 3 minutes = it leaves.
+     */
+    MimicPlayer.Mimic wildMimic(Player p, boolean forced) {
+        MimicPlayer mp = plugin.mimics;
+        if (mp == null || !plugin.getConfig().getBoolean("farlands.mimics.enabled", true)) return null;
+        if (!forced) {
+            if (p.getGameMode() != GameMode.SURVIVAL && p.getGameMode() != GameMode.ADVENTURE) return null;
+            if (tick < mimicReady.getOrDefault(p.getUniqueId(), 0)) return null;
+            if (wildMimics.size() >= (int) cfg("mimics.max", 2)) return null;
+            if (random.nextDouble() >= cfg("mimics.chance", 0.005)) return null;
+        }
+        List<OfflinePlayer> pick = new ArrayList<>();
+        for (OfflinePlayer o : Bukkit.getOfflinePlayers()) if (o.getName() != null && !o.isOnline()) pick.add(o);
+        if (pick.isEmpty()) return null;
+        Location at = mimicSpot(p);
+        if (at == null) return null;
+        String[] skills = {"easy", "normal", "normal", "normal", "hard", "hard", "hard", "godlike"};
+        MimicPlayer.Skill skill = MimicPlayer.SKILLS.get(skills[random.nextInt(skills.length)]);
+        at.setYaw((float) Math.toDegrees(Math.atan2(-(p.getX() - at.getX()), p.getZ() - at.getZ())));
+        MimicPlayer.Mimic m = mp.spawn(at, pick.get(random.nextInt(pick.size())), skill);
+        if (m == null || m.brain == null) return null;
+        m.brain.addScoreboardTag("faultline_far_mimic");
+        wildMimics.put(m.brain.getUniqueId(), tick);
+        mimicReady.put(p.getUniqueId(), tick + (int) (cfg("mimics.cooldown-minutes", 45) * 1200));
+        plugin.getLogger().info("[Farlands] a wild mimic of " + m.name + " (" + skill.id() + ") came for " + p.getName());
+        return m;
+    }
+
+    private Location mimicSpot(Player p) {
+        World w = p.getWorld();
+        for (int i = 0; i < 16; i++) {
+            double a = random.nextDouble() * Math.PI * 2, r = 24 + random.nextDouble() * 16;
+            int x = (int) Math.floor(p.getX() + Math.cos(a) * r), z = (int) Math.floor(p.getZ() + Math.sin(a) * r);
+            if (!w.isChunkLoaded(x >> 4, z >> 4)) continue;
+            for (int y = p.getLocation().getBlockY() + 10; y >= p.getLocation().getBlockY() - 10; y--) {
+                org.bukkit.block.Block f = w.getBlockAt(x, y - 1, z), b = w.getBlockAt(x, y, z), h = w.getBlockAt(x, y + 1, z);
+                if (f.getType().isSolid() && !f.isLiquid() && b.isPassable() && !b.isLiquid() && h.isPassable() && !h.isLiquid()) {
+                    Location l = new Location(w, x + 0.5, y, z + 0.5);
+                    if (in(l)) return l;
+                    break;
+                }
+            }
+        }
+        return null;
+    }
+
+    private void wildMimicUpkeep() {
+        MimicPlayer mp = plugin.mimics;
+        for (Iterator<Map.Entry<UUID, Integer>> it = wildMimics.entrySet().iterator(); it.hasNext(); ) {
+            Map.Entry<UUID, Integer> en = it.next();
+            MimicPlayer.Mimic m = mp == null ? null : mp.byBrain.get(en.getKey());
+            if (m == null || m.brain == null || !m.brain.isValid()) { it.remove(); continue; }
+            boolean near = false;
+            for (Player v : m.brain.getWorld().getPlayers())
+                if ((v.getGameMode() == GameMode.SURVIVAL || v.getGameMode() == GameMode.ADVENTURE) && v.getLocation().distanceSquared(m.brain.getLocation()) < 128 * 128) { near = true; break; }
+            if (near) en.setValue(tick);
+            else if (tick - en.getValue() > 3600) { it.remove(); mp.remove(m); }
+        }
+    }
+
     void tickAll() {
         tick++;
         if (!on()) { if (!spooky.isEmpty()) for (Player p : Bukkit.getOnlinePlayers()) unspook(p); return; }
@@ -716,6 +785,7 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
             if (tick % 20 == 0) inCache.clear();
             if (tick % 4 == 0 && !crawlers.isEmpty()) crawlerTick();
             if (tick % 20 == 0) echoTick();
+            if (tick % 100 == 0 && !wildMimics.isEmpty()) wildMimicUpkeep();
             if (tick % 40 == 0) try { musicTick(); } catch (RuntimeException ex) {
                 if (tick - musicErrAt > 1200) { musicErrAt = tick; plugin.getLogger().warning("[Farlands] music: " + ex); }
             }
@@ -728,7 +798,9 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
                 for (Player p : playersOut()) {
                     if (random.nextDouble() < cfg("crawlers.pack-chance", 0.3)) crawlerPack(p);
                     if (random.nextDouble() < cfg("ghasts.chance", 0.25)) ghasts(p);
+                    try { wildMimic(p, false); } catch (RuntimeException ex) { plugin.getLogger().warning("[Farlands] mimic: " + ex); }
                 }
+                mimicReady.values().removeIf(t -> t < tick);
                 pounceAt.values().removeIf(t -> t < tick);
                 dropping.keySet().removeIf(id -> !crawlers.contains(id));
             }
@@ -765,6 +837,11 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
                 if (t != null) leaveTrader(t);
                 spawnTrader(p);
                 s.sendMessage(ChatColor.GREEN + "The Rim Trader is here.");
+            }
+            case "mimic" -> {
+                if (p == null) { s.sendMessage("Players only."); return true; }
+                MimicPlayer.Mimic m = wildMimic(p, true);
+                s.sendMessage(m != null ? ChatColor.GREEN + "A wild mimic of " + m.name + " is coming." : ChatColor.RED + "No spot for one nearby (or no offline players to copy).");
             }
             case "crawler" -> {
                 if (p == null) return true;
@@ -833,6 +910,6 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
     @Override
     public List<String> onTabComplete(CommandSender s, Command cmd, String label, String[] a) {
         if (!s.hasPermission(PERM) || a.length != 1) return List.of();
-        return Legendary.filter(List.of("status", "trader", "crawler", "ghast", "echoes", "music", "bloodrain", "sigil", "watcher", "collapse", "siege", "storm", "fake", "chart", "shards"), a[0]);
+        return Legendary.filter(List.of("status", "trader", "mimic", "crawler", "ghast", "echoes", "music", "bloodrain", "sigil", "watcher", "collapse", "siege", "storm", "fake", "chart", "shards"), a[0]);
     }
 }

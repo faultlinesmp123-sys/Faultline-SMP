@@ -36,13 +36,22 @@ enum B {
     FIBERS("faultline:fibers", "minecraft:lush_caves"),
     MIRE("faultline:mire", "minecraft:lush_caves"),
     FARLANDS("faultline:farlands", "minecraft:windswept_hills"),
-    SKY_ISLES("faultline:sky_isles", "minecraft:meadow");
+    SKY_ISLES("faultline:sky_isles", "minecraft:meadow"),
+    // ---- the Broken Lands (2.0): five flat, broken wedges of the Farlands between 5000 and the border (Broken.java)
+    MISSING_CHUNKS("faultline:missing_chunks", "minecraft:plains"),
+    MISSING_TEXTURE("faultline:missing_texture", "minecraft:plains"),
+    SMEAR("faultline:the_smear", "minecraft:plains"),
+    UPSIDE_DOWN("faultline:upside_down", "minecraft:plains"),
+    DEBUG_FIELDS("faultline:debug_fields", "minecraft:plains");
 
     final String key;
     final String fallback;
 
     B(String key) { this(key, key); }
     B(String key, String fallback) { this.key = key; this.fallback = fallback; }
+
+    /** The Farlands and its broken biomes (mobs don't burn, the extra spawns, the Elites...). */
+    boolean farlands() { return this == FARLANDS || this == MISSING_CHUNKS || this == MISSING_TEXTURE || this == SMEAR || this == UPSIDE_DOWN || this == DEBUG_FIELDS; }
 
     boolean custom() { return key.startsWith("faultline:"); }
 

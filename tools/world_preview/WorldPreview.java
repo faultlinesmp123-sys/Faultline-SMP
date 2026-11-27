@@ -57,6 +57,20 @@ public class WorldPreview {
         String n = m.name();
         if (m == Material.WATER) return new Color(40, 80, 190);
         if (m.isAir()) return null;
+        if (n.endsWith("_CONCRETE") || n.endsWith("_WOOL") || n.endsWith("STAINED_GLASS") || n.endsWith("GLAZED_TERRACOTTA")) {
+            String c = n.substring(0, n.indexOf('_'));
+            switch (c) {
+                case "MAGENTA": return new Color(190, 40, 190); case "BLACK": return new Color(20, 20, 22); case "WHITE": return new Color(235, 235, 235);
+                case "RED": return new Color(170, 40, 40); case "CYAN": return new Color(40, 150, 160); case "LIME": return new Color(110, 200, 40);
+                case "PURPLE": return new Color(110, 40, 170); case "YELLOW": return new Color(240, 200, 40); case "BLUE": return new Color(50, 60, 170);
+                case "ORANGE": return new Color(230, 110, 20); case "PINK": return new Color(230, 140, 170); case "GREEN": return new Color(80, 110, 30);
+                case "BROWN": return new Color(110, 70, 40); case "GRAY": return new Color(70, 70, 75);
+                case "LIGHT": return n.startsWith("LIGHT_BLUE") ? new Color(70, 170, 220) : new Color(150, 150, 150);
+                default: return new Color(200, 200, 200);
+            }
+        }
+        if (m == Material.LAVA) return new Color(230, 100, 20);
+        if (n.contains("PLANKS")) return new Color(170, 130, 80);
         if (n.contains("LEAVES")) return n.contains("PALE") ? new Color(190, 195, 180) : n.contains("AZALEA") ? new Color(110, 140, 90) : n.contains("MANGROVE") ? new Color(70, 120, 40) : new Color(40, 90, 40);
         if (n.contains("NYLIUM") || n.contains("CRIMSON_ROOTS")) return new Color(170, 20, 40);
         if (n.contains("GRASS") || n.contains("FERN")) return new Color(90, 150, 60);

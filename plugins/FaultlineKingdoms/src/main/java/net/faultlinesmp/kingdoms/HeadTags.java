@@ -51,6 +51,12 @@ final class HeadTags implements Listener {
 
     /** What the tag says: the kingdom in its colour, else the outlaw line. */
     String line(UUID id) {
+        if (FaultlineKingdoms.isGuest(id)) {   // 2.0: Special Guests
+            ChatColor g;
+            try { g = ChatColor.valueOf(pl.getConfig().getString("display.guest-color", "LIGHT_PURPLE").toUpperCase(Locale.ROOT)); }
+            catch (IllegalArgumentException e) { g = ChatColor.LIGHT_PURPLE; }
+            return g + "" + ChatColor.BOLD + pl.getConfig().getString("display.guest-name", "Special Guest");
+        }
         int k = FaultlineKingdoms.kingdomOf(id);
         if (k > 0) return pl.color(k) + pl.name(k);
         ChatColor c;

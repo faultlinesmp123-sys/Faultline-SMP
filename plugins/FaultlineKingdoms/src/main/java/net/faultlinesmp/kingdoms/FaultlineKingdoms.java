@@ -59,6 +59,7 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
         int kingdom;      // 0 = none
         String discordId; // linked Discord account, or null
         boolean manual;   // set by an admin: role sync leaves it alone
+        boolean guest;    // 2.0: a SPECIAL GUEST (staff-given; in no faction, "Special Guest" over their head, can't fight or be fought)
         Boolean ffVote;   // their friendly-fire vote for their kingdom (null = none)
         final Map<Integer, Boolean> allyVotes = new java.util.concurrent.ConcurrentHashMap<>(); // 1.4.0: their treaty vote per other kingdom
     }
@@ -124,6 +125,7 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
                 m.kingdom = ps.getInt(id + ".kingdom", 0);
                 m.discordId = ps.getString(id + ".discord");
                 m.manual = ps.getBoolean(id + ".manual", false);
+                m.guest = ps.getBoolean(id + ".guest", false);
                 if (ps.isBoolean(id + ".ff-vote")) m.ffVote = ps.getBoolean(id + ".ff-vote");
                 ConfigurationSection av = ps.getConfigurationSection(id + ".ally-votes");
                 if (av != null) for (String k : av.getKeys(false)) try { m.allyVotes.put(Integer.parseInt(k), av.getBoolean(k)); } catch (NumberFormatException ignored) { }
@@ -148,6 +150,7 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
             y.set(b + "kingdom", m.kingdom);
             if (m.discordId != null) y.set(b + "discord", m.discordId);
             if (m.manual) y.set(b + "manual", true);
+            if (m.guest) y.set(b + "guest", true);
             if (m.ffVote != null) y.set(b + "ff-vote", m.ffVote);
             for (var v : m.allyVotes.entrySet()) y.set(b + "ally-votes." + v.getKey(), v.getValue());
         }
@@ -162,6 +165,13 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
         Member m = members.computeIfAbsent(p.getUniqueId(), k -> new Member());
         m.name = p.getName();
         return m;
+    }
+
+    /** 2.0: is this player a Special Guest? (other plugins may ask) */
+    public static boolean isGuest(UUID id) {
+        if (instance == null || id == null) return false;
+        Member m = instance.members.get(id);
+        return m != null && m.guest;
     }
 
     public static int kingdomOf(UUID id) {
@@ -227,7 +237,8 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
         if (headTags != null) try { headTags.refresh(p); } catch (RuntimeException ex) { getLogger().warning("head tag for " + p.getName() + ": " + ex); }
         if (!getConfig().getBoolean("display.tab-prefix", true)) return;
         int k = kingdomOf(p.getUniqueId());
-        String tab = k > 0 ? color(k) + "[" + name(k) + "] " + ChatColor.RESET + p.getName()
+        String tab = isGuest(p.getUniqueId()) && headTags != null ? headTags.line(p.getUniqueId()) + " " + ChatColor.RESET + p.getName()
+                : k > 0 ? color(k) + "[" + name(k) + "] " + ChatColor.RESET + p.getName()
                 : getConfig().getBoolean("display.tab-outlaw", true) && headTags != null ? headTags.line(p.getUniqueId()) + " " + ChatColor.RESET + p.getName() : null;
         try { p.setPlayerListName(tab); } catch (RuntimeException ignored) { }
     }
@@ -471,6 +482,10 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
     /** Why attacker may not hurt victim right now, or null if they may. */
     String blocked(Player attacker, Player victim) {
         if (attacker.equals(victim)) return null;
+        if (getConfig().getBoolean("guest.pvp-protected", true)) {
+            if (isGuest(victim.getUniqueId())) return victim.getName() + " is a Special Guest: they can't be hurt.";
+            if (isGuest(attacker.getUniqueId())) return "Special Guests can't fight players.";
+        }
         if (graceOn("all")) return "It's a grace period: no PvP.";
         int va = kingdomOf(victim.getUniqueId()), aa = kingdomOf(attacker.getUniqueId());
         if (va > 0 && graceOn(String.valueOf(va))) return victim.getName() + "'s faction (" + label(va) + ChatColor.RED + ") is under grace.";
@@ -640,10 +655,31 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
                 }
                 setGrace(key, until, sender);
             }
-            case "set" -> { // /kingdoms set <player> <1-5|none|auto>
-                if (args.length < 3) return msg(sender, ChatColor.RED + "/factions set <player> <1-5|none|auto>");
+            case "guest" -> { // 2.0: /factions guest <player> [on|off]
+                if (args.length < 2) {
+                    StringBuilder sb = new StringBuilder();
+                    for (Member m : members.values()) if (m.guest) sb.append(sb.length() == 0 ? "" : ", ").append(m.name);
+                    return msg(sender, ChatColor.LIGHT_PURPLE + "Special Guests: " + ChatColor.WHITE + (sb.length() == 0 ? "none" : sb) + ChatColor.GRAY + "  (/factions guest <player> [on|off])");
+                }
                 @SuppressWarnings("deprecation") OfflinePlayer op = Bukkit.getOfflinePlayer(args[1]);
                 if (!op.hasPlayedBefore() && !op.isOnline()) return msg(sender, ChatColor.RED + "Never seen " + args[1] + " on this server.");
+                Member m = members.computeIfAbsent(op.getUniqueId(), x -> new Member());
+                if (m.name == null) m.name = op.getName();
+                boolean on = args.length > 2 ? args[2].equalsIgnoreCase("on") || args[2].equalsIgnoreCase("true") : !m.guest;
+                setGuest(op, on);
+                msg(sender, on ? ChatColor.LIGHT_PURPLE + op.getName() + " is now a Special Guest." : ChatColor.YELLOW + op.getName() + " is no longer a Special Guest.");
+            }
+            case "set" -> { // /kingdoms set <player> <1-5|none|auto|guest>
+                if (args.length < 3) return msg(sender, ChatColor.RED + "/factions set <player> <1-5|none|auto|guest>");
+                @SuppressWarnings("deprecation") OfflinePlayer op = Bukkit.getOfflinePlayer(args[1]);
+                if (!op.hasPlayedBefore() && !op.isOnline()) return msg(sender, ChatColor.RED + "Never seen " + args[1] + " on this server.");
+                if (args[2].equalsIgnoreCase("guest")) {
+                    Member m = members.computeIfAbsent(op.getUniqueId(), x -> new Member());
+                    if (m.name == null) m.name = op.getName();
+                    setGuest(op, true);
+                    return msg(sender, ChatColor.LIGHT_PURPLE + op.getName() + " is now a Special Guest.");
+                }
+                { Member g = members.get(op.getUniqueId()); if (g != null && g.guest) setGuest(op, false); }
                 if (args[2].equalsIgnoreCase("auto")) {
                     Member m = members.computeIfAbsent(op.getUniqueId(), x -> new Member());
                     m.manual = false;
@@ -745,7 +781,7 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
             }
             default -> {
                 status(sender);
-                msg(sender, ChatColor.DARK_GRAY + "/factions grace <all|1-5> <on|off> [time] · set <player> <1-5|none|auto> · ff <1-5> <on|off|vote> · treaty <a> <b> <on|off|vote> · tp <1-5|outlaws|all> [player] · spy · sync [player] · reload");
+                msg(sender, ChatColor.DARK_GRAY + "/factions grace <all|1-5> <on|off> [time] · set <player> <1-5|none|auto|guest> · guest <player> [on|off] · ff <1-5> <on|off|vote> · treaty <a> <b> <on|off|vote> · tp <1-5|outlaws|all> [player] · spy · sync [player] · reload");
             }
         }
         return true;
@@ -753,10 +789,30 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
 
     static boolean msg(CommandSender s, String m) { s.sendMessage(m); return true; }
 
+    /** A Special Guest is in no faction (they leave theirs) and is manual (Discord sync never moves them). */
+    void setGuest(OfflinePlayer op, boolean on) {
+        Member m = members.computeIfAbsent(op.getUniqueId(), x -> new Member());
+        if (m.name == null) m.name = op.getName();
+        m.guest = on;
+        if (on) {
+            if (m.kingdom != 0) setKingdom(op.getUniqueId(), 0, true, "made a Special Guest");
+            m.manual = true;
+        }
+        save();
+        Player p = op.getPlayer();
+        if (p != null) {
+            refreshName(p);
+            p.sendMessage(on ? ChatColor.LIGHT_PURPLE + "" + ChatColor.BOLD + "You're a Special Guest! " + ChatColor.GRAY + "Nobody can hurt you, and you can't fight players."
+                    : ChatColor.GRAY + "You're no longer a Special Guest.");
+        }
+        getLogger().info("[Guest] " + op.getName() + (on ? " is now" : " is no longer") + " a Special Guest");
+    }
+
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (command.getName().equalsIgnoreCase("factions")) {
-            if (args.length == 1) return List.of("grace", "set", "ff", "treaty", "tp", "spy", "sync", "status", "reload");
+            if (args.length == 1) return List.of("grace", "set", "guest", "ff", "treaty", "tp", "spy", "sync", "status", "reload");
+            if (args.length == 3 && args[0].equalsIgnoreCase("guest")) return List.of("on", "off");
             if (args.length == 2 && args[0].equalsIgnoreCase("tp")) return List.of("1", "2", "3", "4", "5", "outlaws", "all");
             if (args[0].equalsIgnoreCase("treaty")) return args.length <= 3 ? List.of("1", "2", "3", "4", "5") : args.length == 4 ? List.of("on", "off", "vote") : List.of();
             if (args.length == 2 && args[0].equalsIgnoreCase("ff")) return List.of("1", "2", "3", "4", "5");
@@ -764,7 +820,7 @@ public final class FaultlineKingdoms extends JavaPlugin implements Listener {
             if (args.length == 2 && args[0].equalsIgnoreCase("grace")) return List.of("all", "1", "2", "3", "4", "5");
             if (args.length == 3 && args[0].equalsIgnoreCase("grace")) return List.of("on", "off");
             if (args.length == 4 && args[0].equalsIgnoreCase("grace")) return List.of("30m", "1h", "2h", "1d");
-            if (args.length == 3 && args[0].equalsIgnoreCase("set")) return List.of("1", "2", "3", "4", "5", "none", "auto");
+            if (args.length == 3 && args[0].equalsIgnoreCase("set")) return List.of("1", "2", "3", "4", "5", "none", "auto", "guest");
             return null;
         }
         if (command.getName().equalsIgnoreCase("fc") || command.getName().equalsIgnoreCase("ac")) return null;

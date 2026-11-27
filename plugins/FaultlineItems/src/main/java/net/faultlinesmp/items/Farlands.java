@@ -56,6 +56,9 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
 
     static final String CRAWLER = "faultline_wall_crawler", ECHO = "faultline_echo", TRADER = "faultline_rim_trader", PERM = "items.farlands";
     static final String BIOME = "faultline:farlands";
+    /** 2.0: the Broken Lands (FaultlineWorld Broken.java) are the Farlands too: music, insanity, Elites, rain, everything. */
+    static final java.util.Set<String> BIOMES = java.util.Set.of(BIOME, "faultline:missing_chunks", "faultline:missing_texture",
+            "faultline:the_smear", "faultline:upside_down", "faultline:debug_fields");
     private static final Particle.DustOptions DARK = new Particle.DustOptions(Color.fromRGB(0x2A0E1A), 1.6f);
 
     private final FaultlineItems plugin;
@@ -110,7 +113,7 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
     static boolean in(Location l) {
         if (l == null || l.getWorld() == null) return false;
         if (forceIn) return true;
-        try { return BIOME.equals(l.getWorld().getBiome(l.getBlockX(), l.getBlockY(), l.getBlockZ()).getKey().toString()); }
+        try { return BIOMES.contains(l.getWorld().getBiome(l.getBlockX(), l.getBlockY(), l.getBlockZ()).getKey().toString()); }
         catch (Throwable t) { return false; }
     }
 
@@ -704,6 +707,11 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
             long want = plugin.farlandsDread == null ? 18000 : plugin.farlandsDread.playerTime();
             if (night && (p.isPlayerTimeRelative() || Math.abs(p.getPlayerTime() - want) > 200)) p.setPlayerTime(want, false);
             WeatherType wx = plugin.farlandsDread == null ? WeatherType.DOWNFALL : plugin.farlandsDread.weather(p);
+            // 2.0: it must RAIN out here. The client snows wherever the biome saved in that chunk is cold (old chunks made with the
+            // vanilla fallback biome; FaultlineWorld rewrites those on load): there, a clear sky and the rain drawn by us instead.
+            boolean snowy = false;
+            if (rain && wx == WeatherType.DOWNFALL) try { snowy = p.getLocation().getBlock().getTemperature() < 0.15; } catch (Throwable ignored) { }
+            if (snowy) { wx = WeatherType.CLEAR; fakeRain(p); }
             if (rain && p.getPlayerWeather() != wx) p.setPlayerWeather(wx);
             if (plugin.farlandsDread != null && plugin.farlandsDread.still(p)) continue;   // the Stillness: no ash, no sounds
             if (!spook) continue;
@@ -727,6 +735,16 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
         }
         spooky.removeIf(u -> Bukkit.getPlayer(u) == null);
         spookAt.keySet().removeIf(u -> Bukkit.getPlayer(u) == null);
+    }
+
+    /** Rain drawn with particles + its sound (only for a player standing where the game would draw snow). */
+    void fakeRain(Player p) {
+        Location l = p.getLocation();
+        for (int i = 0; i < 160; i++) {
+            Location at = l.clone().add((random.nextDouble() - 0.5) * 22, 4 + random.nextDouble() * 10, (random.nextDouble() - 0.5) * 22);
+            p.spawnParticle(Particle.FALLING_WATER, at, 1, 0, 0, 0, 0);
+        }
+        p.playSound(l, Sound.WEATHER_RAIN, SoundCategory.WEATHER, 0.4f, 1f);
     }
 
     void unspook(Player p) {

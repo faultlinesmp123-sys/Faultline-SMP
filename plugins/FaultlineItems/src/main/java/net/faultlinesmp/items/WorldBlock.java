@@ -148,7 +148,7 @@ final class WorldBlock implements Listener {
         int x1, y1, z1, x2, y2, z2;
         int bx, by, bz; boolean placed;
         String music; boolean loop = true; double pitch = 1.0, volume = 1.0;
-        boolean grief, pvp = true, entry = true;
+        boolean grief, pvp = true, entry = true, noSnow;
         int light; String weather = "normal";
         Area(String id) { this.id = id; }
         boolean in(Location l) {
@@ -357,6 +357,8 @@ final class WorldBlock implements Listener {
         m.inv.setItem(24, button(a.pvp ? Material.IRON_SWORD : Material.SHIELD, ChatColor.GOLD + "PvP: " + onOff(a.pvp), "Click to switch."));
         m.inv.setItem(25, button(a.entry ? Material.OAK_DOOR : Material.IRON_DOOR, ChatColor.GOLD + "Entering: " + (a.entry ? ChatColor.GREEN + "anyone" : ChatColor.RED + "admins only"),
                 "Closed: everyone else is turned back at the", "edge (and put out if they're inside).", "Click to switch."));
+        m.inv.setItem(33, button(a.noSnow ? Material.BARRIER : Material.SNOW, ChatColor.GOLD + "Snow on the ground: " + (a.noSnow ? ChatColor.RED + "OFF" : ChatColor.GREEN + "allowed"),
+                "OFF: no snow layers or powder snow form", "here, and what's there is cleared.", "Click to switch."));
         m.inv.setItem(30, button(a.light < 0 ? Material.BLACK_CANDLE : a.light > 0 ? Material.GLOWSTONE : Material.TORCH,
                 ChatColor.GOLD + "Lighting: " + ChatColor.WHITE + LIGHT[a.light + 2], "Left-click: brighter", "Right-click: darker"));
         m.inv.setItem(32, button(switch (a.weather) { case "rain" -> Material.WATER_BUCKET; case "snow" -> Material.SNOW_BLOCK; case "clear" -> Material.SUNFLOWER; default -> Material.GRASS_BLOCK; },
@@ -415,6 +417,7 @@ final class WorldBlock implements Listener {
             case 23 -> a.grief = !a.grief;
             case 24 -> a.pvp = !a.pvp;
             case 25 -> { a.entry = !a.entry; if (!a.entry) putOut(a); }
+            case 33 -> { a.noSnow = !a.noSnow; if (a.noSnow) clearSnow(a); }
             case 30 -> a.light = Math.max(-2, Math.min(2, a.light + (e.isRightClick() ? -1 : 1)));
             case 32 -> { int i = 0; for (int k = 0; k < WEATHER.length; k++) if (WEATHER[k].equals(a.weather)) i = k; a.weather = WEATHER[(i + 1) % WEATHER.length]; }
             case 49 -> {
@@ -851,6 +854,52 @@ final class WorldBlock implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onPistonBlockIn(BlockPistonRetractEvent e) { for (Block b : e.getBlocks()) if (blockArea(b) != null) { e.setCancelled(true); return; } }
 
+    // ================================================================= no snow on the ground
+    static boolean snowy(Material m) { return m == Material.SNOW || m == Material.POWDER_SNOW; }
+
+    /** Snow falling on the area (and snow golems' trails, powder snow in cauldrons...) never forms. */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onForm(org.bukkit.event.block.BlockFormEvent e) {
+        if (!snowy(e.getNewState().getType())) return;
+        Area a = at(e.getBlock().getLocation());
+        if (a != null && a.noSnow) e.setCancelled(true);
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onTrail(org.bukkit.event.block.EntityBlockFormEvent e) {
+        if (!snowy(e.getNewState().getType())) return;
+        Area a = at(e.getBlock().getLocation());
+        if (a != null && a.noSnow) e.setCancelled(true);
+    }
+
+    /** Takes away the snow layers / powder snow lying on top of the ground in the area's loaded chunks (a few chunks a tick). */
+    void clearSnow(Area a) {
+        World w = Bukkit.getWorld(a.world);
+        if (w == null) return;
+        List<int[]> chunks = new ArrayList<>();
+        for (int cx = a.x1 >> 4; cx <= a.x2 >> 4; cx++) for (int cz = a.z1 >> 4; cz <= a.z2 >> 4; cz++) if (w.isChunkLoaded(cx, cz)) chunks.add(new int[]{cx, cz});
+        new org.bukkit.scheduler.BukkitRunnable() {
+            int i;
+            @Override public void run() {
+                for (int n = 0; n < 4 && i < chunks.size(); n++, i++) {
+                    int cx = chunks.get(i)[0], cz = chunks.get(i)[1];
+                    if (!w.isChunkLoaded(cx, cz) || !areas.containsKey(a.id)) continue;
+                    for (int x = Math.max(a.x1, cx << 4); x <= Math.min(a.x2, (cx << 4) + 15); x++)
+                        for (int z = Math.max(a.z1, cz << 4); z <= Math.min(a.z2, (cz << 4) + 15); z++) {
+                            Block top = w.getHighestBlockAt(x, z);
+                            for (int k = 0; k < 3; k++) {                   // the top block and a couple under it (snow on a slab, stacked layers)
+                                Block b = top.getRelative(0, -k, 0);
+                                if (snowy(b.getType())) b.setType(Material.AIR, false);
+                            }
+                            Block above = top.getRelative(0, 1, 0);
+                            if (snowy(above.getType())) above.setType(Material.AIR, false);
+                        }
+                }
+                if (i >= chunks.size()) cancel();
+            }
+        }.runTaskTimer(plugin, 1L, 1L);
+    }
+
     // ================================================================= saving
     void load() {
         YamlConfiguration y = SafeYaml.load(plugin, file).yaml;
@@ -874,6 +923,7 @@ final class WorldBlock implements Listener {
             a.entry = c.getBoolean("entry", true);
             a.light = Math.max(-2, Math.min(2, c.getInt("light", 0)));
             a.weather = c.getString("weather", "normal");
+            a.noSnow = c.getBoolean("no-snow", false);
             a.fullHeight();
             areas.put(id, a);
         }
@@ -897,6 +947,7 @@ final class WorldBlock implements Listener {
             y.set(k + "entry", a.entry);
             y.set(k + "light", a.light);
             y.set(k + "weather", a.weather);
+            y.set(k + "no-snow", a.noSnow);
         }
         SafeYaml.write(plugin, file, y.saveToString());
     }

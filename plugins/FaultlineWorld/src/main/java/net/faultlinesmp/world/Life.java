@@ -202,11 +202,46 @@ final class Life implements Listener {
         // on ANY load of a chunk that hasn't been done yet.
         if (!ours(e.getWorld())) return;
         Chunk ch = e.getChunk();
+        try { fixFarlandsBiome(ch); } catch (Throwable err) { if (!biomeWarned) { biomeWarned = true; plugin.getLogger().warning("[World] couldn't fix a Farlands chunk's biome: " + err); } }
         if (ch.getPersistentDataContainer().has(filledKey, PersistentDataType.BYTE)) return;
         try { Sites.heal(terrain(ch.getWorld()), ch); } catch (Throwable err) { plugin.getLogger().warning("[World] healing builds in chunk " + ch.getX() + "," + ch.getZ() + ": " + err); }
         try { fillChunk(ch); } catch (Throwable err) { plugin.getLogger().warning("[World] filling chunk " + ch.getX() + "," + ch.getZ() + ": " + err); }
         ch.getPersistentDataContainer().set(filledKey, PersistentDataType.BYTE, (byte) 1);
     }
+
+    private boolean biomeWarned;
+
+    /**
+     * 2.0: SNOW IN THE FARLANDS. A Farlands chunk made while the datapack wasn't loaded saved the vanilla fallback biome
+     * (windswept hills: cold, so the high walls SNOW). The weather the client draws comes from that saved biome, whatever the
+     * datapack says now. When such a chunk loads, every 4x4x4 biome cell is set to what the generator gives there now
+     * (faultline:farlands or a Broken Lands biome: warm, rain) and the chunk is re-sent. One biome read when it's already right.
+     */
+    void fixFarlandsBiome(Chunk ch) {
+        if (WorldGen.BiomeMap.lookup("faultline:farlands") == null) return;           // the datapack isn't loaded: nothing to set
+        World w = ch.getWorld();
+        int bx = ch.getX() << 4, bz = ch.getZ() << 4;
+        Terrain t = terrain(w);
+        Terrain.Col c = t.column(bx + 8, bz + 8);
+        if (c.farlands < 0.5) return;
+        int y = Math.max(w.getMinHeight(), Math.min(w.getMaxHeight() - 1, c.surface + 2));
+        String key = w.getBiome(bx + 8, y, bz + 8).getKey().toString();
+        if (key.startsWith("faultline:")) return;
+        WorldGen.Biomes prov = new WorldGen.Biomes(plugin.gen);
+        int changed = 0;
+        for (int x = 0; x < 16; x += 4) for (int z = 0; z < 16; z += 4) for (int yy = w.getMinHeight(); yy < w.getMaxHeight(); yy += 4) {
+            org.bukkit.block.Biome want = prov.getBiome(w, bx + x, yy, bz + z);
+            if (want == null || !want.getKey().getNamespace().equals("faultline")) continue;
+            if (!w.getBiome(bx + x, yy, bz + z).equals(want)) { w.setBiome(bx + x, yy, bz + z, want); changed++; }
+        }
+        if (changed > 0) {
+            int cx = ch.getX(), cz = ch.getZ();
+            Bukkit.getScheduler().runTask(plugin, () -> { if (w.isChunkLoaded(cx, cz)) w.refreshChunk(cx, cz); });
+            if (++biomeFixes % 200 == 1) plugin.getLogger().info("[World] fixed the biome of " + biomeFixes + " Farlands chunk(s) saved with a fallback biome (they snowed)");
+        }
+    }
+
+    private int biomeFixes;
 
     void fillChunk(Chunk ch) {
         Terrain t = terrain(ch.getWorld());
@@ -426,7 +461,7 @@ final class Life implements Listener {
         if (e instanceof EntityCombustByBlockEvent || e instanceof EntityCombustByEntityEvent) return;
         if (!(e.getEntity() instanceof Monster) || !ours(e.getEntity().getWorld())) return;
         B b = where(e.getEntity().getLocation());
-        if (b == B.INFERNO_FOREST || b == B.FARLANDS) e.setCancelled(true);
+        if (b == B.INFERNO_FOREST || b != null && b.farlands()) e.setCancelled(true);
     }
 
     /** The elites' biome rules are in FaultlineRaids; here: extra spawns for the busy places (every 5 s). */
@@ -452,6 +487,7 @@ final class Life implements Listener {
             if (!survival(p)) continue;
             B b = where(p.getLocation());
             if (b == null) continue;
+            if (b.farlands()) b = B.FARLANDS;   // (the Broken Lands spawn like the Farlands)
             String key = switch (b) { case INFERNO_FOREST -> "inferno"; case MIRE -> "mire"; case FARLANDS -> "farlands"; case FIBERS -> "fibers"; case SPIDER -> "spider"; default -> null; };
             if (key == null) continue;
             int cap = plugin.getConfig().getInt("spawns." + key + ".cap", key.equals("mire") || key.equals("farlands") ? 14 : 8);
@@ -498,7 +534,7 @@ final class Life implements Listener {
                 Block f = w.getBlockAt(x, y - 1, z), b1 = w.getBlockAt(x, y, z), b2 = w.getBlockAt(x, y + 1, z);
                 if (f.getType().isSolid() && b1.isPassable() && !b1.isLiquid() && b2.isPassable() && !b2.isLiquid()) {
                     Location l = new Location(w, x + 0.5, y, z + 0.5);
-                    if (want == null || where(l) == want) return l;
+                    if (want == null || where(l) == want || want == B.FARLANDS && where(l) != null && where(l).farlands()) return l;
                 }
             }
         }

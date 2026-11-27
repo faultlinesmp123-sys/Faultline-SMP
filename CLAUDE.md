@@ -3757,6 +3757,32 @@ Notes:
 - **World Block volume (Items, same 2.0.0)**: menu slot 22 = music VOLUME 0.2-2.0 (left +0.1, right -0.1, shift = 1.0; saved as
   `volume`), passed to `playSound` like /playsound's volume; changing it restarts the song. As in the game, above 1.0 isn't louder
   (the music is attached to the listener), it only carries further. Tested (scratch `wb/WbTest`).
+- **THE BROKEN LANDS, Farlands rain, Special Guests, World Block snow (World, Items, Raids, Kingdoms; same 2.0.0)**:
+  `World/Broken.java` (pure, seed-independent): five FLAT, broken biomes as wedges of the Farlands ring from 5000 (Chebyshev, a
+  wobbling edge, the walls come down over `BLEND` 260) to the border: `CENTERS` 54/126/198/270/342 degrees (atan2(z, x)), `HALF`
+  24 each side (the Rim Citadel at 90 sits in a gap; between the wedges the old walls + Rim villages / lighthouses / glitch patches
+  carry on; `RimGen.usable` and `FarGen.feature` skip broken ground). MISSING CHUNKS (biome `faultline:missing_chunks`): flat grass
+  where 1 chunk in 8 is gone to the bedrock, 1 in 16 floats over its own hole, the rest shifted +-9 or in the wrong biome's ground,
+  bedrock seams; MISSING TEXTURE WASTES (`missing_texture`): 2x2 magenta / black concrete checker, floating checker cubes; THE SMEAR
+  (`the_smear`): every z row a streak of one block for `SMEAR_SEAM` 176 blocks of x, heights a function of z, sheer seams with bedrock;
+  THE UPSIDE DOWN (`upside_down`): blackstone / basalt floor with lava pools under an upside-down land at SEA+58 (grass on its
+  UNDERSIDE, dirt, stone, glowstone, dripstone, persistent-leaf trees hanging down, holes); THE DEBUG FIELDS (`debug_fields`): superflat
+  with 64-block fields of floating blocks on a 2-block grid (`DEBUG_BLOCKS`: wool, concrete, terracotta, glass, planks, logs, bricks,
+  stones... never ores / valuables / gravity blocks). `Terrain.column` = `Broken.blend(walls)`; `B.farlands()` = the Farlands family
+  (Life: mobs don't burn, Farlands spawn waves); `Rim` titles on entry. Datapack: 5 biomes from plains (`broken()` in
+  world_datapack.py: temperature 0.9 = rain at every height, Farlands mobs, no flowers / grass), in `is_overworld`. Items
+  `Farlands.BIOMES` and Raids `Elites.farlands(key)` count them as the Farlands (music, insanity, Elites, rain...). Previews:
+  `tools/world_preview/WorldPreview` (colours for concrete / wool / glass added). Only NEW chunks: the owner flew to ~8000 already.
+  FARLANDS SNOW: the datapack's farlands biome is warm (0.9), so snow = chunks SAVED with the vanilla fallback biome (windswept
+  hills, cold) when the datapack wasn't loaded. `Life.fixFarlandsBiome` (every chunk load, one biome read when fine): a Farlands chunk
+  whose biome isn't faultline:* gets every 4x4x4 cell set to the generator's biome and is re-sent (`refreshChunk` a tick later).
+  Backup: Items' `spookyTick` sees the block temperature at the player < 0.15 = clear sky for them + rain drawn with particles + the
+  rain sound (`fakeRain`). SPECIAL GUESTS (Kingdoms): `/factions guest <player> [on|off]` (no args = list) or `/factions set <player>
+  guest` (setting a faction ends it): `Member.guest` (saved `guest: true`), in no faction, manual (Discord sync leaves them), head tag
+  + tab "Special Guest" (`display.guest-name` / `guest-color` LIGHT_PURPLE, bold), `blocked()`: nobody can hurt them and they can't hurt
+  players (`guest.pvp-protected` true). `FaultlineKingdoms.isGuest(uuid)` for other plugins. Tested (scratch `guest/GTest`).
+  WORLD BLOCK: menu slot 33 "Snow on the ground" (`no-snow`): BlockFormEvent / EntityBlockFormEvent making SNOW or POWDER_SNOW in the
+  area cancelled; switching it on clears the snow on top of the ground in the area's loaded chunks (4 chunks a tick).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

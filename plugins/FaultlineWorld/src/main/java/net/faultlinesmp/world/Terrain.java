@@ -119,8 +119,9 @@ final class Terrain {
         int climate = c.isle >= 0 ? Layout.ISLES.get(c.isle).climate() : 0;
 
         if (c.farlands > 0.5) {
-            c.surface = farlandsHeight(x, z);
-            c.biome = B.FARLANDS;
+            c.surface = (int) Math.round(Broken.blend(x, z, farlandsHeight(x, z)));   // 2.0: the Broken Lands, 5000+ out
+            B br = Broken.biome(x, z);
+            c.biome = br != null ? br : B.FARLANDS;
             return c;
         }
         if (co > 0) {
@@ -407,7 +408,7 @@ final class Terrain {
     // ------------------------------------------------------------------ biomes
 
     B biome(double x, double z, Col c, int climate, Layout.Blob blob) {
-        if (c.farlands > 0.5) return B.FARLANDS;
+        if (c.farlands > 0.5) { B br = Broken.biome(x, z); return br != null ? br : B.FARLANDS; }
         if (blob != null && blob.biome() == B.WASTELAND && blob(blob, x, z) > 0.5) return B.WASTELAND;
         if (c.dry && blob != null) return blob.biome() == B.JAGGED_PEAKS ? B.WINDSWEPT_HILLS : blob.biome() == B.FROZEN_PEAKS ? B.SNOWY_SLOPES : blob.biome();
         if (c.sea && !c.river) {

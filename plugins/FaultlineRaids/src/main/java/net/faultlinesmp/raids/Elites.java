@@ -174,7 +174,7 @@ final class Elites implements Listener {
         if (e.getEntity() instanceof org.bukkit.entity.Flying || e.getEntity() instanceof org.bukkit.entity.Phantom) return;   // ghasts, phantoms: up in the air on purpose
         if (!on() || !plugin.getConfig().getBoolean("elites.farlands-only-elites", true)) return;
         Location l = e.getLocation();
-        if (!biomeKey(l).equals("faultline:farlands")) return;
+        if (!farlands(biomeKey(l))) return;
         double band = cfg("farlands-spawn-height", 8);
         boolean ok = false;
         for (org.bukkit.entity.Player p : l.getWorld().getPlayers()) {
@@ -192,7 +192,7 @@ final class Elites implements Listener {
         CreatureSpawnEvent.SpawnReason why = e.getSpawnReason();
         if (!on()) return;
         LivingEntity m = e.getEntity();
-        if (FAR_REASONS.contains(why) && m instanceof org.bukkit.entity.Enemy && biomeKey(e.getLocation()).equals("faultline:farlands")
+        if (FAR_REASONS.contains(why) && m instanceof org.bukkit.entity.Enemy && farlands(biomeKey(e.getLocation()))
                 && plugin.getConfig().getBoolean("elites.farlands-only-elites", true)) {
             Bukkit.getScheduler().runTask(plugin, () -> {
                 if (!m.isValid()) return;
@@ -213,7 +213,7 @@ final class Elites implements Listener {
             for (String t : m.getScoreboardTags()) if (t.startsWith("faultline")) return;
             // 2.0.0: Elites only spawn naturally in the Farlands (a lot of them) and, rarely, in the Fibers
             String biome = biomeKey(m.getLocation());
-            double elite = biome.equals("faultline:farlands") ? cfg("farlands-chance", 0.35)
+            double elite = farlands(biome) ? cfg("farlands-chance", 0.35)
                     : biome.equals("faultline:fibers") ? cfg("fibers-chance", 0.04) : elsewhere();
             roll(m, elite, cfg("mutation-chance", 0.02));
         });
@@ -221,6 +221,12 @@ final class Elites implements Listener {
 
     /** Everywhere else: 0. A server config kept from before 2.0 still says 0.01 (the old default): that reads as 0 too. */
     double elsewhere() { double c = cfg("chance", 0.0); return Math.abs(c - 0.01) < 1e-9 ? 0.0 : c; }
+
+    /** 2.0: the Farlands and its Broken Lands (FaultlineWorld's flat broken biomes 5000+ out). */
+    static boolean farlands(String key) {
+        return key.equals("faultline:farlands") || key.equals("faultline:missing_chunks") || key.equals("faultline:missing_texture")
+                || key.equals("faultline:the_smear") || key.equals("faultline:upside_down") || key.equals("faultline:debug_fields");
+    }
 
     /** The biome's key ("faultline:farlands"), or "" (the overworld generator's custom biomes come from its datapack). */
     static String biomeKey(org.bukkit.Location l) {

@@ -129,7 +129,26 @@ def biomes():
                           spawn=spawns(monster=[("zombie", 4, 120), ("skeleton", 4, 120), ("creeper", 4, 110), ("spider", 4, 100), ("husk", 2, 30),
                                                 ("stray", 2, 30), ("ghast", 1, 18)], creature=[("sheep", 4, 6)])),
         "sky_isles": biome("meadow", sky="#9fd7ff", fog="#dff2ff", particles=[("minecraft:white_ash", 0.002)]),
+        # 2.0: THE BROKEN LANDS (FaultlineWorld Broken.java): flat broken wedges of the Farlands 5000+ out. Always warm enough to
+        # RAIN (never snow) at any height; Farlands mobs; no flowers / trees from vanilla (the generator draws them).
+        "missing_chunks": broken(sky="#1a1a1a", fog="#2a2a2a", particles=[("minecraft:ash", 0.03), ("minecraft:white_ash", 0.01)]),
+        "missing_texture": broken(sky="#5a0a5a", fog="#2a002a", grass="#c000c0", particles=[("minecraft:portal", 0.01), ("minecraft:ash", 0.01)]),
+        "the_smear": broken(sky="#4a3a2a", fog="#6a5a40", particles=[("minecraft:white_ash", 0.04)]),
+        "upside_down": broken(sky="#0a0a14", fog="#120a14", particles=[("minecraft:falling_obsidian_tear", 0.004), ("minecraft:ash", 0.02)]),
+        "debug_fields": broken(sky="#7fb2ff", fog="#c0d8ff", grass="#79c05a", particles=[("minecraft:end_rod", 0.002)]),
     }
+
+
+def broken(**kw):
+    """A Broken Lands biome: a plains copy, rain everywhere (temperature 0.9), crimson-forest ambience, the Farlands' mobs."""
+    return biome("plains", temp=0.9, downfall=0.9, precip=True,
+                 ambient={"additions": {"sound": "minecraft:ambient.crimson_forest.additions", "tick_chance": 0.0111},
+                          "loop": "minecraft:ambient.basalt_deltas.loop",
+                          "mood": {"block_search_extent": 8, "offset": 2.0, "sound": "minecraft:ambient.crimson_forest.mood", "tick_delay": 6000}},
+                 drop_features=("flower", "patch_grass", "patch_tall_grass", "patch_sugar_cane", "patch_pumpkin"),
+                 spawn=spawns(monster=[("zombie", 4, 120), ("skeleton", 4, 120), ("creeper", 4, 110), ("spider", 4, 100), ("husk", 2, 30),
+                                       ("stray", 2, 30), ("ghast", 1, 12)], creature=[]),
+                 **kw)
 
 
 def _it(name, w, lo=1, hi=1, ench=None, book=False):
@@ -209,7 +228,8 @@ def build():
     for k, v in diamonds().items():
         files[f"data/minecraft/worldgen/placed_feature/{k}.json"] = v
     land = ["faultline:" + b for b in ("wasteland", "deep_desert", "deep_forest", "inferno_forest", "dark_forest", "wartsfield_valley",
-                                       "spider_woods", "spider_caves", "fibers", "mire", "farlands", "sky_isles")]
+                                       "spider_woods", "spider_caves", "fibers", "mire", "farlands", "sky_isles",
+                                       "missing_chunks", "missing_texture", "the_smear", "upside_down", "debug_fields")]
     add_tag("is_overworld", land, files)
     add_tag("has_structure/woodland_mansion", ["faultline:deep_forest"], files)
     add_tag("has_structure/shipwreck", ["faultline:great_sea"], files)

@@ -41,6 +41,9 @@ display:
   head-tag: true              # 1.3.0: the kingdom above everyone's name tag (or the outlaw line with no kingdom)
   outlaw-name: "Outlaw"       # shown for players in no kingdom
   outlaw-color: "DARK_RED"
+  # 2.0: SPECIAL GUESTS (/factions guest <player> [on|off], or /factions set <player> guest): this line over their head instead
+  guest-name: "Special Guest"
+  guest-color: LIGHT_PURPLE
   tab-outlaw: true            # outlaws get "Outlaw" in the tab list too
   head-tag-scale: 0.85
   head-tag-offset: 0.45       # 1.4.1: how far over the top of the hitbox (sits right on the name tag; an old 0.78 reads as 0.45)
@@ -58,3 +61,7 @@ display:
 # Staff put players in kingdoms: /kingdoms set <player> <1-5|none>
 
 bedrock-forms: true
+
+# 2.0: Special Guests can't be hurt by players and can't hurt players.
+guest:
+  pvp-protected: true

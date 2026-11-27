@@ -150,6 +150,7 @@ public final class WorldGen extends ChunkGenerator {
         Sites.paint(t, bx, bz, data);                       // the faction builds
         FarGen.paint(t, bx, bz, data);                      // the Farlands: floating chunks, glitch pillars, vaults, camps
         RimGen.paint(t, bx, bz, data);                      // the Outer Rim: the Citadel, glitched patches, lost villages, lighthouses
+        Broken.paint(t, bx, bz, cols, data);                // the Broken Lands: five flat broken biomes 5000+ out
         settle(data, minY, maxY);
     }
 

@@ -80,7 +80,9 @@ final class RimGen {
     /** In the Outer Rim, `margin` blocks inside the border, clear of the Citadel. */
     static boolean usable(int x, int z, int margin) {
         double cheb = Math.max(Math.abs(x), Math.abs(z));
-        return cheb >= Layout.RIM + margin && cheb <= Layout.BORDER - margin && citadelDist(x, z) > CITADEL_PAD + 80 + margin;
+        return cheb >= Layout.RIM + margin && cheb <= Layout.BORDER - margin && citadelDist(x, z) > CITADEL_PAD + 80 + margin
+                && Broken.weight(x, z) < 0.02 && Broken.weight(x + margin, z) < 0.02 && Broken.weight(x - margin, z) < 0.02
+                && Broken.weight(x, z + margin) < 0.02 && Broken.weight(x, z - margin) < 0.02;   // (never in the Broken Lands)
     }
 
     /** Every village whose pad could reach (x, z). */

@@ -149,11 +149,23 @@ final class Rim implements Listener {
             if (in && inCitadel.add(p.getUniqueId()))
                 p.sendTitle(ChatColor.DARK_GRAY + "" + ChatColor.BOLD + "The Rim Citadel", ChatColor.GRAY + "Whoever held the edge of the world.", 10, 60, 20);
             else if (!in && RimGen.citadelDist(l.getX(), l.getZ()) > 120) inCitadel.remove(p.getUniqueId());
+            // 2.0: the Broken Lands' titles
+            B br = Broken.biome(l.getX(), l.getZ());
+            String was = brokenSeen.get(p.getUniqueId()), now2 = br == null ? null : br.name();
+            if (now2 != null && !now2.equals(was)) {
+                Broken.Kind k = Broken.kind(l.getX(), l.getZ());
+                if (k != null) p.sendTitle(ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + k.title, ChatColor.GRAY + BROKEN_LINES[k.ordinal()], 10, 60, 20);
+            }
+            if (now2 == null) brokenSeen.remove(p.getUniqueId()); else brokenSeen.put(p.getUniqueId(), now2);
         }
         // lighthouses that ran out where nobody was
         for (Iterator<Map.Entry<String, Long>> it = lit.entrySet().iterator(); it.hasNext(); ) if (it.next().getValue() <= now - 3600_000L) { it.remove(); changed = true; }
         if (changed) save();
     }
+
+    private final Map<java.util.UUID, String> brokenSeen = new java.util.HashMap<>();
+    static final String[] BROKEN_LINES = {"The world forgot to load here.", "Nothing here has a texture any more.",
+            "Something dragged the land out of shape.", "The ground is overhead.", "Every block, in a row, for no one."};
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onSpawn(CreatureSpawnEvent e) {

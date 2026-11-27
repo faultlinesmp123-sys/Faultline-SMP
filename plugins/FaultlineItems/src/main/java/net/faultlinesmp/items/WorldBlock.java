@@ -147,7 +147,7 @@ final class WorldBlock implements Listener {
         String world;
         int x1, y1, z1, x2, y2, z2;
         int bx, by, bz; boolean placed;
-        String music; boolean loop = true; double pitch = 1.0;
+        String music; boolean loop = true; double pitch = 1.0, volume = 1.0;
         boolean grief, pvp = true, entry = true;
         int light; String weather = "normal";
         Area(String id) { this.id = id; }
@@ -163,7 +163,7 @@ final class WorldBlock implements Listener {
         void fullHeight() { World w = Bukkit.getWorld(world); if (w != null) { y1 = w.getMinHeight(); y2 = w.getMaxHeight() - 1; } }
     }
 
-    static final class Listen { String area, track; long until; double pitch; }
+    static final class Listen { String area, track; long until; double pitch, volume; }
     private final Set<UUID> gaveDark = new java.util.HashSet<>(), gaveNv = new java.util.HashSet<>();
 
     private final FaultlineItems plugin;
@@ -350,6 +350,8 @@ final class WorldBlock implements Listener {
         m.inv.setItem(20, button(a.loop ? Material.REPEATER : Material.COMPARATOR, ChatColor.GOLD + "Loop: " + onOff(a.loop), "Click to switch."));
         m.inv.setItem(21, button(Material.NOTE_BLOCK, ChatColor.GOLD + "Pitch: " + ChatColor.WHITE + String.format(Locale.ROOT, "%.1f", a.pitch),
                 "Left-click: higher", "Right-click: lower", "Shift-click: back to 1.0"));
+        m.inv.setItem(22, button(Material.BELL, ChatColor.GOLD + "Volume: " + ChatColor.WHITE + String.format(Locale.ROOT, "%.1f", a.volume),
+                "Left-click: louder", "Right-click: quieter", "Shift-click: back to 1.0", "0.2 to 2.0, like the game's /playsound."));
         m.inv.setItem(23, button(a.grief ? Material.TNT : Material.BEDROCK, ChatColor.GOLD + "Building & griefing: " + onOff(a.grief),
                 "OFF: nobody can break, build, open chests,", "use buckets / fire, hurt or take villagers.", "Click to switch."));
         m.inv.setItem(24, button(a.pvp ? Material.IRON_SWORD : Material.SHIELD, ChatColor.GOLD + "PvP: " + onOff(a.pvp), "Click to switch."));
@@ -405,6 +407,11 @@ final class WorldBlock implements Listener {
                 else a.pitch = Math.max(0.5, Math.min(2.0, Math.round((a.pitch + (e.isRightClick() ? -0.1 : 0.1)) * 10) / 10.0));
                 restartMusic(a);
             }
+            case 22 -> {
+                if (e.isShiftClick()) a.volume = 1.0;
+                else a.volume = Math.max(0.2, Math.min(2.0, Math.round((a.volume + (e.isRightClick() ? -0.1 : 0.1)) * 10) / 10.0));
+                restartMusic(a);
+            }
             case 23 -> a.grief = !a.grief;
             case 24 -> a.pvp = !a.pvp;
             case 25 -> { a.entry = !a.entry; if (!a.entry) putOut(a); }
@@ -438,7 +445,7 @@ final class WorldBlock implements Listener {
     void preview(Player p, Area a) {
         Track t = track(a.music);
         if (t == null || a.id.equals(inside.get(p.getUniqueId()))) return;
-        p.playSound(p, t.key, SoundCategory.RECORDS, 1f, (float) a.pitch);
+        p.playSound(p, t.key, SoundCategory.RECORDS, (float) a.volume, (float) a.pitch);
         Bukkit.getScheduler().runTaskLater(plugin, () -> { if (!a.id.equals(inside.get(p.getUniqueId()))) p.stopSound(t.key, SoundCategory.RECORDS); }, 160L);
     }
 
@@ -523,13 +530,13 @@ final class WorldBlock implements Listener {
         Listen l = hearing.get(p.getUniqueId());
         if (t == null) { if (l != null) stopMusic(p); return; }
         long now = System.currentTimeMillis();
-        boolean same = l != null && l.area.equals(a.id) && l.track.equals(t.key) && l.pitch == a.pitch;
+        boolean same = l != null && l.area.equals(a.id) && l.track.equals(t.key) && l.pitch == a.pitch && l.volume == a.volume;
         if (same && (now < l.until || !a.loop)) return; // still playing, or it played once and doesn't loop
         if (l != null) p.stopSound(l.track, SoundCategory.RECORDS);
         p.stopSound(SoundCategory.MUSIC); // vanilla's own music steps aside
-        p.playSound(p, t.key, SoundCategory.RECORDS, 1f, (float) a.pitch);
+        p.playSound(p, t.key, SoundCategory.RECORDS, (float) a.volume, (float) a.pitch);
         Listen n = new Listen();
-        n.area = a.id; n.track = t.key; n.pitch = a.pitch;
+        n.area = a.id; n.track = t.key; n.pitch = a.pitch; n.volume = a.volume;
         n.until = now + (long) (t.seconds * 1000 / a.pitch) + 300;
         hearing.put(p.getUniqueId(), n);
     }
@@ -861,6 +868,7 @@ final class WorldBlock implements Listener {
             a.music = c.getString("music");
             a.loop = c.getBoolean("loop", true);
             a.pitch = Math.max(0.5, Math.min(2.0, c.getDouble("pitch", 1.0)));
+            a.volume = Math.max(0.2, Math.min(2.0, c.getDouble("volume", 1.0)));
             a.grief = c.getBoolean("grief", false);
             a.pvp = c.getBoolean("pvp", true);
             a.entry = c.getBoolean("entry", true);
@@ -883,6 +891,7 @@ final class WorldBlock implements Listener {
             y.set(k + "music", a.music);
             y.set(k + "loop", a.loop);
             y.set(k + "pitch", a.pitch);
+            y.set(k + "volume", a.volume);
             y.set(k + "grief", a.grief);
             y.set(k + "pvp", a.pvp);
             y.set(k + "entry", a.entry);

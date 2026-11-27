@@ -3754,6 +3754,9 @@ Notes:
   `/bedrockcheck` now reports each NORMAL world's height on the server (<= 320 = the datapack's height isn't loaded there), whether the
   installed Geyser has the tall-overworld code (reflection: `GeyserSession.bedrockOverworldDimension`; missing = update Geyser), and
   warns when Geyser's `enable-integrated-pack` is false. The world's height is unchanged (592: y -64..527).
+- **World Block volume (Items, same 2.0.0)**: menu slot 22 = music VOLUME 0.2-2.0 (left +0.1, right -0.1, shift = 1.0; saved as
+  `volume`), passed to `playSound` like /playsound's volume; changing it restarts the song. As in the game, above 1.0 isn't louder
+  (the music is attached to the listener), it only carries further. Tested (scratch `wb/WbTest`).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

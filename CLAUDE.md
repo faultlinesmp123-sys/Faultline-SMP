@@ -45,6 +45,7 @@ All are Maven projects: Java 21, `paper-api 1.21.11-R0.1-SNAPSHOT`. Build with
 | **FaultlineShips** | `net.faultlinesmp.ships` | Ships: Dinghy, Sloop, Brigantine, Galleon, Pirate Ship. Blueprint → lay out on water → place every block → sail. Health, part damage, sinking, Shipwright's Hammer repair minigame, cannons, banners, names. **Skeleton ships** and the **Pirate Invasion** (`Pirates.java`). Ships saved in `ships.yml` | `/ship [list\|info\|name\|crew\|anchor\|stop\|banner\|scrap]`, sneak + right-click a gun with a Cannonball = man it (W/S/A/D aim), admin `/ship <give\|repair\|wreck\|remove\|tp> [name\|#n]`, `/ship spawn <ship> [owner]`, `/ship give upgrade_<hull\|sails\|loaders\|ram>`, `/ship pirates <ship\|invasion\|horn\|spawn\|egg\|ghost [player]\|bell [n] [player]\|map [player]\|stop>` |
 | **FaultlineSkills** | `net.faultlinesmp.skills` | Skill trees: Mining, Building, Farming, Redstone (`Tree.java`: 6 perks each), levels 1-50, anti-abuse (placed-block marks, settle time), chest menu + Bedrock form. Data in `players.yml` | `/skills [top <tree>]`, admin `/skills <player>`, `/skills give <player> <tree> <xp>`, `/skills reset <player> [tree\|perks]` |
 | **FaultlineEvents** | `net.faultlinesmp.events` | Sky events in the main world (2.0.0 rewrite, source here since then): **Blood Moon** (`BloodMoon.java` + the Crimson Champion), **Fog** (`Fog.java`), **Lantern Night** (`LanternNight.java`), **Windy** (`Windy.java`, `WindPush.java`) | `/fevent [list]` (`/events`), admin `/fevent start <blood-moon\|fog\|lantern-night\|windy>\|stop\|champion [player]\|realm <nether\|end> <day\|night\|event>` (2.1.0: day and night in the Nether and the End, `Realms.java`) |
+| **BedrockSimpleVoicechat** | `net.faultlinesmp.bedrockvc` | STANDALONE jar (not in FAULTLINESMPJAR), needs Simple Voice Chat (`voicechat`). Simple Voice Chat for Bedrock (PC, phones, Xbox, PlayStation, Switch) and Java players without the mod, through a web page (the page = their mic + headset) | `/vc` (`/voice`, `/bvc`, `/talk`) `[qr\|mute\|unmute\|deafen\|undeafen\|status\|forget]`, admin `/vc list\|kick <player>\|status <player>\|reload` |
 
 Notes:
 - `FaultlineItems.java` (~350 KB) and `FaultlineBosses.java` (~585 KB) are huge. Search them instead of reading them whole.
@@ -3813,6 +3814,41 @@ Notes:
   Items' config. Tested (scratch `sub/SubTest`: 2 riders, own cockpits, hull hidden / shown, seats follow). FIRST PERSON: the hull (body,
   prop, click boxes, the Bedrock stand) is hidden from its riders ALWAYS (`submersible.hide-hull-for-riders` true), not only when the
   cockpit is on: with the pack not yet on main the cockpit stays off and riders had the hull's walls round their face again.
+- **BedrockSimpleVoicechat 1.0.0 (new plugin, `plugins/BedrockSimpleVoicechat`, built by `tools/build_bedrockvc.sh <voicechat-bukkit jar>`
+  into `release/BedrockSimpleVoicechat.jar`; a SEPARATE jar, `depend: [voicechat]`)**: Bedrock can't run the mod, so a player
+  types `/vc`, scans the QR MAP put in their hand with a phone camera (works off a TV for consoles / the Switch), or opens the
+  link and types the 6-digit code, and the web page is their microphone + headset. Server side (`BedrockVoice`): registered
+  through Simple Voice Chat's `BukkitVoicechatService` (`VoiceBridge`, the API from `VoicechatServerStartedEvent`); per player a
+  `Session`: `api.createAudioSender(connection)` + `registerAudioSender` (only works for players WITHOUT the mod) carries their
+  voice exactly like the mod's mic (proximity, whisper, groups, the speaking icon), `playerAudioListenerBuilder` gets every
+  packet the server would send their client (SVC calls the listener BEFORE its disconnected check), `connection.setConnected(true)`
+  shows them as connected (SVC allows that for non-mod players; a null client connection is skipped), deafen = `setDisabled`.
+  Downlink: per stream (channel id) an Opus decoder + 40 ms jitter buffer, gains from positions (distance fade from the
+  packet's distance, `audio.falloff`; left/right from the listener's yaw, `audio.stereo`; static/group = centred), mixed every
+  20 ms on a mixer thread (`Session.mixTick`), soft-limited, down to `audio.sample-rate` 24000 and mu-law (or pcm16) stereo,
+  dropped when the socket has 24 KB queued. Uplink: 20 ms frames from the page -> 48 kHz (linear) -> `createEncoder(VOIP)` ->
+  `AudioSender.send`; `{"t":"end"}` = `reset()`. Positions are cached on the main thread every 2 ticks (`trackPositions`; other
+  entities looked up on demand). `WebServer` = our own HTTP(S) + WebSocket server (no libraries; thread per connection, a writer
+  thread + queue per socket, 120 requests/min per IP, path whitelist). `Tls`: phones only allow the mic on https: `web.tls.mode`
+  auto (a self-signed RSA cert built in pure Java DER, `selfsigned.p12`, remade when the host changes: the first visit shows
+  "not private" -> Advanced -> Proceed), pem (fullchain + PKCS8/PKCS1 key), pkcs12, off (behind a tunnel; `web.public-url`).
+  Link host: `web.public-url` > `public-host` > server-ip > the detected public IP. Pairing: a link token (in the URL fragment)
+  or code, single use, `link-minutes` 15, code tries 10 per 10 min per IP; then a DEVICE KEY (SHA-256 hashed in `devices.yml`,
+  5 per player) so the page reconnects by itself; `/vc forget` unlinks. `QrCode` = own encoder (Nayuki's algorithm, MIT);
+  ONE map id for everyone (`data.yml map-id`) with a contextual renderer drawing each viewer's own link; the map is taken when
+  they connect / quit and can't be dropped. Page (`resources/web`: index.html, app.js, worklet.js AudioWorklet): code entry,
+  "Join" tap (browsers need a gesture), voice activation with a threshold + pre-roll + 400 ms hangover or push-to-talk (button /
+  Space), mute / deafen / whisper, a level meter, Nearby list (talking glow, per-person volume, Bedrock / no-voice tags), groups
+  (join with password: checked through `GroupImpl.group.getPassword()` by reflection; create normal/open/isolated; leave),
+  settings (sensitivity, mic gain, mic picker, noise suppression / echo cancel / AGC, output volume, quality 16/24/48 kHz, keep
+  screen on = Wake Lock, unlink), playback jitter buffer with drift correction, auto-reconnect. In game: chat link + code, a
+  Bedrock form, action bar of who's talking (Bedrock can't see the mod's icons), join hint for Bedrock. Floodgate's device OS
+  picks the console wording. OPEN TCP `web.port` 24455 in the firewall. Tested: scratch `bvc/e2e/E2E.java` (MockBukkit + a fake
+  SVC API by Proxy: 31 checks: https page, /vc link + QR map, wrong code, welcome + device key, attached, mic frames through
+  (600 Hz tone within 629/8000), reset, Bob 6 blocks to the right heard 7x louder in the right ear, talk + nearby, deafen,
+  reconnect by device, quit detaches) and `brun.sh` (real Chromium with a fake mic: code entry, talking, 54 ms buffer, 0 gaps,
+  415 mic frames into SVC, reload reconnects). QR: scratch `bvc/qt` (zxing decodes 50/50 codes and the 128-px map at IP /
+  domain / IPv6 lengths). Not tested against the real Simple Voice Chat server or a real phone / console.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

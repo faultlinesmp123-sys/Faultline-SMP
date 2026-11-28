@@ -74,8 +74,9 @@ PLUGINS=("$@"); [ ${#PLUGINS[@]} -eq 0 ] && PLUGINS=(*/)
 status=0
 for p in "${PLUGINS[@]}"; do
   p="${p%/}"
+  if [ "$p" = BedrockSimpleVoicechat ] && [ -z "${SVC_API:-}" ]; then echo "SKIP  $p (needs SVC_API=<voicechat api jar>: tools/build_bedrockvc.sh)"; continue; fi
   out="$CACHE/build/$p"; rm -rf "$out"; mkdir -p "$out"
-  if javac -proc:none --release 21 -nowarn -encoding UTF-8 -d "$out" -cp "$CP" $(find "$p/src/main/java" -name '*.java') 2> "$out.log"; then
+  if javac -proc:none --release 21 -nowarn -encoding UTF-8 -d "$out" -cp "$CP${SVC_API:+:$SVC_API}" $(find "$p/src/main/java" -name '*.java') 2> "$out.log"; then
     echo "OK    $p"
   else
     echo "FAIL  $p"; grep -E "error" "$out.log" | head -20; status=1

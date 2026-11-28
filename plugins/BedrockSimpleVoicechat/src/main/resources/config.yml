@@ -1,0 +1,83 @@
+# BedrockSimpleVoicechat: Simple Voice Chat for Bedrock (PC, phones, Xbox, PlayStation, Switch) and for Java players
+# without the mod. Players type /vc in game, scan the QR map with their phone (or open the link and type the code),
+# and that web page is their microphone + headset. Needs Simple Voice Chat (voicechat-bukkit) on the server.
+
+# Shown on the voice page.
+server-name: "Faultline SMP"
+
+web:
+  # The port the voice page runs on (TCP). OPEN IT in your firewall / host panel (Windows: Defender Firewall ->
+  # Inbound Rules -> New Rule -> Port -> TCP 24455 -> Allow). It's not the Simple Voice Chat UDP port.
+  port: 24455
+  bind: "0.0.0.0"
+  # How players reach the page. Leave both empty to use server-ip from server.properties, else your public IP
+  # (looked up once at startup when detect-public-ip is true).
+  #   public-host: "play.example.com"    -> https://play.example.com:24455
+  #   public-url: "https://vc.example.com" -> the exact address (a Cloudflare Tunnel / playit.gg / nginx in front)
+  public-host: ""
+  public-url: ""
+  detect-public-ip: true
+  # Behind a reverse proxy: read the visitor's address from X-Forwarded-For (rate limits).
+  trust-proxy: false
+  # Phones only allow the microphone on https pages.
+  #   auto   = a self-signed certificate is made for you: works, but the first visit shows "Your connection is not
+  #            private": tap Advanced -> Proceed (once per device). Easiest.
+  #   pem    = your own certificate (no warning): e.g. Let's Encrypt from win-acme / certbot for a domain you own.
+  #   pkcs12 = a .pfx / .p12 file + password.
+  #   off    = plain http (only behind an https tunnel / reverse proxy).
+  tls:
+    mode: auto
+    cert-file: "fullchain.pem"
+    key-file: "privkey.pem"
+    pkcs12-file: "cert.p12"
+    pkcs12-password: ""
+  # Colour of the page.
+  accent-color: "#4ade80"
+  # New devices start in push-to-talk instead of voice activation.
+  default-push-to-talk: false
+
+audio:
+  # Link quality. 24000 sounds the same as the mod for voice at half the data; 48000 = full quality; 16000 = slow data.
+  sample-rate: 24000
+  max-sample-rate: 48000
+  # ulaw = 8-bit (about 48 KB/s down, 24 KB/s up: fine on mobile data); pcm16 = twice that, a touch cleaner; auto = the page decides.
+  codec: ulaw
+  # 0 = mono, 1 = full left/right. How far to the side a voice moves when someone is beside you.
+  stereo: 0.85
+  # How quickly voices fade with distance: 1 = like the mod (linear), 2 = faster fade.
+  falloff: 1.0
+
+# How long a /vc link + code works (minutes). A link / code works once; the device is then remembered.
+link-minutes: 15
+# Remember a phone after the first link, so next time the page just connects (no /vc needed).
+remember-devices: true
+# Only Bedrock players may use the page (Java players must install the mod).
+only-bedrock: false
+# Bedrock players get the Bedrock pop-up with the link and code too.
+bedrock-form: true
+
+qr:
+  # /vc puts a map with a QR code of the player's own link in their hand (scan it off the TV / monitor).
+  give-map: true
+  # The QR map vanishes once they're connected (and when they leave).
+  remove-on-connect: true
+
+ingame:
+  # "Voice connected / disconnected" chat lines.
+  notify: true
+  # Who's talking near you, in the action bar (Bedrock can't see the mod's speaker icons).
+  action-bar: true
+  # A hint on join for Bedrock players: "type /vc to use voice chat".
+  join-hint: true
+  # The same hint for Java players who don't have the mod.
+  join-hint-java: false
+
+messages:
+  connected: "&a[Voice] &fVoice chat connected. &7Keep the page open while you play."
+  disconnected: "&c[Voice] &7Voice page closed. Open it again (or type &f/vc&7) to talk."
+  not-connected: "&c[Voice] &7Your voice page isn't open. Type &f/vc&7."
+  join-hint: "&a[Voice] &7Want voice chat? Type &f/vc &7and scan the QR code with your phone."
+  has-mod: "&a[Voice] &7You already have Simple Voice Chat installed: just press &fV&7 to open its menu."
+  no-permission: "&c[Voice] &7You can't use voice chat here."
+
+debug: false

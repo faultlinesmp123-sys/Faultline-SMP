@@ -1,0 +1,20 @@
+name: BedrockSimpleVoicechat
+version: 1.0.0
+main: net.faultlinesmp.bedrockvc.BedrockVoice
+api-version: '1.20'
+description: Simple Voice Chat for Bedrock (PC, phones, Xbox, PlayStation, Switch) and Java players without the mod, through a web page
+authors: [Faultline]
+depend: [voicechat]
+softdepend: [floodgate, Geyser-Spigot]
+commands:
+  vc:
+    description: Voice chat for Bedrock and no-mod players (link, QR map, mute, deafen)
+    usage: /vc [qr|mute|unmute|deafen|undeafen|status|forget]
+    aliases: [voice, bvc, bedrockvc, talk]
+permissions:
+  bedrockvc.use:
+    description: Use voice chat through the web page
+    default: true
+  bedrockvc.admin:
+    description: /vc list, kick, status <player>, reload
+    default: op

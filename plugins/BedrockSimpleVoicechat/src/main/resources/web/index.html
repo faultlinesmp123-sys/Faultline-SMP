@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0b0f14">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<title>{{SERVER}} Voice</title>
+<style>
+:root {
+  --bg: #0b0f14; --panel: #131a22; --panel2: #1a232e; --line: #243040; --text: #e8eef5; --dim: #8a99ab;
+  --accent: {{ACCENT}}; --red: #f87171; --amber: #fbbf24; --blue: #60a5fa;
+  --r: 16px;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+body { display: flex; justify-content: center; padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom); }
+.app { width: 100%; max-width: 520px; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+header { display: flex; align-items: center; gap: 10px; }
+header .logo { width: 34px; height: 34px; border-radius: 10px; background: var(--accent); display: grid; place-items: center; color: #08120b; font-weight: 800; }
+header h1 { font-size: 17px; margin: 0; flex: 1; letter-spacing: .2px; }
+header h1 small { display: block; color: var(--dim); font-weight: 500; font-size: 12px; }
+.pill { font-size: 12px; padding: 4px 10px; border-radius: 99px; background: var(--panel2); color: var(--dim); display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dim); }
+.dot.ok { background: var(--accent); box-shadow: 0 0 8px var(--accent); } .dot.warn { background: var(--amber); } .dot.bad { background: var(--red); }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; }
+.card h2 { margin: 0 0 10px; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: var(--dim); font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.card h2 .count { background: var(--panel2); color: var(--text); border-radius: 99px; padding: 1px 8px; font-size: 11px; letter-spacing: 0; }
+.hidden { display: none !important; }
+button { font: inherit; color: inherit; background: var(--panel2); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; cursor: pointer; transition: transform .08s, background .15s; }
+button:active { transform: scale(.97); }
+button.primary { background: var(--accent); color: #07110a; border: 0; font-weight: 700; }
+button.danger { color: var(--red); }
+button.on { background: color-mix(in srgb, var(--red) 22%, var(--panel2)); border-color: var(--red); color: #fecaca; }
+.big { width: 100%; padding: 16px; font-size: 17px; border-radius: 14px; }
+.muted-text { color: var(--dim); font-size: 13px; }
+/* login */
+.codebox { display: flex; gap: 8px; justify-content: center; margin: 12px 0; }
+.codebox input { width: 46px; height: 58px; text-align: center; font-size: 26px; font-weight: 700; border-radius: 12px; border: 1px solid var(--line); background: var(--panel2); color: var(--text); outline: none; }
+.codebox input:focus { border-color: var(--accent); }
+.codebox .gap { width: 8px; }
+.steps { margin: 6px 0 0; padding-left: 20px; color: var(--dim); font-size: 13px; }
+.steps b { color: var(--text); }
+/* talk area */
+.stage { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 22px 16px; }
+.mic { position: relative; width: 150px; height: 150px; border-radius: 50%; border: 0; background: radial-gradient(circle at 50% 35%, #233142, #141c26); display: grid; place-items: center; box-shadow: 0 10px 30px #0008, inset 0 0 0 2px var(--line); user-select: none; -webkit-user-select: none; touch-action: none; }
+.mic svg { width: 56px; height: 56px; fill: var(--text); }
+.mic .ring { position: absolute; inset: -8px; border-radius: 50%; border: 3px solid var(--accent); opacity: 0; transition: opacity .12s, transform .08s; }
+.mic.live .ring { opacity: 1; }
+.mic.muted svg { fill: var(--red); }
+.mic.muted { box-shadow: 0 10px 30px #0008, inset 0 0 0 2px var(--red); }
+.mic.ptt { background: radial-gradient(circle at 50% 35%, #2c3a2f, #141c18); }
+.status { text-align: center; min-height: 22px; font-weight: 600; }
+.status.dim { color: var(--dim); font-weight: 500; }
+.row { display: flex; gap: 10px; width: 100%; }
+.row > * { flex: 1; }
+.meter { width: 100%; height: 8px; border-radius: 99px; background: var(--panel2); position: relative; overflow: hidden; }
+.meter .fill { position: absolute; inset: 0 auto 0 0; width: 0; background: linear-gradient(90deg, var(--accent), #a3e635); transition: width .05s; }
+.meter .th { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--amber); }
+/* people */
+.people { display: flex; flex-direction: column; gap: 8px; }
+.person { display: grid; grid-template-columns: 36px 1fr auto; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px; background: var(--panel2); border: 1px solid transparent; transition: border-color .12s, box-shadow .12s; }
+.person.talking { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent); }
+.person img { width: 36px; height: 36px; border-radius: 8px; image-rendering: pixelated; background: #000; }
+.person .nm { font-weight: 600; }
+.person .sub { color: var(--dim); font-size: 12px; }
+.person .tag { font-size: 10px; padding: 1px 6px; border-radius: 6px; background: #1e3a5f; color: #bfdbfe; margin-left: 6px; vertical-align: 2px; }
+.person .tag.nov { background: #3f2a1d; color: #fed7aa; }
+.person input[type=range] { width: 96px; }
+.empty { color: var(--dim); text-align: center; padding: 14px 0; font-size: 13px; }
+/* groups */
+.groups { display: flex; flex-direction: column; gap: 8px; }
+.group { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: var(--panel2); }
+.group .nm { flex: 1; font-weight: 600; } .group .sub { color: var(--dim); font-size: 12px; font-weight: 500; }
+.mine { border: 1px solid var(--accent); }
+/* settings */
+label.set { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+label.set:last-child { border-bottom: 0; }
+label.set span small { display: block; color: var(--dim); font-size: 12px; }
+input[type=range] { accent-color: var(--accent); }
+select, input[type=text], input[type=password] { font: inherit; color: var(--text); background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; max-width: 60%; }
+input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--accent); }
+.tabs { display: flex; gap: 6px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 4px; }
+.tabs button { flex: 1; border: 0; background: transparent; padding: 9px; border-radius: 10px; color: var(--dim); font-weight: 600; }
+.tabs button.sel { background: var(--panel2); color: var(--text); }
+.toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: #000d; color: #fff; padding: 10px 16px; border-radius: 12px; font-size: 14px; max-width: 90%; text-align: center; z-index: 9; transition: opacity .3s; }
+.banner { background: color-mix(in srgb, var(--amber) 14%, var(--panel)); border: 1px solid color-mix(in srgb, var(--amber) 45%, var(--line)); color: #fde68a; border-radius: 12px; padding: 10px 12px; font-size: 13px; }
+.foot { text-align: center; color: var(--dim); font-size: 11px; padding-bottom: 10px; }
+kbd { background: var(--panel2); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 6px; padding: 0 6px; font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="logo">V</div>
+    <h1>{{SERVER}} Voice<small id="who">Simple Voice Chat for every device</small></h1>
+    <div class="pill"><span class="dot" id="netdot"></span><span id="net">offline</span></div>
+  </header>
+
+  <!-- LOGIN -->
+  <section id="login" class="card hidden">
+    <h2>Connect</h2>
+    <div>Type <b>/vc</b> in Minecraft, then scan the QR map with this phone, or enter the 6-digit code:</div>
+    <div class="codebox" id="codebox"></div>
+    <button class="primary big" id="codego">Connect</button>
+    <ol class="steps">
+      <li>Works on <b>Bedrock</b> (Windows, phone, Xbox, PlayStation, Switch) and Java without the mod.</li>
+      <li>On a console? Use this page on your <b>phone</b>: it's your mic and headset. Headphones stop echo.</li>
+      <li>Your device is remembered: next time it connects by itself.</li>
+    </ol>
+  </section>
+
+  <!-- START (a tap is needed before a browser lets a page use audio) -->
+  <section id="start" class="card hidden" style="text-align:center">
+    <h2 style="justify-content:center">Ready</h2>
+    <div id="startname" style="font-size:20px;font-weight:700;margin-bottom:6px"></div>
+    <div class="muted-text" style="margin-bottom:14px">Tap to turn on your microphone and speaker.</div>
+    <button class="primary big" id="startbtn">Join voice chat</button>
+    <div class="muted-text" style="margin-top:10px" id="starterr"></div>
+  </section>
+
+  <!-- MAIN -->
+  <div id="main" class="hidden" style="display:flex;flex-direction:column;gap:14px">
+    <div id="banner" class="banner hidden"></div>
+    <section class="card stage">
+      <button class="mic" id="mic" aria-label="Microphone">
+        <span class="ring" id="ring"></span>
+        <svg viewBox="0 0 24 24" id="micicon"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2Z"/></svg>
+      </button>
+      <div class="status" id="status">Connecting...</div>
+      <div class="meter" title="Your mic level. Voice turns on past the yellow line."><div class="fill" id="meter"></div><div class="th" id="thmark"></div></div>
+      <div class="row">
+        <button id="mute">Mute</button>
+        <button id="deaf">Deafen</button>
+        <button id="whisper">Whisper</button>
+      </div>
+      <div class="muted-text" id="hint"></div>
+    </section>
+
+    <div class="tabs">
+      <button class="sel" data-tab="people">Nearby</button>
+      <button data-tab="groups">Groups</button>
+      <button data-tab="settings">Settings</button>
+    </div>
+
+    <section class="card" id="tab-people">
+      <h2>Nearby <span class="count" id="pcount">0</span></h2>
+      <div class="people" id="people"><div class="empty">Nobody near you yet.</div></div>
+    </section>
+
+    <section class="card hidden" id="tab-groups">
+      <h2>Groups</h2>
+      <div id="mygroup" class="muted-text" style="margin-bottom:10px">You're not in a group (everyone near you hears you).</div>
+      <div class="groups" id="groups"></div>
+      <div style="height:12px"></div>
+      <h2>New group</h2>
+      <div class="row" style="flex-wrap:wrap">
+        <input type="text" id="gname" placeholder="Name" maxlength="24" style="max-width:none">
+        <input type="password" id="gpw" placeholder="Password (optional)" style="max-width:none">
+      </div>
+      <div class="row" style="margin-top:8px">
+        <select id="gtype" style="max-width:none">
+          <option value="normal">Normal: only the group hears you</option>
+          <option value="open">Open: people nearby hear you too</option>
+          <option value="isolated">Isolated: hear only the group</option>
+        </select>
+        <button class="primary" id="gcreate" style="flex:0 0 auto">Create</button>
+      </div>
+    </section>
+
+    <section class="card hidden" id="tab-settings">
+      <h2>Microphone</h2>
+      <label class="set"><span>Push to talk<small>Hold the mic button (or <kbd>Space</kbd>) to talk</small></span><input type="checkbox" id="s-ptt"></label>
+      <label class="set"><span>Voice sensitivity<small>Lower = picks up quieter speech</small></span><input type="range" id="s-th" min="-75" max="-15" step="1"></label>
+      <label class="set"><span>Mic volume</span><input type="range" id="s-mg" min="0" max="300" step="5"></label>
+      <label class="set"><span>Microphone</span><select id="s-dev"><option value="">Default</option></select></label>
+      <label class="set"><span>Noise suppression<small>Filters fans, keyboard, wind</small></span><input type="checkbox" id="s-ns"></label>
+      <label class="set"><span>Echo cancellation<small>Leave on unless you use headphones</small></span><input type="checkbox" id="s-ec"></label>
+      <label class="set"><span>Auto gain</span><input type="checkbox" id="s-agc"></label>
+      <h2 style="margin-top:16px">Sound</h2>
+      <label class="set"><span>Voice volume</span><input type="range" id="s-out" min="0" max="200" step="5"></label>
+      <label class="set"><span>Audio quality<small>High uses more data</small></span>
+        <select id="s-q"><option value="16000">Data saver</option><option value="24000">Normal</option><option value="48000">High</option></select></label>
+      <h2 style="margin-top:16px">This device</h2>
+      <label class="set"><span>Keep screen on<small>Phones may pause audio when the screen sleeps</small></span><input type="checkbox" id="s-wake"></label>
+      <div class="row" style="margin-top:10px"><button class="danger" id="forget">Unlink this device</button></div>
+      <div class="muted-text" style="margin-top:12px" id="diag"></div>
+    </section>
+
+    <div class="foot">Your voice goes into Simple Voice Chat as your character. Keep this page open while you play.</div>
+  </div>
+</div>
+<div class="toast hidden" id="toast"></div>
+<script src="/app.js"></script>
+</body>
+</html>

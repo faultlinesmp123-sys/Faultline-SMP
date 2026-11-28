@@ -3857,6 +3857,14 @@ Notes:
   from online players / `devices.yml names.<uuid>`). A devices.yml that won't parse is kept as `devices.yml.broken-<ms>` instead
   of being saved over empty. No public address found = a console warning to set `web.public-host`. Page: a second Join tap
   never opens a second audio engine / mic; `connect()` clears the "stop for good" flag (linking again after Unlink works).
+- **The mace limit is enforced (Items, same 2.0.0)**: the live server had 8/5 registered (old maces from before the limit
+  were registered when first seen, and only CRAFTING was refused at the limit). `MaceLimit.sweep` now runs EVERY SECOND:
+  `trimToMax()` = while more are registered than `max`, the NEWEST registered (the list keeps registration order) is revoked =
+  deleted wherever it turns up (sweep, join, pickups), broadcast "N extra maces over the limit were deleted"; `extra()` = a
+  mace in a survival player's inventory / cursor that isn't a registered one (no id, an unknown id, or a second copy of an
+  id) while the limit is full is deleted on the spot ("All 5 maces already exist"), logged "[MaceLimit] deleted"; picking up
+  such a mace while full deletes it too. Creative / spectator are left alone. Tested (scratch `ml2/Ml2`: 8 -> 5, oldest kept,
+  8th deleted, untagged + copied maces deleted while full, creative kept, a freed place lets a new one register).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

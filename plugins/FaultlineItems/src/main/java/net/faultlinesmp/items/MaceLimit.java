@@ -58,7 +58,7 @@ final class MaceLimit implements Listener, TabExecutor {
             try { holders.put(Long.parseLong(k), y.getString("holders." + k, "")); } catch (NumberFormatException ignored) { }
         }
         for (String k : y.getStringList("revoked")) { try { revoked.add(Long.parseLong(k)); } catch (NumberFormatException ignored) { } }
-        Bukkit.getScheduler().runTaskTimer(plugin, this::sweep, 60L, 100L);
+        Bukkit.getScheduler().runTaskTimer(plugin, this::sweep, 60L, 20L); // every second: an extra mace never lasts
     }
 
     boolean on() { return plugin.getConfig().getBoolean("mace-limit.enabled", true); }
@@ -104,21 +104,61 @@ final class MaceLimit implements Listener, TabExecutor {
         // forever (a free extra one once it reached a survival inventory). The same id seen twice in one pass = the second
         // is a copy: it gets a new id and counts like any other mace.
         Set<Long> seen = new HashSet<>();
-        boolean changed = false;
+        boolean changed = trimToMax();
         for (Player p : Bukkit.getOnlinePlayers()) {
             if (!revoked.isEmpty()) strip(p, false, false); // staff removed it (works in creative too)
             if (p.getGameMode() == GameMode.CREATIVE || p.getGameMode() == GameMode.SPECTATOR) continue;
             ItemStack[] c = p.getInventory().getContents();
+            int killed = 0;
             for (int i = 0; i < c.length; i++) {
                 ItemStack it = c[i];
+                if (extra(it, seen)) { p.getInventory().setItem(i, null); killed++; continue; }
                 if (fix(it, p, seen)) p.getInventory().setItem(i, it);
                 changed |= hold(it, p);
             }
             ItemStack cur = p.getItemOnCursor();
-            if (fix(cur, p, seen)) p.setItemOnCursor(cur);
-            changed |= hold(cur, p);
+            if (extra(cur, seen)) { p.setItemOnCursor(null); killed++; }
+            else {
+                if (fix(cur, p, seen)) p.setItemOnCursor(cur);
+                changed |= hold(cur, p);
+            }
+            if (killed > 0) {
+                p.sendMessage(ChatColor.RED + "All " + max() + " maces already exist, so that mace was deleted.");
+                plugin.getLogger().warning("[MaceLimit] deleted " + killed + " extra mace(s) from " + p.getName() + " (limit " + maces.size() + "/" + max() + " full)");
+            }
         }
         if (changed) save();
+    }
+
+    /**
+     * A mace that isn't one of the registered ones (no id, an id that isn't in the list, or a second copy of an id) while
+     * the limit is full: it can't exist, so the sweep deletes it.
+     */
+    boolean extra(ItemStack it, Set<Long> seen) {
+        if (!mace(it) || !full()) return false;
+        Long id = idOf(it);
+        if (id == null || !maces.containsKey(id)) return true;
+        return seen.contains(id);
+    }
+
+    /**
+     * More maces registered than the limit (old maces from before it, a lowered max): the FIRST ones registered keep their
+     * place, the newest are revoked = deleted wherever they turn up. True = the list changed.
+     */
+    boolean trimToMax() {
+        if (!on() || maces.size() <= max()) return false;
+        List<Long> ids = new ArrayList<>(maces.keySet());
+        int n = 0;
+        for (int i = ids.size() - 1; i >= 0 && maces.size() > max(); i--) {
+            Long id = ids.get(i);
+            String who = holders.getOrDefault(id, maces.get(id));
+            revoked.add(id);
+            free(id);
+            n++;
+            plugin.getLogger().warning("[MaceLimit] over the limit: mace #" + id + " (" + who + ") revoked, " + maces.size() + "/" + max());
+        }
+        if (n > 0) Bukkit.broadcastMessage(ChatColor.DARK_RED + "" + n + " extra mace" + (n == 1 ? "" : "s") + " over the limit of " + max() + " were deleted.");
+        return n > 0;
     }
 
     /** Remembers who has this mace now; true = that changed. */
@@ -351,7 +391,11 @@ final class MaceLimit implements Listener, TabExecutor {
     /** A removed mace picked up (dropped before staff took it, or a dupe) is deleted on the spot. */
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onPickup(org.bukkit.event.entity.EntityPickupItemEvent e) {
-        if (revoked.isEmpty() || !gone(e.getItem().getItemStack())) return;
+        ItemStack it = e.getItem().getItemStack();
+        if (!mace(it)) return;
+        boolean extra = on() && full() && (idOf(it) == null || !maces.containsKey(idOf(it)))
+                && !(e.getEntity() instanceof Player pp && (pp.getGameMode() == GameMode.CREATIVE || pp.getGameMode() == GameMode.SPECTATOR));
+        if (!extra && (revoked.isEmpty() || !gone(it))) return;
         e.setCancelled(true);
         e.getItem().remove();
     }

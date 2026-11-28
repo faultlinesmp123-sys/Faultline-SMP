@@ -3923,6 +3923,17 @@ Notes:
   4 -> 2%; Farlands mobs +25 -> +15%, crawlers 30 -> 15% (max 2 near, drop 6), ghasts 25 -> 12% (max 1). MOB SPAWNS: `mob-spawning.reduce`
   0.5 -> 0.65 everywhere (an old 0.5 reads as 0.65) + `farlands-reduce` 0.5 more of what's left in the Farlands (~82% cut there).
   Tested (scratch `nau/NTest`).
+- **World Block: no monsters, admin-only block, music fades (Items, same 2.0.0)**: menu slot 31 "Hostile mobs" (`Area.noMobs`,
+  saved `no-mobs`, default OFF = blocked, old areas too): any `Enemy` spawn inside an area is cancelled whatever the reason except
+  SPAWNER_EGG / COMMAND (an admin's egg or /summon); animals spawn as normal; every 2 s monsters within 48 of a player inside it are
+  removed (`clearMobsNear`, no world scans; switching it on clears the area's loaded chunks); never named mobs, faultline-tagged
+  mobs or anything over 200 base health (bosses). THE PLACED BLOCK: every click on it (either hand, right or left) from a non-admin
+  is cancelled at LOWEST ("Only admins can use the World Block."), no cracks (BlockDamageEvent). MUSIC FADE
+  (`world-block.fade-seconds` 3, 0 = cut): the song plays from an invisible marker armor stand only that player sees (tag
+  `faultline_wb_emitter`, non-persistent; `Player#playSound(Entity, ...)` 2 ticks after it spawns so the client knows it) held over
+  their head; it starts ~16 blocks up (game sounds fade linearly over 16 x max(1, volume) blocks) and eases down = fade in; walking
+  out it eases back up and is then removed + stopSound = fade out; walking back in brings it down again. `fadeTick` every tick;
+  another world / quit / settings change = cut at once. Bedrock players get the old straight on / off. Tested (scratch `wb/WbTest`).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

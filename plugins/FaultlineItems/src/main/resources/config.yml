@@ -1273,3 +1273,8 @@ mob-spawning:
   farlands-reduce: 0.5       # an extra cut on what's left, in the Farlands only
   torches-stop-spawns: true   # no hostile spawns where torch / block light reaches (our biome waves and the Farlands too)
   light-limit: 0
+
+# World Blocks (/adminmenu slot 18): the area's music fades in when you walk in and out when you walk out
+# (over this many seconds; 0 = it starts and stops at once). Bedrock players always get it straight on / off.
+world-block:
+  fade-seconds: 3

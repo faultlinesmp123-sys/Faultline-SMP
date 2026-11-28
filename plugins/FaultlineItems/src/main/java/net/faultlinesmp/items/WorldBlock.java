@@ -148,7 +148,7 @@ final class WorldBlock implements Listener {
         int x1, y1, z1, x2, y2, z2;
         int bx, by, bz; boolean placed;
         String music; boolean loop = true; double pitch = 1.0, volume = 1.0;
-        boolean grief, pvp = true, entry = true, noSnow;
+        boolean grief, pvp = true, entry = true, noSnow, noMobs = true;
         int light; String weather = "normal";
         Area(String id) { this.id = id; }
         boolean in(Location l) {
@@ -163,7 +163,11 @@ final class WorldBlock implements Listener {
         void fullHeight() { World w = Bukkit.getWorld(world); if (w != null) { y1 = w.getMinHeight(); y2 = w.getMaxHeight() - 1; } }
     }
 
-    static final class Listen { String area, track; long until; double pitch, volume; }
+    static final class Listen {
+        String area, track; long until; double pitch, volume;
+        // the fade: the song plays from an invisible marker only this player sees, held d blocks over their head
+        org.bukkit.entity.ArmorStand em; double d, range; boolean out, played; int playAt;
+    }
     private final Set<UUID> gaveDark = new java.util.HashSet<>(), gaveNv = new java.util.HashSet<>();
 
     private final FaultlineItems plugin;
@@ -184,6 +188,7 @@ final class WorldBlock implements Listener {
         file = new File(plugin.getDataFolder(), "world_blocks.yml");
         load();
         Bukkit.getScheduler().runTaskTimer(plugin, this::tick, 20L, 5L);
+        Bukkit.getScheduler().runTaskTimer(plugin, this::fadeTick, 21L, 1L);
     }
 
     // ================================================================= the item
@@ -289,14 +294,27 @@ final class WorldBlock implements Listener {
         return null;
     }
 
-    @EventHandler(priority = EventPriority.HIGH)
+    /** Only admins can touch the placed World Block: anyone else's click (either hand, right or left, a compass, a bucket...) does nothing. */
+    @EventHandler(priority = EventPriority.LOWEST)
     public void onBlockClick(PlayerInteractEvent e) {
-        if (e.getAction() != Action.RIGHT_CLICK_BLOCK || e.getHand() != EquipmentSlot.HAND || e.getClickedBlock() == null) return;
+        if (e.getClickedBlock() == null) return;
         Area a = blockArea(e.getClickedBlock());
         if (a == null) return;
+        Player p = e.getPlayer();
+        if (!admin(p)) {
+            e.setCancelled(true);
+            if (e.getHand() == EquipmentSlot.HAND) deny(p, "Only admins can use the World Block.");
+            return;
+        }
+        if (e.getAction() == Action.LEFT_CLICK_BLOCK) return;                    // an admin may break it (sneak + break)
         e.setCancelled(true);
-        if (!admin(e.getPlayer())) return;
-        open(e.getPlayer(), a);
+        if (e.getAction() == Action.RIGHT_CLICK_BLOCK && e.getHand() == EquipmentSlot.HAND) open(p, a);
+    }
+
+    /** No cracks on it for anyone else either. */
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onBlockDamage(org.bukkit.event.block.BlockDamageEvent e) {
+        if (blockArea(e.getBlock()) != null && !admin(e.getPlayer())) e.setCancelled(true);
     }
 
     @EventHandler(priority = EventPriority.LOW)
@@ -359,6 +377,8 @@ final class WorldBlock implements Listener {
                 "Closed: everyone else is turned back at the", "edge (and put out if they're inside).", "Click to switch."));
         m.inv.setItem(33, button(a.noSnow ? Material.BARRIER : Material.SNOW, ChatColor.GOLD + "Snow on the ground: " + (a.noSnow ? ChatColor.RED + "OFF" : ChatColor.GREEN + "allowed"),
                 "OFF: no snow layers or powder snow form", "here, and what's there is cleared.", "Click to switch."));
+        m.inv.setItem(31, button(a.noMobs ? Material.BARRIER : Material.ZOMBIE_HEAD, ChatColor.GOLD + "Hostile mobs: " + (a.noMobs ? ChatColor.RED + "OFF" : ChatColor.GREEN + "allowed"),
+                "OFF: no monsters spawn here (animals still do),", "and ones that wander in are removed.", "Click to switch."));
         m.inv.setItem(30, button(a.light < 0 ? Material.BLACK_CANDLE : a.light > 0 ? Material.GLOWSTONE : Material.TORCH,
                 ChatColor.GOLD + "Lighting: " + ChatColor.WHITE + LIGHT[a.light + 2], "Left-click: brighter", "Right-click: darker"));
         m.inv.setItem(32, button(switch (a.weather) { case "rain" -> Material.WATER_BUCKET; case "snow" -> Material.SNOW_BLOCK; case "clear" -> Material.SUNFLOWER; default -> Material.GRASS_BLOCK; },
@@ -417,6 +437,7 @@ final class WorldBlock implements Listener {
             case 23 -> a.grief = !a.grief;
             case 24 -> a.pvp = !a.pvp;
             case 25 -> { a.entry = !a.entry; if (!a.entry) putOut(a); }
+            case 31 -> { a.noMobs = !a.noMobs; if (a.noMobs) clearMobs(a); }
             case 33 -> { a.noSnow = !a.noSnow; if (a.noSnow) clearSnow(a); }
             case 30 -> a.light = Math.max(-2, Math.min(2, a.light + (e.isRightClick() ? -1 : 1)));
             case 32 -> { int i = 0; for (int k = 0; k < WEATHER.length; k++) if (WEATHER[k].equals(a.weather)) i = k; a.weather = WEATHER[(i + 1) % WEATHER.length]; }
@@ -484,6 +505,43 @@ final class WorldBlock implements Listener {
         music(p, a);
         weatherFx(p, a);
         if (ticks % 8 == 0) apply(p, a);
+        if (a.noMobs && ticks % 8 == 4) clearMobsNear(p, a);
+    }
+
+    // ================================================================= no hostile mobs
+    /** A monster the area wants gone: any Enemy (zombies, skeletons, slimes, phantoms, ghasts...), but never a named one, a boss or our own models. */
+    static boolean unwanted(Entity en) {
+        if (!(en instanceof Enemy) || !(en instanceof LivingEntity le) || en instanceof Player) return false;
+        if (le.customName() != null) return false;
+        for (String t : en.getScoreboardTags()) if (t.startsWith("faultline")) return false;
+        var mh = le.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH);
+        return mh == null || mh.getBaseValue() <= 200;
+    }
+
+    /** Monsters never spawn in an area with hostile mobs off (spawners, natural, raids, patrols, plugin waves); animals still do.
+     *  An admin's spawn egg or /summon still works. */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onMobSpawn(org.bukkit.event.entity.CreatureSpawnEvent e) {
+        if (!(e.getEntity() instanceof Enemy)) return;
+        var why = e.getSpawnReason();
+        if (why == org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.SPAWNER_EGG || why == org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.COMMAND) return;
+        Area a = at(e.getLocation());
+        if (a != null && a.noMobs) e.setCancelled(true);
+    }
+
+    /** Monsters that walk / fly in (or were there before) round a player inside it vanish, every 2 s. Only round players: no world scans. */
+    void clearMobsNear(Player p, Area a) {
+        for (Entity en : p.getNearbyEntities(48, 48, 48)) if (unwanted(en) && a.in(en.getLocation())) en.remove();
+    }
+
+    /** Switching it on clears the monsters in the area's loaded chunks at once. */
+    void clearMobs(Area a) {
+        World w = Bukkit.getWorld(a.world);
+        if (w == null) return;
+        for (int cx = a.x1 >> 4; cx <= a.x2 >> 4; cx++) for (int cz = a.z1 >> 4; cz <= a.z2 >> 4; cz++) {
+            if (!w.isChunkLoaded(cx, cz)) continue;
+            for (Entity en : w.getChunkAt(cx, cz).getEntities()) if (unwanted(en) && a.in(en.getLocation())) en.remove();
+        }
     }
 
     void apply(Player p, Area a) {
@@ -534,24 +592,79 @@ final class WorldBlock implements Listener {
         if (t == null) { if (l != null) stopMusic(p); return; }
         long now = System.currentTimeMillis();
         boolean same = l != null && l.area.equals(a.id) && l.track.equals(t.key) && l.pitch == a.pitch && l.volume == a.volume;
+        if (same) l.out = false;                        // walked back in while it was fading out: it fades back in
         if (same && (now < l.until || !a.loop)) return; // still playing, or it played once and doesn't loop
-        if (l != null) p.stopSound(l.track, SoundCategory.RECORDS);
+        if (same && l.em != null && l.em.isValid()) {   // the loop starting again: same marker, no fade
+            p.stopSound(l.track, SoundCategory.RECORDS);
+            p.playSound(l.em, t.key, SoundCategory.RECORDS, (float) a.volume, (float) a.pitch);
+            l.until = now + (long) (t.seconds * 1000 / a.pitch) + 300;
+            return;
+        }
+        if (l != null) stopMusic(p);
         p.stopSound(SoundCategory.MUSIC); // vanilla's own music steps aside
-        p.playSound(p, t.key, SoundCategory.RECORDS, (float) a.volume, (float) a.pitch);
         Listen n = new Listen();
         n.area = a.id; n.track = t.key; n.pitch = a.pitch; n.volume = a.volume;
         n.until = now + (long) (t.seconds * 1000 / a.pitch) + 300;
+        n.range = 16 * Math.max(1.0, a.volume);         // how far a sound carries in the game (it fades out linearly over that)
+        if (fadeTicks() > 0 && !Edition.bedrock(p)) {
+            n.d = n.range * 0.97;                       // starts far off (almost silent) and comes down to the player = fades in
+            n.em = emitter(p, n.d);
+            n.playAt = Bukkit.getCurrentTick() + 2;     // the client must know the marker before the sound packet names it
+        } else p.playSound(p, t.key, SoundCategory.RECORDS, (float) a.volume, (float) a.pitch);
         hearing.put(p.getUniqueId(), n);
     }
 
+    int fadeTicks() { return (int) Math.round(Math.max(0, plugin.getConfig().getDouble("world-block.fade-seconds", 3.0)) * 20); }
+
+    static final String EMITTER_TAG = "faultline_wb_emitter";
+
+    org.bukkit.entity.ArmorStand emitter(Player p, double d) {
+        return p.getWorld().spawn(p.getEyeLocation().add(0, d, 0), org.bukkit.entity.ArmorStand.class, s -> {
+            s.setMarker(true); s.setInvisible(true); s.setGravity(false); s.setSilent(true); s.setInvulnerable(true);
+            s.setPersistent(false); s.setVisibleByDefault(false); s.addScoreboardTag(EMITTER_TAG);
+            p.showEntity(plugin, s);
+        });
+    }
+
+    /** Every tick: each song's marker follows its listener, easing down to them (fading in) or away above them (fading out). */
+    void fadeTick() {
+        if (hearing.isEmpty()) return;
+        int step = Math.max(1, fadeTicks());
+        for (var it = hearing.entrySet().iterator(); it.hasNext(); ) {
+            var en = it.next();
+            Listen l = en.getValue();
+            if (l.em == null) continue;
+            Player p = Bukkit.getPlayer(en.getKey());
+            if (p == null || !l.em.isValid() || !l.em.getWorld().equals(p.getWorld())) {
+                if (p != null && l.track != null) p.stopSound(l.track, SoundCategory.RECORDS);
+                l.em.remove(); it.remove(); continue;
+            }
+            if (!l.played && Bukkit.getCurrentTick() >= l.playAt) { l.played = true; p.playSound(l.em, l.track, SoundCategory.RECORDS, (float) l.volume, (float) l.pitch); }
+            double target = l.out ? l.range : 0, per = l.range / step;
+            l.d = target > l.d ? Math.min(target, l.d + per) : Math.max(target, l.d - per);
+            if (l.out && l.d >= l.range) { p.stopSound(l.track, SoundCategory.RECORDS); l.em.remove(); it.remove(); continue; }
+            l.em.teleport(p.getEyeLocation().add(0, l.d, 0));
+        }
+    }
+
+    /** Cuts the song at once (settings changed, quitting, another area's song). */
     void stopMusic(Player p) {
         Listen l = hearing.remove(p.getUniqueId());
         if (l != null && l.track != null) p.stopSound(l.track, SoundCategory.RECORDS);
+        if (l != null && l.em != null) l.em.remove();
+    }
+
+    /** Walking out: the song fades away over the fade time (walking back in brings it back). */
+    void fadeOut(Player p) {
+        Listen l = hearing.get(p.getUniqueId());
+        if (l == null) return;
+        if (l.em == null || !l.played) { stopMusic(p); return; }
+        l.out = true;
     }
 
     void leave(Player p, Area a) {
         inside.remove(p.getUniqueId());
-        stopMusic(p);
+        fadeOut(p);
         p.resetPlayerTime();
         p.resetPlayerWeather();
         if (gaveDark.remove(p.getUniqueId())) p.removePotionEffect(PotionEffectType.DARKNESS);
@@ -619,7 +732,7 @@ final class WorldBlock implements Listener {
         Player p = e.getPlayer();
         String was = inside.remove(p.getUniqueId());
         if (was != null) leave(p, areas.get(was));
-        hearing.remove(p.getUniqueId());
+        stopMusic(p);
         lastOut.remove(p.getUniqueId());
         warned.remove(p.getUniqueId());
         picks.remove(p.getUniqueId());
@@ -632,11 +745,13 @@ final class WorldBlock implements Listener {
         return a != null && !a.grief && (p == null || !bypass(p));
     }
 
-    void deny(Player p) {
+    void deny(Player p) { deny(p, "This area is protected."); }
+
+    void deny(Player p, String text) {
         long now = System.currentTimeMillis();
         if (now - warned.getOrDefault(p.getUniqueId(), 0L) > 1500) {
             warned.put(p.getUniqueId(), now);
-            p.sendActionBar(net.kyori.adventure.text.Component.text("This area is protected.", net.kyori.adventure.text.format.NamedTextColor.RED));
+            p.sendActionBar(net.kyori.adventure.text.Component.text(text, net.kyori.adventure.text.format.NamedTextColor.RED));
         }
     }
 
@@ -924,6 +1039,7 @@ final class WorldBlock implements Listener {
             a.light = Math.max(-2, Math.min(2, c.getInt("light", 0)));
             a.weather = c.getString("weather", "normal");
             a.noSnow = c.getBoolean("no-snow", false);
+            a.noMobs = c.getBoolean("no-mobs", true);
             a.fullHeight();
             areas.put(id, a);
         }
@@ -948,12 +1064,13 @@ final class WorldBlock implements Listener {
             y.set(k + "light", a.light);
             y.set(k + "weather", a.weather);
             y.set(k + "no-snow", a.noSnow);
+            y.set(k + "no-mobs", a.noMobs);
         }
         SafeYaml.write(plugin, file, y.saveToString());
     }
 
     void disable() {
-        for (Player p : Bukkit.getOnlinePlayers()) { String was = inside.get(p.getUniqueId()); if (was != null) leave(p, areas.get(was)); }
+        for (Player p : Bukkit.getOnlinePlayers()) { String was = inside.get(p.getUniqueId()); if (was != null) leave(p, areas.get(was)); stopMusic(p); }
         save();
     }
 }

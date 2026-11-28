@@ -62,7 +62,8 @@ public final class BedrockVoice extends JavaPlugin implements Listener, TabCompl
     private volatile VoicechatServerApi api;
     private WebServer web;
     private volatile String publicUrl = "";
-    private final Map<UUID, Session> sessions = new ConcurrentHashMap<>();
+    final Map<UUID, Session> sessions = new ConcurrentHashMap<>();
+    VoiceMenu menu;
     private final Map<UUID, Pos> positions = new ConcurrentHashMap<>();
     private final Map<UUID, Pos> entities = new ConcurrentHashMap<>();
     private final Set<UUID> wantedEntities = ConcurrentHashMap.newKeySet();
@@ -110,6 +111,8 @@ public final class BedrockVoice extends JavaPlugin implements Listener, TabCompl
         svc.registerPlugin(new VoiceBridge(this));
 
         getServer().getPluginManager().registerEvents(this, this);
+        menu = new VoiceMenu(this);
+        getServer().getPluginManager().registerEvents(menu, this);
         org.bukkit.command.PluginCommand cmd = getCommand("vc");
         if (cmd != null) { cmd.setExecutor(this); cmd.setTabCompleter(this); }
 
@@ -378,6 +381,7 @@ public final class BedrockVoice extends JavaPlugin implements Listener, TabCompl
             for (var e : o.getAsJsonObject("vols").entrySet()) try { if (s.vols.size() < 500) s.vols.put(UUID.fromString(e.getKey()), Math.max(0, Math.min(2, e.getValue().getAsFloat()))); } catch (Exception ignored) { }
         }
         if (o.has("muted")) s.muted = bool(o, "muted");
+        if (o.has("cfg") && o.get("cfg").isJsonObject()) readCfg(s, o.getAsJsonObject("cfg"));
         boolean deaf = o.has("deafened") ? bool(o, "deafened") : s.deafened;
         JsonObject w = new JsonObject();
         w.addProperty("t", "welcome");
@@ -460,6 +464,7 @@ public final class BedrockVoice extends JavaPlugin implements Listener, TabCompl
             case "vol" -> { try { float v = o.get("v").getAsFloat(); if (Float.isFinite(v) && s.vols.size() < 500) s.vols.put(UUID.fromString(str(o, "id")), Math.max(0, Math.min(2f, v))); } catch (Exception ignored) { } }
             case "group" -> Bukkit.getScheduler().runTask(this, () -> group(s, o));
             case "forget" -> { forgetDevice(s.id, str(o, "device")); }
+            case "cfg" -> readCfg(s, o);
             default -> { }
         }
     }
@@ -480,7 +485,7 @@ public final class BedrockVoice extends JavaPlugin implements Listener, TabCompl
         pushStatus(s, why);
     }
 
-    private void pushStatus(Session s) { pushStatus(s, null); }
+    void pushStatus(Session s) { pushStatus(s, null); }
 
     private void pushStatus(Session s, String why) {
         Player p = Bukkit.getPlayer(s.id);
@@ -496,7 +501,46 @@ public final class BedrockVoice extends JavaPlugin implements Listener, TabCompl
         send(s, o.toString());
     }
 
-    private void send(Session s, String text) { WebServer.Ws w = s.ws; if (w != null) w.text(text); }
+    void send(Session s, String text) { WebServer.Ws w = s.ws; if (w != null) w.text(text); }
+
+    private static int num(JsonObject o, String k, int def, int lo, int hi) {
+        try { if (!o.has(k)) return def; double v = o.get(k).getAsDouble(); return Double.isFinite(v) ? (int) Math.max(lo, Math.min(hi, Math.round(v))) : def; } catch (Exception e) { return def; }
+    }
+
+    /** The page's own settings (it keeps them and reports them on connect and on every change), so the in-game menu shows the truth. */
+    private void readCfg(Session s, JsonObject o) {
+        s.threshold = num(o, "threshold", s.threshold, -80, 0);
+        s.micGain = num(o, "micGain", s.micGain, 0, 300);
+        if (o.has("outGain")) s.master = num(o, "outGain", Math.round(s.master * 100), 0, 200) / 100f;
+        if (o.has("ptt") || o.has("sneak")) s.activation = bool(o, "sneak") ? 2 : bool(o, "ptt") ? 1 : 0;
+        if (o.has("ns")) s.ns = bool(o, "ns");
+        if (o.has("ec")) s.ec = bool(o, "ec");
+        if (o.has("agc")) s.agc = bool(o, "agc");
+        if (o.has("whisper")) s.whisper = bool(o, "whisper");
+        int q = num(o, "rate", s.quality, 8000, 48000);
+        s.quality = q == 16000 || q == 24000 || q == 48000 ? q : s.quality;
+    }
+
+    /** Sends the settings the in-game menu changed to the page (it applies and remembers them). */
+    void pushSettings(Session s) {
+        JsonObject o = new JsonObject();
+        o.addProperty("t", "settings");
+        o.addProperty("threshold", s.threshold);
+        o.addProperty("micGain", s.micGain);
+        o.addProperty("outGain", Math.round(s.master * 100));
+        o.addProperty("ptt", s.activation == 1);
+        o.addProperty("sneak", s.activation == 2);
+        o.addProperty("ns", s.ns);
+        o.addProperty("ec", s.ec);
+        o.addProperty("agc", s.agc);
+        o.addProperty("rate", s.quality);
+        o.addProperty("test", s.micTest);
+        o.addProperty("whisper", s.whisper);
+        send(s, o.toString());
+    }
+
+    /** One player's volume changed in game: the page remembers it too. */
+    void pushVolume(Session s, UUID who, float v) { send(s, json("t", "vol", "id", who.toString(), "v", v)); }
 
     private void mixAll() {
         long now = System.currentTimeMillis();
@@ -512,6 +556,8 @@ public final class BedrockVoice extends JavaPlugin implements Listener, TabCompl
             Location e = p.getEyeLocation();
             positions.put(p.getUniqueId(), new Pos(p.getWorld().getUID(), e.getX(), e.getY(), e.getZ(), e.getYaw()));
             names.put(p.getUniqueId(), p.getName());
+            Session ss = sessions.get(p.getUniqueId());
+            if (ss != null) ss.sneaking = p.isSneaking();
         }
         if (!wantedEntities.isEmpty() || !entities.isEmpty()) {
             Set<UUID> ask = new HashSet<>(wantedEntities);
@@ -566,7 +612,7 @@ public final class BedrockVoice extends JavaPlugin implements Listener, TabCompl
             Player p = Bukkit.getPlayer(s.id);
             if (p != null && getConfig().getBoolean("ingame.action-bar", true)) {
                 String bar = null;
-                if (!who.isEmpty()) bar = ChatColor.GREEN + "♪ " + ChatColor.WHITE + String.join(ChatColor.GRAY + ", " + ChatColor.WHITE, who);
+                if (!who.isEmpty() && !s.hideIcons) bar = ChatColor.GREEN + "♪ " + ChatColor.WHITE + String.join(ChatColor.GRAY + ", " + ChatColor.WHITE, who);
                 if (s.deafened) bar = ChatColor.RED + "Voice: deafened" + (bar == null ? "" : ChatColor.DARK_GRAY + "  |  " + bar);
                 else if (s.muted) bar = ChatColor.RED + "Voice: muted" + (bar == null ? "" : ChatColor.DARK_GRAY + "  |  " + bar);
                 Long lb = lastBar.get(s.id);
@@ -597,7 +643,7 @@ public final class BedrockVoice extends JavaPlugin implements Listener, TabCompl
         }
     }
 
-    private void sendNearby(Session s, Player me, boolean groups) {
+    void sendNearby(Session s, Player me, boolean groups) {
         VoicechatServerApi a = api;
         double dist = a == null ? 48 : a.getVoiceChatDistance();
         JsonObject o = new JsonObject();
@@ -658,50 +704,56 @@ public final class BedrockVoice extends JavaPlugin implements Listener, TabCompl
     }
 
     private void group(Session s, JsonObject o) {
+        String err = groupOp(s, str(o, "op"), str(o, "id"), str(o, "pw"), str(o, "name"), str(o, "type"));
+        if (err != null) send(s, json("t", "toast", "msg", err));
+    }
+
+    /** Leave / join / create a group for them. Returns why it didn't work, or null. Main thread. */
+    String groupOp(Session s, String op, String gid, String pwIn, String nameIn, String typeIn) {
         VoicechatServerApi a = api;
         VoicechatConnection c = s.connection();
-        if (a == null || c == null) return;
-        String op = str(o, "op");
+        if (a == null || c == null) return "You're not connected to voice chat.";
         try {
             switch (op) {
                 case "leave" -> c.setGroup(null);
                 case "join" -> {
-                    Group g = a.getGroup(UUID.fromString(str(o, "id")));
-                    if (g == null) { send(s, json("t", "toast", "msg", "That group is gone.")); return; }
+                    Group g = a.getGroup(UUID.fromString(gid));
+                    if (g == null) { return "That group is gone."; }
                     if (g.hasPassword()) {
                         long now = System.currentTimeMillis();
                         if (now - s.pwWindow > 60_000L) { s.pwWindow = now; s.pwFails = 0; }
-                        if (s.pwFails >= 5) { send(s, json("t", "toast", "msg", "Too many wrong passwords. Wait a minute.")); return; }
+                        if (s.pwFails >= 5) { return "Too many wrong passwords. Wait a minute."; }
                         String want = password(g);
-                        if (want == null || !same(want, str(o, "pw"))) {
+                        if (want == null || !same(want, pwIn == null ? "" : pwIn)) {
                             s.pwFails++;
                             WebServer srv = web;
                             if (srv != null && s.ws != null) srv.strike(s.ws.ip, 2, "wrong group passwords");
-                            send(s, json("t", "toast", "msg", "Wrong group password.")); return;
+                            return "Wrong group password.";
                         }
                     }
                     c.setGroup(g);
                 }
                 case "create" -> {
-                    String name = clean(str(o, "name"), 40);
+                    if (pwIn == null) pwIn = "";
+                    String name = clean(nameIn, 40);
                     long now = System.currentTimeMillis();
-                    if (now - s.groupMadeAt < 10_000L) { send(s, json("t", "toast", "msg", "Wait a few seconds before making another group.")); return; }
+                    if (now - s.groupMadeAt < 10_000L) { return "Wait a few seconds before making another group."; }
                     s.groupMadeAt = now;
-                    if (str(o, "pw").length() > 64) { send(s, json("t", "toast", "msg", "That password is too long.")); return; }
-                    if (name.isEmpty() || name.length() > 24) { send(s, json("t", "toast", "msg", "Give the group a name (up to 24 letters).")); return; }
-                    String pw = str(o, "pw");
-                    Group.Type type = switch (str(o, "type")) { case "open" -> Group.Type.OPEN; case "isolated" -> Group.Type.ISOLATED; default -> Group.Type.NORMAL; };
+                    if (pwIn.length() > 64) { return "That password is too long."; }
+                    if (name.isEmpty() || name.length() > 24) { return "Give the group a name (up to 24 letters)."; }
+                    String pw = pwIn;
+                    Group.Type type = switch (typeIn == null ? "" : typeIn) { case "open" -> Group.Type.OPEN; case "isolated" -> Group.Type.ISOLATED; default -> Group.Type.NORMAL; };
                     Group g = a.groupBuilder().setName(name).setPassword(pw.isEmpty() ? null : pw).setType(type).setPersistent(false).build();
                     c.setGroup(g);
                 }
-                default -> { return; }
+                default -> { return "?"; }
             }
         } catch (Throwable t) {
-            send(s, json("t", "toast", "msg", "Couldn't change group: " + t.getMessage()));
-            return;
+            return "Couldn't change group: " + t.getMessage();
         }
         Player p = Bukkit.getPlayer(s.id);
         if (p != null) sendNearby(s, p, true);
+        return null;
     }
 
     /** The real password of a group (the API only says whether it has one): GroupImpl.group.getPassword(). */
@@ -762,7 +814,18 @@ public final class BedrockVoice extends JavaPlugin implements Listener, TabCompl
         String sub = args.length == 0 ? "" : args[0].toLowerCase(Locale.ROOT);
         boolean admin = sender.hasPermission("bedrockvc.admin");
         switch (sub) {
-            case "", "link", "connect", "join" -> {
+            case "", "menu", "gui", "settings", "volumes", "groups", "group" -> {
+                if (!(sender instanceof Player p)) { sender.sendMessage("In game only."); return true; }
+                if (!p.hasPermission("bedrockvc.use")) { p.sendMessage(msg("no-permission")); return true; }
+                if (sub.isEmpty() && !getConfig().getBoolean("ingame.menu", true)) { link(p); return true; }
+                switch (sub) {
+                    case "settings" -> menu.settings(p);
+                    case "volumes" -> menu.volumes(p, 0);
+                    case "groups", "group" -> menu.groups(p);
+                    default -> menu.open(p);
+                }
+            }
+            case "link", "connect", "join", "phone" -> {
                 if (!(sender instanceof Player p)) { sender.sendMessage("In game only."); return true; }
                 if (!p.hasPermission("bedrockvc.use")) { p.sendMessage(msg("no-permission")); return true; }
                 link(p);
@@ -841,7 +904,8 @@ public final class BedrockVoice extends JavaPlugin implements Listener, TabCompl
 
     private void help(CommandSender s, boolean admin) {
         s.sendMessage(ChatColor.GOLD + "Voice chat for Bedrock + no-mod players");
-        s.sendMessage(ChatColor.YELLOW + "/vc" + ChatColor.GRAY + " - get your link, code and QR map");
+        s.sendMessage(ChatColor.YELLOW + "/vc" + ChatColor.GRAY + " - the voice chat menu (mute, deafen, groups, volumes, settings)");
+        s.sendMessage(ChatColor.YELLOW + "/vc link" + ChatColor.GRAY + " - connect your phone / browser (link, code and QR map)");
         s.sendMessage(ChatColor.YELLOW + "/vc mute | unmute | deafen | undeafen");
         s.sendMessage(ChatColor.YELLOW + "/vc status" + ChatColor.GRAY + ", " + ChatColor.YELLOW + "/vc forget" + ChatColor.GRAY + " (unlink your devices)");
         if (admin) s.sendMessage(ChatColor.YELLOW + "/vc list | kick <player> | status [player] | reload | unban");
@@ -858,7 +922,7 @@ public final class BedrockVoice extends JavaPlugin implements Listener, TabCompl
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
-            List<String> l = new ArrayList<>(List.of("qr", "mute", "unmute", "deafen", "undeafen", "status", "forget", "help"));
+            List<String> l = new ArrayList<>(List.of("link", "menu", "settings", "volumes", "groups", "qr", "mute", "unmute", "deafen", "undeafen", "status", "forget", "help"));
             if (sender.hasPermission("bedrockvc.admin")) l.addAll(List.of("list", "kick", "reload", "unban"));
             return l.stream().filter(x -> x.startsWith(args[0].toLowerCase(Locale.ROOT))).toList();
         }
@@ -884,7 +948,7 @@ public final class BedrockVoice extends JavaPlugin implements Listener, TabCompl
 
     String linkUrl(UUID id) { return publicUrl + "/#t=" + linkFor(id).token; }
 
-    private void link(Player p) {
+    void link(Player p) {
         if (publicUrl.isEmpty()) { p.sendMessage(ChatColor.RED + "The voice page isn't running: " + webStatus); return; }
         VoicechatServerApi a = api;
         VoicechatConnection c = a == null ? null : a.getConnectionOf(p.getUniqueId());
@@ -1068,7 +1132,7 @@ public final class BedrockVoice extends JavaPlugin implements Listener, TabCompl
 
     // ------------------------------------------------------------------ small helpers
 
-    private String msg(String key) {
+    String msg(String key) {
         String s = getConfig().getString("messages." + key, key);
         return ChatColor.translateAlternateColorCodes('&', s);
     }
@@ -1081,7 +1145,7 @@ public final class BedrockVoice extends JavaPlugin implements Listener, TabCompl
         try { return o.has(k) && !o.get(k).isJsonNull() ? o.get(k).getAsString() : ""; } catch (Exception e) { return ""; }
     }
 
-    private String json(Object... kv) {
+    String json(Object... kv) {
         JsonObject o = new JsonObject();
         for (int i = 0; i + 1 < kv.length; i += 2) {
             Object v = kv[i + 1];

@@ -173,6 +173,97 @@ final class BedrockForms {
         }
     }
 
+    /** One part of a settings form (Bedrock's sliders / toggles / dropdowns / text boxes, the same as its own settings screens). */
+    record Part(char kind, String text, float min, float max, float step, Object def, List<String> options) {
+        static Part label(String t) { return new Part('l', t, 0, 0, 0, null, null); }
+        static Part toggle(String t, boolean on) { return new Part('t', t, 0, 0, 0, on, null); }
+        static Part slider(String t, float min, float max, float step, float v) { return new Part('s', t, min, max, step, Math.max(min, Math.min(max, v)), null); }
+        static Part dropdown(String t, List<String> options, int pick) { return new Part('d', t, 0, 0, 0, Math.max(0, Math.min(options.size() - 1, pick)), options); }
+        static Part input(String t, String placeholder, String value) { return new Part('i', t, 0, 0, 0, value == null ? "" : value, List.of(placeholder == null ? "" : placeholder)); }
+    }
+
+    /**
+     * A settings form: onDone gets one value per part, in order (labels: null, toggles Boolean, sliders Float, dropdowns
+     * Integer, text String), on the main thread. onClose (may be null) runs when they shut it.
+     */
+    static boolean custom(Plugin pl, Player p, String title, List<Part> parts, Consumer<List<Object>> onDone, Runnable onClose) {
+        if (!available() || customC == null || customB == null || customR == null) return false;
+        try {
+            Object b = customC.getMethod("builder").invoke(null);
+            call(customB, b, "title", String.class, title);
+            for (Part x : parts) switch (x.kind()) {
+                case 'l' -> customB.getMethod("label", String.class).invoke(b, x.text());
+                case 't' -> customB.getMethod("toggle", String.class, boolean.class).invoke(b, x.text(), (Boolean) x.def());
+                case 's' -> customB.getMethod("slider", String.class, float.class, float.class, float.class, float.class).invoke(b, x.text(), x.min(), x.max(), x.step(), (Float) x.def());
+                case 'd' -> customB.getMethod("dropdown", String.class, List.class, int.class).invoke(b, x.text(), x.options(), (Integer) x.def());
+                case 'i' -> customB.getMethod("input", String.class, String.class, String.class).invoke(b, x.text(), x.options().get(0), (String) x.def());
+                default -> { }
+            }
+            Method at = customR.getMethod("valueAt", int.class);
+            UUID who = p.getUniqueId();
+            int n = parts.size();
+            Consumer<Object> ok = r -> {
+                java.util.ArrayList<Object> vals = new java.util.ArrayList<>();
+                for (int i = 0; i < n; i++) {
+                    Object v;
+                    try { v = parts.get(i).kind() == 'l' ? null : at.invoke(r, i); } catch (Throwable t) { v = null; }
+                    if (v == null) v = parts.get(i).def(); // absent (a form from an older client): keep what it was
+                    vals.add(v);
+                }
+                Bukkit.getScheduler().runTask(pl, () -> { if (Bukkit.getPlayer(who) != null) onDone.accept(vals); });
+            };
+            call(customB, b, "validResultHandler", Consumer.class, ok);
+            if (onClose != null) {
+                Runnable closed = () -> Bukkit.getScheduler().runTask(pl, () -> { if (Bukkit.getPlayer(who) != null) onClose.run(); });
+                call(customB, b, "closedOrInvalidResultHandler", Runnable.class, closed);
+            }
+            return deliver(p, customB.getMethod("build").invoke(b));
+        } catch (Throwable t) {
+            pl.getLogger().warning("Couldn't send a Bedrock form to " + p.getName() + ": " + t);
+            return false;
+        }
+    }
+
+    /**
+     * A list of buttons with pictures (images: null = none, "http..." = a picture from the web (player heads),
+     * else a path in the game's own textures, e.g. "textures/items/comparator"). Works the same as menu().
+     */
+    static boolean menu(Plugin pl, Player p, String title, String content, List<String> buttons, List<String> images, IntConsumer onPick, Runnable onClose) {
+        if (!available() || simpleB == null || simpleR == null) return false;
+        try {
+            Class<?> typeC = cls("org.geysermc.cumulus.util.FormImage$Type");
+            Object b = simpleC.getMethod("builder").invoke(null);
+            call(simpleB, b, "title", String.class, title);
+            call(simpleB, b, "content", String.class, content == null ? "" : content);
+            Method withImg = typeC == null ? null : simpleB.getMethod("button", String.class, typeC, String.class);
+            for (int i = 0; i < buttons.size(); i++) {
+                String img = images == null || i >= images.size() ? null : images.get(i);
+                if (img == null || withImg == null) call(simpleB, b, "button", String.class, buttons.get(i));
+                else {
+                    @SuppressWarnings({"unchecked", "rawtypes"})
+                    Object type = Enum.valueOf((Class) typeC, img.startsWith("http") ? "URL" : "PATH");
+                    withImg.invoke(b, buttons.get(i), type, img);
+                }
+            }
+            Method id = simpleR.getMethod("clickedButtonId");
+            UUID who = p.getUniqueId();
+            Consumer<Object> ok = r -> {
+                int i;
+                try { i = ((Number) id.invoke(r)).intValue(); } catch (Throwable t) { return; }
+                Bukkit.getScheduler().runTask(pl, () -> { if (Bukkit.getPlayer(who) != null) onPick.accept(i); });
+            };
+            call(simpleB, b, "validResultHandler", Consumer.class, ok);
+            if (onClose != null) {
+                Runnable closed = () -> Bukkit.getScheduler().runTask(pl, () -> { if (Bukkit.getPlayer(who) != null) onClose.run(); });
+                call(simpleB, b, "closedOrInvalidResultHandler", Runnable.class, closed);
+            }
+            return deliver(p, simpleB.getMethod("build").invoke(b));
+        } catch (Throwable t) {
+            pl.getLogger().warning("Couldn't send a Bedrock form to " + p.getName() + ": " + t);
+            return false;
+        }
+    }
+
     /** For tests: look again (after fake APIs were put in place). */
     static void reset() { looked = false; }
 }

@@ -71,6 +71,9 @@ qr:
   remove-on-connect: true
 
 ingame:
+  # /vc opens the voice chat MENU (like the mod's V screen): mute, deafen, groups, player volumes, settings.
+  # A chest menu on Java, native Bedrock menus (sliders, toggles) on Bedrock. false = /vc goes straight to the link.
+  menu: true
   # "Voice connected / disconnected" chat lines.
   notify: true
   # Who's talking near you, in the action bar (Bedrock can't see the mod's speaker icons).
@@ -83,7 +86,7 @@ ingame:
 messages:
   connected: "&a[Voice] &fVoice chat connected. &7Keep the page open while you play."
   disconnected: "&c[Voice] &7Voice page closed. Open it again (or type &f/vc&7) to talk."
-  not-connected: "&c[Voice] &7Your voice page isn't open. Type &f/vc&7."
+  not-connected: "&c[Voice] &7Your phone isn't connected. Type &f/vc link&7."
   join-hint: "&a[Voice] &7Want voice chat? Type &f/vc &7and scan the QR code with your phone."
   has-mod: "&a[Voice] &7You already have Simple Voice Chat installed: just press &fV&7 to open its menu."
   no-permission: "&c[Voice] &7You can't use voice chat here."

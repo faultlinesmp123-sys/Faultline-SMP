@@ -32,6 +32,11 @@ final class Session {
     volatile int rate = 24000;
     volatile boolean ulaw = true;
     volatile boolean muted, deafened, whisper;
+    // the in-game voice menu's settings (the page keeps the same ones and reports them: cfg)
+    volatile int micGain = 100, threshold = -50, activation; // activation 0 voice, 1 push to talk on the page, 2 hold sneak in game
+    volatile boolean ns = true, ec = true, agc = true, micTest, hideIcons, sneaking;
+    volatile int quality = 24000;
+    private volatile boolean sneakOpen;
     volatile String lastStatus;
     /** Wrong group passwords in the current minute (brute-force guard). */
     long pwWindow; int pwFails;
@@ -112,7 +117,12 @@ final class Session {
         if (s == null || e == null) return;
         int expect = rate / 50 * (ulaw ? 1 : 2);
         if (data.length - 2 != expect) return;
-        boolean w = (data[1] & 1) != 0;
+        if (micTest) return;                              // testing: they hear themselves on the page, nobody else does
+        if (activation == 2) {                            // hold sneak in game to talk
+            if (!sneaking) { if (sneakOpen) { sneakOpen = false; micEnd(); } return; }
+            sneakOpen = true;
+        }
+        boolean w = (data[1] & 1) != 0 || whisper;
         short[] pcm = Audio.decode(data, 2, ulaw);
         short[] full = rate == Audio.SVC_RATE ? pcm : Audio.upTo48k(pcm, rate, upLast);
         try {

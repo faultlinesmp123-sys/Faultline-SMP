@@ -11,7 +11,7 @@
 
   const settings = Object.assign({
     ptt: false, threshold: -50, micGain: 100, outGain: 100, ns: true, ec: true, agc: true, rate: 24000,
-    wake: true, dev: '', vols: {}, muted: false, deaf: false,
+    wake: true, dev: '', vols: {}, muted: false, deaf: false, sneak: false,
   }, store.get('settings', {}));
   const save = () => store.set('settings', settings);
 
@@ -124,10 +124,16 @@
     } catch {}
   }
 
+  // the settings the in-game menu (/vc) shows and changes
+  const cfgOut = () => ({ threshold: settings.threshold, micGain: settings.micGain, outGain: settings.outGain, ptt: settings.ptt, sneak: settings.sneak,
+    ns: settings.ns, ec: settings.ec, agc: settings.agc, rate: settings.rate, whisper: !!whisperOn });
+  function report() { if (wsOpen && authed) ws.send(JSON.stringify(Object.assign({ t: 'cfg' }, cfgOut()))); }
+  let micTest = false;
+
   function sendCfg() {
     if (!node) return;
     node.port.postMessage({ t: 'cfg', rate, ulaw, threshold: settings.threshold, micGain: settings.micGain / 100, outGain: settings.outGain / 100,
-      ptt: settings.ptt, muted: settings.muted, deaf: settings.deaf, whisper: !!whisperOn });
+      ptt: settings.ptt && !settings.sneak, always: settings.sneak, test: micTest, muted: settings.muted, deaf: settings.deaf, whisper: !!whisperOn });
   }
 
   function onEngine(m) {
@@ -160,7 +166,7 @@
     ws.binaryType = 'arraybuffer';
     ws.onopen = () => {
       wsOpen = true; retry = 0;
-      const a = { t: 'auth', rate, codec: ulaw ? 'ulaw' : 'pcm16', ua, vols: settings.vols, muted: settings.muted, deafened: settings.deaf };
+      const a = { t: 'auth', rate, codec: ulaw ? 'ulaw' : 'pcm16', ua, vols: settings.vols, muted: settings.muted, deafened: settings.deaf, cfg: cfgOut() };
       if (pendingAuth && pendingAuth.code) a.code = pendingAuth.code;
       else if (token) a.token = token;
       else if (deviceKey) a.device = deviceKey;
@@ -222,6 +228,8 @@
         if (m.deafened !== undefined && m.deafened !== settings.deaf) { settings.deaf = m.deafened; save(); sendCfg(); }
         renderStatus();
         break;
+      case 'settings': applySettings(m); break;
+      case 'vol': if (m.id) { settings.vols[m.id] = m.v; save(); renderPeople({ list: nearby }); } break;
       case 'talk': talking = new Set(m.ids); renderTalk(); break;
       case 'nearby': nearby = m.list; myGroupId = m.groupId || ''; renderPeople(m); renderMyGroup(m.group); break;
       case 'groups': groups = m.list; renderGroups(); break;
@@ -232,6 +240,25 @@
         if (m.forget) { deviceKey = ''; store.del('device'); stopForGood = true; }
         toast(m.msg, 6000);
         break;
+    }
+  }
+
+  // the in-game menu changed something: use it, remember it, show it
+  function applySettings(m) {
+    const micBefore = [settings.ns, settings.ec, settings.agc].join();
+    for (const k of ['threshold', 'micGain', 'outGain', 'ptt', 'sneak', 'ns', 'ec', 'agc']) if (m[k] !== undefined) settings[k] = m[k];
+    if (m.whisper !== undefined) whisperOn = !!m.whisper;
+    if (m.test !== undefined && m.test !== micTest) { micTest = !!m.test; toast(micTest ? 'Microphone test: you hear yourself (nobody else does)' : 'Microphone test off'); }
+    const newRate = m.rate && m.rate !== settings.rate ? m.rate : 0;
+    if (newRate) settings.rate = newRate;
+    save(); syncControls(); sendCfg(); renderStatus();
+    if (ctx && micBefore !== [settings.ns, settings.ec, settings.agc].join()) openMic().catch(err => toast(err.message));
+    if (newRate) { rate = newRate; if (ws) ws.close(); }
+  }
+  function syncControls() {
+    for (const [id, key] of [['s-ptt', 'ptt'], ['s-th', 'threshold'], ['s-mg', 'micGain'], ['s-out', 'outGain'], ['s-ns', 'ns'], ['s-ec', 'ec'], ['s-agc', 'agc'], ['s-q', 'rate']]) {
+      const el = $(id); if (!el) continue;
+      if (el.type === 'checkbox') el.checked = !!settings[key]; else el.value = settings[key];
     }
   }
 
@@ -255,6 +282,8 @@
     else if (settings.muted) { st.textContent = 'Muted'; st.className = 'status'; }
     else if (meTalking) { st.textContent = whisperOn ? 'Whispering...' : 'Talking...'; st.className = 'status'; }
     else { st.textContent = settings.ptt ? 'Hold to talk' : 'Listening'; st.className = 'status dim'; }
+    if (settings.sneak) { hint.textContent = 'Hold sneak in game to talk (set in /vc).'; if (!settings.deaf && !settings.muted && !meTalking) st.textContent = 'Hold sneak to talk'; return; }
+    if (micTest) { hint.textContent = 'Microphone test: you hear yourself. Turn it off in /vc.'; return; }
     hint.textContent = settings.ptt ? (matchMedia('(pointer:fine)').matches ? 'Hold the button or Space to talk.' : 'Hold the big button to talk.') : 'Voice activation is on: just talk. Tap the mic to mute.';
   }
 
@@ -323,7 +352,7 @@
 
   $('mute').onclick = () => setMuted(!settings.muted);
   $('deaf').onclick = () => setDeaf(!settings.deaf);
-  $('whisper').onclick = () => { whisperOn = !whisperOn; sendCfg(); renderStatus(); toast(whisperOn ? 'Whisper on: only people close by hear you' : 'Whisper off'); };
+  $('whisper').onclick = () => { whisperOn = !whisperOn; sendCfg(); renderStatus(); report(); toast(whisperOn ? 'Whisper on: only people close by hear you' : 'Whisper off'); };
 
   const mic = $('mic');
   const pttDown = (e) => { if (!settings.ptt) return; e.preventDefault(); pttHeld = true; node && node.port.postMessage({ t: 'tx', on: true }); mic.classList.add('live'); };
@@ -358,7 +387,7 @@
     const el = $(id);
     if (el.type === 'checkbox') el.checked = !!settings[key]; else el.value = settings[key];
     el.addEventListener(el.type === 'range' ? 'input' : 'change', () => {
-      settings[key] = el.type === 'checkbox' ? el.checked : conv ? conv(el.value) : el.value; save(); sendCfg(); renderStatus(); after && after();
+      settings[key] = el.type === 'checkbox' ? el.checked : conv ? conv(el.value) : el.value; if (key === 'ptt' && settings.ptt) settings.sneak = false; save(); sendCfg(); renderStatus(); report(); after && after();
     });
   };
   bind('s-ptt', 'ptt', null, () => { if (!settings.ptt) node && node.port.postMessage({ t: 'tx', on: false }); });

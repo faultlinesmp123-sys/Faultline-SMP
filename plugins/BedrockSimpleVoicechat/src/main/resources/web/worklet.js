@@ -78,6 +78,8 @@ class VoiceEngine extends AudioWorkletProcessor {
         if (m.muted !== undefined) { this.muted = m.muted; if (m.muted) this.close(); }
         if (m.deaf !== undefined) { this.deaf = m.deaf; if (m.deaf) this.flush(); }
         if (m.whisper !== undefined) this.whisper = m.whisper;
+        if (m.always !== undefined) this.always = m.always;
+        if (m.test !== undefined) { this.test = m.test; if (m.test) this.close(); }
         break;
       case 'tx': this.tx = m.on; if (!m.on && this.ptt) this.close(); break;
       case 'pcm': this.push(new Uint8Array(m.buf)); break;
@@ -127,7 +129,8 @@ class VoiceEngine extends AudioWorkletProcessor {
     const db = rms > 0 ? 20 * Math.log10(rms) : -100;
     this.lastDb = db;
     let want;
-    if (this.muted) want = false;
+    if (this.muted || this.test) want = false;
+    else if (this.always) want = true;           // hold sneak in game: the server decides
     else if (this.ptt) want = this.tx;
     else {
       if (db > this.threshold) this.hang = 20;       // 400 ms hangover
@@ -152,8 +155,10 @@ class VoiceEngine extends AudioWorkletProcessor {
   process(inputs, outputs) {
     // ---- capture
     const input = inputs[0];
+    this.mon = null;
     if (input && input.length > 0) {
       const ch = input[0];
+      this.mon = ch;
       for (let i = 0; i < ch.length; i++) {
         const x = ch[i] * this.micGain;
         this.lp += this.lpA * (x - this.lp);
@@ -176,13 +181,14 @@ class VoiceEngine extends AudioWorkletProcessor {
     const L = out[0], R = out[1] || out[0];
     const g = this.outGain;
     for (let i = 0; i < L.length; i++) {
-      if (!this.playing) { L[i] = 0; R[i] = 0; continue; }
+      if (!this.playing) { const x = this.test && this.mon ? (this.mon[i] || 0) * this.micGain * g : 0; L[i] = x; R[i] = x; continue; }
       const avail = this.w - this.r;
-      if (avail < 2) { this.playing = false; this.stats.under++; L[i] = 0; R[i] = 0; continue; }
+      if (avail < 2) { this.playing = false; this.stats.under++; const x = this.test && this.mon ? (this.mon[i] || 0) * this.micGain * g : 0; L[i] = x; R[i] = x; continue; }
       const i0 = Math.floor(this.r), f = this.r - i0;
       const a = (i0 % this.cap) * 2, b = ((i0 + 1) % this.cap) * 2;
       L[i] = (this.ring[a] + (this.ring[b] - this.ring[a]) * f) * g;
       R[i] = (this.ring[a + 1] + (this.ring[b + 1] - this.ring[a + 1]) * f) * g;
+      if (this.test && this.mon) { const x = (this.mon[i] || 0) * this.micGain * g; L[i] += x; R[i] += x; }
       // gently speed up / slow down to keep ~80 ms buffered (clock drift between server and device)
       const target = this.rate * 0.08;
       const drift = avail > target * 2 ? 1.02 : avail < target * 0.5 ? 0.99 : 1;

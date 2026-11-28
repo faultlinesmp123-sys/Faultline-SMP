@@ -45,7 +45,7 @@ All are Maven projects: Java 21, `paper-api 1.21.11-R0.1-SNAPSHOT`. Build with
 | **FaultlineShips** | `net.faultlinesmp.ships` | Ships: Dinghy, Sloop, Brigantine, Galleon, Pirate Ship. Blueprint → lay out on water → place every block → sail. Health, part damage, sinking, Shipwright's Hammer repair minigame, cannons, banners, names. **Skeleton ships** and the **Pirate Invasion** (`Pirates.java`). Ships saved in `ships.yml` | `/ship [list\|info\|name\|crew\|anchor\|stop\|banner\|scrap]`, sneak + right-click a gun with a Cannonball = man it (W/S/A/D aim), admin `/ship <give\|repair\|wreck\|remove\|tp> [name\|#n]`, `/ship spawn <ship> [owner]`, `/ship give upgrade_<hull\|sails\|loaders\|ram>`, `/ship pirates <ship\|invasion\|horn\|spawn\|egg\|ghost [player]\|bell [n] [player]\|map [player]\|stop>` |
 | **FaultlineSkills** | `net.faultlinesmp.skills` | Skill trees: Mining, Building, Farming, Redstone (`Tree.java`: 6 perks each), levels 1-50, anti-abuse (placed-block marks, settle time), chest menu + Bedrock form. Data in `players.yml` | `/skills [top <tree>]`, admin `/skills <player>`, `/skills give <player> <tree> <xp>`, `/skills reset <player> [tree\|perks]` |
 | **FaultlineEvents** | `net.faultlinesmp.events` | Sky events in the main world (2.0.0 rewrite, source here since then): **Blood Moon** (`BloodMoon.java` + the Crimson Champion), **Fog** (`Fog.java`), **Lantern Night** (`LanternNight.java`), **Windy** (`Windy.java`, `WindPush.java`) | `/fevent [list]` (`/events`), admin `/fevent start <blood-moon\|fog\|lantern-night\|windy>\|stop\|champion [player]\|realm <nether\|end> <day\|night\|event>` (2.1.0: day and night in the Nether and the End, `Realms.java`) |
-| **BedrockSimpleVoicechat** | `net.faultlinesmp.bedrockvc` | STANDALONE jar (not in FAULTLINESMPJAR), needs Simple Voice Chat (`voicechat`). Simple Voice Chat for Bedrock (PC, phones, Xbox, PlayStation, Switch) and Java players without the mod, through a web page (the page = their mic + headset) | `/vc` (`/voice`, `/bvc`, `/talk`) `[qr\|mute\|unmute\|deafen\|undeafen\|status\|forget]`, admin `/vc list\|kick <player>\|status <player>\|reload` |
+| **BedrockSimpleVoicechat** | `net.faultlinesmp.bedrockvc` | STANDALONE jar (not in FAULTLINESMPJAR), needs Simple Voice Chat (`voicechat`). Simple Voice Chat for Bedrock (PC, phones, Xbox, PlayStation, Switch) and Java players without the mod, through a web page (the page = their mic + headset) | `/vc` (`/voice`, `/bvc`, `/talk`) = the voice MENU, `/vc [link\|settings\|volumes\|groups\|qr\|mute\|unmute\|deafen\|undeafen\|status\|forget]`, admin `/vc list\|kick <player>\|status <player>\|reload` |
 
 Notes:
 - `FaultlineItems.java` (~350 KB) and `FaultlineBosses.java` (~585 KB) are huge. Search them instead of reading them whole.
@@ -3891,6 +3891,28 @@ Notes:
   id) while the limit is full is deleted on the spot ("All 5 maces already exist"), logged "[MaceLimit] deleted"; picking up
   such a mace while full deletes it too. Creative / spectator are left alone. Tested (scratch `ml2/Ml2`: 8 -> 5, oldest kept,
   8th deleted, untagged + copied maces deleted while full, creative kept, a freed place lets a new one register).
+- **The in-game voice menu (BedrockSimpleVoicechat, same 1.0.0)**: `/vc` now opens a menu like the mod's own V screen
+  (`VoiceMenu.java`; `ingame.menu: false` = the old straight-to-the-link `/vc`; the link is `/vc link`). JAVA players without
+  the mod get chest menus (`VoiceMenu.Holder`, drag guard; main 45 slots: status head, mic 19, deafen 21, talking names 23, mic
+  test 25, group 29, volumes 31, settings 33, another device 39, close 41; not connected = a Connect button at 22), SETTINGS
+  (rows 0-2 = sliders: label, 7 bars to click, a fine arrow left +/right -/shift default: voice chat volume 0-200%, mic
+  amplification 0-300%, voice activation threshold -80..0 dB; 27 activation, 29 noise suppression, 30 echo cancellation, 31 auto
+  gain, 32 whisper, 33 quality, 35 mic test, 53 shift = unlink), ADJUST VOLUMES (player heads, left +10 / right -10 / shift
+  100% / Q 0%, pages of 45) and GROUPS (join; a password or a new group's name is typed in chat: `prompts`, AsyncPlayerChatEvent
+  LOWEST cancelled; create screen with name / password / type). BEDROCK players (PC, phones, Xbox, PlayStation, Switch) get
+  native forms: `BedrockForms.menu(..., images, ...)` (buttons with Bedrock's own textures, player heads from mc-heads.net) and
+  `BedrockForms.custom(..., List<Part>, ...)` (labels, sliders, toggles, dropdowns, text boxes; answers read with
+  `CustomFormResponse.valueAt(i)`). Settings live on the `Session` (`micGain`, `threshold`, `activation` 0 voice / 1 push to talk
+  on the page / 2 HOLD SNEAK IN GAME, `ns`, `ec`, `agc`, `quality`, `micTest`, `hideIcons`, `whisper`): the page reports its
+  settings in `auth.cfg` and `{"t":"cfg"}`, the menu pushes changes with `{"t":"settings"}` / `{"t":"vol"}` (`pushSettings`,
+  `pushVolume`) and the page applies + remembers them (reopens the mic for ns/ec/agc, reconnects for quality). Sneak to talk:
+  the page sends all the time (`always`) and `Session.mic` drops frames while they aren't sneaking (`sneaking`, from
+  `trackPositions`). Mic test: the worklet plays the mic back (`test`, `mon`) and the server drops it (nobody else hears).
+  `groupOp(...)` = group join / leave / create shared by the page and the menus (returns the error). THE PAGE IS STILL THE
+  MICROPHONE + SPEAKER: Bedrock clients can't send voice to a Java server; the menus replace everything else. Tested: scratch
+  `bvc/menu/MenuTest.java` (47 checks: every Java screen by click events, real Cumulus 2 form JSON + answers through a fake
+  FloodgateApi, sneak gating, mic test, volumes, groups with chat prompts and passwords), `bvc/run.sh` 44/44, `brun.sh`.
+  Previews: `tools/previews/voice_menu_java.png`, `voice_menu_bedrock.png` (scratch `vcprev/render.py`).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

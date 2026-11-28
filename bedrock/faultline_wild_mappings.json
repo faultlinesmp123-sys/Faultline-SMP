@@ -932,6 +932,54 @@
    },
    {
     "type": "definition",
+    "model": "faultline:wild/golem_jaw",
+    "bedrock_identifier": "faultline:wild_golem_jaw",
+    "display_name": "golem_jaw",
+    "bedrock_options": {
+     "icon": "faultline.stone_golem",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:wild/golem_forearm",
+    "bedrock_identifier": "faultline:wild_golem_forearm",
+    "display_name": "golem_forearm",
+    "bedrock_options": {
+     "icon": "faultline.stone_golem",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
+    "model": "faultline:wild/golem_shin",
+    "bedrock_identifier": "faultline:wild_golem_shin",
+    "display_name": "golem_shin",
+    "bedrock_options": {
+     "icon": "faultline.stone_golem",
+     "allow_offhand": false
+    },
+    "components": {
+     "minecraft:equippable": {
+      "slot": "head"
+     },
+     "minecraft:max_stack_size": 1
+    }
+   },
+   {
+    "type": "definition",
     "model": "faultline:knight_helm",
     "bedrock_identifier": "faultline:knight_helm",
     "display_name": "Knight's Helm",

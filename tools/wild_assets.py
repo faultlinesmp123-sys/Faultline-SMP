@@ -824,48 +824,174 @@ def lich():
 STONE, STONE_D, MOSS, AMBER, AMETH = (112, 112, 106), (78, 78, 74), (72, 122, 44), (255, 176, 60), (152, 92, 214)
 
 
+def gstone(c, moss=None, vein=None, chips=0.0):
+    """Golem stone: chiselled blocks (mortar lines), cracks, moss dripping down from the top, now and then a glowing
+    amber vein in a crack."""
+    def f(reg, face, rng):
+        h, w = reg.shape[:2]
+        _fill(reg, c, rng, 10)
+        if face not in ("up", "down"):
+            off = rng.randrange(4)
+            for y in range(h):
+                if y % 5 == 4:
+                    reg[y, :, :3] = _c(c, -34)
+                    continue
+                x0 = off + (y // 5) * 3
+                for x in range(w):
+                    if (x + x0) % 7 == 0: reg[y, x, :3] = _c(c, -28)
+        for _ in range(max(1, (w + h) // 5)):
+            x, y = rng.randrange(w), rng.randrange(h)
+            for _ in range(rng.randrange(2, 6)):
+                if 0 <= x < w and 0 <= y < h: reg[y, x, :3] = vein if (vein and rng.random() < 0.35) else _c(c, -48)
+                x += rng.choice((-1, 0, 1)); y += rng.choice((0, 1))
+        if chips:
+            for _ in range(int(w * h * chips)):
+                reg[rng.randrange(h), rng.randrange(w), :3] = _c(c, 22)
+        if moss:
+            if face == "up":
+                for y in range(h):
+                    for x in range(w):
+                        if rng.random() < 0.8: reg[y, x, :3] = np.clip(np.array(moss) + rng.uniform(-18, 18), 0, 255)
+            elif face != "down":
+                for x in range(w):
+                    drip = int(rng.random() ** 2 * h * 0.55) + (1 if rng.random() < 0.7 else 0)
+                    for y in range(min(h, drip)): reg[y, x, :3] = np.clip(np.array(moss) + rng.uniform(-18, 12) - y * 3, 0, 255)
+    return f
+
+
+STONE, STONE_D, STONE_L, MOSS, MOSS_D, AMBER, AMETH, AMETH_D = (116, 114, 108), (74, 74, 70), (146, 144, 136), (78, 128, 46), (46, 84, 30), (255, 172, 54), (168, 104, 228), (104, 60, 170)
+
+
 def golem():
-    """The Stone Golem: a massive mossy torso with a cracked chest showing its amber core and amethyst growing from its
-    shoulders; a separate head (it turns to look at you) with a heavy brow, amber eyes and a mossy beard; long arms with
-    huge fists and crystal-studded forearms; thick legs."""
-    st = stone(STONE, MOSS)
-    dk = stone(STONE_D)
-    b = Part("golem_body", 5, 128)
-    b.add(-0.8, 0.0, -1.0, 0.8, 0.6, 1.0, dk)                        # pelvis
-    b.add(-1.0, 0.6, -1.3, 1.0, 1.4, 1.3, st)                       # waist
-    b.add(-1.2, 1.4, -1.75, 1.2, 2.65, 1.75, st)                    # chest
-    b.add(1.2, 1.55, -0.55, 1.32, 2.35, 0.55, dk)                   # the crack...
-    b.add(1.25, 1.75, -0.3, 1.36, 2.15, 0.3, glow(AMBER))           # ...and the core in it
-    b.add(-1.2, 2.65, -1.75, 1.2, 2.82, 1.75, solid(MOSS, 14))
+    """The Stone Golem (2.0): a hunched ancient guardian of mossy chiselled stone, jointed like a body (hip, waist, chest,
+    neck, a hinged jaw, shoulders, elbows, hips, knees) so it can really move. Its chest is split by a glowing amber core
+    behind cracked stone plates, its back is a mossy boulder grown over with vines, mushrooms and glow berries, and
+    amethyst grows out of its shoulders, head and forearms. Every part's origin is its joint."""
+    st, dk, lt = gstone(STONE, MOSS, AMBER, 0.02), gstone(STONE_D, None, AMBER), gstone(STONE_L, None, None, 0.05)
+    ms, msd = solid(MOSS, 16), solid(MOSS_D, 12)
+    core, vein = glow(AMBER), glow((255, 140, 30))
+    am, amd = glow(AMETH), glow(AMETH_D)
+    blk = solid((18, 16, 14), 3)
+    bark = wood((86, 62, 40), None)
+    # ---- the body: origin = the hip joint (pelvis below, the chest above)
+    b = Part("golem_body", 8, 256)
+    rounded(b, -0.85, -0.35, -1.05, 0.85, 0.55, 1.05, dk, 0.2)                 # pelvis
+    b.add(0.84, -0.75, -0.55, 0.92, 0.4, 0.55, msd)                            # moss hanging over the front like a loincloth
+    for z in (-0.4, -0.1, 0.2):
+        b.add(0.86, -0.95, z, 0.94, -0.7, z + 0.18, ms)
+    rounded(b, -0.95, 0.55, -1.25, 0.95, 1.35, 1.25, st, 0.25)                 # waist
+    b.add(-1.0, 0.92, -1.3, 1.0, 1.04, 1.3, dk)                                # a carved band round it
+    rounded(b, -1.15, 1.35, -1.8, 1.2, 2.75, 1.8, st, 0.35)                    # the chest
+    for z0, z1 in ((-1.62, -0.32), (0.32, 1.62)):                              # cracked chest plates
+        b.add(1.18, 1.48, z0, 1.34, 2.62, z1, lt)
+        b.add(1.3, 1.95, z0 + 0.12, 1.38, 2.05, z1 - 0.12, dk)                 # a seam across each plate
+    b.add(1.18, 1.5, -0.32, 1.28, 2.6, 0.32, dk)                               # the split between them...
+    b.add(1.24, 1.68, -0.24, 1.42, 2.4, 0.24, core)                            # ...and the core burning in it
+    b.add(1.36, 1.86, -0.12, 1.48, 2.22, 0.12, glow((255, 236, 160)))          # its white-hot heart
+    for (y, z0, z1) in ((2.42, 0.3, 0.9), (1.62, -0.85, -0.3), (2.1, -1.4, -0.95), (1.75, 0.95, 1.45)):
+        b.add(1.33, y, z0, 1.37, y + 0.06, z1, vein)                           # veins of light running out of it
+    for z in (-1.8, 1.8):                                                      # carved ribs down the flanks
+        for y in (1.55, 1.85, 2.15):
+            b.add(-0.7, y, z - 0.05, 0.9, y + 0.1, z + 0.05, dk)
+    # the back: a mossy boulder grown over the shoulder blades
+    rounded(b, -1.55, 1.45, -1.25, -1.1, 2.75, 1.25, st, 0.3)
+    b.add(-1.58, 2.45, -1.15, -1.08, 2.85, 1.15, ms)
+    for (z, ln) in ((-0.95, 0.9), (-0.55, 1.4), (-0.1, 0.7), (0.35, 1.2), (0.8, 1.0)):   # vines down the back
+        b.add(-1.62, 2.75 - ln, z, -1.55, 2.75, z + 0.08, msd)
+        b.add(-1.64, 2.75 - ln - 0.12, z - 0.02, -1.56, 2.75 - ln, z + 0.1, glow((255, 190, 80)))  # a glow berry at the end
+    for (y, z, c) in ((2.85, -0.6, (180, 50, 40)), (2.85, 0.5, (150, 110, 70)), (2.6, 1.05, (180, 50, 40))):  # mushrooms
+        b.add(-1.45, y, z - 0.03, -1.38, y + 0.16, z + 0.03, solid((220, 214, 190), 4))
+        b.add(-1.52, y + 0.14, z - 0.12, -1.3, y + 0.22, z + 0.12, solid(c, 6))
+    b.add(-1.15, 2.75, -1.8, 1.2, 2.86, 1.8, ms)                               # moss over the top of the chest
+    b.add(-0.4, 2.86, -0.7, 0.5, 2.92, 0.7, msd)
+    for sgn in (-1, 1):                                                        # shoulder boulders, crowned with amethyst
+        rounded(b, -0.95, 2.2, sgn * 1.45, 0.95, 3.0, sgn * 2.15, dk, 0.22)
+        b.add(-0.95, 3.0, sgn * 1.5, 0.95, 3.08, sgn * 2.1, ms)
+        for (x, h, w) in ((-0.35, 0.9, 0.3), (0.15, 0.6, 0.22), (-0.7, 0.45, 0.18), (0.5, 0.38, 0.16)):
+            zc = sgn * (1.72 + w * 0.3)
+            b.add(x - w / 2, 3.0, zc - w / 2, x + w / 2, 3.0 + h, zc + w / 2, am)
+            b.add(x - w / 4, 3.0 + h, zc - w / 4, x + w / 4, 3.0 + h + 0.14, zc + w / 4, amd)
+    b.add(-0.55, 2.75, -0.6, 0.6, 2.98, 0.6, dk)                               # the neck socket
+    # ---- the head: origin = the neck (on top of the chest)
+    hd = Part("golem_head", 10, 128)
+    rounded(hd, -0.62, 0.12, -0.72, 0.72, 1.2, 0.72, st, 0.18)                 # the skull
+    hd.add(0.58, 0.74, -0.78, 1.02, 1.02, 0.78, dk)                            # a heavy brow
+    hd.add(0.7, 0.98, -0.6, 0.98, 1.08, 0.6, ms)
+    for z0, z1 in ((-0.54, -0.14), (0.14, 0.54)):
+        hd.add(0.7, 0.44, z0, 0.76, 0.74, z1, blk)                             # deep sockets...
+        hd.add(0.73, 0.5, z0 + 0.06, 0.8, 0.68, z1 - 0.06, core)               # ...and the amber eyes in them
+    hd.add(0.72, 0.26, -0.13, 0.98, 0.66, 0.13, dk)                            # a blunt nose
+    hd.add(0.7, 0.12, -0.5, 0.84, 0.24, 0.5, lt)                               # the upper lip...
+    for i in range(6):
+        z = -0.42 + i * 0.15
+        hd.add(0.74, 0.04, z, 0.84, 0.12, z + 0.08, solid((196, 190, 172), 5))  # ...with stubby stone teeth
     for sgn in (-1, 1):
-        b.add(-0.9, 2.3, sgn * 1.5, 0.9, 2.95, sgn * 2.05, dk)          # shoulder blocks
-        b.add(-0.3, 2.95, sgn * 1.6, 0.3, 3.6, sgn * 1.95, glow(AMETH))  # amethyst
-        b.add(-0.65, 2.95, sgn * 1.75, -0.35, 3.3, sgn * 1.98, glow(AMETH))
-        b.add(-1.3, 0.8, sgn * 0.9, -1.2, 2.4, sgn * 1.5, solid(MOSS, 14))
-    b.add(-1.25, 1.2, -0.5, -1.2, 2.6, 0.5, solid((60, 110, 40), 10))  # vines down the back
-    hd = Part("golem_head", 5, 64)
-    hd.add(-0.62, 0.0, -0.7, 0.75, 1.15, 0.7, st)
-    hd.add(0.62, 0.72, -0.72, 0.95, 0.98, 0.72, dk)                 # brow
-    for z0, z1 in ((-0.5, -0.18), (0.18, 0.5)):
-        hd.add(0.74, 0.5, z0, 0.8, 0.7, z1, glow(AMBER))            # eyes
-    hd.add(0.75, 0.25, -0.1, 0.95, 0.6, 0.1, dk)                    # nose
-    hd.add(0.6, -0.35, -0.5, 0.82, 0.25, 0.5, solid((60, 110, 40), 10))  # mossy beard
-    hd.add(-0.62, 1.15, -0.7, 0.75, 1.27, 0.7, solid(MOSS, 14))
-    hd.add(-0.2, 1.15, 0.35, 0.15, 1.6, 0.6, glow(AMETH))          # a crystal on its head
-    arm = Part("golem_arm", 5, 64)
-    arm.add(-0.55, -1.6, -0.55, 0.55, 0.0, 0.55, st)               # upper arm
-    arm.add(-0.6, -2.8, -0.6, 0.6, -1.6, 0.6, st)                  # forearm
-    arm.add(-0.85, -3.75, -0.8, 0.85, -2.8, 0.8, dk)               # the fist
-    arm.add(0.85, -3.6, -0.6, 0.98, -3.0, 0.6, stone((92, 92, 88)))   # knuckles
-    arm.add(-0.6, -0.15, -0.6, 0.6, 0.12, 0.6, solid(MOSS, 14))
-    arm.add(-0.15, -2.5, 0.6, 0.15, -1.9, 0.85, glow(AMETH))        # crystals on the forearm
-    arm.add(-0.1, -2.3, -0.82, 0.18, -1.85, -0.6, glow(AMETH))
-    leg = Part("golem_leg", 5, 64)
-    leg.add(-0.62, -1.1, -0.62, 0.62, 0.0, 0.62, st)
-    leg.add(-0.58, -2.0, -0.58, 0.58, -1.1, 0.58, dk)
-    leg.add(-0.7, -2.3, -0.7, 1.0, -2.0, 0.7, dk)                  # foot
-    leg.add(1.0, -2.3, -0.5, 1.1, -2.15, 0.5, stone((92, 92, 88)))
+        hd.add(-0.3, 0.2, sgn * 0.72, 0.55, 0.72, sgn * 0.86, dk)              # cheek stones
+    hd.add(-0.62, 1.2, -0.72, 0.72, 1.32, 0.72, ms)                            # moss on the crown...
+    for (x, z, c) in ((0.3, -0.4, (230, 90, 140)), (-0.2, 0.45, (250, 220, 80)), (0.1, 0.1, (230, 90, 140))):
+        hd.add(x, 1.32, z, x + 0.08, 1.42, z + 0.08, solid(c, 4))             # ...with a few flowers in it
+    hd.add(-0.25, 1.3, 0.2, 0.1, 1.95, 0.52, am)                               # an amethyst horn
+    hd.add(-0.18, 1.95, 0.28, 0.04, 2.12, 0.46, amd)
+    hd.add(-0.45, 1.3, -0.55, -0.2, 1.68, -0.32, am)
+    # ---- the jaw: origin = its hinge (just under the skull, toward the back)
+    jw_ = Part("golem_jaw", 10, 64)
+    jw_.add(-0.18, -0.42, -0.62, 0.86, 0.0, 0.62, st)
+    jw_.add(0.6, -0.5, -0.5, 0.92, -0.3, 0.5, dk)                              # the chin
+    for i in range(6):
+        z = -0.44 + i * 0.15
+        jw_.add(0.72, 0.0, z, 0.82, 0.1, z + 0.08, solid((196, 190, 172), 5))  # lower teeth
+    jw_.add(0.2, -0.36, -0.5, 0.75, -0.02, 0.5, solid((40, 22, 12), 3))        # the dark of its mouth (seen when it roars)
+    for (z, ln) in ((-0.38, 0.55), (-0.15, 0.8), (0.1, 0.7), (0.32, 0.5)):
+        jw_.add(0.42, -0.42 - ln, z, 0.88, -0.42, z + 0.18, msd)               # a long mossy beard
+        jw_.add(0.5, -0.42 - ln - 0.1, z + 0.03, 0.8, -0.42 - ln, z + 0.15, ms)
+    # ---- the upper arm: origin = the shoulder, down to the elbow at y -1.75
+    arm = Part("golem_arm", 8, 128)
+    rounded(arm, -0.62, -1.75, -0.6, 0.62, 0.2, 0.6, st, 0.18)
+    arm.add(-0.66, -0.15, -0.64, 0.66, 0.2, 0.64, ms)                          # moss on the shoulder joint
+    arm.add(-0.68, -1.0, -0.66, 0.68, -0.85, 0.66, dk)                         # a carved band
+    arm.add(-0.66, -1.78, -0.64, 0.66, -1.55, 0.64, dk)                        # the elbow cap
+    arm.add(-0.2, -0.7, 0.6, 0.15, -0.25, 0.85, am)                            # crystals sprouting out
+    arm.add(-0.12, -0.25, 0.65, 0.08, -0.08, 0.8, amd)
+    arm.add(-0.25, -1.4, -0.82, 0.05, -1.05, -0.6, am)
+    # ---- the forearm + fist: origin = the elbow
+    fa = Part("golem_forearm", 8, 128)
+    rounded(fa, -0.6, -1.25, -0.58, 0.6, 0.05, 0.58, st, 0.16)
+    rounded(fa, -0.7, -1.3, -0.68, 0.7, -0.55, 0.68, st, 0.18)                 # it swells toward the wrist
+    for (x, y, h) in ((-0.75, -0.95, 0.5), (-0.78, -0.45, 0.35)):             # a ridge of amethyst on the back of the forearm
+        fa.add(x - 0.12, y, -0.14, x + 0.1, y + h, 0.14, am)
+    fa.add(-0.95, -0.85, -0.1, -0.75, -0.55, 0.1, amd)
+    fa.add(-0.88, -2.3, -0.86, 0.92, -1.25, 0.86, dk)                          # the huge fist
+    for i in range(4):
+        z = -0.78 + i * 0.4
+        fa.add(0.92, -2.15, z, 1.08, -1.4, z + 0.36, gstone(STONE_L, None, AMBER))  # knuckles
+        fa.add(0.98, -1.85, z + 0.12, 1.1, -1.75, z + 0.24, vein)              # light in the cracks between them
+    fa.add(0.3, -2.42, -0.8, 0.95, -2.28, 0.8, dk)                             # fingers curled under
+    fa.add(-0.3, -2.0, 0.86, 0.5, -1.45, 1.0, lt)                              # the thumb
+    fa.add(-0.9, -1.3, -0.9, 0.94, -1.22, 0.9, ms)
+    # ---- the thigh: origin = the hip joint (one side), down to the knee at y -1.2
+    leg = Part("golem_leg", 8, 128)
+    rounded(leg, -0.62, -1.2, -0.62, 0.62, 0.12, 0.62, st, 0.18)
+    leg.add(-0.66, -0.5, -0.66, 0.66, -0.38, 0.66, dk)
+    leg.add(0.5, -1.32, -0.42, 0.76, -0.92, 0.42, lt)                          # the knee cap
+    # ---- the shin + foot: origin = the knee, the sole at y -1.1
+    sh = Part("golem_shin", 8, 128)
+    rounded(sh, -0.58, -0.88, -0.58, 0.58, 0.05, 0.58, dk, 0.16)
+    sh.add(-0.6, -0.4, -0.6, 0.6, -0.3, 0.6, st)
+    sh.add(-0.75, -1.1, -0.74, 1.02, -0.82, 0.74, st)                          # the foot
+    for i in range(3):
+        z = -0.62 + i * 0.44
+        sh.add(1.02, -1.1, z, 1.2, -0.88, z + 0.36, lt)                        # toes
+    sh.add(-0.72, -0.84, -0.7, 0.98, -0.78, 0.7, ms)
+    for (x, z) in ((0.6, -0.5), (-0.4, 0.4), (0.2, 0.55)):
+        sh.add(x, -0.78, z, x + 0.06, -0.62, z + 0.06, msd)                    # grass growing on its feet
+    # Bedrock: its stands can only turn, so the pack breathes the chest and works the jaw on its own
+    b.bone_all("breathe").anim("breathe", "pos", (0, 0.6, 0), 3.4)
+    jw_.bone_all("chew").anim("chew", "rot", (0, 0, 10), 2.8)
+    GOLEM_EXTRA[:] = [jw_, fa, sh]   # added in 2.0: appended at the END of ALL_PARTS so every other part keeps its texture seed
     return [b, hd, arm, leg]
+
+
+GOLEM_EXTRA = []
 
 
 WOOD, IRON, TONGUE, RED = (150, 100, 52), (70, 70, 76), (210, 80, 112), (255, 50, 40)
@@ -2132,6 +2258,7 @@ def deep_bosses():
 
 
 ALL_PARTS = leviathan() + sandworm() + frost_wyrm() + lich() + golem() + mimic() + locust() + ghost_captain() + aurora() + black_sun() + deep_bosses()
+ALL_PARTS += GOLEM_EXTRA
 
 # =====================================================================================================================
 #  16x16 pixel art (flat items + Index icons)

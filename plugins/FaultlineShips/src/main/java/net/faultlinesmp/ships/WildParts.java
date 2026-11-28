@@ -38,10 +38,10 @@ final class WildParts {
         P.put("lich_arm", new double[]{1.00000, -0.01000, 0.06000, -0.00000});
         P.put("lich_staff", new double[]{1.05872, 0.16400, -0.16191, -0.00000});
         P.put("lich_cape", new double[]{1.00000, -0.03000, -0.61968, -0.00000});
-        P.put("golem_body", new double[]{1.39574, 0.03000, 2.09362, -0.00000});
-        P.put("golem_head", new double[]{1.00000, 0.16500, 1.15000, -0.00000});
-        P.put("golem_arm", new double[]{1.31745, 0.06500, -1.77383, 0.01500});
-        P.put("golem_leg", new double[]{1.00000, 0.20000, -0.80000, -0.00000});
+        P.put("golem_body", new double[]{1.69872, -0.08000, 1.59808, -0.11000});
+        P.put("golem_head", new double[]{1.00000, 0.20000, 1.54000, -0.00000});
+        P.put("golem_arm", new double[]{1.00000, -0.00000, -0.28000, 0.01500});
+        P.put("golem_leg", new double[]{1.00000, 0.05000, 0.18000, -0.00000});
         P.put("mimic_base", new double[]{1.00000, 0.08500, 1.50000, -0.00000});
         P.put("mimic_lid", new double[]{1.00000, 0.48000, 1.36000, 0.00500});
         P.put("locust", new double[]{1.00000, 0.09000, 1.32000, -0.00000});
@@ -91,6 +91,9 @@ final class WildParts {
         P.put("titan_claw", new double[]{1.00000, 1.26554, 0.78058, -0.00000});
         P.put("titan_lure", new double[]{1.00000, 0.76500, 1.43000, -0.00000});
         P.put("titan_b", new double[]{2.28863, 0.88966, 1.68789, -0.00000});
+        P.put("golem_jaw", new double[]{1.00000, 0.37000, 0.18000, -0.00000});
+        P.put("golem_forearm", new double[]{1.00000, 0.07500, -0.92000, 0.05000});
+        P.put("golem_shin", new double[]{1.00000, 0.22500, 0.40000, -0.00000});
         JAVA_ONLY.addAll(java.util.List.of("lev_head", "lev_jaw", "worm_head", "worm_petal", "wyrm_head", "wyrm_jaw", "aurora", "black_sun", "scourge_head", "scourge_mandible", "scourge_mandible_r", "scourge_head_molt", "titan_body", "titan_head", "titan_eyes", "titan_jaw", "titan_arm", "titan_claw", "titan_lure"));
         BEDROCK_ONLY.addAll(java.util.List.of("lev_head_b", "worm_head_b", "wyrm_head_b", "scourge_head_b", "scourge_head_b_molt", "titan_b"));
     }

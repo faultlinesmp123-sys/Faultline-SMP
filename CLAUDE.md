@@ -3934,6 +3934,29 @@ Notes:
   their head; it starts ~16 blocks up (game sounds fade linearly over 16 x max(1, volume) blocks) and eases down = fade in; walking
   out it eases back up and is then removed + stopSound = fade out; walking back in brings it down again. `fadeTick` every tick;
   another world / quit / settings change = cut at once. Bedrock players get the old straight on / off. Tested (scratch `wb/WbTest`).
+- **The Stone Golem overhaul (Bosses, Index, Items pack hash, FaultlineSMP.zip, FaultlineWild.mcpack; same 2.0.0)**: NEW MODEL
+  (`tools/wild_assets.py golem()` + `gstone` painter: chiselled mossy stone, amber core behind cracked chest plates, a mossy boulder
+  back with vines / glow berries / mushrooms, amethyst on shoulders / head / forearms) in 7 jointed parts, each origin = its joint:
+  `golem_body` (hip), `golem_head` (neck), `golem_jaw` (hinge), `golem_arm` (shoulder -> elbow at y -1.75), `golem_forearm` (elbow ->
+  fist), `golem_leg` (hip -> knee at -1.2), `golem_shin` (knee -> sole at -1.1). The 3 new parts are `GOLEM_EXTRA`, appended at the
+  END of `ALL_PARTS` so no other part's texture seed moves (the tool is deterministic: only golem files change). THE RIG
+  (`StoneGolem.place`): hip -> waist twist -> chest (`chestQ`) -> neck / head / jaw and shoulders -> elbows; the legs hang from the
+  pelvis (doesn't lean) and are SOLVED (two-bone, law of cosines) so the feet stay under it as it crouches (`DROP`). 18 joints
+  (`DROP .. STANCE`), each on its own spring (`K`/`D`: planted legs, heavy lagging arms, the head last); moves set targets and a
+  `snap` multiplier for strikes. Walk cycle with bob lowest at footfalls, hip roll, counter-twist, arms a beat late, footstep thuds
+  on the beat; idle beats (look round, shoulder roll, flex, huff); a wake-up out of the floor; flinch; staged death (stagger, knees,
+  topple, crumble). MOVES (picked by range, never the same twice in a row; `wild.golem.moves.<key>`): punch 6 (alternating arms,
+  short cooldown), sweep 8 (backhand arc, side knockback), ground-pound 10 + shockwave 7 (an expanding ring: grounded players are
+  hit, jumping dodges: `shockwave()`), stomp 5 x2/3 (lifted leg, Slowness, jumpable), boulder 9 (torn from the floor, carried in the
+  fist, leads its target, shatters into 3 chunks 4), crystal-spikes 7 (amethyst grows out of the floor; 3 lines from phase 2),
+  rampage 9 (charge; ramming a wall = stunned `charge-stun-ticks` 50 + rubble; stunned it takes x`stunned-damage-taken` 1.35), grab
+  (lift in the right fist, roar, slam 9 / phase 3 throw 6; `grab-break-share` 3% of its health in hits frees the player),
+  phase 2 cave-in 7 (roar push + stalactites falling on 3 warned spots per player, 5 in phase 3) and Overgrowth, phase 3 core-pulse 7
+  (three amber shockwaves) + `phase3-speed` x1.2. Iron-golem melee 6. BALANCE: every hit goes through vanilla armour (`p.damage`
+  with the mob as source) x `bosses.damage-multiplier` 1.3 x difficulty (Hard 1.5): the biggest (pound / grab slam) ~19.5 raw on
+  Hard = ~5 after full Protection II diamond, so a Prot II diamond player can beat it. Index text updated. Preview
+  `tools/previews/golem_moves.png` (scratch `g3/G3.java` dumps each part's real display matrix from MockBukkit, `g3/render.py`
+  draws them). Tested (scratch `g3/G3`: 11 parts, all 11 moves run + end, grab + break free, wall stun, death + cleanup).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

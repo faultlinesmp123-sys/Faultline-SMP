@@ -3868,6 +3868,21 @@ Notes:
   domain's A record on the server (mc.faultlinesmp.com -> 212.192.28.68). Tested against Pebble (Let's Encrypt's own test CA,
   scratch `peb/LeTest`: real HTTP-01 validation, cert for voice.test verified by curl against Pebble's root, reused on restart;
   the backoff after a failure) + `bvc/run.sh` 31/31.
+- **BedrockSimpleVoicechat security pass (same 1.0.0)**: WebServer: per-address connection cap `MAX_PER_IP` 16 (+ `MAX_OPEN` 400),
+  checked at accept BEFORE the TLS handshake; the request head must arrive within 10 s / 16 KB (slowloris); strict request line;
+  STRIKES (`strike(ip, points, why)`: floods, bad requests, file probing, wrong codes 3, unknown device keys / links 2, wrong group
+  passwords 2, bad frames 5-6) = 20 in 10 min -> the address is BLOCKED 15 min (dropped at accept, its sockets closed, logged
+  "[Security]"); loopback / LAN never (`isLocal`). WebSocket: the Origin must be the page itself (Host header or `publicUrl`;
+  `security.allow-no-origin` false) = no cross-site socket hijacking; client frames must be masked, RSV bits 0, frames <= 64 KB,
+  texts <= 8 KB, control frames <= 125 B, <= 200 frames / 30 texts a second, else dropped + strikes. Headers: strict CSP
+  (script-src 'self', no inline JS: app.js's avatar fallback is a capture-phase error listener now; img-src self/data/mc-heads.net;
+  frame-ancestors 'none'), X-Frame-Options DENY, nosniff, no-referrer, COOP/CORP same-origin, Permissions-Policy, Cache-Control
+  no-store, HSTS only with a trusted cert (`realCertificate()`: Let's Encrypt / pem / pkcs12; never self-signed or "Proceed" breaks).
+  Auth: tokens / codes / group passwords compared in constant time (`same`), lengths checked; 100 wrong codes server-wide in 10
+  min pauses TYPED codes (QR links keep working); group passwords 5 wrong a minute per page, group creation once every 10 s,
+  names / user agents scrubbed of control chars and colour codes (`clean`). `/vc status` shows blocked addresses, `/vc unban`.
+  Tested: `bvc/run.sh` 44/44 (headers, traversal, foreign / missing Origin refused, frame flood, oversized message, 7 wrong codes
+  = blocked, localhost never, constant-time compare, console injection) + `brun.sh` (real Chromium under the CSP: talks, 0 gaps).
 - **The mace limit is enforced (Items, same 2.0.0)**: the live server had 8/5 registered (old maces from before the limit
   were registered when first seen, and only CRAFTING was refused at the limit). `MaceLimit.sweep` now runs EVERY SECOND:
   `trimToMax()` = while more are registered than `max`, the NEWEST registered (the list keeps registration order) is revoked =

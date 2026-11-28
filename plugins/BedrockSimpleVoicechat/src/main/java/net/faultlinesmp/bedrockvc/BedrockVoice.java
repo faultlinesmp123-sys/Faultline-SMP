@@ -334,18 +334,30 @@ public final class BedrockVoice extends JavaPlugin implements Listener, TabCompl
         UUID who = null;
         boolean fresh = false;
         String token = str(o, "token"), code = str(o, "code").replaceAll("[^0-9]", ""), key = str(o, "device");
+        WebServer srv = web;
         if (!token.isEmpty()) {
-            Link l = links.values().stream().filter(x -> x.token.equals(token)).findFirst().orElse(null);
+            Link l = token.length() > 100 ? null : links.values().stream().filter(x -> same(x.token, token)).findFirst().orElse(null);
             if (l != null && l.until > System.currentTimeMillis()) { who = l.player; fresh = true; links.remove(l.player); }
-            else { ws.text(json("t", "authfail", "msg", "That link has run out. Type /vc in game for a new one.")); }
+            else {
+                if (srv != null) srv.strike(ip, 2, "bad voice link");
+                ws.text(json("t", "authfail", "msg", "That link has run out. Type /vc in game for a new one."));
+            }
         } else if (!code.isEmpty()) {
             if (!codeAllowed(ip)) { ws.text(json("t", "authfail", "msg", "Too many tries. Wait a few minutes.")); return null; }
-            Link l = links.values().stream().filter(x -> x.code.equals(code)).findFirst().orElse(null);
+            if (codesPaused()) { ws.text(json("t", "authfail", "msg", "Typing codes is paused for a few minutes. Scan the QR map from /vc instead.")); return null; }
+            Link l = code.length() != 6 ? null : links.values().stream().filter(x -> same(x.code, code)).findFirst().orElse(null);
             if (l != null && l.until > System.currentTimeMillis()) { who = l.player; fresh = true; links.remove(l.player); }
-            else ws.text(json("t", "authfail", "msg", "Wrong or expired code. Type /vc in game to get one."));
+            else {
+                codeFailed();
+                if (srv != null) srv.strike(ip, 3, "wrong voice codes");
+                ws.text(json("t", "authfail", "msg", "Wrong or expired code. Type /vc in game to get one."));
+            }
         } else if (!key.isEmpty()) {
-            who = deviceOwner(key);
-            if (who == null) ws.text(json("t", "authfail", "forget", true, "msg", "This device isn't linked any more. Type /vc in game."));
+            who = key.length() > 100 ? null : deviceOwner(key);
+            if (who == null) {
+                if (srv != null) srv.strike(ip, 2, "unknown voice device keys");
+                ws.text(json("t", "authfail", "forget", true, "msg", "This device isn't linked any more. Type /vc in game."));
+            }
         }
         if (who == null) return null;
         UUID id = who;
@@ -361,7 +373,7 @@ public final class BedrockVoice extends JavaPlugin implements Listener, TabCompl
         String codec = getConfig().getString("audio.codec", "ulaw");
         if (codec.equalsIgnoreCase("auto")) codec = str(o, "codec").isEmpty() ? "ulaw" : str(o, "codec");
         s.ulaw = !codec.equalsIgnoreCase("pcm16");
-        s.device = str(o, "ua");
+        s.device = clean(str(o, "ua"), 60);
         if (o.has("vols") && o.get("vols").isJsonObject()) {
             for (var e : o.getAsJsonObject("vols").entrySet()) try { if (s.vols.size() < 500) s.vols.put(UUID.fromString(e.getKey()), Math.max(0, Math.min(2, e.getValue().getAsFloat()))); } catch (Exception ignored) { }
         }
@@ -391,6 +403,41 @@ public final class BedrockVoice extends JavaPlugin implements Listener, TabCompl
         });
         getLogger().info(name + " connected voice from " + (s.device.isEmpty() ? "a browser" : s.device));
         return s;
+    }
+
+    /** Compares secrets in constant time (no timing hints about how much of a guess was right). */
+    static boolean same(String a, String b) {
+        return a != null && b != null && MessageDigest.isEqual(a.getBytes(StandardCharsets.UTF_8), b.getBytes(StandardCharsets.UTF_8));
+    }
+
+    /** Text from a browser that ends up in the console / devices.yml: no control characters, colour codes or huge strings. */
+    static String clean(String s, int max) {
+        if (s == null) return "";
+        String c = s.replaceAll("[\\p{Cntrl}\u00a7]", "").trim();
+        return c.length() > max ? c.substring(0, max) : c;
+    }
+
+    /**
+     * Server-wide guard against many addresses guessing codes together: 100 wrong codes in 10 minutes pauses typed codes
+     * for the rest of those 10 minutes (the QR / link way, a long random token, keeps working).
+     */
+    private final long[] codeFails = {0, 0};
+    private void codeFailed() {
+        long now = System.currentTimeMillis();
+        synchronized (codeFails) {
+            if (now - codeFails[0] > 600_000L) { codeFails[0] = now; codeFails[1] = 0; }
+            if (++codeFails[1] == 100) getLogger().warning("[Security] 100 wrong voice codes in 10 minutes from many addresses: typed codes are paused for a while (QR links still work).");
+        }
+    }
+    private boolean codesPaused() {
+        synchronized (codeFails) { return System.currentTimeMillis() - codeFails[0] <= 600_000L && codeFails[1] >= 100; }
+    }
+
+    String publicUrl() { return publicUrl; }
+    /** A certificate browsers trust (Let's Encrypt or the owner's own): safe to send HSTS. */
+    boolean realCertificate() {
+        String m = getConfig().getString("web.tls.mode", "auto").toLowerCase(Locale.ROOT);
+        return !leHost.isEmpty() || m.equals("pem") || m.equals("pkcs12") || m.equals("pfx") || m.equals("p12");
     }
 
     private boolean codeAllowed(String ip) {
@@ -621,11 +668,26 @@ public final class BedrockVoice extends JavaPlugin implements Listener, TabCompl
                 case "join" -> {
                     Group g = a.getGroup(UUID.fromString(str(o, "id")));
                     if (g == null) { send(s, json("t", "toast", "msg", "That group is gone.")); return; }
-                    if (g.hasPassword() && !Objects.equals(password(g), str(o, "pw"))) { send(s, json("t", "toast", "msg", "Wrong group password.")); return; }
+                    if (g.hasPassword()) {
+                        long now = System.currentTimeMillis();
+                        if (now - s.pwWindow > 60_000L) { s.pwWindow = now; s.pwFails = 0; }
+                        if (s.pwFails >= 5) { send(s, json("t", "toast", "msg", "Too many wrong passwords. Wait a minute.")); return; }
+                        String want = password(g);
+                        if (want == null || !same(want, str(o, "pw"))) {
+                            s.pwFails++;
+                            WebServer srv = web;
+                            if (srv != null && s.ws != null) srv.strike(s.ws.ip, 2, "wrong group passwords");
+                            send(s, json("t", "toast", "msg", "Wrong group password.")); return;
+                        }
+                    }
                     c.setGroup(g);
                 }
                 case "create" -> {
-                    String name = str(o, "name").trim();
+                    String name = clean(str(o, "name"), 40);
+                    long now = System.currentTimeMillis();
+                    if (now - s.groupMadeAt < 10_000L) { send(s, json("t", "toast", "msg", "Wait a few seconds before making another group.")); return; }
+                    s.groupMadeAt = now;
+                    if (str(o, "pw").length() > 64) { send(s, json("t", "toast", "msg", "That password is too long.")); return; }
                     if (name.isEmpty() || name.length() > 24) { send(s, json("t", "toast", "msg", "Give the group a name (up to 24 letters).")); return; }
                     String pw = str(o, "pw");
                     Group.Type type = switch (str(o, "type")) { case "open" -> Group.Type.OPEN; case "isolated" -> Group.Type.ISOLATED; default -> Group.Type.NORMAL; };
@@ -726,6 +788,8 @@ public final class BedrockVoice extends JavaPlugin implements Listener, TabCompl
                 if (admin) {
                     sender.sendMessage(ChatColor.GRAY + "Web: " + webStatus + " " + publicUrl + ChatColor.GRAY + " | voice API: " + (api != null ? "hooked" : "NOT hooked"));
                     sender.sendMessage(ChatColor.GRAY + "Let's Encrypt: " + leStatus);
+                    WebServer w0 = web;
+                    sender.sendMessage(ChatColor.GRAY + "Security: " + (w0 == null ? 0 : w0.bannedCount()) + " address(es) blocked right now (/vc unban clears them)");
                     long n = sessions.values().stream().filter(Session::attached).count();
                     sender.sendMessage(ChatColor.GRAY + "Players talking through the page: " + ChatColor.WHITE + n);
                 }
@@ -755,6 +819,12 @@ public final class BedrockVoice extends JavaPlugin implements Listener, TabCompl
                 if (s != null && s.ws != null) { s.ws.text(json("t", "bye", "forget", true, "msg", "You unlinked this device. Type /vc in game to link again.")); s.ws.close(); }
                 p.sendMessage(ChatColor.GREEN + "Every device you linked for voice chat is forgotten.");
             }
+            case "unban" -> {
+                if (!admin) return true;
+                WebServer w0 = web;
+                if (w0 != null) w0.unbanAll();
+                sender.sendMessage(ChatColor.GREEN + "Every blocked address is allowed again.");
+            }
             case "reload" -> {
                 if (!admin) return true;
                 reloadConfig();
@@ -774,7 +844,7 @@ public final class BedrockVoice extends JavaPlugin implements Listener, TabCompl
         s.sendMessage(ChatColor.YELLOW + "/vc" + ChatColor.GRAY + " - get your link, code and QR map");
         s.sendMessage(ChatColor.YELLOW + "/vc mute | unmute | deafen | undeafen");
         s.sendMessage(ChatColor.YELLOW + "/vc status" + ChatColor.GRAY + ", " + ChatColor.YELLOW + "/vc forget" + ChatColor.GRAY + " (unlink your devices)");
-        if (admin) s.sendMessage(ChatColor.YELLOW + "/vc list | kick <player> | status [player] | reload");
+        if (admin) s.sendMessage(ChatColor.YELLOW + "/vc list | kick <player> | status [player] | reload | unban");
     }
 
     private void statusOf(CommandSender to, String name) {
@@ -789,7 +859,7 @@ public final class BedrockVoice extends JavaPlugin implements Listener, TabCompl
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
             List<String> l = new ArrayList<>(List.of("qr", "mute", "unmute", "deafen", "undeafen", "status", "forget", "help"));
-            if (sender.hasPermission("bedrockvc.admin")) l.addAll(List.of("list", "kick", "reload"));
+            if (sender.hasPermission("bedrockvc.admin")) l.addAll(List.of("list", "kick", "reload", "unban"));
             return l.stream().filter(x -> x.startsWith(args[0].toLowerCase(Locale.ROOT))).toList();
         }
         if (args.length == 2 && (args[0].equalsIgnoreCase("kick") || args[0].equalsIgnoreCase("status")) && sender.hasPermission("bedrockvc.admin"))

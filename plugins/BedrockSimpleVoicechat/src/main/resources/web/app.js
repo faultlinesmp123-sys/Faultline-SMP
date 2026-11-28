@@ -119,7 +119,7 @@
     try {
       const ds = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'audioinput');
       const sel = $('s-dev'); const cur = settings.dev;
-      sel.innerHTML = '<option value="">Default</option>' + ds.map(d => `<option value="${d.deviceId}">${esc(d.label || 'Microphone')}</option>`).join('');
+      sel.innerHTML = '<option value="">Default</option>' + ds.map(d => `<option value="${esc(d.deviceId)}">${esc(d.label || 'Microphone')}</option>`).join('');
       sel.value = ds.some(d => d.deviceId === cur) ? cur : '';
     } catch {}
   }
@@ -259,9 +259,9 @@
   }
 
   function head(uuid, name) {
-    const letter = (name || '?').replace(/^[^a-zA-Z0-9]/, '').charAt(0).toUpperCase() || '?';
+    const letter = (name || '?').replace(/[^a-zA-Z0-9]/g, '').charAt(0).toUpperCase() || '?';
     const svg = `data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'><rect width='8' height='8' fill='#2a3a4c'/><text x='4' y='6.2' font-size='6' text-anchor='middle' fill='#cfe' font-family='sans-serif'>${letter}</text></svg>`)}`;
-    return `<img src="https://mc-heads.net/avatar/${uuid}/36" data-f="${svg}" onerror="this.onerror=null;this.src=this.dataset.f" alt="">`;
+    return `<img src="https://mc-heads.net/avatar/${esc(uuid)}/36" data-f="${esc(svg)}" alt="">`;
   }
 
   function renderPeople(m) {
@@ -405,3 +405,9 @@
 
   if (token || deviceKey) showStart(''); else { show('login'); buildCode(); }
 })();
+
+// No inline handlers (the page's security policy blocks them): a head that fails to load falls back to its letter.
+document.addEventListener('error', (e) => {
+  const t = e.target;
+  if (t && t.tagName === 'IMG' && t.dataset && t.dataset.f && !t.dataset.fb) { t.dataset.fb = '1'; t.src = t.dataset.f; }
+}, true);

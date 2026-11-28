@@ -33,6 +33,9 @@ final class Session {
     volatile boolean ulaw = true;
     volatile boolean muted, deafened, whisper;
     volatile String lastStatus;
+    /** Wrong group passwords in the current minute (brute-force guard). */
+    long pwWindow; int pwFails;
+    long groupMadeAt;
     volatile float master = 1f;
     volatile String device = "";
     final Map<UUID, Float> vols = new ConcurrentHashMap<>();

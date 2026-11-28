@@ -40,6 +40,51 @@ final class WebServer {
     private final Map<String, int[]> hits = new ConcurrentHashMap<>();
     private volatile boolean running;
 
+    // ------------------------------------------------------------------ security
+    /** Connections open per address: one address can't take every slot (a slow-connection flood). */
+    private final Map<String, AtomicInteger> perIp = new ConcurrentHashMap<>();
+    static final int MAX_PER_IP = 16, MAX_OPEN = 400;
+    /** Strike points per address (bad codes, wrong keys, floods, bad frames); 20 in 10 minutes = banned 15 minutes. */
+    private final Map<String, long[]> strikes = new ConcurrentHashMap<>();
+    private final Map<String, Long> banned = new ConcurrentHashMap<>();
+    static final int BAN_AT = 20;
+    static final long STRIKE_WINDOW = 600_000L, BAN_MS = 900_000L;
+
+    boolean banned(String ip) {
+        Long until = banned.get(ip);
+        if (until == null) return false;
+        if (until > System.currentTimeMillis()) return true;
+        banned.remove(ip);
+        return false;
+    }
+
+    /** Adds strike points to an address; enough of them bans it for a while (logged). */
+    void strike(String ip, int points, String why) {
+        if (ip == null || isLocal(ip)) return;
+        long now = System.currentTimeMillis();
+        if (strikes.size() > 20000) strikes.clear();
+        long[] st = strikes.computeIfAbsent(ip, k -> new long[]{now, 0});
+        synchronized (st) {
+            if (now - st[0] > STRIKE_WINDOW) { st[0] = now; st[1] = 0; }
+            st[1] += points;
+            if (st[1] >= BAN_AT && !banned(ip)) {
+                banned.put(ip, now + BAN_MS);
+                st[1] = 0;
+                pl.getLogger().warning("[Security] " + ip + " is blocked for 15 minutes (" + why + ").");
+                for (Socket s : open) if (ip.equals(s.getInetAddress().getHostAddress())) try { s.close(); } catch (IOException ignored) { }
+            }
+        }
+    }
+
+    int bannedCount() { long now = System.currentTimeMillis(); banned.values().removeIf(t -> t < now); return banned.size(); }
+    void unbanAll() { banned.clear(); strikes.clear(); }
+
+    /** The server's own machine / LAN (Geyser, a reverse proxy, the owner testing) is never banned. */
+    static boolean isLocal(String ip) {
+        try { InetAddress a = InetAddress.getByName(ip); return a.isLoopbackAddress() || a.isAnyLocalAddress(); }
+        catch (Exception e) { return false; }
+    }
+
     WebServer(BedrockVoice pl, String bind, int port, SSLContext tls, Handler handler) {
         this.pl = pl; this.bind = bind; this.port = port; this.tls = tls; this.handler = handler;
     }
@@ -72,8 +117,17 @@ final class WebServer {
         while (running) {
             try {
                 Socket s = server.accept();
-                if (open.size() > 400) { s.close(); continue; }
-                pool.submit(() -> serve(s));
+                String ip = s.getInetAddress().getHostAddress();
+                // dropped before the TLS handshake: costs a banned / flooding address nothing to try, and us nothing
+                if (open.size() >= MAX_OPEN || banned(ip)) { s.close(); continue; }
+                AtomicInteger n = perIp.computeIfAbsent(ip, k -> new AtomicInteger());
+                if (n.incrementAndGet() > MAX_PER_IP) {
+                    n.decrementAndGet();
+                    strike(ip, 1, "too many connections at once");
+                    s.close();
+                    continue;
+                }
+                pool.submit(() -> { try { serve(s); } finally { if (n.decrementAndGet() <= 0) perIp.remove(ip, n); } });
             } catch (IOException e) {
                 if (running) pl.getLogger().fine("accept: " + e);
             }
@@ -87,7 +141,9 @@ final class WebServer {
         int[] h = hits.computeIfAbsent(ip, k -> new int[]{(int) minute, 0});
         synchronized (h) {
             if (h[0] != (int) minute) { h[0] = (int) minute; h[1] = 0; }
-            return ++h[1] <= 120;
+            if (++h[1] <= 120) return true;
+            if (h[1] % 20 == 0) strike(ip, 4, "request flood");
+            return false;
         }
     }
 
@@ -95,19 +151,22 @@ final class WebServer {
         open.add(s);
         String ip = s.getInetAddress().getHostAddress();
         try {
-            s.setSoTimeout(15000);
+            s.setSoTimeout(10000);
             s.setTcpNoDelay(true);
             InputStream in = new BufferedInputStream(s.getInputStream());
             OutputStream out = new BufferedOutputStream(s.getOutputStream());
-            String line = readLine(in);
+            // the whole request head must arrive within 10 s and 16 KB (a byte-at-a-time "slowloris" can't hold a slot)
+            long deadline = System.currentTimeMillis() + 10000;
+            int[] budget = {16384};
+            String line = readLine(in, deadline, budget);
             if (line == null) return;
             String[] req = line.split(" ");
-            if (req.length < 2) return;
+            if (req.length != 3 || !req[2].startsWith("HTTP/1.") || !req[1].startsWith("/")) { strike(ip, 2, "bad request"); return; }
             Map<String, String> headers = new HashMap<>();
-            for (String h; (h = readLine(in)) != null && !h.isEmpty(); ) {
+            for (String h; (h = readLine(in, deadline, budget)) != null && !h.isEmpty(); ) {
                 int c = h.indexOf(':');
                 if (c > 0) headers.put(h.substring(0, c).trim().toLowerCase(Locale.ROOT), h.substring(c + 1).trim());
-                if (headers.size() > 64) return;
+                if (headers.size() > 48) { strike(ip, 2, "too many headers"); return; }
             }
             String fwd = headers.get("x-forwarded-for");
             if (fwd != null && pl.trustProxy()) ip = fwd.split(",")[0].trim();
@@ -116,12 +175,17 @@ final class WebServer {
             int q = path.indexOf('?');
             if (q >= 0) path = path.substring(0, q);
             if (path.equals("/ws") && "websocket".equalsIgnoreCase(headers.get("upgrade"))) {
+                if (!originOk(headers)) {
+                    strike(ip, 5, "voice socket from another website");
+                    respond(out, 403, "text/plain", "Forbidden".getBytes(StandardCharsets.UTF_8));
+                    return;
+                }
                 upgrade(s, in, out, headers, ip);
                 return;
             }
             if (!req[0].equals("GET") && !req[0].equals("HEAD")) { respond(out, 405, "text/plain", new byte[0]); return; }
             Asset a = asset(path);
-            if (a == null) { respond(out, 404, "text/plain", "Not found".getBytes(StandardCharsets.UTF_8)); return; }
+            if (a == null) { strike(ip, 1, "probing for files"); respond(out, 404, "text/plain", "Not found".getBytes(StandardCharsets.UTF_8)); return; }
             respond(out, 200, a.type, req[0].equals("HEAD") ? new byte[0] : a.data);
         } catch (IOException ignored) {
         } finally {
@@ -152,20 +216,46 @@ final class WebServer {
 
     void clearCache() { assets.clear(); }
 
+    /**
+     * Only the voice page itself may open a voice socket: a browser always sends the page's Origin, so another website
+     * (which could otherwise make a visitor's browser connect) is refused. Same host as the request, or the public url.
+     */
+    private boolean originOk(Map<String, String> headers) {
+        String origin = headers.get("origin");
+        if (origin == null || origin.isEmpty()) return pl.getConfig().getBoolean("security.allow-no-origin", false);
+        String o = origin.toLowerCase(Locale.ROOT).replaceAll("/+$", "");
+        String host = headers.getOrDefault("host", "").toLowerCase(Locale.ROOT);
+        if (!host.isEmpty() && (o.equals("https://" + host) || o.equals("http://" + host))) return true;
+        String pub = pl.publicUrl().toLowerCase(Locale.ROOT).replaceAll("/+$", "");
+        return !pub.isEmpty() && o.equals(pub);
+    }
+
+    /** Locks the page down: nothing but its own files run, nobody can frame it, real certificates get HSTS. */
+    private String securityHeaders() {
+        return "\r\nX-Content-Type-Options: nosniff\r\nReferrer-Policy: no-referrer\r\nX-Frame-Options: DENY"
+            + "\r\nContent-Security-Policy: default-src 'none'; script-src 'self'; worker-src 'self'; style-src 'self' 'unsafe-inline';"
+            + " img-src 'self' data: https://mc-heads.net; connect-src 'self' wss: ws:; manifest-src 'self'; media-src 'self' blob:;"
+            + " base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+            + "\r\nCross-Origin-Opener-Policy: same-origin\r\nCross-Origin-Resource-Policy: same-origin"
+            + "\r\nPermissions-Policy: microphone=(self), camera=(), geolocation=(), payment=(), usb=()"
+            + (pl.realCertificate() ? "\r\nStrict-Transport-Security: max-age=31536000" : "");
+    }
+
     private void respond(OutputStream out, int code, String type, byte[] body) throws IOException {
-        String status = switch (code) { case 200 -> "OK"; case 404 -> "Not Found"; case 405 -> "Method Not Allowed"; case 429 -> "Too Many Requests"; default -> "Error"; };
+        String status = switch (code) { case 200 -> "OK"; case 403 -> "Forbidden"; case 404 -> "Not Found"; case 405 -> "Method Not Allowed"; case 429 -> "Too Many Requests"; default -> "Error"; };
         String h = "HTTP/1.1 " + code + " " + status + "\r\nContent-Type: " + type + "\r\nContent-Length: " + body.length
-            + "\r\nCache-Control: no-cache\r\nX-Content-Type-Options: nosniff\r\nReferrer-Policy: no-referrer"
-            + "\r\nPermissions-Policy: microphone=(self)\r\nConnection: close\r\n\r\n";
+            + "\r\nCache-Control: no-store" + securityHeaders() + "\r\nServer: voice\r\nConnection: close\r\n\r\n";
         out.write(h.getBytes(StandardCharsets.US_ASCII));
         out.write(body);
         out.flush();
     }
 
-    private static String readLine(InputStream in) throws IOException {
+    private static String readLine(InputStream in, long deadline, int[] budget) throws IOException {
         StringBuilder sb = new StringBuilder();
         int c;
         while ((c = in.read()) != -1) {
+            if (--budget[0] < 0) throw new IOException("request too big");
+            if (System.currentTimeMillis() > deadline) throw new IOException("request too slow");
             if (c == '\n') break;
             if (c != '\r') sb.append((char) c);
             if (sb.length() > 8192) throw new IOException("line too long");
@@ -186,6 +276,8 @@ final class WebServer {
         out.flush();
         s.setSoTimeout(30000); // the page pings every 5 s
         Ws ws = new Ws(s, in, out);
+        ws.ip = ip;
+        ws.server = this;
         WsListener l = handler.open(ws, ip);
         try {
             ws.readLoop(l);
@@ -208,6 +300,18 @@ final class WebServer {
 
         Ws(Socket s, InputStream in, OutputStream out) { this.s = s; this.in = in; this.out = out; }
 
+        String ip;
+        WebServer server;
+        /** Frames this second: the page sends ~50 mic frames a second plus a few messages; far past that is a flood. */
+        private long rateSecond;
+        private int rateCount, textCount;
+        static final int MAX_FRAME = 64 * 1024, MAX_TEXT = 8 * 1024, MAX_FRAMES_PER_SECOND = 200, MAX_TEXTS_PER_SECOND = 30;
+
+        private void abuse(int points, String why) throws IOException {
+            if (server != null) server.strike(ip, points, why);
+            throw new IOException(why);
+        }
+
         boolean closed() { return closed; }
         int pending() { return pending.get(); }
 
@@ -222,10 +326,17 @@ final class WebServer {
                 boolean fin = (b0 & 0x80) != 0;
                 int op = b0 & 0x0F;
                 boolean masked = (b1 & 0x80) != 0;
+                if (!masked) abuse(5, "unmasked voice frame"); // browsers always mask; RFC 6455 requires it
+                if ((b0 & 0x70) != 0) abuse(5, "bad voice frame");
                 long len = b1 & 0x7F;
                 if (len == 126) len = ((in.read() & 0xFF) << 8) | (in.read() & 0xFF);
                 else if (len == 127) { len = 0; for (int i = 0; i < 8; i++) len = (len << 8) | (in.read() & 0xFF); }
-                if (len > 1 << 20 || len < 0) throw new IOException("frame too big");
+                if (len > MAX_FRAME || len < 0) abuse(5, "oversized voice frame");
+                if (op >= 0x8 && (len > 125 || !fin)) abuse(5, "bad control frame");
+                long sec = System.currentTimeMillis() / 1000;
+                if (sec != rateSecond) { rateSecond = sec; rateCount = 0; textCount = 0; }
+                if (++rateCount > MAX_FRAMES_PER_SECOND) abuse(6, "voice frame flood");
+                if (op == 0x1 && ++textCount > MAX_TEXTS_PER_SECOND) abuse(6, "message flood");
                 byte[] mask = new byte[4];
                 if (masked) readFully(mask);
                 byte[] data = new byte[(int) len];
@@ -240,14 +351,17 @@ final class WebServer {
                         if (!fin) {
                             if (frag == null) frag = new ByteArrayOutputStream();
                             frag.write(data);
-                            if (frag.size() > 1 << 20) throw new IOException("message too big");
+                            if (frag.size() > MAX_FRAME) abuse(5, "oversized message");
                             continue;
                         }
                         if (frag != null) { frag.write(data); data = frag.toByteArray(); frag = null; }
-                        if (fragOp == 0x1) l.onText(new String(data, StandardCharsets.UTF_8));
+                        if (fragOp == 0x1) {
+                            if (data.length > MAX_TEXT) abuse(5, "oversized message");
+                            l.onText(new String(data, StandardCharsets.UTF_8));
+                        }
                         else l.onBinary(data);
                     }
-                    default -> throw new IOException("bad opcode");
+                    default -> abuse(5, "bad opcode");
                 }
             }
         }

@@ -3957,6 +3957,12 @@ Notes:
   Hard = ~5 after full Protection II diamond, so a Prot II diamond player can beat it. Index text updated. Preview
   `tools/previews/golem_moves.png` (scratch `g3/G3.java` dumps each part's real display matrix from MockBukkit, `g3/render.py`
   draws them). Tested (scratch `g3/G3`: 11 parts, all 11 moves run + end, grab + break free, wall stun, death + cleanup).
+- **Farlands reset fix (FaultlineWorld, same 2.0.0)**: `/fworld resetfarlands` found 0 region files on the live 26.x server:
+  Minecraft 26.x keeps the Overworld in `<world>/dimensions/minecraft/overworld/{region,entities,poi}` like the other
+  dimensions, and the reset only looked in `<world>/region` (on start it then said "no world" and dropped the marker).
+  `FaultlineWorld.overworldDirs` checks both layouts; the backup keeps the same sub-path. The datapack wait also passes when the
+  installed `datapacks/faultline_world.zip` already equals the jar's (`datapackReady`: it was installed on an earlier start). The
+  command prints the folder it reads. RULE: never hard-code `<world>/region`.
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

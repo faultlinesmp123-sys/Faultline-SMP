@@ -168,13 +168,33 @@ public final class FaultlineWorld extends JavaPlugin {
         } catch (NumberFormatException e) { return false; }
     }
 
+    /** Where the overworld's region / entities / poi folders are. Minecraft 26.x keeps the Overworld in
+     *  <world>/dimensions/minecraft/overworld/ like the other dimensions; older versions straight in <world>/. */
+    static List<File> overworldDirs(File worldDir) {
+        List<File> out = new java.util.ArrayList<>();
+        for (File d : new File[]{ worldDir, new File(worldDir, "dimensions/minecraft/overworld") })
+            if (new File(d, "region").isDirectory()) out.add(d);
+        return out;
+    }
+
     List<File> farFiles(File worldDir, int from) {
         List<File> out = new java.util.ArrayList<>();
-        for (String sub : new String[]{"region", "entities", "poi"}) {
-            File[] fs = new File(worldDir, sub).listFiles();
-            if (fs != null) for (File f : fs) if (farRegion(f.getName(), from)) out.add(f);
-        }
+        for (File d : overworldDirs(worldDir))
+            for (String sub : new String[]{"region", "entities", "poi"}) {
+                File[] fs = new File(d, sub).listFiles();
+                if (fs != null) for (File f : fs) if (farRegion(f.getName(), from)) out.add(f);
+            }
         return out;
+    }
+
+    /** The datapack biomes are in the registry, or the installed datapack is already this jar's (installed on an earlier
+     *  start, so it's what the world loads now). */
+    boolean datapackReady(File worldDir) {
+        if (WorldGen.BiomeMap.lookup("faultline:missing_chunks") != null) return true;
+        try (InputStream in = getResource("faultline_world.zip")) {
+            File dp = new File(worldDir, "datapacks/faultline_world.zip");
+            return in != null && dp.isFile() && java.util.Arrays.equals(in.readAllBytes(), Files.readAllBytes(dp.toPath()));
+        } catch (Exception e) { return false; }
     }
 
     /**
@@ -188,7 +208,8 @@ public final class FaultlineWorld extends JavaPlugin {
         if (!mk.isFile()) return;
         int from = RESET_FROM;
         try { from = Math.max(RESET_FROM, Integer.parseInt(Files.readString(mk.toPath()).trim())); } catch (Exception ignored) { }
-        if (WorldGen.BiomeMap.lookup("faultline:missing_chunks") == null) {
+        File worldDir0 = new File(Bukkit.getWorldContainer(), levelName());
+        if (!datapackReady(worldDir0)) {
             getLogger().warning("[World] the Farlands reset waits: this start loads the new datapack first. RESTART once more and the Farlands reset then.");
             return;
         }
@@ -198,7 +219,7 @@ public final class FaultlineWorld extends JavaPlugin {
             return;
         }
         File worldDir = new File(Bukkit.getWorldContainer(), levelName());
-        if (!new File(worldDir, "level.dat").isFile() || !new File(worldDir, "region").isDirectory()) {
+        if (!new File(worldDir, "level.dat").isFile() || overworldDirs(worldDir).isEmpty()) {
             getLogger().warning("[World] the Farlands reset: no world at " + worldDir.getPath() + " (nothing moved).");
             if (!mk.delete()) mk.deleteOnExit();
             return;
@@ -207,7 +228,7 @@ public final class FaultlineWorld extends JavaPlugin {
         File backup = new File(worldDir, "farlands_backup_" + stamp);
         int moved = 0, failed = 0;
         for (File f : farFiles(worldDir, from)) {
-            File to = new File(new File(backup, f.getParentFile().getName()), f.getName());
+            File to = new File(new File(backup, worldDir.toPath().relativize(f.getParentFile().toPath()).toString()), f.getName());
             try { to.getParentFile().mkdirs(); Files.move(f.toPath(), to.toPath()); moved++; }
             catch (Exception e) { failed++; getLogger().warning("[World] couldn't move " + f + ": " + e); }
         }
@@ -229,7 +250,10 @@ public final class FaultlineWorld extends JavaPlugin {
             boolean cancel = java.util.Arrays.stream(args).anyMatch(a -> a.equalsIgnoreCase("cancel"));
             if (cancel) { sender.sendMessage(resetMarker().delete() ? "§3[World] §7Farlands reset cancelled." : "§3[World] §7No reset was waiting."); return true; }
             if (!confirm) {
-                int all = 0; File[] rf = new File(worldDir, "region").listFiles(); if (rf != null) for (File f : rf) if (f.getName().endsWith(".mca")) all++;
+                int all = 0;
+                for (File d : overworldDirs(worldDir)) { File[] rf = new File(d, "region").listFiles(); if (rf != null) for (File f : rf) if (f.getName().endsWith(".mca")) all++; }
+                if (overworldDirs(worldDir).isEmpty()) { sender.sendMessage("§c[World] No region folder found in " + worldDir.getAbsolutePath() + " (looked in region/ and dimensions/minecraft/overworld/region/)."); return true; }
+                sender.sendMessage("§8Region files in: " + overworldDirs(worldDir).get(overworldDirs(worldDir).size() - 1).getPath());
                 sender.sendMessage("§3[World] §7" + files.size() + " of " + all + " region file(s) (" + (bytes / 1024 / 1024) + " MB) are wholly in the Farlands (" + from + "+ blocks from 0,0).");
                 sender.sendMessage("§aKEPT: §7everything within ~" + from + " blocks of 0,0 (spawn, the factions, pyramids, the sky kingdom, your bases there), the Nether, the End and the Dark Ocean.");
                 sender.sendMessage("§7On the next restart they're moved to a backup folder in the world, and those chunks generate fresh");

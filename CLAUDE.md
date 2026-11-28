@@ -3857,6 +3857,17 @@ Notes:
   from online players / `devices.yml names.<uuid>`). A devices.yml that won't parse is kept as `devices.yml.broken-<ms>` instead
   of being saved over empty. No public address found = a console warning to set `web.public-host`. Page: a second Join tap
   never opens a second audio engine / mic; `connect()` clears the "stop for good" flag (linking again after Unlink works).
+- **BedrockSimpleVoicechat: real HTTPS (Let's Encrypt, same 1.0.0)**: `Acme.java` = a small ACME (RFC 8555) client: RSA account key
+  (`letsencrypt/account.key`), RS256 JWS, newAccount / newOrder, HTTP-01 answered by a JDK `HttpServer` on
+  `web.tls.letsencrypt.challenge-port` 80 only while Let's Encrypt checks, a PKCS#10 CSR built in DER (`Acme.csr`, Tls's DER helpers),
+  saves `letsencrypt/fullchain.pem`, `privkey.pem`, `domain.txt`. `web.tls.mode: auto` (default) now uses it when the host is a
+  DOMAIN (`Acme.certifiable`: not an IP / localhost) and `web.tls.letsencrypt.enabled`; any failure = the old self-signed cert +
+  a console line saying why, and at most one try an hour per host (`letsencrypt/last-fail.txt`: LE allows 5 failed checks an
+  hour). Renewal: every 12 h a cert with < 30 days left is renewed and the page restarts (`restartWeb`; pages reconnect by
+  themselves). `/vc reload` now restarts the page too; `/vc status` shows the Let's Encrypt line. Needs TCP 80 open and the
+  domain's A record on the server (mc.faultlinesmp.com -> 212.192.28.68). Tested against Pebble (Let's Encrypt's own test CA,
+  scratch `peb/LeTest`: real HTTP-01 validation, cert for voice.test verified by curl against Pebble's root, reused on restart;
+  the backoff after a failure) + `bvc/run.sh` 31/31.
 - **The mace limit is enforced (Items, same 2.0.0)**: the live server had 8/5 registered (old maces from before the limit
   were registered when first seen, and only CRAFTING was refused at the limit). `MaceLimit.sweep` now runs EVERY SECOND:
   `trimToMax()` = while more are registered than `max`, the NEWEST registered (the list keeps registration order) is revoked =

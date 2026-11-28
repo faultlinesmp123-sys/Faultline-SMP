@@ -20,8 +20,10 @@ web:
   # Behind a reverse proxy: read the visitor's address from X-Forwarded-For (rate limits).
   trust-proxy: false
   # Phones only allow the microphone on https pages.
-  #   auto   = a self-signed certificate is made for you: works, but the first visit shows "Your connection is not
-  #            private": tap Advanced -> Proceed (once per device). Easiest.
+  #   auto   = when public-host is a DOMAIN (e.g. mc.faultlinesmp.com): a real, free Let's Encrypt certificate is fetched
+  #            and renewed by itself = no warning at all. Needs TCP port 80 open (Let's Encrypt checks the domain there for
+  #            a moment). With an IP address, or if Let's Encrypt fails: a self-signed certificate, and the first visit
+  #            shows "Your connection is not private": tap Advanced -> Proceed (once per device).
   #   pem    = your own certificate (no warning): e.g. Let's Encrypt from win-acme / certbot for a domain you own.
   #   pkcs12 = a .pfx / .p12 file + password.
   #   off    = plain http (only behind an https tunnel / reverse proxy).
@@ -31,6 +33,12 @@ web:
     key-file: "privkey.pem"
     pkcs12-file: "cert.p12"
     pkcs12-password: ""
+    letsencrypt:
+      enabled: true
+      # Optional: Let's Encrypt emails you if something goes wrong with the certificate.
+      email: ""
+      # The port Let's Encrypt checks (it always connects to 80: only change this if a router forwards 80 elsewhere).
+      challenge-port: 80
   # Colour of the page.
   accent-color: "#4ade80"
   # New devices start in push-to-talk instead of voice activation.

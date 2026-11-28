@@ -36,6 +36,7 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -186,13 +187,15 @@ public final class BedrockVoice extends JavaPlugin implements Listener, TabCompl
                 javax.net.ssl.SSLContext tls = null;
                 // behind a tunnel / reverse proxy (public-url set) the proxy does https: plain http here unless a cert is given
                 String useMode = fixedUrl.isEmpty() ? mode : (mode.equalsIgnoreCase("pem") || mode.equalsIgnoreCase("pkcs12") ? mode : "off");
+                leHost = "";
                 try { tls = Tls.load(this, useMode, host); }
                 catch (Exception e) { getLogger().warning("HTTPS couldn't start (" + e.getMessage() + "): falling back to plain http. Phones won't allow the mic without https."); }
                 web = new WebServer(this, bind, port, tls, this::openSocket);
                 web.start();
                 if (!fixedUrl.isEmpty()) publicUrl = fixedUrl.replaceAll("/+$", "");
                 else publicUrl = (tls != null ? "https://" : "http://") + (host.contains(":") ? "[" + host + "]" : host) + ":" + port;
-                webStatus = "running on port " + port + (tls != null ? " (https)" : " (http)");
+                webStatus = "running on port " + port + (tls != null ? " (https" + (leHost.isEmpty() ? ", self-signed" : ", Let's Encrypt") + ")" : " (http)");
+                if (!leHost.isEmpty()) leRenewTimer();
                 getLogger().info("Voice page: " + publicUrl + "  (open TCP port " + port + " in your firewall)");
                 if (tls == null && fixedUrl.isEmpty())
                     getLogger().warning("The voice page is plain http: browsers only give the mic to https pages. Set web.tls.mode to auto or pem.");
@@ -203,6 +206,67 @@ public final class BedrockVoice extends JavaPlugin implements Listener, TabCompl
         }, "BedrockVoice-start");
         t.setDaemon(true);
         t.start();
+    }
+
+    // ------------------------------------------------------------------ Let's Encrypt
+
+    /** The host the running page's Let's Encrypt certificate is for ("" = not using one). */
+    private volatile String leHost = "";
+    private volatile String leStatus = "not used";
+    private int leTask = -1;
+
+    /**
+     * Makes sure there's a Let's Encrypt certificate for {@code host} with 30+ days left (getting / renewing one when not),
+     * and returns {cert, key}; null = none (the caller falls back to the self-signed one). Runs off the main thread.
+     */
+    File[] letsEncrypt(String host) {
+        Acme acme = new Acme(this);
+        long left = acme.daysLeft(host);
+        if (left < 30) {
+            File fail = new File(new File(getDataFolder(), "letsencrypt"), "last-fail.txt");
+            long last = 0;
+            try { String[] f = Files.readString(fail.toPath()).trim().split(";"); if (f[0].equalsIgnoreCase(host)) last = Long.parseLong(f[1]); } catch (Exception ignored) { }
+            // Let's Encrypt allows only 5 failed checks an hour: one try an hour at most
+            if (System.currentTimeMillis() - last < 3600_000L) {
+                leStatus = "waiting to retry (last try failed less than an hour ago)";
+                getLogger().warning("Let's Encrypt: the last try for " + host + " failed less than an hour ago; trying again later.");
+            } else {
+                getLogger().info("Let's Encrypt: getting a certificate for " + host + " (port " + getConfig().getInt("web.tls.letsencrypt.challenge-port", 80) + " must be open for a moment)...");
+                try {
+                    acme.obtain(host);
+                    left = acme.daysLeft(host);
+                    try { Files.deleteIfExists(fail.toPath()); } catch (IOException ignored) { }
+                    getLogger().info("Let's Encrypt: got a certificate for " + host + " (" + left + " days). No more 'not private' warning.");
+                } catch (Exception e) {
+                    leStatus = "FAILED: " + e.getMessage();
+                    getLogger().warning("Let's Encrypt failed for " + host + ": " + e.getMessage());
+                    getLogger().warning("Using the self-signed certificate for now (players tap Advanced -> Proceed). Open TCP port 80, then /vc reload.");
+                    try { fail.getParentFile().mkdirs(); Files.writeString(fail.toPath(), host + ";" + System.currentTimeMillis()); } catch (IOException ignored) { }
+                }
+            }
+        }
+        if (left < 0) { leHost = ""; return null; }
+        leHost = host;
+        leStatus = "certificate for " + host + ", " + left + " days left";
+        return new File[]{acme.certFile(), acme.keyFile()};
+    }
+
+    /** Twice a day: a certificate with under 30 days left is renewed and the page restarts with it (pages reconnect). */
+    private void leRenewTimer() {
+        if (leTask != -1) return;
+        leTask = Bukkit.getScheduler().runTaskTimerAsynchronously(this, () -> {
+            String h = leHost;
+            if (h.isEmpty() || new Acme(this).daysLeft(h) >= 30) return;
+            getLogger().info("Let's Encrypt: renewing the certificate for " + h + ".");
+            restartWeb();
+        }, 20L * 3600 * 12, 20L * 3600 * 12).getTaskId();
+    }
+
+    private synchronized void restartWeb() {
+        WebServer w = web;
+        web = null;
+        if (w != null) w.stop();
+        startWeb();
     }
 
     private String detectIp() {
@@ -661,6 +725,7 @@ public final class BedrockVoice extends JavaPlugin implements Listener, TabCompl
                 if (sender instanceof Player p) statusOf(sender, p.getName());
                 if (admin) {
                     sender.sendMessage(ChatColor.GRAY + "Web: " + webStatus + " " + publicUrl + ChatColor.GRAY + " | voice API: " + (api != null ? "hooked" : "NOT hooked"));
+                    sender.sendMessage(ChatColor.GRAY + "Let's Encrypt: " + leStatus);
                     long n = sessions.values().stream().filter(Session::attached).count();
                     sender.sendMessage(ChatColor.GRAY + "Players talking through the page: " + ChatColor.WHITE + n);
                 }
@@ -695,8 +760,8 @@ public final class BedrockVoice extends JavaPlugin implements Listener, TabCompl
                 reloadConfig();
                 mergeDefaults();
                 debug = getConfig().getBoolean("debug", false);
-                if (web != null) web.clearCache();
-                sender.sendMessage(ChatColor.GREEN + "Reloaded. (Port / HTTPS changes need a restart.)");
+                sender.sendMessage(ChatColor.GREEN + "Reloaded. Restarting the voice page (open pages reconnect by themselves)...");
+                Bukkit.getScheduler().runTaskAsynchronously(this, this::restartWeb);
             }
             case "help" -> help(sender, admin);
             default -> help(sender, admin);

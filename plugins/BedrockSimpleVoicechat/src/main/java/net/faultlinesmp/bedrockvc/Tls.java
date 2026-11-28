@@ -30,7 +30,19 @@ final class Tls {
         File dir = pl.getDataFolder();
         KeyStore ks;
         char[] pass;
-        switch (mode.toLowerCase(Locale.ROOT)) {
+        String m = mode.toLowerCase(Locale.ROOT);
+        // auto / letsencrypt: a real Let's Encrypt certificate when the host is a domain name, else (or if that fails)
+        // the self-signed one
+        if ((m.equals("auto") || m.equals("letsencrypt") || m.equals("le"))
+                && pl.getConfig().getBoolean("web.tls.letsencrypt.enabled", true) && Acme.certifiable(host)) {
+            File[] le = pl.letsEncrypt(host);
+            if (le != null) {
+                try { return context(pemStore(le[0], le[1]), PASS); }
+                catch (Exception e) { pl.getLogger().warning("The Let's Encrypt certificate couldn't be loaded (" + e.getMessage() + "): using the self-signed one."); }
+            }
+            m = "auto";
+        }
+        switch (m) {
             case "off", "none", "http" -> { return null; }
             case "pkcs12", "pfx", "p12" -> {
                 File f = file(dir, pl.getConfig().getString("web.tls.pkcs12-file", "cert.p12"));
@@ -41,16 +53,8 @@ final class Tls {
             case "pem" -> {
                 File certF = file(dir, pl.getConfig().getString("web.tls.cert-file", "fullchain.pem"));
                 File keyF = file(dir, pl.getConfig().getString("web.tls.key-file", "privkey.pem"));
-                List<Certificate> chain = new ArrayList<>();
-                try (InputStream in = new FileInputStream(certF)) {
-                    chain.addAll(CertificateFactory.getInstance("X.509").generateCertificates(in));
-                }
-                if (chain.isEmpty()) throw new IOException("no certificate in " + certF);
-                PrivateKey key = pemKey(Files.readString(keyF.toPath(), StandardCharsets.US_ASCII));
-                pass = randomPass();
-                ks = KeyStore.getInstance("PKCS12");
-                ks.load(null, null);
-                ks.setKeyEntry("bvc", key, pass, chain.toArray(new Certificate[0]));
+                ks = pemStore(certF, keyF);
+                pass = PASS;
             }
             default -> { // auto
                 File f = new File(dir, "selfsigned.p12");
@@ -76,11 +80,31 @@ final class Tls {
                 } else pass = Files.readString(pf.toPath()).trim().toCharArray();
             }
         }
+        return context(ks, pass);
+    }
+
+    private static final char[] PASS = randomPass();
+
+    static SSLContext context(KeyStore ks, char[] pass) throws Exception {
         KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
         kmf.init(ks, pass);
         SSLContext ctx = SSLContext.getInstance("TLS");
         ctx.init(kmf.getKeyManagers(), null, new SecureRandom());
         return ctx;
+    }
+
+    /** fullchain.pem + privkey.pem -> a key store (password {@link #PASS}). */
+    static KeyStore pemStore(File certF, File keyF) throws Exception {
+        List<Certificate> chain = new ArrayList<>();
+        try (InputStream in = new FileInputStream(certF)) {
+            chain.addAll(CertificateFactory.getInstance("X.509").generateCertificates(in));
+        }
+        if (chain.isEmpty()) throw new IOException("no certificate in " + certF);
+        PrivateKey key = pemKey(Files.readString(keyF.toPath(), StandardCharsets.US_ASCII));
+        KeyStore ks = KeyStore.getInstance("PKCS12");
+        ks.load(null, null);
+        ks.setKeyEntry("bvc", key, PASS, chain.toArray(new Certificate[0]));
+        return ks;
     }
 
     private static File file(File dir, String name) {

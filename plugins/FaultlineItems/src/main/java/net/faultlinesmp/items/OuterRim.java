@@ -84,7 +84,7 @@ final class OuterRim implements Listener {
         Bukkit.getScheduler().runTaskTimer(plugin, this::tick, 40, 20);
     }
 
-    private double cfg(String path, double def) { return plugin.getConfig().getDouble("outer-rim." + path, def); }
+    private double cfg(String path, double def) { return FarNerf.get(plugin, "outer-rim." + path, def); }
     private boolean on() { return plugin.getConfig().getBoolean("outer-rim.enabled", true); }
 
     static double depth(Location l) {

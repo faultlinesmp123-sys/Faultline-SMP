@@ -101,7 +101,7 @@ final class Farlands implements Listener, CommandExecutor, TabCompleter {
         });
     }
 
-    double cfg(String k, double d) { return plugin.getConfig().getDouble("farlands." + k, d); }
+    double cfg(String k, double d) { return FarNerf.get(plugin, "farlands." + k, d); }
 
     boolean on() { return plugin.getConfig().getBoolean("farlands.enabled", true); }
 

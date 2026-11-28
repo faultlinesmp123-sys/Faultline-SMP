@@ -106,7 +106,7 @@ final class FarlandsDread implements Listener {
         });
     }
 
-    double cfg(String k, double d) { return plugin.getConfig().getDouble("farlands-dread." + k, d); }
+    double cfg(String k, double d) { return FarNerf.get(plugin, "farlands-dread." + k, d); }
     boolean flag(String k) { return plugin.getConfig().getBoolean("farlands-dread." + k, true); }
     Farlands far() { return plugin.farlands; }
 

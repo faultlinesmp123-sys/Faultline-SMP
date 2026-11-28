@@ -1264,8 +1264,12 @@ outer-rim:
 
 # 2.0: fewer hostile mobs. This share of NATURAL / patrol hostile spawns is cancelled in every world
 # (vanilla + plugin biome waves). Spawners, eggs, raids, bosses untouched. /mobspawns <percent> changes it live.
+# No plugin ever gives a player Nausea (vanilla's pufferfish etc. still do).
+no-nausea: true
+
 mob-spawning:
   enabled: true
-  reduce: 0.5
+  reduce: 0.65               # share of natural hostile spawns cancelled everywhere (an old 0.5 reads as 0.65)
+  farlands-reduce: 0.5       # an extra cut on what's left, in the Farlands only
   torches-stop-spawns: true   # no hostile spawns where torch / block light reaches (our biome waves and the Farlands too)
   light-limit: 0

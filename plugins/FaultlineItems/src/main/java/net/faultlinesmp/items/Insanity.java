@@ -97,7 +97,7 @@ final class Insanity implements Listener {
         }
     }
 
-    double cfg(String k, double d) { return plugin.getConfig().getDouble("insanity." + k, d); }
+    double cfg(String k, double d) { return FarNerf.get(plugin, "insanity." + k, d); }
 
     ItemStack locket() {
         ItemStack it = FaultlineItems.NewAccessoryItems.make(plugin, Material.CLOCK, ChatColor.AQUA + "" + ChatColor.BOLD + "Lucid Locket", locketKey,

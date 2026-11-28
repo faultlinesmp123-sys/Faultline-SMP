@@ -99,7 +99,7 @@ final class FarlandsNight implements Listener {
         });
     }
 
-    double cfg(String k, double d) { return plugin.getConfig().getDouble("farlands-night." + k, d); }
+    double cfg(String k, double d) { return FarNerf.get(plugin, "farlands-night." + k, d); }
     boolean flag(String k) { return plugin.getConfig().getBoolean("farlands-night." + k, true); }
 
     // ================================================================= the Rim Sigil (starts a Blood Rain)

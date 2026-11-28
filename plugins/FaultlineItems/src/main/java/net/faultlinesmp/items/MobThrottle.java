@@ -29,7 +29,7 @@ final class MobThrottle implements Listener, CommandExecutor {
 
     double reduce() {
         if (!plugin.getConfig().getBoolean("mob-spawning.enabled", true)) return 0;
-        return Math.max(0, Math.min(1, plugin.getConfig().getDouble("mob-spawning.reduce", 0.5)));
+        return Math.max(0, Math.min(1, FarNerf.get(plugin, "mob-spawning.reduce", 0.5)));
     }
 
     /**
@@ -53,7 +53,18 @@ final class MobThrottle implements Listener, CommandExecutor {
     public void onSpawn(CreatureSpawnEvent e) {
         if (!(e.getEntity() instanceof Enemy) || !CUT.contains(e.getSpawnReason())) return;
         double r = reduce();
+        // the Farlands get an extra cut on top (owner: too many mobs out there)
+        if (Farlands.in(e.getLocation())) r = 1 - (1 - r) * (1 - Math.max(0, Math.min(1, plugin.getConfig().getDouble("mob-spawning.farlands-reduce", 0.5))));
         if (r > 0 && ThreadLocalRandom.current().nextDouble() < r) e.setCancelled(true);
+    }
+
+    /** No nausea from any plugin (owner): every plugin-given Nausea on a player is refused. Vanilla's (pufferfish...) stays. */
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onNausea(org.bukkit.event.entity.EntityPotionEffectEvent e) {
+        if (!(e.getEntity() instanceof org.bukkit.entity.Player) || e.getNewEffect() == null) return;
+        if (!plugin.getConfig().getBoolean("no-nausea", true)) return;
+        if (e.getNewEffect().getType().equals(org.bukkit.potion.PotionEffectType.NAUSEA)
+                && e.getCause() == org.bukkit.event.entity.EntityPotionEffectEvent.Cause.PLUGIN) e.setCancelled(true);
     }
 
     @Override

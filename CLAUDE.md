@@ -3913,6 +3913,16 @@ Notes:
   `bvc/menu/MenuTest.java` (47 checks: every Java screen by click events, real Cumulus 2 form JSON + answers through a fake
   FloodgateApi, sneak gating, mic test, volumes, groups with chat prompts and passwords), `bvc/run.sh` 44/44, `brun.sh`.
   Previews: `tools/previews/voice_menu_java.png`, `voice_menu_bedrock.png` (scratch `vcprev/render.py`).
+- **No nausea, Farlands nerf, fewer mobs (Items, same 2.0.0)**: `MobThrottle.onNausea` (HIGHEST): any Nausea a PLUGIN gives a
+  player (cause PLUGIN: every plugin's bosses, mobs, Farlands, Deep, World) is refused (`no-nausea` true); vanilla's (pufferfish)
+  stays. `Items/FarNerf.java`: one table of Farlands values (old default -> new) read by every Farlands `cfg()` helper (Insanity,
+  FarlandsDread, OuterRim, FarlandsNight, Farlands) and MobThrottle, so a server config still holding the old default gets the new
+  one: insanity rise 0.6 -> 0.3 / fall 1.5 -> 2.5 / damage 2 -> 1 every 30 s; Stillness 5% -> 2%, Chunk Rot 6 -> 3%, Long Night
+  2 -> 1% (cap 5, insanity 0.2/s), Echo Storm / Faceless 3 -> 1.5% (Faceless hits 5), Lost 5 -> 2%, bed wake 35 -> 20%; Rim depth
+  +60/+40% -> +30/+20%, static storms 15 -> 6%, fake players 8 -> 4%, sieges 6 -> 3%; Blood Rain 8 -> 4% (+30/+15%); collapses
+  4 -> 2%; Farlands mobs +25 -> +15%, crawlers 30 -> 15% (max 2 near, drop 6), ghasts 25 -> 12% (max 1). MOB SPAWNS: `mob-spawning.reduce`
+  0.5 -> 0.65 everywhere (an old 0.5 reads as 0.65) + `farlands-reduce` 0.5 more of what's left in the Farlands (~82% cut there).
+  Tested (scratch `nau/NTest`).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.

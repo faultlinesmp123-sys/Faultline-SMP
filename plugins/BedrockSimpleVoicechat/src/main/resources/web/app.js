@@ -85,6 +85,11 @@
 
   // ---------------------------------------------------------------- audio
   async function startAudio() {
+    if (ctx && node) { // already set up: a second Join tap must not open a second engine
+      if (!stream) await openMic();
+      if (ctx.state !== 'running') await ctx.resume();
+      return;
+    }
     if (!window.isSecureContext) throw new Error('This page must be opened over https for the microphone to work.');
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('This browser has no microphone support. Try Chrome or Safari.');
     const AC = window.AudioContext || window.webkitAudioContext;
@@ -148,6 +153,7 @@
   // ---------------------------------------------------------------- the socket
   function connect() {
     clearTimeout(retryTimer);
+    stopForGood = false;
     const url = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws';
     net('warn', 'connecting');
     try { ws = new WebSocket(url); } catch { scheduleRetry(); return; }

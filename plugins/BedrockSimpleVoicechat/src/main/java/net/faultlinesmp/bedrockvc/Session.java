@@ -32,6 +32,7 @@ final class Session {
     volatile int rate = 24000;
     volatile boolean ulaw = true;
     volatile boolean muted, deafened, whisper;
+    volatile String lastStatus;
     volatile float master = 1f;
     volatile String device = "";
     final Map<UUID, Float> vols = new ConcurrentHashMap<>();

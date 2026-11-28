@@ -90,7 +90,15 @@ public final class BedrockVoice extends JavaPlugin implements Listener, TabCompl
         debug = getConfig().getBoolean("debug", false);
         mapKey = new NamespacedKey(this, "qr_map");
         devicesFile = new File(getDataFolder(), "devices.yml");
-        devices = devicesFile.isFile() ? YamlConfiguration.loadConfiguration(devicesFile) : new YamlConfiguration();
+        devices = new YamlConfiguration();
+        if (devicesFile.isFile()) {
+            try { devices.load(devicesFile); }
+            catch (Exception e) {
+                File bad = new File(getDataFolder(), "devices.yml.broken-" + System.currentTimeMillis());
+                try { Files.copy(devicesFile.toPath(), bad.toPath()); } catch (Exception ignored) { }
+                getLogger().warning("devices.yml couldn't be read (" + e.getMessage() + "); kept it as " + bad.getName() + ". Players link again with /vc.");
+            }
+        }
 
         BukkitVoicechatService svc = getServer().getServicesManager().load(BukkitVoicechatService.class);
         if (svc == null) {
@@ -171,7 +179,10 @@ public final class BedrockVoice extends JavaPlugin implements Listener, TabCompl
                     if (ip != null && !ip.isBlank() && !ip.equals("0.0.0.0")) host = ip;
                     else if (getConfig().getBoolean("web.detect-public-ip", true)) host = detectIp();
                 }
-                if (host.isEmpty()) host = "localhost";
+                if (host.isEmpty()) {
+                    host = "localhost";
+                    getLogger().warning("Couldn't work out the server's public address: set web.public-host (your IP or domain) in config.yml, or players' links won't work.");
+                }
                 javax.net.ssl.SSLContext tls = null;
                 // behind a tunnel / reverse proxy (public-url set) the proxy does https: plain http here unless a cert is given
                 String useMode = fixedUrl.isEmpty() ? mode : (mode.equalsIgnoreCase("pem") || mode.equalsIgnoreCase("pkcs12") ? mode : "off");
@@ -227,11 +238,12 @@ public final class BedrockVoice extends JavaPlugin implements Listener, TabCompl
                     if (System.currentTimeMillis() - opened > 60000) { ws.close(); return; }
                     if (t.equals("ping")) { ws.text(json("t", "pong", "n", o.get("n"))); return; }
                     if (!t.equals("auth")) return;
-                    Session got = authenticate(ws, ip, o);
+                    Session got;
+                    try { got = authenticate(ws, ip, o); } catch (RuntimeException e) { debug("bad auth message: " + e); return; }
                     if (got != null) s = got;
                     return;
                 }
-                handle(s, ws, t, o);
+                try { handle(s, ws, t, o); } catch (RuntimeException e) { debug("bad message from " + s.name + ": " + e); }
             }
 
             @Override public void onBinary(byte[] data) {
@@ -273,23 +285,24 @@ public final class BedrockVoice extends JavaPlugin implements Listener, TabCompl
         }
         if (who == null) return null;
         UUID id = who;
-        String name = Optional.ofNullable(Bukkit.getOfflinePlayer(id).getName()).orElse(names.getOrDefault(id, "player"));
+        String name = names.getOrDefault(id, devices.getString("names." + id, "player"));
         Session s = sessions.computeIfAbsent(id, k -> new Session(this, k, name));
         WebServer.Ws old = s.ws;
         if (old != null && old != ws) { old.text(json("t", "replaced", "msg", "You opened voice chat somewhere else.")); old.close(); }
         s.ws = ws;
         s.name = name;
-        int rate = o.has("rate") ? o.get("rate").getAsInt() : getConfig().getInt("audio.sample-rate", 24000);
+        int rate = getConfig().getInt("audio.sample-rate", 24000);
+        try { if (o.has("rate")) rate = o.get("rate").getAsInt(); } catch (Exception ignored) { }
         s.rate = Audio.validRate(Math.min(rate, getConfig().getInt("audio.max-sample-rate", 48000)));
         String codec = getConfig().getString("audio.codec", "ulaw");
         if (codec.equalsIgnoreCase("auto")) codec = str(o, "codec").isEmpty() ? "ulaw" : str(o, "codec");
         s.ulaw = !codec.equalsIgnoreCase("pcm16");
         s.device = str(o, "ua");
         if (o.has("vols") && o.get("vols").isJsonObject()) {
-            for (var e : o.getAsJsonObject("vols").entrySet()) try { s.vols.put(UUID.fromString(e.getKey()), Math.max(0, Math.min(2, e.getValue().getAsFloat()))); } catch (Exception ignored) { }
+            for (var e : o.getAsJsonObject("vols").entrySet()) try { if (s.vols.size() < 500) s.vols.put(UUID.fromString(e.getKey()), Math.max(0, Math.min(2, e.getValue().getAsFloat()))); } catch (Exception ignored) { }
         }
-        if (o.has("muted")) s.muted = o.get("muted").getAsBoolean();
-        if (o.has("deafened")) s.deafened = o.get("deafened").getAsBoolean();
+        if (o.has("muted")) s.muted = bool(o, "muted");
+        boolean deaf = o.has("deafened") ? bool(o, "deafened") : s.deafened;
         JsonObject w = new JsonObject();
         w.addProperty("t", "welcome");
         w.addProperty("name", name);
@@ -302,7 +315,9 @@ public final class BedrockVoice extends JavaPlugin implements Listener, TabCompl
         w.addProperty("ptt", getConfig().getBoolean("web.default-push-to-talk", false));
         if (fresh && getConfig().getBoolean("remember-devices", true)) w.addProperty("deviceKey", newDevice(id, s.device));
         ws.text(w.toString());
+        s.deafened = deaf;
         Bukkit.getScheduler().runTask(this, () -> {
+            s.setDeafened(deaf); // a reconnect while still hooked in: the voice server must see it too
             tryAttach(s);
             Player p = Bukkit.getPlayer(id);
             if (p != null) {
@@ -328,10 +343,10 @@ public final class BedrockVoice extends JavaPlugin implements Listener, TabCompl
         switch (t) {
             case "ping" -> ws.text(json("t", "pong", "n", o.get("n")));
             case "end" -> s.micEnd();
-            case "mute" -> { s.muted = o.get("on").getAsBoolean(); if (s.muted) s.micEnd(); pushStatus(s); }
-            case "deafen" -> { boolean on = o.get("on").getAsBoolean(); Bukkit.getScheduler().runTask(this, () -> { s.setDeafened(on); pushStatus(s); }); }
-            case "master" -> s.master = Math.max(0, Math.min(2f, o.get("v").getAsFloat()));
-            case "vol" -> { try { s.vols.put(UUID.fromString(str(o, "id")), Math.max(0, Math.min(2f, o.get("v").getAsFloat()))); } catch (Exception ignored) { } }
+            case "mute" -> { s.muted = bool(o, "on"); if (s.muted) s.micEnd(); pushStatus(s); }
+            case "deafen" -> { boolean on = bool(o, "on"); Bukkit.getScheduler().runTask(this, () -> { s.setDeafened(on); pushStatus(s); }); }
+            case "master" -> { float v = o.has("v") ? o.get("v").getAsFloat() : 1f; if (Float.isFinite(v)) s.master = Math.max(0, Math.min(2f, v)); }
+            case "vol" -> { try { float v = o.get("v").getAsFloat(); if (Float.isFinite(v) && s.vols.size() < 500) s.vols.put(UUID.fromString(str(o, "id")), Math.max(0, Math.min(2f, v))); } catch (Exception ignored) { } }
             case "group" -> Bukkit.getScheduler().runTask(this, () -> group(s, o));
             case "forget" -> { forgetDevice(s.id, str(o, "device")); }
             default -> { }
@@ -348,6 +363,9 @@ public final class BedrockVoice extends JavaPlugin implements Listener, TabCompl
         if (getConfig().getBoolean("only-bedrock", false) && !Edition.bedrock(p)) { send(s, json("t", "status", "online", true, "attached", false, "msg", "This page is for Bedrock players. Install the Simple Voice Chat mod.")); return; }
         String why = s.attach(api);
         if (why != null) debug("attach " + s.name + ": " + why);
+        String key = (s.attached() ? "ok" : String.valueOf(why));
+        if (key.equals(s.lastStatus) && !s.attached()) return;
+        s.lastStatus = key;
         pushStatus(s, why);
     }
 
@@ -869,6 +887,8 @@ public final class BedrockVoice extends JavaPlugin implements Listener, TabCompl
         list.add(d);
         while (list.size() > 5) list.remove(0);
         devices.set(base, list);
+        String nm = names.get(id);
+        if (nm != null) devices.set("names." + id, nm);
         saveDevicesAsync();
         return key;
     }
@@ -916,6 +936,10 @@ public final class BedrockVoice extends JavaPlugin implements Listener, TabCompl
     private String msg(String key) {
         String s = getConfig().getString("messages." + key, key);
         return ChatColor.translateAlternateColorCodes('&', s);
+    }
+
+    private static boolean bool(JsonObject o, String k) {
+        try { return o.has(k) && o.get(k).getAsBoolean(); } catch (Exception e) { return false; }
     }
 
     private static String str(JsonObject o, String k) {

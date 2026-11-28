@@ -3849,6 +3849,14 @@ Notes:
   reconnect by device, quit detaches) and `brun.sh` (real Chromium with a fake mic: code entry, talking, 54 ms buffer, 0 gaps,
   415 mic frames into SVC, reload reconnects). QR: scratch `bvc/qt` (zxing decodes 50/50 codes and the 128-px map at IP /
   domain / IPv6 lengths). Not tested against the real Simple Voice Chat server or a real phone / console.
+- **BedrockSimpleVoicechat audit (same 1.0.0)**: a page message with a missing / wrong-typed field (`on`, `v`, `rate`)
+  threw on the socket thread and dropped that player's voice: `handle` / `authenticate` are guarded (`bool()`, finite checks,
+  per-person volumes capped at 500 entries). Reconnecting while still hooked in now sets deafen in Simple Voice Chat too
+  (`setDeafened` on the main thread; it only changed our flag). A failed hook-in re-sends its status only when the reason
+  changes (`Session.lastStatus`: it spammed the page every second). No `Bukkit.getOfflinePlayer` on the socket thread (names
+  from online players / `devices.yml names.<uuid>`). A devices.yml that won't parse is kept as `devices.yml.broken-<ms>` instead
+  of being saved over empty. No public address found = a console warning to set `web.public-host`. Page: a second Join tap
+  never opens a second audio engine / mic; `connect()` clears the "stop for good" flag (linking again after Unlink works).
 - Soft dependencies: Bosses → Items, Raids; Raids → Items; Deep → Items, Bosses, Index (Halcyon's lab specimens need Bosses); Skills → Index; Events → Items, Index; Index → all the others.
 - Past bugs already fixed: resource-pack race conditions, gateway teleport cross-world
   exceptions, pom.xml API version bumps.
